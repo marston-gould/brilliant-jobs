@@ -1,9 +1,15 @@
-# Brilliant Jobs — CI/CD Pipeline
-# Runs on push to main:
+# Brilliant Jobs — Deploy Pipeline
+# CS-020 FIX-21: Enhanced CI/CD with staging support, admin bundles, extension hosting
+#
+# Triggers on push to main:
 #   - Supabase migrations (when migration files change)
 #   - Edge Function deploys (when function code changes)
 #   - Tailwind CSS rebuild (when src/input.css or tailwind.config.js change)
-#   - JS bundle rebuild (when js/ files change)
+#   - JS bundle rebuild — dashboard + admin (when js/ files change)
+#   - Extension build (when extension/ files change)
+#
+# Staging branch gets preview deploys automatically via Vercel.
+# Production deploys only from main.
 
 name: Deploy
 
@@ -17,9 +23,13 @@ on:
       - 'tailwind.config.js'
       - 'js/**'
       - 'build.js'
+      - 'build-admin.js'
+      - 'extension/**'
 
 jobs:
+  # ── Database Migrations ─────────────────────────────────
   migrate:
+    name: Supabase Migrations
     runs-on: ubuntu-latest
     if: contains(github.event.head_commit.modified, 'supabase/migrations/')
     steps:
@@ -29,30 +39,42 @@ jobs:
           version: latest
       - run: supabase db push --db-url "${{ secrets.SUPABASE_DB_URL }}"
 
+  # ── Edge Function Deploys ───────────────────────────────
   deploy-functions:
+    name: Edge Function Deploy
     runs-on: ubuntu-latest
     if: contains(github.event.head_commit.modified, 'supabase/functions/')
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - uses: supabase/setup-cli@v1
         with:
           version: latest
       - run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      - run: |
-          # Deploy only changed functions
+      - name: Deploy changed functions
+        run: |
           CHANGED=$(git diff --name-only HEAD~1 HEAD -- supabase/functions/ | grep -oP 'functions/\K[^/]+' | sort -u)
+          DEPLOYED=0
           for fn in $CHANGED; do
             if [ -d "supabase/functions/$fn" ] && [ "$fn" != "_shared" ]; then
               echo "Deploying $fn..."
               supabase functions deploy "$fn" --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+              DEPLOYED=$((DEPLOYED + 1))
             fi
+          done
+          echo "### Edge Functions Deployed: $DEPLOYED" >> $GITHUB_STEP_SUMMARY
+          for fn in $CHANGED; do
+            [ "$fn" != "_shared" ] && echo "- \`$fn\`" >> $GITHUB_STEP_SUMMARY
           done
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
+  # ── CSS Rebuild ─────────────────────────────────────────
   rebuild-css:
+    name: Rebuild CSS
     runs-on: ubuntu-latest
     if: |
       contains(github.event.head_commit.modified, 'src/input.css') ||
@@ -77,11 +99,14 @@ jobs:
             git push
           fi
 
+  # ── JS Bundle Rebuild (Dashboard + Admin) ───────────────
   rebuild-js:
+    name: Rebuild JS Bundles
     runs-on: ubuntu-latest
     if: |
       contains(github.event.head_commit.modified, 'js/') ||
-      contains(github.event.head_commit.modified, 'build.js')
+      contains(github.event.head_commit.modified, 'build.js') ||
+      contains(github.event.head_commit.modified, 'build-admin.js')
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -89,15 +114,71 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
-      - run: node build.js
-      - name: Commit rebuilt JS bundle
+
+      - name: Build dashboard bundle
+        run: node build.js
+
+      - name: Build admin bundle
+        run: node build-admin.js
+
+      - name: Commit rebuilt bundles
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet dist/; then
-            echo "No JS bundle changes detected"
-          else
+          CHANGED=""
+          if ! git diff --quiet dist/dashboard*.js dist/dashboard*.map; then
             git add dist/dashboard.js dist/dashboard.min.js dist/dashboard.min.js.map
-            git commit -m "ci: rebuild dashboard bundle from js/ changes"
-            git push
+            git add dist/dashboard-*.min.js dist/dashboard-*.min.js.map 2>/dev/null || true
+            CHANGED="dashboard"
           fi
+          if ! git diff --quiet dist/admin*.js dist/admin*.map; then
+            git add dist/admin.js dist/admin.min.js dist/admin.min.js.map
+            CHANGED="$CHANGED admin"
+          fi
+          if [ -n "$CHANGED" ]; then
+            git commit -m "ci: rebuild bundles ($CHANGED)"
+            git push
+          else
+            echo "No bundle changes detected"
+          fi
+
+  # ── Extension Build + Artifact ──────────────────────────
+  build-extension:
+    name: Build Extension
+    runs-on: ubuntu-latest
+    if: contains(github.event.head_commit.modified, 'extension/')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+
+      - name: Build extension package
+        run: |
+          if [ -f extension/build-extension.js ]; then
+            node extension/build-extension.js
+          fi
+
+      - name: Package extension ZIP
+        run: |
+          cd extension
+          zip -r ../brilliant-jobs-extension.zip . \
+            -x "examples/*" "build-extension.js" "*.test.*" "node_modules/*"
+          cd ..
+          echo "Extension packaged: $(du -h brilliant-jobs-extension.zip | cut -f1)"
+
+      - name: Upload extension artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: brilliant-jobs-extension-${{ github.sha }}
+          path: brilliant-jobs-extension.zip
+          retention-days: 30
+
+      - name: Post summary
+        run: |
+          echo "### Extension Build" >> $GITHUB_STEP_SUMMARY
+          echo "- Package: brilliant-jobs-extension.zip" >> $GITHUB_STEP_SUMMARY
+          echo "- Size: $(du -h brilliant-jobs-extension.zip | cut -f1)" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY

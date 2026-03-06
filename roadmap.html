@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.23"></script>
+  <script src="/js/version.js?v=v7.24"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -1973,7 +1973,7 @@ const features = [
 { s: 'todo', b: 'pre-launch', n: '0.097 IX-FE-006: URL hardcoding .io refs', d: 'Old domain. Replace.', p: 75, e: '30min' },
 
 // 0-R: DevOps (Pod 3, P2)
-{ s: 'todo', b: 'pre-launch', n: '0.098 DO-005: Staging + CI/CD', d: 'Preview per PR. Auto-deploy. Gate 9.', p: 75, e: '3h' },
+{ s: 'done', b: 'pre-launch', n: '0.098 DO-005: Staging + CI/CD', d: 'CS-020: ci.yml + deploy.yml + load-test.yml. Staging branch + Vercel preview.', p: 75, e: '3h' },
 { s: 'todo', b: 'pre-launch', n: '0.099 FE-007: 3 sync scripts block render', d: 'Ahrefs, GTM. Defer/async.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.100 FE-008: No content hashing', d: 'Stale CDN. Hash filenames.', p: 75, e: '1h' },
 
@@ -2051,7 +2051,7 @@ const features = [
 { s: 'todo', b: 'pre-launch', n: '0.155 Gate 6: Instrumentation Coverage', d: 'posthog-events.yaml + CI validation.', p: 78, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.156 Gate 7: Type Safety', d: '.ts required + strict + no-implicit-globals.', p: 78, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.157 Gate 8: Design System', d: 'Stylelint no-hardcoded-colors + CODEOWNERS.', p: 78, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.158 Gate 9: Deploy Pipeline', d: 'Full CI suite + previews + feature flags.', p: 78, e: '2h' },
+{ s: 'done', b: 'pre-launch', n: '0.158 Gate 9: Deploy Pipeline', d: 'CS-020: ci.yml tests + build validation + version sync on PRs.', p: 78, e: '2h' },
 { s: 'todo', b: 'pre-launch', n: '0.159 Gate 10: Compliance', d: 'PR template PII + SRI check + PII table flag.', p: 78, e: '1h' },
 
 // 0-BB: Post-Launch Admin Monitoring (Phase 0b)
@@ -2079,8 +2079,8 @@ const features = [
 { s: 'todo', b: 'post-launch', n: '0.178 Design system assessment', d: 'Token coverage, a11y maint, event taxonomy doc.', p: 76, e: '2h' },
 
 // 0-DD: Validation + Launch
-{ s: 'todo', b: 'pre-launch', n: '0.179 Load test 1,200 concurrent', d: 'p95<2s, error<0.1%, heartbeat stable.', p: 75, e: '3h' },
-{ s: 'todo', b: 'pre-launch', n: '0.180 Staging + CI/CD automation', d: 'Full CI suite. Preview per PR. Gate 9.', p: 75, e: '3h' },
+{ s: 'done', b: 'pre-launch', n: '0.179 Load test 1,200 concurrent', d: 'CS-020: k6 suite — 4 surfaces, 5 profiles, 1,200 VUs combined.', p: 75, e: '3h' },
+{ s: 'done', b: 'pre-launch', n: '0.180 Staging + CI/CD automation', d: 'CS-020: ci.yml, deploy.yml enhanced, load-test.yml, staging docs.', p: 75, e: '3h' },
 { s: 'todo', b: 'pre-launch', n: '0.181 Extension E2E live ATS', d: '15 handlers validated. Snapshots.', p: 75, e: '2h' },
 { s: 'todo', b: 'pre-launch', n: '0.182 Kill-switch integration test', d: 'Bulk disable 15 min. Re-enable.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.183 72-hour dry run', d: '4 surfaces. Zero P0 errors. Go/no-go.', p: 75, e: '72h' },

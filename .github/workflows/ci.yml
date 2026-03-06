@@ -1,0 +1,121 @@
+# Brilliant Jobs — CI: Test + Validate
+# Runs on all PRs to main/staging, and pushes to main/staging
+# CS-020 FIX-21: Automated test pipeline
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main, staging]
+  push:
+    branches: [main, staging]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Unit Tests (Vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Run tests
+        run: npx vitest run --reporter=verbose
+
+      - name: Test summary
+        if: always()
+        run: |
+          echo "### Test Results" >> $GITHUB_STEP_SUMMARY
+          npx vitest run --reporter=json 2>/dev/null | jq -r '
+            "- **Files:** \(.numTotalTestSuites) (\(.numPassedTestSuites) passed, \(.numFailedTestSuites) failed)",
+            "- **Tests:** \(.numTotalTests) (\(.numPassedTests) passed, \(.numFailedTests) failed)"
+          ' >> $GITHUB_STEP_SUMMARY 2>/dev/null || echo "See test output above." >> $GITHUB_STEP_SUMMARY
+
+  build-check:
+    name: Build Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Build dashboard bundle
+        run: node build.js
+
+      - name: Build admin bundle
+        run: node build-admin.js
+
+      - name: Build CSS
+        run: npx tailwindcss -i src/input.css -o styles.css --minify
+
+      - name: Verify bundles are up to date
+        run: |
+          if ! git diff --quiet dist/ styles.css; then
+            echo "::error::Bundles are stale. Run 'node build.js && node build-admin.js && npm run bundle:css' locally and commit."
+            git diff --stat dist/ styles.css
+            exit 1
+          fi
+          echo "✅ All bundles up to date"
+
+  version-check:
+    name: Version Sync Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify version consistency
+        run: |
+          if [ -f scripts/pre-commit-version-check.sh ]; then
+            bash scripts/pre-commit-version-check.sh
+          else
+            echo "Version check script not found — skipping"
+          fi
+
+  extension-build:
+    name: Extension Build Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Build extension
+        run: |
+          if [ -f extension/build-extension.js ]; then
+            node extension/build-extension.js
+            echo "✅ Extension builds successfully"
+          else
+            echo "No extension build script — skipping"
+          fi
+
+      - name: Validate manifest.json
+        run: |
+          node -e "
+            const m = require('./extension/manifest.json');
+            const required = ['name', 'version', 'manifest_version', 'permissions'];
+            const missing = required.filter(k => !m[k]);
+            if (missing.length) {
+              console.error('Missing manifest keys:', missing.join(', '));
+              process.exit(1);
+            }
+            console.log('✅ Manifest valid:', m.name, 'v' + m.version);
+          "

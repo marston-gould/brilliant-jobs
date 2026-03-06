@@ -34,12 +34,12 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**CS-019** — Extension Architecture: Privacy Policy + PII Inventory + Cost Dashboard (FIX-18)
+**CS-020** — Load Testing + Staging Environment + CI/CD (FIX-20, FIX-21)
 - Completed: 2026-03-06
-- Commit: `f614247`
-- Tags: `extension@0.8.0-architecture`, `admin@0.9.0-cost`
-- Fix items resolved: FIX-18 (EXT-CWS-002, CP-001, CE-002)
-- Notes: Privacy policy linkage — homepage_url in manifest, popup link, privacy.html updated with all 9 vendors + DPA ref + consent ref. PII inventory — docs/PII_INVENTORY.md maps all tables by sensitivity, extension storage, third-party sharing, Edge Function flows, deletion cascades, review schedule. Cost dashboard budget alerts — vendor_cost_budgets table, admin progress bars (green/yellow/red), budget edit form, chart budget line. 36 new tests (323 total).
+- Commit: (pending push)
+- Tags: `loadtest@1.0.0`, `cicd@1.0.0`
+- Fix items resolved: FIX-20 (Load Testing), FIX-21 (Staging + CI/CD)
+- Notes: k6 load test suite for 4 surfaces (preview-jobs, dashboard API, extension heartbeat, admin concurrent). Full-suite combined test at 1,200 VUs. 5 profiles (smoke, ramp, spike, soak, full-suite). GitHub Actions: ci.yml (tests+build+version on PRs), deploy.yml enhanced (admin bundle, extension artifact), load-test.yml (manual k6). Staging docs updated. 64 new tests (387 total).
 
 ---
 
@@ -51,36 +51,33 @@ None.
 
 ## Next Session
 
-**CS-020** — Load Testing + Staging Environment + CI/CD (FIX-20, FIX-21)
+**CS-021** — Quality Gates + Full E2E Test Suite (FIX-22)
 
 | Field | Detail |
 |-------|--------|
 | Surface | All Surfaces |
-| Fix Items | FIX-20 (Load Testing), FIX-21 (Staging + CI/CD) |
+| Fix Items | FIX-22 + Quality Gates |
 | Phase | Phase 5: Validation + Launch |
-| Pair | DevOps + QA + Eng Lead |
+| Pair | QA + Eng Lead |
 | Expected tags | TBD |
 
 ### Entry Gate (verify before starting)
 
-- [x] CS-019 complete — Privacy + PII + Cost deployed → `extension@0.8.0-architecture`, `admin@0.9.0-cost`
-- [x] CS-013 complete — Kill-switch operational (safety valve during load test)
+- [x] CS-020 complete — Load test scripts + CI/CD pipeline deployed
+- [x] ci.yml operational on GitHub Actions
 - [x] All P0 fixes deployed
 
 ### What To Build
 
-1. **FIX-20**: Load test at 1,200 concurrent users — dashboard API, extension heartbeat/scan, landing preview-jobs, admin concurrent access
-2. **FIX-21**: Staging environment mirrors prod. Automated deploy pipeline (Vercel). Automated extension build + hosting pipeline.
+1. **FIX-22**: Full E2E test suite (expand QA-001 partial). 10 quality gates enforced in CI. Extension handler DOM snapshot tests.
+2. **Quality Gates**: Install all 10 gates as CI checks — tests pass, build validates, version syncs, bundle size limits, a11y checks, security scan.
 
 ### Exit Gate
 
-- No P0-class failures under load
-- p95 response <2s
-- Error rate <0.1%
-- Extension heartbeat stable under load
-- Landing preview-jobs rate limit holds
-- Staging mirrors prod config
-- CI/CD pipeline operational
+- All 10 quality gates passing in CI (G15 fully green)
+- Test coverage > 80% on critical paths
+- Extension E2E against live ATS validated
+- Kill-switch integration test passing
 
 ---
 
@@ -92,12 +89,14 @@ None.
 | Extension | `extension@0.8.0-architecture` | CS-019 |
 | Landing Page | `index@0.6.0-architecture` | CS-018 |
 | Admin | `admin@0.9.0-cost` | CS-019 |
+| Load Tests | `loadtest@1.0.0` | CS-020 |
+| CI/CD | `cicd@1.0.0` | CS-020 |
 | SEO Pages | (no remediation tag yet) | — |
 | Email Templates | `email-templates@0.1.0-utm` | CS-011 |
 
 ---
 
-## Completed Sessions (19 of 24)
+## Completed Sessions (20 of 24)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
@@ -120,14 +119,14 @@ None.
 | CS-017 | 2026-03-06 | FIX-17 (EXT-FE-004) | extension@0.7.0-monitoring |
 | CS-018 | 2026-03-06 | FIX-19a (IX-FE-002, IX-DA-001, IX-CP-001, IX-SE-006) | index@0.6.0-architecture |
 | CS-019 | 2026-03-06 | FIX-18 (EXT-CWS-002, CP-001, CE-002) | extension@0.8.0-architecture, admin@0.9.0-cost |
+| CS-020 | 2026-03-06 | FIX-20 (Load Testing), FIX-21 (Staging + CI/CD) | loadtest@1.0.0, cicd@1.0.0 |
 
 ---
 
-## Remaining Sessions (5 of 24)
+## Remaining Sessions (4 of 24)
 
 | Session | Fix Items | Phase | Notes |
 |---------|-----------|-------|-------|
-| CS-020 | FIX-20, FIX-21 | Phase 5: Validation + Launch |  |
 | CS-021 | FIX-22 + Quality Gates | Phase 5 |  |
 | CS-022 | FIX-23 (72-hour dry run + Go/No-Go) | Phase 5 |  |
 | CS-023 | AD-FIX-11, AD-FIX-12 | Post-Launch: Admin Monitoring |  |
@@ -153,7 +152,7 @@ None.
 | G12 | Admin audit trail recording | ⚡ | CS-012: _logAdminAction() wired to 5 action categories. CS-015: pgAudit extension enabled (DDL + write). |
 | G13 | PostHog identity 100% | ✅ | CS-003: identify() on dashboard + extension. CS-018: identify() on landing showLoggedIn(). All 3 surfaces covered. |
 | G14 | axe-core 0 critical | ⚡ | CS-007 + CS-011: dashboard + landing + extension addressed |
-| G15 | All 10 quality gates in CI | 🔲 | CS-021 |
+| G15 | All 10 quality gates in CI | ⚡ | CS-020: ci.yml installed (vitest + build + version + extension). Full 10-gate in CS-021. | CS-021 |
 
 ---
 

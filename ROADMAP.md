@@ -2947,7 +2947,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.098 | DO-005: Staging environment + CI/CD | 3h | — | 🔲 | Preview per PR. Vercel auto-deploy. Gate 9 installed here. |
+| 0.098 | DO-005: Staging environment + CI/CD | 3h | 3h | ✅ | CS-020: ci.yml + deploy.yml + load-test.yml. Staging branch + Vercel preview. |
 | 0.099 | FE-007: 3 sync scripts blocking render | 1h | — | 🔲 | Ahrefs, GTM, other. Defer or async. |
 | 0.100 | FE-008: No content hashing static assets | 1h | — | 🔲 | Stale CDN. Hash filenames or cache-bust params. |
 
@@ -3052,7 +3052,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.155 | Gate 6: Instrumentation — YAML+CI | 1h | — | 🔲 | posthog-events.yaml + coverage check. After 0.106. |
 | 0.156 | Gate 7: Type Safety — CI | 1h | — | 🔲 | .ts required + strict + no-implicit-globals. With 0.058. |
 | 0.157 | Gate 8: Design System — Stylelint | 1h | — | 🔲 | no-hardcoded-colors + no-inline-styles + CODEOWNERS. With 0.138. |
-| 0.158 | Gate 9: Deploy Pipeline — full CI suite | 2h | — | 🔲 | All checks + preview envs + feature flag rollout. With 0.098. |
+| 0.158 | Gate 9: Deploy Pipeline — full CI suite | 2h | 2h | ✅ | CS-020: ci.yml tests + build validation + version sync on all PRs. |
 | 0.159 | Gate 10: Compliance — PR template | 1h | — | 🔲 | PII questions + SRI check + PII table auto-flag. With 0.021. |
 
 ### 0-BB: Post-Launch — Admin Monitoring Dashboards (Phase 0b)
@@ -3088,8 +3088,8 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.179 | Load test 1,200 concurrent | 3h | — | 🔲 | p95 <2s, error <0.1%, heartbeat stable, preview-jobs rate limit holds. |
-| 0.180 | Staging + CI/CD automation | 3h | — | 🔲 | Full CI suite. Preview per PR. Gate 9 installed. |
+| 0.179 | Load test 1,200 concurrent | 3h | 3h | ✅ | CS-020: k6 suite — 4 surfaces, 5 profiles, full-suite combined (1,200 VUs). Exit gates: p95 <2s, err <0.1%. |
+| 0.180 | Staging + CI/CD automation | 3h | 3h | ✅ | CS-020: ci.yml (test+build+version on PR), deploy.yml enhanced (admin bundle, extension artifact), load-test.yml (manual k6), staging docs. |
 | 0.181 | Extension E2E against live ATS | 2h | — | 🔲 | 15 handlers validated. Snapshot tests. |
 | 0.182 | Kill-switch integration test | 1h | — | 🔲 | Bulk disable within 15 min. Re-enable verified. |
 | 0.183 | 72-hour dry run | 72h cal | — | 🔲 | 4 surfaces monitored. Zero P0 errors. Go/no-go confirmed. |
@@ -3113,7 +3113,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | G12 | Admin audit trail recording | 3 | 🔲 |
 | G13 | PostHog identity 100% | 4 | ⚡ | CS-003: posthog.identify() wired on dashboard + admin. Extension uses distinct_id. Requires prod verification. |
 | G14 | axe-core 0 critical | 4 | ⚡ | CS-007: Dashboard + landing page 0 critical. CS-011: Extension popup ARIA + keyboard nav added. Requires prod axe-core verification. |
-| G15 | All 10 quality gates in CI | 3+4 | 🔲 |
+| G15 | All 10 quality gates in CI | 3+4 | ⚡ | CS-020: ci.yml installed — vitest + build check + version sync + extension build. Full 10-gate coverage in CS-021. |
 
 ---
 

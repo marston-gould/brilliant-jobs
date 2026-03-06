@@ -1,3 +1,19 @@
+## v7.24 — CS-020: Load Testing + Staging + CI/CD (FIX-20, FIX-21) (2026-03-06)
+### Load Testing (FIX-20)
+- **k6 load test suite** for all 4 surfaces: preview-jobs, dashboard API, extension heartbeat, admin concurrent
+- **Full-suite combined test** distributes 1,200 VUs by traffic weight (40/35/20/5%)
+- **4 load profiles**: smoke (5 VUs), ramp (→1,200), spike (→1,500), soak (4hr @ 400)
+- **Custom metrics**: per-surface latency tracking, rate-limit detection, kill-switch monitoring
+- **Automated pass/fail** against exit gates: p95 < 2s, error rate < 0.1%
+- **GitHub Actions workflow** for manual load test execution against staging or production
+### CI/CD Pipeline (FIX-21)
+- **ci.yml**: Runs vitest + build validation + version sync + extension build on all PRs
+- **deploy.yml enhanced**: Admin bundle rebuilds, extension build + artifact upload, GitHub Actions summaries
+- **load-test.yml**: Manual-trigger workflow with profile/target/environment selection
+- **Staging docs updated**: Branch protection rules, Vercel preview config, CI/CD workflow summary
+### Tests
+- 64 new tests (387 total): load test config integrity, CI/CD workflow structure, staging docs
+
 ## v7.23 — Audit Remediation (CS-001 through CS-019) (2026-03-06)
 ### Security
 - **Admin Edge Function auth enforced** (CS-001): seo-sync, generate-editorial-content, approve-content locked behind JWT + role checks

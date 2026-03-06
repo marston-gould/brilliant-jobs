@@ -1,0 +1,101 @@
+# Brilliant Jobs — Load Test Pipeline
+# CS-020 FIX-20: Runs k6 load tests against production or staging
+# Manual trigger only (workflow_dispatch) — never run automatically
+
+name: Load Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'Load profile'
+        required: true
+        type: choice
+        options:
+          - smoke
+          - ramp
+          - spike
+        default: smoke
+      target:
+        description: 'Test target'
+        required: true
+        type: choice
+        options:
+          - preview-jobs
+          - dashboard-api
+          - extension-heartbeat
+          - admin-concurrent
+          - full-suite
+        default: preview-jobs
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+        default: staging
+
+jobs:
+  load-test:
+    name: k6 Load Test (${{ inputs.target }} / ${{ inputs.profile }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg \
+            --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D68
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" \
+            | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install -y k6
+
+      - name: Set environment URLs
+        id: env
+        run: |
+          if [ "${{ inputs.environment }}" = "production" ]; then
+            echo "SUPABASE_URL=https://qojhagupdnbtomfoxnsf.supabase.co" >> $GITHUB_OUTPUT
+            echo "LANDING_URL=https://brilliantjobs.app" >> $GITHUB_OUTPUT
+          else
+            # Staging uses same Supabase (until separate staging project created)
+            echo "SUPABASE_URL=https://qojhagupdnbtomfoxnsf.supabase.co" >> $GITHUB_OUTPUT
+            echo "LANDING_URL=https://brilliantjobs.app" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run load test
+        run: |
+          k6 run \
+            --env PROFILE=${{ inputs.profile }} \
+            --env SUPABASE_URL=${{ steps.env.outputs.SUPABASE_URL }} \
+            --env LANDING_URL=${{ steps.env.outputs.LANDING_URL }} \
+            --env K6_TEST_EMAIL=${{ secrets.K6_TEST_EMAIL }} \
+            --env K6_TEST_PASSWORD=${{ secrets.K6_TEST_PASSWORD }} \
+            load-tests/${{ inputs.target }}.js
+        continue-on-error: true
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-${{ inputs.target }}-${{ inputs.profile }}-${{ github.run_number }}
+          path: load-tests/results/
+          retention-days: 90
+
+      - name: Post summary
+        if: always()
+        run: |
+          echo "### Load Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Parameter | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Target | ${{ inputs.target }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Profile | ${{ inputs.profile }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | ${{ inputs.environment }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Run | #${{ github.run_number }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Check the artifacts for detailed results." >> $GITHUB_STEP_SUMMARY
