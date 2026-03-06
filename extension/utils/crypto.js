@@ -154,6 +154,7 @@ const BJ_CRYPTO_MIGRATION = (() => {
     'bjResumeRef',      // resume file references
     'bjSavedFilters',   // saved search filters
     '_bj_answer_cache', // AI answer cache (may contain profile data)
+    'authSession',      // CS-004 (EXT-ES-003): Supabase auth tokens — access_token, refresh_token, user_id
   ];
 
   /**

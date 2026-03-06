@@ -3,6 +3,11 @@
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
+// CS-004 (EXT-SEC-002): HTML entity escaping for innerHTML injection protection
+function escHtml(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 // ============================================================
 // CS-003: PostHog event capture for extension (CX-02)
 // ============================================================
@@ -11,8 +16,8 @@ const _PH_HOST = 'https://us.i.posthog.com';
 
 async function phCapture(eventName, properties = {}) {
   try {
-    const data = await chrome.storage.local.get('authSession');
-    const distinctId = data.authSession?.user_id || 'anonymous';
+    const authSession = typeof BJ_CRYPTO !== 'undefined' ? await BJ_CRYPTO.secureGet('authSession') : (await chrome.storage.local.get('authSession')).authSession;
+    const distinctId = authSession?.user_id || 'anonymous';
     fetch(`${_PH_HOST}/capture/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -43,8 +48,7 @@ let currentUserRole = 'user';
 
 async function checkAuth() {
   try {
-    const data = await chrome.storage.local.get(['authSession']);
-    const session = data.authSession;
+    const session = typeof BJ_CRYPTO !== 'undefined' ? await BJ_CRYPTO.secureGet('authSession') : (await chrome.storage.local.get('authSession')).authSession;
 
     if (!session || !session.access_token) {
       showAuthGate();
@@ -156,15 +160,18 @@ async function loginUser(email, password) {
 }
 
 async function saveSession(data) {
-  await chrome.storage.local.set({
-    authSession: {
-      access_token: data.access_token,
-      refresh_token: data.refresh_token,
-      expires_at: Date.now() + (data.expires_in * 1000),
-      user_id: data.user?.id || data.user_id,
-      email: data.user?.email || data.email
-    }
-  });
+  const sessionObj = {
+    access_token: data.access_token,
+    refresh_token: data.refresh_token,
+    expires_at: Date.now() + (data.expires_in * 1000),
+    user_id: data.user?.id || data.user_id,
+    email: data.user?.email || data.email
+  };
+  if (typeof BJ_CRYPTO !== 'undefined') {
+    await BJ_CRYPTO.secureSet('authSession', sessionObj);
+  } else {
+    await chrome.storage.local.set({ authSession: sessionObj });
+  }
 }
 
 async function clearSession() {
@@ -180,12 +187,14 @@ function showAuthGate() {
   // Always clear password
   $('#auth-password').value = '';
   // Pre-fill email from last known session or saved email
-  chrome.storage.local.get(['authSession', 'lastEmail']).then(data => {
-    const email = data.authSession?.email || data.lastEmail || '';
+  (async () => {
+    const authSession = typeof BJ_CRYPTO !== 'undefined' ? await BJ_CRYPTO.secureGet('authSession') : (await chrome.storage.local.get('authSession')).authSession;
+    const lastData = await chrome.storage.local.get('lastEmail');
+    const email = authSession?.email || lastData.lastEmail || '';
     if (email) {
       $('#auth-email').value = email;
     }
-  });
+  })();
 }
 
 function showApp(email, role) {
@@ -1324,7 +1333,7 @@ async function refreshDataCounts() {
       if (sorted.length > 0) {
         listEl.innerHTML = sorted.map(([name, count], i) =>
           `<div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #1e2035;">` +
-          `<span style="color: ${i < 3 ? '#4da3ff' : '#c8ccd4'}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px;">${name}</span>` +
+          `<span style="color: ${i < 3 ? '#4da3ff' : '#c8ccd4'}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px;">${escHtml(name)}</span>` +
           `<span style="color: #8892b0; font-weight: 600; margin-left: 8px;">${count}</span></div>`
         ).join('');
       } else {
@@ -1478,9 +1487,9 @@ async function refreshDailyLimitBadge() {
   if (!bar || !countEl || !fillEl) return;
 
   try {
-    const data = await chrome.storage.local.get(['authSession', 'bjTierCache']);
-    const session = data.authSession;
-    const tierCache = data.bjTierCache;
+    const session = typeof BJ_CRYPTO !== 'undefined' ? await BJ_CRYPTO.secureGet('authSession') : (await chrome.storage.local.get('authSession')).authSession;
+    const tierData = await chrome.storage.local.get('bjTierCache');
+    const tierCache = tierData.bjTierCache;
 
     // Only show for Starter tier (not Pro, not Admin)
     const tier = tierCache?.tier || '';

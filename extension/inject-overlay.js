@@ -9,6 +9,11 @@
 (function () {
   'use strict';
 
+  // CS-004 (EXT-SEC-002): HTML entity escaping for innerHTML injection protection
+  function escHtml(str) {
+    return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
   const OVERLAY_ID = 'bj-fill-overlay';
   const OVERLAY_STYLES_ID = 'bj-fill-overlay-styles';
 
@@ -261,7 +266,7 @@
       item.className = `bj-field-item bj-${status}`;
       item.innerHTML = `
         <span class="bj-field-icon">${icons[status] || '·'}</span>
-        <span>${name}${detail ? ' — ' + detail : ''}</span>
+        <span>${escHtml(name)}${detail ? ' — ' + escHtml(detail) : ''}</span>
       `;
       list.appendChild(item);
       list.scrollTop = list.scrollHeight;

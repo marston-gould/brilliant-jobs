@@ -105,12 +105,31 @@
     {
       "resources": [
         "handlers/*.js",
-        "utils/*.js",
+        "utils/fillMetrics.js",
         "inject-overlay.js",
-        "toolbar-overlay.js"
+        "toolbar-overlay.js",
+        "inject.css"
       ],
       "matches": [
-        "<all_urls>"
+        "https://www.linkedin.com/*",
+        "https://boards.greenhouse.io/*",
+        "https://boards.eu.greenhouse.io/*",
+        "https://job-boards.greenhouse.io/*",
+        "https://job-boards.eu.greenhouse.io/*",
+        "https://jobs.lever.co/*",
+        "https://jobs.ashbyhq.com/*",
+        "https://apply.workable.com/*",
+        "https://*.recruitee.com/*",
+        "https://*.myworkdayjobs.com/*",
+        "https://smartapply.indeed.com/*",
+        "https://apply.indeed.com/*",
+        "https://m5.apply.indeed.com/*",
+        "https://*.indeed.com/*",
+        "https://*.icims.com/*",
+        "https://*.taleo.net/*",
+        "https://jobs.smartrecruiters.com/*",
+        "https://careers.smartrecruiters.com/*",
+        "https://*.avature.net/*"
       ]
     }
   ]

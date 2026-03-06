@@ -11,6 +11,33 @@
 
 importScripts('supabase.js');
 importScripts('utils/autoTracker.js');
+importScripts('utils/crypto.js'); // CS-004 (EXT-ES-003): encrypted storage for authSession
+
+// ── CS-004: Encrypted auth session helpers ──
+// Wrap all authSession reads/writes through BJ_CRYPTO so tokens are
+// encrypted at rest in chrome.storage.local.
+async function getAuth() {
+  try {
+    if (typeof BJ_CRYPTO !== 'undefined') {
+      return await BJ_CRYPTO.secureGet('authSession');
+    }
+  } catch (e) {
+    console.warn('[BJ] getAuth crypto fallback:', e.message);
+  }
+  const data = await chrome.storage.local.get('authSession');
+  return data.authSession || null;
+}
+
+async function setAuth(session) {
+  try {
+    if (typeof BJ_CRYPTO !== 'undefined') {
+      return await BJ_CRYPTO.secureSet('authSession', session);
+    }
+  } catch (e) {
+    console.warn('[BJ] setAuth crypto fallback:', e.message);
+  }
+  return await chrome.storage.local.set({ authSession: session });
+}
 
 // ============================================================
 // CS-003: PostHog event capture for extension background (CX-02)
@@ -20,8 +47,8 @@ const _BG_PH_HOST = 'https://us.i.posthog.com';
 
 async function captureEvent(eventName, properties = {}) {
   try {
-    const data = await chrome.storage.local.get('authSession');
-    const distinctId = data.authSession?.user_id || 'anonymous';
+    const authSession = await getAuth();
+    const distinctId = authSession?.user_id || 'anonymous';
     fetch(`${_BG_PH_HOST}/capture/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -85,8 +112,8 @@ async function saveState() {
 // Sync key scanner fields to Supabase so they survive reinstalls
 async function syncStateToSupabase() {
   try {
-    const data = await chrome.storage.local.get('authSession');
-    const userId = data.authSession?.user_id;
+    const authSession = await getAuth();
+    const userId = authSession?.user_id;
     if (!userId) return;
 
     await supabase.update('profiles', { id: userId }, {
@@ -106,21 +133,22 @@ async function syncStateToSupabase() {
 }
 
 async function loadState() {
-  const data = await chrome.storage.local.get(['scannerState', 'authSession']);
+  const data = await chrome.storage.local.get(['scannerState']);
+  const authSession = await getAuth();
   
   // Load auth token (but don't refresh here — only refresh before DB calls)
-  if (data.authSession?.access_token) {
-    supabase.setAuthToken(data.authSession.access_token);
+  if (authSession?.access_token) {
+    supabase.setAuthToken(authSession.access_token);
   }
 
   if (data.scannerState && data.scannerState.todayDate) {
     // Local state exists and has data — use it
     scannerState = { ...scannerState, ...data.scannerState };
-  } else if (data.authSession?.user_id) {
+  } else if (authSession?.user_id) {
     // No local state — try to restore from Supabase
     try {
       const rows = await supabase.select('profiles',
-        `select=scanner_today_visited,scanner_today_limit,scanner_today_date,scanner_next_resume_at,scanner_running&id=eq.${data.authSession.user_id}`
+        `select=scanner_today_visited,scanner_today_limit,scanner_today_date,scanner_next_resume_at,scanner_running&id=eq.${authSession.user_id}`
       );
       if (rows && rows.length > 0) {
         const p = rows[0];
@@ -163,8 +191,8 @@ const REFRESH_COOLDOWN = 30000; // Don't try more than once per 30 seconds
 
 async function ensureValidToken(session) {
   // Always re-read from storage to pick up tokens refreshed by popup
-  const stored = await chrome.storage.local.get('authSession');
-  session = stored.authSession;
+  const storedAuth = await getAuth();
+  session = storedAuth;
 
   if (!session?.access_token) return false;
 
@@ -181,9 +209,9 @@ async function ensureValidToken(session) {
   // If another refresh is in flight, wait for it then re-check storage
   if (refreshInProgress) {
     await new Promise(r => setTimeout(r, 3000));
-    const recheck = await chrome.storage.local.get('authSession');
-    if (recheck.authSession?.expires_at && Date.now() < recheck.authSession.expires_at - buffer) {
-      supabase.setAuthToken(recheck.authSession.access_token);
+    const recheckAuth = await getAuth();
+    if (recheckAuth?.expires_at && Date.now() < recheckAuth.expires_at - buffer) {
+      supabase.setAuthToken(recheckAuth.access_token);
       return true;
     }
     return false;
@@ -193,9 +221,9 @@ async function ensureValidToken(session) {
   // (popup may have refreshed during our cooldown window)
   if (now - lastRefreshAttempt < REFRESH_COOLDOWN) {
     // Re-read storage one more time — popup might have refreshed for us
-    const recheck = await chrome.storage.local.get('authSession');
-    if (recheck.authSession?.expires_at && Date.now() < recheck.authSession.expires_at - buffer) {
-      supabase.setAuthToken(recheck.authSession.access_token);
+    const recheckAuth = await getAuth();
+    if (recheckAuth?.expires_at && Date.now() < recheckAuth.expires_at - buffer) {
+      supabase.setAuthToken(recheckAuth.access_token);
       return true;
     }
     return false;
@@ -223,9 +251,9 @@ async function ensureValidToken(session) {
     if (!res.ok) {
       // Refresh failed — but maybe popup already refreshed with a newer token.
       // Re-read storage before giving up.
-      const recheck = await chrome.storage.local.get('authSession');
-      if (recheck.authSession?.expires_at && Date.now() < recheck.authSession.expires_at - buffer) {
-        supabase.setAuthToken(recheck.authSession.access_token);
+      const recheckAuth = await getAuth();
+      if (recheckAuth?.expires_at && Date.now() < recheckAuth.expires_at - buffer) {
+        supabase.setAuthToken(recheckAuth.access_token);
         logMsg('Token refresh failed but found valid token from popup session', 'info');
         return true;
       }
@@ -242,7 +270,7 @@ async function ensureValidToken(session) {
       email: session.email
     };
 
-    await chrome.storage.local.set({ authSession: newSession });
+    await setAuth(newSession);
     supabase.setAuthToken(data.access_token);
     logMsg('Auth token refreshed', 'info');
     return true;
@@ -928,7 +956,7 @@ async function visitNextProfile() {
 
     // Push companies to Supabase
     if (experienceData.companies.length > 0) {
-      const { authSession } = await chrome.storage.local.get('authSession');
+      const authSession = await getAuth();
       const userId = authSession?.user_id;
       const companyRows = experienceData.companies.map(c => ({
         company_id: c.company_id,
@@ -1146,9 +1174,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'tokenUpdated') {
     // User logged in or token was refreshed externally — pick up new token
     loadState().then(async () => {
-      const data = await chrome.storage.local.get('authSession');
-      if (data.authSession?.access_token) {
-        supabase.setAuthToken(data.authSession.access_token);
+      const authSession = await getAuth();
+      if (authSession?.access_token) {
+        supabase.setAuthToken(authSession.access_token);
         lastRefreshAttempt = 0; // Reset cooldown
         await ensureLoopRunning('tokenUpdated');
       }
@@ -1190,8 +1218,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     // Log to extension_events for telemetry
     (async () => {
       try {
-        const data = await chrome.storage.local.get('authSession');
-        const session = data.authSession;
+        const authSession = await getAuth();
+        const session = authSession;
         if (!session?.user_id || !session?.access_token) return;
         const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
         await fetch(SB_URL + '/rest/v1/extension_events', {
@@ -1247,8 +1275,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     // Log to extension_events for telemetry
     (async () => {
       try {
-        const data = await chrome.storage.local.get('authSession');
-        const session = data.authSession;
+        const authSession = await getAuth();
+        const session = authSession;
         if (!session?.user_id || !session?.access_token) return;
         const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
         await fetch(SB_URL + '/rest/v1/extension_events', {
@@ -1283,8 +1311,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'bj:toolbar:getEntry') {
     (async () => {
       try {
-        const data = await chrome.storage.local.get('authSession');
-        const session = data.authSession;
+        const authSession = await getAuth();
+        const session = authSession;
         if (!session?.user_id || !session?.access_token) {
           sendResponse({ entry: null });
           return;
@@ -1314,8 +1342,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'bj:toolbar:save') {
     (async () => {
       try {
-        const data = await chrome.storage.local.get('authSession');
-        const session = data.authSession;
+        const authSession = await getAuth();
+        const session = authSession;
         if (!session?.user_id || !session?.access_token) {
           sendResponse({ success: false, error: 'no_auth' });
           return;
@@ -1366,8 +1394,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'bj:toolbar:matchScore') {
     (async () => {
       try {
-        const data = await chrome.storage.local.get('authSession');
-        const session = data.authSession;
+        const authSession = await getAuth();
+        const session = authSession;
         if (!session?.user_id || !session?.access_token) {
           sendResponse({ ok: false, score: null, label: null });
           return;
@@ -1402,8 +1430,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'bj:toolbar:analytics') {
     (async () => {
       try {
-        const data = await chrome.storage.local.get('authSession');
-        const session = data.authSession;
+        const authSession = await getAuth();
+        const session = authSession;
         if (!session?.user_id || !session?.access_token) return;
         const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
         const p = msg.payload || {};
@@ -1438,8 +1466,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     // Log to extension_events for telemetry + feed health
     (async () => {
       try {
-        const data = await chrome.storage.local.get('authSession');
-        const session = data.authSession;
+        const authSession = await getAuth();
+        const session = authSession;
         if (!session?.user_id || !session?.access_token) return;
         const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
         await fetch(SB_URL + '/rest/v1/extension_events', {
@@ -1582,7 +1610,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   // Push to board_discovery_queue for discover-boards processing
   (async () => {
     try {
-      const { authSession } = await chrome.storage.local.get('authSession');
+      const authSession = await getAuth();
       if (!authSession?.access_token) return;
       await supabase.upsert('board_discovery_queue', [{
         platform: atsMatch.platform,
