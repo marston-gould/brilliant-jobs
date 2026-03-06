@@ -4,3 +4,4 @@ node_modules/
 *.swo
 *~
 extension/dist/
+selector-health-report.json

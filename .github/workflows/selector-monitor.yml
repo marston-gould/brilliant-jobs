@@ -1,0 +1,79 @@
+# .github/workflows/selector-monitor.yml — CS-017: Weekly selector health monitoring
+# FIX-17 (EXT-FE-004): Automated check that ATS selectors still resolve on live sites.
+#
+# Schedule: Every Monday at 9:00 AM UTC
+# Manual: workflow_dispatch for on-demand runs
+#
+# Pipeline:
+#   1. Validate registry structure (always runs)
+#   2. Run Playwright against live ATS pages (if sample URLs configured)
+#   3. Generate selector-health-report.json
+#   4. On failure: send alert email via Resend + upload report artifact
+#   5. On success: upload report artifact (for trend tracking)
+
+name: Selector Monitor
+
+on:
+  schedule:
+    - cron: '0 9 * * 1' # Monday 9:00 UTC
+  workflow_dispatch:
+    inputs:
+      report_only:
+        description: 'Skip live checks, validate registry only'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  selector-health:
+    name: Selector Health Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright (Chromium only)
+        run: npx playwright install chromium --with-deps
+
+      - name: Run selector health check
+        id: health_check
+        run: |
+          if [ "${{ inputs.report_only }}" = "true" ]; then
+            node scripts/selector-health-check.mjs --report-only
+          else
+            node scripts/selector-health-check.mjs
+          fi
+        continue-on-error: true
+
+      - name: Upload health report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: selector-health-report
+          path: selector-health-report.json
+          retention-days: 90
+
+      - name: Send alert on failure
+        if: steps.health_check.outcome == 'failure'
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: node scripts/selector-alert.mjs
+
+      - name: Fail job on critical issues
+        if: steps.health_check.outcome == 'failure'
+        run: |
+          echo "❌ Selector health check detected critical failures."
+          echo "See the uploaded selector-health-report.json artifact for details."
+          exit 1

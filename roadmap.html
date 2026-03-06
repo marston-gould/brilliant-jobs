@@ -1926,7 +1926,7 @@ const features = [
 { s: 'todo', b: 'pre-launch', n: '0.066 EXT-BE-003: Token refresh reliability', d: 'Refresh fails silently. Retry + notify + re-auth.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.067 EXT-CWS-001: Manifest permissions minimize', d: 'Justify each or remove.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.068 EXT-CWS-002: Privacy policy + manifest', d: 'Publish + link. Required for distribution.', p: 75, e: '1h' },
-{ s: 'done', b: 'pre-launch', n: '0.069 EXT-FE-001: Selector fragility', d: 'CS-010: LinkedIn selectors hardened with 4+ fallbacks (role=dialog anchor). Greenhouse/Lever/Legacy wrapped in safeFill() graceful degradation. resilientDOM.js utility. PostHog selector miss + handler error telemetry.', p: 75, e: '2h' },
+{ s: 'done', b: 'pre-launch', n: '0.069 EXT-FE-001: Selector fragility', d: 'CS-017 (FIX-17): Centralized selector registry — 15 handlers, 193 selectors, 153 critical. Weekly Playwright CI job tests against live ATS pages. Resend alert on breakage. 163 new tests (249 total). EXT-FE-004 fully resolved.', p: 75, e: '2h' },
 
 // CS-011: Extension a11y + CX Sprint 2
 { s: 'done', b: 'pre-launch', n: '0.069a CX-05: Extension popup accessibility', d: 'CS-011: ARIA tablist/tab/tabpanel, keyboard nav (Arrow/Home/End), skip-link, focus-visible, auth form labels, aria-live regions, main landmark. Score 1.0 → 3.5+.', p: 80, e: '8h' },
