@@ -1858,7 +1858,7 @@ const features = [
 { s: 'todo', b: 'pre-launch', n: '0.018 AD-SE-001: Admin auth server-side', d: 'Client-side only or none. admin-auth.ts middleware. 401/403.', p: 75, e: '2h' },
 { s: 'done', b: 'pre-launch', n: '0.019 AD-SE-002: Admin EF auth (3 functions)', d: 'CS-001: seo-sync + generate-editorial DONE. CS-006: approve-content admin role check added. All 3 EFs enforce auth + admin role.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.020 AD-SE-003: Service role key in admin client', d: 'Remove client-side refs after rotation.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.021 AD-SE-004+CP-004: Admin audit trail', d: 'admin_audit_log table + logAdminAction() async + wire all admin EFs.', p: 75, e: '2h' },
+{ s: 'done', b: 'pre-launch', n: '0.021 AD-SE-004+CP-004: Admin audit trail', d: 'CS-012: _logAdminAction() async fire-and-forget helper. Wired into content approvals, notification config saves, merch placement CRUD, Stripe plan overrides, admin email searches. audit_log table already existed (A4).', p: 75, e: '2h' },
 
 // 0-E: Observability (Pod 3, P0/P1)
 { s: 'todo', b: 'pre-launch', n: '0.022 DO-001: PostHog SDK all surfaces', d: 'Zero error monitoring. posthog.init() dashboard+admin+landing. Replaces Sentry per AD-ADR-001.', p: 75, e: '1h' },
@@ -2054,7 +2054,7 @@ const features = [
 { s: 'todo', b: 'pre-launch', n: '0.159 Gate 10: Compliance', d: 'PR template PII + SRI check + PII table flag.', p: 78, e: '1h' },
 
 // 0-BB: Post-Launch Admin Monitoring (Phase 0b)
-{ s: 'todo', b: 'post-launch', n: '0.160 Cron Dashboard — logger', d: 'Pattern 1: Supabase Views. cron_health_log.', p: 76, e: '2h' },
+{ s: 'done', b: 'pre-launch', n: '0.160 Cron Health Panel (AD-FIX-06)', d: 'CS-012: v_cron_health view (cron.job + cron.job_run_details), 64 jobs with color-coded status (red/amber/green/disabled), auto-refresh 60s, filter buttons. New admin-cron.js + Operations sidebar entry.', p: 76, e: '2h' },
 { s: 'todo', b: 'post-launch', n: '0.161 Cron Dashboard — admin UI', d: '45 jobs, status, history, duration. Color-coded.', p: 76, e: '3h' },
 { s: 'todo', b: 'post-launch', n: '0.162 Cron Dashboard — alerts', d: 'PostHog: P0-cron fail, 2+ missed, 2x duration.', p: 76, e: '1h' },
 { s: 'todo', b: 'post-launch', n: '0.163 Feed Health — views', d: 'Pattern 1. ats_jobs, pipeline, resumes timestamps.', p: 76, e: '2h' },
