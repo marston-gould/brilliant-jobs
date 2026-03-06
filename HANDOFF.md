@@ -11,6 +11,8 @@
 > **Do NOT** search past conversations or re-examine completed work.
 >
 > **Large file rule:** Never `view` or `cat` a file over 500 lines in its entirety. Use `view_range` to read only the 10–20 lines around the code you need to change. Line numbers are provided in each task below.
+>
+> **⚠️ MANDATORY at session close:** You MUST update **BOTH** `ROADMAP.md` **AND** `roadmap.html` before finishing. These are two separate files that must stay in sync — `ROADMAP.md` is the markdown source of truth, `roadmap.html` is the rendered `/roadmap` page users see. Mark every resolved finding as ✅/done in **both** files. Search both files for all finding IDs touched in the session (e.g. IX-FE-003, DS1-9, ES1-3) — not just the ones listed in the fix item name. If you update one and not the other, they drift apart and the next session inherits wrong data.
 
 ## Session Lifecycle (execute in order)
 
