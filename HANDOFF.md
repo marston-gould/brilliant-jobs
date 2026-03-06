@@ -1,7 +1,30 @@
 # HANDOFF.md — Remediation Session State
 
-> **Read this file first.** Do not search past conversations. Do not re-examine completed work.
-> `git pull`, read this file, execute the next session per `Chat_Session_Remediation_Plan.docx` in project knowledge.
+> **THIS IS YOUR ONLY STARTING POINT.** Everything you need is in this file.
+>
+> 1. `git pull`
+> 2. Read this file
+> 3. Start working on whatever "Session In Progress" or "Next Session" says
+>
+> **Do NOT** read `Chat_Session_Remediation_Plan.docx` from project knowledge. It is 1,780 lines and will exhaust your context window before you write a single line of code. This file contains all session details, entry/exit gates, and task breakdowns.
+>
+> **Do NOT** search past conversations or re-examine completed work.
+
+## Session Lifecycle (execute in order)
+
+Every session follows these 8 steps. Do not skip steps. Do not reorder.
+
+| Step | Action | What to do |
+|------|--------|-----------|
+| 0 | Entry Gate | Verify prerequisites listed below are met |
+| 1 | Develop | Write code for the fix items listed below |
+| 2 | Test (Local) | Run the test plan listed below |
+| 3 | Deploy to Prod | Push to production (git push, Supabase migrations, EF deploys) |
+| 4 | Test (Prod) | Validate fixes in the live production environment |
+| 5 | Sync Environments | Apply changes to staging + dev (if separate envs exist) |
+| 6 | Version Bump | Apply git tags listed in the session details below |
+| 7 | Update Docs | Update ROADMAP.md, /roadmap page, mark findings RESOLVED |
+| 8 | Update HANDOFF.md | Update THIS FILE as the last commit of the session |
 
 ---
 
@@ -205,10 +228,10 @@ None as of CS-013 (in progress).
 
 **At session start:**
 1. `git pull`
-2. Read `HANDOFF.md` (this file)
+2. Read `HANDOFF.md` (this file) — it contains everything you need
 3. If "Session In Progress" exists → **continue that session** from "What Remains"
 4. If no in-progress session → start the "Next Session" from Step 0 (entry gate)
-5. Reference `Chat_Session_Remediation_Plan.docx` in project knowledge for full step details
+5. Do NOT read `Chat_Session_Remediation_Plan.docx` from project knowledge — it is 1,780 lines and will fill your context window before you start working. HANDOFF.md has all the details you need.
 
 **At session close (Step 7 of the lifecycle):**
 1. If session is **fully complete**:
