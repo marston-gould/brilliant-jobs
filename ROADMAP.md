@@ -2734,6 +2734,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | Session | Date | Findings Resolved | Tag | Notes |
 |---------|------|-------------------|-----|-------|
 | CS-001 | 2026-03-05 | AD-ES-004, AD-ES-005, AD-ES-006 | admin@0.1.0-security | EF auth enforced on seo-sync + generate-editorial-content. 6 hardcoded key fallbacks removed. Git history purged (git-filter-repo). All local clones must be re-cloned. |
+| CS-002 | 2026-03-06 | SE-001 | dashboard@0.1.0-security | enrich-job: JWT auth + CORS restriction (brilliantjobs.app only). Dashboard enrichJob() uses session access_token. Service_role passthrough for cron. SE-002 key rotation deferred — requires manual Supabase Dashboard action. |
 
 **Status:** IN PROGRESS
 **Pods:** Pod 3 (Technical Audit, 113+ findings across 17 sessions) + Pod 4 (CX Examination, 46 findings across 5 sessions)
@@ -2745,8 +2746,8 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.001 | SE-001: JWT auth on enrich-job endpoint | 1h | — | 🔲 | Unauthenticated writes to ats_jobs. Add verifyJWT + rate limit 100/min/user. |
-| 0.002 | SE-002: Service role key rotation + git history clean | 2h | 1h | ⚡ | CS-001: git-filter-repo purge DONE (5 secrets redacted, all branches + tags rewritten, force-pushed 2026-03-05). Service role key rotation deferred to CS-002. |
+| 0.001 | SE-001: JWT auth on enrich-job endpoint | 1h | 1h | ✅ | CS-002: JWT auth + CORS restriction added (2026-03-06). Unauthenticated → 401. CORS restricted to brilliantjobs.app. Service_role passthrough for cron. Dashboard enrichJob() now uses session token. |
+| 0.002 | SE-002: Service role key rotation + git history clean | 2h | 1h | ⚡ | CS-001: git-filter-repo purge DONE (5 secrets redacted, force-pushed 2026-03-05). CS-002: Key rotation requires manual Supabase Dashboard action (Project Settings → API → Rotate JWT Secret). BLOCKER: rotation changes both anon + service_role keys, requiring update across all surfaces. Deferred to manual action by Marston. |
 | 0.003 | SE-003: Auth on generate-editorial-content | 1h | 1h | ✅ | CS-001: Auth + admin role check added. Service_role passthrough for cron. Deployed 2026-03-05. |
 | 0.004 | SE-004: Classify + gate 25 unauthenticated Edge Functions | 3h | — | 🔲 | 25/88 EFs no JWT. Classify authenticated/admin/cron-internal. edge-function-auth.yaml registry. |
 | 0.005 | SE-005: CSP unsafe-inline on dashboard | 1h | — | 🔲 | Tighten to nonce-based after module wrapper (0.057). |
