@@ -649,13 +649,14 @@ var filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444',
  */
 async function enrichJob(jobId, data) {
   try {
-    // Use anon key directly — Edge Function uses service_role internally for writes.
-    // Previously used session access_token which caused 401s when JWT expired.
+    // CS-002: Use session access_token for auth (was: anon key with no auth check on EF)
+    const session = (await sb.auth.getSession())?.data?.session;
+    const token = session?.access_token || SUPABASE_KEY;
     const resp = await fetch(SUPABASE_URL + '/functions/v1/enrich-job', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Authorization': 'Bearer ' + token,
         'apikey': SUPABASE_KEY
       },
       body: JSON.stringify({ job_id: jobId, ...data })

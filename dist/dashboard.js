@@ -1,5 +1,5 @@
 // === js/version.js ===
-var BJ_VERSION = 'v7.03';
+var BJ_VERSION = 'v7.22';
 (function() {
   function populateVersion() {
     document.querySelectorAll(".bj-version, [id$=\"-version\"]").forEach(function(el) {
@@ -12,7 +12,6 @@ var BJ_VERSION = 'v7.03';
     populateVersion();
   }
 })();
-
 
 
 // === js/globals.js ===
@@ -667,13 +666,14 @@ var filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444',
  */
 async function enrichJob(jobId, data) {
   try {
-    // Use anon key directly — Edge Function uses service_role internally for writes.
-    // Previously used session access_token which caused 401s when JWT expired.
+    // CS-002: Use session access_token for auth (was: anon key with no auth check on EF)
+    const session = (await sb.auth.getSession())?.data?.session;
+    const token = session?.access_token || SUPABASE_KEY;
     const resp = await fetch(SUPABASE_URL + '/functions/v1/enrich-job', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Authorization': 'Bearer ' + token,
         'apikey': SUPABASE_KEY
       },
       body: JSON.stringify({ job_id: jobId, ...data })
@@ -1698,8 +1698,7 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
       if (!safe) return [];
       return [
         `title.ilike.%${safe}%`,
-        `search_vector.wfts(english).${safe}`,
-      ];
+      ]; // wfts removed v7.13 — trigram ilike sufficient, wfts caused timeouts
     });
   });
   if (allWhatClauses.length > 0) query = query.or(allWhatClauses.join(','));
@@ -1827,9 +1826,8 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
           allClauses.push(
             `location.ilike.%${v}%`,
             `loc_display.ilike.%${v}%`,
-            `loc_country.ilike.%${v}%`,
-            `search_vector.wfts(english).${v}`
-          );
+            `loc_country.ilike.%${v}%`
+          ); // wfts removed v7.13
         }
       }
       if (allClauses.length > 0) {
@@ -1894,12 +1892,11 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
   // WHO — company_name ilike + FTS
   for (const pill of wo) {
     if (pill.values.length === 1) {
-      query = query.or(`company_name.ilike.%${pill.values[0]}%,search_vector.wfts(english).${pill.values[0]}`);
+      query = query.or(`company_name.ilike.%${pill.values[0]}%`); // wfts removed v7.13
     } else {
       const clauses = pill.values.flatMap(v => [
         `company_name.ilike.%${v}%`,
-        `search_vector.wfts(english).${v}`,
-      ]);
+      ]); // wfts removed v7.13
       query = query.or(clauses.join(','));
     }
   }
@@ -2276,7 +2273,7 @@ async function searchJobs(page = 0) {
       // Single filter — A14 pagination: 500-row cap with Load More
       const feedCacheKey = 'feed:' + _filterCacheKey('single', filtersToRun[0]) + ':p' + page;
       const feedResult = await cachedQuery(feedCacheKey, async function() {
-        let query = sb.from('ats_jobs').select('*', { count: 'exact' });
+        let query = sb.from('ats_jobs').select('*', { count: 'planned' });
         query = buildFilterQuery(filtersToRun[0], query, filtersToRun[0]._locationIds);
         if (hiddenIds.length > 0) {
           query = query.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
@@ -2302,7 +2299,7 @@ async function searchJobs(page = 0) {
       // Multiple filters — fetch up to limit per filter, merge, dedupe
       const perFilter = Math.min(Math.ceil(MAX_FEED_ROWS / filtersToRun.length), 250);
       const promises = filtersToRun.map(sf => {
-        let q = sb.from('ats_jobs').select('*', { count: 'exact' });
+        let q = sb.from('ats_jobs').select('*', { count: 'planned' });
         q = buildFilterQuery(sf, q, sf._locationIds);
         if (hiddenIds.length > 0) {
           q = q.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
@@ -2457,7 +2454,34 @@ async function searchJobs(page = 0) {
     }
 
     // Phase 72 Session 4.1: Apply AI scoring exclusions (dimmed badges, deprioritized)
+    const beforeExclusions = currentJobs.length;
     currentJobs = applyAiScoringExclusions(currentJobs);
+    const exclusionsActive = currentJobs.length !== beforeExclusions;
+
+    // v7.18: Always sync j-total after ALL client-side filters (trust, AI content, exclusions)
+    // Prior conditional (isTrustFilterActive || isAiFilterActive || exclusionsActive) failed when
+    // all checkboxes were checked (filters "not active") but exclusions still reduced count.
+    totalCount = currentJobs.length;
+    var $jt = $('#j-total');
+    if ($jt) $jt.textContent = totalCount.toLocaleString();
+
+    // v7.18: Sync j-new to match jobs actually shown with green "new" styling (last 24h)
+    // DB query uses rolling 24h but client-side filters may remove some; sync to rendered set
+    var _now18 = new Date();
+    var _24hAgo = new Date(_now18.getTime() - 86400000);
+    var _renderedNewCount = currentJobs.filter(function(j) {
+      return j.first_seen_at && new Date(j.first_seen_at) >= _24hAgo;
+    }).length;
+    var $jnew = $('#j-new');
+    if ($jnew) $jnew.textContent = _renderedNewCount.toLocaleString();
+
+    // v7.19: Re-sync intel insight card after all client-side filters applied
+    // (updateJobStats above ran with DB totals before trust/AI/exclusion filters)
+    if (typeof updateIntelInsight === 'function') {
+      var jcos = $('#j-companies');
+      var coCount = jcos ? parseInt(jcos.textContent.replace(/,/g,''), 10) || 0 : 0;
+      updateIntelInsight(totalCount, coCount, _renderedNewCount);
+    }
 
     renderJobRows(currentJobs, totalCount, page, filtersToRun);
 
@@ -2481,7 +2505,7 @@ async function searchJobs(page = 0) {
 async function updateJobStatsFromFilters(filters) {
   try {
     const now = new Date();
-    const last24h = new Date(now.getTime() - 86400000);
+    const last24h = new Date(now.getTime() - 2 * 86400000); // 48h — includes "1d" jobs in NEW TODAY
     const lastFeedView = localStorage.getItem('bj_last_feed_view');
     const lastViewDate = lastFeedView ? new Date(lastFeedView) : null;
 
@@ -2535,12 +2559,12 @@ async function updateJobStatsFromFilters(filters) {
         // TOTAL: all matching jobs WITHOUT time restriction (WHEN filter stripped)
         // This prevents TOTAL < NEW TODAY which is mathematically impossible
         const sfNoWhen = Object.assign({}, sf, { whenPills: [] });
-        let q = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+        let q = sb.from('ats_jobs').select('greenhouse_id', { count: 'planned', head: true });
         q = buildFilterQuery(sfNoWhen, q, locIds);
         q = excludeHidden(q);
 
         // NEW TODAY: all matching jobs updated in last 24h (also without WHEN, uses its own time window)
-        let q2 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+        let q2 = sb.from('ats_jobs').select('greenhouse_id', { count: 'planned', head: true });
         q2 = buildFilterQuery(sfNoWhen, q2, locIds);
         q2 = excludeHidden(q2);
         q2 = q2.gte('first_seen_at', last24h.toISOString());
@@ -2551,7 +2575,7 @@ async function updateJobStatsFromFilters(filters) {
         ];
 
         if (lastViewDate) {
-          let qLogin = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+          let qLogin = sb.from('ats_jobs').select('greenhouse_id', { count: 'planned', head: true });
           qLogin = buildFilterQuery(sf, qLogin, locIds);
           qLogin = excludeHidden(qLogin);
           qLogin = qLogin.gte('first_seen_at', lastViewDate.toISOString());
@@ -2571,21 +2595,10 @@ async function updateJobStatsFromFilters(filters) {
         }
       }
 
-      // Company count — A14 v6.60: try MV data first, fallback to capped query
+      // Company count — always derived from the user's active filtered result set
+      // (mv_landing_stats.total_companies is a global total, not filter-aware)
       let companyCountVal = 0;
       try {
-        // Try MV — instant, pre-aggregated
-        const { data: mvCounts } = await sb.from('mv_job_feed_counts').select('ats_source, job_count');
-        if (mvCounts && mvCounts.length > 0) {
-          // MV has total_companies via mv_landing_stats
-          const { data: mvLanding } = await sb.from('mv_landing_stats').select('total_companies').single();
-          companyCountVal = mvLanding ? mvLanding.total_companies : 0;
-        }
-      } catch(mvErr) {
-        console.warn('[BJ] MV company count fallback:', mvErr.message);
-      }
-      if (!companyCountVal) {
-        // Fallback: capped distinct slug query (max 500 rows, not 1000)
         const firstLocIds = effectiveFilters[0]._statsLocationIds || null;
         const sfNoWhenFirst = Object.assign({}, effectiveFilters[0], { whenPills: [] });
         let cq2 = sb.from('ats_jobs').select('company_slug');
@@ -2596,6 +2609,8 @@ async function updateJobStatsFromFilters(filters) {
         const uniqueCos = new Set();
         if (coRows) coRows.forEach(r => { if (r.company_slug) uniqueCos.add(r.company_slug); });
         companyCountVal = uniqueCos.size;
+      } catch(coErr) {
+        console.warn('[BJ] Company count error:', coErr.message);
       }
 
       return { data: { total: _total, todayCount: _todayCount, newSinceLoginCount: _newSinceLoginCount, companyCount: companyCountVal } };
@@ -2608,6 +2623,8 @@ async function updateJobStatsFromFilters(filters) {
       companyCount = cachedStats.data.companyCount;
     }
 
+    // Guard: company count can never exceed total jobs
+    if (total > 0 && companyCount > total) companyCount = total;
     updateJobStats(total, companyCount, newSinceLoginCount, todayCount);
   } catch (e) {
     console.error('Stats update error:', e);
@@ -2629,56 +2646,10 @@ function updateJobStats(total, companies, newSinceLogin, newToday) {
   $('#j-saved').textContent = savedJobIds.length.toLocaleString();
   // Update intel insight card with contextual data
   updateIntelInsight(total, companies, newToday);
-  // A15 S6 v6.62: Populate source chips from MV
-  renderFeedSourceChips();
+  // renderFeedSourceChips() removed v7.14 — per user request
 }
 
 // ─── A15 S6 v6.62: Per-source count chips in feed hero bar ───
-var _feedSourceColors = { 'greenhouse':'#22c55e', 'lever':'#6366f1', 'ashby':'#f59e0b', 'workable':'#ec4899', 'recruitee':'#06b6d4', 'usajobs':'#3b82f6' };
-var _feedSourceLabels = { 'greenhouse':'GH', 'lever':'LV', 'ashby':'AB', 'workable':'WK', 'recruitee':'RC', 'usajobs':'USJ' };
-
-async function renderFeedSourceChips() {
-  var container = document.getElementById('feed-source-chips');
-  if (!container) return;
-  try {
-    var result = await cachedQuery('mv:feed-source-chips', function() {
-      return sb.from('mv_job_feed_counts').select('ats_source,job_count');
-    }, { ttl: 600000 }); // 10 min — matches MV refresh
-    if (!result || !result.data || result.data.length === 0) { container.style.display = 'none'; return; }
-    // Aggregate by source
-    var totals = {};
-    for (var i = 0; i < result.data.length; i++) {
-      var row = result.data[i];
-      var src = row.ats_source || 'unknown';
-      totals[src] = (totals[src] || 0) + row.job_count;
-    }
-    var sources = Object.keys(totals).sort(function(a, b) { return totals[b] - totals[a]; });
-    container.innerHTML = '';
-    for (var s = 0; s < sources.length; s++) {
-      var srcKey = sources[s];
-      var cnt = totals[srcKey];
-      if (cnt === 0) continue;
-      var chip = document.createElement('span');
-      chip.style.cssText = 'display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:8px;font-size:10px;font-family:var(--mono,monospace);color:rgba(255,255,255,0.85);background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);white-space:nowrap;';
-      var dot = document.createElement('span');
-      dot.style.cssText = 'width:5px;height:5px;border-radius:50%;background:' + (_feedSourceColors[srcKey] || '#94a3b8') + ';';
-      chip.appendChild(dot);
-      var label = _feedSourceLabels[srcKey] || srcKey.charAt(0).toUpperCase() + srcKey.slice(1);
-      chip.appendChild(document.createTextNode(label + ' ' + _fmtCompactFeed(cnt)));
-      chip.title = (srcKey.charAt(0).toUpperCase() + srcKey.slice(1)) + ': ' + cnt.toLocaleString() + ' jobs';
-      container.appendChild(chip);
-    }
-    container.style.display = '';
-  } catch (e) {
-    console.warn('[BJ] Feed source chips failed:', e.message);
-    container.style.display = 'none';
-  }
-}
-function _fmtCompactFeed(n) {
-  if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
-  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
-  return String(n);
-}
 
 function updateIntelInsight(total, companies, newToday) {
   var titleEl = $('#intel-insight-title');
@@ -6725,7 +6696,7 @@ document.addEventListener('click', e => {
     openJobModal(link.dataset.jobid);
     // Log click signal (fire-and-forget)
     if (typeof sb !== 'undefined' && sb.auth) {
-      sb.rpc('log_feed_signal', { p_greenhouse_id: link.dataset.jobid, p_signal_type: 'click' }).catch(() => {});
+      Promise.resolve(sb.rpc('log_feed_signal', { p_greenhouse_id: link.dataset.jobid, p_signal_type: 'click' })).catch(() => {});
     }
   }
   // "→" click in preview snippet opens modal
@@ -6989,6 +6960,8 @@ async function openJobModal(jobId, e) {
     footerHtml += '<button class="job-action-btn" onclick="aiScoreJob(\'' + jobId + '\')" id="ai-score-btn" style="padding:4px 10px;font-size:11px;border-color:var(--accent);color:var(--accent);">AI Score</button>';
   }
   footerHtml += '<button class="job-modal-close-btn" onclick="closeJobModal()" style="margin-left:auto;">Close</button>';
+  // Referral Outreach button — v7.06
+  footerHtml += '<button class="job-action-btn" onclick="openReferralOutreachModal(window._modalJobId)" style="padding:4px 10px;font-size:11px;border-color:#7c9ef7;color:#7c9ef7;" title="Request a referral from a connection at this company">Request Referral</button>';
   footerEl.innerHTML = footerHtml;
 
   // AI score result container
@@ -7547,7 +7520,7 @@ function modalApply(jobId, url) {
   window.open(url, '_blank');
   // Log apply signal
   if (typeof sb !== 'undefined' && sb.auth) {
-    sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'apply' }).catch(() => {});
+    Promise.resolve(sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'apply' })).catch(() => {});
   }
   // Don't auto-mark as applied — the webRequest listener or manual confirmation will handle it
 }
@@ -7717,7 +7690,7 @@ function hideJob(jobId, btn) {
   const job = currentJobs.find(j => j.greenhouse_id === jobId) || {};
   // Log hide signal
   if (typeof sb !== 'undefined' && sb.auth) {
-    sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'hide' }).catch(() => {});
+    Promise.resolve(sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'hide' })).catch(() => {});
   }
   // Track which filter(s) were active when this job was hidden
   var activeFilterIdxs = [];
@@ -7744,7 +7717,7 @@ function toggleSaveJob(jobId, btn) {
     btn.classList.add('saved-btn');
     // Log save signal
     if (typeof sb !== 'undefined' && sb.auth) {
-      sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'save' }).catch(() => {});
+      Promise.resolve(sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'save' })).catch(() => {});
     }
     if (!meta[jobId]) meta[jobId] = { stage: 'saved', savedAt: new Date().toISOString(), filterTags: [] };
   }
@@ -13730,16 +13703,12 @@ async function analyzeHiddenJob(jobId, btn) {
   var hidden = hiddenJobIds.find(function(h) { return h.id === jobId; });
   if (!hidden) return;
   
-  // Get resume text — use the most recent non-archived resume
+  // Get resume text if available (optional — not required for block similar)
   var resumesWithText = (typeof resumes !== 'undefined' ? resumes : []).filter(function(r) {
     return r.extractedText && r.extractedText.length > 100 && !r.archived;
   });
-  if (resumesWithText.length === 0) {
-    alert('Upload a resume first (Resumes tab) to enable AI filter analysis.');
-    return;
-  }
-  var resume = resumesWithText[resumesWithText.length - 1];
-  
+  var resume = resumesWithText.length > 0 ? resumesWithText[resumesWithText.length - 1] : null;
+
   // Get the source filter's pills if available
   var filterPills = null;
   if (hidden.filterIdxs && hidden.filterIdxs.length > 0 && typeof savedFilters !== 'undefined') {
@@ -13787,7 +13756,7 @@ async function analyzeHiddenJob(jobId, btn) {
       },
       body: JSON.stringify({
         job_id: jobId,
-        resume_text: resume.extractedText.slice(0, 6000),
+        resume_text: resume ? resume.extractedText.slice(0, 6000) : null,
         filter_pills: filterPills
       })
     });
@@ -15425,6 +15394,124 @@ window.launchRewriteInterview = function(idx) {
     }
   } else {
     showToast('Rewrite module not loaded. Please refresh the page.', { type: 'error' });
+  }
+};
+
+// ============================================================
+// REJECTION GAP ANALYSIS — v7.07
+// Phase A: Data collection trigger
+// Phase B: Insight surfacing on Resumes page
+// ============================================================
+
+/**
+ * triggerGapAnalysis — called when user marks application ghosted or rejected.
+ * Invokes analyze-application-gap edge function.
+ * @param {string} jobId - ats_jobs greenhouse_id or composite key
+ * @param {string|null} resumeId - resume_archive resume_id (uuid)
+ * @param {string} outcome - 'ghosted' or 'rejected'
+ */
+window.triggerGapAnalysis = async function(jobId, resumeId, outcome) {
+  if (!currentUser) return;
+  if (!['ghosted', 'rejected'].includes(outcome)) return;
+
+  try {
+    var session = await sb.auth.getSession();
+    var token = session?.data?.session?.access_token;
+    if (!token) return;
+
+    var resp = await fetch(
+      'https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/analyze-application-gap',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token,
+        },
+        body: JSON.stringify({ job_id: jobId, resume_id: resumeId, outcome: outcome }),
+      }
+    );
+
+    var result = await resp.json();
+    if (result.ok) {
+      console.log('[BJ] Gap analysis recorded — ' + (result.gap_term_count || 0) + ' gap terms');
+    }
+  } catch (e) {
+    console.warn('[BJ] Gap analysis error (non-fatal):', e.message);
+  }
+};
+
+/**
+ * renderGapInsights — loads and renders the Patterns section on the Resumes page.
+ * Shows top gap terms if user has >= 5 records; placeholder otherwise.
+ */
+window.renderGapInsights = async function() {
+  var container = document.getElementById('gap-insights-section');
+  if (!container) return;
+  if (!currentUser) { container.style.display = 'none'; return; }
+
+  try {
+    // Fire PostHog view event
+    if (typeof posthog !== 'undefined') {
+      posthog.capture('gap_insights_viewed', { user_id: currentUser.id });
+    }
+
+    var { data: rows, error } = await sb.rpc('get_gap_insights', {
+      p_user_id: currentUser.id,
+      p_days: 90,
+      p_limit: 10,
+    });
+
+    if (error) throw new Error(error.message);
+
+    // Check total gap record count for threshold gate
+    var { count: totalCount } = await sb
+      .from('application_gaps')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', currentUser.id);
+
+    var contentEl = document.getElementById('gap-insights-content');
+    if (!contentEl) return;
+
+    if (!totalCount || totalCount < 5) {
+      contentEl.innerHTML = '<p style="color:var(--text-faint);font-size:12px;margin:0;">Apply to more jobs and mark outcomes to unlock pattern analysis. (' + (totalCount || 0) + '/5 applications recorded)</p>';
+      container.style.display = '';
+      return;
+    }
+
+    if (!rows || rows.length === 0) {
+      contentEl.innerHTML = '<p style="color:var(--text-faint);font-size:12px;margin:0;">No gap patterns detected yet. Keep marking application outcomes.</p>';
+      container.style.display = '';
+      return;
+    }
+
+    // Render top terms
+    var html = '<div style="display:flex;flex-wrap:wrap;gap:8px;">';
+    rows.forEach(function(row) {
+      html += '<div onclick="window.onGapTermClick(' + JSON.stringify(row.term) + ')" style="cursor:pointer;background:var(--bg-input);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:11px;color:var(--text-dim);transition:border-color 0.15s;" title="Click to add to keyword suggestions">' +
+        '<span style="color:var(--text);">' + row.term + '</span>' +
+        '<span style="color:var(--text-faint);margin-left:6px;">×' + row.frequency + '</span>' +
+        '</div>';
+    });
+    html += '</div>';
+
+    contentEl.innerHTML = html;
+    container.style.display = '';
+
+  } catch (e) {
+    console.warn('[BJ] renderGapInsights error:', e.message);
+  }
+};
+
+/**
+ * onGapTermClick — placeholder for future click-to-add resume keyword injection.
+ */
+window.onGapTermClick = function(term) {
+  if (typeof posthog !== 'undefined') {
+    posthog.capture('gap_term_clicked', { term: term, user_id: currentUser && currentUser.id });
+  }
+  // Future: inject term into resume keyword suggestions editor
+  if (typeof showToast === 'function') {
+    showToast('"' + term + '" noted — resume keyword injection coming soon.', { duration: 2500 });
   }
 };
 
@@ -24521,6 +24608,9 @@ function updateApplySettingsVisibility(mode) {
 
       renderReferralHub(container);
 
+      // AC #1-8: Init outreach tracking log + correlation card
+      await initReferralTracking();
+
       // Phase 4A: Check and grant any pending tier bonuses
       if (referralStats && referralStats.current_tier > 0) {
         try {
@@ -24757,7 +24847,11 @@ function updateApplySettingsVisibility(mode) {
     if (!referralStats) return;
     const link = referralStats.referral_link || '';
     const subject = encodeURIComponent('285K+ tracked jobs across 10K companies \u2014 free access');
-    const body = encodeURIComponent(`Hey, I\u2019ve been using Brilliant Jobs \u2014 it aggregates real-time job data from 5 major ATS platforms (285K+ positions across 10K+ companies). The AI credits are useful: 25 credits is enough to score 8 resumes against live postings.\n\nSign up with my link and we both get 7 days of Pro + 25 credits: ${link}\n\nOr use my code: ${referralStats.referral_code}`);
+    const body = encodeURIComponent(`Hey, I\u2019ve been using Brilliant Jobs \u2014 it aggregates real-time job data from 5 major ATS platforms (285K+ positions across 10K+ companies). The AI credits are useful: 25 credits is enough to score 8 resumes against live postings.
+
+Sign up with my link and we both get 7 days of Pro + 25 credits: ${link}
+
+Or use my code: ${referralStats.referral_code}`);
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
     trackInvite('email');
   };
@@ -24999,10 +25093,596 @@ function updateApplySettingsVisibility(mode) {
 
 })();
 
+// ============================================================
+// REFERRAL OUTREACH TRACKING — v7.09 Pod 1 UI Layer
+// Spec: HANDOFF_REFERRAL_TRACKING_POD1.docx
+// AC #1-8: Log view, status controls, correlation card, PostHog
+// ============================================================
+
+(function () {
+  'use strict';
+
+  // ---- State ----
+  let _outreachRows = [];
+  let _correlationData = null;
+
+  // ---- Status badge colors ----
+  const STATUS_COLORS = {
+    sent: '#3b82f6',
+    pending: '#f59e0b',
+    accepted: '#22c55e',
+    declined: '#64748b'
+  };
+
+  // ---- Date formatter: "Mar 3" or "Mar 3, 2025" ----
+  function formatOutreachDate(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    const now = new Date();
+    const opts = { month: 'short', day: 'numeric' };
+    if (d.getFullYear() !== now.getFullYear()) opts.year = 'numeric';
+    return d.toLocaleDateString('en-US', opts);
+  }
+
+  // ---- Status badge HTML ----
+  function statusBadge(status) {
+    const color = STATUS_COLORS[status] || '#64748b';
+    const label = status ? status.charAt(0).toUpperCase() + status.slice(1) : '—';
+    return `<span style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:${color}18;color:${color};border:1px solid ${color}30;">
+      <span style="width:6px;height:6px;border-radius:50%;background:${color};display:inline-block;"></span>${label}
+    </span>`;
+  }
+
+  // ---- Channel badge HTML ----
+  function channelBadge(channel) {
+    const isLinkedIn = channel === 'linkedin';
+    return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:var(--bg-input);color:var(--text-dim);">
+      ${isLinkedIn
+        ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>'
+        : '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>'
+      }
+      ${isLinkedIn ? 'LinkedIn' : 'Email'}
+    </span>`;
+  }
+
+  // ---- Render correlation card ----
+  function renderCorrelationCard(data) {
+    if (!data) return '';
+    const totalSent = data.total_sent || 0;
+
+    if (totalSent < 3) {
+      return `
+        <div class="card" style="padding:16px 20px;margin-bottom:20px;">
+          <div class="card-title" style="margin-bottom:12px;">Referral vs. Cold Comparison</div>
+          <div style="font-size:13px;color:var(--text-dim);text-align:center;padding:12px 0;">
+            Send more outreach to unlock referral vs. cold stats.
+          </div>
+        </div>
+      `;
+    }
+
+    const rate = data.acceptance_rate != null ? Math.round(data.acceptance_rate) : 0;
+    const stats = [
+      { label: 'Outreach Sent', val: totalSent, mono: true },
+      { label: 'Acceptance Rate', val: `${rate}%`, mono: true, color: '#22c55e' },
+      { label: 'Applied w/ Referral', val: data.applied_with_referral || 0, mono: true, color: '#3b82f6' },
+      { label: 'Applied Cold', val: data.applied_cold || 0, mono: true, color: '#64748b' }
+    ];
+
+    return `
+      <div class="card" style="padding:16px 20px;margin-bottom:20px;">
+        <div class="card-title" style="margin-bottom:14px;">Referral vs. Cold Comparison</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+          ${stats.map(s => `
+            <div style="text-align:center;">
+              <div style="font-family:var(--mono);font-size:22px;font-weight:800;color:${s.color || 'var(--text)'};line-height:1.1;">${s.val}</div>
+              <div style="font-size:11px;color:var(--text-faint);margin-top:4px;line-height:1.3;">${s.label}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // ---- Render single outreach row ----
+  function renderOutreachRow(row) {
+    const statusOptions = ['sent', 'pending', 'accepted', 'declined'];
+    const selectOptions = statusOptions.map(s =>
+      `<option value="${s}" ${row.status === s ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`
+    ).join('');
+
+    const referralLinkBtn = (row.referral_link && row.referral_link.trim())
+      ? `<a href="${row.referral_link}" target="_blank" rel="noopener noreferrer"
+           style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;color:#fff;background:#2e6da4;text-decoration:none;white-space:nowrap;"
+           onclick="window._trackReferralLinkClick('${row.id}')">
+           Apply via referral link →
+         </a>`
+      : '';
+
+    // Referral link input (shown when accepted, if no link yet)
+    const linkInputHtml = (row.status === 'accepted' && !row.referral_link)
+      ? `<div style="margin-top:6px;display:flex;gap:6px;align-items:center;">
+           <input type="text" placeholder="Paste referral link (optional)" 
+             style="flex:1;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);"
+             id="ref-link-input-${row.id}" />
+           <button onclick="window._saveReferralLink('${row.id}')" style="padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;background:var(--accent);color:#fff;border:none;cursor:pointer;">Save</button>
+         </div>`
+      : '';
+
+    return `
+      <tr data-outreach-id="${row.id}">
+        <td>
+          <div style="font-size:13px;font-weight:600;color:var(--text);">${row.job_title || '—'}</div>
+          <div style="font-size:11px;color:var(--text-faint);margin-top:2px;">${row.company || '—'}</div>
+        </td>
+        <td>${channelBadge(row.channel)}</td>
+        <td style="font-size:13px;color:var(--text-dim);">${row.their_name || '—'}</td>
+        <td>
+          <div id="ref-badge-${row.id}">${statusBadge(row.status)}</div>
+        </td>
+        <td style="font-size:12px;color:var(--text-faint);white-space:nowrap;">${formatOutreachDate(row.sent_at)}</td>
+        <td>
+          ${referralLinkBtn}
+          <div style="${referralLinkBtn ? 'margin-top:6px;' : ''}">
+            <select
+              style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);cursor:pointer;"
+              onchange="window._updateOutreachStatus('${row.id}', this.value, this)">
+              ${selectOptions}
+            </select>
+          </div>
+          ${linkInputHtml}
+        </td>
+      </tr>
+    `;
+  }
+
+  // ---- Render outreach log table ----
+  function renderOutreachLog(rows) {
+    if (!rows || rows.length === 0) {
+      return `
+        <div style="text-align:center;padding:28px 16px;">
+          <div style="font-size:13px;color:var(--text-dim);margin-bottom:10px;">No outreach sent yet. Use Request Referral from any job to get started.</div>
+          <button class="btn btn-secondary btn-sm" onclick="window.navigateTo && window.navigateTo('feed')">Browse Jobs →</button>
+        </div>
+      `;
+    }
+
+    return `
+      <div style="overflow-x:auto;margin-top:12px;">
+        <table class="admin-table" style="min-width:600px;">
+          <thead>
+            <tr>
+              <th>Job / Company</th>
+              <th>Channel</th>
+              <th>Their Name</th>
+              <th>Status</th>
+              <th>Sent</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(renderOutreachRow).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  // ---- Main init function (called from initReferralHub) ----
+  window.initReferralTracking = async function () {
+    const sb = window.bjSupabase || window.supabase?.createClient?.(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    if (!sb) return;
+
+    // Fetch outreach + correlation in parallel
+    const [outreachResult, correlationResult] = await Promise.allSettled([
+      sb.rpc('get_referral_outreach'),
+      sb.rpc('get_referral_correlation')
+    ]);
+
+    _outreachRows = (outreachResult.status === 'fulfilled' && outreachResult.value.data) ? outreachResult.value.data : [];
+    _correlationData = (correlationResult.status === 'fulfilled' && correlationResult.value.data) ? correlationResult.value.data : null;
+
+    // PostHog: referral_log_viewed
+    if (window.posthog) {
+      window.posthog.capture('referral_log_viewed', { row_count: _outreachRows.length });
+    }
+
+    // Inject tracking section into ref-hub-content (after existing content)
+    const container = document.getElementById('ref-hub-content');
+    if (!container) return;
+
+    // Remove existing tracking section if already rendered
+    const existing = document.getElementById('ref-tracking-section');
+    if (existing) existing.remove();
+
+    const section = document.createElement('div');
+    section.id = 'ref-tracking-section';
+    section.innerHTML = `
+      ${renderCorrelationCard(_correlationData)}
+      <div class="card" style="padding:16px 20px;margin-bottom:20px;">
+        <div class="card-title" style="margin-bottom:0;">Referral Outreach</div>
+        <div id="ref-outreach-log">
+          ${renderOutreachLog(_outreachRows)}
+        </div>
+      </div>
+    `;
+    container.appendChild(section);
+  };
+
+  // ---- Status update handler ----
+  window._updateOutreachStatus = async function (rowId, newStatus, selectEl) {
+    const sb = window.bjSupabase || window.supabase?.createClient?.(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    if (!sb) return;
+
+    const row = _outreachRows.find(r => r.id === rowId);
+    const oldStatus = row ? row.status : null;
+
+    try {
+      const params = { p_outreach_id: rowId, p_new_status: newStatus };
+      await sb.rpc('update_referral_status', params);
+
+      // Update in-memory state
+      if (row) row.status = newStatus;
+
+      // Patch badge in-place
+      const badgeEl = document.getElementById(`ref-badge-${rowId}`);
+      if (badgeEl) badgeEl.innerHTML = statusBadge(newStatus);
+
+      // If accepted, show referral link input inline (if no link yet)
+      if (newStatus === 'accepted') {
+        const tr = selectEl.closest('tr');
+        if (tr && !row?.referral_link) {
+          const actionCell = tr.querySelector('td:last-child');
+          if (actionCell && !actionCell.querySelector(`#ref-link-input-${rowId}`)) {
+            const inputWrap = document.createElement('div');
+            inputWrap.style.marginTop = '6px';
+            inputWrap.style.display = 'flex';
+            inputWrap.style.gap = '6px';
+            inputWrap.innerHTML = `
+              <input type="text" id="ref-link-input-${rowId}" placeholder="Paste referral link (optional)"
+                style="flex:1;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);" />
+              <button onclick="window._saveReferralLink('${rowId}')" style="padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;background:var(--accent);color:#fff;border:none;cursor:pointer;">Save</button>
+            `;
+            actionCell.appendChild(inputWrap);
+          }
+        }
+      }
+
+      // PostHog: referral_status_changed
+      if (window.posthog) {
+        window.posthog.capture('referral_status_changed', {
+          old_status: oldStatus,
+          new_status: newStatus,
+          has_referral_link: !!(row && row.referral_link)
+        });
+      }
+    } catch (err) {
+      console.error('[Referrals] Status update error:', err);
+    }
+  };
+
+  // ---- Save referral link after accepting ----
+  window._saveReferralLink = async function (rowId) {
+    const sb = window.bjSupabase || window.supabase?.createClient?.(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    if (!sb) return;
+    const input = document.getElementById(`ref-link-input-${rowId}`);
+    const link = input ? input.value.trim() : '';
+    if (!link) return;
+
+    try {
+      await sb.rpc('update_referral_status', {
+        p_outreach_id: rowId,
+        p_new_status: 'accepted',
+        p_referral_link: link
+      });
+
+      // Update in-memory + UI
+      const row = _outreachRows.find(r => r.id === rowId);
+      if (row) row.referral_link = link;
+
+      const tr = input ? input.closest('tr') : null;
+      if (tr) {
+        const actionCell = tr.querySelector('td:last-child');
+        if (actionCell) {
+          // Replace input area with apply button
+          const inputWrap = input.closest('div');
+          if (inputWrap) inputWrap.remove();
+          const btn = document.createElement('a');
+          btn.href = link;
+          btn.target = '_blank';
+          btn.rel = 'noopener noreferrer';
+          btn.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;color:#fff;background:#2e6da4;text-decoration:none;margin-top:6px;';
+          btn.textContent = 'Apply via referral link →';
+          btn.onclick = () => window._trackReferralLinkClick(rowId);
+          actionCell.insertBefore(btn, actionCell.firstChild);
+        }
+      }
+    } catch (err) {
+      console.error('[Referrals] Save referral link error:', err);
+    }
+  };
+
+  // ---- Referral link click tracker ----
+  window._trackReferralLinkClick = function (rowId) {
+    const row = _outreachRows.find(r => r.id === rowId);
+    if (window.posthog) {
+      window.posthog.capture('referral_link_clicked', {
+        job_id: row ? row.job_id : null
+      });
+    }
+  };
+
+})();
+
+
+// === js/referral-outreach.js ===
+/**
+ * Brilliant Jobs — Referral Outreach v7.09
+ * Part 1: Referral Request Templates (LinkedIn DM + Email)
+ * Spec: pod1-referral-feature-brief.docx (March 2026)
+ * PostHog events: referral_template_opened, referral_template_sent
+ */
+
+// ═══════════════════════════════════════════════════════════
+// TEMPLATES
+// ═══════════════════════════════════════════════════════════
+
+var REFERRAL_TEMPLATES = {
+  linkedin: {
+    label: 'LinkedIn DM',
+    subject: null,
+    body: function(vars) {
+      return [
+        'Hey [THEIR_NAME],',
+        '',
+        'Hope things are going well on your end.' + (vars.customContext ? ' ' + vars.customContext : ''),
+        '',
+        'I came across an opening at [COMPANY] — [JOB_TITLE] — and it looks like a strong fit for where I am in my career right now. I noticed you work there and thought I\'d reach out before applying cold.',
+        '',
+        'Would you be open to sharing any perspective on the team or the role? And if it feels right to you, I\'d genuinely appreciate a referral. No pressure either way — just wanted to connect first.',
+        '',
+        'Thanks so much,',
+        '[YOUR_NAME]'
+      ].join('\n')
+       .replace(/\[THEIR_NAME\]/g, vars.theirName || '[Their Name]')
+       .replace(/\[YOUR_NAME\]/g, vars.yourName || '[Your Name]')
+       .replace(/\[COMPANY\]/g, vars.company || '[Company]')
+       .replace(/\[JOB_TITLE\]/g, vars.jobTitle || '[Job Title]');
+    }
+  },
+  email: {
+    label: 'Email',
+    subject: function(vars) {
+      return 'Quick note — [JOB_TITLE] role at [COMPANY]'
+        .replace(/\[JOB_TITLE\]/g, vars.jobTitle || '[Job Title]')
+        .replace(/\[COMPANY\]/g, vars.company || '[Company]');
+    },
+    body: function(vars) {
+      return [
+        'Hi [THEIR_NAME],',
+        '',
+        'I hope you\'re doing well.' + (vars.customContext ? ' ' + vars.customContext : ''),
+        '',
+        'I\'m currently exploring new opportunities and came across the [JOB_TITLE] position at [COMPANY]. Given your experience there, I wanted to reach out directly rather than apply cold.',
+        '',
+        'If you\'re open to it, I\'d love to hear your take on the team and the role — and if it seems like a good fit from your end, a referral would mean a lot. Totally understand if that\'s not something you\'re comfortable with.',
+        '',
+        'Either way, happy to catch up soon.',
+        '',
+        'Best,',
+        '[YOUR_NAME]'
+      ].join('\n')
+       .replace(/\[THEIR_NAME\]/g, vars.theirName || '[Their Name]')
+       .replace(/\[YOUR_NAME\]/g, vars.yourName || '[Your Name]')
+       .replace(/\[COMPANY\]/g, vars.company || '[Company]')
+       .replace(/\[JOB_TITLE\]/g, vars.jobTitle || '[Job Title]');
+    }
+  }
+};
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+
+var _referralOutreachJob = null;
+var _referralOutreachChannel = 'linkedin';
+
+// ═══════════════════════════════════════════════════════════
+// OPEN MODAL
+// ═══════════════════════════════════════════════════════════
+
+function openReferralOutreachModal(jobId) {
+  // Resolve job from cache
+  var job = (window.allJobs || []).find(function(j) { return j.greenhouse_id === jobId; });
+  _referralOutreachJob = job || { greenhouse_id: jobId, title: '', company_name: '' };
+  _referralOutreachChannel = 'linkedin';
+
+  // Pre-fill user name from auth
+  var userName = '';
+  try {
+    var session = window.bjSupabase && window.bjSupabase.auth && window.bjSupabase.auth.getSession
+      ? null : null;
+    if (window._bjUserEmail) userName = window._bjUserEmail.split('@')[0];
+  } catch(e) {}
+
+  // Render modal
+  var modal = document.getElementById('referral-outreach-modal');
+  if (!modal) return;
+
+  document.getElementById('ro-job-label').textContent =
+    (_referralOutreachJob.title || 'this role') + ' at ' + (_referralOutreachJob.company_name || 'this company');
+
+  document.getElementById('ro-your-name').value = userName;
+  document.getElementById('ro-their-name').value = '';
+  document.getElementById('ro-custom-context').value = '';
+
+  // Set channel tabs
+  document.querySelectorAll('.ro-channel-tab').forEach(function(t) {
+    t.classList.toggle('active', t.dataset.channel === 'linkedin');
+  });
+
+  renderReferralTemplate();
+
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+
+  // PostHog
+  if (window.posthog) {
+    posthog.capture('referral_template_opened', {
+      job_id: jobId,
+      company: _referralOutreachJob.company_name,
+      job_title: _referralOutreachJob.title
+    });
+  }
+}
+
+function closeReferralOutreachModal(e) {
+  if (e && e.target !== document.getElementById('referral-outreach-modal')) return;
+  _closeReferralModal();
+}
+
+function _closeReferralModal() {
+  var modal = document.getElementById('referral-outreach-modal');
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+// ═══════════════════════════════════════════════════════════
+// TEMPLATE RENDERING
+// ═══════════════════════════════════════════════════════════
+
+function renderReferralTemplate() {
+  var job = _referralOutreachJob || {};
+  var vars = {
+    theirName:     (document.getElementById('ro-their-name') || {}).value || '[Their Name]',
+    yourName:      (document.getElementById('ro-your-name') || {}).value || '[Your Name]',
+    company:       job.company_name || '[Company]',
+    jobTitle:      job.title || '[Job Title]',
+    customContext: ((document.getElementById('ro-custom-context') || {}).value || '').trim()
+  };
+
+  var tpl = REFERRAL_TEMPLATES[_referralOutreachChannel];
+  if (!tpl) return;
+
+  var bodyEl = document.getElementById('ro-template-body');
+  if (bodyEl) bodyEl.value = tpl.body(vars);
+
+  var subjectRow = document.getElementById('ro-subject-row');
+  var subjectEl = document.getElementById('ro-template-subject');
+  if (tpl.subject) {
+    if (subjectRow) subjectRow.style.display = '';
+    if (subjectEl) subjectEl.value = tpl.subject(vars);
+  } else {
+    if (subjectRow) subjectRow.style.display = 'none';
+  }
+
+  // Update send button label
+  var sendBtn = document.getElementById('ro-send-btn');
+  if (sendBtn) {
+    sendBtn.textContent = _referralOutreachChannel === 'linkedin'
+      ? 'Copy + Open LinkedIn'
+      : 'Copy + Open Mail';
+  }
+}
+
+function switchReferralChannel(channel) {
+  _referralOutreachChannel = channel;
+  document.querySelectorAll('.ro-channel-tab').forEach(function(t) {
+    t.classList.toggle('active', t.dataset.channel === channel);
+  });
+  renderReferralTemplate();
+}
+
+// ═══════════════════════════════════════════════════════════
+// SEND ACTION
+// ═══════════════════════════════════════════════════════════
+
+function sendReferralTemplate() {
+  var body = (document.getElementById('ro-template-body') || {}).value || '';
+  var subject = (document.getElementById('ro-template-subject') || {}).value || '';
+  var theirName = (document.getElementById('ro-their-name') || {}).value || '';
+  var job = _referralOutreachJob || {};
+
+  // Copy to clipboard
+  var textToCopy = _referralOutreachChannel === 'email' && subject
+    ? 'Subject: ' + subject + '\n\n' + body
+    : body;
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(textToCopy);
+  } else {
+    // Fallback for older browsers
+    var ta = document.createElement('textarea');
+    ta.value = textToCopy;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch(e) {}
+    document.body.removeChild(ta);
+  }
+
+  // Persist outreach record (fire-and-forget)
+  (async function() {
+    try {
+      var sb = window.bjSupabase;
+      if (!sb) return;
+      await sb.rpc('upsert_referral_outreach', {
+        p_job_id: String(job.greenhouse_id || ''),
+        p_company: job.company_name || '',
+        p_job_title: job.title || '',
+        p_channel: _referralOutreachChannel,
+        p_their_name: theirName || null,
+        p_status: 'sent'
+      });
+      if (window.posthog) {
+        posthog.capture('referral_saved', {
+          job_id: job.greenhouse_id,
+          channel: _referralOutreachChannel,
+          status: 'sent'
+        });
+      }
+    } catch(e) { /* silent --- do not break send flow */ }
+  })();
+
+  // Open destination
+  if (_referralOutreachChannel === 'linkedin') {
+    window.open('https://www.linkedin.com/messaging/', '_blank', 'noopener');
+  } else {
+    var mailtoSubject = encodeURIComponent(subject);
+    var mailtoBody = encodeURIComponent(body);
+    window.open('mailto:?subject=' + mailtoSubject + '&body=' + mailtoBody, '_blank');
+  }
+
+  // Show confirmation
+  var sendBtn = document.getElementById('ro-send-btn');
+  if (sendBtn) {
+    var orig = sendBtn.textContent;
+    sendBtn.textContent = 'Copied ✓';
+    sendBtn.disabled = true;
+    setTimeout(function() {
+      sendBtn.textContent = orig;
+      sendBtn.disabled = false;
+    }, 2000);
+  }
+
+  // PostHog
+  if (window.posthog) {
+    posthog.capture('referral_template_sent', {
+      job_id: job.greenhouse_id,
+      company: job.company_name,
+      job_title: job.title,
+      channel: _referralOutreachChannel,
+      has_their_name: !!theirName,
+      has_custom_context: !!((document.getElementById('ro-custom-context') || {}).value || '').trim()
+    });
+  }
+}
+
 
 // === js/app.js ===
-// [BJ] Dashboard v7.04 loaded
-console.log('[BJ] Dashboard v7.04 loaded');
+// [BJ] Dashboard v7.22 loaded
+console.log('[BJ] Dashboard v7.22 loaded');
 // BJ_VERSION is defined in js/version.js (single source of truth)
 // version.js auto-populates #nav-version and .bj-version elements
 
@@ -25112,6 +25792,18 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
       localStorage.setItem('bj_filters_migrated', '1');
       showToast('Your saved searches are now synced to the cloud.', { type: 'success', duration: 5000 });
     }
+  }
+
+  // v7.21: Re-apply progressive nav now that savedFilters is loaded from DB
+  // initOnboarding() runs synchronously at parse time before this async fetch completes,
+  // so nav items were always dimmed for users with saved filters.
+  {
+    let _step = getOnboardingStep();
+    if (_step < 1 && resumes && resumes.length > 0) { updateOnboardingStep(1); _step = 1; }
+    if (_step < 2 && savedFilters && savedFilters.length > 0) { updateOnboardingStep(2); _step = 2; }
+    if (_step < 3 && localStorage.getItem('bj_first_search_done')) { updateOnboardingStep(3); _step = 3; }
+    if (_step < 4 && localStorage.getItem('bj_pipeline_used')) { updateOnboardingStep(4); _step = 4; }
+    applyProgressiveNav(_step);
   }
 
   // Block 7: Check for pending pills from city page conversion
@@ -25999,6 +26691,3 @@ async function processReferralAttribution(user) {
     sessionStorage.removeItem('bj_referral_source');
   } catch(e) {}
 }
-
-
-
