@@ -96,8 +96,11 @@ async function stripeSearchNow() {
 
     if (!rows.length) {
       resultsEl.innerHTML = '<div style="color:var(--text-faint);font-size:13px">No customers found for "' + escapeHtml(q) + '"</div>';
+      _logAdminAction('admin_email_search', 'profiles', null, { query: q, results: 0 });
       return;
     }
+
+    _logAdminAction('admin_email_search', 'profiles', null, { query: q, results: rows.length });
 
     resultsEl.innerHTML = '<div style="border:1px solid var(--border);border-radius:6px;overflow:hidden">' +
       rows.map(function(r, i) {
@@ -301,6 +304,7 @@ async function openStripePlanOverride(userId) {
   try {
     var res = await sb.from('profiles').update({ plan: newPlan }).eq('id', userId);
     if (res.error) throw res.error;
+    _logAdminAction('stripe_plan_override', 'profiles', userId, { new_plan: newPlan });
     toastSuccess('Plan updated to ' + newPlan + ' for user');
     loadStripeCustomer(userId);
   } catch (err) {

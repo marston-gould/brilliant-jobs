@@ -901,6 +901,10 @@
             <div style="background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:16px"><div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Recent Signals</div><table class="admin-table" style="width:100%"><thead><tr><th>User</th><th>Source</th><th>Type</th><th>Stage</th><th>Confidence</th><th>Status</th><th>Created</th></tr></thead><tbody id="sig-recent-body"></tbody></table></div>
           </div>
 
+          <div class="admin-panel" id="admin-panel-cron">
+            <div id="admin-page-cron"><div class="admin-loading">Loading cron data…</div></div>
+          </div>
+
           <div class="admin-panel" id="admin-panel-content">
             <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">
               <div class="stat-card"><div class="stat-val" id="ct-total">—</div><div class="stat-label">Total Stories</div></div>
@@ -982,16 +986,16 @@
           <div class="admin-panel" id="admin-panel-email">
           </div>
           <div class="admin-panel" id="admin-panel-paid">
-            <div class="admin-empty-state"><div class="admin-empty-state-title">Paid</div><div class="admin-empty-state-desc">Ad spend, CPA, attribution, and ROAS tracking. Coming soon.</div></div>
+            <div id="admin-page-paid"><div class="admin-empty-state"><div class="admin-empty-state-title">Paid</div><div class="admin-empty-state-desc">Loading…</div></div></div>
           </div>
           <div class="admin-panel" id="admin-panel-social">
-            <div class="admin-empty-state"><div class="admin-empty-state-title">Social</div><div class="admin-empty-state-desc">Channel performance, publishing queue, and engagement metrics. Coming soon.</div></div>
+            <div id="admin-page-social"><div class="admin-empty-state"><div class="admin-empty-state-title">Social</div><div class="admin-empty-state-desc">Loading…</div></div></div>
           </div>
           <div class="admin-panel" id="admin-panel-analytics">
-            <div class="admin-empty-state"><div class="admin-empty-state-title">Analytics</div><div class="admin-empty-state-desc">Web analytics, bot traffic, and funnel visualization. Coming soon.</div></div>
+            <div id="admin-page-analytics"><div class="admin-empty-state"><div class="admin-empty-state-title">Analytics</div><div class="admin-empty-state-desc">Loading…</div></div></div>
           </div>
           <div class="admin-panel" id="admin-panel-costs">
-            <div class="admin-empty-state"><div class="admin-empty-state-title">Costs</div><div class="admin-empty-state-desc">Infrastructure spend, API costs, and margin tracking. Coming soon.</div></div>
+            <div id="admin-page-costs"><div class="admin-empty-state"><div class="admin-empty-state-title">Costs</div><div class="admin-empty-state-desc">Loading…</div></div></div>
           </div>
 
           <div class="admin-panel" id="admin-panel-stripe">
@@ -1005,7 +1009,7 @@
             </div>
           </div>
           <div class="admin-panel" id="admin-panel-forecasting">
-            <div class="admin-empty-state"><div class="admin-empty-state-title">Forecasting</div><div class="admin-empty-state-desc">Projection models, scenario planning, and runway calculation. Coming soon.</div></div>
+            <div id="admin-page-forecasting"><div class="admin-empty-state"><div class="admin-empty-state-title">Forecasting</div><div class="admin-empty-state-desc">Loading…</div></div></div>
           </div>
 
         </div>
@@ -1019,7 +1023,7 @@
   </div> <!-- end admin-shell -->
 
   <!-- JS: Admin bundle loads globals, admin.js, admin-notifications.js -->
-  <script src="dist/admin.min.js?v=v7.22" defer></script>
+  <script src="dist/admin.min.js?v=v7.23-cs012" defer></script>
 
   <!-- Cohort select-all inline handler -->
   <script>

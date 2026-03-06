@@ -136,6 +136,7 @@ function saveMerchPlacement() {
     content_format: { fields: fields, supports_html: true, placeholders: ['{JOBS}', '{COMPANIES}'] }
   }).select().then(function(r) {
     if (r.error) { alert('Error: ' + r.error.message); return; }
+    _logAdminAction('merch_placement_created', 'merch_placements', r.data[0].id, { name: name, page_url: url });
     closeMerchModal();
     _merchSelectedPlacement = r.data[0];
     fetchMerchPlacements();
@@ -146,6 +147,7 @@ function toggleMerchPlacementActive(id, active) {
   if (!active && !confirm('Deactivating will hide all content for this placement from visitors. Continue?')) return;
   sb.from('merch_placements').update({ is_active: active, updated_at: new Date().toISOString() }).eq('id', id).select().then(function(r) {
     if (r.error) { alert('Error: ' + r.error.message); return; }
+    _logAdminAction('merch_placement_toggled', 'merch_placements', id, { active: active });
     fetchMerchPlacements();
   });
 }
@@ -154,6 +156,7 @@ function deleteMerchPlacement(id) {
   if (!confirm('Delete this placement? This will also delete all rules and content entries. This cannot be undone.')) return;
   sb.from('merch_placements').delete().eq('id', id).then(function(r) {
     if (r.error) { alert('Error: ' + r.error.message); return; }
+    _logAdminAction('merch_placement_deleted', 'merch_placements', id, {});
     _merchSelectedPlacement = null;
     fetchMerchPlacements();
   });

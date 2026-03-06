@@ -1129,9 +1129,9 @@ async function safeRpc(fnName, params, opts) {
 // === js/admin.js ===
 /* ───────────────────────────────────────────────────────────
    admin.js — Admin Console with Sidebar Navigation (IA v2)
-   v7.19 — versioned with dashboard; sidebar nav, feed health, all tabs
+   v7.20 — CS-012: cron panel, audit trail wiring, biz-ops tables
    4 sections: Operations, Growth, Audience, Business
-   27 sub-pages with lazy initialization
+   28 sub-pages with lazy initialization
    ─────────────────────────────────────────────────────────── */
 
 // ─── Admin access gate (dashboard nav-item visibility) ───
@@ -1150,8 +1150,33 @@ function checkAdminAccess() {
   }).catch(function(e) { console.error('[Admin] getUser failed:', e); });
 }
 
+// ─── AD-FIX-07: Audit Trail Helper (CS-012) ───
+// Async fire-and-forget per AD-ADR-004 — never blocks the caller
+function _logAdminAction(action, resourceType, resourceId, details) {
+  try {
+    if (typeof sb === 'undefined') return;
+    var userId = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.id : null;
+    sb.from('audit_log').insert({
+      user_id: userId,
+      action: action,
+      resource_type: resourceType || null,
+      resource_id: resourceId ? String(resourceId) : null,
+      details: details || {},
+      user_agent: navigator.userAgent
+    }).then(function(res) {
+      if (res.error) console.warn('[Audit] insert failed:', res.error.message);
+    }).catch(function(e) {
+      console.warn('[Audit] insert error:', e);
+    });
+  } catch(e) {
+    // Fire-and-forget — never throw
+    console.warn('[Audit] error:', e);
+  }
+}
+window._logAdminAction = _logAdminAction;
+
 // ═══════════════════════════════════════════════════════════
-// ADMIN SUBPAGE MAP — 17 sub-pages across 4 sections
+// ADMIN SUBPAGE MAP — 28 sub-pages across 4 sections
 // ═══════════════════════════════════════════════════════════
 
 var ADMIN_SUBPAGE_MAP = {
@@ -1163,6 +1188,7 @@ var ADMIN_SUBPAGE_MAP = {
   'ghost':          { section: 'operations',  label: 'Ghost Detection',init: function(){ loadGhostTab(); } },
   'cache':          { section: 'operations',  label: 'Cache Health',   init: function(){ refreshCacheHealthPanel(); } },
   'signals':        { section: 'operations',  label: 'Signals',        init: function(){ loadAdminSignals(); } },
+  'cron':           { section: 'operations',  label: 'Cron Health',    init: function(){ loadCronPanel(); } },
   // ── Growth ──
   'seo':            { section: 'growth',      label: 'SEO',            init: function(){ loadSeoTab(); } },
   'content':        { section: 'growth',      label: 'Content',        init: function(){ loadContentTab(); } },
@@ -1175,9 +1201,9 @@ var ADMIN_SUBPAGE_MAP = {
   'cadence':        { section: 'growth',      label: 'Cadence',        init: function(){ loadCadenceTab(); } },
   'notif-log':      { section: 'growth',      label: 'Notif Log',      init: function(){ loadNotifLogTab(); } },
   'referrals':      { section: 'growth',      label: 'Referrals',      init: function(){ loadReferralsAdminTab(); } },
-  'paid':           { section: 'growth',      label: 'Paid',           init: null },
-  'social':         { section: 'growth',      label: 'Social',         init: null },
-  'analytics':      { section: 'growth',      label: 'Analytics',      init: null },
+  'paid':           { section: 'growth',      label: 'Paid',           init: function(){ loadPaidTab(); } },
+  'social':         { section: 'growth',      label: 'Social',         init: function(){ loadSocialTab(); } },
+  'analytics':      { section: 'growth',      label: 'Analytics',      init: function(){ loadAnalyticsOverviewTab(); } },
   // ── Audience ──
   'cohorts':        { section: 'audience',    label: 'Cohorts',        init: function(){ loadCohortTab(); } },
   'entitlements':   { section: 'audience',    label: 'Entitlements',   init: function(){ loadEntitlementsTab(); } },
@@ -1187,8 +1213,8 @@ var ADMIN_SUBPAGE_MAP = {
   'revenue':        { section: 'business',    label: 'Revenue',        init: function(){ loadRevenueTab(); } },
   'stripe':         { section: 'business',    label: 'Stripe',         init: function(){ loadStripeTab(); } },
   'subscription':   { section: 'business',    label: 'Subscriptions',  init: function(){ loadSubscriptionTab(); } },
-  'costs':          { section: 'business',    label: 'Costs',          init: null },
-  'forecasting':    { section: 'business',    label: 'Forecasting',    init: null }
+  'costs':          { section: 'business',    label: 'Costs',          init: function(){ loadCostsTab(); } },
+  'forecasting':    { section: 'business',    label: 'Forecasting',    init: function(){ loadForecastingTab(); } }
 };
 
 var ADMIN_SECTIONS = [
@@ -1305,6 +1331,9 @@ function navigateAdminSubpage(key) {
   if (bc) bc.textContent = sectionLabel + ' > ' + sp.label;
   var title = document.getElementById('admin-page-title');
   if (title) title.textContent = sp.label;
+
+  // Cleanup any timers from previous tab (e.g. cron auto-refresh)
+  if (typeof _cleanupCronPanel === 'function') _cleanupCronPanel();
 
   // Show correct panel, hide all others
   document.querySelectorAll('.admin-panel').forEach(function(p) {
@@ -3571,6 +3600,7 @@ async function saveNotifConfig(id) {
     };
     var { error } = await sb.from('admin_notification_config').update(updates).eq('id', id);
     if (error) throw error;
+    _logAdminAction('notification_config_updated', 'admin_notification_config', id, updates);
     document.querySelector('.admin-modal-overlay').remove();
     toastSuccess('Config saved');
     loadNotificationsTab();
@@ -6122,6 +6152,223 @@ function renderSignalPatterns(patterns) {
 }
 
 
+// === js/admin-cron.js ===
+/* ───────────────────────────────────────────────────────────
+   admin-cron.js — Cron Health Panel (AD-FIX-06)
+   CS-012: Query v_cron_health view, color-coded status, auto-refresh 60s
+   ─────────────────────────────────────────────────────────── */
+
+var _cronRefreshTimer = null;
+
+async function loadCronPanel() {
+  var el = document.getElementById('admin-page-cron');
+  if (!el) return;
+
+  el.innerHTML = `
+    <div class="admin-block">
+      <div class="admin-block-header">
+        <h2 class="admin-block-title">Cron Job Health</h2>
+        <div class="admin-block-actions">
+          <span id="cron-summary" style="font-size:13px;color:var(--muted);margin-right:12px;"></span>
+          <span id="cron-last-refresh" style="font-size:12px;color:var(--muted);margin-right:8px;"></span>
+          <button class="admin-btn admin-btn-sm" id="cron-refresh-btn">↻ Refresh</button>
+        </div>
+      </div>
+      <div id="cron-filters" style="padding:8px 0;display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="admin-btn admin-btn-sm admin-btn-active" data-cron-filter="all">All</button>
+        <button class="admin-btn admin-btn-sm" data-cron-filter="red">🔴 Failed</button>
+        <button class="admin-btn admin-btn-sm" data-cron-filter="amber">🟡 Stale</button>
+        <button class="admin-btn admin-btn-sm" data-cron-filter="green">🟢 Healthy</button>
+        <button class="admin-btn admin-btn-sm" data-cron-filter="disabled">⚫ Disabled</button>
+      </div>
+      <div id="cron-table-container" style="overflow-x:auto;">
+        <div class="admin-loading">Loading cron data…</div>
+      </div>
+    </div>
+  `;
+
+  // Bind refresh button
+  document.getElementById('cron-refresh-btn').addEventListener('click', function() {
+    _refreshCronPanel();
+  });
+
+  // Bind filter buttons
+  document.querySelectorAll('[data-cron-filter]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('[data-cron-filter]').forEach(function(b) {
+        b.classList.remove('admin-btn-active');
+      });
+      btn.classList.add('admin-btn-active');
+      var filter = btn.getAttribute('data-cron-filter');
+      _applyCronFilter(filter);
+    });
+  });
+
+  // Initial load
+  await _refreshCronPanel();
+
+  // Auto-refresh every 60s
+  if (_cronRefreshTimer) clearInterval(_cronRefreshTimer);
+  _cronRefreshTimer = setInterval(_refreshCronPanel, 60000);
+}
+
+async function _refreshCronPanel() {
+  var container = document.getElementById('cron-table-container');
+  if (!container) return;
+
+  try {
+    var { data, error } = await sb
+      .from('v_cron_health')
+      .select('*');
+
+    if (error) {
+      container.innerHTML = '<div class="admin-empty">Error loading cron data: ' + error.message + '</div>';
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      container.innerHTML = '<div class="admin-empty">No cron jobs found.</div>';
+      return;
+    }
+
+    // Update summary
+    var counts = { green: 0, amber: 0, red: 0, disabled: 0, unknown: 0 };
+    data.forEach(function(j) { counts[j.health] = (counts[j.health] || 0) + 1; });
+    var summary = document.getElementById('cron-summary');
+    if (summary) {
+      summary.innerHTML =
+        '<span style="color:#22c55e;">' + counts.green + ' healthy</span> · ' +
+        '<span style="color:#f59e0b;">' + counts.amber + ' stale</span> · ' +
+        '<span style="color:#ef4444;">' + counts.red + ' failed</span> · ' +
+        '<span style="color:#6b7280;">' + counts.disabled + ' disabled</span> · ' +
+        '<strong>' + data.length + ' total</strong>';
+    }
+
+    var lastRefresh = document.getElementById('cron-last-refresh');
+    if (lastRefresh) {
+      lastRefresh.textContent = 'Updated ' + new Date().toLocaleTimeString();
+    }
+
+    // Store data for filtering
+    window._cronData = data;
+
+    // Render table
+    _renderCronTable(data);
+
+    // Apply current filter
+    var activeFilter = document.querySelector('[data-cron-filter].admin-btn-active');
+    if (activeFilter) {
+      var filter = activeFilter.getAttribute('data-cron-filter');
+      if (filter !== 'all') _applyCronFilter(filter);
+    }
+
+  } catch(e) {
+    console.error('[Admin] Cron panel error:', e);
+    container.innerHTML = '<div class="admin-empty">Error: ' + e.message + '</div>';
+  }
+}
+
+function _renderCronTable(data) {
+  var container = document.getElementById('cron-table-container');
+  if (!container) return;
+
+  var healthDot = { green: '🟢', amber: '🟡', red: '🔴', disabled: '⚫', unknown: '⚪' };
+
+  var rows = data.map(function(j) {
+    var dot = healthDot[j.health] || '⚪';
+    var ago = j.last_start ? _timeAgo(new Date(j.last_start)) : '—';
+    var dur = j.last_duration_s != null ? (parseFloat(j.last_duration_s) < 60
+      ? parseFloat(j.last_duration_s).toFixed(1) + 's'
+      : (parseFloat(j.last_duration_s) / 60).toFixed(1) + 'm')
+      : '—';
+    var msg = j.last_message ? _escHtml(j.last_message.substring(0, 120)) : '';
+    var schedDesc = _describeCron(j.schedule);
+
+    return '<tr data-cron-health="' + j.health + '">' +
+      '<td style="white-space:nowrap;">' + dot + '</td>' +
+      '<td style="font-weight:500;">' + _escHtml(j.jobname || '(unnamed)') + '</td>' +
+      '<td><code style="font-size:11px;">' + _escHtml(j.schedule) + '</code><br><span style="font-size:11px;color:var(--muted);">' + schedDesc + '</span></td>' +
+      '<td>' + (j.active ? 'Yes' : '<span style="color:var(--muted);">No</span>') + '</td>' +
+      '<td>' + (j.last_status || '—') + '</td>' +
+      '<td style="white-space:nowrap;">' + ago + '</td>' +
+      '<td>' + dur + '</td>' +
+      '<td style="font-size:11px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + msg + '">' + msg + '</td>' +
+      '</tr>';
+  }).join('');
+
+  container.innerHTML = `
+    <table class="admin-table" id="cron-table" style="width:100%;">
+      <thead>
+        <tr>
+          <th style="width:30px;"></th>
+          <th>Job Name</th>
+          <th>Schedule</th>
+          <th>Active</th>
+          <th>Last Status</th>
+          <th>Last Run</th>
+          <th>Duration</th>
+          <th>Message</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function _applyCronFilter(filter) {
+  var rows = document.querySelectorAll('#cron-table tbody tr');
+  rows.forEach(function(row) {
+    if (filter === 'all') {
+      row.style.display = '';
+    } else {
+      row.style.display = row.getAttribute('data-cron-health') === filter ? '' : 'none';
+    }
+  });
+}
+
+function _describeCron(schedule) {
+  if (!schedule) return '';
+  var parts = schedule.split(' ');
+  if (parts.length < 5) return schedule;
+  var min = parts[0], hour = parts[1], dom = parts[2], mon = parts[3], dow = parts[4];
+
+  if (min.startsWith('*/') && hour === '*') return 'Every ' + min.slice(2) + ' min';
+  if (min === '0' && hour.startsWith('*/')) return 'Every ' + hour.slice(2) + ' hrs';
+  if (min === '0' && hour !== '*' && dom === '*') return 'Daily at ' + hour + ':00 UTC';
+  if (min !== '*' && hour !== '*' && dom === '*') return 'Daily at ' + hour + ':' + min.padStart(2, '0') + ' UTC';
+  if (dow !== '*') return 'Weekly (dow=' + dow + ')';
+  return schedule;
+}
+
+function _timeAgo(date) {
+  var secs = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (secs < 60) return secs + 's ago';
+  var mins = Math.floor(secs / 60);
+  if (mins < 60) return mins + 'm ago';
+  var hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ' + (mins % 60) + 'm ago';
+  var days = Math.floor(hrs / 24);
+  return days + 'd ' + (hrs % 24) + 'h ago';
+}
+
+function _escHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Cleanup on tab switch
+function _cleanupCronPanel() {
+  if (_cronRefreshTimer) {
+    clearInterval(_cronRefreshTimer);
+    _cronRefreshTimer = null;
+  }
+}
+
+// Export
+window.loadCronPanel = loadCronPanel;
+window._cleanupCronPanel = _cleanupCronPanel;
+
+
 // === js/admin-feed-health.js ===
 /* ───────────────────────────────────────────────────────────
    admin-feed-health.js — Feed Health + Refresh Log
@@ -8449,6 +8696,7 @@ async function contentAction(id, newStatus) {
       body: JSON.stringify(updates)
     });
     if (resp.ok) {
+      _logAdminAction('content_' + newStatus, 'content_stories', id, { new_status: newStatus });
       document.getElementById("ct-action-status").textContent = "Story #" + id + " -> " + newStatus;
       fetchContentStories();
     } else {
@@ -8599,6 +8847,7 @@ function saveMerchPlacement() {
     content_format: { fields: fields, supports_html: true, placeholders: ['{JOBS}', '{COMPANIES}'] }
   }).select().then(function(r) {
     if (r.error) { alert('Error: ' + r.error.message); return; }
+    _logAdminAction('merch_placement_created', 'merch_placements', r.data[0].id, { name: name, page_url: url });
     closeMerchModal();
     _merchSelectedPlacement = r.data[0];
     fetchMerchPlacements();
@@ -8609,6 +8858,7 @@ function toggleMerchPlacementActive(id, active) {
   if (!active && !confirm('Deactivating will hide all content for this placement from visitors. Continue?')) return;
   sb.from('merch_placements').update({ is_active: active, updated_at: new Date().toISOString() }).eq('id', id).select().then(function(r) {
     if (r.error) { alert('Error: ' + r.error.message); return; }
+    _logAdminAction('merch_placement_toggled', 'merch_placements', id, { active: active });
     fetchMerchPlacements();
   });
 }
@@ -8617,6 +8867,7 @@ function deleteMerchPlacement(id) {
   if (!confirm('Delete this placement? This will also delete all rules and content entries. This cannot be undone.')) return;
   sb.from('merch_placements').delete().eq('id', id).then(function(r) {
     if (r.error) { alert('Error: ' + r.error.message); return; }
+    _logAdminAction('merch_placement_deleted', 'merch_placements', id, {});
     _merchSelectedPlacement = null;
     fetchMerchPlacements();
   });
@@ -9380,8 +9631,11 @@ async function stripeSearchNow() {
 
     if (!rows.length) {
       resultsEl.innerHTML = '<div style="color:var(--text-faint);font-size:13px">No customers found for "' + escapeHtml(q) + '"</div>';
+      _logAdminAction('admin_email_search', 'profiles', null, { query: q, results: 0 });
       return;
     }
+
+    _logAdminAction('admin_email_search', 'profiles', null, { query: q, results: rows.length });
 
     resultsEl.innerHTML = '<div style="border:1px solid var(--border);border-radius:6px;overflow:hidden">' +
       rows.map(function(r, i) {
@@ -9585,6 +9839,7 @@ async function openStripePlanOverride(userId) {
   try {
     var res = await sb.from('profiles').update({ plan: newPlan }).eq('id', userId);
     if (res.error) throw res.error;
+    _logAdminAction('stripe_plan_override', 'profiles', userId, { new_plan: newPlan });
     toastSuccess('Plan updated to ' + newPlan + ' for user');
     loadStripeCustomer(userId);
   } catch (err) {

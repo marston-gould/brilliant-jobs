@@ -160,6 +160,7 @@ async function contentAction(id, newStatus) {
       body: JSON.stringify(updates)
     });
     if (resp.ok) {
+      _logAdminAction('content_' + newStatus, 'content_stories', id, { new_status: newStatus });
       document.getElementById("ct-action-status").textContent = "Story #" + id + " -> " + newStatus;
       fetchContentStories();
     } else {

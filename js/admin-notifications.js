@@ -293,6 +293,7 @@ async function saveNotifConfig(id) {
     };
     var { error } = await sb.from('admin_notification_config').update(updates).eq('id', id);
     if (error) throw error;
+    _logAdminAction('notification_config_updated', 'admin_notification_config', id, updates);
     document.querySelector('.admin-modal-overlay').remove();
     toastSuccess('Config saved');
     loadNotificationsTab();

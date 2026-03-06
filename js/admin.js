@@ -1,8 +1,8 @@
 /* ───────────────────────────────────────────────────────────
    admin.js — Admin Console with Sidebar Navigation (IA v2)
-   v7.19 — versioned with dashboard; sidebar nav, feed health, all tabs
+   v7.20 — CS-012: cron panel, audit trail wiring, biz-ops tables
    4 sections: Operations, Growth, Audience, Business
-   27 sub-pages with lazy initialization
+   28 sub-pages with lazy initialization
    ─────────────────────────────────────────────────────────── */
 
 // ─── Admin access gate (dashboard nav-item visibility) ───
@@ -21,8 +21,33 @@ function checkAdminAccess() {
   }).catch(function(e) { console.error('[Admin] getUser failed:', e); });
 }
 
+// ─── AD-FIX-07: Audit Trail Helper (CS-012) ───
+// Async fire-and-forget per AD-ADR-004 — never blocks the caller
+function _logAdminAction(action, resourceType, resourceId, details) {
+  try {
+    if (typeof sb === 'undefined') return;
+    var userId = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.id : null;
+    sb.from('audit_log').insert({
+      user_id: userId,
+      action: action,
+      resource_type: resourceType || null,
+      resource_id: resourceId ? String(resourceId) : null,
+      details: details || {},
+      user_agent: navigator.userAgent
+    }).then(function(res) {
+      if (res.error) console.warn('[Audit] insert failed:', res.error.message);
+    }).catch(function(e) {
+      console.warn('[Audit] insert error:', e);
+    });
+  } catch(e) {
+    // Fire-and-forget — never throw
+    console.warn('[Audit] error:', e);
+  }
+}
+window._logAdminAction = _logAdminAction;
+
 // ═══════════════════════════════════════════════════════════
-// ADMIN SUBPAGE MAP — 17 sub-pages across 4 sections
+// ADMIN SUBPAGE MAP — 28 sub-pages across 4 sections
 // ═══════════════════════════════════════════════════════════
 
 var ADMIN_SUBPAGE_MAP = {
@@ -34,6 +59,7 @@ var ADMIN_SUBPAGE_MAP = {
   'ghost':          { section: 'operations',  label: 'Ghost Detection',init: function(){ loadGhostTab(); } },
   'cache':          { section: 'operations',  label: 'Cache Health',   init: function(){ refreshCacheHealthPanel(); } },
   'signals':        { section: 'operations',  label: 'Signals',        init: function(){ loadAdminSignals(); } },
+  'cron':           { section: 'operations',  label: 'Cron Health',    init: function(){ loadCronPanel(); } },
   // ── Growth ──
   'seo':            { section: 'growth',      label: 'SEO',            init: function(){ loadSeoTab(); } },
   'content':        { section: 'growth',      label: 'Content',        init: function(){ loadContentTab(); } },
@@ -46,9 +72,9 @@ var ADMIN_SUBPAGE_MAP = {
   'cadence':        { section: 'growth',      label: 'Cadence',        init: function(){ loadCadenceTab(); } },
   'notif-log':      { section: 'growth',      label: 'Notif Log',      init: function(){ loadNotifLogTab(); } },
   'referrals':      { section: 'growth',      label: 'Referrals',      init: function(){ loadReferralsAdminTab(); } },
-  'paid':           { section: 'growth',      label: 'Paid',           init: null },
-  'social':         { section: 'growth',      label: 'Social',         init: null },
-  'analytics':      { section: 'growth',      label: 'Analytics',      init: null },
+  'paid':           { section: 'growth',      label: 'Paid',           init: function(){ loadPaidTab(); } },
+  'social':         { section: 'growth',      label: 'Social',         init: function(){ loadSocialTab(); } },
+  'analytics':      { section: 'growth',      label: 'Analytics',      init: function(){ loadAnalyticsOverviewTab(); } },
   // ── Audience ──
   'cohorts':        { section: 'audience',    label: 'Cohorts',        init: function(){ loadCohortTab(); } },
   'entitlements':   { section: 'audience',    label: 'Entitlements',   init: function(){ loadEntitlementsTab(); } },
@@ -58,8 +84,8 @@ var ADMIN_SUBPAGE_MAP = {
   'revenue':        { section: 'business',    label: 'Revenue',        init: function(){ loadRevenueTab(); } },
   'stripe':         { section: 'business',    label: 'Stripe',         init: function(){ loadStripeTab(); } },
   'subscription':   { section: 'business',    label: 'Subscriptions',  init: function(){ loadSubscriptionTab(); } },
-  'costs':          { section: 'business',    label: 'Costs',          init: null },
-  'forecasting':    { section: 'business',    label: 'Forecasting',    init: null }
+  'costs':          { section: 'business',    label: 'Costs',          init: function(){ loadCostsTab(); } },
+  'forecasting':    { section: 'business',    label: 'Forecasting',    init: function(){ loadForecastingTab(); } }
 };
 
 var ADMIN_SECTIONS = [
@@ -176,6 +202,9 @@ function navigateAdminSubpage(key) {
   if (bc) bc.textContent = sectionLabel + ' > ' + sp.label;
   var title = document.getElementById('admin-page-title');
   if (title) title.textContent = sp.label;
+
+  // Cleanup any timers from previous tab (e.g. cron auto-refresh)
+  if (typeof _cleanupCronPanel === 'function') _cleanupCronPanel();
 
   // Show correct panel, hide all others
   document.querySelectorAll('.admin-panel').forEach(function(p) {
