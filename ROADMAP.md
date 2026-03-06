@@ -2735,6 +2735,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 |---------|------|-------------------|-----|-------|
 | CS-001 | 2026-03-05 | AD-ES-004, AD-ES-005, AD-ES-006 | admin@0.1.0-security | EF auth enforced on seo-sync + generate-editorial-content. 6 hardcoded key fallbacks removed. Git history purged (git-filter-repo). All local clones must be re-cloned. |
 | CS-002 | 2026-03-06 | SE-001 | dashboard@0.1.0-security | enrich-job: JWT auth + CORS restriction (brilliantjobs.app only). Dashboard enrichJob() uses session access_token. Service_role passthrough for cron. SE-002 key rotation downgraded to hygiene (repo only accessed by Marston + Claude). |
+| CS-003 | 2026-03-06 | DO-001, CX-01, CX-02 | dashboard@0.2.0-posthog, extension@0.1.0-posthog, index@0.1.0-posthog, admin@0.2.0-posthog | PostHog SDK deployed on all 4 surfaces. Dashboard + admin: posthog.init() with session recording + exception autocapture + posthog.identify() post-login. Landing: direct posthog.init() (removes GTM dependency). Extension: API key fixed, events wired (popup_opened, scan_started, scan_completed, job_saved). Launch gates G2 + G13 pending prod verification. |
 
 **Status:** IN PROGRESS
 **Pods:** Pod 3 (Technical Audit, 113+ findings across 17 sessions) + Pod 4 (CX Examination, 46 findings across 5 sessions)
@@ -2787,7 +2788,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.022 | DO-001: PostHog SDK integration — all surfaces | 1h | — | 🔲 | Zero error monitoring. posthog.init() dashboard+admin+landing. Error tracking+session replay+feature flags. |
+| 0.022 | DO-001: PostHog SDK integration — all surfaces | 1h | 1h | ✅ | CS-003: posthog.init() on dashboard+admin+landing+extension. Error tracking (exception autocapture) + session recording (masked) + event taxonomy. Direct init on landing (no GTM dependency). Extension wired via HTTP capture API. Deployed 2026-03-06. |
 | 0.023 | DO-002: Supavisor connection pooler | 1h | — | 🔲 | No pooling. Exhausts at ~50 concurrent. Enable, validate 300+. |
 | 0.024 | DO-003: Feature flags via PostHog | 30min | — | 🔲 | PostHog native. posthog.isFeatureEnabled() wrapper. |
 | 0.025 | DO-004: Cron failure alerting | 2h | — | 🔲 | 45 pg_cron jobs zero alerting. PostHog alerts on failure. |
@@ -2919,7 +2920,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.091 | IX-SEO-001: No canonical URL tag | 15min | — | 🔲 | Duplicate URL indexing risk. |
 | 0.092 | IX-SEO-002: No OG / Twitter Card tags | 15min | — | 🔲 | Blank social sharing preview. |
 | 0.093 | IX-SEO-003: JSON-LD structured data stale | 15min | — | 🔲 | 315K vs 400K mismatch. |
-| 0.094 | IX-DA-001: PostHog no identity bridge | 1h | — | 🔲 | Combined with DS1-4 (0.101). |
+| 0.094 | IX-DA-001: PostHog no identity bridge | 1h | 0h | ✅ | CS-003: Combined with DS1-4 (0.101). Direct posthog.init() on landing page replaces GTM dependency. |
 | 0.095 | IX-DA-002: Broken referral pipeline | 30min | — | 🔲 | Resolved by 0.047 anon key fix. |
 | 0.096 | IX-BE-002: Stale "Live" stats labels | 30min | — | 🔲 | Add staleness badge with refresh timestamp. |
 | 0.097 | IX-FE-006: URL hardcoding (brilliantjobs.io refs) | 30min | — | 🔲 | Old domain refs. Replace. |
@@ -2936,7 +2937,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.101 | DS1-4: PostHog identity resolution | 1h | — | 🔲 | posthog.identify() all surfaces. 0%→100%. HIGHEST-LEVERAGE CX FIX. Unblocks 9. |
+| 0.101 | DS1-4: PostHog identity resolution | 1h | 1h | ✅ | CS-003: posthog.identify() wired post-login on dashboard (app.js), admin (admin-shell.js). Extension identify via distinct_id in API calls. Landing page: identified_only person_profiles. 0%→100% for authenticated sessions. Deployed 2026-03-06. |
 | 0.102 | DS1-6: Pageview events (14 pages) | 1h | — | 🔲 | 10/14 dark. posthog.capture('$pageview') every tab change. |
 | 0.103 | ES1-1: Extension PostHog — zero events | 2h | — | 🔲 | 100% dark. popup_opened, scan_started, scan_complete, pipeline_save. |
 | 0.104 | LS1-3: PostHog not initialized (GTM-dependent) | 1h | — | 🔲 | All 12 events fragile. Direct init. Upgraded P2→P1. |
@@ -3081,7 +3082,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | # | Gate | Pod | Status |
 |---|------|-----|--------|
 | G1 | All P0s resolved (all surfaces) | 3 | 🔲 |
-| G2 | PostHog error tracking live (within 60s) | 3 | 🔲 |
+| G2 | PostHog error tracking live (within 60s) | 3 | ⚡ | CS-003: SDK deployed on all 4 surfaces with exception autocapture. Requires prod verification (Step 4). |
 | G3 | Service role key rotated, old invalidated | 3 | 🔲 |
 | G4 | Kill-switch operational | 3 | 🔲 |
 | G5 | Critical-path tests pass | 3 | 🔲 |
@@ -3092,7 +3093,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | G10 | Referral pipeline functional | 3 | 🔲 |
 | G11 | Admin auth server-side | 3 | 🔲 |
 | G12 | Admin audit trail recording | 3 | 🔲 |
-| G13 | PostHog identity 100% | 4 | 🔲 |
+| G13 | PostHog identity 100% | 4 | ⚡ | CS-003: posthog.identify() wired on dashboard + admin. Extension uses distinct_id. Requires prod verification. |
 | G14 | axe-core 0 critical | 4 | 🔲 |
 | G15 | All 10 quality gates in CI | 3+4 | 🔲 |
 
