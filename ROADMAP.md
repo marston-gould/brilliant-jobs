@@ -2753,6 +2753,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | CS-016 | 2026-03-06 | FIX-10 (FE-001), FIX-16 (AD-FIX-09, AD-FIX-10) | dashboard@1.0.0-bundle, admin@0.8.0-errors | FIX-10 (FE-001): Code-split build — 6 chunks (shell 70KB, feed 83KB, keywords 241KB, pipeline 46KB, tuning 52KB, deferred 340KB). Initial payload 153KB (was 491KB). Lazy loader (bjLoadChunk/bjEnsureTab) with preload-after-idle for keywords+location chunk. Tab switching triggers chunk load before init. FIX-16 (AD-FIX-09+10): 3 empty catches in admin-seo.js fixed (reportError + documented URL parse guards). 8 console-only catches in admin.js converted to toast + reportError (auth check, feed health charts, discovery pipeline, auto-apply, MV staleness, growth chart, sessions chart, cohort list). Additional empty catches fixed in admin-notifications.js (auth), admin-templates.js (status toggle), admin-feed-health.js (chart dispose). Error boundary + loading state added to all admin section init (navigateAdminSubpage). Zero empty catches remaining across all admin files. Tests: 86 pass (+18 new code-split tests). |
 | CS-017 | 2026-03-06 | FIX-17 (EXT-FE-004) | extension@0.7.0-monitoring | FIX-17: Automated selector health monitoring for all 15 extension handlers. Centralized selector registry (extension/selectors/registry.js) — 193 total selectors, 153 critical, organized by handler with URL patterns, criticality flags, and sample URLs. Weekly Playwright CI workflow (.github/workflows/selector-monitor.yml) — runs Mondays 9:00 UTC + manual dispatch, tests selectors against live ATS pages, generates JSON health report. Alert pipeline (scripts/selector-alert.mjs) sends HTML email via Resend on critical breakage. Registry-only mode (--report-only) for fast structural validation. 163 new Vitest tests: registry completeness (15 handlers ↔ 15 files), structure validation per entry, source ↔ registry alignment checks (LinkedIn modal, Greenhouse #first_name, Workday data-automation-id, Lever resume, iCIMS wrapper), selector count thresholds, orphan detection. All 249 tests pass (163 new + 86 existing). EXT-FE-004 fully resolved (was partial in CS-010). |
 | CS-018 | 2026-03-06 | FIX-19a (IX-FE-002, IX-DA-001, IX-CP-001, IX-SE-006) + CX-13, CX-14 | index@0.6.0-architecture | FIX-19a: Full landing page architecture overhaul. CSS extraction: 625-line inline `<style>` merged into external landing.css (1003 lines). JS extraction: 5 inline `<script>` blocks extracted to 4 external files (landing-segment.js, safe-read-ls.js, landing-app.js, cookie-consent.js). 2 duplicate inline scripts removed (merch + referral — external versions already loaded). index.html reduced from 2260 to 791 lines (65%). Cookie consent: js/cookie-consent.js gates PostHog + GTM behind GDPR/CCPA opt-in. Accept/Decline banner, bj_consent cookie (365-day TTL), public bjConsent API. PostHog identity bridge: posthog.identify() added to landing page showLoggedIn() — all 3 surfaces now merge anonymous→identified sessions. CSP hardening: Landing page CSP removes `unsafe-inline` from both script-src and style-src. Zero inline executable scripts remain. 38 new tests (287 total). |
+| CS-019 | 2026-03-06 | FIX-18 (EXT-CWS-002, CP-001, CE-002) | extension@0.8.0-architecture, admin@0.9.0-cost | FIX-18: Privacy policy linkage — homepage_url added to extension manifest, privacy link in popup header, privacy.html updated with all 9 third-party vendors + DPA reference + cookie consent reference. PII inventory — docs/PII_INVENTORY.md maps all tables by sensitivity tier (high/medium/low), extension chrome.storage, 9 third-party PII flows, 14 Edge Function PII paths, data subject rights, deletion cascade verification, quarterly review schedule. Cost dashboard budget alerts — vendor_cost_budgets table (per-vendor budget + threshold), admin UI progress bars (green/yellow/red), budget edit form, budget line on monthly chart, 8 vendors seeded. 36 new tests (323 total). |
 
 **Status:** COMPLETE — CS-013 deployed and verified (2026-03-06)
 **Pods:** Pod 3 (Technical Audit, 113+ findings across 17 sessions) + Pod 4 (CX Examination, 46 findings across 5 sessions)
@@ -2886,7 +2887,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.065 | EXT-FEAT-001: Kill-switch (3-layer ADR-006) | 4h | 4h | ✅ | CS-013: All 3 layers deployed + tested. Admin UI live. Kill directive verified via REST API. |
 | 0.066 | EXT-BE-003: Token refresh reliability | 1h | — | 🔲 | Refresh fails silently. Retry + notification + re-auth. |
 | 0.067 | EXT-CWS-001: Manifest permissions minimize | 1h | — | 🔲 | Justify each permission or remove. |
-| 0.068 | EXT-CWS-002: Privacy policy + manifest link | 1h | — | 🔲 | Publish policy, link in manifest. Required for distribution. |
+| 0.068 | EXT-CWS-002: Privacy policy + manifest link | 1h | 1h | ✅ | CS-019: homepage_url added to extension manifest pointing to brilliantjobs.app/privacy. Privacy link added to extension popup header. Privacy policy updated with all 9 third-party vendors, DPA reference, cookie consent reference. |
 | 0.069 | EXT-FE-001: Content script selector fragility | 2h | CS-017 | ✅ | CS-017 (FIX-17): Centralized selector registry (extension/selectors/registry.js) — 15 handlers, 193 total selectors, 153 critical. Weekly Playwright CI job (.github/workflows/selector-monitor.yml) tests selectors against live ATS pages. Alert pipeline via Resend email on critical breakage. 163 new registry validation tests (249 total pass). Runtime PostHog monitoring (ats:selectorMisses + ats:handlerError) already wired via CS-010. EXT-FE-004 fully resolved. |
 
 ### 0-M: Data Engineering (Pod 3, P1/P2)
@@ -2912,7 +2913,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.079 | CP-001: No PII inventory | 2h | — | 🔲 | 72+ tables undocumented. Foundation for deletion + export. |
+| 0.079 | CP-001: No PII inventory | 2h | 2h | ✅ | CS-019: Comprehensive PII inventory created (docs/PII_INVENTORY.md). Maps all database tables by sensitivity tier, extension chrome.storage data, third-party PII sharing (9 services), Edge Function PII flows (14 functions), data subject rights implementation, deletion cascade verification. Quarterly review schedule established. |
 | 0.080 | CP-002: No DPAs for resume data → Anthropic | 2h | 0.5h | ⚡ | CS-004: Privacy policy link added to extension help.html. Privacy page live at brilliantjobs.app/privacy. DPA initiation for Anthropic, PostHog, Stripe, Resend, Vonage: PENDING (requires legal review, not a code task). |
 | 0.081 | CP-003: No audit logging (platform) | 1h | CS-015 | ✅ | Combined with 0.021 admin trail + pgAudit. |
 | 0.082 | AD-CP-001: Admin PII exposure scope | 1h | — | 🔲 | Document all admin-visible PII. Logging per access path. |
@@ -2928,7 +2929,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.087 | DM-002: CDN deps without SRI hashes | 1h | CS-015 | ✅ | 5+ scripts no integrity=. Generate SRI for all. |
 | 0.088 | IX-DM-001: Landing CDN deps without SRI | 30min | — | 🔲 | Landing-specific SRI pass. |
 | 0.089 | CE-001: No AI API spend controls | 2h | CS-015 | ✅ | Uncontrolled Anthropic spend. Per-function tracking + budget alerts + kill switches. |
-| 0.090 | CE-002: No infrastructure cost visibility | 1h | — | 🔲 | No consolidated spend view. Cost dashboard post-launch. |
+| 0.090 | CE-002: No infrastructure cost visibility | 1h | 1h | ✅ | CS-019: Cost dashboard enhanced with budget alerts. vendor_cost_budgets table (per-vendor monthly budget + alert threshold). Admin UI: progress bars (green/yellow/red), budget edit form, budget line on monthly chart. 8 vendors seeded with default budgets. |
 
 ### 0-Q: Landing Page — SEO + Analytics (Pod 3, P2)
 
@@ -3069,8 +3070,8 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.168 | Edge Function Health — proxy + instrumentation | 3h | — | 🔲 | Pattern 2. 88 EFs: invocations, errors, latency p50/p95/p99. |
 | 0.169 | Database Activity — pg_stat + UI | 3h | — | 🔲 | Connections, slow queries, table sizes. |
 | 0.170 | Cost Monitoring — Anthropic proxy + cache | 3h | — | 🔲 | Pattern 2. Daily/weekly/monthly. Per-function. |
-| 0.171 | Cost Monitoring — UI + alerts + kill switches | 3h | — | 🔲 | Budget alerts 50/75/90/100%. Per-function kill switch. |
-| 0.172 | PII inventory + data map | 2h | — | 🔲 | 72+ tables. Flows to Anthropic, PostHog, Stripe, Resend, Vonage. |
+| 0.171 | Cost Monitoring — UI + alerts + kill switches | 3h | 1h | ✅ | CS-019: Budget alerts per vendor in admin cost dashboard. Progress bars, edit form, chart budget line. vendor_cost_budgets table. |
+| 0.172 | PII inventory + data map | 2h | 2h | ✅ | CS-019: docs/PII_INVENTORY.md. All tables mapped by sensitivity tier. Extension + third-party + Edge Function flows documented. |
 | 0.173 | User deletion (72+ table cascade) | 5h | — | 🔲 | GDPR Art 17. Cascade + third-party propagation. Admin-executable. |
 | 0.174 | Data export + compliance dashboard | 4h | — | 🔲 | GDPR Art 20 + audit log viewer + PII status + DPA tracker. |
 
@@ -3104,7 +3105,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | G4 | Kill-switch operational | 3 | ✅ | CS-013: 3-layer kill-switch deployed. DB flag toggle verified, REST API returns directive, admin UI live. |
 | G5 | Critical-path tests pass | 3 | 🔲 |
 | G6 | Connection pooler live (300+) | 3 | 🔲 |
-| G7 | Privacy policy + DPAs sent | 3 | ⚡ | CS-004: Privacy policy published at brilliantjobs.app/privacy and linked from extension help.html. DPA initiation PENDING (legal review required for Anthropic, PostHog, Stripe, Resend, Vonage). |
+| G7 | Privacy policy + DPAs sent | 3 | ⚡ | CS-004: Privacy policy published. CS-019: Privacy policy updated with all 9 third-party vendors, DPA references, cookie consent. Extension manifest homepage_url + popup link added. PII inventory complete (docs/PII_INVENTORY.md). DPA initiation PENDING (legal review required for Anthropic, PostHog, Stripe, Resend, Vonage). |
 | G8 | 72-hour dry run clean | 3 | 🔲 |
 | G9 | Landing XSS + CSP enforced | 3 | 🔲 |
 | G10 | Referral pipeline functional | 3 | 🔲 |

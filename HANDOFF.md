@@ -34,12 +34,12 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**CS-018** — Landing Page Architecture: CSS/JS Extraction + PostHog Identity + Cookies (FIX-19a)
+**CS-019** — Extension Architecture: Privacy Policy + PII Inventory + Cost Dashboard (FIX-18)
 - Completed: 2026-03-06
-- Commit: `9b97d11`
-- Tags: `index@0.6.0-architecture`
-- Fix items resolved: FIX-19a (IX-FE-002, IX-DA-001, IX-CP-001, IX-SE-006) + CX-13 + CX-14
-- Notes: Full CSS/JS extraction — 625-line inline style + 5 inline scripts extracted to 4 external files. index.html 2260→791 lines (65% reduction). Cookie consent (js/cookie-consent.js) gates PostHog + GTM behind GDPR/CCPA opt-in. PostHog identity bridge: posthog.identify() in landing showLoggedIn(). CSP hardened: unsafe-inline removed from landing page script-src and style-src. 38 new tests (287 total).
+- Commit: `f614247`
+- Tags: `extension@0.8.0-architecture`, `admin@0.9.0-cost`
+- Fix items resolved: FIX-18 (EXT-CWS-002, CP-001, CE-002)
+- Notes: Privacy policy linkage — homepage_url in manifest, popup link, privacy.html updated with all 9 vendors + DPA ref + consent ref. PII inventory — docs/PII_INVENTORY.md maps all tables by sensitivity, extension storage, third-party sharing, Edge Function flows, deletion cascades, review schedule. Cost dashboard budget alerts — vendor_cost_budgets table, admin progress bars (green/yellow/red), budget edit form, chart budget line. 36 new tests (323 total).
 
 ---
 
@@ -51,27 +51,36 @@ None.
 
 ## Next Session
 
-**CS-019** — Extension Architecture (FIX-18)
+**CS-020** — Load Testing + Staging Environment + CI/CD (FIX-20, FIX-21)
 
 | Field | Detail |
 |-------|--------|
-| Surface | Extension |
-| Fix Items | FIX-18 |
-| Phase | Phase 4 |
-| Pair | TBD |
-| Expected tags | extension@0.8.0-architecture |
+| Surface | All Surfaces |
+| Fix Items | FIX-20 (Load Testing), FIX-21 (Staging + CI/CD) |
+| Phase | Phase 5: Validation + Launch |
+| Pair | DevOps + QA + Eng Lead |
+| Expected tags | TBD |
 
 ### Entry Gate (verify before starting)
 
-- [x] CS-018 complete — Landing page architecture deployed → `index@0.6.0-architecture`
+- [x] CS-019 complete — Privacy + PII + Cost deployed → `extension@0.8.0-architecture`, `admin@0.9.0-cost`
+- [x] CS-013 complete — Kill-switch operational (safety valve during load test)
+- [x] All P0 fixes deployed
 
 ### What To Build
 
-1. **FIX-18**: Extension architecture improvements (details in Session 5 unified plan)
+1. **FIX-20**: Load test at 1,200 concurrent users — dashboard API, extension heartbeat/scan, landing preview-jobs, admin concurrent access
+2. **FIX-21**: Staging environment mirrors prod. Automated deploy pipeline (Vercel). Automated extension build + hosting pipeline.
 
 ### Exit Gate
 
-- TBD (populate from Session 5 unified plan at session start)
+- No P0-class failures under load
+- p95 response <2s
+- Error rate <0.1%
+- Extension heartbeat stable under load
+- Landing preview-jobs rate limit holds
+- Staging mirrors prod config
+- CI/CD pipeline operational
 
 ---
 
@@ -80,15 +89,15 @@ None.
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
 | Dashboard | `dashboard@1.0.0-bundle` | CS-016 |
-| Extension | `extension@0.7.0-monitoring` | CS-017 |
+| Extension | `extension@0.8.0-architecture` | CS-019 |
 | Landing Page | `index@0.6.0-architecture` | CS-018 |
-| Admin | `admin@0.8.0-errors` | CS-016 |
+| Admin | `admin@0.9.0-cost` | CS-019 |
 | SEO Pages | (no remediation tag yet) | — |
 | Email Templates | `email-templates@0.1.0-utm` | CS-011 |
 
 ---
 
-## Completed Sessions (18 of 24)
+## Completed Sessions (19 of 24)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
@@ -110,14 +119,14 @@ None.
 | CS-016 | 2026-03-06 | FIX-10 (FE-001), FIX-16 (AD-FIX-09, AD-FIX-10) | dashboard@1.0.0-bundle, admin@0.8.0-errors |
 | CS-017 | 2026-03-06 | FIX-17 (EXT-FE-004) | extension@0.7.0-monitoring |
 | CS-018 | 2026-03-06 | FIX-19a (IX-FE-002, IX-DA-001, IX-CP-001, IX-SE-006) | index@0.6.0-architecture |
+| CS-019 | 2026-03-06 | FIX-18 (EXT-CWS-002, CP-001, CE-002) | extension@0.8.0-architecture, admin@0.9.0-cost |
 
 ---
 
-## Remaining Sessions (6 of 24)
+## Remaining Sessions (5 of 24)
 
 | Session | Fix Items | Phase | Notes |
 |---------|-----------|-------|-------|
-| CS-019 | FIX-18 | Phase 4 |  |
 | CS-020 | FIX-20, FIX-21 | Phase 5: Validation + Launch |  |
 | CS-021 | FIX-22 + Quality Gates | Phase 5 |  |
 | CS-022 | FIX-23 (72-hour dry run + Go/No-Go) | Phase 5 |  |
@@ -136,7 +145,7 @@ None.
 | G4 | Kill-switch operational | ✅ | CS-013: 3-layer kill-switch deployed + tested. DB flag toggle verified via REST API. Admin UI live. |
 | G5 | Critical-path tests pass | 🔲 | |
 | G6 | Connection pooler live (300+) | 🔲 | CS-009: Supavisor enabled, needs load test |
-| G7 | Privacy policy + DPAs sent | ⚡ | Policy published; DPA initiation pending legal |
+| G7 | Privacy policy + DPAs sent | ⚡ | CS-019: Privacy policy updated (9 vendors, DPA ref, consent ref). Extension manifest + popup linked. PII inventory complete. DPAs pending legal. |
 | G8 | 72-hour dry run clean | 🔲 | CS-022 |
 | G9 | Landing XSS + CSP enforced | ✅ | CS-005: DOMPurify + CSP deployed. CS-018: unsafe-inline removed from landing page CSP. Zero inline scripts. |
 | G10 | Referral pipeline functional | 🔲 | CS-005: stale key fixed |

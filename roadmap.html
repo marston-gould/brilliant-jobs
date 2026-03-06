@@ -1925,7 +1925,7 @@ const features = [
 { s: 'done', b: 'pre-launch', n: '0.065 EXT-FEAT-001: Kill-switch 3-layer', d: 'CS-013 FIX-13: All 3 layers deployed + tested. Layer 1: heartbeat directive. Layer 2: externally_connectable + onMessageExternal. Layer 3: DB flag polling. Admin toggle UI live. Kill directive verified via REST API. Launch gate G4 CLEARED.', p: 75, e: '4h' },
 { s: 'todo', b: 'pre-launch', n: '0.066 EXT-BE-003: Token refresh reliability', d: 'Refresh fails silently. Retry + notify + re-auth.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.067 EXT-CWS-001: Manifest permissions minimize', d: 'Justify each or remove.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.068 EXT-CWS-002: Privacy policy + manifest', d: 'Publish + link. Required for distribution.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.068 EXT-CWS-002: Privacy policy + manifest', d: 'CS-019: homepage_url in manifest, popup link, 9 vendors in privacy.html, DPA ref, consent ref.', p: 75, e: '1h' },
 { s: 'done', b: 'pre-launch', n: '0.069 EXT-FE-001: Selector fragility', d: 'CS-017 (FIX-17): Centralized selector registry — 15 handlers, 193 selectors, 153 critical. Weekly Playwright CI job tests against live ATS pages. Resend alert on breakage. 163 new tests (249 total). EXT-FE-004 fully resolved.', p: 75, e: '2h' },
 
 // CS-011: Extension a11y + CX Sprint 2
@@ -1948,7 +1948,7 @@ const features = [
 { s: 'todo', b: 'pre-launch', n: '0.078 CSS-004: 128KB CSS from 170KB', d: 'Dead CSS possible. Usage analysis.', p: 75, e: '1h' },
 
 // 0-O: Compliance (Pod 3, P1)
-{ s: 'todo', b: 'pre-launch', n: '0.079 CP-001: No PII inventory', d: '72+ tables undocumented. Foundation for deletion+export.', p: 75, e: '2h' },
+{ s: 'done', b: 'pre-launch', n: '0.079 CP-001: No PII inventory', d: 'CS-019: docs/PII_INVENTORY.md — all tables by sensitivity, extension, third-party, Edge Functions, deletion cascade, review schedule.', p: 75, e: '2h' },
 { s: 'todo', b: 'pre-launch', n: '0.080 CP-002: DPAs resume → Anthropic', d: 'CS-004: Privacy policy published + linked in extension. DPA initiation PENDING (legal review).', p: 75, e: '2h' },
 { s: 'done', b: 'pre-launch', n: '0.081 CP-003: pgAudit logging enabled', d: 'CS-015: pgaudit extension enabled. DDL + write operations logged. log_parameter on.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.082 AD-CP-001: Admin PII exposure scope', d: 'Document admin-visible PII. Logging per path.', p: 75, e: '1h' },
@@ -1961,7 +1961,7 @@ const features = [
 { s: 'done', b: 'pre-launch', n: '0.087 DM-002: SRI hashes all CDN scripts', d: 'CS-015: sha384 integrity + crossorigin=anonymous on pdf.js, mammoth, DOMPurify, docx.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.088 IX-DM-001: Landing CDN no SRI', d: 'Landing-specific SRI pass.', p: 75, e: '30min' },
 { s: 'done', b: 'pre-launch', n: '0.089 CE-001: EF rate limits expanded', d: 'CS-015: Rate limits on enrich-job (60/hr), create-checkout (10/hr), data-export (5/hr). DEFAULT_LIMITS registry updated.', p: 75, e: '2h' },
-{ s: 'todo', b: 'pre-launch', n: '0.090 CE-002: No cost visibility', d: 'No consolidated spend. Cost dashboard post-launch.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.090 CE-002: No cost visibility', d: 'CS-019: Budget alerts per vendor, progress bars, edit form, chart budget line, vendor_cost_budgets table.', p: 75, e: '1h' },
 
 // 0-Q: Landing SEO+Analytics (Pod 3, P2)
 { s: 'todo', b: 'pre-launch', n: '0.091 IX-SEO-001: No canonical URL', d: 'Duplicate URL risk.', p: 75, e: '15min' },
@@ -2067,8 +2067,8 @@ const features = [
 { s: 'todo', b: 'post-launch', n: '0.168 Edge Function Health', d: 'Pattern 2. 88 EFs: invocations, errors, latency.', p: 76, e: '3h' },
 { s: 'todo', b: 'post-launch', n: '0.169 Database Activity', d: 'pg_stat connections, slow queries, table sizes.', p: 76, e: '3h' },
 { s: 'todo', b: 'post-launch', n: '0.170 Cost Monitoring — proxy', d: 'Pattern 2. Anthropic API. Daily/weekly/monthly.', p: 76, e: '3h' },
-{ s: 'todo', b: 'post-launch', n: '0.171 Cost Monitoring — UI + kills', d: 'Budget alerts 50/75/90/100%. Per-function kill.', p: 76, e: '3h' },
-{ s: 'todo', b: 'post-launch', n: '0.172 PII inventory + data map', d: '72+ tables. Flows to 5 third parties.', p: 76, e: '2h' },
+{ s: 'done', b: 'post-launch', n: '0.171 Cost Monitoring — UI + kills', d: 'CS-019: Budget alerts per vendor in admin cost dashboard. Progress bars, edit form, chart budget line.', p: 76, e: '3h' },
+{ s: 'done', b: 'post-launch', n: '0.172 PII inventory + data map', d: 'CS-019: docs/PII_INVENTORY.md. All tables mapped by sensitivity.', p: 76, e: '2h' },
 { s: 'todo', b: 'post-launch', n: '0.173 User deletion cascade', d: 'GDPR Art 17. 72+ tables + propagation.', p: 76, e: '5h' },
 { s: 'todo', b: 'post-launch', n: '0.174 Data export + compliance dash', d: 'GDPR Art 20 + audit viewer + PII + DPA tracker.', p: 76, e: '4h' },
 
