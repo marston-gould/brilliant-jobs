@@ -1,0 +1,134 @@
+/**
+ * Brilliant Jobs — Cookie Consent Manager
+ * CS-018: GDPR/CCPA consent gate for PostHog + GTM
+ *
+ * Flow:
+ *   1. Check for existing consent cookie (bj_consent)
+ *   2. If 'granted' → load analytics immediately
+ *   3. If 'denied' → do nothing (no analytics)
+ *   4. If absent → show banner, wait for user choice
+ *
+ * PostHog + GTM are NOT loaded until consent is granted.
+ * The bjError() reporter still works because it's defined inline
+ * and gated behind a `window.posthog` check.
+ */
+(function() {
+  'use strict';
+
+  var CONSENT_COOKIE = 'bj_consent';
+  var CONSENT_DAYS = 365;
+
+  // ── Cookie helpers ──
+  function getCookie(name) {
+    var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? decodeURIComponent(match[2]) : '';
+  }
+
+  function setCookie(name, value, days) {
+    var d = new Date();
+    d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000);
+    document.cookie = name + '=' + encodeURIComponent(value)
+      + ';expires=' + d.toUTCString()
+      + ';path=/;SameSite=Lax';
+  }
+
+  // ── Analytics loaders ──
+  var _analyticsLoaded = false;
+
+  function loadPostHog() {
+    if (window.posthog && window.posthog.__loaded) return;
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init ns hs wi ls ds rs os capture calculateEventProperties fs register register_once register_for_session unregister unregister_for_session bs getFeatureFlag getFeatureFlagPayload getFeatureFlagResult isFeatureEnabled reloadFeatureFlags updateFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey displaySurvey cancelPendingSurvey canRenderSurvey canRenderSurveyAsync identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException startExceptionAutocapture stopExceptionAutocapture loadToolbar get_property getSessionProperty gs cs createPersonProfile setInternalOrTestUser ts ys opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing get_explicit_consent_status is_capturing clear_opt_in_out_capturing vs debug M ps getPageViewId captureTraceFeedback captureTraceMetric Xr".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    posthog.init('phc_RqMlQQfq0G0DOikTlgyRO43USYm1h4Jd1aBneeIR6ww', {
+      api_host: 'https://us.i.posthog.com',
+      person_profiles: 'identified_only',
+      autocapture: true,
+      capture_pageview: true,
+      capture_pageleave: true,
+    });
+    if (posthog.startExceptionAutocapture) posthog.startExceptionAutocapture();
+  }
+
+  function loadGTM() {
+    (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-PLHNJQLC');
+  }
+
+  function loadAnalytics() {
+    if (_analyticsLoaded) return;
+    _analyticsLoaded = true;
+    loadPostHog();
+    loadGTM();
+  }
+
+  // ── bjError reporter (works with or without PostHog) ──
+  window.bjError = function bjError(label, error, extra) {
+    try {
+      if (window.posthog) {
+        posthog.captureException(error instanceof Error ? error : new Error(String(error)), {
+          tags: { surface: 'landing', label: label },
+          extra: Object.assign({ page: window.location.pathname, ts: new Date().toISOString() }, extra || {})
+        });
+      }
+    } catch (_) { /* reporter must never throw */ }
+  };
+
+  // ── Banner ──
+  function showBanner() {
+    var banner = document.createElement('div');
+    banner.id = 'cookie-consent-banner';
+    banner.setAttribute('role', 'dialog');
+    banner.setAttribute('aria-label', 'Cookie consent');
+    banner.innerHTML =
+      '<div class="cc-inner">' +
+        '<p class="cc-text">We use cookies and analytics (PostHog, Google Tag Manager) to improve your experience and understand how our site is used. ' +
+        'You can accept or decline non-essential cookies. See our <a href="/privacy" class="cc-link">Privacy Policy</a>.</p>' +
+        '<div class="cc-actions">' +
+          '<button id="cc-decline" class="cc-btn cc-btn-secondary">Decline</button>' +
+          '<button id="cc-accept" class="cc-btn cc-btn-primary">Accept</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(banner);
+
+    document.getElementById('cc-accept').addEventListener('click', function() {
+      setCookie(CONSENT_COOKIE, 'granted', CONSENT_DAYS);
+      banner.remove();
+      loadAnalytics();
+    });
+
+    document.getElementById('cc-decline').addEventListener('click', function() {
+      setCookie(CONSENT_COOKIE, 'denied', CONSENT_DAYS);
+      banner.remove();
+    });
+  }
+
+  // ── Init ──
+  var consent = getCookie(CONSENT_COOKIE);
+  if (consent === 'granted') {
+    loadAnalytics();
+  } else if (consent === 'denied') {
+    // Respect opt-out — no analytics
+  } else {
+    // No consent recorded — show banner after DOM ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', showBanner);
+    } else {
+      showBanner();
+    }
+  }
+
+  // ── Public API for settings/preference pages ──
+  window.bjConsent = {
+    getStatus: function() { return getCookie(CONSENT_COOKIE) || 'pending'; },
+    grant: function() {
+      setCookie(CONSENT_COOKIE, 'granted', CONSENT_DAYS);
+      loadAnalytics();
+    },
+    revoke: function() {
+      setCookie(CONSENT_COOKIE, 'denied', CONSENT_DAYS);
+      if (window.posthog) posthog.opt_out_capturing();
+    }
+  };
+})();
