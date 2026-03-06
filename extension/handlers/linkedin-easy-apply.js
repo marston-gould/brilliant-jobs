@@ -22,15 +22,15 @@ import { matchMultilingualLabel } from '../utils/multilingualLabels.js';
 // ============================================================
 
 const SELECTORS = {
-  // Modal container
-  modal: '.jobs-easy-apply-modal, .artdeco-modal[role="dialog"]',
-  modalContent: '.jobs-easy-apply-content, .artdeco-modal__content',
+  // Modal container — LinkedIn changes class names; role="dialog" is most stable
+  modal: '[role="dialog"].jobs-easy-apply-modal, .artdeco-modal[role="dialog"], [role="dialog"][class*="easy-apply"], [role="dialog"][aria-labelledby*="easy-apply"]',
+  modalContent: '.jobs-easy-apply-content, .artdeco-modal__content, [role="dialog"] [class*="content"]',
 
-  // Navigation buttons
-  nextBtn: 'button[aria-label="Continue to next step"], button[aria-label="Next"]',
-  reviewBtn: 'button[aria-label="Review your application"], button[aria-label="Review"]',
-  submitBtn: 'button[aria-label="Submit application"], button.jobs-apply-button[aria-label*="Submit"]',
-  dismissBtn: 'button[aria-label="Dismiss"], button.artdeco-modal__dismiss',
+  // Navigation buttons — aria-label is most resilient to class name changes
+  nextBtn: 'button[aria-label="Continue to next step"], button[aria-label="Next"], footer button[class*="primary"]:not([aria-label*="Submit"]):not([aria-label*="Review"])',
+  reviewBtn: 'button[aria-label="Review your application"], button[aria-label="Review"], footer button[class*="primary"][aria-label*="eview"]',
+  submitBtn: 'button[aria-label="Submit application"], button.jobs-apply-button[aria-label*="Submit"], button[aria-label*="Submit"][class*="primary"]',
+  dismissBtn: 'button[aria-label="Dismiss"], button.artdeco-modal__dismiss, [role="dialog"] button[aria-label="Close"], [role="dialog"] button[data-test-modal-close-btn]',
 
   // Form elements
   textInput: 'input[type="text"], input[type="email"], input[type="tel"], input[type="url"], input[type="number"]',
@@ -187,6 +187,15 @@ function waitForElement(selector, timeout = 5000) {
     observer.observe(document.body, { childList: true, subtree: true });
     setTimeout(() => {
       observer.disconnect();
+      // CS-010: Report selector miss to background for PostHog tracking
+      try {
+        chrome.runtime.sendMessage({
+          type: 'ats:selectorMisses',
+          misses: [{ fn: 'waitForElement', context: 'linkedin', selectors: [selector.substring(0, 100)], url: window.location.href, timestamp: Date.now() }],
+          count: 1,
+          url: window.location.href
+        }).catch(() => {});
+      } catch (_) {}
       resolve(null);
     }, timeout);
   });

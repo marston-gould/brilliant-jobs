@@ -1302,6 +1302,63 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return;
   }
 
+  // ── CS-010: Extension stability telemetry ──────────────────────
+  // Track selector misses and handler errors in extension_events for monitoring
+  if (msg.type === 'ats:selectorMisses') {
+    (async () => {
+      try {
+        const authSession = await getAuth();
+        const session = authSession;
+        if (!session?.user_id || !session?.access_token) return;
+        const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+        await fetch(SB_URL + '/rest/v1/extension_events', {
+          method: 'POST',
+          headers: {
+            'apikey': session.access_token,
+            'Authorization': 'Bearer ' + session.access_token,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            user_id: session.user_id,
+            event_type: 'selector_miss',
+            event_data: { misses: msg.misses?.slice(0, 5), count: msg.count },
+            job_url: msg.url,
+            extension_version: '2.11.0',
+          }),
+        });
+      } catch (e) { /* telemetry is best-effort */ }
+    })();
+    return;
+  }
+
+  if (msg.type === 'ats:handlerError') {
+    (async () => {
+      try {
+        const authSession = await getAuth();
+        const session = authSession;
+        if (!session?.user_id || !session?.access_token) return;
+        const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+        await fetch(SB_URL + '/rest/v1/extension_events', {
+          method: 'POST',
+          headers: {
+            'apikey': session.access_token,
+            'Authorization': 'Bearer ' + session.access_token,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            user_id: session.user_id,
+            event_type: 'handler_error',
+            event_data: { handler: msg.handler, error: msg.error?.substring(0, 500) },
+            ats_platform: msg.handler,
+            job_url: msg.url,
+            extension_version: '2.11.0',
+          }),
+        });
+      } catch (e) { /* telemetry is best-effort */ }
+    })();
+    return;
+  }
+
 
   // ── Overlay Pipeline S4+S5: Toolbar message handlers ──────────────
   // S5: bj:toolbar:save and bj:toolbar:getEntry now route through

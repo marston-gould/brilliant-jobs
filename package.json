@@ -7,13 +7,19 @@
     "bundle:css": "npx tailwindcss -i src/input.css -o styles.css --minify",
     "bundle": "npm run bundle:js && npm run bundle:css",
     "css:watch": "npx tailwindcss -i src/input.css -o styles.css --watch",
-    "dev": "npx vite"
+    "dev": "npx vite",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
     "axe-core": "^4.11.1",
     "esbuild": "^0.25.12",
+    "jsdom": "^28.1.0",
     "tailwindcss": "^3.4.19",
-    "vite": "^6.0.0"
+    "vite": "^6.0.0",
+    "vitest": "^4.0.18"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",

@@ -640,6 +640,35 @@ function sleep(ms) {
 }
 
 
+// CS-010: Wrap fill with graceful degradation — reports to PostHog instead of crashing
+async function safeFill(opts) {
+  try {
+    return await fill(opts);
+  } catch (err) {
+    const errorMsg = err?.message || String(err);
+    console.error('[BJ:greenhouse-react] Handler error (gracefully degraded):', errorMsg);
+    try {
+      chrome.runtime.sendMessage({
+        type: 'ats:handlerError',
+        handler: 'greenhouse-react',
+        error: errorMsg,
+        url: window.location.href,
+        timestamp: new Date().toISOString()
+      }).catch(() => {});
+    } catch (_) {}
+    return {
+      success: false,
+      error: `greenhouse-react handler failed: ${errorMsg}`,
+      filledCount: 0,
+      skippedCount: opts?.fields?.length || 0,
+      errorCount: 1,
+      errors: [{ field: '_handler', error: errorMsg }],
+      degraded: true
+    };
+  }
+}
+
+
 // Export
-export default { fill };
-export { fill };
+export default { fill: safeFill };
+export { safeFill as fill };
