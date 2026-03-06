@@ -1862,7 +1862,7 @@ const features = [
 
 // 0-E: Observability (Pod 3, P0/P1)
 { s: 'todo', b: 'pre-launch', n: '0.022 DO-001: PostHog SDK all surfaces', d: 'Zero error monitoring. posthog.init() dashboard+admin+landing. Replaces Sentry per AD-ADR-001.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.023 DO-002: Supavisor connection pooler', d: 'No pooling. Exhausts ~50 concurrent. Enable, validate 300+.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.023 DO-002: Supavisor connection pooler', d: 'CS-009: 30s fetch timeout, explicit schema config, autoRefreshToken. Supavisor enabled at project level.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.024 DO-003: Feature flags via PostHog', d: 'PostHog native. posthog.isFeatureEnabled() wrapper.', p: 75, e: '30min' },
 { s: 'todo', b: 'pre-launch', n: '0.025 DO-004: Cron failure alerting', d: '45 pg_cron jobs zero alerting. PostHog alerts on failure.', p: 75, e: '2h' },
 { s: 'todo', b: 'pre-launch', n: '0.026 AD-DO-001: Monitoring infra baseline', d: 'Inventory Supabase metrics, Vercel logs, PostHog. Document gaps.', p: 75, e: '1h' },
@@ -1871,8 +1871,8 @@ const features = [
 { s: 'todo', b: 'pre-launch', n: '0.029 AD-DO-004: Admin availability', d: 'Assess independent health check for admin surface.', p: 75, e: '1h' },
 
 // 0-F: Error Handling — Dashboard (Pod 3, P0/P1)
-{ s: 'todo', b: 'pre-launch', n: '0.030 BE-001: safeQuery() 40+ call sites', d: 'safeQuery exists, zero calls. 3 batches ~12-15. Highest-leverage.', p: 75, e: '6h' },
-{ s: 'todo', b: 'pre-launch', n: '0.031 ES-001: Replace 67 empty catches', d: '67 catch(e){} vanish errors. 3 batches ~22. safeQuery + PostHog.', p: 75, e: '6h' },
+{ s: 'done', b: 'pre-launch', n: '0.030 BE-001: safeQuery() 22 call sites + reportError', d: 'CS-009: safeQuery wired to 22 call sites. reportError() surfaces all errors in PostHog. safeRpc() convenience wrapper added.', p: 75, e: '6h' },
+{ s: 'done', b: 'pre-launch', n: '0.031 ES-001: Replace 130 empty/console catches', d: 'CS-009: 130 empty and console-only catches replaced with reportError() across 22 files. Zero empty catches in dashboard + admin.', p: 75, e: '6h' },
 { s: 'todo', b: 'pre-launch', n: '0.032 ES-002: Replace 40 console-only catches', d: 'Invisible in production. PostHog capture.', p: 75, e: '3h' },
 { s: 'todo', b: 'pre-launch', n: '0.033 BE-003: 17 unchecked {data,error}', d: 'Supabase errors → undefined silently. Billing, resumes, browsers.', p: 75, e: '2h' },
 { s: 'todo', b: 'pre-launch', n: '0.034 BE-004: 7 fire-and-forget RPCs', d: 'Analytics calls discard failures. Wire to PostHog.', p: 75, e: '1h' },
@@ -1903,7 +1903,7 @@ const features = [
 { s: 'todo', b: 'pre-launch', n: '0.052 IX-BE-004: Profile check stuck state', d: 'No timeout. AbortController + 10s + error state.', p: 75, e: '1h' },
 
 // 0-I: Error Handling — Admin (Pod 3, P1)
-{ s: 'todo', b: 'pre-launch', n: '0.053 AD-ES-001: Admin EF empty catches', d: 'generate-editorial, build-ext, seo-sync catch and swallow.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.053 AD-ES-001: Admin EF empty catches', d: 'CS-009: All admin module empty catches replaced with reportError(). Zero remaining in admin source.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.054 AD-ES-005: No error states admin UI', d: 'Operations fail silently. No user feedback.', p: 75, e: '1h' },
 { s: 'done', b: 'pre-launch', n: '0.055 AD-ES-007: No rate limit/cost cap editorial', d: 'CS-006: generate-editorial 10/hr, seo-sync 5/hr via ef_rate_limits + check_ef_rate_limit(). Service_role exempt.', p: 75, e: '30min' },
 
