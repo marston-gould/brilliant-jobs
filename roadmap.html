@@ -1916,7 +1916,7 @@ const features = [
 { s: 'todo', b: 'pre-launch', n: '0.061 IX-FE-005: No search debounce', d: 'Query per keystroke. 300ms debounce.', p: 75, e: '30min' },
 
 // 0-K: Tests (Pod 3, P0)
-{ s: 'todo', b: 'pre-launch', n: '0.062 QA-001: Critical-path smoke tests', d: 'Zero tests. Auth, home, jobs, resumes, apps, settings. Framework.', p: 75, e: '6h' },
+{ s: 'done', b: 'pre-launch', n: '0.062 QA-001: Critical-path smoke tests', d: 'CS-010: Vitest + @testing-library/dom + jsdom installed. 64 tests (27 dashboard + 37 extension). Covers 5 critical pages, nav, script order, error infra, module syntax.', p: 75, e: '6h' },
 { s: 'todo', b: 'pre-launch', n: '0.063 QA-002: Extension DOM snapshot tests', d: '15 ATS handlers no tests. Snapshot per handler.', p: 75, e: '3h' },
 { s: 'todo', b: 'pre-launch', n: '0.064 QA-003: Integration tests critical APIs', d: 'enrich-job, score-resume, generate-filter, preview-jobs E2E.', p: 75, e: '3h' },
 
@@ -1925,7 +1925,7 @@ const features = [
 { s: 'todo', b: 'pre-launch', n: '0.066 EXT-BE-003: Token refresh reliability', d: 'Refresh fails silently. Retry + notify + re-auth.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.067 EXT-CWS-001: Manifest permissions minimize', d: 'Justify each or remove.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.068 EXT-CWS-002: Privacy policy + manifest', d: 'Publish + link. Required for distribution.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.069 EXT-FE-001: Selector fragility', d: 'Brittle selectors. Add monitoring.', p: 75, e: '2h' },
+{ s: 'done', b: 'pre-launch', n: '0.069 EXT-FE-001: Selector fragility', d: 'CS-010: LinkedIn selectors hardened with 4+ fallbacks (role=dialog anchor). Greenhouse/Lever/Legacy wrapped in safeFill() graceful degradation. resilientDOM.js utility. PostHog selector miss + handler error telemetry.', p: 75, e: '2h' },
 
 // 0-M: Data Engineering (Pod 3, P1/P2)
 { s: 'todo', b: 'pre-launch', n: '0.070 DE-001: Cron failure alerting', d: '45 crons zero alerting. PostHog hooks.', p: 75, e: '2h' },
