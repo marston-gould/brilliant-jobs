@@ -1832,8 +1832,8 @@ const features = [
 // ═══════════════════════════════════════════════════════════════════
 
 // 0-A: Security — Dashboard + Platform (Pod 3, P0)
-{ s: 'todo', b: 'pre-launch', n: '0.001 SE-001: JWT auth on enrich-job', d: 'Unauthenticated writes to ats_jobs. Add verifyJWT + rate limit 100/min/user.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.002 SE-002: Service role key rotation + git clean', d: 'Key exposed commit 4a5191787f15 (Feb 23). Bypasses all RLS. Rotate, BFG clean, invalidate.', p: 75, e: '2h' },
+{ s: 'done', b: 'pre-launch', n: '0.001 SE-001: JWT auth on enrich-job', d: 'CS-002: JWT auth + CORS restriction added (2026-03-06). Unauthenticated → 401. CORS restricted to brilliantjobs.app. Service_role passthrough. Dashboard enrichJob() uses session token.', p: 75, e: '1h' },
+{ s: 'todo', b: 'pre-launch', n: '0.002 SE-002: Service role key rotation', d: 'CS-001: git purge DONE. Key rotation requires manual Supabase Dashboard action (Rotate JWT Secret). Deferred — changes both anon + service_role keys across all surfaces.', p: 75, e: '2h' },
 { s: 'todo', b: 'pre-launch', n: '0.003 SE-003: Auth on generate-editorial-content', d: 'Zero JWT. Uncapped Anthropic spend. Add verifyAdminRole().', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.004 SE-004: Classify+gate 25 unauthenticated EFs', d: '25/88 EFs no JWT. Classify authenticated/admin/cron-internal. edge-function-auth.yaml.', p: 75, e: '3h' },
 { s: 'todo', b: 'pre-launch', n: '0.005 SE-005: CSP unsafe-inline on dashboard', d: 'Tighten to nonce-based after module wrapper.', p: 75, e: '1h' },
