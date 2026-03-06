@@ -1935,7 +1935,7 @@ const features = [
 { s: 'todo', b: 'pre-launch', n: '0.074 DE-005: Redundant purge crons', d: '#22 and #24 both purge Sundays. Remove dup.', p: 75, e: '15min' },
 
 // 0-N: CSS (Pod 3, P2/P3)
-{ s: 'todo', b: 'pre-launch', n: '0.075 CSS-001: Zero a11y dashboard', d: 'Combined with Pod 4 DS1-2.', p: 75, e: '3h' },
+{ s: 'done', b: 'pre-launch', n: '0.075 CSS-001: Zero a11y dashboard', d: 'CS-007: ARIA labels, keyboard nav, focus management on dashboard. Combined with Pod 4 DS1-2.', p: 75, e: '3h' },
 { s: 'todo', b: 'pre-launch', n: '0.076 CSS-002: No dark mode', d: 'Vars ready, no dark variants. Combined with DS1-5.', p: 75, e: '4h' },
 { s: 'todo', b: 'pre-launch', n: '0.077 CSS-003: 30+ regex safelist', d: 'Inflates CSS. Correct for arch.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.078 CSS-004: 128KB CSS from 170KB', d: 'Dead CSS possible. Usage analysis.', p: 75, e: '1h' },
@@ -1979,12 +1979,12 @@ const features = [
 { s: 'todo', b: 'pre-launch', n: '0.106 TS1-2: SMS PostHog attribution', d: 'Zero SMS tracking.', p: 75, e: '1h' },
 
 // 0-T: CX Accessibility (Pod 4, P1)
-{ s: 'todo', b: 'pre-launch', n: '0.107 DS1-2: Dashboard a11y Phase 1', d: 'Scored 1.0. ARIA tablist/tab/tabpanel, focus, :focus-visible. axe 0 critical.', p: 75, e: '3h' },
+{ s: 'done', b: 'pre-launch', n: '0.107 DS1-2: Dashboard a11y Phase 1', d: 'CS-007: role=button + tabindex on nav items, keyboard Enter/Space, job modal role=dialog + aria-modal + focus trap + Escape + focus return, skip link, role=main. axe-core added.', p: 75, e: '3h' },
 { s: 'todo', b: 'pre-launch', n: '0.108 ES1-2: Extension a11y 1.0', d: 'Scored 1.0. ARIA popup, keyboard, focus, screen reader.', p: 75, e: '2h' },
-{ s: 'todo', b: 'pre-launch', n: '0.109 LS1-1: Landing a11y (19 btn, 6 input)', d: 'Scored 2.0. Zero ARIA. Roles, labels, states.', p: 75, e: '2h' },
+{ s: 'done', b: 'pre-launch', n: '0.109 LS1-1: Landing a11y (19 btn, 6 input)', d: 'CS-007: aria-label on buttons + inputs, form labels linked, auth tabs tablist/tab, nav labeled, skip link, main-content target.', p: 75, e: '2h' },
 { s: 'todo', b: 'pre-launch', n: '0.110 LS1-4: 3 H1 tags in DOM', d: 'display:none→conditional render. P2→P1.', p: 75, e: '30min' },
-{ s: 'todo', b: 'pre-launch', n: '0.111 IX-A11Y-001: Zero ARIA landing', d: 'Combined with LS1-1.', p: 75, e: '2h' },
-{ s: 'todo', b: 'pre-launch', n: '0.112 IX-A11Y-002: Keyboard trap modal', d: 'No Tab trap, no Escape.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.111 IX-A11Y-001: Zero ARIA landing', d: 'CS-007: aria-label, aria-live, role=dialog, aria-modal, tablist, form labels, skip link. Combined with LS1-1.', p: 75, e: '2h' },
+{ s: 'done', b: 'pre-launch', n: '0.112 IX-A11Y-002: Keyboard trap modal', d: 'CS-007: Focus trap (Tab cycling first↔last), Escape closes, focus return to trigger element, aria-hidden toggled on open/close.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.113 IX-A11Y-003: Form labels unlinked', d: '6 inputs no for/id.', p: 75, e: '30min' },
 
 // 0-U: CX Bundle+Audit (Pod 4, P1)
