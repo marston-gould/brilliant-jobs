@@ -292,6 +292,8 @@ function openPricingModal() {
 
 // ─── Checkout Flow ───
 async function startCheckout(mode, tier, packQty) {
+  // CX-06: PostHog — checkout started
+  if (window.posthog) posthog.capture('billing_checkout_started', { mode, tier: tier || null, pack_qty: packQty || null });
   const session = await sb.auth.getSession();
   const token = session?.data?.session?.access_token;
   if (!token) { window.location.href = '/'; return; }
@@ -311,6 +313,8 @@ async function startCheckout(mode, tier, packQty) {
 }
 
 async function openCustomerPortal() {
+  // CX-06: PostHog — billing portal opened
+  if (window.posthog) posthog.capture('billing_portal_opened');
   const session = await sb.auth.getSession();
   const token = session?.data?.session?.access_token;
   if (!token) { window.location.href = '/'; return; }
@@ -606,6 +610,8 @@ window.getUserCredits = getUserCredits;
 
 // ─── Init ───
 function initBilling() {
+  // CX-06: PostHog — billing page viewed
+  if (window.posthog) posthog.capture('billing_page_viewed');
   // Check admin status from profile (already fetched in app.js init)
   _isAdmin = (window._bjUserRole === 'admin');
   loadCreditBalance();

@@ -183,6 +183,9 @@ function ncShowOptInModal() {
 
   document.body.appendChild(modal);
 
+  // CX-06: PostHog — notification opt-in modal shown
+  if (window.posthog) posthog.capture('notification_opt_in_shown', { categories_shown: categoryToggles.map(c => c.key) });
+
   document.getElementById('nc-optin-save').addEventListener('click', ncSaveOptInPreferences);
 }
 
@@ -249,6 +252,14 @@ async function ncSaveOptInPreferences() {
 
     ncShowToast('Notification preferences saved!', 'success');
     console.log('[NC] Opt-in complete: ' + rows.length + ' preferences seeded, marketing=' + marketingOptIn);
+
+    // CX-06: PostHog — notification opt-in saved
+    if (window.posthog) posthog.capture('notification_opt_in_saved', {
+      categories_enabled: Object.keys(enabledCategories).filter(k => enabledCategories[k]),
+      categories_disabled: Object.keys(enabledCategories).filter(k => !enabledCategories[k]),
+      marketing_opt_in: marketingOptIn,
+      total_preferences: rows.length
+    });
 
   } catch (e) {
     console.error('[NC] Opt-in save failed:', e);
@@ -326,6 +337,8 @@ async function ncToggleSmsForType(type, enabled) {
       .eq('notification_type', type);
     if (ncPrefs[type]) ncPrefs[type].sms_enabled = enabled;
     console.log('[NC] SMS ' + (enabled ? 'enabled' : 'disabled') + ' for ' + type);
+    // CX-06: PostHog — notification SMS toggled
+    if (window.posthog) posthog.capture('notification_sms_toggled', { type: type, enabled: enabled });
   } catch(e) { reportError('notification-center', e); console.warn('[NC] SMS toggle failed for ' + type + ':', e);
   }
 }

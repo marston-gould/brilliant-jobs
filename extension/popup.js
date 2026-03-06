@@ -382,12 +382,45 @@ checkAuth();
 
 $$('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
-    $$('.tab').forEach(t => t.classList.remove('active'));
-    $$('.tab-content').forEach(tc => tc.classList.remove('active'));
-    tab.classList.add('active');
-    $(`#tab-${tab.dataset.tab}`).classList.add('active');
+    activateTab(tab);
   });
 });
+
+// CX-05: Keyboard navigation for tabs (arrow keys, Home, End)
+document.querySelector('.tabs')?.addEventListener('keydown', (e) => {
+  const tabs = Array.from($$('.tab')).filter(t => t.style.display !== 'none');
+  const idx = tabs.indexOf(e.target);
+  if (idx === -1) return;
+  let next;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+    next = tabs[(idx + 1) % tabs.length];
+  } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+    next = tabs[(idx - 1 + tabs.length) % tabs.length];
+  } else if (e.key === 'Home') {
+    next = tabs[0];
+  } else if (e.key === 'End') {
+    next = tabs[tabs.length - 1];
+  }
+  if (next) {
+    e.preventDefault();
+    activateTab(next);
+    next.focus();
+  }
+});
+
+function activateTab(tab) {
+  $$('.tab').forEach(t => {
+    t.classList.remove('active');
+    t.setAttribute('aria-selected', 'false');
+    t.setAttribute('tabindex', '-1');
+  });
+  $$('.tab-content').forEach(tc => tc.classList.remove('active'));
+  tab.classList.add('active');
+  tab.setAttribute('aria-selected', 'true');
+  tab.setAttribute('tabindex', '0');
+  const panel = $(`#tab-${tab.dataset.tab}`);
+  if (panel) panel.classList.add('active');
+}
 
 // ============================================================
 // LOGGING HELPERS

@@ -13928,6 +13928,1271 @@ function acceptAnalyzeHidden() {
 }
 
 
+// === js/tier-gating.js ===
+// === Tier Gating Module ===
+// Phase 7: Reusable tier gate component for Archive + Metrics feature gating
+
+// Tier gate configuration
+const TIER_GATES = {
+  archive_storage:    { free: 2097152, starter: 10485760, pro: 52428800 },
+  archive_retention:  { free: 30, starter: 90, pro: Infinity },
+  max_resumes:        { free: 3, starter: 10, pro: Infinity },
+  max_versions:       { free: 1, starter: 5, pro: Infinity },
+  score_sparkline:    { free: false, starter: 10, pro: Infinity },
+  level_fit:          { free: false, starter: true, pro: true },
+  pipeline_stats:     { free: false, starter: 'basic', pro: 'full' },
+  job_log:            { free: false, starter: 10, pro: Infinity },
+  ai_scoring:         { free: false, starter: false, pro: true }
+};
+
+// Get current user tier
+function getUserTier() {
+  // Use billing system's _userPricing if available
+  if (typeof _userPricing !== 'undefined' && _userPricing && _userPricing.tier) {
+    return _userPricing.tier;
+  }
+  // Fallback: check profiles
+  if (typeof currentUser !== 'undefined' && currentUser?.user_metadata?.plan) {
+    return currentUser.user_metadata.plan;
+  }
+  return 'free';
+}
+
+// Check if a feature is available at current tier
+function canAccess(feature) {
+  const tier = getUserTier();
+  const gate = TIER_GATES[feature];
+  if (!gate) return true;
+  const val = gate[tier];
+  if (val === false) return false;
+  if (val === true || val === Infinity) return true;
+  return val;
+}
+
+// Get the minimum tier required for a feature
+function requiredTier(feature) {
+  const gate = TIER_GATES[feature];
+  if (!gate) return 'free';
+  if (gate.free !== false) return 'free';
+  if (gate.starter !== false) return 'starter';
+  return 'pro';
+}
+
+// Show tier gate overlay on an element
+// Usage: showTierGate(element, 'starter', 'Score history requires Starter plan')
+window.showTierGate = function(el, minTier, message) {
+  if (!el) return;
+  el.style.position = 'relative';
+
+  // Remove existing gate if any
+  var existing = el.querySelector('.tier-gate-overlay');
+  if (existing) existing.remove();
+
+  const tierNames = { starter: 'Starter', pro: 'Pro' };
+  const overlay = document.createElement('div');
+  overlay.className = 'tier-gate-overlay';
+  overlay.style.cssText = 'position:absolute;inset:0;background:rgba(15,17,23,0.85);backdrop-filter:blur(4px);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;border-radius:inherit;';
+  overlay.innerHTML = `
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="var(--warm)" stroke-width="2" style="margin-bottom:8px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;">${message || (tierNames[minTier] || 'Upgrade') + ' plan required'}</div>
+    <button class="btn btn-sm btn-primary" onclick="event.stopPropagation();showPage('subscription');" style="font-size:10px;padding:4px 14px;margin-top:6px;">Upgrade to ${tierNames[minTier] || 'Pro'}</button>
+  `;
+  el.appendChild(overlay);
+};
+
+// Remove tier gate
+window.removeTierGate = function(el) {
+  if (!el) return;
+  var overlay = el.querySelector('.tier-gate-overlay');
+  if (overlay) overlay.remove();
+};
+
+// Apply tier gating across Resume Metrics
+function applyMetricsTierGating() {
+  const tier = getUserTier();
+
+  // Sparkline: Free gets nothing
+  if (tier === 'free') {
+    var sparkEl = document.getElementById('metrics-sparkline');
+    if (sparkEl && sparkEl.parentElement) {
+      showTierGate(sparkEl.parentElement, 'starter', 'Score history requires Starter plan');
+    }
+  }
+
+  // Level fit: Free gets nothing
+  if (tier === 'free') {
+    var levelEl = document.getElementById('metrics-level-chart');
+    if (levelEl && levelEl.closest('.stats-chart-card')) {
+      showTierGate(levelEl.closest('.stats-chart-card'), 'starter', 'Level fit analysis requires Starter plan');
+    }
+  }
+
+  // Pipeline: Free gets nothing
+  if (tier === 'free') {
+    var funnelEl = document.getElementById('metrics-funnel-chart');
+    if (funnelEl && funnelEl.closest('.stats-chart-card')) {
+      showTierGate(funnelEl.closest('.stats-chart-card'), 'starter', 'Pipeline analytics requires Starter plan');
+    }
+  }
+
+  // Job log: Free gets nothing, Starter gets last 10
+  if (tier === 'free') {
+    var logEl = document.getElementById('metrics-usage-log');
+    if (logEl) showTierGate(logEl, 'starter', 'Application log requires Starter plan');
+  }
+}
+
+// Apply tier gating across Resume Archive
+function applyArchiveTierGating() {
+  // Archive gating is mostly server-side (check_resume_limits)
+  // Client-side we just show the storage bar and CTA from Phase 3
+}
+
+// Hook into metrics load to apply gating after render
+var _origLoadResumeMetrics = window.loadResumeMetrics;
+if (_origLoadResumeMetrics) {
+  window.loadResumeMetrics = async function() {
+    await _origLoadResumeMetrics();
+    applyMetricsTierGating();
+  };
+}
+
+// Expose for use by other modules
+window.canAccessFeature = canAccess;
+window.getUserTier = getUserTier;
+window.requiredTierFor = requiredTier;
+
+
+// === js/fingerprint.js ===
+/**
+ * Brilliant Jobs — Browser Fingerprint Module
+ * Lightweight client-side fingerprint for referral fraud detection.
+ * Generates a deterministic hash from browser properties.
+ * v5.10: Phase 4 — Referral Program
+ */
+
+(function() {
+  'use strict';
+
+  // Simple hash (FNV-1a 32-bit)
+  function fnv1a(str) {
+    var hash = 0x811c9dc5;
+    for (var i = 0; i < str.length; i++) {
+      hash ^= str.charCodeAt(i);
+      hash = (hash * 0x01000193) >>> 0;
+    }
+    return hash.toString(16).padStart(8, '0');
+  }
+
+  function getComponents() {
+    var c = [];
+    var nav = window.navigator || {};
+    var screen = window.screen || {};
+
+    // User agent
+    c.push(nav.userAgent || '');
+
+    // Language
+    c.push(nav.language || nav.userLanguage || '');
+    c.push((nav.languages || []).join(','));
+
+    // Screen
+    c.push(screen.width + 'x' + screen.height);
+    c.push(String(screen.colorDepth || ''));
+    c.push(String(screen.pixelDepth || ''));
+
+    // Timezone
+    try { c.push(Intl.DateTimeFormat().resolvedOptions().timeZone); } catch(e) { c.push(''); }
+    c.push(String(new Date().getTimezoneOffset()));
+
+    // Platform
+    c.push(nav.platform || '');
+    c.push(String(nav.hardwareConcurrency || ''));
+    c.push(String(nav.maxTouchPoints || 0));
+    c.push(String(nav.deviceMemory || ''));
+
+    // WebGL renderer (good fingerprint signal)
+    try {
+      var canvas = document.createElement('canvas');
+      var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      if (gl) {
+        var ext = gl.getExtension('WEBGL_debug_renderer_info');
+        if (ext) {
+          c.push(gl.getParameter(ext.UNMASKED_VENDOR_WEBGL) || '');
+          c.push(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || '');
+        }
+      }
+    } catch(e) { c.push('no-webgl'); }
+
+    // Canvas fingerprint
+    try {
+      var cv = document.createElement('canvas');
+      cv.width = 200; cv.height = 50;
+      var ctx = cv.getContext('2d');
+      ctx.textBaseline = 'top';
+      ctx.font = '14px Arial';
+      ctx.fillStyle = '#f60';
+      ctx.fillRect(0, 0, 100, 25);
+      ctx.fillStyle = '#069';
+      ctx.fillText('BJ-fp-2025', 2, 15);
+      ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
+      ctx.fillText('BJ-fp-2025', 4, 17);
+      c.push(cv.toDataURL().substring(0, 100));
+    } catch(e) { c.push('no-canvas'); }
+
+    // Installed plugins count
+    c.push(String((nav.plugins || []).length));
+
+    // Do-not-track
+    c.push(String(nav.doNotTrack || ''));
+
+    // Cookie enabled
+    c.push(String(nav.cookieEnabled));
+
+    return c;
+  }
+
+  function generateFingerprint() {
+    var components = getComponents();
+    var raw = components.join('||');
+    // Generate two hashes for more uniqueness
+    var h1 = fnv1a(raw);
+    var h2 = fnv1a(raw + '::salt::bj2025');
+    return 'fp-' + h1 + h2;
+  }
+
+  // Expose globally
+  window.bjFingerprint = {
+    generate: generateFingerprint,
+    components: getComponents
+  };
+
+  // Auto-store in sessionStorage for signup flow
+  try {
+    var fp = generateFingerprint();
+    sessionStorage.setItem('bj_fingerprint', fp);
+  } catch(e) { /* privacy mode */ }
+})();
+
+
+// === js/app.js ===
+// [BJ] Dashboard v7.22 loaded
+console.log('[BJ] Dashboard v7.22 loaded');
+// BJ_VERSION is defined in js/version.js (single source of truth)
+// version.js auto-populates #nav-version and .bj-version elements
+
+// Auth
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session?.user) { window.location.href = '/'; return; }
+  currentUser = session.user;
+  // CS-003: PostHog identity resolution — identify user post-login (CX-01)
+  if (window.posthog && currentUser) {
+    posthog.identify(currentUser.id, {
+      email: currentUser.email,
+      created_at: currentUser.created_at,
+    });
+  }
+  // Persist account flag for landing page segment detection (survives logout)
+  localStorage.setItem('bj_has_account', 'true');
+
+// Pre-warm static ref table caches (v3.84)
+if (typeof prewarmRefCaches === 'function') prewarmRefCaches();
+
+// Error recovery & offline resilience (v3.87)
+if (typeof initOfflineDetection === 'function') initOfflineDetection();
+if (typeof initGlobalErrorHandlers === 'function') initGlobalErrorHandlers();
+
+// Session management hardening (v3.90)
+if (typeof initSessionManagement === 'function') initSessionManagement();
+  let profile = null;
+  try {
+    const p = await safeQuery(() => sb.from('profiles').select('approved,cohort_id,plan,role').eq('id', currentUser.id).single(), { label: 'app:profiles', fallback: null });
+    profile = p;
+    if (!p?.approved) { window.location.href = '/?pending=1'; return; }
+    currentUser._cohortId = p.cohort_id || null;
+    window._bjUserPlan = p.plan || 'free';
+    window._bjUserRole = p.role || 'user';
+  } catch (e) { if (typeof toastError === 'function') toastError('Failed to load your profile. Please refresh the page.'); }
+  $('#auth-gate').style.display = 'none';
+  $('#app').style.display = 'flex';
+  // Referral attribution — check if new user came via referral link (Phase 4 v5.10)
+  try { await processReferralAttribution(currentUser); } catch(e) { reportError('app', e); console.warn('[Referral] Attribution check skipped:', e.message); }
+  // Show admin nav immediately — profile already fetched, no extra round trip
+  if (profile && profile.role === 'admin') {
+    var navAdmin = document.getElementById('nav-admin');
+    if (navAdmin) { navAdmin.style.display = ''; console.log('[Admin] \u2713 Nav shown'); }
+  }
+  // Re-apply active page (tab restore ran while #app was hidden)
+  const activeTab = localStorage.getItem('bj_active_tab');
+  if (activeTab && $(`#page-${activeTab}`)) {
+    $$('.page').forEach(p => p.classList.remove('active'));
+    $(`#page-${activeTab}`).classList.add('active');
+    $$('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === activeTab));
+  }
+  $('#nav-email').textContent = currentUser.email;
+  $('#nav-avatar').textContent = currentUser.email.charAt(0).toUpperCase();
+  // Update nav tier badge based on profile role/plan
+  const navPlanEl = document.querySelector('.nav-user-plan');
+  if (navPlanEl && profile) {
+    if (profile.role === 'admin') {
+      navPlanEl.textContent = 'ADMIN';
+      navPlanEl.style.color = '#f59e0b';
+      navPlanEl.style.fontWeight = '700';
+      navPlanEl.style.letterSpacing = '1px';
+    } else if ((profile.plan || 'free') === 'pro') {
+      navPlanEl.textContent = 'Pro Plan';
+      navPlanEl.style.color = '#3b82f6';
+      navPlanEl.style.fontWeight = '600';
+    } else if ((profile.plan || 'free') === 'enterprise') {
+      navPlanEl.textContent = 'Enterprise';
+      navPlanEl.style.color = '#8b5cf6';
+      navPlanEl.style.fontWeight = '600';
+    } else {
+      navPlanEl.textContent = 'Free Plan';
+    }
+  }
+  // Sync user data from Supabase → localStorage on login
+  await loadUserData(currentUser.id);
+  // Session analytics — Phase B
+  const bjSessionId = await initSession();
+  if (bjSessionId && window.posthog) {
+    posthog.register({
+      bj_session_id: bjSessionId,
+      bj_cohort_id: currentUser._cohortId || null,
+      bj_plan_id: window._bjUserPlan || 'free'
+    });
+  }
+  // Re-init admin page if it was the active tab (tab restore runs before auth)
+  // Admin moved to /admin page (v6.26)
+  
+  // Q24-Q25: Load saved filters and tuning from Supabase (fallback to localStorage)
+  const userId = session?.user?.id;
+  
+  // Load filters from Supabase
+  let filtersFromCloud = false;
+  if (userId) {
+    const cloudFilters = await safeQuery(() => sb.from('user_filters').select('*').eq('user_id', userId).order('sort_order'), { label: 'app:user_filters', fallback: [] });
+    if (cloudFilters && cloudFilters.length > 0) {
+      savedFilters = cloudFilters.map(f => ({ ...f.filter_data, _id: f.id, name: f.name }));
+      filtersFromCloud = true;
+    }
+  }
+  if (!filtersFromCloud) {
+    savedFilters = safeReadLS('bj_saved_filters', []);
+    // Migrate localStorage filters to Supabase on first load
+    if (userId && savedFilters.length > 0 && !localStorage.getItem('bj_filters_migrated')) {
+      for (let i = 0; i < savedFilters.length; i++) {
+        const f = savedFilters[i];
+        await sb.from('user_filters').insert({
+          user_id: userId,
+          name: f.name || 'Untitled',
+          filter_data: f,
+          sort_order: i,
+        });
+      }
+      localStorage.setItem('bj_filters_migrated', '1');
+      showToast('Your saved searches are now synced to the cloud.', { type: 'success', duration: 5000 });
+    }
+  }
+
+  // v7.21: Re-apply progressive nav now that savedFilters is loaded from DB
+  // initOnboarding() runs synchronously at parse time before this async fetch completes,
+  // so nav items were always dimmed for users with saved filters.
+  {
+    let _step = getOnboardingStep();
+    if (_step < 1 && resumes && resumes.length > 0) { updateOnboardingStep(1); _step = 1; }
+    if (_step < 2 && savedFilters && savedFilters.length > 0) { updateOnboardingStep(2); _step = 2; }
+    if (_step < 3 && localStorage.getItem('bj_first_search_done')) { updateOnboardingStep(3); _step = 3; }
+    if (_step < 4 && localStorage.getItem('bj_pipeline_used')) { updateOnboardingStep(4); _step = 4; }
+    applyProgressiveNav(_step);
+  }
+
+  // Block 7: Check for pending pills from city page conversion
+  try {
+    var pendingPills = safeReadLS('bj_pending_pills', []);
+    if (pendingPills.length > 0) {
+      localStorage.removeItem('bj_pending_pills');
+      // Apply to active filter (or first filter, or create new)
+      var target = currentFilter || (savedFilters && savedFilters.length > 0 ? savedFilters[0] : null);
+      if (target) {
+        var pillsKey = target.pills ? 'pills' : 'keywords';
+        if (!target[pillsKey]) target[pillsKey] = [];
+        pendingPills.forEach(function(pp) {
+          var pillType = pp.type === 'title' ? 'TITLE' : pp.type === 'skill' ? 'SKILLS' : pp.type === 'industry' ? 'INDUSTRY' : 'KEYWORD';
+          var exists = target[pillsKey].some(function(p) { return p.type === pillType && p.value === pp.value; });
+          if (!exists) {
+            target[pillsKey].push({ type: pillType, value: pp.value, _from: 'city_page' });
+          }
+        });
+        localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+        var names = pendingPills.map(function(p) { return '"' + p.value + '"'; }).join(', ');
+        showToast('Added ' + names + ' to your search filters', { type: 'success', duration: 5000 });
+        if (window.posthog) posthog.capture('pending_pills_applied', { count: pendingPills.length, pills: pendingPills });
+      }
+    }
+  } catch(e) { reportError('app', e); console.warn('[pills] Pending pill apply failed:', e.message); }
+  
+  // Load tuning from Supabase
+  // First: normalize any legacy WHEN pills in saved filters
+  let whenNormDirty = false;
+  savedFilters.forEach(sf => {
+    if (sf.whenPills && sf.whenPills.length > 0) {
+      sf.whenPills.forEach(pill => {
+        if (pill.values && pill.values.length > 0) {
+          const norm = typeof normalizeWhenValue === 'function' ? normalizeWhenValue(pill.values[0]) : null;
+          if (norm && norm.label !== pill.values[0]) {
+            pill.values[0] = norm.label;
+            whenNormDirty = true;
+          }
+        }
+      });
+    }
+  });
+  if (whenNormDirty) {
+    if (filtersFromCloud && userId) {
+      // Persist normalized values back to cloud
+      for (let i = 0; i < savedFilters.length; i++) {
+        const sf = savedFilters[i];
+        if (sf._id) {
+          sb.from('user_filters').update({ filter_data: sf }).eq('id', sf._id).then(() => {});
+        }
+      }
+    }
+    saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
+  }
+
+  let tuningFromCloud = false;
+  if (userId) {
+    const cloudTuning = await safeQuery(() => sb.from('user_tuning').select('tuning_data').eq('user_id', userId).single(), { label: 'app:user_tuning', fallback: null });
+    if (cloudTuning?.tuning_data && Object.keys(cloudTuning.tuning_data).length > 0) {
+      tuningSettings = cloudTuning.tuning_data;
+      tuningFromCloud = true;
+    }
+  }
+  if (!tuningFromCloud) {
+    tuningSettings = safeReadLS('bj_tuning', {});
+    // Migrate to Supabase
+    if (userId && Object.keys(tuningSettings).length > 0 && !localStorage.getItem('bj_tuning_migrated')) {
+      await sb.from('user_tuning').upsert({
+        user_id: userId,
+        tuning_data: tuningSettings,
+      }, { onConflict: 'user_id' });
+      localStorage.setItem('bj_tuning_migrated', '1');
+    }
+  }
+  
+  tuningLocExclPills = tuningSettings.locationExcludes || [];
+  tuningTitleExclPills = tuningSettings.titleExcludes || [];
+  tuningCoExclPills = tuningSettings.companyExcludes || [];
+  tuningIndExclPills = tuningSettings.industryExcludes || [];
+  levelHierarchy = tuningSettings.levelHierarchy || [];
+  hiddenJobIds = safeReadLS('bj_hidden_jobs', []);
+  // Pipeline now loaded from Supabase (Ghost Build Phase 1)
+  // savedJobIds and appliedJobIds are populated by initPipeline()
+  savedJobIds = [];
+  appliedJobIds = [];
+  resumes = safeReadLS('bj_resumes', []);
+  // Safety net: if resumes still empty after loadUserData, try direct cloud fetch (v4.33)
+  if (resumes.length === 0 && userId) {
+    try {
+      const prof = await safeQuery(() => sb.from('profiles').select('user_data').eq('id', userId).single(), { label: 'app:profiles', fallback: null });
+      const cloudResumes = prof?.user_data?.resumes;
+      if (Array.isArray(cloudResumes) && cloudResumes.length > 0) {
+        resumes = cloudResumes;
+        saveUserData('bj_resumes', JSON.stringify(resumes));
+        console.log('[sync] Resume recovery: restored', resumes.length, 'resumes from cloud');
+      }
+    } catch(e) { reportError('app', e); console.warn('[sync] Resume recovery failed:', e.message); }
+  }
+  // Check for resumes missing storagePath and attempt upload from IndexedDB (v4.46)
+  if (resumes.length > 0 && currentUser) {
+    var needsStorageSync = resumes.filter(function(r) { return !r.storagePath && !r.archived; });
+    if (needsStorageSync.length > 0) {
+      console.log('[resume-storage] ' + needsStorageSync.length + ' resumes need Storage upload');
+      needsStorageSync.forEach(async function(r) {
+        try {
+          var file = await bjFileStore.get(r.id);
+          if (file) {
+            var path = currentUser.id + '/' + r.id + '_' + (r.fileName || 'resume').replace(/[^a-zA-Z0-9._-]/g, '_');
+            var { error } = await sb.storage.from('resumes').upload(path, file, { cacheControl: '3600', upsert: true, contentType: file.type || 'application/octet-stream' });
+            if (!error) {
+              var idx = resumes.findIndex(function(x) { return x.id === r.id; });
+              if (idx >= 0) { resumes[idx].storagePath = path; saveResumes(); }
+              console.log('[resume-storage] Backfilled', path);
+            }
+          }
+        } catch(e) { reportError('app:silent', e); }
+      });
+    }
+  }
+  // Cloud sync is now live via user_filters + user_tuning tables
+  // Q23: Populate global rules crosslink banner
+  const grBanner = document.getElementById('global-rules-banner');
+  const grSummary = document.getElementById('gr-summary');
+  if (grBanner && grSummary) {
+    const parts = [];
+    if (tuningSettings.locationExcludes?.length) parts.push(tuningSettings.locationExcludes.length + ' excluded locations');
+    if (tuningSettings.titleExcludes?.length) parts.push(tuningSettings.titleExcludes.length + ' excluded titles');
+    if (tuningSettings.companyExcludes?.length) parts.push(tuningSettings.companyExcludes.length + ' excluded companies');
+    if (tuningSettings.levelHierarchy?.length) parts.push(tuningSettings.levelHierarchy.length + ' levels');
+    if (parts.length) {
+      grSummary.textContent = parts.join(', ');
+      grBanner.style.display = '';
+    }
+  }
+  // Initialize Supabase pipeline (migrate localStorage → Supabase on first run)
+  if (typeof initPipeline === 'function') await initPipeline();
+  // Overlay Pipeline S2: migrate localStorage pipeline → new pipeline table (one-time)
+  if (typeof PipelineMigration !== 'undefined' && !PipelineMigration.hasRun()) {
+    PipelineMigration.run(window._sb || sb, currentUser.id).catch(function(e) {
+      console.warn('[BJ] pipeline-migration failed:', e);
+    });
+  }
+  // Trigger sparkle flourish
+  setTimeout(() => { $('#nav-brand').classList.add('sparkle-active'); }, 100);
+  // Initialize billing (credit balance, pricing, payment return check)
+  if (typeof initBilling === 'function') initBilling();
+  // Run unified sync health check — recovers any missing localStorage domains from cloud
+  if (typeof syncHealthCheck === 'function') {
+    setTimeout(function() { syncHealthCheck(); }, 500);
+  }
+  loadStats();
+  checkExtensionStatus();
+  loadCollections();
+  // Initialize Notification Center (Session 2 — loads state, prefs, opt-in check)
+  if (typeof initNotificationCenter === 'function') initNotificationCenter();
+  // Start session heartbeat
+  if (bjSessionId) {
+    setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        sb.rpc('session_heartbeat', { p_session_id: bjSessionId });
+      }
+    }, 5 * 60 * 1000);
+  }
+}
+
+// Session analytics — create or reuse session
+async function initSession() {
+  const existing = sessionStorage.getItem('bj_session_id');
+  if (existing) {
+    sb.rpc('session_heartbeat', { p_session_id: existing });
+    return existing;
+  }
+  const deviceType = window.innerWidth < 768 ? 'mobile' :
+                     window.innerWidth < 1024 ? 'tablet' : 'desktop';
+  const params = new URLSearchParams(window.location.search);
+  const referralSource = params.get('utm_source') || params.get('ref') || 'direct';
+  const entryPage = window.location.pathname;
+  try {
+    const { data: sessionId, error } = await sb.rpc('create_session', {
+      p_user_id: currentUser.id,
+      p_device_type: deviceType,
+      p_referral_source: referralSource,
+      p_entry_page: entryPage,
+      p_metadata: {}
+    });
+    if (error) { console.error('[BJ] Session init error:', error); return null; }
+    sessionStorage.setItem('bj_session_id', sessionId);
+    return sessionId;
+  } catch (e) {
+    console.error('[BJ] Session init error:', e);
+    return null;
+  }
+}
+
+init();
+
+// Extension detection — check last_scan_at from profiles
+// Nav
+$$('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    $$('.nav-item').forEach(n => n.classList.remove('active'));
+    item.classList.add('active');
+    // Brilliant sparkle flourish
+    item.classList.remove('tab-flash');
+    void item.offsetWidth; // force reflow to restart animation
+    item.classList.add('tab-flash');
+    // Spawn sparkle dots + stars
+    const rect = item.getBoundingClientRect();
+    const navRect = item.offsetParent?.getBoundingClientRect() || rect;
+    for (let i = 0; i < 5; i++) {
+      const dot = document.createElement('div');
+      dot.className = 'tab-sparkle';
+      const size = 2 + Math.random() * 4;
+      dot.style.width = size + 'px';
+      dot.style.height = size + 'px';
+      dot.style.top = (Math.random() * rect.height) + 'px';
+      dot.style.left = (20 + Math.random() * (rect.width - 30)) + 'px';
+      dot.style.animationDelay = (Math.random() * 0.3) + 's';
+      item.appendChild(dot);
+      setTimeout(() => dot.remove(), 900);
+    }
+    for (let i = 0; i < 2; i++) {
+      const star = document.createElement('div');
+      star.className = 'tab-star';
+      star.textContent = i % 2 === 0 ? '✦' : '✧';
+      star.style.top = (4 + Math.random() * (rect.height - 12)) + 'px';
+      star.style.left = (30 + Math.random() * (rect.width - 50)) + 'px';
+      star.style.animationDelay = (0.1 + Math.random() * 0.3) + 's';
+      item.appendChild(star);
+      setTimeout(() => star.remove(), 1000);
+    }
+    setTimeout(() => item.classList.remove('tab-flash'), 1000);
+    $$('.page').forEach(p => p.classList.remove('active'));
+    $(`#page-${item.dataset.page}`).classList.add('active');
+    // Persist active tab
+    localStorage.setItem('bj_active_tab', item.dataset.page);
+    // CX-06: PostHog — dashboard tab viewed
+    if (window.posthog) posthog.capture('dashboard_tab_viewed', { tab: item.dataset.page });
+    // Init stats charts when stats tab is shown
+    if (item.dataset.page === 'stats' && typeof initStatsPage === 'function') initStatsPage();
+    // Admin moved to /admin page (v6.26)
+    if (item.dataset.page === 'feedback' && typeof initCannyFeedback === 'function') initCannyFeedback();
+    if (item.dataset.page === 'ghost' && typeof renderGhostMonitor === 'function') renderGhostMonitor();
+    if (item.dataset.page === 'referrals' && typeof initReferralHub === 'function') initReferralHub();
+    // Refresh resumes when switching to resumes tab
+    if (item.dataset.page === 'resumes') {
+      if (typeof renderResumes === 'function') renderResumes();
+      // If active resumes are empty but user may have cloud data, re-reconcile
+      var activeCount = (resumes || []).filter(function(r) { return !r.archived; }).length;
+      if (activeCount === 0 && typeof reconcileResumeArchive === 'function' && typeof currentUser !== 'undefined' && currentUser) {
+        reconcileResumeArchive();
+      }
+    }
+    // Close help panel on page switch
+    const hp = $('#page-help-panel'); if (hp) hp.style.display = 'none';
+  });
+});
+
+// Restore last active tab on load
+const lastTab = localStorage.getItem('bj_active_tab');
+if (lastTab && $(`#page-${lastTab}`)) {
+  // If admin was saved tab, redirect to /admin (v6.26)
+  if (lastTab === "admin") { localStorage.setItem("bj_active_tab", "brilliant"); window.location.href = "/admin"; }
+  else {
+  $$('.page').forEach(p => p.classList.remove('active'));
+  $(`#page-${lastTab}`).classList.add('active');
+  $$('.nav-item').forEach(n => {
+    n.classList.toggle('active', n.dataset.page === lastTab);
+  });
+  // Admin moved to /admin page (v6.26)
+  if (lastTab === 'stats' && typeof initStatsPage === 'function') initStatsPage();
+  if (lastTab === 'feedback' && typeof initCannyFeedback === 'function') initCannyFeedback();
+  if (lastTab === 'referrals' && typeof initReferralHub === 'function') initReferralHub();
+  if (lastTab === 'ghost' && typeof renderGhostMonitor === 'function') renderGhostMonitor();
+  }
+}
+
+// Extension detection — check if extension has updated the profile recently
+const _helpContent = {
+  feed: { title: 'Jobs Feed', steps: [
+    'Check one or more saved searches in the sidebar to search jobs.',
+    'Shift+click column headers for multi-column sorting.',
+    'Click a job title to open the full description and apply.',
+    'Colored number badges show which filter matched each job.',
+    'Use the keyword insights panel to see term frequency and resume match scores.',
+  ]},
+  tuning: { title: 'Search Tuning', steps: [
+    'Set global rules that apply across ALL your saved searches.',
+    'Location rules: US-only toggle and city/country exclusions.',
+    'Title exclusions: remove common false positives (e.g. "intern").',
+    'Company exclusions: block specific employers or industries.',
+    'Level hierarchy: define seniority levels and their keywords for automatic job ranking.',
+  ]},
+  pipeline: { title: 'Pipeline', steps: [
+    'Track every job from saved through offer/rejection.',
+    'Click stage headers to collapse/expand sections.',
+    'Use the Move dropdown on any row to advance jobs through stages.',
+    'Stats at top show response rates and days-to-response.',
+    'Filter by saved search using the dropdown above the stages.',
+  ]},
+  resumes: { title: 'Resumes', steps: [
+    'Upload a resume for each role type or seniority level you target.',
+    'Assign a level (Director, Manager, etc.) to each resume.',
+    'Click filter pills on each card to assign resumes to your saved searches.',
+    'When you apply, the matching resume is automatically selected.',
+    'Keyword extraction shows how well each resume matches job descriptions.',
+  ]},
+  applications: { title: 'Applications', steps: [
+    'Queue tab: manage pending applications (manual add, batch process).',
+    'Rules tab: set default application mode (Manual, Notify, Auto) and auto-apply rules.',
+    'Notifications tab: configure email/SMS preferences for every alert type.',
+    'Verify your phone to unlock SMS notifications and escalation.',
+    'Set escalation rules: unanswered emails auto-escalate to SMS after your timeout.',
+    'Override notification settings per saved search for targeted control.',
+    'History tab: full audit trail of applications and notification delivery log.',
+  ]},
+  ghost: { title: 'Ghost Monitor', steps: [
+    'Coming soon: Track which companies view your profile after applying.',
+    'See who\'s ghosting you and who\'s actively reviewing your application.',
+    'Get notified when a company shows interest.',
+  ]},
+  stats: { title: 'Stats', steps: [
+    'View aggregated analytics across all your job search activity.',
+    'Track application volume, response rates, and pipeline velocity.',
+    'Compare performance across different filters and resume versions.',
+  ]},
+  setup: { title: 'Setup', steps: [
+    'Connect the Chrome extension to scan your LinkedIn network.',
+    'Your connections are matched against our job database.',
+    'Jobs where you have an inside contact are flagged for priority.',
+  ]},
+  settings: { title: 'Settings', steps: [
+    'Manage your account, notification preferences, and data.',
+    'Export or delete your data at any time.',
+  ]},
+  subscription: { title: 'Subscription', steps: [
+    'View your current plan and usage.',
+    'Upgrade to Pro for auto-apply, advanced analytics, and more.',
+  ]},
+};
+
+window.togglePageHelp = function(helpId) {
+  const panel = $('#page-help-panel');
+  if (!panel) return;
+  if (!helpId || panel.style.display !== 'none' && panel.dataset.active === helpId) {
+    panel.style.display = 'none';
+    panel.dataset.active = '';
+    return;
+  }
+  const content = _helpContent[helpId];
+  if (!content) return;
+  $('#help-panel-title').textContent = content.title;
+  $('#help-panel-body').innerHTML = content.steps.map((s, i) =>
+    `<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;">
+      <span style="width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${i + 1}</span>
+      <span>${s}</span>
+    </div>`
+  ).join('');
+  panel.style.display = '';
+  panel.dataset.active = helpId;
+};
+
+// Close help on outside click
+document.addEventListener('click', e => {
+  const panel = $('#page-help-panel');
+  if (panel && panel.style.display !== 'none' && !panel.contains(e.target) && !e.target.classList.contains('page-how-link')) {
+    panel.style.display = 'none';
+  }
+});
+
+// Extension detection — check if extension has updated the profile recently
+// Required extension version — bump this when a new extension release ships
+var REQUIRED_EXTENSION_VERSION = '2.17.0';
+
+function compareVersions(installed, required) {
+  if (!installed || !required) return 0;
+  var a = installed.split('.').map(Number);
+  var b = required.split('.').map(Number);
+  for (var i = 0; i < Math.max(a.length, b.length); i++) {
+    var av = a[i] || 0, bv = b[i] || 0;
+    if (av < bv) return -1;
+    if (av > bv) return 1;
+  }
+  return 0;
+}
+
+async function checkExtensionStatus() {
+  try {
+    const profile = await safeQuery(() => sb.from('profiles').select('last_scan_at, scanner_running, scanner_today_visited, scanner_today_limit, extension_version')
+      .eq('id', currentUser.id).single(), { label: 'app:profiles', fallback: null });
+
+    const navDot = $('#ext-status-dot');
+    const dot = $('#ext-dot');
+    const text = $('#ext-status-text');
+    const detail = $('#ext-status-detail');
+    const updateBanner = $('#ext-update-banner');
+
+    if (profile?.last_scan_at) {
+      const lastScan = new Date(profile.last_scan_at);
+      const hoursSince = (Date.now() - lastScan.getTime()) / 3600000;
+      const isActive = hoursSince < 24 || profile.scanner_running;
+
+      // Nav dot
+      if (navDot) {
+        if (isActive) { navDot.classList.add('connected'); navDot.title = 'Extension active'; }
+        else { navDot.classList.remove('connected'); navDot.title = 'Extension not detected'; }
+      }
+
+      // Version mismatch detection
+      var needsUpdate = profile.extension_version && compareVersions(profile.extension_version, REQUIRED_EXTENSION_VERSION) < 0;
+
+      // Nav dot amber for version mismatch
+      if (navDot && isActive && needsUpdate) {
+        navDot.classList.remove('connected');
+        navDot.classList.add('warning');
+        navDot.title = 'Extension update available (v' + REQUIRED_EXTENSION_VERSION + ')';
+      }
+
+      // Setup page status
+      if (dot && text && detail) {
+        if (isActive) {
+          dot.className = needsUpdate ? 'ext-dot warning' : 'ext-dot on';
+          text.textContent = needsUpdate ? 'Extension update available' : 'Extension connected';
+          const timeStr = lastScan.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+          const todayStr = lastScan.toDateString() === new Date().toDateString() ? 'today' : lastScan.toLocaleDateString([], { month: 'short', day: 'numeric' });
+          detail.textContent = profile.scanner_running
+            ? `Active now · last synced at ${timeStr}`
+            : `Last active ${todayStr} at ${timeStr}`;
+          // Hide download button when connected (but not if update needed)
+          var dlBox = $('#download-box');
+          if (dlBox) dlBox.style.display = needsUpdate ? '' : 'none';
+        } else {
+          dot.className = 'ext-dot off';
+          text.textContent = 'Extension inactive';
+          detail.textContent = `Last seen ${lastScan.toLocaleDateString([], { month: 'short', day: 'numeric' })} — open Chrome to reconnect`;
+        }
+      }
+
+      // Update banner
+      if (updateBanner) {
+        if (needsUpdate && isActive) {
+          updateBanner.style.display = '';
+          var instVer = $('#ext-installed-ver');
+          var reqVer = $('#ext-required-ver');
+          var verLabel = $('#ext-update-ver-label');
+          if (instVer) instVer.textContent = 'v' + profile.extension_version;
+          if (reqVer) reqVer.textContent = 'v' + REQUIRED_EXTENSION_VERSION;
+          if (verLabel) verLabel.textContent = REQUIRED_EXTENSION_VERSION;
+        } else {
+          updateBanner.style.display = 'none';
+        }
+      }
+    }
+  } catch(e) { reportError('app:ignore', e); }
+}
+checkExtensionStatus();
+setInterval(checkExtensionStatus, 60000);
+
+// Saved Jobs card → navigate to Pipeline
+$('#j-saved-card').addEventListener('click', () => {
+  $$('.nav-item').forEach(n => n.classList.remove('active'));
+  const pipelineNav = $('[data-page="pipeline"]');
+  if (pipelineNav) {
+    pipelineNav.classList.add('active');
+    pipelineNav.classList.remove('tab-flash');
+    void pipelineNav.offsetWidth;
+    pipelineNav.classList.add('tab-flash');
+    setTimeout(() => pipelineNav.classList.remove('tab-flash'), 1000);
+  }
+  $$('.page').forEach(p => p.classList.remove('active'));
+  $('#page-pipeline').classList.add('active');
+});
+
+// Download
+$('#download-btn').addEventListener('click', async () => {
+  const btn = $('#download-btn');
+  const status = $('#download-status');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;"></span> Preparing download...';
+  status.textContent = '';
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const res = await fetch('/api/build-extension', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` }
+    });
+    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || `Failed (${res.status})`); }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'brilliant-jobs-extension.zip';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    status.textContent = 'Download started. Follow the installation guide below.';
+    const instanceId = res.headers.get('X-Instance-Id') || 'bj-' + Math.random().toString(36).slice(2, 10);
+    $('#instance-card').style.display = 'block';
+    $('#ext-instance-id').textContent = instanceId;
+    $('#ext-built-at').textContent = new Date().toLocaleDateString();
+  } catch (e) { status.textContent = 'Error: ' + e.message; }
+  btn.disabled = false; btn.textContent = 'Download Extension';
+});
+
+// Update download button — triggers same download flow as main button
+var extUpdateDlBtn = $('#ext-update-dl-btn');
+if (extUpdateDlBtn) {
+  extUpdateDlBtn.addEventListener('click', function() {
+    var mainBtn = $('#download-btn');
+    if (mainBtn) mainBtn.click();
+  });
+}
+
+// ============================================================
+// GMAIL OAUTH — Connect / Disconnect / Status
+// ============================================================
+
+async function initGmailStatus() {
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return;
+    const conn = await safeQuery(() => sb.from('gmail_connections').select('gmail_address, sync_status')
+      .eq('user_id', session.user.id)
+      .maybeSingle(), { label: 'app:gmail_connections', fallback: [] });
+
+    const isConnected = conn && conn.sync_status === 'active';
+    updateGmailUI(isConnected, conn?.gmail_address || '');
+  } catch(e) { reportError('app', e); console.warn('[BJ] Gmail status check failed:', e.message);
+  }
+}
+
+function updateGmailUI(connected, email) {
+  // Setup page
+  const setupConn = $('#gmail-setup-connected');
+  const setupDisc = $('#gmail-setup-disconnected');
+  const setupAddr = $('#gmail-address');
+  const setupDot = $('#gmail-dot');
+  if (setupConn && setupDisc) {
+    setupConn.style.display = connected ? '' : 'none';
+    setupDisc.style.display = connected ? 'none' : '';
+    if (setupAddr) setupAddr.textContent = email;
+    if (setupDot) setupDot.className = 'setup-dot' + (connected ? ' connected' : '');
+  }
+  // Ghost monitor page
+  const ghostConn = $('#ghost-gmail-connected');
+  const ghostBtn = $('#gmail-connect-btn');
+  const ghostAddr = $('#ghost-gmail-address');
+  const gmailCard = $('#g-gmail-card');
+  const gmailChip = document.getElementById('g-gmail-stat');
+  if (ghostConn) ghostConn.style.display = connected ? '' : 'none';
+  if (ghostBtn) ghostBtn.style.display = connected ? 'none' : '';
+  if (ghostAddr) ghostAddr.textContent = email;
+  if (gmailCard) {
+    const valEl = gmailCard.querySelector('.stat-val');
+    if (valEl) { valEl.textContent = connected ? 'Connected' : 'Not Connected'; valEl.style.color = connected ? 'var(--green)' : 'var(--text-faint)'; }
+  }
+  // Update hero chip
+  if (gmailChip) {
+    gmailChip.textContent = connected ? 'On' : 'Off';
+    gmailChip.className = 'hero-stat-val ' + (connected ? 'hs-green' : 'hs-dim');
+    if (!connected) gmailChip.style.fontSize = '12px';
+  }
+}
+
+window.connectGmail = async function() {
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) { showToast('Please log in first.', { type: 'error' }); return; }
+    const res = await fetch('/api/auth/gmail/callback?action=connect', {
+      headers: { 'Authorization': 'Bearer ' + session.access_token }
+    });
+    const json = await res.json();
+    if (json.url) {
+      window.location.href = json.url;
+    } else {
+      showToast('Failed to start Gmail connection: ' + (json.error || 'Unknown error'), { type: 'error' });
+    }
+  } catch (e) {
+    showToast('Error connecting Gmail: ' + e.message, { type: 'error' });
+  }
+};
+
+window.disconnectGmail = async function() {
+  if (!confirm('Disconnect Gmail? Ghost Monitor will lose email-based detection.')) return;
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return;
+    const res = await fetch('/api/auth/gmail/disconnect', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + session.access_token }
+    });
+    const json = await res.json();
+    if (json.success) {
+      updateGmailUI(false, '');
+    } else {
+      showToast('Failed to disconnect: ' + (json.error || 'Unknown error'), { type: 'error' });
+    }
+  } catch (e) {
+    showToast('Error disconnecting Gmail: ' + e.message, { type: 'error' });
+  }
+};
+
+// Handle Gmail callback params
+(function handleGmailCallback() {
+  const params = new URLSearchParams(window.location.search);
+  const gmail = params.get('gmail');
+  if (!gmail) return;
+  const url = new URL(window.location);
+  url.searchParams.delete('gmail');
+  window.history.replaceState({}, '', url);
+  if (gmail === 'connected') {
+    initGmailStatus();
+    showToast('Gmail connected! Ghost Monitor will now scan for company responses.', { type: 'success' });
+    // v6.04: Mark Gmail integration connected for adoption suppression
+    if (typeof markIntegrationConnected === 'function') markIntegrationConnected('gmail');
+  } else if (gmail === 'denied') {
+    showToast('Gmail connection was cancelled.', { type: 'info' });
+  } else if (gmail === 'error') {
+    showToast('Gmail connection failed. Please try again.', { type: 'error' });
+  }
+})();
+
+// Init Gmail status on load
+initGmailStatus();
+
+// Q22: Switch between Queue, Pipeline, and History views in My Applications
+window.switchAppView = function(view) {
+  // Toggle active on view toggle buttons
+  document.querySelectorAll('.app-view-toggle-bar .app-view-toggle').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.view === view);
+  });
+
+  // Toggle view panels
+  document.querySelectorAll('.app-view-panel').forEach(function(panel) {
+    panel.classList.remove('active');
+  });
+  var target = document.getElementById('app-view-' + view + '-panel');
+  if (target) target.classList.add('active');
+
+  // Close settings panel when switching views
+  var settingsPanel = document.getElementById('app-settings-panel');
+  if (settingsPanel) settingsPanel.style.display = 'none';
+  var settingsBtn = document.getElementById('app-settings-toggle');
+  if (settingsBtn) settingsBtn.classList.remove('active');
+
+  // Trigger pipeline render if switching to pipeline view
+  if (view === 'pipeline' && typeof renderPipeline === 'function') {
+    renderPipeline();
+  }
+
+  localStorage.setItem('bj_app_view', view);
+};
+
+// Restore last app view on init
+(function() {
+  var saved = localStorage.getItem('bj_app_view') || 'queue';
+  if (typeof switchAppView === 'function') switchAppView(saved);
+})();
+
+// Q16-Q19: Resume-First Onboarding
+let _onboardProfile = null;
+
+window.handleOnboardResume = async function(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  
+  // Read file as text (for PDF, we'd need pdf.js — for now handle text-based)
+  const text = await file.text();
+  if (text.length < 50) {
+    showToast('Could not read resume text. Try a .docx or .pdf file.', { type: 'error' });
+    return;
+  }
+
+  // Show loading state
+  const card = document.getElementById('onboard-resume-first');
+  const origHTML = card.querySelector('.btn.btn-primary').innerHTML;
+  card.querySelector('.btn.btn-primary').innerHTML = '<span class="skel-line" style="width:80px;height:12px;display:inline-block;"></span> Analyzing…';
+  card.querySelector('.btn.btn-primary').style.pointerEvents = 'none';
+
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const resp = await fetch(SB_URL + '/functions/v1/extract-resume-profile', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + session.access_token,
+        'Content-Type': 'application/json',
+        'apikey': SB_ANON_KEY,
+      },
+      body: JSON.stringify({ resume_text: text }),
+    });
+    const data = await resp.json();
+    
+    if (data.error) {
+      showToast('Profile extraction failed: ' + data.error, { type: 'error' });
+      return;
+    }
+
+    _onboardProfile = data.profile;
+    renderOnboardProfile(data.profile);
+  } catch (e) {
+    showToast('Could not extract profile: ' + e.message, { type: 'error' });
+  } finally {
+    card.querySelector('.btn.btn-primary').innerHTML = origHTML;
+    card.querySelector('.btn.btn-primary').style.pointerEvents = '';
+  }
+};
+
+function renderOnboardProfile(p) {
+  const tag = (text) => `<span style="display:inline-block;padding:2px 8px;background:var(--bg-hover);border:1px solid var(--border);border-radius:5px;font-size:11px;color:var(--text);">${text}</span>`;
+
+  document.getElementById('onboard-titles').innerHTML = (p.titles || []).map(tag).join('');
+  document.getElementById('onboard-locations').innerHTML = (p.locations || []).map(tag).join('');
+  document.getElementById('onboard-seniority').textContent = (p.seniority || 'unknown').replace('_', ' ');
+  document.getElementById('onboard-industries').innerHTML = (p.industries || []).map(tag).join('');
+  document.getElementById('onboard-skills').innerHTML = (p.skills || []).slice(0, 8).map(tag).join('');
+
+  document.getElementById('onboard-profile-card').style.display = '';
+  document.getElementById('onboard-profile-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+window.createFilterFromProfile = function() {
+  if (!_onboardProfile) return;
+  const p = _onboardProfile;
+
+  // Build pills from profile
+  const newFilter = {
+    name: (p.titles?.[0] || 'My Search') + ' — auto-generated',
+    whatPills: (p.titles || []).slice(0, 3).map(t => ({ values: [t], type: 'keyword' })),
+    wherePills: (p.locations || []).slice(0, 2).map(l => ({ values: [l], type: 'location', locType: 'text' })),
+    whenPills: [],
+    whoPills: [],
+    payPills: [],
+    whatNotPills: [],
+    whereNotPills: [],
+    whoNotPills: [],
+    includeNoSalary: true,
+    includeRemote: p.remote_preference === 'remote',
+    created: new Date().toISOString(),
+  };
+
+  // Add to saved filters
+  savedFilters.push(newFilter);
+  saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
+  invalidateCache(); // A14: clear query caches when filters change
+  updateOnboardingStep(2);
+
+  // v6.04: Mark onboarding milestone
+  if (typeof markOnboardingMilestone === 'function') markOnboardingMilestone('filter');
+
+  // Navigate to Jobs page and run search
+  showToast('Search created from your resume! Running your first search…', { type: 'success' });
+  document.querySelector('[data-page=feed]').click();
+  
+  // Check the new filter and trigger search
+  setTimeout(() => {
+    if (typeof renderSavedFilters === 'function') renderSavedFilters();
+    if (typeof searchJobs === 'function') searchJobs();
+  }, 300);
+};
+
+// Q20: Onboarding milestone tracking
+// Steps: 0=new, 1=resume uploaded, 2=filter created, 3=first search run, 4=pipeline used
+function getOnboardingStep() {
+  return parseInt(localStorage.getItem('bj_onboarding_step') || '0');
+}
+
+function updateOnboardingStep(step) {
+  const current = getOnboardingStep();
+  if (step > current) {
+    localStorage.setItem('bj_onboarding_step', String(step));
+    applyProgressiveNav(step);
+  }
+}
+
+// Q21: Progressive nav disclosure
+function applyProgressiveNav(step) {
+  // Step 0-1: Show Get Started, Jobs, Settings only
+  // Step 2+: Unlock Tuning, Resumes
+  // Step 3+: Unlock Pipeline/Applications, Stats
+  // Step 4+: Full nav
+  const navItems = {
+    'tuning': 2,
+    'resumes': 1,
+    'applications': 1,
+    'ghost': 1,
+    'stats': 1,
+    'notifications': 2,
+    'feedback': 1,
+  };
+
+  for (const [page, minStep] of Object.entries(navItems)) {
+    const el = document.querySelector(`.nav-item[data-page="${page}"]`);
+    if (el) {
+      if (step < minStep) {
+        el.style.opacity = '0.35';
+        el.style.pointerEvents = 'none';
+        el.setAttribute('title', 'Complete onboarding to unlock');
+      } else {
+        el.style.opacity = '';
+        el.style.pointerEvents = '';
+        el.removeAttribute('title');
+      }
+    }
+  }
+}
+
+// Init progressive nav on load
+(function initOnboarding() {
+  const step = getOnboardingStep();
+  // Auto-detect milestones from existing data
+  if (step < 1 && resumes && resumes.length > 0) updateOnboardingStep(1);
+  if (step < 2 && savedFilters && savedFilters.length > 0) updateOnboardingStep(2);
+  if (step < 3 && localStorage.getItem('bj_first_search_done')) updateOnboardingStep(3);
+  if (step < 4 && localStorage.getItem('bj_pipeline_used')) updateOnboardingStep(4);
+  
+  applyProgressiveNav(getOnboardingStep());
+  
+  // Hide resume-first prompt if they already have filters
+  if (savedFilters.length > 0) {
+    const prompt = document.getElementById('onboard-resume-first');
+    if (prompt) prompt.style.display = 'none';
+  }
+})();
+
+
+
+
+
+
+
+// ─── Referral Attribution (Phase 4 v5.10) ───
+// Runs once per signup. Checks if user arrived via referral link.
+async function processReferralAttribution(user) {
+  // Only run if we haven't already attributed this user
+  var attributed = localStorage.getItem('bj_referral_attributed');
+  if (attributed === user.id) return;
+
+  // Check for referral code from landing page capture
+  var refCode = '';
+  var refSource = 'direct';
+  try {
+    refCode = sessionStorage.getItem('bj_referral_code') || '';
+    refSource = sessionStorage.getItem('bj_referral_source') || 'direct';
+  } catch(e) { reportError('app:app', e); }
+
+  // Also check cookie
+  if (!refCode) {
+    var match = document.cookie.match(/(^| )bj_ref=([^;]+)/);
+    refCode = match ? decodeURIComponent(match[2]) : '';
+    if (refCode) refSource = 'cookie_return';
+  }
+
+  if (!refCode) return; // No referral — skip
+
+  // Get fingerprint if available
+  var fingerprint = '';
+  try { fingerprint = sessionStorage.getItem('bj_fingerprint') || ''; } catch(e) { reportError('app:app', e); }
+  if (!fingerprint && window.bjFingerprint) {
+    try { fingerprint = window.bjFingerprint.generate(); } catch(e) { reportError('app:app', e); }
+  }
+
+  // Call attribution RPC
+  try {
+    var { data, error } = await sb.rpc('process_referral_attribution', {
+      p_referred_id: user.id,
+      p_referral_code: refCode,
+      p_ip_address: null, // IP captured server-side
+      p_browser_fingerprint: fingerprint || null,
+      p_source: refSource
+    });
+
+    if (error) {
+      console.warn('[Referral] Attribution error:', error.message);
+    } else {
+      console.log('[Referral] Attribution result:', data);
+    }
+  } catch(e) { reportError('app', e); console.warn('[Referral] Attribution call failed:', e.message);
+  }
+
+  // Mark as attributed so we don't re-run
+  localStorage.setItem('bj_referral_attributed', user.id);
+
+  // Clean up
+  try {
+    sessionStorage.removeItem('bj_referral_code');
+    sessionStorage.removeItem('bj_referral_source');
+  } catch(e) { reportError('app:app', e); }
+}
+
+
 // === js/resumes.js ===
 // ============================================================
 // RESUMES
@@ -19043,6 +20308,8 @@ function openPricingModal() {
 
 // ─── Checkout Flow ───
 async function startCheckout(mode, tier, packQty) {
+  // CX-06: PostHog — checkout started
+  if (window.posthog) posthog.capture('billing_checkout_started', { mode, tier: tier || null, pack_qty: packQty || null });
   const session = await sb.auth.getSession();
   const token = session?.data?.session?.access_token;
   if (!token) { window.location.href = '/'; return; }
@@ -19062,6 +20329,8 @@ async function startCheckout(mode, tier, packQty) {
 }
 
 async function openCustomerPortal() {
+  // CX-06: PostHog — billing portal opened
+  if (window.posthog) posthog.capture('billing_portal_opened');
   const session = await sb.auth.getSession();
   const token = session?.data?.session?.access_token;
   if (!token) { window.location.href = '/'; return; }
@@ -19357,6 +20626,8 @@ window.getUserCredits = getUserCredits;
 
 // ─── Init ───
 function initBilling() {
+  // CX-06: PostHog — billing page viewed
+  if (window.posthog) posthog.capture('billing_page_viewed');
   // Check admin status from profile (already fetched in app.js init)
   _isAdmin = (window._bjUserRole === 'admin');
   loadCreditBalance();
@@ -21645,141 +22916,6 @@ window.drillDownToOverlayPipeline = function() {
 };
 
 })();
-
-
-// === js/tier-gating.js ===
-// === Tier Gating Module ===
-// Phase 7: Reusable tier gate component for Archive + Metrics feature gating
-
-// Tier gate configuration
-const TIER_GATES = {
-  archive_storage:    { free: 2097152, starter: 10485760, pro: 52428800 },
-  archive_retention:  { free: 30, starter: 90, pro: Infinity },
-  max_resumes:        { free: 3, starter: 10, pro: Infinity },
-  max_versions:       { free: 1, starter: 5, pro: Infinity },
-  score_sparkline:    { free: false, starter: 10, pro: Infinity },
-  level_fit:          { free: false, starter: true, pro: true },
-  pipeline_stats:     { free: false, starter: 'basic', pro: 'full' },
-  job_log:            { free: false, starter: 10, pro: Infinity },
-  ai_scoring:         { free: false, starter: false, pro: true }
-};
-
-// Get current user tier
-function getUserTier() {
-  // Use billing system's _userPricing if available
-  if (typeof _userPricing !== 'undefined' && _userPricing && _userPricing.tier) {
-    return _userPricing.tier;
-  }
-  // Fallback: check profiles
-  if (typeof currentUser !== 'undefined' && currentUser?.user_metadata?.plan) {
-    return currentUser.user_metadata.plan;
-  }
-  return 'free';
-}
-
-// Check if a feature is available at current tier
-function canAccess(feature) {
-  const tier = getUserTier();
-  const gate = TIER_GATES[feature];
-  if (!gate) return true;
-  const val = gate[tier];
-  if (val === false) return false;
-  if (val === true || val === Infinity) return true;
-  return val;
-}
-
-// Get the minimum tier required for a feature
-function requiredTier(feature) {
-  const gate = TIER_GATES[feature];
-  if (!gate) return 'free';
-  if (gate.free !== false) return 'free';
-  if (gate.starter !== false) return 'starter';
-  return 'pro';
-}
-
-// Show tier gate overlay on an element
-// Usage: showTierGate(element, 'starter', 'Score history requires Starter plan')
-window.showTierGate = function(el, minTier, message) {
-  if (!el) return;
-  el.style.position = 'relative';
-
-  // Remove existing gate if any
-  var existing = el.querySelector('.tier-gate-overlay');
-  if (existing) existing.remove();
-
-  const tierNames = { starter: 'Starter', pro: 'Pro' };
-  const overlay = document.createElement('div');
-  overlay.className = 'tier-gate-overlay';
-  overlay.style.cssText = 'position:absolute;inset:0;background:rgba(15,17,23,0.85);backdrop-filter:blur(4px);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;border-radius:inherit;';
-  overlay.innerHTML = `
-    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="var(--warm)" stroke-width="2" style="margin-bottom:8px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-    <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;">${message || (tierNames[minTier] || 'Upgrade') + ' plan required'}</div>
-    <button class="btn btn-sm btn-primary" onclick="event.stopPropagation();showPage('subscription');" style="font-size:10px;padding:4px 14px;margin-top:6px;">Upgrade to ${tierNames[minTier] || 'Pro'}</button>
-  `;
-  el.appendChild(overlay);
-};
-
-// Remove tier gate
-window.removeTierGate = function(el) {
-  if (!el) return;
-  var overlay = el.querySelector('.tier-gate-overlay');
-  if (overlay) overlay.remove();
-};
-
-// Apply tier gating across Resume Metrics
-function applyMetricsTierGating() {
-  const tier = getUserTier();
-
-  // Sparkline: Free gets nothing
-  if (tier === 'free') {
-    var sparkEl = document.getElementById('metrics-sparkline');
-    if (sparkEl && sparkEl.parentElement) {
-      showTierGate(sparkEl.parentElement, 'starter', 'Score history requires Starter plan');
-    }
-  }
-
-  // Level fit: Free gets nothing
-  if (tier === 'free') {
-    var levelEl = document.getElementById('metrics-level-chart');
-    if (levelEl && levelEl.closest('.stats-chart-card')) {
-      showTierGate(levelEl.closest('.stats-chart-card'), 'starter', 'Level fit analysis requires Starter plan');
-    }
-  }
-
-  // Pipeline: Free gets nothing
-  if (tier === 'free') {
-    var funnelEl = document.getElementById('metrics-funnel-chart');
-    if (funnelEl && funnelEl.closest('.stats-chart-card')) {
-      showTierGate(funnelEl.closest('.stats-chart-card'), 'starter', 'Pipeline analytics requires Starter plan');
-    }
-  }
-
-  // Job log: Free gets nothing, Starter gets last 10
-  if (tier === 'free') {
-    var logEl = document.getElementById('metrics-usage-log');
-    if (logEl) showTierGate(logEl, 'starter', 'Application log requires Starter plan');
-  }
-}
-
-// Apply tier gating across Resume Archive
-function applyArchiveTierGating() {
-  // Archive gating is mostly server-side (check_resume_limits)
-  // Client-side we just show the storage bar and CTA from Phase 3
-}
-
-// Hook into metrics load to apply gating after render
-var _origLoadResumeMetrics = window.loadResumeMetrics;
-if (_origLoadResumeMetrics) {
-  window.loadResumeMetrics = async function() {
-    await _origLoadResumeMetrics();
-    applyMetricsTierGating();
-  };
-}
-
-// Expose for use by other modules
-window.canAccessFeature = canAccess;
-window.getUserTier = getUserTier;
-window.requiredTierFor = requiredTier;
 
 
 // === js/chat.js ===
@@ -24420,118 +25556,6 @@ function updateApplySettingsVisibility(mode) {
 }
 
 
-// === js/fingerprint.js ===
-/**
- * Brilliant Jobs — Browser Fingerprint Module
- * Lightweight client-side fingerprint for referral fraud detection.
- * Generates a deterministic hash from browser properties.
- * v5.10: Phase 4 — Referral Program
- */
-
-(function() {
-  'use strict';
-
-  // Simple hash (FNV-1a 32-bit)
-  function fnv1a(str) {
-    var hash = 0x811c9dc5;
-    for (var i = 0; i < str.length; i++) {
-      hash ^= str.charCodeAt(i);
-      hash = (hash * 0x01000193) >>> 0;
-    }
-    return hash.toString(16).padStart(8, '0');
-  }
-
-  function getComponents() {
-    var c = [];
-    var nav = window.navigator || {};
-    var screen = window.screen || {};
-
-    // User agent
-    c.push(nav.userAgent || '');
-
-    // Language
-    c.push(nav.language || nav.userLanguage || '');
-    c.push((nav.languages || []).join(','));
-
-    // Screen
-    c.push(screen.width + 'x' + screen.height);
-    c.push(String(screen.colorDepth || ''));
-    c.push(String(screen.pixelDepth || ''));
-
-    // Timezone
-    try { c.push(Intl.DateTimeFormat().resolvedOptions().timeZone); } catch(e) { c.push(''); }
-    c.push(String(new Date().getTimezoneOffset()));
-
-    // Platform
-    c.push(nav.platform || '');
-    c.push(String(nav.hardwareConcurrency || ''));
-    c.push(String(nav.maxTouchPoints || 0));
-    c.push(String(nav.deviceMemory || ''));
-
-    // WebGL renderer (good fingerprint signal)
-    try {
-      var canvas = document.createElement('canvas');
-      var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-      if (gl) {
-        var ext = gl.getExtension('WEBGL_debug_renderer_info');
-        if (ext) {
-          c.push(gl.getParameter(ext.UNMASKED_VENDOR_WEBGL) || '');
-          c.push(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || '');
-        }
-      }
-    } catch(e) { c.push('no-webgl'); }
-
-    // Canvas fingerprint
-    try {
-      var cv = document.createElement('canvas');
-      cv.width = 200; cv.height = 50;
-      var ctx = cv.getContext('2d');
-      ctx.textBaseline = 'top';
-      ctx.font = '14px Arial';
-      ctx.fillStyle = '#f60';
-      ctx.fillRect(0, 0, 100, 25);
-      ctx.fillStyle = '#069';
-      ctx.fillText('BJ-fp-2025', 2, 15);
-      ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
-      ctx.fillText('BJ-fp-2025', 4, 17);
-      c.push(cv.toDataURL().substring(0, 100));
-    } catch(e) { c.push('no-canvas'); }
-
-    // Installed plugins count
-    c.push(String((nav.plugins || []).length));
-
-    // Do-not-track
-    c.push(String(nav.doNotTrack || ''));
-
-    // Cookie enabled
-    c.push(String(nav.cookieEnabled));
-
-    return c;
-  }
-
-  function generateFingerprint() {
-    var components = getComponents();
-    var raw = components.join('||');
-    // Generate two hashes for more uniqueness
-    var h1 = fnv1a(raw);
-    var h2 = fnv1a(raw + '::salt::bj2025');
-    return 'fp-' + h1 + h2;
-  }
-
-  // Expose globally
-  window.bjFingerprint = {
-    generate: generateFingerprint,
-    components: getComponents
-  };
-
-  // Auto-store in sessionStorage for signup flow
-  try {
-    var fp = generateFingerprint();
-    sessionStorage.setItem('bj_fingerprint', fp);
-  } catch(e) { /* privacy mode */ }
-})();
-
-
 // === js/referrals.js ===
 // ============================================================
 // REFERRALS — Referral Hub page logic
@@ -25670,1020 +26694,4 @@ function sendReferralTemplate() {
       has_custom_context: !!((document.getElementById('ro-custom-context') || {}).value || '').trim()
     });
   }
-}
-
-
-// === js/app.js ===
-// [BJ] Dashboard v7.22 loaded
-console.log('[BJ] Dashboard v7.22 loaded');
-// BJ_VERSION is defined in js/version.js (single source of truth)
-// version.js auto-populates #nav-version and .bj-version elements
-
-// Auth
-async function init() {
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session?.user) { window.location.href = '/'; return; }
-  currentUser = session.user;
-  // CS-003: PostHog identity resolution — identify user post-login (CX-01)
-  if (window.posthog && currentUser) {
-    posthog.identify(currentUser.id, {
-      email: currentUser.email,
-      created_at: currentUser.created_at,
-    });
-  }
-  // Persist account flag for landing page segment detection (survives logout)
-  localStorage.setItem('bj_has_account', 'true');
-
-// Pre-warm static ref table caches (v3.84)
-if (typeof prewarmRefCaches === 'function') prewarmRefCaches();
-
-// Error recovery & offline resilience (v3.87)
-if (typeof initOfflineDetection === 'function') initOfflineDetection();
-if (typeof initGlobalErrorHandlers === 'function') initGlobalErrorHandlers();
-
-// Session management hardening (v3.90)
-if (typeof initSessionManagement === 'function') initSessionManagement();
-  let profile = null;
-  try {
-    const p = await safeQuery(() => sb.from('profiles').select('approved,cohort_id,plan,role').eq('id', currentUser.id).single(), { label: 'app:profiles', fallback: null });
-    profile = p;
-    if (!p?.approved) { window.location.href = '/?pending=1'; return; }
-    currentUser._cohortId = p.cohort_id || null;
-    window._bjUserPlan = p.plan || 'free';
-    window._bjUserRole = p.role || 'user';
-  } catch (e) { if (typeof toastError === 'function') toastError('Failed to load your profile. Please refresh the page.'); }
-  $('#auth-gate').style.display = 'none';
-  $('#app').style.display = 'flex';
-  // Referral attribution — check if new user came via referral link (Phase 4 v5.10)
-  try { await processReferralAttribution(currentUser); } catch(e) { reportError('app', e); console.warn('[Referral] Attribution check skipped:', e.message); }
-  // Show admin nav immediately — profile already fetched, no extra round trip
-  if (profile && profile.role === 'admin') {
-    var navAdmin = document.getElementById('nav-admin');
-    if (navAdmin) { navAdmin.style.display = ''; console.log('[Admin] \u2713 Nav shown'); }
-  }
-  // Re-apply active page (tab restore ran while #app was hidden)
-  const activeTab = localStorage.getItem('bj_active_tab');
-  if (activeTab && $(`#page-${activeTab}`)) {
-    $$('.page').forEach(p => p.classList.remove('active'));
-    $(`#page-${activeTab}`).classList.add('active');
-    $$('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === activeTab));
-  }
-  $('#nav-email').textContent = currentUser.email;
-  $('#nav-avatar').textContent = currentUser.email.charAt(0).toUpperCase();
-  // Update nav tier badge based on profile role/plan
-  const navPlanEl = document.querySelector('.nav-user-plan');
-  if (navPlanEl && profile) {
-    if (profile.role === 'admin') {
-      navPlanEl.textContent = 'ADMIN';
-      navPlanEl.style.color = '#f59e0b';
-      navPlanEl.style.fontWeight = '700';
-      navPlanEl.style.letterSpacing = '1px';
-    } else if ((profile.plan || 'free') === 'pro') {
-      navPlanEl.textContent = 'Pro Plan';
-      navPlanEl.style.color = '#3b82f6';
-      navPlanEl.style.fontWeight = '600';
-    } else if ((profile.plan || 'free') === 'enterprise') {
-      navPlanEl.textContent = 'Enterprise';
-      navPlanEl.style.color = '#8b5cf6';
-      navPlanEl.style.fontWeight = '600';
-    } else {
-      navPlanEl.textContent = 'Free Plan';
-    }
-  }
-  // Sync user data from Supabase → localStorage on login
-  await loadUserData(currentUser.id);
-  // Session analytics — Phase B
-  const bjSessionId = await initSession();
-  if (bjSessionId && window.posthog) {
-    posthog.register({
-      bj_session_id: bjSessionId,
-      bj_cohort_id: currentUser._cohortId || null,
-      bj_plan_id: window._bjUserPlan || 'free'
-    });
-  }
-  // Re-init admin page if it was the active tab (tab restore runs before auth)
-  // Admin moved to /admin page (v6.26)
-  
-  // Q24-Q25: Load saved filters and tuning from Supabase (fallback to localStorage)
-  const userId = session?.user?.id;
-  
-  // Load filters from Supabase
-  let filtersFromCloud = false;
-  if (userId) {
-    const cloudFilters = await safeQuery(() => sb.from('user_filters').select('*').eq('user_id', userId).order('sort_order'), { label: 'app:user_filters', fallback: [] });
-    if (cloudFilters && cloudFilters.length > 0) {
-      savedFilters = cloudFilters.map(f => ({ ...f.filter_data, _id: f.id, name: f.name }));
-      filtersFromCloud = true;
-    }
-  }
-  if (!filtersFromCloud) {
-    savedFilters = safeReadLS('bj_saved_filters', []);
-    // Migrate localStorage filters to Supabase on first load
-    if (userId && savedFilters.length > 0 && !localStorage.getItem('bj_filters_migrated')) {
-      for (let i = 0; i < savedFilters.length; i++) {
-        const f = savedFilters[i];
-        await sb.from('user_filters').insert({
-          user_id: userId,
-          name: f.name || 'Untitled',
-          filter_data: f,
-          sort_order: i,
-        });
-      }
-      localStorage.setItem('bj_filters_migrated', '1');
-      showToast('Your saved searches are now synced to the cloud.', { type: 'success', duration: 5000 });
-    }
-  }
-
-  // v7.21: Re-apply progressive nav now that savedFilters is loaded from DB
-  // initOnboarding() runs synchronously at parse time before this async fetch completes,
-  // so nav items were always dimmed for users with saved filters.
-  {
-    let _step = getOnboardingStep();
-    if (_step < 1 && resumes && resumes.length > 0) { updateOnboardingStep(1); _step = 1; }
-    if (_step < 2 && savedFilters && savedFilters.length > 0) { updateOnboardingStep(2); _step = 2; }
-    if (_step < 3 && localStorage.getItem('bj_first_search_done')) { updateOnboardingStep(3); _step = 3; }
-    if (_step < 4 && localStorage.getItem('bj_pipeline_used')) { updateOnboardingStep(4); _step = 4; }
-    applyProgressiveNav(_step);
-  }
-
-  // Block 7: Check for pending pills from city page conversion
-  try {
-    var pendingPills = safeReadLS('bj_pending_pills', []);
-    if (pendingPills.length > 0) {
-      localStorage.removeItem('bj_pending_pills');
-      // Apply to active filter (or first filter, or create new)
-      var target = currentFilter || (savedFilters && savedFilters.length > 0 ? savedFilters[0] : null);
-      if (target) {
-        var pillsKey = target.pills ? 'pills' : 'keywords';
-        if (!target[pillsKey]) target[pillsKey] = [];
-        pendingPills.forEach(function(pp) {
-          var pillType = pp.type === 'title' ? 'TITLE' : pp.type === 'skill' ? 'SKILLS' : pp.type === 'industry' ? 'INDUSTRY' : 'KEYWORD';
-          var exists = target[pillsKey].some(function(p) { return p.type === pillType && p.value === pp.value; });
-          if (!exists) {
-            target[pillsKey].push({ type: pillType, value: pp.value, _from: 'city_page' });
-          }
-        });
-        localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
-        var names = pendingPills.map(function(p) { return '"' + p.value + '"'; }).join(', ');
-        showToast('Added ' + names + ' to your search filters', { type: 'success', duration: 5000 });
-        if (window.posthog) posthog.capture('pending_pills_applied', { count: pendingPills.length, pills: pendingPills });
-      }
-    }
-  } catch(e) { reportError('app', e); console.warn('[pills] Pending pill apply failed:', e.message); }
-  
-  // Load tuning from Supabase
-  // First: normalize any legacy WHEN pills in saved filters
-  let whenNormDirty = false;
-  savedFilters.forEach(sf => {
-    if (sf.whenPills && sf.whenPills.length > 0) {
-      sf.whenPills.forEach(pill => {
-        if (pill.values && pill.values.length > 0) {
-          const norm = typeof normalizeWhenValue === 'function' ? normalizeWhenValue(pill.values[0]) : null;
-          if (norm && norm.label !== pill.values[0]) {
-            pill.values[0] = norm.label;
-            whenNormDirty = true;
-          }
-        }
-      });
-    }
-  });
-  if (whenNormDirty) {
-    if (filtersFromCloud && userId) {
-      // Persist normalized values back to cloud
-      for (let i = 0; i < savedFilters.length; i++) {
-        const sf = savedFilters[i];
-        if (sf._id) {
-          sb.from('user_filters').update({ filter_data: sf }).eq('id', sf._id).then(() => {});
-        }
-      }
-    }
-    saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
-  }
-
-  let tuningFromCloud = false;
-  if (userId) {
-    const cloudTuning = await safeQuery(() => sb.from('user_tuning').select('tuning_data').eq('user_id', userId).single(), { label: 'app:user_tuning', fallback: null });
-    if (cloudTuning?.tuning_data && Object.keys(cloudTuning.tuning_data).length > 0) {
-      tuningSettings = cloudTuning.tuning_data;
-      tuningFromCloud = true;
-    }
-  }
-  if (!tuningFromCloud) {
-    tuningSettings = safeReadLS('bj_tuning', {});
-    // Migrate to Supabase
-    if (userId && Object.keys(tuningSettings).length > 0 && !localStorage.getItem('bj_tuning_migrated')) {
-      await sb.from('user_tuning').upsert({
-        user_id: userId,
-        tuning_data: tuningSettings,
-      }, { onConflict: 'user_id' });
-      localStorage.setItem('bj_tuning_migrated', '1');
-    }
-  }
-  
-  tuningLocExclPills = tuningSettings.locationExcludes || [];
-  tuningTitleExclPills = tuningSettings.titleExcludes || [];
-  tuningCoExclPills = tuningSettings.companyExcludes || [];
-  tuningIndExclPills = tuningSettings.industryExcludes || [];
-  levelHierarchy = tuningSettings.levelHierarchy || [];
-  hiddenJobIds = safeReadLS('bj_hidden_jobs', []);
-  // Pipeline now loaded from Supabase (Ghost Build Phase 1)
-  // savedJobIds and appliedJobIds are populated by initPipeline()
-  savedJobIds = [];
-  appliedJobIds = [];
-  resumes = safeReadLS('bj_resumes', []);
-  // Safety net: if resumes still empty after loadUserData, try direct cloud fetch (v4.33)
-  if (resumes.length === 0 && userId) {
-    try {
-      const prof = await safeQuery(() => sb.from('profiles').select('user_data').eq('id', userId).single(), { label: 'app:profiles', fallback: null });
-      const cloudResumes = prof?.user_data?.resumes;
-      if (Array.isArray(cloudResumes) && cloudResumes.length > 0) {
-        resumes = cloudResumes;
-        saveUserData('bj_resumes', JSON.stringify(resumes));
-        console.log('[sync] Resume recovery: restored', resumes.length, 'resumes from cloud');
-      }
-    } catch(e) { reportError('app', e); console.warn('[sync] Resume recovery failed:', e.message); }
-  }
-  // Check for resumes missing storagePath and attempt upload from IndexedDB (v4.46)
-  if (resumes.length > 0 && currentUser) {
-    var needsStorageSync = resumes.filter(function(r) { return !r.storagePath && !r.archived; });
-    if (needsStorageSync.length > 0) {
-      console.log('[resume-storage] ' + needsStorageSync.length + ' resumes need Storage upload');
-      needsStorageSync.forEach(async function(r) {
-        try {
-          var file = await bjFileStore.get(r.id);
-          if (file) {
-            var path = currentUser.id + '/' + r.id + '_' + (r.fileName || 'resume').replace(/[^a-zA-Z0-9._-]/g, '_');
-            var { error } = await sb.storage.from('resumes').upload(path, file, { cacheControl: '3600', upsert: true, contentType: file.type || 'application/octet-stream' });
-            if (!error) {
-              var idx = resumes.findIndex(function(x) { return x.id === r.id; });
-              if (idx >= 0) { resumes[idx].storagePath = path; saveResumes(); }
-              console.log('[resume-storage] Backfilled', path);
-            }
-          }
-        } catch(e) { reportError('app:silent', e); }
-      });
-    }
-  }
-  // Cloud sync is now live via user_filters + user_tuning tables
-  // Q23: Populate global rules crosslink banner
-  const grBanner = document.getElementById('global-rules-banner');
-  const grSummary = document.getElementById('gr-summary');
-  if (grBanner && grSummary) {
-    const parts = [];
-    if (tuningSettings.locationExcludes?.length) parts.push(tuningSettings.locationExcludes.length + ' excluded locations');
-    if (tuningSettings.titleExcludes?.length) parts.push(tuningSettings.titleExcludes.length + ' excluded titles');
-    if (tuningSettings.companyExcludes?.length) parts.push(tuningSettings.companyExcludes.length + ' excluded companies');
-    if (tuningSettings.levelHierarchy?.length) parts.push(tuningSettings.levelHierarchy.length + ' levels');
-    if (parts.length) {
-      grSummary.textContent = parts.join(', ');
-      grBanner.style.display = '';
-    }
-  }
-  // Initialize Supabase pipeline (migrate localStorage → Supabase on first run)
-  if (typeof initPipeline === 'function') await initPipeline();
-  // Overlay Pipeline S2: migrate localStorage pipeline → new pipeline table (one-time)
-  if (typeof PipelineMigration !== 'undefined' && !PipelineMigration.hasRun()) {
-    PipelineMigration.run(window._sb || sb, currentUser.id).catch(function(e) {
-      console.warn('[BJ] pipeline-migration failed:', e);
-    });
-  }
-  // Trigger sparkle flourish
-  setTimeout(() => { $('#nav-brand').classList.add('sparkle-active'); }, 100);
-  // Initialize billing (credit balance, pricing, payment return check)
-  if (typeof initBilling === 'function') initBilling();
-  // Run unified sync health check — recovers any missing localStorage domains from cloud
-  if (typeof syncHealthCheck === 'function') {
-    setTimeout(function() { syncHealthCheck(); }, 500);
-  }
-  loadStats();
-  checkExtensionStatus();
-  loadCollections();
-  // Initialize Notification Center (Session 2 — loads state, prefs, opt-in check)
-  if (typeof initNotificationCenter === 'function') initNotificationCenter();
-  // Start session heartbeat
-  if (bjSessionId) {
-    setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        sb.rpc('session_heartbeat', { p_session_id: bjSessionId });
-      }
-    }, 5 * 60 * 1000);
-  }
-}
-
-// Session analytics — create or reuse session
-async function initSession() {
-  const existing = sessionStorage.getItem('bj_session_id');
-  if (existing) {
-    sb.rpc('session_heartbeat', { p_session_id: existing });
-    return existing;
-  }
-  const deviceType = window.innerWidth < 768 ? 'mobile' :
-                     window.innerWidth < 1024 ? 'tablet' : 'desktop';
-  const params = new URLSearchParams(window.location.search);
-  const referralSource = params.get('utm_source') || params.get('ref') || 'direct';
-  const entryPage = window.location.pathname;
-  try {
-    const { data: sessionId, error } = await sb.rpc('create_session', {
-      p_user_id: currentUser.id,
-      p_device_type: deviceType,
-      p_referral_source: referralSource,
-      p_entry_page: entryPage,
-      p_metadata: {}
-    });
-    if (error) { console.error('[BJ] Session init error:', error); return null; }
-    sessionStorage.setItem('bj_session_id', sessionId);
-    return sessionId;
-  } catch (e) {
-    console.error('[BJ] Session init error:', e);
-    return null;
-  }
-}
-
-init();
-
-// Extension detection — check last_scan_at from profiles
-// Nav
-$$('.nav-item').forEach(item => {
-  item.addEventListener('click', () => {
-    $$('.nav-item').forEach(n => n.classList.remove('active'));
-    item.classList.add('active');
-    // Brilliant sparkle flourish
-    item.classList.remove('tab-flash');
-    void item.offsetWidth; // force reflow to restart animation
-    item.classList.add('tab-flash');
-    // Spawn sparkle dots + stars
-    const rect = item.getBoundingClientRect();
-    const navRect = item.offsetParent?.getBoundingClientRect() || rect;
-    for (let i = 0; i < 5; i++) {
-      const dot = document.createElement('div');
-      dot.className = 'tab-sparkle';
-      const size = 2 + Math.random() * 4;
-      dot.style.width = size + 'px';
-      dot.style.height = size + 'px';
-      dot.style.top = (Math.random() * rect.height) + 'px';
-      dot.style.left = (20 + Math.random() * (rect.width - 30)) + 'px';
-      dot.style.animationDelay = (Math.random() * 0.3) + 's';
-      item.appendChild(dot);
-      setTimeout(() => dot.remove(), 900);
-    }
-    for (let i = 0; i < 2; i++) {
-      const star = document.createElement('div');
-      star.className = 'tab-star';
-      star.textContent = i % 2 === 0 ? '✦' : '✧';
-      star.style.top = (4 + Math.random() * (rect.height - 12)) + 'px';
-      star.style.left = (30 + Math.random() * (rect.width - 50)) + 'px';
-      star.style.animationDelay = (0.1 + Math.random() * 0.3) + 's';
-      item.appendChild(star);
-      setTimeout(() => star.remove(), 1000);
-    }
-    setTimeout(() => item.classList.remove('tab-flash'), 1000);
-    $$('.page').forEach(p => p.classList.remove('active'));
-    $(`#page-${item.dataset.page}`).classList.add('active');
-    // Persist active tab
-    localStorage.setItem('bj_active_tab', item.dataset.page);
-    // Init stats charts when stats tab is shown
-    if (item.dataset.page === 'stats' && typeof initStatsPage === 'function') initStatsPage();
-    // Admin moved to /admin page (v6.26)
-    if (item.dataset.page === 'feedback' && typeof initCannyFeedback === 'function') initCannyFeedback();
-    if (item.dataset.page === 'ghost' && typeof renderGhostMonitor === 'function') renderGhostMonitor();
-    if (item.dataset.page === 'referrals' && typeof initReferralHub === 'function') initReferralHub();
-    // Refresh resumes when switching to resumes tab
-    if (item.dataset.page === 'resumes') {
-      if (typeof renderResumes === 'function') renderResumes();
-      // If active resumes are empty but user may have cloud data, re-reconcile
-      var activeCount = (resumes || []).filter(function(r) { return !r.archived; }).length;
-      if (activeCount === 0 && typeof reconcileResumeArchive === 'function' && typeof currentUser !== 'undefined' && currentUser) {
-        reconcileResumeArchive();
-      }
-    }
-    // Close help panel on page switch
-    const hp = $('#page-help-panel'); if (hp) hp.style.display = 'none';
-  });
-});
-
-// Restore last active tab on load
-const lastTab = localStorage.getItem('bj_active_tab');
-if (lastTab && $(`#page-${lastTab}`)) {
-  // If admin was saved tab, redirect to /admin (v6.26)
-  if (lastTab === "admin") { localStorage.setItem("bj_active_tab", "brilliant"); window.location.href = "/admin"; }
-  else {
-  $$('.page').forEach(p => p.classList.remove('active'));
-  $(`#page-${lastTab}`).classList.add('active');
-  $$('.nav-item').forEach(n => {
-    n.classList.toggle('active', n.dataset.page === lastTab);
-  });
-  // Admin moved to /admin page (v6.26)
-  if (lastTab === 'stats' && typeof initStatsPage === 'function') initStatsPage();
-  if (lastTab === 'feedback' && typeof initCannyFeedback === 'function') initCannyFeedback();
-  if (lastTab === 'referrals' && typeof initReferralHub === 'function') initReferralHub();
-  if (lastTab === 'ghost' && typeof renderGhostMonitor === 'function') renderGhostMonitor();
-  }
-}
-
-// Extension detection — check if extension has updated the profile recently
-const _helpContent = {
-  feed: { title: 'Jobs Feed', steps: [
-    'Check one or more saved searches in the sidebar to search jobs.',
-    'Shift+click column headers for multi-column sorting.',
-    'Click a job title to open the full description and apply.',
-    'Colored number badges show which filter matched each job.',
-    'Use the keyword insights panel to see term frequency and resume match scores.',
-  ]},
-  tuning: { title: 'Search Tuning', steps: [
-    'Set global rules that apply across ALL your saved searches.',
-    'Location rules: US-only toggle and city/country exclusions.',
-    'Title exclusions: remove common false positives (e.g. "intern").',
-    'Company exclusions: block specific employers or industries.',
-    'Level hierarchy: define seniority levels and their keywords for automatic job ranking.',
-  ]},
-  pipeline: { title: 'Pipeline', steps: [
-    'Track every job from saved through offer/rejection.',
-    'Click stage headers to collapse/expand sections.',
-    'Use the Move dropdown on any row to advance jobs through stages.',
-    'Stats at top show response rates and days-to-response.',
-    'Filter by saved search using the dropdown above the stages.',
-  ]},
-  resumes: { title: 'Resumes', steps: [
-    'Upload a resume for each role type or seniority level you target.',
-    'Assign a level (Director, Manager, etc.) to each resume.',
-    'Click filter pills on each card to assign resumes to your saved searches.',
-    'When you apply, the matching resume is automatically selected.',
-    'Keyword extraction shows how well each resume matches job descriptions.',
-  ]},
-  applications: { title: 'Applications', steps: [
-    'Queue tab: manage pending applications (manual add, batch process).',
-    'Rules tab: set default application mode (Manual, Notify, Auto) and auto-apply rules.',
-    'Notifications tab: configure email/SMS preferences for every alert type.',
-    'Verify your phone to unlock SMS notifications and escalation.',
-    'Set escalation rules: unanswered emails auto-escalate to SMS after your timeout.',
-    'Override notification settings per saved search for targeted control.',
-    'History tab: full audit trail of applications and notification delivery log.',
-  ]},
-  ghost: { title: 'Ghost Monitor', steps: [
-    'Coming soon: Track which companies view your profile after applying.',
-    'See who\'s ghosting you and who\'s actively reviewing your application.',
-    'Get notified when a company shows interest.',
-  ]},
-  stats: { title: 'Stats', steps: [
-    'View aggregated analytics across all your job search activity.',
-    'Track application volume, response rates, and pipeline velocity.',
-    'Compare performance across different filters and resume versions.',
-  ]},
-  setup: { title: 'Setup', steps: [
-    'Connect the Chrome extension to scan your LinkedIn network.',
-    'Your connections are matched against our job database.',
-    'Jobs where you have an inside contact are flagged for priority.',
-  ]},
-  settings: { title: 'Settings', steps: [
-    'Manage your account, notification preferences, and data.',
-    'Export or delete your data at any time.',
-  ]},
-  subscription: { title: 'Subscription', steps: [
-    'View your current plan and usage.',
-    'Upgrade to Pro for auto-apply, advanced analytics, and more.',
-  ]},
-};
-
-window.togglePageHelp = function(helpId) {
-  const panel = $('#page-help-panel');
-  if (!panel) return;
-  if (!helpId || panel.style.display !== 'none' && panel.dataset.active === helpId) {
-    panel.style.display = 'none';
-    panel.dataset.active = '';
-    return;
-  }
-  const content = _helpContent[helpId];
-  if (!content) return;
-  $('#help-panel-title').textContent = content.title;
-  $('#help-panel-body').innerHTML = content.steps.map((s, i) =>
-    `<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;">
-      <span style="width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${i + 1}</span>
-      <span>${s}</span>
-    </div>`
-  ).join('');
-  panel.style.display = '';
-  panel.dataset.active = helpId;
-};
-
-// Close help on outside click
-document.addEventListener('click', e => {
-  const panel = $('#page-help-panel');
-  if (panel && panel.style.display !== 'none' && !panel.contains(e.target) && !e.target.classList.contains('page-how-link')) {
-    panel.style.display = 'none';
-  }
-});
-
-// Extension detection — check if extension has updated the profile recently
-// Required extension version — bump this when a new extension release ships
-var REQUIRED_EXTENSION_VERSION = '2.17.0';
-
-function compareVersions(installed, required) {
-  if (!installed || !required) return 0;
-  var a = installed.split('.').map(Number);
-  var b = required.split('.').map(Number);
-  for (var i = 0; i < Math.max(a.length, b.length); i++) {
-    var av = a[i] || 0, bv = b[i] || 0;
-    if (av < bv) return -1;
-    if (av > bv) return 1;
-  }
-  return 0;
-}
-
-async function checkExtensionStatus() {
-  try {
-    const profile = await safeQuery(() => sb.from('profiles').select('last_scan_at, scanner_running, scanner_today_visited, scanner_today_limit, extension_version')
-      .eq('id', currentUser.id).single(), { label: 'app:profiles', fallback: null });
-
-    const navDot = $('#ext-status-dot');
-    const dot = $('#ext-dot');
-    const text = $('#ext-status-text');
-    const detail = $('#ext-status-detail');
-    const updateBanner = $('#ext-update-banner');
-
-    if (profile?.last_scan_at) {
-      const lastScan = new Date(profile.last_scan_at);
-      const hoursSince = (Date.now() - lastScan.getTime()) / 3600000;
-      const isActive = hoursSince < 24 || profile.scanner_running;
-
-      // Nav dot
-      if (navDot) {
-        if (isActive) { navDot.classList.add('connected'); navDot.title = 'Extension active'; }
-        else { navDot.classList.remove('connected'); navDot.title = 'Extension not detected'; }
-      }
-
-      // Version mismatch detection
-      var needsUpdate = profile.extension_version && compareVersions(profile.extension_version, REQUIRED_EXTENSION_VERSION) < 0;
-
-      // Nav dot amber for version mismatch
-      if (navDot && isActive && needsUpdate) {
-        navDot.classList.remove('connected');
-        navDot.classList.add('warning');
-        navDot.title = 'Extension update available (v' + REQUIRED_EXTENSION_VERSION + ')';
-      }
-
-      // Setup page status
-      if (dot && text && detail) {
-        if (isActive) {
-          dot.className = needsUpdate ? 'ext-dot warning' : 'ext-dot on';
-          text.textContent = needsUpdate ? 'Extension update available' : 'Extension connected';
-          const timeStr = lastScan.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-          const todayStr = lastScan.toDateString() === new Date().toDateString() ? 'today' : lastScan.toLocaleDateString([], { month: 'short', day: 'numeric' });
-          detail.textContent = profile.scanner_running
-            ? `Active now · last synced at ${timeStr}`
-            : `Last active ${todayStr} at ${timeStr}`;
-          // Hide download button when connected (but not if update needed)
-          var dlBox = $('#download-box');
-          if (dlBox) dlBox.style.display = needsUpdate ? '' : 'none';
-        } else {
-          dot.className = 'ext-dot off';
-          text.textContent = 'Extension inactive';
-          detail.textContent = `Last seen ${lastScan.toLocaleDateString([], { month: 'short', day: 'numeric' })} — open Chrome to reconnect`;
-        }
-      }
-
-      // Update banner
-      if (updateBanner) {
-        if (needsUpdate && isActive) {
-          updateBanner.style.display = '';
-          var instVer = $('#ext-installed-ver');
-          var reqVer = $('#ext-required-ver');
-          var verLabel = $('#ext-update-ver-label');
-          if (instVer) instVer.textContent = 'v' + profile.extension_version;
-          if (reqVer) reqVer.textContent = 'v' + REQUIRED_EXTENSION_VERSION;
-          if (verLabel) verLabel.textContent = REQUIRED_EXTENSION_VERSION;
-        } else {
-          updateBanner.style.display = 'none';
-        }
-      }
-    }
-  } catch(e) { reportError('app:ignore', e); }
-}
-checkExtensionStatus();
-setInterval(checkExtensionStatus, 60000);
-
-// Saved Jobs card → navigate to Pipeline
-$('#j-saved-card').addEventListener('click', () => {
-  $$('.nav-item').forEach(n => n.classList.remove('active'));
-  const pipelineNav = $('[data-page="pipeline"]');
-  if (pipelineNav) {
-    pipelineNav.classList.add('active');
-    pipelineNav.classList.remove('tab-flash');
-    void pipelineNav.offsetWidth;
-    pipelineNav.classList.add('tab-flash');
-    setTimeout(() => pipelineNav.classList.remove('tab-flash'), 1000);
-  }
-  $$('.page').forEach(p => p.classList.remove('active'));
-  $('#page-pipeline').classList.add('active');
-});
-
-// Download
-$('#download-btn').addEventListener('click', async () => {
-  const btn = $('#download-btn');
-  const status = $('#download-status');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;"></span> Preparing download...';
-  status.textContent = '';
-  try {
-    const { data: { session } } = await sb.auth.getSession();
-    const res = await fetch('/api/build-extension', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` }
-    });
-    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || `Failed (${res.status})`); }
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = 'brilliant-jobs-extension.zip';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-    status.textContent = 'Download started. Follow the installation guide below.';
-    const instanceId = res.headers.get('X-Instance-Id') || 'bj-' + Math.random().toString(36).slice(2, 10);
-    $('#instance-card').style.display = 'block';
-    $('#ext-instance-id').textContent = instanceId;
-    $('#ext-built-at').textContent = new Date().toLocaleDateString();
-  } catch (e) { status.textContent = 'Error: ' + e.message; }
-  btn.disabled = false; btn.textContent = 'Download Extension';
-});
-
-// Update download button — triggers same download flow as main button
-var extUpdateDlBtn = $('#ext-update-dl-btn');
-if (extUpdateDlBtn) {
-  extUpdateDlBtn.addEventListener('click', function() {
-    var mainBtn = $('#download-btn');
-    if (mainBtn) mainBtn.click();
-  });
-}
-
-// ============================================================
-// GMAIL OAUTH — Connect / Disconnect / Status
-// ============================================================
-
-async function initGmailStatus() {
-  try {
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session) return;
-    const conn = await safeQuery(() => sb.from('gmail_connections').select('gmail_address, sync_status')
-      .eq('user_id', session.user.id)
-      .maybeSingle(), { label: 'app:gmail_connections', fallback: [] });
-
-    const isConnected = conn && conn.sync_status === 'active';
-    updateGmailUI(isConnected, conn?.gmail_address || '');
-  } catch(e) { reportError('app', e); console.warn('[BJ] Gmail status check failed:', e.message);
-  }
-}
-
-function updateGmailUI(connected, email) {
-  // Setup page
-  const setupConn = $('#gmail-setup-connected');
-  const setupDisc = $('#gmail-setup-disconnected');
-  const setupAddr = $('#gmail-address');
-  const setupDot = $('#gmail-dot');
-  if (setupConn && setupDisc) {
-    setupConn.style.display = connected ? '' : 'none';
-    setupDisc.style.display = connected ? 'none' : '';
-    if (setupAddr) setupAddr.textContent = email;
-    if (setupDot) setupDot.className = 'setup-dot' + (connected ? ' connected' : '');
-  }
-  // Ghost monitor page
-  const ghostConn = $('#ghost-gmail-connected');
-  const ghostBtn = $('#gmail-connect-btn');
-  const ghostAddr = $('#ghost-gmail-address');
-  const gmailCard = $('#g-gmail-card');
-  const gmailChip = document.getElementById('g-gmail-stat');
-  if (ghostConn) ghostConn.style.display = connected ? '' : 'none';
-  if (ghostBtn) ghostBtn.style.display = connected ? 'none' : '';
-  if (ghostAddr) ghostAddr.textContent = email;
-  if (gmailCard) {
-    const valEl = gmailCard.querySelector('.stat-val');
-    if (valEl) { valEl.textContent = connected ? 'Connected' : 'Not Connected'; valEl.style.color = connected ? 'var(--green)' : 'var(--text-faint)'; }
-  }
-  // Update hero chip
-  if (gmailChip) {
-    gmailChip.textContent = connected ? 'On' : 'Off';
-    gmailChip.className = 'hero-stat-val ' + (connected ? 'hs-green' : 'hs-dim');
-    if (!connected) gmailChip.style.fontSize = '12px';
-  }
-}
-
-window.connectGmail = async function() {
-  try {
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session) { showToast('Please log in first.', { type: 'error' }); return; }
-    const res = await fetch('/api/auth/gmail/callback?action=connect', {
-      headers: { 'Authorization': 'Bearer ' + session.access_token }
-    });
-    const json = await res.json();
-    if (json.url) {
-      window.location.href = json.url;
-    } else {
-      showToast('Failed to start Gmail connection: ' + (json.error || 'Unknown error'), { type: 'error' });
-    }
-  } catch (e) {
-    showToast('Error connecting Gmail: ' + e.message, { type: 'error' });
-  }
-};
-
-window.disconnectGmail = async function() {
-  if (!confirm('Disconnect Gmail? Ghost Monitor will lose email-based detection.')) return;
-  try {
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session) return;
-    const res = await fetch('/api/auth/gmail/disconnect', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + session.access_token }
-    });
-    const json = await res.json();
-    if (json.success) {
-      updateGmailUI(false, '');
-    } else {
-      showToast('Failed to disconnect: ' + (json.error || 'Unknown error'), { type: 'error' });
-    }
-  } catch (e) {
-    showToast('Error disconnecting Gmail: ' + e.message, { type: 'error' });
-  }
-};
-
-// Handle Gmail callback params
-(function handleGmailCallback() {
-  const params = new URLSearchParams(window.location.search);
-  const gmail = params.get('gmail');
-  if (!gmail) return;
-  const url = new URL(window.location);
-  url.searchParams.delete('gmail');
-  window.history.replaceState({}, '', url);
-  if (gmail === 'connected') {
-    initGmailStatus();
-    showToast('Gmail connected! Ghost Monitor will now scan for company responses.', { type: 'success' });
-    // v6.04: Mark Gmail integration connected for adoption suppression
-    if (typeof markIntegrationConnected === 'function') markIntegrationConnected('gmail');
-  } else if (gmail === 'denied') {
-    showToast('Gmail connection was cancelled.', { type: 'info' });
-  } else if (gmail === 'error') {
-    showToast('Gmail connection failed. Please try again.', { type: 'error' });
-  }
-})();
-
-// Init Gmail status on load
-initGmailStatus();
-
-// Q22: Switch between Queue, Pipeline, and History views in My Applications
-window.switchAppView = function(view) {
-  // Toggle active on view toggle buttons
-  document.querySelectorAll('.app-view-toggle-bar .app-view-toggle').forEach(function(btn) {
-    btn.classList.toggle('active', btn.dataset.view === view);
-  });
-
-  // Toggle view panels
-  document.querySelectorAll('.app-view-panel').forEach(function(panel) {
-    panel.classList.remove('active');
-  });
-  var target = document.getElementById('app-view-' + view + '-panel');
-  if (target) target.classList.add('active');
-
-  // Close settings panel when switching views
-  var settingsPanel = document.getElementById('app-settings-panel');
-  if (settingsPanel) settingsPanel.style.display = 'none';
-  var settingsBtn = document.getElementById('app-settings-toggle');
-  if (settingsBtn) settingsBtn.classList.remove('active');
-
-  // Trigger pipeline render if switching to pipeline view
-  if (view === 'pipeline' && typeof renderPipeline === 'function') {
-    renderPipeline();
-  }
-
-  localStorage.setItem('bj_app_view', view);
-};
-
-// Restore last app view on init
-(function() {
-  var saved = localStorage.getItem('bj_app_view') || 'queue';
-  if (typeof switchAppView === 'function') switchAppView(saved);
-})();
-
-// Q16-Q19: Resume-First Onboarding
-let _onboardProfile = null;
-
-window.handleOnboardResume = async function(input) {
-  const file = input.files?.[0];
-  if (!file) return;
-  
-  // Read file as text (for PDF, we'd need pdf.js — for now handle text-based)
-  const text = await file.text();
-  if (text.length < 50) {
-    showToast('Could not read resume text. Try a .docx or .pdf file.', { type: 'error' });
-    return;
-  }
-
-  // Show loading state
-  const card = document.getElementById('onboard-resume-first');
-  const origHTML = card.querySelector('.btn.btn-primary').innerHTML;
-  card.querySelector('.btn.btn-primary').innerHTML = '<span class="skel-line" style="width:80px;height:12px;display:inline-block;"></span> Analyzing…';
-  card.querySelector('.btn.btn-primary').style.pointerEvents = 'none';
-
-  try {
-    const { data: { session } } = await sb.auth.getSession();
-    const resp = await fetch(SB_URL + '/functions/v1/extract-resume-profile', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + session.access_token,
-        'Content-Type': 'application/json',
-        'apikey': SB_ANON_KEY,
-      },
-      body: JSON.stringify({ resume_text: text }),
-    });
-    const data = await resp.json();
-    
-    if (data.error) {
-      showToast('Profile extraction failed: ' + data.error, { type: 'error' });
-      return;
-    }
-
-    _onboardProfile = data.profile;
-    renderOnboardProfile(data.profile);
-  } catch (e) {
-    showToast('Could not extract profile: ' + e.message, { type: 'error' });
-  } finally {
-    card.querySelector('.btn.btn-primary').innerHTML = origHTML;
-    card.querySelector('.btn.btn-primary').style.pointerEvents = '';
-  }
-};
-
-function renderOnboardProfile(p) {
-  const tag = (text) => `<span style="display:inline-block;padding:2px 8px;background:var(--bg-hover);border:1px solid var(--border);border-radius:5px;font-size:11px;color:var(--text);">${text}</span>`;
-
-  document.getElementById('onboard-titles').innerHTML = (p.titles || []).map(tag).join('');
-  document.getElementById('onboard-locations').innerHTML = (p.locations || []).map(tag).join('');
-  document.getElementById('onboard-seniority').textContent = (p.seniority || 'unknown').replace('_', ' ');
-  document.getElementById('onboard-industries').innerHTML = (p.industries || []).map(tag).join('');
-  document.getElementById('onboard-skills').innerHTML = (p.skills || []).slice(0, 8).map(tag).join('');
-
-  document.getElementById('onboard-profile-card').style.display = '';
-  document.getElementById('onboard-profile-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-
-window.createFilterFromProfile = function() {
-  if (!_onboardProfile) return;
-  const p = _onboardProfile;
-
-  // Build pills from profile
-  const newFilter = {
-    name: (p.titles?.[0] || 'My Search') + ' — auto-generated',
-    whatPills: (p.titles || []).slice(0, 3).map(t => ({ values: [t], type: 'keyword' })),
-    wherePills: (p.locations || []).slice(0, 2).map(l => ({ values: [l], type: 'location', locType: 'text' })),
-    whenPills: [],
-    whoPills: [],
-    payPills: [],
-    whatNotPills: [],
-    whereNotPills: [],
-    whoNotPills: [],
-    includeNoSalary: true,
-    includeRemote: p.remote_preference === 'remote',
-    created: new Date().toISOString(),
-  };
-
-  // Add to saved filters
-  savedFilters.push(newFilter);
-  saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
-  invalidateCache(); // A14: clear query caches when filters change
-  updateOnboardingStep(2);
-
-  // v6.04: Mark onboarding milestone
-  if (typeof markOnboardingMilestone === 'function') markOnboardingMilestone('filter');
-
-  // Navigate to Jobs page and run search
-  showToast('Search created from your resume! Running your first search…', { type: 'success' });
-  document.querySelector('[data-page=feed]').click();
-  
-  // Check the new filter and trigger search
-  setTimeout(() => {
-    if (typeof renderSavedFilters === 'function') renderSavedFilters();
-    if (typeof searchJobs === 'function') searchJobs();
-  }, 300);
-};
-
-// Q20: Onboarding milestone tracking
-// Steps: 0=new, 1=resume uploaded, 2=filter created, 3=first search run, 4=pipeline used
-function getOnboardingStep() {
-  return parseInt(localStorage.getItem('bj_onboarding_step') || '0');
-}
-
-function updateOnboardingStep(step) {
-  const current = getOnboardingStep();
-  if (step > current) {
-    localStorage.setItem('bj_onboarding_step', String(step));
-    applyProgressiveNav(step);
-  }
-}
-
-// Q21: Progressive nav disclosure
-function applyProgressiveNav(step) {
-  // Step 0-1: Show Get Started, Jobs, Settings only
-  // Step 2+: Unlock Tuning, Resumes
-  // Step 3+: Unlock Pipeline/Applications, Stats
-  // Step 4+: Full nav
-  const navItems = {
-    'tuning': 2,
-    'resumes': 1,
-    'applications': 1,
-    'ghost': 1,
-    'stats': 1,
-    'notifications': 2,
-    'feedback': 1,
-  };
-
-  for (const [page, minStep] of Object.entries(navItems)) {
-    const el = document.querySelector(`.nav-item[data-page="${page}"]`);
-    if (el) {
-      if (step < minStep) {
-        el.style.opacity = '0.35';
-        el.style.pointerEvents = 'none';
-        el.setAttribute('title', 'Complete onboarding to unlock');
-      } else {
-        el.style.opacity = '';
-        el.style.pointerEvents = '';
-        el.removeAttribute('title');
-      }
-    }
-  }
-}
-
-// Init progressive nav on load
-(function initOnboarding() {
-  const step = getOnboardingStep();
-  // Auto-detect milestones from existing data
-  if (step < 1 && resumes && resumes.length > 0) updateOnboardingStep(1);
-  if (step < 2 && savedFilters && savedFilters.length > 0) updateOnboardingStep(2);
-  if (step < 3 && localStorage.getItem('bj_first_search_done')) updateOnboardingStep(3);
-  if (step < 4 && localStorage.getItem('bj_pipeline_used')) updateOnboardingStep(4);
-  
-  applyProgressiveNav(getOnboardingStep());
-  
-  // Hide resume-first prompt if they already have filters
-  if (savedFilters.length > 0) {
-    const prompt = document.getElementById('onboard-resume-first');
-    if (prompt) prompt.style.display = 'none';
-  }
-})();
-
-
-
-
-
-
-
-// ─── Referral Attribution (Phase 4 v5.10) ───
-// Runs once per signup. Checks if user arrived via referral link.
-async function processReferralAttribution(user) {
-  // Only run if we haven't already attributed this user
-  var attributed = localStorage.getItem('bj_referral_attributed');
-  if (attributed === user.id) return;
-
-  // Check for referral code from landing page capture
-  var refCode = '';
-  var refSource = 'direct';
-  try {
-    refCode = sessionStorage.getItem('bj_referral_code') || '';
-    refSource = sessionStorage.getItem('bj_referral_source') || 'direct';
-  } catch(e) { reportError('app:app', e); }
-
-  // Also check cookie
-  if (!refCode) {
-    var match = document.cookie.match(/(^| )bj_ref=([^;]+)/);
-    refCode = match ? decodeURIComponent(match[2]) : '';
-    if (refCode) refSource = 'cookie_return';
-  }
-
-  if (!refCode) return; // No referral — skip
-
-  // Get fingerprint if available
-  var fingerprint = '';
-  try { fingerprint = sessionStorage.getItem('bj_fingerprint') || ''; } catch(e) { reportError('app:app', e); }
-  if (!fingerprint && window.bjFingerprint) {
-    try { fingerprint = window.bjFingerprint.generate(); } catch(e) { reportError('app:app', e); }
-  }
-
-  // Call attribution RPC
-  try {
-    var { data, error } = await sb.rpc('process_referral_attribution', {
-      p_referred_id: user.id,
-      p_referral_code: refCode,
-      p_ip_address: null, // IP captured server-side
-      p_browser_fingerprint: fingerprint || null,
-      p_source: refSource
-    });
-
-    if (error) {
-      console.warn('[Referral] Attribution error:', error.message);
-    } else {
-      console.log('[Referral] Attribution result:', data);
-    }
-  } catch(e) { reportError('app', e); console.warn('[Referral] Attribution call failed:', e.message);
-  }
-
-  // Mark as attributed so we don't re-run
-  localStorage.setItem('bj_referral_attributed', user.id);
-
-  // Clean up
-  try {
-    sessionStorage.removeItem('bj_referral_code');
-    sessionStorage.removeItem('bj_referral_source');
-  } catch(e) { reportError('app:app', e); }
 }

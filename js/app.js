@@ -365,6 +365,8 @@ $$('.nav-item').forEach(item => {
     $(`#page-${item.dataset.page}`).classList.add('active');
     // Persist active tab
     localStorage.setItem('bj_active_tab', item.dataset.page);
+    // CX-06: PostHog — dashboard tab viewed
+    if (window.posthog) posthog.capture('dashboard_tab_viewed', { tab: item.dataset.page });
     // Init stats charts when stats tab is shown
     if (item.dataset.page === 'stats' && typeof initStatsPage === 'function') initStatsPage();
     // Admin moved to /admin page (v6.26)

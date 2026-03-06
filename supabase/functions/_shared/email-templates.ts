@@ -5,9 +5,30 @@
 const DASHBOARD_URL = "https://brilliantjobs.app/dashboard.html";
 const LOGO_TEXT = "Brilliant Jobs";
 
+// CX-08: UTM attribution helper for email CTAs (TS1-1 + TS1-2)
+function utmLink(url: string, campaign: string, content?: string): string {
+  const sep = url.includes('?') ? '&' : '?';
+  let utm = `${sep}utm_source=email&utm_medium=notification&utm_campaign=${encodeURIComponent(campaign)}`;
+  if (content) utm += `&utm_content=${encodeURIComponent(content)}`;
+  return url + utm;
+}
+
 // ---- Base Layout ----
-function baseLayout(title: string, bodyHtml: string, footerExtra?: string): string {
-  return `<!DOCTYPE html>
+function baseLayout(title: string, bodyHtml: string, footerExtra?: string, campaign?: string): string {
+  // CX-08: If campaign provided, auto-tag all brilliantjobs.app links with UTM
+  const _campaign = campaign || title.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+  const tagLinks = (html: string): string => {
+    return html.replace(
+      /href="(https:\/\/brilliantjobs\.app[^"]*?)"/g,
+      (match, url) => {
+        if (url.includes('utm_source')) return match; // Already tagged
+        const sep = url.includes('?') ? '&' : '?';
+        return `href="${url}${sep}utm_source=email&utm_medium=notification&utm_campaign=${encodeURIComponent(_campaign)}"`;
+      }
+    );
+  };
+
+  const raw = `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${title}</title>
@@ -65,13 +86,14 @@ function baseLayout(title: string, bodyHtml: string, footerExtra?: string): stri
   ${bodyHtml}
   <div class="footer">
     ${footerExtra || ""}
-    <p><a href="${DASHBOARD_URL}">Open Dashboard</a> &middot; <a href="https://brilliantjobs.app">brilliantjobs.app</a></p>
+    <p><a href="${utmLink(DASHBOARD_URL, 'footer', 'open_dashboard')}">Open Dashboard</a> &middot; <a href="${utmLink('https://brilliantjobs.app', 'footer', 'homepage')}">brilliantjobs.app</a></p>
     <p>You're receiving this because you have an account on Brilliant Jobs.</p>
     <p>&copy; ${new Date().getFullYear()} Brilliant Jobs. All rights reserved.</p>
   </div>
 </div>
 </body>
 </html>`;
+  return tagLinks(raw);
 }
 
 // ---- Helpers ----
@@ -874,8 +896,20 @@ export function leaderboardRewardEmail(params: LeaderboardRewardEmailParams): st
 // Pod 1 copy: PRODUCTION — Batch 1-2 delivered 2026-03-01, white theme APPROVED
 
 // ---- White Theme Base Layout ----
-function whiteBaseLayout(title: string, bodyHtml: string, footerExtra?: string): string {
-  return `<!DOCTYPE html>
+function whiteBaseLayout(title: string, bodyHtml: string, footerExtra?: string, campaign?: string): string {
+  // CX-08: Auto-tag all brilliantjobs.app links with UTM
+  const _campaign = campaign || title.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+  const tagLinks = (html: string): string => {
+    return html.replace(
+      /href="(https:\/\/brilliantjobs\.app[^"]*?)"/g,
+      (match, url) => {
+        if (url.includes('utm_source')) return match;
+        const sep = url.includes('?') ? '&' : '?';
+        return `href="${url}${sep}utm_source=email&utm_medium=notification&utm_campaign=${encodeURIComponent(_campaign)}"`;
+      }
+    );
+  };
+  const raw = `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${title}</title>
@@ -924,6 +958,7 @@ function whiteBaseLayout(title: string, bodyHtml: string, footerExtra?: string):
 </div>
 </body>
 </html>`;
+  return tagLinks(raw);
 }
 
 // ═══════════════════════════════════════════════════════════

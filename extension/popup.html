@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -168,48 +168,56 @@
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
     ::-webkit-scrollbar-track { background: transparent; }
+    /* CX-05: Focus-visible styles for keyboard navigation */
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+    .tab:focus-visible { outline-offset: -2px; }
+    .btn:focus-visible { outline-offset: 2px; }
+    /* Skip link for keyboard users */
+    .skip-link { position: absolute; top: -40px; left: 0; background: var(--accent); color: #fff; padding: 4px 12px; z-index: 100; font-size: 12px; border-radius: 0 0 4px 0; transition: top 0.2s; }
+    .skip-link:focus { top: 0; }
   </style>
 </head>
 <body>
-  <div class="header">
+  <a class="skip-link" href="#app-content">Skip to main content</a>
+  <header class="header" role="banner">
     <span class="admin-badge" id="admin-badge">Admin</span>
     <span class="role-tag" id="role-tag"></span>
-    <a href="help.html" target="_blank" class="help-link" title="Help" id="help-link">?</a>
-    <span class="ver" id="ver-label">v—</span>
-  </div>
+    <a href="help.html" target="_blank" class="help-link" aria-label="Help" id="help-link">?</a>
+    <span class="ver" id="ver-label" role="status" aria-label="Extension version">v—</span>
+  </header>
   <div class="about-panel" id="about-panel">
-    <div class="about-header"><span class="about-title">Build Info</span><button class="about-close" id="about-close">&times;</button></div>
+    <div class="about-header"><span class="about-title">Build Info</span><button class="about-close" id="about-close" aria-label="Close build info panel">&times;</button></div>
     <div class="about-body" id="about-body">Loading...</div>
   </div>
-  <div id="auth-gate" class="auth-gate">
+  <div id="auth-gate" class="auth-gate" role="region" aria-label="Authentication">
     <h2>Welcome</h2>
     <p class="subtitle">Log in to access your tools</p>
-    <div class="field"><label>Email</label><input type="email" id="auth-email" placeholder="you@email.com"></div>
+    <div class="field"><label for="auth-email">Email</label><input type="email" id="auth-email" placeholder="you@email.com" autocomplete="email"></div>
     <div class="field">
-      <label>Password</label>
-      <div class="pw-wrap"><input type="password" id="auth-password" placeholder="Your password"><button type="button" class="pw-toggle" id="auth-pw-toggle">Show</button></div>
+      <label for="auth-password">Password</label>
+      <div class="pw-wrap"><input type="password" id="auth-password" placeholder="Your password" autocomplete="current-password"><button type="button" class="pw-toggle" id="auth-pw-toggle" aria-label="Toggle password visibility">Show</button></div>
       <div style="text-align: right; margin-top: 4px;"><a href="https://brilliantjobs.app" target="_blank" style="font-size: 11px; color: var(--accent); text-decoration: none;">Forgot password?</a></div>
     </div>
     <button class="btn btn-primary" id="auth-login-btn">Log In</button>
-    <div class="auth-msg" id="auth-msg"></div>
+    <div class="auth-msg" id="auth-msg" aria-live="polite"></div>
     <p class="signup-link">No account? <a href="https://brilliantjobs.app#signup" target="_blank">Sign up at brilliantjobs.app</a></p>
   </div>
-  <div class="auth-user-bar" id="auth-user-bar"><span class="user-email" id="auth-user-email"></span><button class="logout-btn" id="auth-logout-btn">Log Out</button></div>
-  <div id="app-content" style="display: none;">
-    <div class="tabs">
-      <div class="tab active" data-tab="harvest">Harvest</div>
-      <div class="tab" data-tab="scan">Scan</div>
-      <div class="tab" data-tab="jobs">Jobs</div>
-      <div class="tab" data-tab="data">Data</div>
+  <div class="auth-user-bar" id="auth-user-bar"><span class="user-email" id="auth-user-email"></span><button class="logout-btn" id="auth-logout-btn" aria-label="Log out">Log Out</button></div>
+  <main id="app-content" style="display: none;" role="main">
+    <div class="tabs" role="tablist" aria-label="Extension tools">
+      <div class="tab active" data-tab="harvest" role="tab" aria-selected="true" aria-controls="tab-harvest" tabindex="0" id="tab-btn-harvest">Harvest</div>
+      <div class="tab" data-tab="scan" role="tab" aria-selected="false" aria-controls="tab-scan" tabindex="-1" id="tab-btn-scan">Scan</div>
+      <div class="tab" data-tab="jobs" role="tab" aria-selected="false" aria-controls="tab-jobs" tabindex="-1" id="tab-btn-jobs">Jobs</div>
+      <div class="tab" data-tab="data" role="tab" aria-selected="false" aria-controls="tab-data" tabindex="-1" id="tab-btn-data">Data</div>
     </div>
-    <div class="scanner-indicator" id="scanner-indicator"><div class="scanner-dot idle" id="scanner-dot"></div><span class="scanner-indicator-text" id="scanner-indicator-text">Scanner idle</span><span class="scanner-indicator-count" id="scanner-indicator-count"></span></div>
+    <div class="scanner-indicator" id="scanner-indicator" role="status" aria-live="polite"><div class="scanner-dot idle" id="scanner-dot" aria-hidden="true"></div><span class="scanner-indicator-text" id="scanner-indicator-text">Scanner idle</span><span class="scanner-indicator-count" id="scanner-indicator-count"></span></div>
     <!-- Daily Limit Badge (Item #10) — shown for Starter tier only -->
-    <div class="daily-limit-bar" id="daily-limit-bar">
+    <div class="daily-limit-bar" id="daily-limit-bar" role="status" aria-label="Daily scan limit">
       <span class="dl-label">Today</span>
-      <span class="dl-count" id="dl-count">0 / 5</span>
-      <div class="dl-bar-track"><div class="dl-bar-fill" id="dl-bar-fill" style="width: 0%"></div></div>
+      <span class="dl-count" id="dl-count" aria-live="polite">0 / 5</span>
+      <div class="dl-bar-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="dl-bar-fill" id="dl-bar-fill" style="width: 0%"></div></div>
     </div>
-    <div id="tab-harvest" class="tab-content active">
+    <div id="tab-harvest" class="tab-content active" role="tabpanel" aria-labelledby="tab-btn-harvest">
       <div class="stats"><div class="stat"><div class="stat-value" id="h-count">0</div><div class="stat-label">Connections Found</div></div><div class="stat"><div class="stat-value" id="h-companies">0</div><div class="stat-label">Parsed Companies</div></div></div>
       <div class="source-list"><div class="source-item"><span class="source-dot dot-active"></span><span>Connections</span><span class="source-badge badge-ready">Ready</span></div><div class="source-item disabled"><span class="source-dot dot-disabled"></span><span>Followers</span><span class="source-badge badge-soon">Coming Soon</span></div><div class="source-item disabled"><span class="source-dot dot-disabled"></span><span>Following</span><span class="source-badge badge-soon">Coming Soon</span></div></div>
       <button class="btn btn-primary" id="h-start">Harvest Connections</button>
@@ -217,7 +225,7 @@
       <button class="btn btn-danger hidden" id="h-stop">Stop</button>
       <div class="status-bar hidden" id="h-last-harvest"><span class="label">Last Harvest: </span><span class="value" id="h-last-date">—</span></div>
     </div>
-    <div id="tab-scan" class="tab-content">
+    <div id="tab-scan" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-scan">
       <div class="stats"><div class="stat"><div class="stat-value" id="s-visited">0</div><div class="stat-label">Visited</div></div><div class="stat"><div class="stat-value" id="s-queued">0</div><div class="stat-label">In Queue</div></div><div class="stat"><div class="stat-value" id="s-today">0</div><div class="stat-label">Today</div></div></div>
       <div class="estimate" id="s-estimate"><div class="estimate-title">Estimated Completion</div><div class="estimate-main" id="s-est-days">—</div><div class="estimate-detail" id="s-est-detail"></div></div>
       <div class="checkbox-row"><input type="checkbox" id="s-include-past" checked><label for="s-include-past">Include past companies</label></div>
@@ -226,21 +234,21 @@
       <button class="btn btn-primary hidden" id="s-resume">Resume</button>
       <button class="btn btn-danger hidden" id="s-stop">Stop</button>
     </div>
-    <div id="tab-jobs" class="tab-content">
+    <div id="tab-jobs" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-jobs">
       <div class="stats"><div class="stat"><div class="stat-value" id="j-count">0</div><div class="stat-label">Jobs Found</div></div></div>
       <button class="btn btn-primary" id="j-scrape">Scrape All Pages</button>
       <button class="btn btn-danger hidden" id="j-stop">Stop</button>
       <button class="btn btn-success hidden" id="j-download">Download TSV</button>
     </div>
-    <div id="tab-data" class="tab-content">
+    <div id="tab-data" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-data">
       <div class="stats"><div class="stat"><div class="stat-value" id="d-connections">0</div><div class="stat-label">Connections</div></div><div class="stat"><div class="stat-value" id="d-companies">0</div><div class="stat-label">Unique Companies</div></div><div class="stat"><div class="stat-value" id="d-hiring">0</div><div class="stat-label">#Hiring</div></div><div class="stat"><div class="stat-value" id="d-otw">0</div><div class="stat-label">#OpenToWork</div></div></div>
       <div id="d-top-companies" style="margin: 10px 0;"><div class="section-label">Top Companies by Connections</div><div id="d-top-list" style="font-size: 12px;"></div></div>
       <button class="btn btn-success" id="d-export-connections">Export Connections TSV</button>
       <button class="btn btn-success" id="d-export-companies">Export Companies TSV</button>
       <button class="btn btn-outline" id="d-refresh">Refresh Counts</button>
     </div>
-    <div class="log-section"><div class="log-header"><span class="log-title">Activity</span><button class="log-clear" id="log-clear">Clear</button></div><div class="log" id="unified-log"></div></div>
-  </div>
+    <div class="log-section" role="region" aria-label="Activity log"><div class="log-header"><span class="log-title" id="log-title">Activity</span><button class="log-clear" id="log-clear" aria-label="Clear activity log">Clear</button></div><div class="log" id="unified-log" aria-labelledby="log-title" role="log" aria-live="polite"></div></div>
+  </main>
   <script src="supabase.js"></script>
   <script src="utils/crypto.js"></script>
   <script src="popup-bridge.js"></script>
