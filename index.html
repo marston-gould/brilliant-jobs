@@ -806,6 +806,15 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     if (segment === 'returning' && visits >= 3) {
       document.documentElement.setAttribute('data-visit-depth', 'deep');
     }
+    // CS-007: CX-04 — Conditionally render hero sections (remove non-active from DOM)
+    // Fixes 3 simultaneous H1 tags → only 1 H1 in DOM at any time
+    var segmentClasses = ['segment-new', 'segment-returning', 'segment-lapsed', 'segment-active'];
+    segmentClasses.forEach(function(cls) {
+      if (cls !== 'segment-' + segment) {
+        var els = document.querySelectorAll('section.' + cls);
+        els.forEach(function(el) { el.remove(); });
+      }
+    });
     if (segment === 'active') {
       window.location.replace('/dashboard');
     }
@@ -853,8 +862,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <body>
   <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PLHNJQLC"
 height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- CS-007: CX-04 — Skip navigation link -->
+  <a href="#main-content" class="skip-link" style="position:absolute;top:-40px;left:0;background:#fff;color:#000;padding:8px 16px;z-index:100;font-size:14px;text-decoration:none;" onfocus="this.style.top='0'" onblur="this.style.top='-40px'">Skip to main content</a>
 
-  <nav class="site-nav segment-new segment-returning">
+  <nav class="site-nav segment-new segment-returning" aria-label="Main navigation">
     <div class="nav-logo"><div class="mark">B</div> Brilliant Jobs</div>
     <div class="nav-links">
       <a href="#why">Why</a>
@@ -868,7 +879,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </nav>
 
   <!-- Lapsed nav: simplified -->
-  <nav class="site-nav segment-lapsed">
+  <nav class="site-nav segment-lapsed" aria-label="Main navigation">
     <div class="nav-logo"><div class="mark">B</div> Brilliant Jobs</div>
     <div class="nav-links">
       <a href="#why">Why</a>
@@ -881,7 +892,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </div>
   </nav>
 
-  <main>
+  <main id="main-content">
 
   <!-- ==================== HERO: NEW VISITOR (full pitch) ==================== -->
   <section class="hero segment-new">
@@ -1075,14 +1086,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div class="preview-filters" id="preview-filters">
         <div class="preview-input-row">
           <input type="text" id="preview-keyword" placeholder="Job title or keywords (e.g. SEO, growth marketing)"
-                 class="preview-input" maxlength="100">
+                 class="preview-input" maxlength="100" aria-label="Job title or keywords">
           <input type="text" id="preview-location" placeholder="City or state (e.g. Portland, OR)"
-                 class="preview-input" maxlength="100">
+                 class="preview-input" maxlength="100" aria-label="City or state">
           <label class="preview-toggle">
             <input type="checkbox" id="preview-remote"> Remote only
           </label>
         </div>
-        <button class="btn btn-primary preview-go" id="preview-go">Search</button>
+        <button class="btn btn-primary preview-go" id="preview-go" aria-label="Search jobs">Search</button>
       </div>
 
       <div class="preview-results" id="preview-results" style="display:none">
@@ -1392,41 +1403,41 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </footer>
 
   <!-- AUTH MODAL -->
-  <div class="modal-overlay" id="auth-modal">
+  <div class="modal-overlay" id="auth-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-hidden="true">
     <div class="modal">
-      <button class="modal-close" id="modal-close-btn">&times;</button>
+      <button class="modal-close" id="modal-close-btn" aria-label="Close dialog">&times;</button>
       <div id="auth-forms">
         <div class="modal-title" id="modal-title">Welcome back</div>
         <div class="modal-sub" id="modal-sub">Log in to your account</div>
-        <div class="auth-tabs">
-          <div class="auth-tab active" data-form="login">Log In</div>
+        <div class="auth-tabs" role="tablist" aria-label="Authentication method">
+          <div class="auth-tab active" data-form="login" role="tab" aria-selected="true" tabindex="0">Log In</div>
           <!-- REGISTRATION LOCKED — re-enable when ready to accept signups -->
           <!-- <div class="auth-tab" data-form="signup">Sign Up</div> -->
         </div>
         <div class="auth-form active" id="form-login"><form onsubmit="return false;" autocomplete="on">
-          <div class="field"><label>Email</label><input type="email" id="login-email" placeholder="you@email.com"></div>
+          <div class="field"><label for="login-email">Email</label><input type="email" id="login-email" placeholder="you@email.com"></div>
           <div class="field">
-            <label>Password</label>
+            <label for="login-password">Password</label>
             <div class="password-wrap">
               <input type="password" id="login-password" placeholder="Your password" autocomplete="current-password">
-              <button type="button" class="pw-toggle" data-target="login-password">Show</button>
+              <button type="button" class="pw-toggle" data-target="login-password" aria-label="Toggle password visibility">Show</button>
             </div>
             <span class="forgot-link" id="forgot-trigger">Forgot password?</span>
           </div>
           <button class="btn-auth" id="login-btn">Log In</button>
-          <div class="msg" id="login-msg"></div></form>
+          <div class="msg" id="login-msg" aria-live="polite"></div></form>
           <div class="forgot-section" id="forgot-section">
             <div style="font-size:12px;color:var(--text-faint);margin-bottom:8px;">Enter your email above and click below.</div>
             <button class="btn-auth" id="forgot-btn" style="background:var(--bg-input);color:var(--text-dim);font-size:13px;padding:10px;">Send Password Reset Email</button>
-            <div class="msg" id="forgot-msg"></div>
+            <div class="msg" id="forgot-msg" aria-live="polite"></div>
           </div>
         </div>
         <!-- REGISTRATION LOCKED — signup form hidden until launch -->
         <div class="auth-form" id="form-signup" style="display:none !important;"></div>
         <div class="auth-form" id="form-forgot"><form onsubmit="return false;">
-          <div class="field"><label>Email</label><input type="email" id="forgot-email" placeholder="you@email.com"></div>
+          <div class="field"><label for="forgot-email">Email</label><input type="email" id="forgot-email" placeholder="you@email.com"></div>
           <button class="btn-auth" id="forgot-send-btn" style="background:var(--bg-input);color:var(--text-dim);">Send Password Reset Email</button>
-          <div class="msg" id="forgot-send-msg"></div>
+          <div class="msg" id="forgot-send-msg" aria-live="polite"></div>
           <div style="text-align:center;margin-top:12px;"><span class="forgot-link" onclick="switchTab('login')">Back to Log In</span></div>
         </form></div>
       </div>
@@ -1491,13 +1502,51 @@ document.addEventListener('DOMContentLoaded', function() {
     // ============================================================
     // MODAL
     // ============================================================
+    // CS-007: CX-04 — Track element that opened modal for focus return
+    var _modalTrigger = null;
     window.openModal = function openModal(tab) {
-      $('#auth-modal').classList.add('active');
+      _modalTrigger = document.activeElement;
+      var modal = $('#auth-modal');
+      modal.classList.add('active');
+      modal.setAttribute('aria-hidden', 'false');
       switchTab(tab || 'login');
+      // CS-007: Focus first input in modal after brief delay for render
+      setTimeout(function() {
+        var firstInput = modal.querySelector('input:not([type="hidden"])');
+        if (firstInput) firstInput.focus();
+      }, 50);
     }
     window.closeModal = function closeModal() {
-      $('#auth-modal').classList.remove('active');
+      var modal = $('#auth-modal');
+      modal.classList.remove('active');
+      modal.setAttribute('aria-hidden', 'true');
+      // CS-007: Return focus to trigger element
+      if (_modalTrigger && _modalTrigger.focus) {
+        _modalTrigger.focus();
+        _modalTrigger = null;
+      }
     }
+    // CS-007: CX-04 — Escape key closes modal
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && $('#auth-modal').classList.contains('active')) {
+        closeModal();
+      }
+    });
+    // CS-007: CX-04 — Focus trap in auth modal
+    $('#auth-modal').addEventListener('keydown', function(e) {
+      if (e.key !== 'Tab') return;
+      var focusable = this.querySelectorAll('button, [href], input:not([type="hidden"]), select, textarea, [tabindex]:not([tabindex="-1"])');
+      var visible = Array.prototype.filter.call(focusable, function(el) {
+        return el.offsetParent !== null && !el.disabled;
+      });
+      if (visible.length === 0) return;
+      var first = visible[0], last = visible[visible.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault(); last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault(); first.focus();
+      }
+    });
 
     // ============================================================
     // SIGNUP TIMING
