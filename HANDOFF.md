@@ -44,8 +44,8 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 **CS-013** — Dashboard RLS + Extension Retry/Timeout + Kill-Switch
 - Started: 2026-03-06
-- Latest commit: `df56d49` — `audit(cs-013): RLS migration + kill-switch + fetchWithRetry + PII minimization`
-- Estimated completion: ~70%
+- Latest commit: `bb1bbd2` — `audit(cs-013): fetchWithRetry wired to all extension fetch calls + admin kill-switch UI + heartbeat directive`
+- Estimated completion: ~95% (all code complete — deployment, testing, and tags remain)
 - **Tags NOT yet applied** — pending exit gate
 
 ### What Was Done
@@ -53,84 +53,29 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 | Fix Item | Work Completed | Files |
 |----------|---------------|-------|
 | FIX-08 (RLS) | Migration SQL written for 14 tables (profiles, resumes, subscriptions, connections, feedback, notification_log, notification_actions, plans, cohorts, ats_companies, ats_jobs, audit_log, company_ghost_stats, ghost_alerts_sent, content_stories). Policies: user-owned, public-read, admin-only. Feature flag row seeded. | `supabase/migrations/20260306_cs013_rls_killswitch.sql` |
-| FIX-12 (fetchWithRetry) | Utility created: AbortSignal.timeout + exponential backoff + jitter + fire-and-forget variant. Heartbeat upgraded with 15s timeout. | `extension/utils/fetchWithRetry.js`, `extension/background.js` |
+| FIX-12 (fetchWithRetry) | Utility created: AbortSignal.timeout + exponential backoff + jitter + fire-and-forget variant. Heartbeat upgraded with 15s timeout. **27 service-worker/popup fetch calls converted to fetchWithRetry/fetchFireAndForget. 3 content-script calls get AbortSignal.timeout (isolated world).** Converted by module: supabase.js (5), autoTracker.js (4), popup.js (5), background.js (13), fillMetrics.js (2 timeout-only). | `extension/utils/fetchWithRetry.js`, `extension/background.js`, `extension/supabase.js`, `extension/popup.js`, `extension/popup.html`, `extension/utils/autoTracker.js`, `extension/utils/fillMetrics.js` |
 | FIX-13 Layer 1 (Heartbeat) | `sendHeartbeat()` in background.js parses response for `{ directive: 'kill' }` and calls kill-switch. | `extension/background.js` |
 | FIX-13 Layer 2 (External) | `externally_connectable` added to manifest. `onMessageExternal` handler for kill/resume/status from admin origins. | `extension/manifest.json`, `extension/background.js` |
 | FIX-13 Layer 3 (DB flag) | Checks `feature_flags` table on startup + hourly alarm (`killSwitchDbCheck`). Kill state persisted in `chrome.storage.local`. | `extension/background.js`, migration SQL |
+| FIX-13 Admin UI | Kill-switch toggle panel: state display (red/green indicator), toggle with confirmation, direct send via chrome.runtime.sendMessage, active scanners table from extension_events (24h), auto-refresh 30s, audit trail via _logAdminAction(). Registered in ADMIN_SUBPAGE_MAP under Operations. | `js/admin-killswitch.js`, `js/admin.js`, `admin.html`, `build-admin.js`, `dist/admin.js`, `dist/admin.min.js` |
+| FIX-13 EF Directive | extension-heartbeat Edge Function reads `feature_flags.extension_kill_switch` and returns `{ directive: 'kill' \| 'resume' \| null }` in response. | `supabase/functions/extension-heartbeat/index.ts` |
 | FIX-14 (PII minimization) | Per-question profile field subsets via pattern matching. Resume truncated to 2000 chars, only sent for experience/skill questions. `_selectProfileFields()` + `_needsResume()` helpers. | `extension/utils/aiAnswerer.js` |
 
 ### What Remains (pick up here)
 
-> **IMPORTANT: Module format issue.** `fetchWithRetry.js` and `killSwitch.js` use ES module `export` syntax, but `background.js` uses `importScripts()` (not ES modules — manifest has no `"type": "module"`). Before wiring, convert both files from `export function/const` to `self.fetchWithRetry = function` / `self.killSwitch = { ... }` pattern, matching `crypto.js` and `autoTracker.js` conventions. Then add `importScripts('utils/fetchWithRetry.js')` and `importScripts('utils/killSwitch.js')` to the top of `background.js`.
+| # | Task | Effort | Detail |
+|---|------|--------|--------|
+| 1 | **Deploy RLS migration to prod** | ~1h | Run `20260306_cs013_rls_killswitch.sql` against prod Supabase via SQL editor. Verify no breakage on dashboard login, job feed, resume render, billing page. Then apply to staging + dev. |
+| 2 | **Deploy heartbeat EF update** | ~30m | `supabase functions deploy extension-heartbeat` (or push to trigger Supabase auto-deploy). Verify directive field appears in heartbeat response. |
+| 3 | **Push code to prod** | ~15m | `git push` to trigger Vercel deploy of admin changes + dashboard. Verify admin kill-switch panel loads. |
+| 4 | **Test (local + prod)** | ~2h | See test plan below. |
+| 5 | **Apply version tags** | ~10m | `dashboard@0.7.0-rls`, `extension@0.5.0-killswitch`, `admin@0.7.0-killswitch` |
+| 6 | **Update ROADMAP.md** | ~10m | Phase 0b: "Kill-switch + RLS + extension reliability — DONE [date]". Launch gate 4 (kill-switch) — CLEARED. |
+| 7 | **Update this HANDOFF.md** | ~10m | Move CS-013 to Completed. Set CS-014 as Next Session. |
 
-Each task below is designed to be completed in a single chat. Do one, commit, update this file, done.
+### Test Plan
 
-**TASK A — Fix module format + wire into background.js (13 fetch calls)**
-
-1. Convert `extension/utils/fetchWithRetry.js`: replace `export async function fetchWithRetry(` with `self.fetchWithRetry = async function(` and `export async function fetchFireAndForget(` with `self.fetchFireAndForget = async function(`
-2. Convert `extension/utils/killSwitch.js`: replace `export const killSwitch = {` with `self.killSwitch = {`
-3. Add to `extension/background.js` after line 3 (existing importScripts block): `importScripts('utils/fetchWithRetry.js');` and `importScripts('utils/killSwitch.js');`
-4. Replace bare `fetch(` calls in `background.js` at these lines — use `view_range` to see ONLY the 10 lines around each call, don't read the whole file:
-   - Line 52: PostHog capture → `fetchFireAndForget` (analytics, fire-and-forget)
-   - Line 242: Auth token refresh → `fetchWithRetry` (critical, retries: 2)
-   - Lines 1225, 1282, 1314, 1341, 1530: extension_events inserts → `fetchFireAndForget` (telemetry)
-   - Line 1379: EF call → `fetchWithRetry` (timeout: 30000, retries: 1)
-   - Line 1410: pipeline-write → `fetchWithRetry` (timeout: 15000, retries: 1)
-   - Line 1461: match-score-overlay → `fetchWithRetry` (timeout: 30000, retries: 1)
-   - Line 1495: overlay_analytics → `fetchFireAndForget` (telemetry)
-   - Line 1800: heartbeat → already converted (verify, skip if done)
-   - Line 2021: EF call → `fetchWithRetry` (timeout: 30000, retries: 1)
-5. Commit: `CS-013: Fix module format + wire fetchWithRetry into background.js (13 calls)`
-
-**TASK B — Wire fetchWithRetry into small files (10 fetch calls, 4 files)**
-
-Files are small enough to read whole. Do all 4 in one chat.
-
-1. `extension/supabase.js` (75 lines, 5 calls at lines 24/34/45/59/67): All are Supabase REST calls → `fetchWithRetry` with `{ timeout: 10000, retries: 1 }`
-2. `extension/utils/fillMetrics.js` (256 lines, 2 calls at lines 42/64): Line 42 PostHog → `fetchFireAndForget`; Line 64 fill_metrics insert → `fetchFireAndForget`
-3. `extension/utils/autoTracker.js` (316 lines, 4 calls at lines 115/211/225/254): All pipeline/tracking → `fetchWithRetry` with `{ timeout: 15000, retries: 1 }`
-4. `extension/utils/aiAnswerer.js` (373 lines, 1 call at line 153): EF call → `fetchWithRetry` with `{ timeout: 45000, retries: 1 }` (AI calls are slow)
-5. For non-background files: add `<script src="utils/fetchWithRetry.js"></script>` to `popup.html` before `popup.js` script tag
-6. Commit: `CS-013: Wire fetchWithRetry into supabase.js, fillMetrics, autoTracker, aiAnswerer`
-
-**TASK C — Wire fetchWithRetry into popup.js (5 fetch calls)**
-
-Use `view_range` — don't read all 1,581 lines. Only view 10 lines around each call.
-
-1. `extension/popup.js` line 21: PostHog capture → `fetchFireAndForget`
-2. `extension/popup.js` line 121: Auth token refresh → `fetchWithRetry` (retries: 2)
-3. `extension/popup.js` line 145: Auth login → `fetchWithRetry` (timeout: 15000, retries: 1)
-4. `extension/popup.js` line 573: connections upsert → `fetchWithRetry` (timeout: 10000, retries: 1)
-5. `extension/popup.js` line 1545: EF call → `fetchWithRetry` (timeout: 30000, retries: 1)
-6. `extension/popup-post.js` line 53: version.json load → `fetchWithRetry` (timeout: 5000, retries: 1) — local file, fast
-7. Commit: `CS-013: Wire fetchWithRetry into popup.js + popup-post.js (6 calls)`
-
-**TASK D — Admin kill-switch toggle UI + deploy RLS migration**
-
-1. Add kill-switch panel to admin sidebar: new `admin-killswitch.js` sub-page under Operations section
-   - Read current `feature_flags.extension_kill_switch` value
-   - Display active scanners count from `extension_events` (last 5min)
-   - Toggle button: updates `feature_flags` row
-   - Wire into `ADMIN_SUBPAGE_MAP` in `js/admin.js` as `'killswitch': { section: 'operations', label: 'Kill Switch', init: function(){ loadKillSwitchPanel(); } }`
-   - Add panel div to `admin.html`
-2. Modify `supabase/functions/extension-heartbeat/index.ts` to check `feature_flags.extension_kill_switch` and include `{ directive: 'kill' | null }` in response
-3. Run `20260306_cs013_rls_killswitch.sql` against prod via Supabase Management API
-4. Verify: dashboard login → job feed loads → resume renders → billing accessible
-5. Rebuild admin bundle: `node build-admin.js`
-6. Commit: `CS-013: Admin kill-switch UI + heartbeat directive + RLS migration deployed`
-
-**TASK E — Test + version + roadmap + handoff (close session)**
-
-1. Test (prod): RLS spot-check, extension retry, kill-switch toggle, AI answerer payload
-2. Tags: `dashboard@0.7.0-rls`, `extension@0.5.0-killswitch`, `admin@0.7.0-killswitch`
-3. Update ROADMAP.md: Phase 0b "Kill-switch + RLS + extension reliability — DONE [date]". Launch gate G4 — CLEARED.
-4. Update /roadmap page
-5. Update HANDOFF.md: move CS-013 to Completed, set CS-014 as next session
-6. Commit: `CS-013: Update ROADMAP.md + /roadmap + HANDOFF.md — session complete`
-
-### Test Plan (execute during Task E)
-
-**After all Tasks A–D are committed:**
+**After deployment (Tasks 1–3 above):**
 - RLS: `SELECT tablename FROM pg_tables WHERE schemaname='public' AND NOT rowsecurity;` → should return only view-backed or intentionally open tables
 - Extension: Load extension → open LinkedIn → verify no console errors from fetchWithRetry
 - Kill-switch: Set `feature_flags.extension_kill_switch = true` in Supabase → extension stops within 60s
@@ -243,7 +188,7 @@ Use `view_range` — don't read all 1,581 lines. Only view 10 lines around each 
 | G1 | All P0s resolved | 🔲 | |
 | G2 | PostHog error tracking live | ⚡ | CS-003: deployed, needs prod verification |
 | G3 | Service role key rotated | 🔲 | SE-002 downgraded to hygiene |
-| G4 | Kill-switch operational | ⏳ | CS-013: code complete, admin UI + deployment remaining |
+| G4 | Kill-switch operational | ⏳ | CS-013: all 3 layers coded + admin UI built + EF updated. Deployment + testing remaining. |
 | G5 | Critical-path tests pass | 🔲 | |
 | G6 | Connection pooler live (300+) | 🔲 | CS-009: Supavisor enabled, needs load test |
 | G7 | Privacy policy + DPAs sent | ⚡ | Policy published; DPA initiation pending legal |
