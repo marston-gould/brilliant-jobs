@@ -1,5 +1,5 @@
 // === js/version.js ===
-var BJ_VERSION = 'v7.22';
+var BJ_VERSION = 'v7.23';
 (function() {
   function populateVersion() {
     document.querySelectorAll(".bj-version, [id$=\"-version\"]").forEach(function(el) {
@@ -12335,6 +12335,18 @@ async function loadCostsTab() {
     </div>
     <div class="admin-block">
       <div class="admin-block-header">
+        <h2 class="admin-block-title">Budget Alerts</h2>
+        <button class="admin-btn admin-btn-sm" id="costs-edit-budgets-btn">Edit Budgets</button>
+      </div>
+      <div id="costs-budget-alerts"><div class="admin-loading">Loading budgets...</div></div>
+      <div id="costs-budget-edit-form" style="display:none;padding:12px 0;border-top:1px solid var(--border);margin-top:12px;">
+        <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">Set monthly budget per vendor. Alert fires when spend reaches threshold %.</div>
+        <div id="costs-budget-fields"></div>
+        <button class="admin-btn" id="costs-budget-save" style="margin-top:8px;">Save Budgets</button>
+      </div>
+    </div>
+    <div class="admin-block">
+      <div class="admin-block-header">
         <h2 class="admin-block-title">Monthly Breakdown</h2>
       </div>
       <div id="costs-chart" style="height:280px;"></div>
@@ -12353,6 +12365,13 @@ async function loadCostsTab() {
     f.style.display = f.style.display === 'none' ? 'block' : 'none';
   });
 
+  document.getElementById('costs-edit-budgets-btn').addEventListener('click', () => {
+    const f = document.getElementById('costs-budget-edit-form');
+    f.style.display = f.style.display === 'none' ? 'block' : 'none';
+  });
+
+  document.getElementById('costs-budget-save').addEventListener('click', _saveBudgets);
+
   document.getElementById('costs-form-save').addEventListener('click', async () => {
     const month = document.getElementById('costs-form-month').value;
     const vendor = document.getElementById('costs-form-vendor').value;
@@ -12370,23 +12389,84 @@ async function loadCostsTab() {
 }
 
 async function _loadCostsData() {
-  const { data, error } = await sb.from('vendor_cost_log')
-    .select('*').order('month', { ascending: false }).limit(200);
+  const [costsRes, budgetsRes] = await Promise.all([
+    sb.from('vendor_cost_log').select('*').order('month', { ascending: false }).limit(200),
+    sb.from('vendor_cost_budgets').select('*')
+  ]);
+
+  const data = costsRes.data || [];
+  const budgets = budgetsRes.data || [];
 
   const container = document.getElementById('costs-log-container');
   if (!container) return;
 
-  if (error || !data || data.length === 0) {
-    container.innerHTML = '<div class="admin-empty">No cost entries yet. Add your first entry above.</div>';
-    return;
-  }
-
-  // Stat cards
+  // Budget alerts section
+  const alertsEl = document.getElementById('costs-budget-alerts');
+  const budgetFieldsEl = document.getElementById('costs-budget-fields');
   const now = new Date();
   const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const lastDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const lastMonth = `${lastDate.getFullYear()}-${String(lastDate.getMonth() + 1).padStart(2, '0')}`;
 
+  // Build vendor spend for this month
+  const vendorSpendThisMonth = {};
+  data.filter(r => r.month === thisMonth).forEach(r => {
+    vendorSpendThisMonth[r.vendor] = (vendorSpendThisMonth[r.vendor] || 0) + parseFloat(r.amount || 0);
+  });
+
+  // Render budget alert bars
+  if (alertsEl) {
+    if (budgets.length === 0) {
+      alertsEl.innerHTML = '<div class="admin-empty" style="font-size:13px;color:var(--text-faint);">No budgets configured. Click "Edit Budgets" to set thresholds.</div>';
+    } else {
+      const alertRows = budgets.map(b => {
+        const spent = vendorSpendThisMonth[b.vendor] || 0;
+        const budget = parseFloat(b.monthly_budget) || 0;
+        const pct = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
+        const overBudget = budget > 0 && spent > budget;
+        const nearBudget = budget > 0 && pct >= (b.alert_threshold_pct || 80);
+        const barColor = overBudget ? '#ef4444' : nearBudget ? '#f59e0b' : '#34d399';
+        const statusIcon = overBudget ? '🔴' : nearBudget ? '🟡' : '🟢';
+        const statusText = overBudget ? 'OVER BUDGET' : nearBudget ? 'Near limit' : 'OK';
+        return `
+          <div style="display:grid;grid-template-columns:120px 1fr 90px 80px;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
+            <div style="font-size:13px;font-weight:600;color:var(--text);">${_escHtml(b.vendor)}</div>
+            <div style="position:relative;height:18px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden;">
+              <div style="position:absolute;left:0;top:0;bottom:0;width:${pct}%;background:${barColor};border-radius:4px;transition:width .3s;"></div>
+              <div style="position:absolute;left:4px;top:0;bottom:0;display:flex;align-items:center;font-size:11px;color:#fff;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,.5);">
+                $${spent.toFixed(0)} / $${budget.toFixed(0)}
+              </div>
+            </div>
+            <div style="font-size:11px;color:var(--text-dim);text-align:right;">${pct.toFixed(0)}%</div>
+            <div style="font-size:11px;text-align:right;">${statusIcon} ${statusText}</div>
+          </div>`;
+      }).join('');
+      alertsEl.innerHTML = alertRows;
+    }
+  }
+
+  // Render budget edit fields
+  if (budgetFieldsEl) {
+    const VENDORS = ['Vercel', 'Supabase', 'DataForSEO', 'Cloudflare', 'Resend', 'Vonage', 'Anthropic', 'Other'];
+    const budgetMap = {};
+    budgets.forEach(b => { budgetMap[b.vendor] = b; });
+    budgetFieldsEl.innerHTML = VENDORS.map(v => {
+      const b = budgetMap[v] || { monthly_budget: 0, alert_threshold_pct: 80 };
+      return `
+        <div style="display:grid;grid-template-columns:120px 1fr 100px;gap:8px;align-items:center;margin-bottom:4px;">
+          <label style="font-size:12px;color:var(--text-dim);">${_escHtml(v)}</label>
+          <input type="number" class="admin-input" data-vendor="${_escHtml(v)}" data-field="budget" value="${parseFloat(b.monthly_budget) || 0}" step="1" placeholder="Monthly $" style="font-size:12px;">
+          <input type="number" class="admin-input" data-vendor="${_escHtml(v)}" data-field="threshold" value="${b.alert_threshold_pct || 80}" min="1" max="100" placeholder="Alert %" style="font-size:12px;">
+        </div>`;
+    }).join('') + '<div style="font-size:11px;color:var(--text-faint);margin-top:4px;">Left: monthly budget ($) · Right: alert threshold (%)</div>';
+  }
+
+  if (data.length === 0) {
+    container.innerHTML = '<div class="admin-empty">No cost entries yet. Add your first entry above.</div>';
+    return;
+  }
+
+  // Stat cards
   const thisMo = data.filter(r => r.month === thisMonth);
   const lastMo = data.filter(r => r.month === lastMonth);
   const thisMoTotal = thisMo.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
@@ -12414,16 +12494,28 @@ async function _loadCostsData() {
   const months = Object.keys(monthlyTotals).sort().slice(-12);
   const monthValues = months.map(m => monthlyTotals[m]);
 
+  // Total budget line for chart
+  const totalBudget = budgets.reduce((s, b) => s + parseFloat(b.monthly_budget || 0), 0);
+
   const chartEl = document.getElementById('costs-chart');
   if (chartEl && typeof echarts !== 'undefined' && months.length > 0) {
     let chart = echarts.getInstanceByDom(chartEl) || echarts.init(chartEl, 'dark');
+    const series = [{ type: 'bar', data: monthValues, itemStyle: { color: '#e55' }, name: 'Total Cost' }];
+    if (totalBudget > 0) {
+      series.push({
+        type: 'line', data: months.map(() => totalBudget),
+        lineStyle: { color: '#f59e0b', type: 'dashed', width: 2 },
+        itemStyle: { color: '#f59e0b' }, symbol: 'none', name: 'Budget'
+      });
+    }
     chart.setOption({
       backgroundColor: 'transparent',
-      tooltip: { trigger: 'axis', formatter: p => p[0].name + ': $' + p[0].value.toFixed(2) },
-      grid: { left: 55, right: 20, top: 20, bottom: 40 },
+      tooltip: { trigger: 'axis', formatter: p => p.map(i => i.seriesName + ': $' + i.value.toFixed(2)).join('<br>') },
+      legend: { data: ['Total Cost', 'Budget'], textStyle: { color: '#aaa', fontSize: 11 }, top: 0 },
+      grid: { left: 55, right: 20, top: 35, bottom: 40 },
       xAxis: { type: 'category', data: months, axisLabel: { color: '#aaa', fontSize: 11 } },
       yAxis: { type: 'value', axisLabel: { color: '#aaa', fontSize: 11, formatter: v => '$' + v } },
-      series: [{ type: 'bar', data: monthValues, itemStyle: { color: '#e55' }, name: 'Total Cost' }]
+      series
     });
   }
 
@@ -12441,6 +12533,32 @@ async function _loadCostsData() {
       <thead><tr><th>Month</th><th>Vendor</th><th>Amount</th><th>Notes</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
+}
+
+async function _saveBudgets() {
+  const fields = document.querySelectorAll('[data-vendor][data-field="budget"]');
+  const updates = [];
+  fields.forEach(field => {
+    const vendor = field.dataset.vendor;
+    const budget = parseFloat(field.value) || 0;
+    const thresholdField = document.querySelector(`[data-vendor="${vendor}"][data-field="threshold"]`);
+    const threshold = parseInt(thresholdField?.value) || 80;
+    updates.push({ vendor, monthly_budget: budget, alert_threshold_pct: Math.max(1, Math.min(100, threshold)) });
+  });
+
+  let errorCount = 0;
+  for (const u of updates) {
+    const { error } = await sb.from('vendor_cost_budgets').upsert(u, { onConflict: 'vendor' });
+    if (error) errorCount++;
+  }
+
+  if (errorCount > 0) {
+    _adminToast(`${errorCount} budget(s) failed to save.`, 'error');
+  } else {
+    _adminToast('Budgets saved.');
+    document.getElementById('costs-budget-edit-form').style.display = 'none';
+    await _loadCostsData();
+  }
 }
 
 // ─── FORECASTING ─────────────────────────────────────────────────────────────

@@ -1,3 +1,41 @@
+## v7.23 — Audit Remediation (CS-001 through CS-019) (2026-03-06)
+### Security
+- **Admin Edge Function auth enforced** (CS-001): seo-sync, generate-editorial-content, approve-content locked behind JWT + role checks
+- **API keys rotated to Vault** (CS-001): 4 hardcoded keys (Google, DataForSEO, PostHog, Cloudflare) moved to Supabase Vault, git history purged
+- **ats_jobs RLS fixed** (CS-002): enrich-job no longer unauthenticated; row-level security enforced
+- **Extension encrypted storage** (CS-004): authSession encrypted via AES-GCM (BJ_CRYPTO)
+- **Extension XSS sanitization** (CS-004): escHtml() on all user-facing innerHTML
+- **Landing page XSS + CSP** (CS-005): DOMPurify for job titles, postMessage origin validation, CSP enforced
+- **Admin RLS + MFA** (CS-006): 3 admin table RLS fixes, MFA enforcement, role checks
+- **Admin cron audit trail** (CS-008): pg_cron run logging
+- **safeQuery wrapper** (CS-009): Centralized Supabase query wrapper with error handling
+- **RLS on feature_flags + kill-switch tables** (CS-013): Admin-only access enforced
+- **pgAudit logging** (CS-015): DDL + write audit trail enabled
+- **SRI hashes on CDN dependencies** (CS-015): Subresource integrity for all CDN scripts
+- **Edge Function rate limits** (CS-015): Per-user rate limiting on AI endpoints
+### Monitoring & Observability
+- **PostHog tracking on all surfaces** (CS-003): Dashboard, extension, landing page, admin
+- **PostHog identity bridge** (CS-018): posthog.identify() on all 3 surfaces
+- **Kill-switch 3-layer** (CS-013): DB flag + externally_connectable + heartbeat directive
+- **Selector health monitoring** (CS-017): Weekly CI against live ATS sites, Resend alerts
+- **Cookie consent** (CS-018): PostHog + GTM gated behind GDPR/CCPA opt-in
+### Performance & Architecture
+- **Dashboard bundle split** (CS-016): 6 chunks, initial payload 153KB (was 491KB), lazy loading
+- **Landing page CSS/JS extraction** (CS-018): 2260→791 lines, zero inline scripts
+- **Connection pooler** (CS-009): Supavisor enabled
+### Accessibility
+- **axe-core fixes** (CS-007, CS-011): Dashboard, landing, extension aria/label/contrast
+- **Shadow DOM overlay** (CS-014): Extension overlay isolated from ATS page styles
+### Compliance & Privacy
+- **Privacy policy updated** (CS-019): All 9 vendors listed, DPA references, consent disclosure
+- **PII inventory** (CS-019): Comprehensive map across all tables, extension, third parties
+- **Cost dashboard budget alerts** (CS-019): Per-vendor budgets with progress bars + alerts
+### Testing
+- 323 automated tests (0 failures) across 5 test files
+### Extension
+- Version bump: 2.19.0 → 2.20.0
+- Encrypted auth, XSS sanitization, kill-switch, selector registry, privacy linkage
+
 ## v7.22 — 2026-03-05
 ### Fixed
 - **Stale bundle**: Rebuilt `dist/dashboard.min.js` — was stuck at v7.18 console print since build step was missed on prior deploys
