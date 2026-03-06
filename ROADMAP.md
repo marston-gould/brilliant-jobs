@@ -54,7 +54,7 @@
 
 ### Phase A Key Decisions
 
-- CSP uses `unsafe-inline`/`unsafe-eval` (required by vanilla JS architecture — tighten to nonce-based post-launch)
+- CSP: Landing page enforces no `unsafe-inline` (CS-018). Dashboard/admin still use `unsafe-inline`/`unsafe-eval` — tighten to nonce-based post-launch.
 - DOMPurify config allows HTML formatting but strips all scripts/event handlers
 - Feature gating falls through: active subscription → profiles.plan → free default
 - PostHog configured for US cloud, identified-only person profiles (privacy-first)
@@ -2752,6 +2752,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | CS-015 | 2026-03-06 | FIX-15 (FE-002/003/004, DE-001/002/003), FIX-09, FIX-15b (CP-003, DM-001/002, CE-001) | dashboard@0.9.0-core | FIX-09: bjTabGuard error boundaries on all dashboard tabs with fallback UI + retry. FIX-15: bjSkeleton loaders (6 types) on tab switch. Resume archive pagination (100-row limit). Performance indexes on 7 tables (15 indexes). Geospatial composite index for bounding-box queries. cron_run_log table for failure alerting. FIX-15b: pgAudit extension enabled (DDL + write). npm audit clean (0 vulnerabilities). SRI hashes on all 4 CDN scripts (pdf.js, mammoth, DOMPurify, docx). Rate limits on enrich-job (60/hr), create-checkout (10/hr), data-export (5/hr). Tests: 68 pass (+4 new, 2 pre-existing fixed). |
 | CS-016 | 2026-03-06 | FIX-10 (FE-001), FIX-16 (AD-FIX-09, AD-FIX-10) | dashboard@1.0.0-bundle, admin@0.8.0-errors | FIX-10 (FE-001): Code-split build — 6 chunks (shell 70KB, feed 83KB, keywords 241KB, pipeline 46KB, tuning 52KB, deferred 340KB). Initial payload 153KB (was 491KB). Lazy loader (bjLoadChunk/bjEnsureTab) with preload-after-idle for keywords+location chunk. Tab switching triggers chunk load before init. FIX-16 (AD-FIX-09+10): 3 empty catches in admin-seo.js fixed (reportError + documented URL parse guards). 8 console-only catches in admin.js converted to toast + reportError (auth check, feed health charts, discovery pipeline, auto-apply, MV staleness, growth chart, sessions chart, cohort list). Additional empty catches fixed in admin-notifications.js (auth), admin-templates.js (status toggle), admin-feed-health.js (chart dispose). Error boundary + loading state added to all admin section init (navigateAdminSubpage). Zero empty catches remaining across all admin files. Tests: 86 pass (+18 new code-split tests). |
 | CS-017 | 2026-03-06 | FIX-17 (EXT-FE-004) | extension@0.7.0-monitoring | FIX-17: Automated selector health monitoring for all 15 extension handlers. Centralized selector registry (extension/selectors/registry.js) — 193 total selectors, 153 critical, organized by handler with URL patterns, criticality flags, and sample URLs. Weekly Playwright CI workflow (.github/workflows/selector-monitor.yml) — runs Mondays 9:00 UTC + manual dispatch, tests selectors against live ATS pages, generates JSON health report. Alert pipeline (scripts/selector-alert.mjs) sends HTML email via Resend on critical breakage. Registry-only mode (--report-only) for fast structural validation. 163 new Vitest tests: registry completeness (15 handlers ↔ 15 files), structure validation per entry, source ↔ registry alignment checks (LinkedIn modal, Greenhouse #first_name, Workday data-automation-id, Lever resume, iCIMS wrapper), selector count thresholds, orphan detection. All 249 tests pass (163 new + 86 existing). EXT-FE-004 fully resolved (was partial in CS-010). |
+| CS-018 | 2026-03-06 | FIX-19a (IX-FE-002, IX-DA-001, IX-CP-001, IX-SE-006) + CX-13, CX-14 | index@0.6.0-architecture | FIX-19a: Full landing page architecture overhaul. CSS extraction: 625-line inline `<style>` merged into external landing.css (1003 lines). JS extraction: 5 inline `<script>` blocks extracted to 4 external files (landing-segment.js, safe-read-ls.js, landing-app.js, cookie-consent.js). 2 duplicate inline scripts removed (merch + referral — external versions already loaded). index.html reduced from 2260 to 791 lines (65%). Cookie consent: js/cookie-consent.js gates PostHog + GTM behind GDPR/CCPA opt-in. Accept/Decline banner, bj_consent cookie (365-day TTL), public bjConsent API. PostHog identity bridge: posthog.identify() added to landing page showLoggedIn() — all 3 surfaces now merge anonymous→identified sessions. CSP hardening: Landing page CSP removes `unsafe-inline` from both script-src and style-src. Zero inline executable scripts remain. 38 new tests (287 total). |
 
 **Status:** COMPLETE — CS-013 deployed and verified (2026-03-06)
 **Pods:** Pod 3 (Technical Audit, 113+ findings across 17 sessions) + Pod 4 (CX Examination, 46 findings across 5 sessions)
@@ -2776,7 +2777,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.006 | IX-SE-001: postMessage wildcard origin → restrict | 30min | 15min | ✅ | CS-005: postMessage restricted to window.location.origin. Auth tokens no longer leaked to wildcard. X-Frame-Options: DENY + frame-ancestors 'none' already in vercel.json. Deployed 2026-03-06. |
 | 0.007 | IX-SE-004: DOMPurify on 3 innerHTML injections | 1h | 30min | ✅ | CS-005: DOMPurify v3.2.4 self-hosted at /js/vendor/purify.min.js. Sanitizes: preview job titles (index.html), merch insights grid (index.html), merch-client.js content injection. CSP compliant (script-src 'self'). Deployed 2026-03-06. |
 | 0.008 | IX-SE-005: Tighten profiles RLS for anon | 1h | — | 🔲 | Anon key overexposes profile data. Restrict columns. |
-| 0.009 | IX-SE-006: Cookies without Secure/HttpOnly | 30min | — | 🔲 | All cookies missing Secure flag. Bundle into headers pass. |
+| 0.009 | IX-SE-006: Cookies without Secure/HttpOnly | 30min | — | ⚡ | CS-018: bj_consent cookie uses SameSite=Lax. Secure flag requires HTTPS enforcement pass (bundle with headers). |
 | 0.010 | IX-SE-007: CSP + security headers | 1h | — | ⚡ | CS-005 verified: X-Frame-Options DENY, CSP with frame-ancestors 'none', X-Content-Type-Options nosniff, HSTS, Referrer-Policy, Permissions-Policy all deployed in vercel.json. CSP includes script-src allowlist for PostHog, Ahrefs, CDNs. CSP report-only → enforce pass remains for Phase 2. |
 | 0.011 | IX-SE-008: Anon key exposed in source | 30min | — | 🔲 | Mitigated by RLS tightening (0.008). Document as accepted. |
 | 0.012 | IX-SE-003: validate-signup dead attack surface | 30min | — | 🔲 | Unused EF still deployed. Disable or delete. |
@@ -2867,7 +2868,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.057 | FE-005: Global scope pollution (30 JS via window) | 4h | — | 🔲 | Module wrapper per ADR-004. |
 | 0.058 | FE-006: No TypeScript | 4h | — | 🔲 | Incremental: new files .ts, tsconfig strict. |
 | 0.059 | BE-007: No API versioning | 1h | — | 🔲 | Design versioning approach for Edge Functions. |
-| 0.060 | IX-FE-002: Inline CSS/JS extraction landing | 2h | CS-014 | ✅ | 98 inline styles extracted to landing.css (7.4KB). 4 remain (dynamic JS). 1024px + 768px breakpoints. |
+| 0.060 | IX-FE-002: Inline CSS/JS extraction landing | 2h | CS-018 | ✅ | CS-014: 98 inline styles extracted. CS-018: Full extraction — 625-line inline style block + all inline JS moved to external files. index.html 2260→791 lines. Zero inline executable scripts. |
 | 0.061 | IX-FE-005: No search debounce | 30min | — | 🔲 | Query per keystroke. Add 300ms debounce. |
 
 ### 0-K: Test Infrastructure (Pod 3, P0)
@@ -2917,7 +2918,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.082 | AD-CP-001: Admin PII exposure scope | 1h | — | 🔲 | Document all admin-visible PII. Logging per access path. |
 | 0.083 | AD-CP-002: No user deletion capability | 5h | — | 🔲 | GDPR Art 17. 72+ table cascade + third-party propagation. Post-launch. |
 | 0.084 | AD-CP-003: No data export / portability | 3h | — | 🔲 | GDPR Art 20. Export format + query agg + download. Post-launch. |
-| 0.085 | IX-CP-001: No consent gate for PostHog | 1h | — | 🔲 | Tracks all visitors, no GDPR/CCPA consent. Cookie banner + conditional trigger. |
+| 0.085 | IX-CP-001: No consent gate for PostHog | 1h | 1h | ✅ | CS-018: cookie-consent.js gates PostHog + GTM behind bj_consent cookie. Accept/Decline banner. bjConsent API. |
 
 ### 0-P: Dependencies + Cost (Pod 3, P1)
 
@@ -2936,7 +2937,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.091 | IX-SEO-001: No canonical URL tag | 15min | — | 🔲 | Duplicate URL indexing risk. |
 | 0.092 | IX-SEO-002: No OG / Twitter Card tags | 15min | — | 🔲 | Blank social sharing preview. |
 | 0.093 | IX-SEO-003: JSON-LD structured data stale | 15min | — | 🔲 | 315K vs 400K mismatch. |
-| 0.094 | IX-DA-001: PostHog no identity bridge | 1h | 0h | ✅ | CS-003: Combined with DS1-4 (0.101). Direct posthog.init() on landing page replaces GTM dependency. |
+| 0.094 | IX-DA-001: PostHog no identity bridge | 1h | 0h | ✅ | CS-003: PostHog init on all surfaces. CS-018: posthog.identify() in landing showLoggedIn(). Dashboard + extension already identified. Full cross-surface identity merge. |
 | 0.095 | IX-DA-002: Broken referral pipeline | 30min | — | 🔲 | Resolved by 0.047 anon key fix. |
 | 0.096 | IX-BE-002: Stale "Live" stats labels | 30min | CS-014 | ✅ | Add staleness badge with refresh timestamp. |
 | 0.097 | IX-FE-006: URL hardcoding (brilliantjobs.io refs) | 30min | — | 🔲 | Old domain refs. Replace. |

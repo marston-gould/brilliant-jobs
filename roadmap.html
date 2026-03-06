@@ -959,7 +959,7 @@ const features = [
 
   // Platform Audit — Feb 18 2026 (full audit: PLATFORM_AUDIT.md)
   { s: 'done', n: 'CRITICAL: RLS fix — ats_jobs writes locked to service_role', d: 'Deployed RLS policies: anon/authenticated get SELECT only, service_role gets ALL. Verified: anon INSERT returns 401, UPDATE/DELETE match 0 rows. 283K job rows secured. ats_companies/refresh_log/seekers_raw were already fixed in prior audit.', p: 18 },
-  { s: 'done', n: 'CRITICAL: Security headers (CSP, X-Frame, CORS)', d: 'Architecture Review Sprint 1 (A9). Deployed full security header suite to vercel.json: Content-Security-Policy, HSTS, X-Frame-Options, Referrer-Policy, Permissions-Policy, X-XSS-Protection, X-Content-Type-Options. CSP includes unsafe-inline/unsafe-eval (required by vanilla JS architecture — tighten post-launch). PostHog domains pre-added to CSP for future A13 analytics integration.', p: 18 },
+  { s: 'done', n: 'CRITICAL: Security headers (CSP, X-Frame, CORS)', d: 'Architecture Review Sprint 1 (A9). Full security header suite. CS-018: Landing page CSP enforces no unsafe-inline in script-src or style-src. Dashboard/admin still use unsafe-inline/unsafe-eval — tighten post-launch.', p: 18 },
   { s: 'done', n: 'CRITICAL: DOMPurify for job descriptions (stored XSS)', d: 'Architecture Review Sprint 1 (A10). Added DOMPurify 3.2.4 and wired into all 5 job description innerHTML injection points in keywords.js. Applied at the decodeJobContent() output layer, catching 4 of 5 vectors at once; 5th patched directly. All external HTML now sanitized before DOM insertion.', p: 18 },
   { s: 'done', n: 'Input sanitization — escapeHtml utility', d: 'User inputs (filter names, resume names, collection names) rendered via innerHTML template literals without escaping. Self-XSS vector. Add escapeHtml() utility, audit all innerHTML calls with user-generated data. truncate() function does not escape. DONE v3.90 — see Phase K.', p: 18 },
   { s: 'done', n: 'Enrichment Edge Function (enrich-job)', d: 'Deployed enrich-job Edge Function: client POSTs job_id + content/salary payload, function validates and writes with service_role. Replaced all 8 direct ats_jobs writes in keywords.js (6) and job-feed.js (2). enrichJob() helper in globals.js. Input validation, 50KB content cap, type checking.', p: 18 },
@@ -1842,7 +1842,7 @@ const features = [
 { s: 'done', b: 'pre-launch', n: '0.006 IX-SE-001: postMessage wildcard → restrict', d: 'CS-005: postMessage restricted to window.location.origin. Auth tokens no longer leaked to wildcard. X-Frame-Options DENY + frame-ancestors none confirmed.', p: 75, e: '15min' },
 { s: 'done', b: 'pre-launch', n: '0.007 IX-SE-004: DOMPurify on 3 innerHTML injections', d: 'CS-005: DOMPurify v3.2.4 self-hosted. Sanitizes preview titles, merch grid, merch-client content injection.', p: 75, e: '30min' },
 { s: 'todo', b: 'pre-launch', n: '0.008 IX-SE-005: Tighten profiles RLS for anon', d: 'Anon key overexposes profile data. Restrict columns.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.009 IX-SE-006: Cookies without Secure/HttpOnly', d: 'Missing Secure flag. Bundle into headers pass.', p: 75, e: '30min' },
+{ s: 'todo', b: 'pre-launch', n: '0.009 IX-SE-006: Cookies without Secure/HttpOnly', d: 'CS-018: bj_consent cookie uses SameSite=Lax. Secure flag requires HTTPS enforcement pass.', p: 75, e: '30min' },
 { s: 'done', b: 'pre-launch', n: '0.010 IX-SE-007: CSP + security headers landing', d: 'CS-005 verified: Full header suite in vercel.json — CSP, HSTS, X-Frame-Options DENY, frame-ancestors none, Referrer-Policy, Permissions-Policy, X-Content-Type-Options. CSP report-only→enforce pass remains Phase 2.', p: 75, e: '—' },
 { s: 'todo', b: 'pre-launch', n: '0.011 IX-SE-008: Anon key exposed in source', d: 'Mitigated by RLS tightening. Document accepted risk.', p: 75, e: '30min' },
 { s: 'todo', b: 'pre-launch', n: '0.012 IX-SE-003: validate-signup dead surface', d: 'Unused EF still deployed. Disable or delete.', p: 75, e: '30min' },
@@ -1913,7 +1913,7 @@ const features = [
 { s: 'todo', b: 'pre-launch', n: '0.057 FE-005: Global scope 30 JS via window', d: 'Module wrapper per ADR-004.', p: 75, e: '4h' },
 { s: 'todo', b: 'pre-launch', n: '0.058 FE-006: No TypeScript', d: 'New files .ts. tsconfig strict.', p: 75, e: '4h' },
 { s: 'todo', b: 'pre-launch', n: '0.059 BE-007: No API versioning', d: 'Design versioning for Edge Functions.', p: 75, e: '1h' },
-{ s: 'done', b: 'pre-launch', n: '0.060 IX-FE-002: Inline CSS/JS extraction landing', d: 'CS-014 CX-10: 98 inline styles extracted to landing.css (7.4KB cacheable). 4 remain (dynamic JS / !important). 1024px + 768px responsive breakpoints.', p: 75, e: '2h' },
+{ s: 'done', b: 'pre-launch', n: '0.060 IX-FE-002: Inline CSS/JS extraction landing', d: 'CS-014: 98 inline styles extracted. CS-018: Full extraction — 625-line inline style block + all inline JS moved to external files. index.html 2260→791 lines (65% reduction). Zero inline executable scripts.', p: 75, e: '2h' },
 { s: 'todo', b: 'pre-launch', n: '0.061 IX-FE-005: No search debounce', d: 'Query per keystroke. 300ms debounce.', p: 75, e: '30min' },
 
 // 0-K: Tests (Pod 3, P0)
@@ -1954,7 +1954,7 @@ const features = [
 { s: 'todo', b: 'pre-launch', n: '0.082 AD-CP-001: Admin PII exposure scope', d: 'Document admin-visible PII. Logging per path.', p: 75, e: '1h' },
 { s: 'todo', b: 'post-launch', n: '0.083 AD-CP-002: No user deletion', d: 'GDPR Art 17. 72+ table cascade + third-party. Post-launch.', p: 76, e: '5h' },
 { s: 'todo', b: 'post-launch', n: '0.084 AD-CP-003: No data export', d: 'GDPR Art 20. Export + query agg + download. Post-launch.', p: 76, e: '3h' },
-{ s: 'todo', b: 'pre-launch', n: '0.085 IX-CP-001: No consent gate PostHog', d: 'Tracks all visitors no GDPR consent. Cookie banner.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.085 IX-CP-001: No consent gate PostHog', d: 'CS-018: cookie-consent.js gates PostHog + GTM behind bj_consent cookie. Accept/Decline banner. bjConsent API (getStatus/grant/revoke). 365-day TTL.', p: 75, e: '1h' },
 
 // 0-P: Dependencies + Cost (Pod 3, P1)
 { s: 'done', b: 'pre-launch', n: '0.086 DM-001: npm audit clean', d: 'CS-015: npm audit 0 vulnerabilities. CI gate deferred to CS-021.', p: 75, e: '1h' },
@@ -1967,7 +1967,7 @@ const features = [
 { s: 'todo', b: 'pre-launch', n: '0.091 IX-SEO-001: No canonical URL', d: 'Duplicate URL risk.', p: 75, e: '15min' },
 { s: 'todo', b: 'pre-launch', n: '0.092 IX-SEO-002: No OG/Twitter cards', d: 'Blank social preview.', p: 75, e: '15min' },
 { s: 'todo', b: 'pre-launch', n: '0.093 IX-SEO-003: JSON-LD stale', d: '315K vs 400K mismatch.', p: 75, e: '15min' },
-{ s: 'todo', b: 'pre-launch', n: '0.094 IX-DA-001: PostHog no identity', d: 'Combined with DS1-4.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.094 IX-DA-001: PostHog no identity', d: 'CS-003 + CS-018: posthog.identify() on landing showLoggedIn(), dashboard init, extension via user_id. Full cross-surface identity merge.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.095 IX-DA-002: Broken referral pipeline', d: 'Resolved by anon key fix.', p: 75, e: '30min' },
 { s: 'done', b: 'pre-launch', n: '0.096 IX-BE-002: Stale "Live" labels', d: 'CS-014: Staleness badge shows when stats cache > 1h old. Retry button on fetch failure.', p: 75, e: '30min' },
 { s: 'todo', b: 'pre-launch', n: '0.097 IX-FE-006: URL hardcoding .io refs', d: 'Old domain. Replace.', p: 75, e: '30min' },

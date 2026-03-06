@@ -34,12 +34,12 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**CS-017** — Extension Selector Monitoring (FIX-17: EXT-FE-004)
+**CS-018** — Landing Page Architecture: CSS/JS Extraction + PostHog Identity + Cookies (FIX-19a)
 - Completed: 2026-03-06
-- Commit: `2e94c47`
-- Tags: `extension@0.7.0-monitoring`
-- Fix items resolved: FIX-17 (EXT-FE-004)
-- Notes: Centralized selector registry (extension/selectors/registry.js) — 15 handlers, 193 total selectors, 153 critical. Weekly Playwright CI job (.github/workflows/selector-monitor.yml) runs Mondays 9:00 UTC + manual dispatch. Alert pipeline via Resend email on breakage. 163 new Vitest tests. All 249 tests pass. EXT-FE-004 fully resolved (was partial in CS-010).
+- Commit: `9b97d11`
+- Tags: `index@0.6.0-architecture`
+- Fix items resolved: FIX-19a (IX-FE-002, IX-DA-001, IX-CP-001, IX-SE-006) + CX-13 + CX-14
+- Notes: Full CSS/JS extraction — 625-line inline style + 5 inline scripts extracted to 4 external files. index.html 2260→791 lines (65% reduction). Cookie consent (js/cookie-consent.js) gates PostHog + GTM behind GDPR/CCPA opt-in. PostHog identity bridge: posthog.identify() in landing showLoggedIn(). CSP hardened: unsafe-inline removed from landing page script-src and style-src. 38 new tests (287 total).
 
 ---
 
@@ -51,35 +51,27 @@ None.
 
 ## Next Session
 
-**CS-018** — Landing Page Architecture: CSS/JS Extraction + PostHog Identity + Cookies (FIX-19a)
+**CS-019** — Extension Architecture (FIX-18)
 
 | Field | Detail |
 |-------|--------|
-| Surface | Landing Page + Dashboard + Extension |
-| Fix Items | FIX-19a (IX-FE-002, IX-DA-001, IX-CP-001, IX-SE-006) + CX-13 + CX-14 |
-| Hours | 42–68h |
-| Pair | Frontend + Data Eng + TPM + Pod 4 CSS |
-| Expected tags | index@0.6.0-architecture |
+| Surface | Extension |
+| Fix Items | FIX-18 |
+| Phase | Phase 4 |
+| Pair | TBD |
+| Expected tags | extension@0.8.0-architecture |
 
 ### Entry Gate (verify before starting)
 
-- [x] CS-017 complete — Selector monitoring deployed → `extension@0.7.0-monitoring`
-- [x] CS-014 complete — CSS extraction started (98 inline styles → external)
-- [x] CS-003 complete — PostHog live on all surfaces
-- [x] CS-005 complete — DOMPurify active, CSP headers deployed
+- [x] CS-018 complete — Landing page architecture deployed → `index@0.6.0-architecture`
 
 ### What To Build
 
-1. **FIX-19a**: Extract remaining inline CSS/JS from landing page to external files. Wire PostHog identity bridge (cross-surface user identification). Add GDPR/CCPA cookie consent gate before PostHog tracking. CSP `unsafe-inline` removal on landing page.
+1. **FIX-18**: Extension architecture improvements (details in Session 5 unified plan)
 
 ### Exit Gate
 
-- CSS extracted to external stylesheet (≤5 inline styles remaining)
-- JS deferred/async where possible
-- PostHog identity bridge wired cross-surface
-- Cookie consent banner operational
-- CSP enforced (no unsafe-inline) on landing page
-- All existing tests still passing
+- TBD (populate from Session 5 unified plan at session start)
 
 ---
 
@@ -89,14 +81,14 @@ None.
 |---------|---------|-------------|
 | Dashboard | `dashboard@1.0.0-bundle` | CS-016 |
 | Extension | `extension@0.7.0-monitoring` | CS-017 |
-| Landing Page | `index@0.5.0-p1` | CS-014 |
+| Landing Page | `index@0.6.0-architecture` | CS-018 |
 | Admin | `admin@0.8.0-errors` | CS-016 |
 | SEO Pages | (no remediation tag yet) | — |
 | Email Templates | `email-templates@0.1.0-utm` | CS-011 |
 
 ---
 
-## Completed Sessions (17 of 24)
+## Completed Sessions (18 of 24)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
@@ -117,14 +109,14 @@ None.
 | CS-015 | 2026-03-06 | FIX-15 (FE-002/003/004, DE-001/002/003), FIX-09 (FE-002), FIX-15b (CP-003, DM-001/002, CE-001) | dashboard@0.9.0-core |
 | CS-016 | 2026-03-06 | FIX-10 (FE-001), FIX-16 (AD-FIX-09, AD-FIX-10) | dashboard@1.0.0-bundle, admin@0.8.0-errors |
 | CS-017 | 2026-03-06 | FIX-17 (EXT-FE-004) | extension@0.7.0-monitoring |
+| CS-018 | 2026-03-06 | FIX-19a (IX-FE-002, IX-DA-001, IX-CP-001, IX-SE-006) | index@0.6.0-architecture |
 
 ---
 
-## Remaining Sessions (7 of 24)
+## Remaining Sessions (6 of 24)
 
 | Session | Fix Items | Phase | Notes |
 |---------|-----------|-------|-------|
-| CS-018 | FIX-19a | Phase 4 | Landing page architecture |
 | CS-019 | FIX-18 | Phase 4 |  |
 | CS-020 | FIX-20, FIX-21 | Phase 5: Validation + Launch |  |
 | CS-021 | FIX-22 + Quality Gates | Phase 5 |  |
@@ -146,11 +138,11 @@ None.
 | G6 | Connection pooler live (300+) | 🔲 | CS-009: Supavisor enabled, needs load test |
 | G7 | Privacy policy + DPAs sent | ⚡ | Policy published; DPA initiation pending legal |
 | G8 | 72-hour dry run clean | 🔲 | CS-022 |
-| G9 | Landing XSS + CSP enforced | 🔲 | CS-005: DOMPurify + CSP headers deployed; CSP enforce pending |
+| G9 | Landing XSS + CSP enforced | ✅ | CS-005: DOMPurify + CSP deployed. CS-018: unsafe-inline removed from landing page CSP. Zero inline scripts. |
 | G10 | Referral pipeline functional | 🔲 | CS-005: stale key fixed |
 | G11 | Admin auth server-side | ⚡ | CS-006: RLS + MFA + role checks; shared middleware pending |
 | G12 | Admin audit trail recording | ⚡ | CS-012: _logAdminAction() wired to 5 action categories. CS-015: pgAudit extension enabled (DDL + write). |
-| G13 | PostHog identity 100% | ⚡ | CS-003: identify() wired; needs prod verification |
+| G13 | PostHog identity 100% | ✅ | CS-003: identify() on dashboard + extension. CS-018: identify() on landing showLoggedIn(). All 3 surfaces covered. |
 | G14 | axe-core 0 critical | ⚡ | CS-007 + CS-011: dashboard + landing + extension addressed |
 | G15 | All 10 quality gates in CI | 🔲 | CS-021 |
 
@@ -163,7 +155,7 @@ None.
 | SE-002 key rotation | CS-002 | Downgraded to hygiene — repo only accessed by Marston + Claude | Bundled with future config session |
 | CP-002 DPA initiation | CS-004 | Legal review required (not a code task) | Pre-launch legal workstream |
 | QA-001 (full) | CS-010 | 64 tests written; full E2E deferred | CS-021 |
-| CSP report-only → enforce | CS-005 | Deployed in report-only; enforce pass pending | CS-014 or CS-019 |
+| CSP report-only → enforce | CS-005 | ✅ CS-018: Landing page CSP enforced (no unsafe-inline). Dashboard/admin still report-only. | DONE (landing) |
 
 ---
 
