@@ -14545,20 +14545,34 @@ $$('.nav-item').forEach(item => {
     localStorage.setItem('bj_active_tab', item.dataset.page);
     // CX-06: PostHog — dashboard tab viewed
     if (window.posthog) posthog.capture('dashboard_tab_viewed', { tab: item.dataset.page });
+    // CS-015: FIX-09 — Error boundaries on tab init + FIX-15 skeleton loaders
+    var _tab = item.dataset.page;
+    if (window.bjSkeleton) bjSkeleton.show(_tab);
     // Init stats charts when stats tab is shown
-    if (item.dataset.page === 'stats' && typeof initStatsPage === 'function') initStatsPage();
+    if (_tab === 'stats' && typeof initStatsPage === 'function') { if (window.bjTabGuard) bjTabGuard('stats', initStatsPage); else initStatsPage(); }
     // Admin moved to /admin page (v6.26)
-    if (item.dataset.page === 'feedback' && typeof initCannyFeedback === 'function') initCannyFeedback();
-    if (item.dataset.page === 'ghost' && typeof renderGhostMonitor === 'function') renderGhostMonitor();
-    if (item.dataset.page === 'referrals' && typeof initReferralHub === 'function') initReferralHub();
+    if (_tab === 'feedback' && typeof initCannyFeedback === 'function') { if (window.bjTabGuard) bjTabGuard('feedback', initCannyFeedback); else initCannyFeedback(); }
+    if (_tab === 'ghost' && typeof renderGhostMonitor === 'function') { if (window.bjTabGuard) bjTabGuard('ghost', renderGhostMonitor); else renderGhostMonitor(); }
+    if (_tab === 'referrals' && typeof initReferralHub === 'function') { if (window.bjTabGuard) bjTabGuard('referrals', initReferralHub); else initReferralHub(); }
     // Refresh resumes when switching to resumes tab
-    if (item.dataset.page === 'resumes') {
-      if (typeof renderResumes === 'function') renderResumes();
-      // If active resumes are empty but user may have cloud data, re-reconcile
-      var activeCount = (resumes || []).filter(function(r) { return !r.archived; }).length;
-      if (activeCount === 0 && typeof reconcileResumeArchive === 'function' && typeof currentUser !== 'undefined' && currentUser) {
-        reconcileResumeArchive();
+    if (_tab === 'resumes') {
+      if (window.bjTabGuard) bjTabGuard('resumes', function() {
+        if (typeof renderResumes === 'function') renderResumes();
+        var activeCount = (resumes || []).filter(function(r) { return !r.archived; }).length;
+        if (activeCount === 0 && typeof reconcileResumeArchive === 'function' && typeof currentUser !== 'undefined' && currentUser) {
+          reconcileResumeArchive();
+        }
+      }); else {
+        if (typeof renderResumes === 'function') renderResumes();
+        var activeCount = (resumes || []).filter(function(r) { return !r.archived; }).length;
+        if (activeCount === 0 && typeof reconcileResumeArchive === 'function' && typeof currentUser !== 'undefined' && currentUser) {
+          reconcileResumeArchive();
+        }
       }
+    }
+    // Tabs without explicit init get skeleton hidden after a short delay (content is static HTML)
+    if (!['stats','feedback','ghost','referrals','resumes'].includes(_tab) && window.bjSkeleton) {
+      setTimeout(function() { bjSkeleton.hide(_tab); }, 150);
     }
     // Close help panel on page switch
     const hp = $('#page-help-panel'); if (hp) hp.style.display = 'none';
@@ -14576,11 +14590,11 @@ if (lastTab && $(`#page-${lastTab}`)) {
   $$('.nav-item').forEach(n => {
     n.classList.toggle('active', n.dataset.page === lastTab);
   });
-  // Admin moved to /admin page (v6.26)
-  if (lastTab === 'stats' && typeof initStatsPage === 'function') initStatsPage();
-  if (lastTab === 'feedback' && typeof initCannyFeedback === 'function') initCannyFeedback();
-  if (lastTab === 'referrals' && typeof initReferralHub === 'function') initReferralHub();
-  if (lastTab === 'ghost' && typeof renderGhostMonitor === 'function') renderGhostMonitor();
+  // CS-015: FIX-09 — Error boundaries on tab restore
+  if (lastTab === 'stats' && typeof initStatsPage === 'function') { if (window.bjTabGuard) bjTabGuard('stats', initStatsPage); else initStatsPage(); }
+  if (lastTab === 'feedback' && typeof initCannyFeedback === 'function') { if (window.bjTabGuard) bjTabGuard('feedback', initCannyFeedback); else initCannyFeedback(); }
+  if (lastTab === 'referrals' && typeof initReferralHub === 'function') { if (window.bjTabGuard) bjTabGuard('referrals', initReferralHub); else initReferralHub(); }
+  if (lastTab === 'ghost' && typeof renderGhostMonitor === 'function') { if (window.bjTabGuard) bjTabGuard('ghost', renderGhostMonitor); else renderGhostMonitor(); }
   }
 }
 
@@ -18779,19 +18793,36 @@ var DEFAULT_LEVEL_HIERARCHY = [
 ];
 var STATS_COLUMNS = 'greenhouse_id,ats_source,title,company_name,company_slug,salary_min,salary_max,salary_currency,location,loc_type,loc_state,loc_city,first_seen_at,industry';
 
+// ─── CS-014: CX-09 — Lazy-load ECharts on first Stats tab open ───
+var _echartsLoaded = false;
+var _echartsLoading = false;
+function loadECharts(cb) {
+  if (_echartsLoaded && typeof echarts !== 'undefined') { cb(); return; }
+  if (_echartsLoading) { var _iv = setInterval(function() { if (_echartsLoaded) { clearInterval(_iv); cb(); } }, 100); return; }
+  _echartsLoading = true;
+  var s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js';
+  s.onload = function() { _echartsLoaded = true; cb(); };
+  s.onerror = function() { _echartsLoading = false; console.error('[Stats] Failed to load ECharts'); };
+  document.head.appendChild(s);
+}
+
 // ─── Init ───
 function initStatsPage() {
   var page = document.getElementById('page-stats');
   if (!page || !page.classList.contains('active')) return;
   if (statsInitialized) { refreshStatsCharts(); return; }
-  statsInitialized = true;
-  renderFilterPills();
-  initCompareToggle();
-  fetchAndRenderStats();
-  window.addEventListener('resize', statsResizeAll);
+  // CS-014: lazy-load ECharts before initializing charts
+  loadECharts(function() {
+    statsInitialized = true;
+    renderFilterPills();
+    initCompareToggle();
+    fetchAndRenderStats();
+    window.addEventListener('resize', statsResizeAll);
 
-  // P13-06: Start data value assessment timer (shows after 10s viewing)
-  if (typeof startDataViewTimer === 'function') startDataViewTimer('stats_charts');
+    // P13-06: Start data value assessment timer (shows after 10s viewing)
+    if (typeof startDataViewTimer === 'function') startDataViewTimer('stats_charts');
+  });
 }
 
 // ─── Filter Pills (CSS classes only, no inline styles) ───
@@ -21877,11 +21908,13 @@ window.loadResumeArchive = async function() {
   body.innerHTML = '<tr><td colspan="7" style="padding:32px;text-align:center;color:var(--text-faint);">Loading…</td></tr>';
 
   try {
-    // Fetch archive data
+    // Fetch archive data (CS-015: FE-004 — limit query + paginate)
+    const RA_PAGE_SIZE = 100;
     const { data: archives, error } = await sb
       .from('resume_archive')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(0, RA_PAGE_SIZE - 1);
 
     if (error) throw error;
 

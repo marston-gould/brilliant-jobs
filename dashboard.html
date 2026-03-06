@@ -17,12 +17,14 @@
   <script src="/js/version.js?v=v7.22"></script>
   <script src="/js/pipeline-migration.js?v=v7.22"></script>
   <script src="/js/notification-center.js?v=v7.22"></script>
-  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
   <script>if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
-  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" integrity="sha384-nFoSjZIoH3CCp8W639jJyQkuPHinJ2NHe7on1xvlUA7SuGfJAfvMldrsoAVm6ECz" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" integrity="sha384-eEu5CTj3qGvu9PdJuS+YlkNi7d2XxQROAFYOr59zgObtlcux1ae1Il3u7jvdCSWu" crossorigin="anonymous"></script>
   <!-- CS-014: CX-09 — ECharts lazy-loaded by stats.js when Stats tab opens -->
-  <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js" integrity="sha384-TcLTgu6flPhnZ5dfHnHimsxNFjYWN0povfGgnOvgPJKbZe6IbuoC2ociiatSHl9E" crossorigin="anonymous"></script>
+  <!-- CS-015: FIX-09 Error Boundaries + FIX-15 Skeleton Loaders -->
+  <script src="/js/tab-guard.js?v=v7.22"></script>
   <!-- CX-06: Split bundle — core loads first, deferred loads after -->
   <script src="dist/dashboard-core.min.js?v=v7.22" defer></script>
   <script src="dist/dashboard-deferred.min.js?v=v7.22" defer></script>
@@ -3552,6 +3554,20 @@ document.addEventListener('DOMContentLoaded', function() {
 .skel-row td { padding: 10px 8px !important; }
 .skel-line { height: 12px; border-radius: 4px; background: linear-gradient(90deg, var(--bg-hover) 25%, var(--bg-card) 50%, var(--bg-hover) 75%); background-size: 200% 100%; animation: skel-shimmer 1.5s ease-in-out infinite; }
 @keyframes skel-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+/* CS-015: FIX-09 Error Boundary fallback UI */
+.bj-tab-error { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:48px 24px; text-align:center; min-height:200px; }
+.bj-tab-error-icon { font-size:36px; margin-bottom:12px; }
+.bj-tab-error-title { font-size:16px; font-weight:600; color:var(--text); margin:0 0 8px; }
+.bj-tab-error-msg { font-size:13px; color:var(--text-dim); margin:0 0 4px; max-width:400px; }
+.bj-tab-retry { margin-top:8px; }
+/* CS-015: FIX-15 Skeleton loader layouts */
+.bj-tab-skeleton { padding:20px 0; }
+.bj-skel-row { display:flex; gap:12px; align-items:center; padding:12px 0; border-bottom:1px solid var(--border); }
+.bj-skel-card { padding:16px; margin-bottom:12px; background:var(--bg-card); border:1px solid var(--border); border-radius:10px; }
+.bj-skel-form-row { margin-bottom:16px; }
+.bj-skel-form-row .skel-line:first-child { margin-bottom:6px; }
+.bj-skel-chart { margin-bottom:20px; }
+.bj-skel-list-item { display:flex; gap:10px; align-items:center; padding:10px 0; border-bottom:1px solid var(--border); }
 /* Q29: Mobile 48px touch targets */
 @media (max-width: 768px) {
   .nav-item { min-height: 48px; display: flex; align-items: center; padding: 8px 12px !important; }

@@ -68,6 +68,25 @@ serve(async (req) => {
       }
     }
 
+    // CS-015: CE-001 — Rate limit: 60 calls/hour per user
+    try {
+      const callerId = isServiceRole ? 'service_role' : bearerToken.split('.')[1]?.substring(0, 20) || 'unknown';
+      const { data: allowed } = await supabaseAdmin.rpc('check_ef_rate_limit', {
+        p_function_name: 'enrich-job',
+        p_caller_id: callerId,
+        p_max_calls: 60,
+        p_window_minutes: 60,
+      });
+      if (allowed === false) {
+        return new Response(
+          JSON.stringify({ error: 'Rate limit exceeded. Max 60 calls per hour.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '3600' } }
+        );
+      }
+    } catch (e) {
+      console.warn('[enrich-job] Rate limit check failed:', e.message);
+    }
+
     const body = await req.json()
     const { job_id, content, salary, status } = body
 

@@ -367,20 +367,34 @@ $$('.nav-item').forEach(item => {
     localStorage.setItem('bj_active_tab', item.dataset.page);
     // CX-06: PostHog — dashboard tab viewed
     if (window.posthog) posthog.capture('dashboard_tab_viewed', { tab: item.dataset.page });
+    // CS-015: FIX-09 — Error boundaries on tab init + FIX-15 skeleton loaders
+    var _tab = item.dataset.page;
+    if (window.bjSkeleton) bjSkeleton.show(_tab);
     // Init stats charts when stats tab is shown
-    if (item.dataset.page === 'stats' && typeof initStatsPage === 'function') initStatsPage();
+    if (_tab === 'stats' && typeof initStatsPage === 'function') { if (window.bjTabGuard) bjTabGuard('stats', initStatsPage); else initStatsPage(); }
     // Admin moved to /admin page (v6.26)
-    if (item.dataset.page === 'feedback' && typeof initCannyFeedback === 'function') initCannyFeedback();
-    if (item.dataset.page === 'ghost' && typeof renderGhostMonitor === 'function') renderGhostMonitor();
-    if (item.dataset.page === 'referrals' && typeof initReferralHub === 'function') initReferralHub();
+    if (_tab === 'feedback' && typeof initCannyFeedback === 'function') { if (window.bjTabGuard) bjTabGuard('feedback', initCannyFeedback); else initCannyFeedback(); }
+    if (_tab === 'ghost' && typeof renderGhostMonitor === 'function') { if (window.bjTabGuard) bjTabGuard('ghost', renderGhostMonitor); else renderGhostMonitor(); }
+    if (_tab === 'referrals' && typeof initReferralHub === 'function') { if (window.bjTabGuard) bjTabGuard('referrals', initReferralHub); else initReferralHub(); }
     // Refresh resumes when switching to resumes tab
-    if (item.dataset.page === 'resumes') {
-      if (typeof renderResumes === 'function') renderResumes();
-      // If active resumes are empty but user may have cloud data, re-reconcile
-      var activeCount = (resumes || []).filter(function(r) { return !r.archived; }).length;
-      if (activeCount === 0 && typeof reconcileResumeArchive === 'function' && typeof currentUser !== 'undefined' && currentUser) {
-        reconcileResumeArchive();
+    if (_tab === 'resumes') {
+      if (window.bjTabGuard) bjTabGuard('resumes', function() {
+        if (typeof renderResumes === 'function') renderResumes();
+        var activeCount = (resumes || []).filter(function(r) { return !r.archived; }).length;
+        if (activeCount === 0 && typeof reconcileResumeArchive === 'function' && typeof currentUser !== 'undefined' && currentUser) {
+          reconcileResumeArchive();
+        }
+      }); else {
+        if (typeof renderResumes === 'function') renderResumes();
+        var activeCount = (resumes || []).filter(function(r) { return !r.archived; }).length;
+        if (activeCount === 0 && typeof reconcileResumeArchive === 'function' && typeof currentUser !== 'undefined' && currentUser) {
+          reconcileResumeArchive();
+        }
       }
+    }
+    // Tabs without explicit init get skeleton hidden after a short delay (content is static HTML)
+    if (!['stats','feedback','ghost','referrals','resumes'].includes(_tab) && window.bjSkeleton) {
+      setTimeout(function() { bjSkeleton.hide(_tab); }, 150);
     }
     // Close help panel on page switch
     const hp = $('#page-help-panel'); if (hp) hp.style.display = 'none';
@@ -398,11 +412,11 @@ if (lastTab && $(`#page-${lastTab}`)) {
   $$('.nav-item').forEach(n => {
     n.classList.toggle('active', n.dataset.page === lastTab);
   });
-  // Admin moved to /admin page (v6.26)
-  if (lastTab === 'stats' && typeof initStatsPage === 'function') initStatsPage();
-  if (lastTab === 'feedback' && typeof initCannyFeedback === 'function') initCannyFeedback();
-  if (lastTab === 'referrals' && typeof initReferralHub === 'function') initReferralHub();
-  if (lastTab === 'ghost' && typeof renderGhostMonitor === 'function') renderGhostMonitor();
+  // CS-015: FIX-09 — Error boundaries on tab restore
+  if (lastTab === 'stats' && typeof initStatsPage === 'function') { if (window.bjTabGuard) bjTabGuard('stats', initStatsPage); else initStatsPage(); }
+  if (lastTab === 'feedback' && typeof initCannyFeedback === 'function') { if (window.bjTabGuard) bjTabGuard('feedback', initCannyFeedback); else initCannyFeedback(); }
+  if (lastTab === 'referrals' && typeof initReferralHub === 'function') { if (window.bjTabGuard) bjTabGuard('referrals', initReferralHub); else initReferralHub(); }
+  if (lastTab === 'ghost' && typeof renderGhostMonitor === 'function') { if (window.bjTabGuard) bjTabGuard('ghost', renderGhostMonitor); else renderGhostMonitor(); }
   }
 }
 

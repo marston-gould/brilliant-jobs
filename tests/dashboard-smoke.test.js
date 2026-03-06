@@ -56,7 +56,7 @@ describe('Dashboard structure', () => {
   it('loads Supabase client before other scripts', () => {
     const scripts = Array.from(document.querySelectorAll('script[src]'));
     const supabaseIdx = scripts.findIndex(s => s.src.includes('supabase'));
-    const appIdx = scripts.findIndex(s => s.src.includes('dashboard.min.js'));
+    const appIdx = scripts.findIndex(s => s.src.includes('dashboard-core.min.js'));
     expect(supabaseIdx).toBeGreaterThan(-1);
     expect(appIdx).toBeGreaterThan(-1);
     expect(supabaseIdx).toBeLessThan(appIdx);
@@ -67,6 +67,46 @@ describe('Dashboard structure', () => {
       s.src.includes('purify')
     );
     expect(purifyScript).toBeTruthy();
+  });
+
+  // CS-015: DM-002 — SRI hashes on CDN scripts
+  it('has SRI integrity attributes on all CDN scripts', () => {
+    const cdnScripts = Array.from(document.querySelectorAll('script[src]')).filter(s =>
+      s.src.includes('cdnjs.cloudflare.com') || s.src.includes('cdn.jsdelivr.net')
+    );
+    expect(cdnScripts.length).toBeGreaterThan(0);
+    for (const script of cdnScripts) {
+      expect(script.getAttribute('integrity'), `Missing SRI on ${script.src}`).toBeTruthy();
+      expect(script.getAttribute('crossorigin'), `Missing crossorigin on ${script.src}`).toBe('anonymous');
+    }
+  });
+
+  // CS-015: FIX-09 — Tab guard script loaded
+  it('loads tab-guard.js for error boundaries', () => {
+    const tabGuardScript = Array.from(document.querySelectorAll('script[src]')).find(s =>
+      s.src.includes('tab-guard')
+    );
+    expect(tabGuardScript).toBeTruthy();
+  });
+
+  // CS-015: FIX-09 — Error boundary CSS present
+  it('has error boundary CSS styles', () => {
+    const styles = document.querySelectorAll('style');
+    let hasErrorBoundary = false;
+    styles.forEach(s => {
+      if (s.textContent.includes('bj-tab-error')) hasErrorBoundary = true;
+    });
+    expect(hasErrorBoundary).toBe(true);
+  });
+
+  // CS-015: FIX-15 — Skeleton loader CSS present
+  it('has skeleton loader CSS styles', () => {
+    const styles = document.querySelectorAll('style');
+    let hasSkeleton = false;
+    styles.forEach(s => {
+      if (s.textContent.includes('bj-tab-skeleton')) hasSkeleton = true;
+    });
+    expect(hasSkeleton).toBe(true);
   });
 
   it('has noindex meta tag (dashboard should not be indexed)', () => {
@@ -83,7 +123,7 @@ describe('Login flow', () => {
   it('references auth session check in scripts', () => {
     // The dashboard loads a bundled JS that calls sb.auth.getSession()
     // Verify the script tag for the dashboard bundle exists
-    const dashScript = document.querySelector('script[src*="dashboard.min.js"]');
+    const dashScript = document.querySelector('script[src*="dashboard-core.min.js"]');
     expect(dashScript).toBeTruthy();
   });
 

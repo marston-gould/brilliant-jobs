@@ -41,6 +41,12 @@ export const DEFAULT_LIMITS: Record<string, number> = {
   'score-ai-content': 20,
   'generate-editorial-content': 10,
   'seo-sync': 5,
+  // CS-015: CE-001 — Non-AI EF rate limits
+  'enrich-job': 60,
+  'create-checkout': 10,
+  'data-export': 5,
+  'resend-confirmation': 10,
+  'confirm-email': 20,
 };
 
 /**

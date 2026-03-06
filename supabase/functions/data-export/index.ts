@@ -50,6 +50,24 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
   }
 
+  // CS-015: CE-001 — Rate limit: 5 exports/hour per user
+  try {
+    const { data: allowed } = await sb.rpc('check_ef_rate_limit', {
+      p_function_name: 'data-export',
+      p_caller_id: user.id,
+      p_max_calls: 5,
+      p_window_minutes: 60,
+    });
+    if (allowed === false) {
+      return new Response(
+        JSON.stringify({ error: 'Rate limit exceeded. Max 5 exports per hour.' }),
+        { status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': '3600' } }
+      );
+    }
+  } catch (e) {
+    console.warn('[data-export] Rate limit check failed:', e.message);
+  }
+
   // Optional: admin can export another user's data
   let targetUserId = user.id;
   try {

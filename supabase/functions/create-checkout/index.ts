@@ -144,6 +144,24 @@ serve(async (req: Request) => {
       });
     }
 
+    // CS-015: CE-001 — Rate limit: 10 checkout sessions/hour per user
+    try {
+      const { data: allowed } = await sb.rpc('check_ef_rate_limit', {
+        p_function_name: 'create-checkout',
+        p_caller_id: user.id,
+        p_max_calls: 10,
+        p_window_minutes: 60,
+      });
+      if (allowed === false) {
+        return new Response(
+          JSON.stringify({ error: 'Rate limit exceeded. Max 10 checkout sessions per hour.' }),
+          { status: 429, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json', 'Retry-After': '3600' } }
+        );
+      }
+    } catch (e) {
+      console.warn('[create-checkout] Rate limit check failed:', e.message);
+    }
+
     const body = await req.json();
     const { mode, tier, pack_qty } = body;
     // mode: 'subscription' | 'credit_pack'

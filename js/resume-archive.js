@@ -51,11 +51,13 @@ window.loadResumeArchive = async function() {
   body.innerHTML = '<tr><td colspan="7" style="padding:32px;text-align:center;color:var(--text-faint);">Loading…</td></tr>';
 
   try {
-    // Fetch archive data
+    // Fetch archive data (CS-015: FE-004 — limit query + paginate)
+    const RA_PAGE_SIZE = 100;
     const { data: archives, error } = await sb
       .from('resume_archive')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(0, RA_PAGE_SIZE - 1);
 
     if (error) throw error;
 
