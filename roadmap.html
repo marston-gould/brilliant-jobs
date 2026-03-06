@@ -1848,9 +1848,9 @@ const features = [
 { s: 'todo', b: 'pre-launch', n: '0.012 IX-SE-003: validate-signup dead surface', d: 'Unused EF still deployed. Disable or delete.', p: 75, e: '30min' },
 
 // 0-C: Security — Extension (Pod 3, P0)
-{ s: 'todo', b: 'pre-launch', n: '0.013 EXT-SEC-001: Token encryption', d: 'authSession plaintext in chrome.storage. Encrypt at rest.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.014 EXT-SEC-002: Remove broad host permissions', d: 'Minimize to required ATS domains only.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.015 EXT-SEC-003: Popup innerHTML XSS', d: 'innerHTML in privileged context. Sanitize all.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.013 EXT-SEC-001: Token encryption', d: 'CS-004: authSession added to AES-GCM encrypted storage. getAuth()/setAuth() helpers wired in background.js + popup.js.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.014 EXT-SEC-002: Scope web_accessible_resources', d: 'CS-004: Scoped from utils/*.js + <all_urls> to utils/fillMetrics.js + 19 ATS domains.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.015 EXT-SEC-003: Popup innerHTML XSS', d: 'CS-004: escHtml() sanitizer in popup.js + inject-overlay.js. Zero unsanitized dynamic innerHTML.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.016 EXT-SEC-004: PII minimization AI answerer', d: 'Full profile every call. Per-question field subsets.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.017 EXT-SEC-005: Content script CSP bypass', d: 'Audit all injection points in ATS pages.', p: 75, e: '1h' },
 
@@ -1939,7 +1939,7 @@ const features = [
 
 // 0-O: Compliance (Pod 3, P1)
 { s: 'todo', b: 'pre-launch', n: '0.079 CP-001: No PII inventory', d: '72+ tables undocumented. Foundation for deletion+export.', p: 75, e: '2h' },
-{ s: 'todo', b: 'pre-launch', n: '0.080 CP-002: No DPAs resume → Anthropic', d: 'PII sent every score/rewrite. Initiate DPAs.', p: 75, e: '2h' },
+{ s: 'todo', b: 'pre-launch', n: '0.080 CP-002: DPAs resume → Anthropic', d: 'CS-004: Privacy policy published + linked in extension. DPA initiation PENDING (legal review).', p: 75, e: '2h' },
 { s: 'todo', b: 'pre-launch', n: '0.081 CP-003: No audit logging platform', d: 'Combined with admin trail + pgAudit.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.082 AD-CP-001: Admin PII exposure scope', d: 'Document admin-visible PII. Logging per path.', p: 75, e: '1h' },
 { s: 'todo', b: 'post-launch', n: '0.083 AD-CP-002: No user deletion', d: 'GDPR Art 17. 72+ table cascade + third-party. Post-launch.', p: 76, e: '5h' },

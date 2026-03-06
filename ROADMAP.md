@@ -2736,6 +2736,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | CS-001 | 2026-03-05 | AD-ES-004, AD-ES-005, AD-ES-006 | admin@0.1.0-security | EF auth enforced on seo-sync + generate-editorial-content. 6 hardcoded key fallbacks removed. Git history purged (git-filter-repo). All local clones must be re-cloned. |
 | CS-002 | 2026-03-06 | SE-001 | dashboard@0.1.0-security | enrich-job: JWT auth + CORS restriction (brilliantjobs.app only). Dashboard enrichJob() uses session access_token. Service_role passthrough for cron. SE-002 key rotation downgraded to hygiene (repo only accessed by Marston + Claude). |
 | CS-003 | 2026-03-06 | DO-001, CX-01, CX-02 | dashboard@0.2.0-posthog, extension@0.1.0-posthog, index@0.1.0-posthog, admin@0.2.0-posthog | PostHog SDK deployed on all 4 surfaces. Dashboard + admin: posthog.init() with session recording + exception autocapture + posthog.identify() post-login. Landing: direct posthog.init() (removes GTM dependency). Extension: API key fixed, events wired (popup_opened, scan_started, scan_completed, job_saved). Launch gates G2 + G13 pending prod verification. |
+| CS-004 | 2026-03-06 | EXT-SEC-001, EXT-SEC-002, EXT-SEC-003, CP-002 | extension@0.2.0-security (v2.19.0) | authSession added to AES-GCM encrypted storage (BJ_CRYPTO). crypto.js wired into background.js + popup.html. All 18 background.js + 5 popup.js authSession storage calls routed through encrypted getAuth()/setAuth() helpers. escHtml() sanitizer added to popup.js + inject-overlay.js — company names + field names escaped before innerHTML. web_accessible_resources scoped from utils/*.js + \<all_urls\> to utils/fillMetrics.js + 19 ATS domains. Privacy policy link added to help.html. |
 
 **Status:** IN PROGRESS
 **Pods:** Pod 3 (Technical Audit, 113+ findings across 17 sessions) + Pod 4 (CX Examination, 46 findings across 5 sessions)
@@ -2769,9 +2770,9 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.013 | EXT-SEC-001: Token encryption in chrome.storage | 1h | — | 🔲 | authSession plaintext. Encrypt at rest. |
-| 0.014 | EXT-SEC-002: Remove broad host permissions | 1h | — | 🔲 | Minimize to required ATS domains only. |
-| 0.015 | EXT-SEC-003: Popup innerHTML XSS | 1h | — | 🔲 | innerHTML in privileged context. Sanitize all. |
+| 0.013 | EXT-SEC-001: Token encryption in chrome.storage | 1h | 1h | ✅ | CS-004: authSession added to BJ_CRYPTO SENSITIVE_KEYS. getAuth()/setAuth() encrypted helpers wired in background.js + popup.js. Migration auto-encrypts existing plaintext on install/update. Deployed 2026-03-06. |
+| 0.014 | EXT-SEC-002: Remove broad host permissions | 1h | 1h | ⚡ | CS-004: web_accessible_resources scoped from utils/*.js + \<all_urls\> to utils/fillMetrics.js + 19 ATS domains. Host permissions remain as-is (required for content script injection). Deployed 2026-03-06. |
+| 0.015 | EXT-SEC-003: Popup innerHTML XSS | 1h | 1h | ✅ | CS-004: escHtml() sanitizer added to popup.js (company names in discovery list) and inject-overlay.js (field names/details in fill overlay). toolbar-overlay.js already sanitized. Zero unsanitized dynamic innerHTML in extension. Deployed 2026-03-06. |
 | 0.016 | EXT-SEC-004: PII minimization for AI answerer | 1h | — | 🔲 | Full profile sent every call. Per-question field subsets. |
 | 0.017 | EXT-SEC-005: Content script CSP bypass vectors | 1h | — | 🔲 | Audit all injection points in ATS pages. |
 
@@ -2896,7 +2897,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
 | 0.079 | CP-001: No PII inventory | 2h | — | 🔲 | 72+ tables undocumented. Foundation for deletion + export. |
-| 0.080 | CP-002: No DPAs for resume data → Anthropic | 2h | — | 🔲 | Resume PII sent every score/rewrite. Initiate DPAs: Anthropic, PostHog, Stripe, Resend, Vonage. |
+| 0.080 | CP-002: No DPAs for resume data → Anthropic | 2h | 0.5h | ⚡ | CS-004: Privacy policy link added to extension help.html. Privacy page live at brilliantjobs.app/privacy. DPA initiation for Anthropic, PostHog, Stripe, Resend, Vonage: PENDING (requires legal review, not a code task). |
 | 0.081 | CP-003: No audit logging (platform) | 1h | — | 🔲 | Combined with 0.021 admin trail + pgAudit. |
 | 0.082 | AD-CP-001: Admin PII exposure scope | 1h | — | 🔲 | Document all admin-visible PII. Logging per access path. |
 | 0.083 | AD-CP-002: No user deletion capability | 5h | — | 🔲 | GDPR Art 17. 72+ table cascade + third-party propagation. Post-launch. |
@@ -3087,7 +3088,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | G4 | Kill-switch operational | 3 | 🔲 |
 | G5 | Critical-path tests pass | 3 | 🔲 |
 | G6 | Connection pooler live (300+) | 3 | 🔲 |
-| G7 | Privacy policy + DPAs sent | 3 | 🔲 |
+| G7 | Privacy policy + DPAs sent | 3 | ⚡ | CS-004: Privacy policy published at brilliantjobs.app/privacy and linked from extension help.html. DPA initiation PENDING (legal review required for Anthropic, PostHog, Stripe, Resend, Vonage). |
 | G8 | 72-hour dry run clean | 3 | 🔲 |
 | G9 | Landing XSS + CSP enforced | 3 | 🔲 |
 | G10 | Referral pipeline functional | 3 | 🔲 |

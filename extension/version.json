@@ -1,6 +1,6 @@
 {
-  "version": "2.16.0",
-  "build": "2026-02-27h",
+  "version": "2.19.0",
+  "build": "2026-03-06-cs004",
   "files": {
     "background.js": "2.15.0",
     "popup.html": "2.12.0",
