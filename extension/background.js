@@ -1807,10 +1807,18 @@ async function sendHeartbeat() {
       body: JSON.stringify({
         extension_id: chrome.runtime.id,
         extension_version: manifest.version
-      })
+      }),
+      signal: AbortSignal.timeout(15000) // CS-013 FIX-12: timeout on heartbeat
     });
     if (res.ok) {
       console.log('[heartbeat] Ping sent — v' + manifest.version);
+      // CS-013 FIX-13 Layer 1: Process kill-switch directives from heartbeat response
+      try {
+        const data = await res.json();
+        if (typeof _bjKillSwitch !== 'undefined' && _bjKillSwitch.processHeartbeatDirective) {
+          await _bjKillSwitch.processHeartbeatDirective(data);
+        }
+      } catch { /* heartbeat response may not be JSON — that's fine */ }
     } else {
       console.warn('[heartbeat] Server returned', res.status);
     }
@@ -1941,3 +1949,125 @@ chrome.tabs.query({ active: true, currentWindow: true }).then(tabs => {
 });
 
 
+// ============================================================
+// CS-013 FIX-13: THREE-LAYER KILL-SWITCH
+// Layer 1: Heartbeat directives — handled in sendHeartbeat() above
+// Layer 2: External messages — handled below
+// Layer 3: DB flag check — runs on startup and hourly
+// ============================================================
+
+// Kill-switch state (inline for MV3 service worker; mirrors killSwitch.js module)
+let _bjKillSwitch = {
+  _killed: false,
+  _reason: '',
+
+  async init() {
+    try {
+      const data = await chrome.storage.local.get(['_bj_kill_switch', '_bj_kill_reason']);
+      this._killed = data['_bj_kill_switch'] === true;
+      this._reason = data['_bj_kill_reason'] || '';
+      if (this._killed) console.warn('[kill-switch] Active on init:', this._reason);
+    } catch (e) {
+      console.warn('[kill-switch] Init error:', e.message);
+    }
+  },
+
+  isKilled() { return this._killed; },
+
+  async kill(reason, layer) {
+    this._killed = true;
+    this._reason = reason || `Killed via ${layer}`;
+    await chrome.storage.local.set({
+      '_bj_kill_switch': true,
+      '_bj_kill_reason': this._reason
+    });
+    console.warn(`[kill-switch] ACTIVATED via ${layer}:`, this._reason);
+    // Notify content scripts
+    chrome.tabs.query({}, tabs => {
+      tabs.forEach(tab => {
+        if (tab.id) chrome.tabs.sendMessage(tab.id, { action: '_bj_kill_switch_activated', reason: this._reason }).catch(() => {});
+      });
+    });
+  },
+
+  async resume(layer) {
+    this._killed = false;
+    this._reason = '';
+    await chrome.storage.local.remove(['_bj_kill_switch', '_bj_kill_reason']);
+    console.log(`[kill-switch] DEACTIVATED via ${layer}`);
+    chrome.tabs.query({}, tabs => {
+      tabs.forEach(tab => {
+        if (tab.id) chrome.tabs.sendMessage(tab.id, { action: '_bj_kill_switch_deactivated' }).catch(() => {});
+      });
+    });
+  },
+
+  async processHeartbeatDirective(data) {
+    if (!data) return;
+    const directive = data.directive || data.kill_switch;
+    if (directive === 'kill' || directive === true) {
+      await this.kill(data.kill_reason || 'Server directive', 'heartbeat');
+    } else if ((directive === 'resume' || directive === false) && this._killed) {
+      await this.resume('heartbeat');
+    }
+  },
+
+  async checkDbFlag() {
+    try {
+      const token = SUPABASE_AUTH_TOKEN;
+      const headers = { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const resp = await fetch(
+        `${SUPABASE_URL}/rest/v1/feature_flags?key=eq.extension_kill_switch&select=value`,
+        { headers, signal: AbortSignal.timeout(10000) }
+      );
+      if (!resp.ok) return;
+      const rows = await resp.json();
+      const flag = rows?.[0]?.value;
+      if (flag === true || flag === 'true' || flag === 'kill') {
+        if (!this._killed) await this.kill('DB flag: extension_kill_switch', 'db_flag');
+      } else if (this._killed && this._reason.includes('DB flag')) {
+        await this.resume('db_flag');
+      }
+    } catch (e) {
+      console.warn('[kill-switch] DB flag check error:', e.message);
+    }
+  }
+};
+
+// Initialize kill-switch on startup
+_bjKillSwitch.init();
+
+// Layer 2: Handle external messages from admin page
+chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
+  const allowedOrigins = [
+    'https://brilliantjobs.app',
+    'https://www.brilliantjobs.app',
+    'https://staging.brilliantjobs.app'
+  ];
+  const senderOrigin = sender.url ? new URL(sender.url).origin : '';
+  if (!allowedOrigins.includes(senderOrigin)) return;
+
+  if (message.type === '_bj_kill_switch') {
+    if (message.action === 'kill') {
+      _bjKillSwitch.kill(message.reason || 'Admin command', 'external')
+        .then(() => sendResponse({ ok: true, killed: true }));
+    } else if (message.action === 'resume') {
+      _bjKillSwitch.resume('external')
+        .then(() => sendResponse({ ok: true, killed: false }));
+    } else if (message.action === 'status') {
+      sendResponse({ ok: true, killed: _bjKillSwitch.isKilled(), reason: _bjKillSwitch._reason });
+    }
+    return true; // async
+  }
+});
+
+// Layer 3: Check DB flag on startup and periodically
+_bjKillSwitch.checkDbFlag();
+chrome.alarms.create('killSwitchDbCheck', { periodInMinutes: 60 });
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === 'killSwitchDbCheck') {
+    _bjKillSwitch.checkDbFlag();
+  }
+});

@@ -111,35 +111,42 @@ export async function answerCustomQuestions(questions, profile, resume, jobConte
   // Cap at 10 per call (EF limit)
   const batch = misses.slice(0, 10);
 
+  // CS-013 FIX-14: PII minimisation — send only per-question relevant fields
+  // instead of full profile. Reduces data exposure surface.
+  const fullProfile = {
+    name: profile?.firstName ? `${profile.firstName} ${profile.lastName || ''}`.trim() : profile?.name,
+    email: profile?.email,
+    phone: profile?.phone,
+    location: profile?.location || profile?.city,
+    current_company: profile?.currentCompany,
+    current_title: profile?.currentTitle,
+    years_experience: profile?.yearsExperience,
+    linkedin: profile?.linkedin,
+    github: profile?.github,
+    portfolio: profile?.portfolio || profile?.website,
+    skills: profile?.skills,
+    education: profile?.education,
+    visa_status: profile?.visaStatus,
+    willing_to_relocate: profile?.willingToRelocate,
+    desired_salary: profile?.desiredSalary,
+    start_date: profile?.startDate
+  };
+
   const payload = {
     questions: batch.map(q => ({
       id: q.id,
       label: q.label,
       field_type: q.fieldType || 'text',
       options: q.options || undefined,
-      max_length: q.maxLength || undefined
+      max_length: q.maxLength || undefined,
+      // Per-question profile subset — only fields relevant to this question
+      profile_fields: _selectProfileFields(q.label, q.fieldType, fullProfile)
     })),
-    profile: {
-      name: profile?.firstName ? `${profile.firstName} ${profile.lastName || ''}`.trim() : profile?.name,
-      email: profile?.email,
-      phone: profile?.phone,
-      location: profile?.location || profile?.city,
-      current_company: profile?.currentCompany,
-      current_title: profile?.currentTitle,
-      years_experience: profile?.yearsExperience,
-      linkedin: profile?.linkedin,
-      github: profile?.github,
-      portfolio: profile?.portfolio || profile?.website,
-      skills: profile?.skills,
-      education: profile?.education,
-      visa_status: profile?.visaStatus,
-      willing_to_relocate: profile?.willingToRelocate,
-      desired_salary: profile?.desiredSalary,
-      start_date: profile?.startDate
-    },
-    resume_text: resume?.text || '',
+    // Minimal shared context (no PII in top-level profile)
     job_title: jobContext?.title || '',
-    company_name: jobContext?.company || ''
+    company_name: jobContext?.company || '',
+    // Resume text only if needed (skill/experience questions)
+    resume_summary: batch.some(q => _needsResume(q.label)) ? (resume?.text || '').slice(0, 2000) : undefined
   };
 
   try {
@@ -275,3 +282,92 @@ function findLabel(el) {
 
   return el.getAttribute('aria-label') || el.getAttribute('placeholder') || '';
 }
+
+// ═══════════════════════════════════════════════════════════
+// CS-013 FIX-14: PII FIELD MAPPING
+// Maps question labels/types to the minimum profile fields needed.
+// ═══════════════════════════════════════════════════════════
+
+// Keyword → field groups mapping
+const FIELD_GROUPS = {
+  contact:  ['name', 'email', 'phone'],
+  identity: ['name'],
+  location: ['location', 'willing_to_relocate'],
+  work:     ['current_company', 'current_title', 'years_experience'],
+  links:    ['linkedin', 'github', 'portfolio'],
+  skills:   ['skills'],
+  education:['education'],
+  visa:     ['visa_status'],
+  salary:   ['desired_salary'],
+  dates:    ['start_date'],
+};
+
+// Label patterns → which field groups are needed
+const PATTERN_MAP = [
+  { patterns: [/email/i, /e-?mail/i],                              groups: ['contact'] },
+  { patterns: [/phone/i, /mobile/i, /cell/i, /tel/i],              groups: ['contact'] },
+  { patterns: [/linkedin/i, /github/i, /portfolio/i, /website/i],   groups: ['links'] },
+  { patterns: [/city/i, /location/i, /address/i, /relocat/i, /where.*live/i], groups: ['location'] },
+  { patterns: [/salary/i, /compensation/i, /pay/i, /rate/i],       groups: ['salary', 'work'] },
+  { patterns: [/visa/i, /sponsor/i, /authoriz/i, /work.*permit/i], groups: ['visa', 'location'] },
+  { patterns: [/start.*date/i, /avail/i, /when.*start/i, /notice/i], groups: ['dates'] },
+  { patterns: [/experience/i, /years/i, /how long/i],              groups: ['work'] },
+  { patterns: [/current.*company/i, /employer/i],                   groups: ['work'] },
+  { patterns: [/title/i, /role/i, /position/i],                    groups: ['work'] },
+  { patterns: [/skill/i, /technolog/i, /proficien/i, /language/i], groups: ['skills'] },
+  { patterns: [/education/i, /degree/i, /university/i, /school/i, /gpa/i, /major/i], groups: ['education'] },
+  { patterns: [/name/i],                                            groups: ['identity'] },
+];
+
+/**
+ * Select only the profile fields relevant to a question.
+ * @param {string} label — question label
+ * @param {string} fieldType — 'text', 'select', 'textarea', etc.
+ * @param {object} fullProfile — complete profile object
+ * @returns {object} — subset of profile fields
+ */
+function _selectProfileFields(label, fieldType, fullProfile) {
+  const neededGroups = new Set();
+
+  // Match label against patterns
+  for (const entry of PATTERN_MAP) {
+    for (const pattern of entry.patterns) {
+      if (pattern.test(label)) {
+        entry.groups.forEach(g => neededGroups.add(g));
+      }
+    }
+  }
+
+  // Textarea and long-form fields might need work context
+  if (fieldType === 'textarea' && neededGroups.size === 0) {
+    neededGroups.add('work');
+    neededGroups.add('skills');
+  }
+
+  // If no patterns matched, provide minimal work context
+  if (neededGroups.size === 0) {
+    neededGroups.add('work');
+  }
+
+  // Build the subset
+  const subset = {};
+  for (const group of neededGroups) {
+    const fields = FIELD_GROUPS[group] || [];
+    for (const field of fields) {
+      if (fullProfile[field] !== undefined && fullProfile[field] !== null && fullProfile[field] !== '') {
+        subset[field] = fullProfile[field];
+      }
+    }
+  }
+
+  return subset;
+}
+
+/**
+ * Check if a question likely needs resume text for context.
+ * Only send resume for experience/skill/qualification questions.
+ */
+function _needsResume(label) {
+  return /experience|skill|project|achieve|accomplish|qualif|summary|cover.*letter|why.*interest|why.*apply|tell.*about|describe/i.test(label);
+}
+

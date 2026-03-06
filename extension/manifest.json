@@ -132,5 +132,12 @@
         "https://*.avature.net/*"
       ]
     }
-  ]
+  ],
+  "externally_connectable": {
+    "matches": [
+      "https://brilliantjobs.app/*",
+      "https://www.brilliantjobs.app/*",
+      "https://staging.brilliantjobs.app/*"
+    ]
+  }
 }
