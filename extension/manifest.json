@@ -3,6 +3,7 @@
   "name": "Brilliant Jobs",
   "version": "2.19.0",
   "description": "Discover jobs through your professional network",
+  "homepage_url": "https://brilliantjobs.app/privacy",
   "permissions": [
     "activeTab",
     "scripting",

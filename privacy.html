@@ -348,11 +348,16 @@
     <tbody>
       <tr><td><strong>Supabase</strong></td><td>Database, authentication, and file storage</td><td>User data stored with row-level security — each user can only access their own records</td></tr>
       <tr><td><strong>Vercel</strong></td><td>Website hosting</td><td>IP address and browser information (standard web server logs)</td></tr>
+      <tr><td><strong>Cloudflare</strong></td><td>CDN, DNS, and DDoS protection</td><td>IP address and browser information (standard CDN logs)</td></tr>
       <tr><td><strong>Stripe</strong></td><td>Payment processing</td><td>Payment method and billing information (we never see or store your full card number)</td></tr>
+      <tr><td><strong>Anthropic (Claude)</strong></td><td>AI-powered resume scoring, rewriting, and job search chat</td><td>Resume text and job descriptions sent for analysis. Anthropic does not use your data to train models.</td></tr>
+      <tr><td><strong>Resend</strong></td><td>Email delivery</td><td>Email address and notification content</td></tr>
+      <tr><td><strong>Vonage</strong></td><td>SMS notifications</td><td>Phone number and message content</td></tr>
+      <tr><td><strong>PostHog</strong></td><td>Product analytics</td><td>Anonymized usage data — page views, feature usage, and session length. Only activated with your consent via our cookie banner.</td></tr>
       <tr><td><strong>Google OAuth — Gmail</strong></td><td>Email integration for application tracking (Ghost Monitor)</td><td>Email metadata only (sender domain, subject line, date) — we never read message body content. Users connect and disconnect Gmail at any time from the Setup page. Disconnecting deletes all stored tokens and email data.</td></tr>
     </tbody>
   </table>
-  <p>Each of these services has its own privacy policy and maintains industry-standard security practices. We chose them because they're good at what they do, not because they were cheap.</p>
+  <p>Each of these services has its own privacy policy and maintains industry-standard security practices. We pursue Data Processing Agreements (DPAs) with all vendors who handle personal data. We chose them because they're good at what they do, not because they were cheap.</p>
 
   <h2><span class="section-num">05</span>Aggregated and Anonymized Data</h2>
   <p>We aggregate user-contributed data — application outcomes, employer response rates, salary information, survey responses — to produce community statistics, trend reports, and public content. Think of it as a collective bargaining agreement, but for information.</p>
@@ -402,8 +407,9 @@
   <p>If you're in the EEA, our legal basis for processing your data is your consent (provided at account creation and extension installation) and our legitimate interest in operating and improving the Service. You have the right to lodge a complaint with your local data protection authority. We'd prefer you talk to us first, but you do you.</p>
 
   <h2><span class="section-num">09</span>Cookies and Local Storage</h2>
-  <p>The Brilliant Jobs dashboard uses browser localStorage to persist your filter configurations, collapse states, and UI preferences. That's it. We do not use third-party tracking cookies, advertising pixels, or any of the surveillance infrastructure that makes the modern internet feel like it's watching you. Because it is. But not us.</p>
+  <p>The Brilliant Jobs dashboard uses browser localStorage to persist your filter configurations, collapse states, and UI preferences. We use a cookie consent banner on our landing page — analytics tools like PostHog and Google Tag Manager are only activated after you grant consent. You can change your cookie preferences at any time via the consent banner.</p>
   <p>Our auth provider stores a session token in localStorage to maintain your login state. This token is automatically refreshed and does not contain personal information beyond your user ID.</p>
+  <p>We do not use third-party tracking cookies, advertising pixels, or any of the surveillance infrastructure that makes the modern internet feel like it's watching you. Because it is. But not us.</p>
 
   <h2><span class="section-num">10</span>Children's Privacy</h2>
   <p>Brilliant Jobs is not intended for use by anyone under 18. The job market is stressful enough for adults — we wouldn't wish it on a kid. If we learn that a user is under 18, we will delete their account and data promptly.</p>
