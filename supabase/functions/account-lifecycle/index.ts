@@ -9,7 +9,7 @@ import {
   welcomeEmail,
   accountApprovedEmail,
   passwordResetEmail,
-  subscriptionConfirmEmail,
+  subscriptionConfirmEmailLegacy as subscriptionConfirmEmail,
   subscriptionExpiringEmail,
   inactivityWarningEmail,
 } from "../_shared/email-templates.ts";

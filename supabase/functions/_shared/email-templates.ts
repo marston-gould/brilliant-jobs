@@ -172,7 +172,7 @@ export function passwordResetEmail(resetLink: string): { subject: string; html: 
   };
 }
 
-export function subscriptionConfirmEmail(plan: string, amount: string): { subject: string; html: string } {
+export function subscriptionConfirmEmailLegacy(plan: string, amount: string): { subject: string; html: string } {
   return {
     subject: "Brilliant Jobs — Payment confirmed",
     html: baseLayout("Payment Confirmed", `
