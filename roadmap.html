@@ -1856,7 +1856,7 @@ const features = [
 
 // 0-D: Security — Admin (Pod 3, P0)
 { s: 'todo', b: 'pre-launch', n: '0.018 AD-SE-001: Admin auth server-side', d: 'Client-side only or none. admin-auth.ts middleware. 401/403.', p: 75, e: '2h' },
-{ s: 'todo', b: 'pre-launch', n: '0.019 AD-SE-002: Admin EF auth (3 functions)', d: 'generate-editorial, build-extension, seo-sync require admin role.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.019 AD-SE-002: Admin EF auth (3 functions)', d: 'CS-001: seo-sync + generate-editorial DONE. CS-006: approve-content admin role check added. All 3 EFs enforce auth + admin role.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.020 AD-SE-003: Service role key in admin client', d: 'Remove client-side refs after rotation.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.021 AD-SE-004+CP-004: Admin audit trail', d: 'admin_audit_log table + logAdminAction() async + wire all admin EFs.', p: 75, e: '2h' },
 
@@ -1893,6 +1893,9 @@ const features = [
 // 0-H: Error Handling — Landing (Pod 3, P1)
 { s: 'done', b: 'pre-launch', n: '0.046 IX-ES-001: safeReadLS undefined', d: 'CS-005: window.safeReadLS() defined inline before merch-client.js. Try/catch + JSON.parse fallback. Returning visitors no longer get ReferenceError.', p: 75, e: '15min' },
 { s: 'done', b: 'pre-launch', n: '0.047 IX-ES-002: Stale anon key referral', d: 'CS-005: Replaced stale key (iat:Jan2025) with current (iat:Feb2026) in referral-capture.js. Referral attribution restored. Also resolves IX-DA-002.', p: 75, e: '10min' },
+{ s: 'done', b: 'pre-launch', n: 'AD-FIX-01: RLS fixes — feature_flags, merch, admin_notification_config, 6 SEO tables', d: 'CS-006: Dropped 5 broken policies. feature_flags write restricted to is_admin(). Merch policies fixed (was auth.jwt()>>role, now profiles.role). admin_notification_config admin-only. RLS enabled on 6 SEO tables with public read + admin write.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: 'AD-FIX-02: MFA enforcement in admin-shell.js', d: 'CS-006: Checks sb.auth.mfa.listFactors() after admin role check. No TOTP → inline setup (QR + manual secret). AAL1 → challenge flow. Both use Supabase MFA API.', p: 75, e: '1.5h' },
+{ s: 'done', b: 'pre-launch', n: 'AD-FIX-03: approve-content admin check + EF rate limiting', d: 'CS-006: approve-content checks profiles.role=admin. generate-editorial 10/hr, seo-sync 5/hr via check_ef_rate_limit(). ef_rate_limits table + auto-cleanup.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.048 IX-FE-003: 7 empty + 5 console catches', d: '12 silenced on public landing. PostHog wire.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.049 IX-FE-004: Loading/error/retry 5 flows', d: 'preview-jobs, profile, merch, referral, auth — no feedback.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.050 IX-BE-001: preview-jobs no auth/rate limit', d: 'Public EF no limiting. Add rate limit.', p: 75, e: '1h' },
@@ -1902,7 +1905,7 @@ const features = [
 // 0-I: Error Handling — Admin (Pod 3, P1)
 { s: 'todo', b: 'pre-launch', n: '0.053 AD-ES-001: Admin EF empty catches', d: 'generate-editorial, build-ext, seo-sync catch and swallow.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.054 AD-ES-005: No error states admin UI', d: 'Operations fail silently. No user feedback.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.055 AD-ES-007: No rate limit/cost cap editorial', d: 'Per-user rate limit + daily cost cap for Anthropic.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.055 AD-ES-007: No rate limit/cost cap editorial', d: 'CS-006: generate-editorial 10/hr, seo-sync 5/hr via ef_rate_limits + check_ef_rate_limit(). Service_role exempt.', p: 75, e: '30min' },
 
 // 0-J: Frontend + Performance (Pod 3, P0/P1)
 { s: 'todo', b: 'pre-launch', n: '0.056 FE-001: 818KB bundle → code split', d: 'Route-based split. <200KB initial. 3 sessions.', p: 75, e: '6h' },

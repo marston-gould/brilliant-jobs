@@ -2738,6 +2738,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | CS-003 | 2026-03-06 | DO-001, CX-01, CX-02 | dashboard@0.2.0-posthog, extension@0.1.0-posthog, index@0.1.0-posthog, admin@0.2.0-posthog | PostHog SDK deployed on all 4 surfaces. Dashboard + admin: posthog.init() with session recording + exception autocapture + posthog.identify() post-login. Landing: direct posthog.init() (removes GTM dependency). Extension: API key fixed, events wired (popup_opened, scan_started, scan_completed, job_saved). Launch gates G2 + G13 pending prod verification. |
 | CS-004 | 2026-03-06 | EXT-SEC-001, EXT-SEC-002, EXT-SEC-003, CP-002 | extension@0.2.0-security (v2.19.0) | authSession added to AES-GCM encrypted storage (BJ_CRYPTO). crypto.js wired into background.js + popup.html. All 18 background.js + 5 popup.js authSession storage calls routed through encrypted getAuth()/setAuth() helpers. escHtml() sanitizer added to popup.js + inject-overlay.js — company names + field names escaped before innerHTML. web_accessible_resources scoped from utils/*.js + \<all_urls\> to utils/fillMetrics.js + 19 ATS domains. Privacy policy link added to help.html. |
 | CS-005 | 2026-03-06 | IX-SE-001, IX-SE-004, IX-BE-001 (=IX-ES-002), IX-FE-001 (=IX-ES-001) | index@0.2.0-security | postMessage restricted to window.location.origin (was '*', leaked auth tokens). DOMPurify v3.2.4 self-hosted (/js/vendor/purify.min.js) sanitizes all 3 innerHTML injection sites (preview titles, merch grid, merch-client content). Stale anon key replaced in referral-capture.js (iat:1738367665→1770569066). safeReadLS() defined on window — resolves ReferenceError for returning visitors. X-Frame-Options DENY + CSP frame-ancestors 'none' confirmed deployed. Launch gates G10+G11 partially cleared. |
+| CS-006 | 2026-03-06 | AD-FIX-01 (feature_flags RLS, merch RLS, admin_notification_config RLS, 6 SEO tables RLS), AD-FIX-02 (MFA enforcement), AD-FIX-03 (approve-content admin check, EF rate limiting) | admin@0.3.0-rls-mfa | AD-FIX-01: Dropped 5 broken RLS policies (service_manage_flags open write, admin_notification_config open access, 3 merch policies using auth.jwt()->>role instead of profiles.role). Replaced with is_admin() policies. Enabled RLS on 6 SEO tables (seo_site_daily, seo_page_daily, seo_tech_audits, seo_index_status, seo_conversions, seo_gsc_daily) with public read + admin-only write. AD-FIX-02: MFA enforcement in admin-shell.js — checks sb.auth.mfa.listFactors() after admin role verification. No TOTP → inline setup flow (QR + manual secret + verify). Existing TOTP + AAL1 → challenge flow. AD-FIX-03: approve-content EF now checks profiles.role='admin' (was: any authenticated user). generate-editorial-content rate limited to 10/hr, seo-sync rate limited to 5/hr via ef_rate_limits table + check_ef_rate_limit() RPC. Service_role callers exempt. Launch gate G15 — CLEARED. |
 
 **Status:** IN PROGRESS
 **Pods:** Pod 3 (Technical Audit, 113+ findings across 17 sessions) + Pod 4 (CX Examination, 46 findings across 5 sessions)
@@ -2782,7 +2783,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
 | 0.018 | AD-SE-001: Admin auth enforcement — server-side | 2h | — | 🔲 | Client-side only or none. Shared admin-auth.ts middleware. 401/403 non-admin. |
-| 0.019 | AD-SE-002: Admin Edge Function auth (3 functions) | 1h | 1h | ⚡ | CS-001: seo-sync + generate-editorial DONE. approve-content role check deferred to CS-006. |
+| 0.019 | AD-SE-002: Admin Edge Function auth (3 functions) | 1h | 1h | ✅ | CS-001: seo-sync + generate-editorial DONE. CS-006: approve-content admin role check added (profiles.role='admin'). All 3 EFs now enforce auth + admin role. Deployed 2026-03-06. |
 | 0.020 | AD-SE-003: Service role key in admin client code | 1h | — | 🔲 | Remove client-side refs after 0.002 rotation. |
 | 0.021 | AD-SE-004 + AD-CP-004: Admin audit trail | 2h | — | 🔲 | admin_audit_log table + logAdminAction() async + wire all admin EFs. |
 
@@ -2843,7 +2844,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 |---|------|------|--------|--------|-------|
 | 0.053 | AD-ES-001: Admin EF empty catches | 1h | — | 🔲 | generate-editorial, build-extension, seo-sync catch and swallow. |
 | 0.054 | AD-ES-005: No error states in admin UI | 1h | — | 🔲 | Operations fail silently. No user feedback on failure. |
-| 0.055 | AD-ES-007: generate-editorial no rate limit/cost cap | 1h | — | 🔲 | Per-user rate limit + daily cost cap for Anthropic calls. |
+| 0.055 | AD-ES-007: generate-editorial no rate limit/cost cap | 1h | 0.5h | ✅ | CS-006: 10/hr rate limit via ef_rate_limits table + check_ef_rate_limit() RPC. seo-sync: 5/hr. Service_role callers exempt (crons unaffected). Deployed 2026-03-06. |
 
 ### 0-J: Frontend + Performance (Pod 3, P0/P1)
 
@@ -3093,7 +3094,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | G8 | 72-hour dry run clean | 3 | 🔲 |
 | G9 | Landing XSS + CSP enforced | 3 | 🔲 |
 | G10 | Referral pipeline functional | 3 | 🔲 |
-| G11 | Admin auth server-side | 3 | 🔲 |
+| G11 | Admin auth server-side | 3 | ⚡ | CS-006: approve-content admin role check added. MFA enforcement in admin-shell.js. RLS fixed on feature_flags, merch tables, admin_notification_config. Rate limiting on EFs. Remaining: shared admin-auth.ts middleware (AD-SE-001). |
 | G12 | Admin audit trail recording | 3 | 🔲 |
 | G13 | PostHog identity 100% | 4 | ⚡ | CS-003: posthog.identify() wired on dashboard + admin. Extension uses distinct_id. Requires prod verification. |
 | G14 | axe-core 0 critical | 4 | 🔲 |
