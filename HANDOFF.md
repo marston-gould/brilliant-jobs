@@ -34,12 +34,12 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**CS-016** — Bundle Splitting + Lazy Loading (FE-001) + Admin Frontend Cleanup
+**CS-017** — Extension Selector Monitoring (FIX-17: EXT-FE-004)
 - Completed: 2026-03-06
-- Commit: `7a88bde`
-- Tags: `dashboard@1.0.0-bundle`, `admin@0.8.0-errors`
-- Fix items resolved: FIX-10 (FE-001), FIX-16 (AD-FIX-09, AD-FIX-10)
-- Notes: Code-split build — 6 chunks (shell 70KB, feed 83KB, keywords 241KB, pipeline 46KB, tuning 52KB, deferred 340KB). Initial payload 153KB (was 491KB). Lazy loader (bjLoadChunk/bjEnsureTab) with preload-after-idle for keywords+location chunk. Tab switching triggers chunk load before init. Admin: 3 empty catches in admin-seo.js fixed, 8 console-only catches in admin.js converted to toast + reportError, additional catches fixed in admin-notifications.js, admin-templates.js, admin-feed-health.js. Error boundary + loading state on all admin section init. Zero empty catches across all admin files. Tests: 86 pass (18 new code-split tests).
+- Commit: `2e94c47`
+- Tags: `extension@0.7.0-monitoring`
+- Fix items resolved: FIX-17 (EXT-FE-004)
+- Notes: Centralized selector registry (extension/selectors/registry.js) — 15 handlers, 193 total selectors, 153 critical. Weekly Playwright CI job (.github/workflows/selector-monitor.yml) runs Mondays 9:00 UTC + manual dispatch. Alert pipeline via Resend email on breakage. 163 new Vitest tests. All 249 tests pass. EXT-FE-004 fully resolved (was partial in CS-010).
 
 ---
 
@@ -51,31 +51,34 @@ None.
 
 ## Next Session
 
-**CS-017** — Extension Selector Monitoring (FIX-17: EXT-FE-004)
+**CS-018** — Landing Page Architecture: CSS/JS Extraction + PostHog Identity + Cookies (FIX-19a)
 
 | Field | Detail |
 |-------|--------|
-| Surface | Extension + CI |
-| Fix Items | FIX-17 (EXT-FE-004) |
-| Hours | 12–18h |
-| Pair | Frontend + QA |
-| Expected tags | extension@0.7.0-monitoring |
+| Surface | Landing Page + Dashboard + Extension |
+| Fix Items | FIX-19a (IX-FE-002, IX-DA-001, IX-CP-001, IX-SE-006) + CX-13 + CX-14 |
+| Hours | 42–68h |
+| Pair | Frontend + Data Eng + TPM + Pod 4 CSS |
+| Expected tags | index@0.6.0-architecture |
 
 ### Entry Gate (verify before starting)
 
-- [x] CS-016 complete — Bundle splitting + lazy loading deployed → `dashboard@1.0.0-bundle`
-- [x] CS-013 complete — Kill-switch operational (extension stable)
-- [x] CS-010 complete — Extension handler tests exist
+- [x] CS-017 complete — Selector monitoring deployed → `extension@0.7.0-monitoring`
+- [x] CS-014 complete — CSS extraction started (98 inline styles → external)
+- [x] CS-003 complete — PostHog live on all surfaces
+- [x] CS-005 complete — DOMPurify active, CSP headers deployed
 
 ### What To Build
 
-1. **FIX-17 (EXT-FE-004)**: Automated selector health monitoring — weekly CI job runs against live ATS sites (LinkedIn, Greenhouse, Lever, Workday). Alert on breakage for all 15 handlers. PostHog events on selector miss rates.
+1. **FIX-19a**: Extract remaining inline CSS/JS from landing page to external files. Wire PostHog identity bridge (cross-surface user identification). Add GDPR/CCPA cookie consent gate before PostHog tracking. CSP `unsafe-inline` removal on landing page.
 
 ### Exit Gate
 
-- CI job runs and detects intentional selector breakage
-- All 15 handlers have monitored selectors
-- Alert pipeline operational (PostHog or email)
+- CSS extracted to external stylesheet (≤5 inline styles remaining)
+- JS deferred/async where possible
+- PostHog identity bridge wired cross-surface
+- Cookie consent banner operational
+- CSP enforced (no unsafe-inline) on landing page
 - All existing tests still passing
 
 ---
@@ -85,7 +88,7 @@ None.
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
 | Dashboard | `dashboard@1.0.0-bundle` | CS-016 |
-| Extension | `extension@0.6.0-shadowdom` | CS-014 |
+| Extension | `extension@0.7.0-monitoring` | CS-017 |
 | Landing Page | `index@0.5.0-p1` | CS-014 |
 | Admin | `admin@0.8.0-errors` | CS-016 |
 | SEO Pages | (no remediation tag yet) | — |
@@ -93,7 +96,7 @@ None.
 
 ---
 
-## Completed Sessions (16 of 24)
+## Completed Sessions (17 of 24)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
@@ -113,15 +116,15 @@ None.
 | CS-014 | 2026-03-06 | FIX-15c, CX-09, CX-10 | index@0.5.0-p1, dashboard@0.8.0-echarts, extension@0.6.0-shadowdom |
 | CS-015 | 2026-03-06 | FIX-15 (FE-002/003/004, DE-001/002/003), FIX-09 (FE-002), FIX-15b (CP-003, DM-001/002, CE-001) | dashboard@0.9.0-core |
 | CS-016 | 2026-03-06 | FIX-10 (FE-001), FIX-16 (AD-FIX-09, AD-FIX-10) | dashboard@1.0.0-bundle, admin@0.8.0-errors |
+| CS-017 | 2026-03-06 | FIX-17 (EXT-FE-004) | extension@0.7.0-monitoring |
 
 ---
 
-## Remaining Sessions (8 of 24)
+## Remaining Sessions (7 of 24)
 
 | Session | Fix Items | Phase | Notes |
 |---------|-----------|-------|-------|
-| CS-017 | FIX-17 | Phase 4 | Extension selector monitoring |
-| CS-018 | FIX-19a | Phase 4 |  |
+| CS-018 | FIX-19a | Phase 4 | Landing page architecture |
 | CS-019 | FIX-18 | Phase 4 |  |
 | CS-020 | FIX-20, FIX-21 | Phase 5: Validation + Launch |  |
 | CS-021 | FIX-22 + Quality Gates | Phase 5 |  |
@@ -159,7 +162,6 @@ None.
 |------|-----------------|--------|--------|
 | SE-002 key rotation | CS-002 | Downgraded to hygiene — repo only accessed by Marston + Claude | Bundled with future config session |
 | CP-002 DPA initiation | CS-004 | Legal review required (not a code task) | Pre-launch legal workstream |
-| EXT-FE-004 (full) | CS-010 | Partial coverage; full selector hardening deferred | CS-013+ |
 | QA-001 (full) | CS-010 | 64 tests written; full E2E deferred | CS-021 |
 | CSP report-only → enforce | CS-005 | Deployed in report-only; enforce pass pending | CS-014 or CS-019 |
 
