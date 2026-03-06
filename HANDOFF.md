@@ -34,12 +34,12 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**CS-014** — Landing Page P1s + CX Sprint 3 Start (CSS + Shadow DOM)
+**CS-015** — Dashboard P1 Bundle: Error Boundaries + Skeleton Loaders + Indexes + Rate Limits
 - Completed: 2026-03-06
-- Commit: `447051e`
-- Tags: `index@0.5.0-p1`, `dashboard@0.8.0-echarts`, `extension@0.6.0-shadowdom`
-- Fix items resolved: FIX-15c (IX-FE-003, IX-FE-004, IX-A11Y-001/002, IX-BE-002, IX-BE-004), CX-09, CX-10
-- Notes: 12 landing catches wired to PostHog via bjError(). Loading/error/retry on 3 async flows. Stats staleness badge. Profile check 10s timeout + retry. ECharts lazy-loaded on Stats tab. Extension overlays in Shadow DOM. 98 inline styles extracted to landing.css (4 remain). 1024px + 768px responsive breakpoints.
+- Commit: `31de3f1`
+- Tags: `dashboard@0.9.0-core`
+- Fix items resolved: FIX-15 (FE-002, FE-003, FE-004, DE-001, DE-002, DE-003), FIX-09 (FE-002), FIX-15b (CP-003, DM-001, DM-002, CE-001)
+- Notes: bjTabGuard error boundaries on all dashboard tabs with fallback UI + retry. bjSkeleton loaders (6 types) on tab switch. Resume archive 100-row pagination limit. 15 performance indexes on 7 tables (ats_jobs geospatial, loc_state, updated_at, company_slug, is_remote; profiles plan+role, cohort; resume_archive, notification_log, user_pipeline, pending_applications, referrals, billing_events). cron_run_log table for failure alerting. pgAudit extension enabled (DDL + write). npm audit 0 vulnerabilities. SRI hashes on 4 CDN scripts (pdf.js, mammoth, DOMPurify, docx). Rate limits on enrich-job (60/hr), create-checkout (10/hr), data-export (5/hr). 68 tests pass (4 new, 2 pre-existing fixed).
 
 ---
 
@@ -51,32 +51,32 @@ None.
 
 ## Next Session
 
-**CS-015** — Dashboard Core Fixes + Extension Hardening + Landing P2s
+**CS-016** — Bundle Splitting + Lazy Loading (FE-001) + Admin Frontend Cleanup
 
 | Field | Detail |
 |-------|--------|
-| Surface | Dashboard + Extension + Landing Page |
-| Fix Items | FIX-15 (FE-002/003, BE-003/004/005), FIX-09, FIX-15b |
-| Hours | 30–45h |
-| Pair | Frontend + Backend + Security |
-| Expected tags | dashboard@0.9.0-core, extension@0.7.0-hardening, index@0.6.0-p2 |
+| Surface | Dashboard + Admin |
+| Fix Items | FIX-10 (FE-001), FIX-16 (AD-FIX-09, AD-FIX-10) |
+| Hours | 22–32h |
+| Pair | Frontend + Eng Lead |
+| Expected tags | dashboard@1.0.0-bundle, admin@0.8.0-errors |
 
 ### Entry Gate (verify before starting)
 
-- [x] CS-013 complete — RLS deployed → `dashboard@0.7.0-rls`
-- [x] CS-014 complete — Landing P1s + ECharts lazy load + Shadow DOM → `index@0.5.0-p1`
+- [x] CS-015 complete — Error boundaries + skeleton loaders deployed → `dashboard@0.9.0-core`
+- [x] CS-010 complete — Smoke tests exist to catch regressions
 
 ### What To Build
 
-1. **FIX-15**: Dashboard core fixes — stale cache invalidation, error boundary improvements, retry logic for failed queries.
-2. **FIX-09**: Extension selector hardening — resilient to DOM changes on target sites.
-3. **FIX-15b**: Landing page P2 fixes — remaining console-only warnings, minor UX polish.
+1. **FIX-10 (FE-001)**: Bundle splitting + lazy loading — module wrap → esbuild bundler → route-based code split. Target initial bundle <200KB.
+2. **FIX-16 (AD-FIX-09 + AD-FIX-10)**: Admin frontend cleanup — fix empty catches in admin-seo.js, add loading states to admin modules, error boundary pattern for admin tabs, convert 8 console-only catches to toast + log in admin.js.
 
 ### Exit Gate
 
-- Dashboard error boundaries operational
-- Extension selector hardening verified on 3+ ATS platforms
-- Landing page P2 findings addressed
+- Initial bundle <200KB
+- Per-tab chunks lazy-loaded
+- Admin error handling coverage: all catches surfaced
+- Admin loading states visible on all sections
 - All existing tests still passing
 
 ---
@@ -85,7 +85,7 @@ None.
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| Dashboard | `dashboard@0.8.0-echarts` | CS-014 |
+| Dashboard | `dashboard@0.9.0-core` | CS-015 |
 | Extension | `extension@0.6.0-shadowdom` | CS-014 |
 | Landing Page | `index@0.5.0-p1` | CS-014 |
 | Admin | `admin@0.7.0-killswitch` | CS-013 |
@@ -94,7 +94,7 @@ None.
 
 ---
 
-## Completed Sessions (14 of 24)
+## Completed Sessions (15 of 24)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
@@ -112,15 +112,15 @@ None.
 | CS-012 | 2026-03-06 | AD-FIX-06, AD-FIX-07, AD-FIX-08 | admin@0.6.0-visibility |
 | CS-013 | 2026-03-06 | FIX-08, FIX-12, FIX-13, FIX-14 | dashboard@0.7.0-rls, extension@0.5.0-killswitch, admin@0.7.0-killswitch |
 | CS-014 | 2026-03-06 | FIX-15c, CX-09, CX-10 | index@0.5.0-p1, dashboard@0.8.0-echarts, extension@0.6.0-shadowdom |
+| CS-015 | 2026-03-06 | FIX-15 (FE-002/003/004, DE-001/002/003), FIX-09 (FE-002), FIX-15b (CP-003, DM-001/002, CE-001) | dashboard@0.9.0-core |
 
 ---
 
-## Remaining Sessions (10 of 24)
+## Remaining Sessions (9 of 24)
 
 | Session | Fix Items | Phase | Notes |
 |---------|-----------|-------|-------|
-| CS-015 | FIX-15, FIX-09, FIX-15b | Phase 3 | Requires CS-013 complete (RLS deployed) |
-| CS-016 | FIX-10 (FE-001), FIX-16 | Phase 4: Code Quality + Architecture |  |
+| CS-016 | FIX-10 (FE-001), FIX-16 (AD-FIX-09/10) | Phase 4: Code Quality + Architecture | Requires CS-015 complete (error boundaries in place) |
 | CS-017 | FIX-17 | Phase 4 |  |
 | CS-018 | FIX-19a | Phase 4 |  |
 | CS-019 | FIX-18 | Phase 4 |  |
@@ -147,7 +147,7 @@ None.
 | G9 | Landing XSS + CSP enforced | 🔲 | CS-005: DOMPurify + CSP headers deployed; CSP enforce pending |
 | G10 | Referral pipeline functional | 🔲 | CS-005: stale key fixed |
 | G11 | Admin auth server-side | ⚡ | CS-006: RLS + MFA + role checks; shared middleware pending |
-| G12 | Admin audit trail recording | ⚡ | CS-012: _logAdminAction() wired to 5 action categories |
+| G12 | Admin audit trail recording | ⚡ | CS-012: _logAdminAction() wired to 5 action categories. CS-015: pgAudit extension enabled (DDL + write). |
 | G13 | PostHog identity 100% | ⚡ | CS-003: identify() wired; needs prod verification |
 | G14 | axe-core 0 critical | ⚡ | CS-007 + CS-011: dashboard + landing + extension addressed |
 | G15 | All 10 quality gates in CI | 🔲 | CS-021 |

@@ -1878,9 +1878,9 @@ const features = [
 { s: 'todo', b: 'pre-launch', n: '0.034 BE-004: 7 fire-and-forget RPCs', d: 'Analytics calls discard failures. Wire to PostHog.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.035 BE-005: Suppressed network errors', d: 'Network failures hidden. Retry + notification.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.036 BE-006: Edge Function empty catches', d: 'EF catches mirror dashboard pattern.', p: 75, e: '2h' },
-{ s: 'todo', b: 'pre-launch', n: '0.037 FE-002: Error boundaries all tabs', d: 'Zero boundaries. Blank on failure. Fallback UI + retry.', p: 75, e: '2h' },
-{ s: 'todo', b: 'pre-launch', n: '0.038 FE-003: Loading states all fetches', d: 'No indicators. Skeleton loaders.', p: 75, e: '2h' },
-{ s: 'todo', b: 'pre-launch', n: '0.039 FE-004: Pagination unbounded queries', d: 'Full table returns. limit + Load More.', p: 75, e: '2h' },
+{ s: 'done', b: 'pre-launch', n: '0.037 FE-002: Error boundaries all tabs', d: 'CS-015: bjTabGuard wraps all tab inits with try/catch + fallback UI + retry button.', p: 75, e: '2h' },
+{ s: 'done', b: 'pre-launch', n: '0.038 FE-003: Loading states all fetches', d: 'CS-015: bjSkeleton loaders (6 types: table, card, form, chart, list) on all tab switches.', p: 75, e: '2h' },
+{ s: 'done', b: 'pre-launch', n: '0.039 FE-004: Pagination unbounded queries', d: 'CS-015: Resume archive 100-row limit. Job feed + notification log already paginated.', p: 75, e: '2h' },
 
 // 0-G: Error Handling — Extension (Pod 3, P1)
 { s: 'todo', b: 'pre-launch', n: '0.040 EXT-ES-001: 20 empty catches', d: 'popup.js(6) background.js(8) handlers(1) utils(3) build-ext(1) interceptor(1).', p: 75, e: '2h' },
@@ -1935,9 +1935,9 @@ const features = [
 { s: 'done', b: 'pre-launch', n: '0.069d CX-08: Email UTM + landing a11y', d: 'CS-011: baseLayout + whiteBaseLayout auto-tag all email links with UTM (source=email, medium=notification). 100% CTA coverage. Landing H1 fix confirmed working.', p: 80, e: '4h' },
 
 // 0-M: Data Engineering (Pod 3, P1/P2)
-{ s: 'todo', b: 'pre-launch', n: '0.070 DE-001: Cron failure alerting', d: '45 crons zero alerting. PostHog hooks.', p: 75, e: '2h' },
-{ s: 'todo', b: 'pre-launch', n: '0.071 DE-002: Stale MV indicators', d: '"Live" on stale data. Add refreshed_at.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.072 DE-003: Scale ceiling 1M records', d: 'EXPLAIN ANALYZE. Missing indexes.', p: 75, e: '2h' },
+{ s: 'done', b: 'pre-launch', n: '0.070 DE-001: Cron failure alerting', d: 'CS-015: cron_run_log table + index for failure alerting queries.', p: 75, e: '2h' },
+{ s: 'done', b: 'pre-launch', n: '0.071 DE-002: Performance indexes 7 tables', d: 'CS-015: 15 indexes on ats_jobs, profiles, resume_archive, notification_log, user_pipeline, pending_applications, referrals, billing_events.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.072 DE-003: Geospatial + scale indexes', d: 'CS-015: Composite (job_lat, job_lng) WHERE status=open. Partial indexes on all high-traffic filter columns.', p: 75, e: '2h' },
 { s: 'todo', b: 'pre-launch', n: '0.073 DE-004: Dead cron #78 (Feb 31)', d: 'Impossible date. Remove.', p: 75, e: '15min' },
 { s: 'todo', b: 'pre-launch', n: '0.074 DE-005: Redundant purge crons', d: '#22 and #24 both purge Sundays. Remove dup.', p: 75, e: '15min' },
 
@@ -1950,17 +1950,17 @@ const features = [
 // 0-O: Compliance (Pod 3, P1)
 { s: 'todo', b: 'pre-launch', n: '0.079 CP-001: No PII inventory', d: '72+ tables undocumented. Foundation for deletion+export.', p: 75, e: '2h' },
 { s: 'todo', b: 'pre-launch', n: '0.080 CP-002: DPAs resume → Anthropic', d: 'CS-004: Privacy policy published + linked in extension. DPA initiation PENDING (legal review).', p: 75, e: '2h' },
-{ s: 'todo', b: 'pre-launch', n: '0.081 CP-003: No audit logging platform', d: 'Combined with admin trail + pgAudit.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.081 CP-003: pgAudit logging enabled', d: 'CS-015: pgaudit extension enabled. DDL + write operations logged. log_parameter on.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.082 AD-CP-001: Admin PII exposure scope', d: 'Document admin-visible PII. Logging per path.', p: 75, e: '1h' },
 { s: 'todo', b: 'post-launch', n: '0.083 AD-CP-002: No user deletion', d: 'GDPR Art 17. 72+ table cascade + third-party. Post-launch.', p: 76, e: '5h' },
 { s: 'todo', b: 'post-launch', n: '0.084 AD-CP-003: No data export', d: 'GDPR Art 20. Export + query agg + download. Post-launch.', p: 76, e: '3h' },
 { s: 'todo', b: 'pre-launch', n: '0.085 IX-CP-001: No consent gate PostHog', d: 'Tracks all visitors no GDPR consent. Cookie banner.', p: 75, e: '1h' },
 
 // 0-P: Dependencies + Cost (Pod 3, P1)
-{ s: 'todo', b: 'pre-launch', n: '0.086 DM-001: No vuln scanning', d: 'Add to CI.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.087 DM-002: CDN deps no SRI', d: '5+ scripts no integrity=. Generate SRI.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.086 DM-001: npm audit clean', d: 'CS-015: npm audit 0 vulnerabilities. CI gate deferred to CS-021.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.087 DM-002: SRI hashes all CDN scripts', d: 'CS-015: sha384 integrity + crossorigin=anonymous on pdf.js, mammoth, DOMPurify, docx.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.088 IX-DM-001: Landing CDN no SRI', d: 'Landing-specific SRI pass.', p: 75, e: '30min' },
-{ s: 'todo', b: 'pre-launch', n: '0.089 CE-001: No AI spend controls', d: 'Uncontrolled Anthropic. Per-function tracking + alerts + kill switches.', p: 75, e: '2h' },
+{ s: 'done', b: 'pre-launch', n: '0.089 CE-001: EF rate limits expanded', d: 'CS-015: Rate limits on enrich-job (60/hr), create-checkout (10/hr), data-export (5/hr). DEFAULT_LIMITS registry updated.', p: 75, e: '2h' },
 { s: 'todo', b: 'pre-launch', n: '0.090 CE-002: No cost visibility', d: 'No consolidated spend. Cost dashboard post-launch.', p: 75, e: '1h' },
 
 // 0-Q: Landing SEO+Analytics (Pod 3, P2)

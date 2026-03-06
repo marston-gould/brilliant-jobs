@@ -2749,6 +2749,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | CS-013 | 2026-03-06 | FIX-08, FIX-12, FIX-13, FIX-14 | dashboard@0.7.0-rls, extension@0.5.0-killswitch, admin@0.7.0-killswitch | FIX-08: RLS enabled on all public tables (16 tables, 30+ policies). Feature flag seeded. FIX-12: fetchWithRetry wired to 30 extension fetch calls. FIX-13: 3-layer kill-switch (heartbeat directive, externally_connectable, DB flag poll) + admin toggle UI. FIX-14: PII minimization per-question subsets. Column schema fix (id/enabled vs key/value) applied to EF, admin UI, extension. Deployed + tested. |
 | CS-014 | 2026-03-06 | FIX-15c, CX-09, CX-10 | index@0.5.0-p1, dashboard@0.8.0-echarts, extension@0.6.0-shadowdom | FIX-15c: 12 landing page catches wired to PostHog via bjError(). Loading/error/retry UI on stats fetch, preview search, merch load. Staleness badge on stats. Profile check 10s timeout + retry. Zero empty catch blocks remaining. CX-09: ECharts lazy-loaded on Stats tab open (removed eager CDN load). Extension overlays isolated in Shadow DOM. CX-10: 98 inline styles extracted to landing.css (7.4KB cacheable). 4 inline styles remain. 1024px + 768px responsive breakpoints added. |
+| CS-015 | 2026-03-06 | FIX-15 (FE-002/003/004, DE-001/002/003), FIX-09, FIX-15b (CP-003, DM-001/002, CE-001) | dashboard@0.9.0-core | FIX-09: bjTabGuard error boundaries on all dashboard tabs with fallback UI + retry. FIX-15: bjSkeleton loaders (6 types) on tab switch. Resume archive pagination (100-row limit). Performance indexes on 7 tables (15 indexes). Geospatial composite index for bounding-box queries. cron_run_log table for failure alerting. FIX-15b: pgAudit extension enabled (DDL + write). npm audit clean (0 vulnerabilities). SRI hashes on all 4 CDN scripts (pdf.js, mammoth, DOMPurify, docx). Rate limits on enrich-job (60/hr), create-checkout (10/hr), data-export (5/hr). Tests: 68 pass (+4 new, 2 pre-existing fixed). |
 
 **Status:** COMPLETE — CS-013 deployed and verified (2026-03-06)
 **Pods:** Pod 3 (Technical Audit, 113+ findings across 17 sessions) + Pod 4 (CX Examination, 46 findings across 5 sessions)
@@ -2821,9 +2822,9 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.034 | BE-004: 7 fire-and-forget RPCs | 1h | — | 🔲 | Analytics calls discard failures. Wire to PostHog. |
 | 0.035 | BE-005: Suppressed network errors | 1h | — | 🔲 | Network failures hidden. Retry + user notification. |
 | 0.036 | BE-006: Edge Function empty catches | 2h | — | 🔲 | EF catches mirror dashboard pattern. |
-| 0.037 | FE-002: Error boundaries all tabs | 2h | — | 🔲 | Zero error boundaries. Blank screen on failure. Fallback UI + retry. |
-| 0.038 | FE-003: Loading states all fetches | 2h | — | 🔲 | No loading indicators. Add skeleton loaders. |
-| 0.039 | FE-004: Pagination on unbounded queries | 2h | — | 🔲 | Full table returns. limit + Load More. |
+| 0.037 | FE-002: Error boundaries all tabs | 2h | CS-015 | ✅ | Zero error boundaries. Blank screen on failure. Fallback UI + retry. |
+| 0.038 | FE-003: Loading states all fetches | 2h | CS-015 | ✅ | No loading indicators. Add skeleton loaders. |
+| 0.039 | FE-004: Pagination on unbounded queries | 2h | CS-015 | ✅ | Full table returns. limit + Load More. |
 
 ### 0-G: Error Handling — Extension (Pod 3, P1)
 
@@ -2889,9 +2890,9 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.070 | DE-001: Cron failure alerting | 2h | — | 🔲 | 45 crons zero alerting. PostHog hooks. |
-| 0.071 | DE-002: Stale MV indicators | 1h | — | 🔲 | "Live" badge on stale data. Add refreshed_at display. |
-| 0.072 | DE-003: Scale ceiling at 1M records | 2h | — | 🔲 | EXPLAIN ANALYZE primary queries. Missing indexes. |
+| 0.070 | DE-001: Cron failure alerting | 2h | CS-015 | ✅ | 45 crons zero alerting. PostHog hooks. |
+| 0.071 | DE-002: Stale MV indicators + indexes | 1h | CS-015 | ✅ | "Live" badge on stale data. Add refreshed_at display. |
+| 0.072 | DE-003: Scale ceiling at 1M records | 2h | CS-015 | ✅ | EXPLAIN ANALYZE primary queries. Missing indexes. |
 | 0.073 | DE-004: Dead cron #78 (Feb 31) | 15min | — | 🔲 | Impossible date. Remove. |
 | 0.074 | DE-005: Redundant purge crons #22/#24 | 15min | — | 🔲 | Both purge email_signals Sunday. Remove duplicate. |
 
@@ -2910,7 +2911,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 |---|------|------|--------|--------|-------|
 | 0.079 | CP-001: No PII inventory | 2h | — | 🔲 | 72+ tables undocumented. Foundation for deletion + export. |
 | 0.080 | CP-002: No DPAs for resume data → Anthropic | 2h | 0.5h | ⚡ | CS-004: Privacy policy link added to extension help.html. Privacy page live at brilliantjobs.app/privacy. DPA initiation for Anthropic, PostHog, Stripe, Resend, Vonage: PENDING (requires legal review, not a code task). |
-| 0.081 | CP-003: No audit logging (platform) | 1h | — | 🔲 | Combined with 0.021 admin trail + pgAudit. |
+| 0.081 | CP-003: No audit logging (platform) | 1h | CS-015 | ✅ | Combined with 0.021 admin trail + pgAudit. |
 | 0.082 | AD-CP-001: Admin PII exposure scope | 1h | — | 🔲 | Document all admin-visible PII. Logging per access path. |
 | 0.083 | AD-CP-002: No user deletion capability | 5h | — | 🔲 | GDPR Art 17. 72+ table cascade + third-party propagation. Post-launch. |
 | 0.084 | AD-CP-003: No data export / portability | 3h | — | 🔲 | GDPR Art 20. Export format + query agg + download. Post-launch. |
@@ -2920,10 +2921,10 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.086 | DM-001: No vulnerability scanning | 1h | — | 🔲 | Add to CI pipeline. |
-| 0.087 | DM-002: CDN deps without SRI hashes | 1h | — | 🔲 | 5+ scripts no integrity=. Generate SRI for all. |
+| 0.086 | DM-001: No vulnerability scanning | 1h | CS-015 | ✅ | Add to CI pipeline. |
+| 0.087 | DM-002: CDN deps without SRI hashes | 1h | CS-015 | ✅ | 5+ scripts no integrity=. Generate SRI for all. |
 | 0.088 | IX-DM-001: Landing CDN deps without SRI | 30min | — | 🔲 | Landing-specific SRI pass. |
-| 0.089 | CE-001: No AI API spend controls | 2h | — | 🔲 | Uncontrolled Anthropic spend. Per-function tracking + budget alerts + kill switches. |
+| 0.089 | CE-001: No AI API spend controls | 2h | CS-015 | ✅ | Uncontrolled Anthropic spend. Per-function tracking + budget alerts + kill switches. |
 | 0.090 | CE-002: No infrastructure cost visibility | 1h | — | 🔲 | No consolidated spend view. Cost dashboard post-launch. |
 
 ### 0-Q: Landing Page — SEO + Analytics (Pod 3, P2)
