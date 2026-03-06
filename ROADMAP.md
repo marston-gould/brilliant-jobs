@@ -2737,6 +2737,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | CS-002 | 2026-03-06 | SE-001 | dashboard@0.1.0-security | enrich-job: JWT auth + CORS restriction (brilliantjobs.app only). Dashboard enrichJob() uses session access_token. Service_role passthrough for cron. SE-002 key rotation downgraded to hygiene (repo only accessed by Marston + Claude). |
 | CS-003 | 2026-03-06 | DO-001, CX-01, CX-02 | dashboard@0.2.0-posthog, extension@0.1.0-posthog, index@0.1.0-posthog, admin@0.2.0-posthog | PostHog SDK deployed on all 4 surfaces. Dashboard + admin: posthog.init() with session recording + exception autocapture + posthog.identify() post-login. Landing: direct posthog.init() (removes GTM dependency). Extension: API key fixed, events wired (popup_opened, scan_started, scan_completed, job_saved). Launch gates G2 + G13 pending prod verification. |
 | CS-004 | 2026-03-06 | EXT-SEC-001, EXT-SEC-002, EXT-SEC-003, CP-002 | extension@0.2.0-security (v2.19.0) | authSession added to AES-GCM encrypted storage (BJ_CRYPTO). crypto.js wired into background.js + popup.html. All 18 background.js + 5 popup.js authSession storage calls routed through encrypted getAuth()/setAuth() helpers. escHtml() sanitizer added to popup.js + inject-overlay.js — company names + field names escaped before innerHTML. web_accessible_resources scoped from utils/*.js + \<all_urls\> to utils/fillMetrics.js + 19 ATS domains. Privacy policy link added to help.html. |
+| CS-005 | 2026-03-06 | IX-SE-001, IX-SE-004, IX-BE-001 (=IX-ES-002), IX-FE-001 (=IX-ES-001) | index@0.2.0-security | postMessage restricted to window.location.origin (was '*', leaked auth tokens). DOMPurify v3.2.4 self-hosted (/js/vendor/purify.min.js) sanitizes all 3 innerHTML injection sites (preview titles, merch grid, merch-client content). Stale anon key replaced in referral-capture.js (iat:1738367665→1770569066). safeReadLS() defined on window — resolves ReferenceError for returning visitors. X-Frame-Options DENY + CSP frame-ancestors 'none' confirmed deployed. Launch gates G10+G11 partially cleared. |
 
 **Status:** IN PROGRESS
 **Pods:** Pod 3 (Technical Audit, 113+ findings across 17 sessions) + Pod 4 (CX Examination, 46 findings across 5 sessions)
@@ -2758,11 +2759,11 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.006 | IX-SE-001: postMessage wildcard origin → restrict | 30min | — | 🔲 | Broadcasts full session to * including tokens. Restrict to brilliantjobs.app. |
-| 0.007 | IX-SE-004: DOMPurify on 3 innerHTML injections | 1h | — | 🔲 | Exploitable XSS on public internet. CDN + SRI per IX-ADR-001. |
+| 0.006 | IX-SE-001: postMessage wildcard origin → restrict | 30min | 15min | ✅ | CS-005: postMessage restricted to window.location.origin. Auth tokens no longer leaked to wildcard. X-Frame-Options: DENY + frame-ancestors 'none' already in vercel.json. Deployed 2026-03-06. |
+| 0.007 | IX-SE-004: DOMPurify on 3 innerHTML injections | 1h | 30min | ✅ | CS-005: DOMPurify v3.2.4 self-hosted at /js/vendor/purify.min.js. Sanitizes: preview job titles (index.html), merch insights grid (index.html), merch-client.js content injection. CSP compliant (script-src 'self'). Deployed 2026-03-06. |
 | 0.008 | IX-SE-005: Tighten profiles RLS for anon | 1h | — | 🔲 | Anon key overexposes profile data. Restrict columns. |
 | 0.009 | IX-SE-006: Cookies without Secure/HttpOnly | 30min | — | 🔲 | All cookies missing Secure flag. Bundle into headers pass. |
-| 0.010 | IX-SE-007: CSP + security headers | 1h | — | 🔲 | Zero CSP, no X-Frame-Options. Report-Only 48h → enforce per IX-ADR-002. |
+| 0.010 | IX-SE-007: CSP + security headers | 1h | — | ⚡ | CS-005 verified: X-Frame-Options DENY, CSP with frame-ancestors 'none', X-Content-Type-Options nosniff, HSTS, Referrer-Policy, Permissions-Policy all deployed in vercel.json. CSP includes script-src allowlist for PostHog, Ahrefs, CDNs. CSP report-only → enforce pass remains for Phase 2. |
 | 0.011 | IX-SE-008: Anon key exposed in source | 30min | — | 🔲 | Mitigated by RLS tightening (0.008). Document as accepted. |
 | 0.012 | IX-SE-003: validate-signup dead attack surface | 30min | — | 🔲 | Unused EF still deployed. Disable or delete. |
 
@@ -2828,8 +2829,8 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.046 | IX-ES-001: safeReadLS undefined | 30min | — | 🔲 | ReferenceError every load for returning visitors. Define the function. |
-| 0.047 | IX-ES-002: Stale anon key referral-capture.js | 30min | — | 🔲 | Wrong key = referral tracking silently broken. One-line fix. |
+| 0.046 | IX-ES-001: safeReadLS undefined | 30min | 15min | ✅ | CS-005: window.safeReadLS() defined inline before merch-client.js loads. Wraps localStorage.getItem in try/catch with JSON.parse fallback. Resolves ReferenceError for returning visitors. Deployed 2026-03-06. |
+| 0.047 | IX-ES-002: Stale anon key referral-capture.js | 30min | 10min | ✅ | CS-005: Replaced stale anon key (iat:1738367665, Jan 2025) with current key (iat:1770569066, Feb 2026) in referral-capture.js. Key now matches index.html + merch-client.js. Referral attribution tracking restored. Also resolves IX-DA-002 (broken referral pipeline). Deployed 2026-03-06. |
 | 0.048 | IX-FE-003: 7 empty + 5 console-only catches | 1h | — | 🔲 | 12 silenced errors on public landing. Wire to PostHog. |
 | 0.049 | IX-FE-004: Loading/error/retry states (5 flows) | 1h | — | 🔲 | preview-jobs, profile check, merch, referral, auth — all missing feedback. |
 | 0.050 | IX-BE-001: preview-jobs no auth + no rate limit | 1h | — | 🔲 | Public EF, no rate limiting. Add rate limit + optional auth. |
