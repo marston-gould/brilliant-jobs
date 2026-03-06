@@ -15,37 +15,98 @@
 
 ---
 
-## Next Session
+## Session In Progress
 
 **CS-013** — Dashboard RLS + Extension Retry/Timeout + Kill-Switch
+- Started: 2026-03-06
+- Latest commit: `df56d49` — `audit(cs-013): RLS migration + kill-switch + fetchWithRetry + PII minimization`
+- Estimated completion: ~70%
+- **Tags NOT yet applied** — pending exit gate
+
+### What Was Done
+
+| Fix Item | Work Completed | Files |
+|----------|---------------|-------|
+| FIX-08 (RLS) | Migration SQL written for 14 tables (profiles, resumes, subscriptions, connections, feedback, notification_log, notification_actions, plans, cohorts, ats_companies, ats_jobs, audit_log, company_ghost_stats, ghost_alerts_sent, content_stories). Policies: user-owned, public-read, admin-only. Feature flag row seeded. | `supabase/migrations/20260306_cs013_rls_killswitch.sql` |
+| FIX-12 (fetchWithRetry) | Utility created: AbortSignal.timeout + exponential backoff + jitter + fire-and-forget variant. Heartbeat upgraded with 15s timeout. | `extension/utils/fetchWithRetry.js`, `extension/background.js` |
+| FIX-13 Layer 1 (Heartbeat) | `sendHeartbeat()` in background.js parses response for `{ directive: 'kill' }` and calls kill-switch. | `extension/background.js` |
+| FIX-13 Layer 2 (External) | `externally_connectable` added to manifest. `onMessageExternal` handler for kill/resume/status from admin origins. | `extension/manifest.json`, `extension/background.js` |
+| FIX-13 Layer 3 (DB flag) | Checks `feature_flags` table on startup + hourly alarm (`killSwitchDbCheck`). Kill state persisted in `chrome.storage.local`. | `extension/background.js`, migration SQL |
+| FIX-14 (PII minimization) | Per-question profile field subsets via pattern matching. Resume truncated to 2000 chars, only sent for experience/skill questions. `_selectProfileFields()` + `_needsResume()` helpers. | `extension/utils/aiAnswerer.js` |
+
+### What Remains (pick up here)
+
+| # | Task | Effort | Detail |
+|---|------|--------|--------|
+| 1 | **Wire `fetchWithRetry` into all 30 extension fetch calls** | ~3h | Mechanical find-and-replace. Files: `extension/supabase.js` (5 calls), `extension/utils/autoTracker.js` (4 calls), `extension/utils/fillMetrics.js` (2 calls), `extension/popup.js` (4 calls), `extension/background.js` (remaining ~15 event fetch calls not yet converted). Import `fetchWithRetry` and replace bare `fetch()` with `fetchWithRetry()`, adding appropriate timeout/retry configs per call criticality. |
+| 2 | **Build admin kill-switch toggle UI** | ~2h | New panel on admin page showing: (a) current kill-switch state from `feature_flags`, (b) list of active extension scanners from `extension_events` table, (c) toggle button that writes `feature_flags.extension_kill_switch = true/false`. Also: send `chrome.runtime.sendMessage` to extension via `externally_connectable` for immediate effect. |
+| 3 | **Deploy RLS migration to prod** | ~1h | Run `20260306_cs013_rls_killswitch.sql` against prod Supabase via SQL editor. Verify no breakage on dashboard login, job feed, resume render, billing page. Then apply to staging + dev. |
+| 4 | **Update extension-heartbeat EF** | ~1h | Modify `supabase/functions/extension-heartbeat/index.ts` to read `feature_flags.extension_kill_switch` and include `{ directive: 'kill' | 'resume' | null }` in response body. |
+| 5 | **Test (local + prod)** | ~2h | See test plan below. |
+| 6 | **Apply version tags** | ~10m | `dashboard@0.7.0-rls`, `extension@0.5.0-killswitch`, `admin@0.7.0-killswitch` |
+| 7 | **Update ROADMAP.md** | ~10m | Phase 0b: "Kill-switch + RLS + extension reliability — DONE [date]". Launch gate 4 (kill-switch) — CLEARED. |
+| 8 | **Update this HANDOFF.md** | ~10m | Move CS-013 to Completed. Set CS-014 as Next Session. |
+
+### Test Plan
+
+**LOCAL (Step 2):**
+- RLS: Query as non-owner on `profiles`, `resumes`, `subscriptions` → expect denied
+- RLS: Query as admin on `audit_log` → expect allowed
+- Extension: Disconnect network → retry fires (console logs) → reconnect → resumes
+- Kill-switch: Set `feature_flags.extension_kill_switch = true` → extension stops scanning within 60s
+- AI answerer: Network tab → payload has `profile_fields` per question (not full profile object)
+
+**PROD (Step 4):**
+- RLS spot-check on 10 critical tables via Supabase SQL editor
+- Extension retry: toggle airplane mode → retry → reconnect → resumes
+- Admin kill toggle → extension confirms stop within heartbeat interval
+- AI answerer: DevTools Network tab shows reduced payload size
+
+### Exit Gate (all must be green to close CS-013)
+
+- [ ] RLS enabled on ALL public tables (run: `SELECT tablename FROM pg_tables WHERE schemaname='public' AND NOT rowsecurity;` — should return empty)
+- [ ] All 30 extension fetch calls use `fetchWithRetry`
+- [ ] Kill-switch operational (test all 3 layers)
+- [ ] Admin kill toggle UI functional
+- [ ] AI answerer sends per-question subsets only (verified in DevTools)
+- [ ] SEO pages still load (RLS `public_read` policies on `ats_jobs`, `ats_companies`)
+
+---
+
+## Next Session (after CS-013 is complete)
+
+**CS-014** — Landing Page P1s + CX Sprint 3 Start (CSS + Shadow DOM)
+
+> **Note:** CS-014 can run in parallel with CS-013 remaining work since it has no dependency on CS-013.
 
 | Field | Detail |
 |-------|--------|
-| Surface | Dashboard + Extension + Admin |
-| Fix Items | FIX-08 (RLS), FIX-12 (EXT-BE-002/004), FIX-13 (EXT-FEAT-001), FIX-14 (EXT-SEC-004) |
-| Hours | 28–46h |
-| Pair | Security + Backend + Frontend + Eng Lead |
-| Expected tags | dashboard@0.7.0-rls, extension@0.5.0-killswitch, admin@0.7.0-killswitch |
+| Surface | Landing Page + Dashboard + Extension |
+| Fix Items | FIX-15c (IX-FE-003, IX-FE-004, IX-A11Y-001/002, IX-BE-002, IX-BE-004) + CX-09 + CX-10 |
+| Hours | 35–55h |
+| Pair | Frontend + CSS + Backend + Pod 4 |
+| Expected tags | index@0.5.0-p1, dashboard@0.8.0-echarts, extension@0.6.0-shadowdom |
 
-### Entry Gate (verify before starting Step 1)
+### Entry Gate (verify before starting)
 
-- [ ] CS-009 complete — safeQuery wired, RLS changes safe → **YES** (commit `01b9adc`)
-- [ ] CS-010 complete — extension tests exist → **YES** (commit `4c972e3`)
-- [ ] CS-003 complete — PostHog captures extension errors → **YES** (commit `5b548a9`)
+- [x] CS-003 complete — Sentry live → `dashboard@0.2.0-posthog`
+- [x] CS-009 complete — safeQuery patterns established → `dashboard@0.4.0-safequery`
+- [x] CS-007 complete — a11y baseline set → `dashboard@0.3.0-a11y`
 
 ### What To Build
 
-1. **FIX-08**: Verify RLS policies on all 72 dashboard tables. Fix gaps. Extension manifest v3 compliance check.
-2. **FIX-12**: Add `AbortSignal.timeout` to all extension fetch calls. Retry with exponential backoff on critical paths.
-3. **FIX-13**: Three-layer kill-switch (ADR-006): heartbeat directives, `externally_connectable` message, DB flag. Admin UI: active scanners with kill toggle.
-4. **FIX-14**: PII data minimisation for AI answerer — Edge Function accepts per-question field subsets instead of full profile.
+1. **FIX-15c**: Wire 12 landing page empty/console catches to Sentry. Add loading/error/retry UI to 5 async flows. Add staleness badge to stats. Add profile check 10s timeout with retry.
+2. **CX-09**: Lazy load ECharts on Stats page. Extension Shadow DOM isolation + token alignment with dashboard.
+3. **CX-10**: Landing page CSS extraction — 97 inline styles → external stylesheet (30KB cacheable). Add 1024px responsive breakpoint.
 
-### Exit Gate (verify before closing session)
+### Exit Gate
 
-- RLS verified on 72 tables
-- All extension fetches have timeout + retry
-- Kill-switch operational (3 layers)
-- AI answerer sends per-question subsets only
+- 12 landing catches wired to Sentry
+- 5 async flows have loading/error/retry
+- Inline styles <50 on landing
+- Stats page LCP improved
+- Extension Shadow DOM active
+- 1024px breakpoint present
 
 ---
 
@@ -83,20 +144,20 @@
 
 ## Remaining Sessions (12 of 24)
 
-| Session | Fix Items | Phase |
-|---------|-----------|-------|
-| **CS-013** | FIX-08, FIX-12, FIX-13, FIX-14 | Phase 3: Visibility + Completeness |
-| CS-014 | FIX-15c, CX-09, CX-10 | Phase 3 |
-| CS-015 | FIX-15, AD-FIX-09, AD-FIX-10 | Phase 3 |
-| CS-016 | FIX-10 (FE-001), FIX-16 | Phase 4: Code Quality + Architecture |
-| CS-017 | FIX-17 | Phase 4 |
-| CS-018 | FIX-19a | Phase 4 |
-| CS-019 | FIX-18 | Phase 4 |
-| CS-020 | FIX-20, FIX-21 | Phase 5: Validation + Launch |
-| CS-021 | FIX-22 + Quality Gates | Phase 5 |
-| CS-022 | FIX-23 (72-hour dry run + Go/No-Go) | Phase 5 |
-| CS-023 | AD-FIX-11, AD-FIX-12 | Post-Launch: Admin Monitoring |
-| CS-024 | AD-FIX-13, AD-FIX-14, AD-FIX-15 | Post-Launch: Admin Monitoring |
+| Session | Fix Items | Phase | Notes |
+|---------|-----------|-------|-------|
+| **CS-013** ⏳ | FIX-08, FIX-12, FIX-13, FIX-14 | Phase 3 | **IN PROGRESS — ~70% done, see "Session In Progress" above** |
+| CS-014 | FIX-15c, CX-09, CX-10 | Phase 3 | Can run in parallel with CS-013 remaining |
+| CS-015 | FIX-15, FIX-09, FIX-15b | Phase 3 | Requires CS-013 complete (RLS deployed) |
+| CS-016 | FIX-10 (FE-001), FIX-16 | Phase 4: Code Quality + Architecture |  |
+| CS-017 | FIX-17 | Phase 4 |  |
+| CS-018 | FIX-19a | Phase 4 |  |
+| CS-019 | FIX-18 | Phase 4 |  |
+| CS-020 | FIX-20, FIX-21 | Phase 5: Validation + Launch |  |
+| CS-021 | FIX-22 + Quality Gates | Phase 5 |  |
+| CS-022 | FIX-23 (72-hour dry run + Go/No-Go) | Phase 5 |  |
+| CS-023 | AD-FIX-11, AD-FIX-12 | Post-Launch: Admin Monitoring |  |
+| CS-024 | AD-FIX-13, AD-FIX-14, AD-FIX-15 | Post-Launch: Admin Monitoring |  |
 
 ---
 
@@ -107,7 +168,7 @@
 | G1 | All P0s resolved | 🔲 | |
 | G2 | PostHog error tracking live | ⚡ | CS-003: deployed, needs prod verification |
 | G3 | Service role key rotated | 🔲 | SE-002 downgraded to hygiene |
-| G4 | Kill-switch operational | 🔲 | CS-013 target |
+| G4 | Kill-switch operational | ⏳ | CS-013: code complete, admin UI + deployment remaining |
 | G5 | Critical-path tests pass | 🔲 | |
 | G6 | Connection pooler live (300+) | 🔲 | CS-009: Supavisor enabled, needs load test |
 | G7 | Privacy policy + DPAs sent | ⚡ | Policy published; DPA initiation pending legal |
@@ -136,7 +197,7 @@
 
 ## Blockers
 
-None as of CS-012 close.
+None as of CS-013 (in progress).
 
 ---
 
@@ -145,17 +206,24 @@ None as of CS-012 close.
 **At session start:**
 1. `git pull`
 2. Read `HANDOFF.md` (this file)
-3. Verify the entry gate for the next session
-4. Execute the session per `Chat_Session_Remediation_Plan.docx`
+3. If "Session In Progress" exists → **continue that session** from "What Remains"
+4. If no in-progress session → start the "Next Session" from Step 0 (entry gate)
+5. Reference `Chat_Session_Remediation_Plan.docx` in project knowledge for full step details
 
 **At session close (Step 7 of the lifecycle):**
-1. Update "Last Completed Session" to the session you just finished
-2. Move the completed session from "Remaining" to "Completed"
-3. Update "Next Session" with entry gate, fix items, and exit gate from the plan
-4. Update "Current Version Manifest" with any new tags
-5. Update "Launch Gates" if any status changed
-6. Update "Deferred Items" if anything was pushed
-7. Update "Blockers" if any were discovered
-8. Commit this file as part of the session's final push
+1. If session is **fully complete**:
+   - Move session from "Session In Progress" / "Remaining" to "Completed Sessions"
+   - Clear "Session In Progress" section (replace with "None")
+   - Set the next session in "Next Session" with entry gate, fix items, exit gate
+   - Update "Current Version Manifest" with new tags
+   - Update "Launch Gates" if any status changed
+2. If session is **partially complete**:
+   - Update "Session In Progress" → move completed items to "What Was Done"
+   - Update "What Remains" with exact remaining tasks, effort, and file references
+   - Keep "Next Session" pointing to the session AFTER this one
+3. Always:
+   - Update "Deferred Items" if anything was pushed
+   - Update "Blockers" if any were discovered
+   - Commit this file as part of the session's final push
 
 **This file is the first thing the next session reads. If it's wrong, the next session starts wrong.**
