@@ -256,14 +256,14 @@ END $$;
 -- ═══════════════════════════════════════════════════════
 
 -- Ensure feature_flags has the kill-switch row
-INSERT INTO feature_flags (key, value, description, updated_at)
+INSERT INTO feature_flags (id, enabled, description, updated_at)
 VALUES (
   'extension_kill_switch',
-  'false',
+  false,
   'When true, all extension scanning/filling operations are halted. Toggle from admin UI.',
   NOW()
 )
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
 
 -- ═══════════════════════════════════════════════════════

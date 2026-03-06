@@ -2020,14 +2020,14 @@ let _bjKillSwitch = {
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
       const resp = await fetchWithRetry(
-        `${SUPABASE_URL}/rest/v1/feature_flags?key=eq.extension_kill_switch&select=value`,
+        `${SUPABASE_URL}/rest/v1/feature_flags?id=eq.extension_kill_switch&select=enabled`,
         { headers },
         { timeout: 10000, retries: 1 } // CS-013 FIX-12
       );
       if (!resp.ok) return;
       const rows = await resp.json();
-      const flag = rows?.[0]?.value;
-      if (flag === true || flag === 'true' || flag === 'kill') {
+      const flag = rows?.[0]?.enabled;
+      if (flag === true) {
         if (!this._killed) await this.kill('DB flag: extension_kill_switch', 'db_flag');
       } else if (this._killed && this._reason.includes('DB flag')) {
         await this.resume('db_flag');

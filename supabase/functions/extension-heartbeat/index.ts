@@ -80,12 +80,12 @@ serve(async (req: Request) => {
     try {
       const { data: flagRow } = await sb
         .from('feature_flags')
-        .select('value')
-        .eq('key', 'extension_kill_switch')
+        .select('enabled')
+        .eq('id', 'extension_kill_switch')
         .maybeSingle();
 
       if (flagRow) {
-        const val = flagRow.value;
+        const val = flagRow.enabled;
         if (val === true || val === 'true' || val === 'kill') {
           directive = 'kill';
         } else {

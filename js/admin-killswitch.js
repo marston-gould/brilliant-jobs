@@ -88,13 +88,13 @@ async function _loadKillSwitchState() {
   try {
     var { data, error } = await sb
       .from('feature_flags')
-      .select('value, updated_at')
-      .eq('key', 'extension_kill_switch')
+      .select('enabled, updated_at')
+      .eq('id', 'extension_kill_switch')
       .maybeSingle();
 
     if (error) throw error;
 
-    var isKilled = data && (data.value === true || data.value === 'true' || data.value === 'kill');
+    var isKilled = data && (data.enabled === true);
     var updatedAt = data?.updated_at ? new Date(data.updated_at).toLocaleString() : 'never';
 
     if (isKilled) {
@@ -148,10 +148,10 @@ async function _toggleKillSwitch() {
     var { error } = await sb
       .from('feature_flags')
       .upsert({
-        key: 'extension_kill_switch',
-        value: newValue,
+        id: 'extension_kill_switch',
+        enabled: newValue,
         updated_at: new Date().toISOString()
-      }, { onConflict: 'key' });
+      }, { onConflict: 'id' });
 
     if (error) throw error;
 
