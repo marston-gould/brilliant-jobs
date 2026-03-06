@@ -3,7 +3,8 @@
 // Wraps native fetch; used across all extension network calls.
 //
 // Usage:
-//   import { fetchWithRetry } from '../utils/fetchWithRetry.js';
+//   importScripts('utils/fetchWithRetry.js');            // service worker
+//   <script src="utils/fetchWithRetry.js"></script>      // popup
 //   const resp = await fetchWithRetry(url, options, { timeout: 15000, retries: 3 });
 
 /**
@@ -20,7 +21,8 @@
  * @param {boolean} [config.silent=false]  — suppress console warnings
  * @returns {Promise<Response>}
  */
-export async function fetchWithRetry(url, options = {}, config = {}) {
+// eslint-disable-next-line no-unused-vars -- loaded via importScripts / <script>
+async function fetchWithRetry(url, options = {}, config = {}) {
   const {
     timeout = 15000,
     retries = 2,
@@ -106,7 +108,8 @@ function _backoff(attempt, baseDelay, maxDelay) {
  * Convenience: fire-and-forget fetch. Logs errors but never throws.
  * Useful for analytics/telemetry calls.
  */
-export async function fetchFireAndForget(url, options = {}, config = {}) {
+// eslint-disable-next-line no-unused-vars
+async function fetchFireAndForget(url, options = {}, config = {}) {
   try {
     return await fetchWithRetry(url, options, { ...config, silent: true, retries: 1 });
   } catch {

@@ -12,6 +12,7 @@ const jsFiles = [
   'js/admin-notifications.js',
   'js/admin-signals.js',
   'js/admin-cron.js',
+  'js/admin-killswitch.js',
   'js/admin-feed-health.js',
   'js/admin-cache-health.js',
   'js/admin-enrichment.js',

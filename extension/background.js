@@ -10,6 +10,7 @@
 // v2.21.0: Overlay Pipeline S7 — fraud + AI content score columns in getEntry (v7.01)
 
 importScripts('supabase.js');
+importScripts('utils/fetchWithRetry.js'); // CS-013 FIX-12: retry + timeout utility
 importScripts('utils/autoTracker.js');
 importScripts('utils/crypto.js'); // CS-004 (EXT-ES-003): encrypted storage for authSession
 
@@ -49,7 +50,7 @@ async function captureEvent(eventName, properties = {}) {
   try {
     const authSession = await getAuth();
     const distinctId = authSession?.user_id || 'anonymous';
-    fetch(`${_BG_PH_HOST}/capture/`, {
+    fetchFireAndForget(`${_BG_PH_HOST}/capture/`, { // CS-013 FIX-12
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -239,14 +240,14 @@ async function ensureValidToken(session) {
   refreshInProgress = true;
   try {
     logMsg('Refreshing auth token...', 'info');
-    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+    const res = await fetchWithRetry(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'apikey': SUPABASE_KEY
       },
       body: JSON.stringify({ refresh_token: session.refresh_token })
-    });
+    }, { timeout: 10000, retries: 2 }); // CS-013 FIX-12
 
     if (!res.ok) {
       // Refresh failed — but maybe popup already refreshed with a newer token.
@@ -1222,7 +1223,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const session = authSession;
         if (!session?.user_id || !session?.access_token) return;
         const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
-        await fetch(SB_URL + '/rest/v1/extension_events', {
+        await fetchFireAndForget(SB_URL + '/rest/v1/extension_events', { // CS-013 FIX-12
           method: 'POST',
           headers: {
             'apikey': session.access_token,
@@ -1279,7 +1280,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const session = authSession;
         if (!session?.user_id || !session?.access_token) return;
         const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
-        await fetch(SB_URL + '/rest/v1/extension_events', {
+        await fetchFireAndForget(SB_URL + '/rest/v1/extension_events', { // CS-013 FIX-12
           method: 'POST',
           headers: {
             'apikey': session.access_token,
@@ -1311,7 +1312,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const session = authSession;
         if (!session?.user_id || !session?.access_token) return;
         const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
-        await fetch(SB_URL + '/rest/v1/extension_events', {
+        await fetchFireAndForget(SB_URL + '/rest/v1/extension_events', { // CS-013 FIX-12
           method: 'POST',
           headers: {
             'apikey': session.access_token,
@@ -1338,7 +1339,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const session = authSession;
         if (!session?.user_id || !session?.access_token) return;
         const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
-        await fetch(SB_URL + '/rest/v1/extension_events', {
+        await fetchFireAndForget(SB_URL + '/rest/v1/extension_events', { // CS-013 FIX-12
           method: 'POST',
           headers: {
             'apikey': session.access_token,
@@ -1376,9 +1377,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
         const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
         const url = encodeURIComponent(msg.payload?.source_url || '');
-        const resp = await fetch(
+        const resp = await fetchWithRetry(
           `${SB_URL}/rest/v1/pipeline?user_id=eq.${session.user_id}&source_url=eq.${url}&select=id,stage,entry_source,job_title,company_name,fraud_score,fraud_label,ai_content_score,ai_content_label&limit=1`,
-          { headers: { 'apikey': session.access_token, 'Authorization': 'Bearer ' + session.access_token } }
+          { headers: { 'apikey': session.access_token, 'Authorization': 'Bearer ' + session.access_token } },
+          { timeout: 10000, retries: 1 } // CS-013 FIX-12
         );
         if (resp.ok) {
           const rows = await resp.json();
@@ -1407,7 +1409,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
         const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
         const p = msg.payload || {};
-        const resp = await fetch(`${SB_URL}/functions/v1/pipeline-write`, {
+        const resp = await fetchWithRetry(`${SB_URL}/functions/v1/pipeline-write`, {
           method: 'POST',
           headers: {
             'Authorization': 'Bearer ' + session.access_token,
@@ -1421,7 +1423,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             stage: p.stage || 'saved',
             entry_source: 'overlay',
           }),
-        });
+        }, { timeout: 15000, retries: 2 }); // CS-013 FIX-12
         if (resp.ok) {
           const result = await resp.json();
           console.log('[BJ Toolbar] pipeline-write:', result.action, result.id);
@@ -1458,14 +1460,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           return;
         }
         const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
-        const resp = await fetch(`${SB_URL}/functions/v1/match-score-overlay`, {
+        const resp = await fetchWithRetry(`${SB_URL}/functions/v1/match-score-overlay`, {
           method: 'POST',
           headers: {
             'Authorization': 'Bearer ' + session.access_token,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ source_url: msg.payload?.source_url }),
-        });
+        }, { timeout: 15000, retries: 2 }); // CS-013 FIX-12
         if (resp.ok) {
           const result = await resp.json();
           console.log('[BJ Toolbar] matchScore:', result.score, result.label, '(' + result.source + ')');
@@ -1492,7 +1494,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         if (!session?.user_id || !session?.access_token) return;
         const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
         const p = msg.payload || {};
-        await fetch(`${SB_URL}/rest/v1/overlay_analytics`, {
+        await fetchFireAndForget(`${SB_URL}/rest/v1/overlay_analytics`, { // CS-013 FIX-12
           method: 'POST',
           headers: {
             'apikey': session.access_token,
@@ -1527,7 +1529,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const session = authSession;
         if (!session?.user_id || !session?.access_token) return;
         const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
-        await fetch(SB_URL + '/rest/v1/extension_events', {
+        await fetchFireAndForget(SB_URL + '/rest/v1/extension_events', { // CS-013 FIX-12
           method: 'POST',
           headers: {
             'apikey': session.access_token,
@@ -1797,7 +1799,7 @@ async function sendHeartbeat() {
       return;
     }
     const manifest = chrome.runtime.getManifest();
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/extension-heartbeat`, {
+    const res = await fetchWithRetry(`${SUPABASE_URL}/functions/v1/extension-heartbeat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1808,8 +1810,7 @@ async function sendHeartbeat() {
         extension_id: chrome.runtime.id,
         extension_version: manifest.version
       }),
-      signal: AbortSignal.timeout(15000) // CS-013 FIX-12: timeout on heartbeat
-    });
+    }, { timeout: 15000, retries: 2 }); // CS-013 FIX-12: timeout + retry on heartbeat
     if (res.ok) {
       console.log('[heartbeat] Ping sent — v' + manifest.version);
       // CS-013 FIX-13 Layer 1: Process kill-switch directives from heartbeat response
@@ -2018,9 +2019,10 @@ let _bjKillSwitch = {
       const headers = { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const resp = await fetch(
+      const resp = await fetchWithRetry(
         `${SUPABASE_URL}/rest/v1/feature_flags?key=eq.extension_kill_switch&select=value`,
-        { headers, signal: AbortSignal.timeout(10000) }
+        { headers },
+        { timeout: 10000, retries: 1 } // CS-013 FIX-12
       );
       if (!resp.ok) return;
       const rows = await resp.json();

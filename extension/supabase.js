@@ -21,9 +21,9 @@ const supabase = {
   },
 
   async select(table, query = '') {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
+    const res = await fetchWithRetry(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
       headers: this.headers()
-    });
+    }, { timeout: 10000, retries: 2 }); // CS-013 FIX-12
     if (!res.ok) throw new Error(`SELECT ${table}: ${res.status} ${await res.text()}`);
     return res.json();
   },
@@ -31,22 +31,22 @@ const supabase = {
   async upsert(table, rows, onConflict) {
     const headers = this.headers();
     headers['Prefer'] = 'return=representation,resolution=merge-duplicates';
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?on_conflict=${onConflict}`, {
+    const res = await fetchWithRetry(`${SUPABASE_URL}/rest/v1/${table}?on_conflict=${onConflict}`, {
       method: 'POST',
       headers,
       body: JSON.stringify(rows)
-    });
+    }, { timeout: 10000, retries: 2 }); // CS-013 FIX-12
     if (!res.ok) throw new Error(`UPSERT ${table}: ${res.status} ${await res.text()}`);
     return res.json();
   },
 
   async update(table, match, data) {
     const params = Object.entries(match).map(([k, v]) => `${k}=eq.${encodeURIComponent(v)}`).join('&');
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
+    const res = await fetchWithRetry(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
       method: 'PATCH',
       headers: this.headers(),
       body: JSON.stringify(data)
-    });
+    }, { timeout: 10000, retries: 2 }); // CS-013 FIX-12
     if (!res.ok) throw new Error(`UPDATE ${table}: ${res.status} ${await res.text()}`);
     return res.json();
   },
@@ -56,19 +56,19 @@ const supabase = {
     headers['Prefer'] = 'count=exact';
     headers['Range-Unit'] = 'items';
     headers['Range'] = '0-0';
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}&select=id`, {
+    const res = await fetchWithRetry(`${SUPABASE_URL}/rest/v1/${table}?${query}&select=id`, {
       headers
-    });
+    }, { timeout: 10000, retries: 1 }); // CS-013 FIX-12
     const count = res.headers.get('content-range')?.split('/')?.[1];
     return parseInt(count) || 0;
   },
 
   async rpc(fn, params = {}) {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+    const res = await fetchWithRetry(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
       method: 'POST',
       headers: this.headers(),
       body: JSON.stringify(params)
-    });
+    }, { timeout: 15000, retries: 2 }); // CS-013 FIX-12
     if (!res.ok) throw new Error(`RPC ${fn}: ${res.status} ${await res.text()}`);
     return res.json();
   }

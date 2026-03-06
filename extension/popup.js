@@ -18,7 +18,7 @@ async function phCapture(eventName, properties = {}) {
   try {
     const authSession = typeof BJ_CRYPTO !== 'undefined' ? await BJ_CRYPTO.secureGet('authSession') : (await chrome.storage.local.get('authSession')).authSession;
     const distinctId = authSession?.user_id || 'anonymous';
-    fetch(`${_PH_HOST}/capture/`, {
+    fetchFireAndForget(`${_PH_HOST}/capture/`, { // CS-013 FIX-12
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -118,14 +118,14 @@ async function refreshSession(refreshToken) {
       // Background may not be awake — fall back to direct refresh
     }
 
-    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+    const res = await fetchWithRetry(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'apikey': SUPABASE_KEY
       },
       body: JSON.stringify({ refresh_token: refreshToken })
-    });
+    }, { timeout: 10000, retries: 2 }); // CS-013 FIX-12
 
     if (!res.ok) return false;
 
@@ -142,14 +142,14 @@ async function refreshSession(refreshToken) {
 }
 
 async function loginUser(email, password) {
-  const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+  const res = await fetchWithRetry(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'apikey': SUPABASE_KEY
     },
     body: JSON.stringify({ email, password })
-  });
+  }, { timeout: 10000, retries: 1 }); // CS-013 FIX-12
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -570,11 +570,11 @@ async function startHarvest() {
         // Use ignoreDuplicates so existing rows (already visited) are NOT overwritten
         const headers = supabase.headers();
         headers['Prefer'] = 'return=representation,resolution=ignore-duplicates';
-        await fetch(`${SUPABASE_URL}/rest/v1/connections?on_conflict=profile_slug`, {
+        await fetchWithRetry(`${SUPABASE_URL}/rest/v1/connections?on_conflict=profile_slug`, {
           method: 'POST',
           headers,
           body: JSON.stringify(chunk)
-        });
+        }, { timeout: 15000, retries: 2 }); // CS-013 FIX-12
       }
       lastPushedCount = harvestData.length;
       addLog('h-log', `↑ Pushed ${lastPushedCount} total to Supabase (existing profiles preserved)`, 'success');
@@ -1542,14 +1542,15 @@ async function refreshDailyLimitBadge() {
 
     const today = new Date().toISOString().slice(0, 10);
     const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
-    const resp = await fetch(
+    const resp = await fetchWithRetry(
       `${SB_URL}/rest/v1/pending_applications?user_id=eq.${session.user_id}&created_at=gte.${today}T00:00:00Z&select=id`,
       {
         headers: {
           'apikey': session.access_token,
           'Authorization': `Bearer ${session.access_token}`,
         }
-      }
+      },
+      { timeout: 10000, retries: 1 } // CS-013 FIX-12
     );
 
     let used = 0;

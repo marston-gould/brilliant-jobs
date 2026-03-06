@@ -75,7 +75,29 @@ serve(async (req: Request) => {
 
     console.log(`[heartbeat] Ping from user=${user.id.slice(0, 8)} ext=${extensionVersion}`);
 
-    return new Response(JSON.stringify({ ok: true }), {
+    // CS-013 FIX-13: Check kill-switch flag and include directive in response
+    let directive: 'kill' | 'resume' | null = null;
+    try {
+      const { data: flagRow } = await sb
+        .from('feature_flags')
+        .select('value')
+        .eq('key', 'extension_kill_switch')
+        .maybeSingle();
+
+      if (flagRow) {
+        const val = flagRow.value;
+        if (val === true || val === 'true' || val === 'kill') {
+          directive = 'kill';
+        } else {
+          directive = 'resume';
+        }
+      }
+    } catch (flagErr) {
+      console.warn('[heartbeat] Failed to read kill-switch flag:', flagErr);
+      // Non-fatal — continue with null directive
+    }
+
+    return new Response(JSON.stringify({ ok: true, directive }), {
       headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
 

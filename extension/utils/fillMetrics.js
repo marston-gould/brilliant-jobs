@@ -43,6 +43,7 @@ async function captureEvent(eventName, properties = {}) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(10000), // CS-013 FIX-12: 10s timeout
     }).catch(() => {});
   } catch {
     // Silent fail — analytics should never break functionality
@@ -74,6 +75,7 @@ async function persistMetric(metric) {
         ...metric,
         created_at: new Date().toISOString(),
       }),
+      signal: AbortSignal.timeout(10000), // CS-013 FIX-12: 10s timeout
     }).catch(() => {});
   } catch {
     // Silent fail

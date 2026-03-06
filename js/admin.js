@@ -60,6 +60,7 @@ var ADMIN_SUBPAGE_MAP = {
   'cache':          { section: 'operations',  label: 'Cache Health',   init: function(){ refreshCacheHealthPanel(); } },
   'signals':        { section: 'operations',  label: 'Signals',        init: function(){ loadAdminSignals(); } },
   'cron':           { section: 'operations',  label: 'Cron Health',    init: function(){ loadCronPanel(); } },
+  'kill-switch':    { section: 'operations',  label: 'Kill Switch',    init: function(){ loadKillSwitchPanel(); } },
   // ── Growth ──
   'seo':            { section: 'growth',      label: 'SEO',            init: function(){ loadSeoTab(); } },
   'content':        { section: 'growth',      label: 'Content',        init: function(){ loadContentTab(); } },
@@ -203,8 +204,9 @@ function navigateAdminSubpage(key) {
   var title = document.getElementById('admin-page-title');
   if (title) title.textContent = sp.label;
 
-  // Cleanup any timers from previous tab (e.g. cron auto-refresh)
+  // Cleanup any timers from previous tab (e.g. cron auto-refresh, kill-switch auto-refresh)
   if (typeof _cleanupCronPanel === 'function') _cleanupCronPanel();
+  if (typeof _cleanupKillSwitchPanel === 'function') _cleanupKillSwitchPanel();
 
   // Show correct panel, hide all others
   document.querySelectorAll('.admin-panel').forEach(function(p) {

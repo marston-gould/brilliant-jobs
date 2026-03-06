@@ -112,7 +112,7 @@ var BJ_AUTO_TRACKER = (function () {
       };
 
       const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
-      const resp = await fetch(`${SB_URL}/functions/v1/pipeline-write`, {
+      const resp = await fetchWithRetry(`${SB_URL}/functions/v1/pipeline-write`, {
         method: 'POST',
         headers: {
           'Authorization': 'Bearer ' + token,
@@ -130,7 +130,7 @@ var BJ_AUTO_TRACKER = (function () {
           confirmation_detected: isConfirmed ? true : null,
           confirmation_pattern: info.pattern || null,
         }),
-      });
+      }, { timeout: 15000, retries: 2 }); // CS-013 FIX-12
 
       if (resp.ok) {
         const result = await resp.json();
@@ -208,21 +208,22 @@ var BJ_AUTO_TRACKER = (function () {
       // ── Primary write: pending_applications (unchanged) ──
 
       // Check if pending_applications row already exists for this URL + user
-      const checkResp = await fetch(
+      const checkResp = await fetchWithRetry(
         `${SB_URL}/rest/v1/pending_applications?user_id=eq.${session.user_id}&job_url=eq.${encodeURIComponent(url)}&select=id,status&limit=1`,
         {
           headers: {
             'apikey': session.access_token,
             'Authorization': 'Bearer ' + session.access_token,
           },
-        }
+        },
+        { timeout: 10000, retries: 2 } // CS-013 FIX-12
       );
 
       if (checkResp.ok) {
         const existing = await checkResp.json();
         if (existing && existing.length > 0) {
           // Update existing row with new status + timestamp
-          const updateResp = await fetch(
+          const updateResp = await fetchWithRetry(
             `${SB_URL}/rest/v1/pending_applications?id=eq.${existing[0].id}`,
             {
               method: 'PATCH',
@@ -240,7 +241,8 @@ var BJ_AUTO_TRACKER = (function () {
                 confirmation_detected_at: status === 'submitted_confirmed' ? new Date().toISOString() : null,
                 confirmation_pattern: info.pattern || null,
               }),
-            }
+            },
+            { timeout: 10000, retries: 1 } // CS-013 FIX-12
           );
 
           if (updateResp.ok) {
@@ -251,7 +253,7 @@ var BJ_AUTO_TRACKER = (function () {
       }
 
       // No existing row — create new one
-      const insertResp = await fetch(
+      const insertResp = await fetchWithRetry(
         `${SB_URL}/rest/v1/pending_applications`,
         {
           method: 'POST',
@@ -276,7 +278,8 @@ var BJ_AUTO_TRACKER = (function () {
             confirmation_pattern: info.pattern || null,
             idempotency_key: crypto.randomUUID(),
           }),
-        }
+        },
+        { timeout: 10000, retries: 1 } // CS-013 FIX-12
       );
 
       if (insertResp.ok) {
