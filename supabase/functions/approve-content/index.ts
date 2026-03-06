@@ -24,16 +24,49 @@ Deno.serve(async (req) => {
     // Auth check — extract user from JWT
     const authHeader = req.headers.get("Authorization") || "";
     const token = authHeader.replace("Bearer ", "");
-    const {
-      data: { user },
-      error: authErr,
-    } = await supabase.auth.getUser(token);
 
-    if (authErr || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // CS-006: Allow service_role calls (from cron), otherwise verify admin
+    let isServiceRole = false;
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      isServiceRole = payload.role === "service_role";
+    } catch { /* not a valid JWT — will fail user auth below */ }
+
+    let userId: string | undefined;
+    let userEmail: string | undefined;
+
+    if (isServiceRole) {
+      userId = "service_role";
+      userEmail = "service_role";
+    } else {
+      const {
+        data: { user },
+        error: authErr,
+      } = await supabase.auth.getUser(token);
+
+      if (authErr || !user) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // CS-006: AD-FIX-03 — Verify admin role via profiles table
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.role !== "admin") {
+        return new Response(JSON.stringify({ error: "Admin only" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      userId = user.id;
+      userEmail = user.email;
     }
 
     // Parse request body
@@ -121,7 +154,7 @@ Deno.serve(async (req) => {
         .update({
           status: "published",
           published_at: new Date().toISOString(),
-          reviewed_by: user.id,
+          reviewed_by: userId,
           reviewed_at: new Date().toISOString(),
           review_notes: review_notes || null,
           updated_at: new Date().toISOString(),
@@ -136,7 +169,7 @@ Deno.serve(async (req) => {
           story_id,
           action: "approved",
           status: "published",
-          reviewed_by: user.email,
+          reviewed_by: userEmail,
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -149,7 +182,7 @@ Deno.serve(async (req) => {
         .from("content_stories")
         .update({
           status: "rejected",
-          reviewed_by: user.id,
+          reviewed_by: userId,
           reviewed_at: new Date().toISOString(),
           review_notes: review_notes || "Rejected by editorial reviewer",
           updated_at: new Date().toISOString(),
@@ -164,7 +197,7 @@ Deno.serve(async (req) => {
           story_id,
           action: "rejected",
           status: "rejected",
-          reviewed_by: user.email,
+          reviewed_by: userEmail,
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },

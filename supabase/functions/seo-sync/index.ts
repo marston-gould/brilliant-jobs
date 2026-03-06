@@ -663,6 +663,19 @@ serve(async (req) => {
           { status: 403, headers: { ...CORS, 'Content-Type': 'application/json' } });
       }
     }
+    // CS-006: AD-FIX-03 — Rate limit: 5 calls/hr for non-service-role callers
+    if (!isServiceRole) {
+      const { data: allowed } = await sb.rpc('check_ef_rate_limit', {
+        p_function_name: 'seo-sync',
+        p_caller_id: bearerToken.split('.')[1]?.substring(0, 20) || 'unknown',
+        p_max_calls: 5,
+        p_window_minutes: 60
+      });
+      if (allowed === false) {
+        return new Response(JSON.stringify({ error: 'Rate limit exceeded. Max 5 calls per hour.' }),
+          { status: 429, headers: { ...CORS, 'Content-Type': 'application/json', 'Retry-After': '3600' } });
+      }
+    }
     let tasks = ['all'];
     let targetUrl: string | undefined;
     if (req.method === 'POST') {

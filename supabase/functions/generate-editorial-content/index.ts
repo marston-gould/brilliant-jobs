@@ -457,6 +457,22 @@ Deno.serve(async (req) => {
     }
 
     // Get pending stories that need content generation
+    // CS-006: AD-FIX-03 — Rate limit: 10 calls/hr for non-service-role callers
+    if (!isServiceRole) {
+      const { data: allowed } = await supabase.rpc('check_ef_rate_limit', {
+        p_function_name: 'generate-editorial-content',
+        p_caller_id: bearerToken.split('.')[1]?.substring(0, 20) || 'unknown',
+        p_max_calls: 10,
+        p_window_minutes: 60
+      });
+      if (allowed === false) {
+        return new Response(JSON.stringify({ error: 'Rate limit exceeded. Max 10 calls per hour.' }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '3600' },
+        });
+      }
+    }
+
     // Also pick up validation_failed stories that still have retries left (max 2)
     const { data: pendingStories, error: fetchErr } = await supabase
       .from("content_stories")

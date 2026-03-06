@@ -528,6 +528,30 @@
     <a href="/dashboard" class="admin-back-btn">← Back to Dashboard</a>
   </div>
 
+  <!-- MFA Setup (CS-006: AD-FIX-02) -->
+  <div id="admin-mfa-setup" style="display:none; max-width:420px; margin:80px auto; padding:32px; background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); text-align:center; font-family:system-ui,-apple-system,sans-serif;">
+    <div style="width:48px; height:48px; margin:0 auto 16px; background:#f0f4ff; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    </div>
+    <h2 style="margin:0 0 8px; font-size:20px; font-weight:600; color:#1a1a2e;">Two-Factor Authentication Required</h2>
+    <p style="margin:0 0 24px; color:#64748b; font-size:14px;">Admin access requires MFA. Scan the QR code with your authenticator app (Google Authenticator, Authy, 1Password, etc.).</p>
+    <div id="mfa-qr-container" style="margin:0 auto 16px; display:inline-block; background:#f8f9fa; padding:16px; border-radius:8px;">
+      <div id="mfa-qr-loading" style="color:#94a3b8; font-size:13px;">Generating QR code…</div>
+      <img id="mfa-qr-img" style="display:none; width:200px; height:200px;" alt="TOTP QR Code"/>
+    </div>
+    <div id="mfa-secret-display" style="display:none; margin:0 0 20px;">
+      <p style="font-size:12px; color:#94a3b8; margin:0 0 4px;">Can't scan? Enter this code manually:</p>
+      <code id="mfa-secret-code" style="display:inline-block; padding:6px 12px; background:#f1f5f9; border-radius:6px; font-size:13px; letter-spacing:1px; color:#334155; user-select:all;"></code>
+    </div>
+    <div style="margin:0 0 12px;">
+      <label for="mfa-verify-code" style="display:block; text-align:left; font-size:13px; font-weight:500; color:#475569; margin-bottom:6px;">Enter 6-digit code from your app:</label>
+      <input type="text" id="mfa-verify-code" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" autocomplete="one-time-code" placeholder="000000" style="width:100%; padding:10px 14px; border:1px solid #d1d5db; border-radius:8px; font-size:18px; text-align:center; letter-spacing:6px; box-sizing:border-box;"/>
+    </div>
+    <button id="mfa-verify-btn" style="width:100%; padding:10px 0; background:#4f46e5; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; margin-bottom:8px;" disabled>Verify & Enable MFA</button>
+    <p id="mfa-error" style="display:none; color:#dc2626; font-size:13px; margin:8px 0 0;"></p>
+    <p id="mfa-success" style="display:none; color:#16a34a; font-size:13px; margin:8px 0 0;">MFA enabled! Redirecting…</p>
+  </div>
+
   <!-- Admin Shell -->
   <div class="admin-shell" id="admin-shell" style="display:none">
 
