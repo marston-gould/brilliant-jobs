@@ -26,7 +26,21 @@
   'use strict';
 
   const TOOLBAR_ID = 'bj-job-toolbar';
-  const TOOLBAR_STYLES_ID = 'bj-job-toolbar-styles';
+  const TOOLBAR_SHADOW_HOST_ID = 'bj-toolbar-shadow-host';
+
+  // CS-014: CX-09 — Shadow DOM isolation for toolbar
+  var _tbShadowRoot = null;
+  function getToolbarShadow() {
+    if (_tbShadowRoot) return _tbShadowRoot;
+    var host = document.getElementById(TOOLBAR_SHADOW_HOST_ID);
+    if (host) { _tbShadowRoot = host.shadowRoot; return _tbShadowRoot; }
+    host = document.createElement('div');
+    host.id = TOOLBAR_SHADOW_HOST_ID;
+    host.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:2147483647;pointer-events:none;';
+    document.body.appendChild(host);
+    _tbShadowRoot = host.attachShadow({ mode: 'open' });
+    return _tbShadowRoot;
+  }
 
   // Stage rank map — higher rank = more advanced stage
   const STAGE_RANK = { saved: 1, applied: 2, interview: 3, offer: 4, rejected: 0 };
@@ -41,7 +55,9 @@
   const PICKER_STAGES = ['saved', 'applied', 'interview', 'offer'];
 
   // ── Prevent double-injection ──────────────────────────────────
-  if (document.getElementById(TOOLBAR_ID)) return;
+  if (document.getElementById(TOOLBAR_SHADOW_HOST_ID) &&
+      document.getElementById(TOOLBAR_SHADOW_HOST_ID).shadowRoot &&
+      document.getElementById(TOOLBAR_SHADOW_HOST_ID).shadowRoot.querySelector('#' + TOOLBAR_ID)) return;
 
   // ── Parse job metadata from current page ─────────────────────
   function parseJobMeta() {
@@ -104,9 +120,9 @@
 
   // ── Inject toolbar styles ─────────────────────────────────────
   function injectStyles() {
-    if (document.getElementById(TOOLBAR_STYLES_ID)) return;
+    var shadow = getToolbarShadow();
+    if (shadow.querySelector('style')) return;
     const style = document.createElement('style');
-    style.id = TOOLBAR_STYLES_ID;
     style.textContent = `
       #${TOOLBAR_ID} {
         position: fixed;
@@ -356,12 +372,13 @@
         flex-shrink: 0;
       }
     `;
-    document.head.appendChild(style);
+    shadow.appendChild(style);
   }
 
   // ── Build toolbar DOM ─────────────────────────────────────────
   function buildToolbar(meta, pipelineEntry) {
-    let el = document.getElementById(TOOLBAR_ID);
+    var shadow = getToolbarShadow();
+    let el = shadow.querySelector('#' + TOOLBAR_ID);
     if (el) el.remove();
 
     el = document.createElement('div');
@@ -421,12 +438,12 @@
       </div>
     `;
 
-    document.body.appendChild(el);
+    shadow.appendChild(el);
 
     // S8: Wire up CTA
-    const saveBtn = document.getElementById('bj-tb-save-btn');
-    const pickerBtn = document.getElementById('bj-tb-picker-btn');
-    const dropdown = document.getElementById('bj-tb-stage-dropdown');
+    const saveBtn = getToolbarShadow().querySelector('#bj-tb-save-btn');
+    const pickerBtn = getToolbarShadow().querySelector('#bj-tb-picker-btn');
+    const dropdown = getToolbarShadow().querySelector('#bj-tb-stage-dropdown');
 
     if (saveBtn) {
       if (!isSaved) {
@@ -459,14 +476,14 @@
 
     // Click outside closes dropdown
     document.addEventListener('click', function closeDropdown(e) {
-      const wrap = document.getElementById('bj-tb-cta-wrap');
+      const wrap = getToolbarShadow().querySelector('#bj-tb-cta-wrap');
       if (wrap && !wrap.contains(e.target)) {
         if (dropdown) dropdown.classList.remove('open');
       }
     });
 
     // Dismiss button
-    document.getElementById('bj-tb-dismiss')?.addEventListener('click', () => {
+    getToolbarShadow().querySelector('#bj-tb-dismiss')?.addEventListener('click', () => {
       el.remove();
     });
   }
@@ -509,7 +526,7 @@
       saveBtn.textContent = '✓ Saved';
 
       // Update stage badge
-      const toolbar = document.getElementById(TOOLBAR_ID);
+      const toolbar = getToolbarShadow().querySelector('#' + TOOLBAR_ID);
       const right = toolbar?.querySelector('.bj-tb-right');
       if (right && !right.querySelector('.bj-tb-badge')) {
         const badge = document.createElement('span');
@@ -519,7 +536,7 @@
       }
 
       // Inject picker chevron if not present
-      const ctaWrap = document.getElementById('bj-tb-cta-wrap');
+      const ctaWrap = getToolbarShadow().querySelector('#bj-tb-cta-wrap');
       if (ctaWrap && !ctaWrap.querySelector('.bj-tb-picker-btn')) {
         const chevron = document.createElement('button');
         chevron.className = 'bj-tb-picker-btn bj-saved-chevron';
@@ -529,7 +546,7 @@
         ctaWrap.insertBefore(chevron, ctaWrap.querySelector('.bj-tb-stage-dropdown'));
 
         // Build dropdown stages for saved state
-        const dd = document.getElementById('bj-tb-stage-dropdown');
+        const dd = getToolbarShadow().querySelector('#bj-tb-stage-dropdown');
         if (dd) {
           dd.innerHTML = `<div class="bj-dropdown-label">Move to stage</div>` +
             PICKER_STAGES.map(s => {
@@ -572,7 +589,7 @@
       // Also allow clicking the main btn to open picker
       saveBtn.onclick = (e) => {
         e.stopPropagation();
-        const dd = document.getElementById('bj-tb-stage-dropdown');
+        const dd = getToolbarShadow().querySelector('#bj-tb-stage-dropdown');
         if (dd) dd.classList.toggle('open');
       };
 
@@ -628,7 +645,7 @@
       }
 
       // Update stage badge
-      const toolbar = document.getElementById(TOOLBAR_ID);
+      const toolbar = getToolbarShadow().querySelector('#' + TOOLBAR_ID);
       const badge = toolbar?.querySelector('.bj-tb-badge');
       if (badge) {
         // Reset all stage classes
@@ -716,7 +733,7 @@
       payload: { source_url: url }
     }, (response) => {
       if (chrome.runtime.lastError) return;
-      const badge = document.getElementById('bj-tb-score-badge');
+      const badge = getToolbarShadow().querySelector('#bj-tb-score-badge');
       if (!badge) return;
 
       const score = response?.score;
@@ -780,7 +797,7 @@
     const cur = window.location.href;
     if (cur !== _lastUrl) {
       _lastUrl = cur;
-      const old = document.getElementById(TOOLBAR_ID);
+      const old = getToolbarShadow().querySelector('#' + TOOLBAR_ID);
       if (old) {
         // S9: instrument toolbar_dismissed on SPA nav
         chrome.runtime.sendMessage({

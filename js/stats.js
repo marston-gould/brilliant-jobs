@@ -49,19 +49,36 @@ var DEFAULT_LEVEL_HIERARCHY = [
 ];
 var STATS_COLUMNS = 'greenhouse_id,ats_source,title,company_name,company_slug,salary_min,salary_max,salary_currency,location,loc_type,loc_state,loc_city,first_seen_at,industry';
 
+// ─── CS-014: CX-09 — Lazy-load ECharts on first Stats tab open ───
+var _echartsLoaded = false;
+var _echartsLoading = false;
+function loadECharts(cb) {
+  if (_echartsLoaded && typeof echarts !== 'undefined') { cb(); return; }
+  if (_echartsLoading) { var _iv = setInterval(function() { if (_echartsLoaded) { clearInterval(_iv); cb(); } }, 100); return; }
+  _echartsLoading = true;
+  var s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js';
+  s.onload = function() { _echartsLoaded = true; cb(); };
+  s.onerror = function() { _echartsLoading = false; console.error('[Stats] Failed to load ECharts'); };
+  document.head.appendChild(s);
+}
+
 // ─── Init ───
 function initStatsPage() {
   var page = document.getElementById('page-stats');
   if (!page || !page.classList.contains('active')) return;
   if (statsInitialized) { refreshStatsCharts(); return; }
-  statsInitialized = true;
-  renderFilterPills();
-  initCompareToggle();
-  fetchAndRenderStats();
-  window.addEventListener('resize', statsResizeAll);
+  // CS-014: lazy-load ECharts before initializing charts
+  loadECharts(function() {
+    statsInitialized = true;
+    renderFilterPills();
+    initCompareToggle();
+    fetchAndRenderStats();
+    window.addEventListener('resize', statsResizeAll);
 
-  // P13-06: Start data value assessment timer (shows after 10s viewing)
-  if (typeof startDataViewTimer === 'function') startDataViewTimer('stats_charts');
+    // P13-06: Start data value assessment timer (shows after 10s viewing)
+    if (typeof startDataViewTimer === 'function') startDataViewTimer('stats_charts');
+  });
 }
 
 // ─── Filter Pills (CSS classes only, no inline styles) ───

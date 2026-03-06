@@ -15,17 +15,34 @@
   }
 
   const OVERLAY_ID = 'bj-fill-overlay';
-  const OVERLAY_STYLES_ID = 'bj-fill-overlay-styles';
+  const SHADOW_HOST_ID = 'bj-overlay-shadow-host';
 
   // ============================================================
-  // CSS — injected once, stays for the page lifetime
+  // CS-014: CX-09 — Shadow DOM host for style isolation
+  // ============================================================
+  var _shadowRoot = null;
+
+  function getShadowRoot() {
+    if (_shadowRoot) return _shadowRoot;
+    var host = document.getElementById(SHADOW_HOST_ID);
+    if (host) { _shadowRoot = host.shadowRoot; return _shadowRoot; }
+    host = document.createElement('div');
+    host.id = SHADOW_HOST_ID;
+    host.style.cssText = 'position:fixed;bottom:0;right:0;z-index:2147483647;pointer-events:none;';
+    document.body.appendChild(host);
+    _shadowRoot = host.attachShadow({ mode: 'open' });
+    return _shadowRoot;
+  }
+
+  // ============================================================
+  // CSS — injected into Shadow DOM (isolated from host page)
   // ============================================================
 
   function injectStyles() {
-    if (document.getElementById(OVERLAY_STYLES_ID)) return;
+    var shadow = getShadowRoot();
+    if (shadow.querySelector('style')) return;
 
     const style = document.createElement('style');
-    style.id = OVERLAY_STYLES_ID;
     style.textContent = `
       #${OVERLAY_ID} {
         position: fixed;
@@ -176,7 +193,7 @@
         background: #d14;
       }
     `;
-    document.head.appendChild(style);
+    shadow.appendChild(style);
   }
 
   // ============================================================
@@ -184,7 +201,8 @@
   // ============================================================
 
   function createOverlay() {
-    let el = document.getElementById(OVERLAY_ID);
+    var shadow = getShadowRoot();
+    let el = shadow.getElementById ? shadow.getElementById(OVERLAY_ID) : shadow.querySelector('#' + OVERLAY_ID);
     if (el) el.remove();
 
     el = document.createElement('div');
@@ -206,7 +224,7 @@
         <div class="bj-field-list"></div>
       </div>
     `;
-    document.body.appendChild(el);
+    shadow.appendChild(el);
 
     // Close button
     el.querySelector('.bj-close').addEventListener('click', () => dismiss());
@@ -220,7 +238,7 @@
   }
 
   function dismiss() {
-    const el = document.getElementById(OVERLAY_ID);
+    const el = getShadowRoot().querySelector('#' + OVERLAY_ID);
     if (!el) return;
     el.classList.add('bj-hiding');
     el.classList.remove('bj-visible');
@@ -241,7 +259,7 @@
 
     /** Update progress: { filled, total, currentField, pct } */
     progress({ filled = 0, total = 0, currentField = '', pct = 0 }) {
-      const el = document.getElementById(OVERLAY_ID);
+      const el = getShadowRoot().querySelector('#' + OVERLAY_ID);
       if (!el) return;
 
       const bar = el.querySelector('.bj-progress-bar');
@@ -255,7 +273,7 @@
 
     /** Log a single field result: { name, status: 'filled'|'skipped'|'error', detail } */
     fieldResult({ name = '', status = 'filled', detail = '' }) {
-      const el = document.getElementById(OVERLAY_ID);
+      const el = getShadowRoot().querySelector('#' + OVERLAY_ID);
       if (!el) return;
 
       const list = el.querySelector('.bj-field-list');
@@ -274,7 +292,7 @@
 
     /** Show success state: { filled, total, timeMs } */
     success({ filled = 0, total = 0, timeMs = 0 }) {
-      const el = document.getElementById(OVERLAY_ID);
+      const el = getShadowRoot().querySelector('#' + OVERLAY_ID);
       if (!el) return;
 
       el.classList.add('bj-overlay-success');
@@ -294,7 +312,7 @@
 
     /** Show error state: { message } */
     error({ message = 'Fill failed' }) {
-      const el = document.getElementById(OVERLAY_ID);
+      const el = getShadowRoot().querySelector('#' + OVERLAY_ID);
       if (!el) return;
 
       el.classList.add('bj-overlay-error');

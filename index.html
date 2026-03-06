@@ -33,6 +33,17 @@
         capture_pageleave: true,
     });
     if (posthog.startExceptionAutocapture) posthog.startExceptionAutocapture();
+    // CS-014: FIX-15c — centralized error reporter for landing page catches
+    window.bjError = function bjError(label, error, extra) {
+      try {
+        if (window.posthog) {
+          posthog.captureException(error instanceof Error ? error : new Error(String(error)), {
+            tags: { surface: 'landing', label: label },
+            extra: Object.assign({ page: window.location.pathname, ts: new Date().toISOString() }, extra || {})
+          });
+        }
+      } catch (_) { /* reporter must never throw */ }
+    };
   </script>
   <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
@@ -858,12 +869,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   ]
 }
 </script>
+<!-- CS-014: CX-10 — External landing page stylesheet -->
+<link rel="stylesheet" href="/landing.css">
 </head>
 <body>
   <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PLHNJQLC"
-height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+height="0" width="0" class="gtm-iframe"></iframe></noscript>
   <!-- CS-007: CX-04 — Skip navigation link -->
-  <a href="#main-content" class="skip-link" style="position:absolute;top:-40px;left:0;background:#fff;color:#000;padding:8px 16px;z-index:100;font-size:14px;text-decoration:none;" onfocus="this.style.top='0'" onblur="this.style.top='-40px'">Skip to main content</a>
+  <a href="#main-content" class="skip-link" onfocus="this.style.top='0'" onblur="this.style.top='-40px'">Skip to main content</a>
 
   <nav class="site-nav segment-new segment-returning" aria-label="Main navigation">
     <div class="nav-logo"><div class="mark">B</div> Brilliant Jobs</div>
@@ -927,11 +940,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </section>
 
   <!-- ==================== HERO: ACTIVE (redirect fallback) ==================== -->
-  <section class="hero segment-active" style="min-height:60vh;align-items:center;justify-content:center;">
-    <div style="text-align:center;">
+  <section class="hero segment-active hero--redirect">
+    <div class="hero--redirect-inner">
       <div class="hero-label"><span class="dot"></span> Redirecting...</div>
       <h2>Taking you to your dashboard...</h2>
-      <p class="hero-sub" style="margin-top:12px;">If you're not redirected automatically, <a href="/dashboard" style="color:var(--accent);text-decoration:underline;">click here</a>.</p>
+      <p class="hero-sub hero--redirect-sub">If you're not redirected automatically, <a href="/dashboard" class="hero--redirect-sub">click here</a>.</p>
     </div>
   </section>
 
@@ -955,9 +968,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <div class="stat-label">Refresh Cycle</div>
       </div>
     </div>
+    <!-- CS-014: staleness badge + retry button -->
+    <div class="stats-helpers">
+      <span id="stats-stale-badge" class="stats-stale-badge">Data may be stale — refresh pending</span>
+      <button id="stats-retry-btn" class="stats-retry-btn">Retry</button>
+    </div>
   </div>
-
-  <!-- ==================== SOCIAL PROOF (P13-11) ==================== -->
   <div class="social-proof-bar hidden fade-up" id="social-proof-bar">
     <div class="social-proof-inner">
       <div class="sp-stars" id="sp-stars">★★★★★</div>
@@ -965,7 +981,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div class="sp-divider"></div>
       <div class="sp-text"><strong id="sp-count">—</strong> job seekers rated their experience</div>
       <div class="sp-divider"></div>
-      <div class="sp-text">Data from <strong>5 ATS platforms</strong> · <a href="/data-lab" style="color:var(--accent)">See market intelligence</a></div>
+      <div class="sp-text">Data from <strong>5 ATS platforms</strong> · <a href="/data-lab" class="sp-data-link">See market intelligence</a></div>
       <div class="sp-divider"></div>
       <div class="sp-badge" id="sp-nps-badge">
         <span>↑</span> <span id="sp-nps-pct">—</span> would recommend
@@ -1032,47 +1048,47 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
     <div class="benefit-grid">
       <div class="benefit-card">
-        <div class="benefit-icon" style="background:var(--warm-dim);color:var(--warm);"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 2v4m0 12v4m10-10h-4M6 12H2m15.07-7.07l-2.83 2.83M9.76 14.24l-2.83 2.83m12.14 0l-2.83-2.83M9.76 9.76L6.93 6.93"/></svg></div>
+        <div class="benefit-icon benefit-icon--warm"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 2v4m0 12v4m10-10h-4M6 12H2m15.07-7.07l-2.83 2.83M9.76 14.24l-2.83 2.83m12.14 0l-2.83-2.83M9.76 9.76L6.93 6.93"/></svg></div>
         <h3>See what they're actually paying</h3>
         <p>We extract salary ranges buried in job descriptions — including companies that list different pay for different cities. Set a floor. Never waste time on a role that's $40K below your range.</p>
       </div>
       <div class="benefit-card">
-        <div class="benefit-icon" style="background:var(--accent-glow);color:var(--accent);"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg></div>
+        <div class="benefit-icon benefit-icon--accent"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg></div>
         <h3>Stop seeing jobs you'd never take</h3>
         <p>Title, location radius, salary, company size, remote, industry — combined in one search. Exclude companies and keywords permanently. Your feed gets cleaner every session.</p>
       </div>
       <div class="benefit-card">
-        <div class="benefit-icon" style="background:var(--red-dim);color:var(--red);"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M18 8A6 6 0 106 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg></div>
+        <div class="benefit-icon benefit-icon--red"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M18 8A6 6 0 106 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg></div>
         <h3>Know who ghosts and who doesn't</h3>
         <p>Community-powered data on which companies respond and how long it takes. Ghost rates published publicly. For the first time, employers have a reason to actually get back to you.</p>
       </div>
       <div class="benefit-card">
-        <div class="benefit-icon" style="background:var(--green-dim);color:var(--green);"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+        <div class="benefit-icon benefit-icon--green"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
         <h3>Your search runs while you sleep</h3>
         <p>Save your filters once. We check for new matches every day and show you what's new in the last 1, 7, or 30 days. Email and SMS alerts when something hits. Stop refreshing.</p>
       </div>
       <div class="benefit-card">
-        <div class="benefit-icon" style="background:var(--purple-dim);color:var(--purple);"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></div>
+        <div class="benefit-icon benefit-icon--purple"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></div>
         <h3>Send the right resume every time</h3>
         <p>Upload different versions for different types of roles. Your leadership resume goes with director searches. Your technical resume goes with IC roles. Automatically matched.</p>
       </div>
       <div class="benefit-card">
-        <div class="benefit-icon" style="background:rgba(251,146,60,0.12);color:#fb923c;"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5-3a9 9 0 11-6.22-2.18"/></svg></div>
+        <div class="benefit-icon benefit-icon--orange"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5-3a9 9 0 11-6.22-2.18"/></svg></div>
         <h3>See what's missing before you apply</h3>
         <p>We compare your resume against the actual language in the job posting. Real keyword frequency from real postings. You see exactly what to add and what's already strong.</p>
       </div>
       <div class="benefit-card">
-        <div class="benefit-icon" style="background:rgba(99,102,241,0.12);color:#6366f1;"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg></div>
+        <div class="benefit-icon benefit-icon--indigo"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg></div>
         <h3>Search by skills, not just titles</h3>
         <p>We read every job description and extract the actual skills, experience levels, and requirements. Search for "Python + 3 years" and find roles that ask for it — even if the title says something different.</p>
       </div>
       <div class="benefit-card">
-        <div class="benefit-icon" style="background:rgba(244,114,182,0.12);color:#f472b6;"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg></div>
+        <div class="benefit-icon benefit-icon--pink"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg></div>
         <h3>Track everything without a spreadsheet</h3>
         <p>A visual pipeline from "interested" through "applied" to "heard back." Aging badges tell you when silence crosses from "they're busy" into "you got ghosted."</p>
       </div>
       <div class="benefit-card">
-        <div class="benefit-icon" style="background:rgba(6,182,212,0.12);color:#06b6d4;"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+        <div class="benefit-icon benefit-icon--cyan"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
         <h3>Search by where you actually live</h3>
         <p>Location radius search — not text matching. "Portland, OR (12.6 mi)" finds jobs in the metro without pulling every Portland on Earth. Multiple cities and remote in one search.</p>
       </div>
@@ -1096,7 +1112,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <button class="btn btn-primary preview-go" id="preview-go" aria-label="Search jobs">Search</button>
       </div>
 
-      <div class="preview-results" id="preview-results" style="display:none">
+      <div class="preview-results" id="preview-results" class="lp-hidden">
         <div class="preview-stats">
           <div class="preview-stat"><span class="preview-stat-val" id="pv-total">—</span><span class="preview-stat-label">Jobs Found</span></div>
           <div class="preview-stat"><span class="preview-stat-val" id="pv-salary">—</span><span class="preview-stat-label">Median Salary</span></div>
@@ -1110,7 +1126,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         </div>
       </div>
 
-      <div class="preview-locked" id="preview-locked" style="display:none">
+      <div class="preview-locked" id="preview-locked" class="lp-hidden">
         <p>You've previewed the data — sign up free to explore unlimited filters, salary data, and more.</p>
         <button class="btn btn-primary" id="pv-locked-signup">Start Free</button>
       </div>
@@ -1121,27 +1137,27 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <section class="section fade-up" id="benefits-short">
     <div class="section-label">Quick Recap</div>
     <h2>Why Brilliant Jobs</h2>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:24px;max-width:860px;margin-inline:auto;">
-      <div style="padding:14px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;text-align:center;">
-        <strong style="color:var(--accent);">39,000+ sources</strong><br><span style="font-size:13px;color:var(--text-dim);">Direct from career pages, not recycled posts</span>
+    <div class="lp-feature-grid">
+      <div class="lp-feature-card">
+        <strong class="accent">39,000+ sources</strong><br><span class="desc">Direct from career pages, not recycled posts</span>
       </div>
-      <div style="padding:14px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;text-align:center;">
-        <strong style="color:var(--green);">Hidden salary data</strong><br><span style="font-size:13px;color:var(--text-dim);">Extracted from descriptions they thought you wouldn't read</span>
+      <div class="lp-feature-card">
+        <strong class="green">Hidden salary data</strong><br><span class="desc">Extracted from descriptions they thought you wouldn't read</span>
       </div>
-      <div style="padding:14px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;text-align:center;">
-        <strong style="color:var(--warm);">Employer accountability</strong><br><span style="font-size:13px;color:var(--text-dim);">Track who ghosts, who responds, and how long it takes</span>
+      <div class="lp-feature-card">
+        <strong class="warm">Employer accountability</strong><br><span class="desc">Track who ghosts, who responds, and how long it takes</span>
       </div>
-      <div style="padding:14px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;text-align:center;">
-        <strong style="color:var(--red);">AI resume scoring</strong><br><span style="font-size:13px;color:var(--text-dim);">Grade, rewrite, and version your resume for every job type</span>
+      <div class="lp-feature-card">
+        <strong class="red">AI resume scoring</strong><br><span class="desc">Grade, rewrite, and version your resume for every job type</span>
       </div>
-      <div style="padding:14px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;text-align:center;">
-        <strong style="color:#6366f1;">Smart search</strong><br><span style="font-size:13px;color:var(--text-dim);">Filter by skills, experience, and what's actually in the JD</span>
+      <div class="lp-feature-card">
+        <strong class="indigo">Smart search</strong><br><span class="desc">Filter by skills, experience, and what's actually in the JD</span>
       </div>
-      <div style="padding:14px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;text-align:center;">
-        <strong style="color:#06b6d4;">Pipeline autopilot</strong><br><span style="font-size:13px;color:var(--text-dim);">Gmail and calendar sync detects interviews and responses for you</span>
+      <div class="lp-feature-card">
+        <strong class="cyan">Pipeline autopilot</strong><br><span class="desc">Gmail and calendar sync detects interviews and responses for you</span>
       </div>
-      <div style="padding:14px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;text-align:center;">
-        <strong style="color:#a855f7;">Apply automation</strong><br><span style="font-size:13px;color:var(--text-dim);">Score, rewrite, and submit — manually or on autopilot</span>
+      <div class="lp-feature-card">
+        <strong class="purple">Apply automation</strong><br><span class="desc">Score, rewrite, and submit — manually or on autopilot</span>
       </div>
     </div>
   </section>
@@ -1150,22 +1166,22 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <section class="section fade-up faq-objections" id="objection-faq">
     <div class="section-label">Common Questions</div>
     <h2>You might be wondering...</h2>
-    <div style="max-width:640px;margin:24px auto 0;display:flex;flex-direction:column;gap:16px;">
-      <details class="faq-item" style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px;">
-        <summary style="cursor:pointer;font-weight:600;font-size:15px;">Is my data safe?</summary>
-        <p style="margin-top:10px;font-size:14px;color:var(--text-dim);line-height:1.6;">We never sell your data. Your search filters, resumes, and application history are encrypted and visible only to you. We make money from paid plans and credit packs, not from selling your information to recruiters.</p>
+    <div class="faq-list">
+      <details class="faq-item">
+        <summary>Is my data safe?</summary>
+        <p class="faq-answer">We never sell your data. Your search filters, resumes, and application history are encrypted and visible only to you. We make money from paid plans and credit packs, not from selling your information to recruiters.</p>
       </details>
-      <details class="faq-item" style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px;">
-        <summary style="cursor:pointer;font-weight:600;font-size:15px;">Why not just use LinkedIn?</summary>
-        <p style="margin-top:10px;font-size:14px;color:var(--text-dim);line-height:1.6;">LinkedIn shows you the jobs that employers pay to promote. We show you every job posted on 39,000+ company career pages — including the ones that never make it to LinkedIn. Plus salary data and ghost rate tracking that LinkedIn will never offer.</p>
+      <details class="faq-item">
+        <summary>Why not just use LinkedIn?</summary>
+        <p class="faq-answer">LinkedIn shows you the jobs that employers pay to promote. We show you every job posted on 39,000+ company career pages — including the ones that never make it to LinkedIn. Plus salary data and ghost rate tracking that LinkedIn will never offer.</p>
       </details>
-      <details class="faq-item" style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px;">
-        <summary style="cursor:pointer;font-weight:600;font-size:15px;">What does the free plan include?</summary>
-        <p style="margin-top:10px;font-size:14px;color:var(--text-dim);line-height:1.6;">One saved search, full job feed access, salary data, and ghost rates. Paid plans unlock AI resume scoring, more saved searches, credits for AI features, and priority notifications.</p>
+      <details class="faq-item">
+        <summary>What does the free plan include?</summary>
+        <p class="faq-answer">One saved search, full job feed access, salary data, and ghost rates. Paid plans unlock AI resume scoring, more saved searches, credits for AI features, and priority notifications.</p>
       </details>
-      <details class="faq-item" style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px;">
-        <summary style="cursor:pointer;font-weight:600;font-size:15px;">How current are the job listings?</summary>
-        <p style="margin-top:10px;font-size:14px;color:var(--text-dim);line-height:1.6;">Jobs are refreshed on a rolling schedule — most boards are checked every 24-48 hours. Stale listings are flagged automatically so you're not wasting time on ghost jobs.</p>
+      <details class="faq-item">
+        <summary>How current are the job listings?</summary>
+        <p class="faq-answer">Jobs are refreshed on a rolling schedule — most boards are checked every 24-48 hours. Stale listings are flagged automatically so you're not wasting time on ghost jobs.</p>
       </details>
     </div>
   </section>
@@ -1173,9 +1189,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <!-- ==================== GHOST TRANSPARENCY ==================== -->
   <section class="section fade-up">
     <div class="ghost-section">
-      <div class="section-label" style="color:var(--green);">Employer Accountability</div>
-      <h2 style="margin-bottom:8px;">Finally know what happens<br>after you click Apply.</h2>
-      <p style="font-size:15px;color:var(--text-dim);max-width:560px;line-height:1.6;">Job boards don't track outcomes because employers are their customers. We track outcomes because <em>you</em> are ours.</p>
+      <div class="section-label section-label--green">Employer Accountability</div>
+      <h2 class="accountability-heading">Finally know what happens<br>after you click Apply.</h2>
+      <p class="accountability-desc">Job boards don't track outcomes because employers are their customers. We track outcomes because <em>you</em> are ours.</p>
 
       <div class="ghost-grid">
         <div class="ghost-stat-card">
@@ -1187,9 +1203,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         </div>
         <div class="ghost-stat-card">
           <h3>How it works</h3>
-          <div style="font-size:14px;color:var(--text-dim);line-height:1.7;padding:4px 0;">
-            <p style="margin-bottom:12px;">Connect your Gmail and Calendar and we detect what happens after you apply — confirmations, interview invites, rejections, and silence. Your pipeline updates automatically.</p>
-            <p style="margin-bottom:12px;">When a company closes a role you applied to without ever responding, we tag them. When they respond quickly, we note that too. Over time, every company builds a public track record based on real applicant experiences.</p>
+          <div class="accountability-detail">
+            <p>Connect your Gmail and Calendar and we detect what happens after you apply — confirmations, interview invites, rejections, and silence. Your pipeline updates automatically.</p>
+            <p>When a company closes a role you applied to without ever responding, we tag them. When they respond quickly, we note that too. Over time, every company builds a public track record based on real applicant experiences.</p>
             <p>You see this data <em>before</em> you apply. Companies that ghost get a visible record. <strong>That changes the incentive.</strong></p>
           </div>
         </div>
@@ -1219,47 +1235,47 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <h2>Real data from real career pages.<br>Not job board guesswork.</h2>
     <p class="section-desc">We scan 39,000+ company career pages every day and publish what we find. Salary trends, hiring volume, seniority distribution &mdash; all from the source.</p>
 
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:28px 0;" class="data-stats-grid">
-      <a href="/salary-data" style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;text-decoration:none;transition:border-color 0.2s;" onmouseover="this.style.borderColor='rgba(59,130,246,0.4)'" onmouseout="this.style.borderColor='var(--border)'">
-        <div style="font-size:26px;font-weight:700;color:var(--accent);font-family:'JetBrains Mono',monospace;">$128K</div>
-        <div style="font-size:12px;color:var(--text);margin-top:4px;font-weight:600;">Remote median salary</div>
-        <div style="font-size:11px;color:var(--green);margin-top:2px;">+35% vs on-site</div>
-        <div style="font-size:10px;color:var(--text-faint);margin-top:8px;">Salary Data &rarr;</div>
+    <div class="data-stats-grid">
+      <a href="/salary-data" class="lp-data-link">
+        <div class="lp-data-stat lp-data-stat--accent">$128K</div>
+        <div class="lp-data-label">Remote median salary</div>
+        <div class="lp-data-delta">+35% vs on-site</div>
+        <div class="lp-data-cta">Salary Data &rarr;</div>
       </a>
-      <a href="/hiring-trends" style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;text-decoration:none;transition:border-color 0.2s;" onmouseover="this.style.borderColor='rgba(34,197,94,0.4)'" onmouseout="this.style.borderColor='var(--border)'">
-        <div style="font-size:26px;font-weight:700;color:var(--green);font-family:'JetBrains Mono',monospace;" id="lp-mi-jobs">280K+</div>
-        <div style="font-size:12px;color:var(--text);margin-top:4px;font-weight:600;">Active job listings</div>
-        <div style="font-size:11px;color:var(--green);margin-top:2px;">Across <span id="lp-mi-companies">39,000+</span> companies</div>
-        <div style="font-size:10px;color:var(--text-faint);margin-top:8px;">Hiring Trends &rarr;</div>
+      <a href="/hiring-trends" class="lp-data-link">
+        <div class="lp-data-stat lp-data-stat--green" id="lp-mi-jobs">280K+</div>
+        <div class="lp-data-label">Active job listings</div>
+        <div class="lp-data-delta">Across <span id="lp-mi-companies">39,000+</span> companies</div>
+        <div class="lp-data-cta">Hiring Trends &rarr;</div>
       </a>
-      <a href="/jobs-by-industry" style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;text-decoration:none;transition:border-color 0.2s;" onmouseover="this.style.borderColor='rgba(168,85,247,0.4)'" onmouseout="this.style.borderColor='var(--border)'">
-        <div style="font-size:26px;font-weight:700;color:var(--purple);font-family:'JetBrains Mono',monospace;">68.4K</div>
-        <div style="font-size:12px;color:var(--text);margin-top:4px;font-weight:600;">Tech industry jobs</div>
-        <div style="font-size:11px;color:var(--green);margin-top:2px;">24% of all listings</div>
-        <div style="font-size:10px;color:var(--text-faint);margin-top:8px;">Industry Data &rarr;</div>
+      <a href="/jobs-by-industry" class="lp-data-link">
+        <div class="lp-data-stat lp-data-stat--purple">68.4K</div>
+        <div class="lp-data-label">Tech industry jobs</div>
+        <div class="lp-data-delta">24% of all listings</div>
+        <div class="lp-data-cta">Industry Data &rarr;</div>
       </a>
-      <a href="/career-level-data" style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;text-decoration:none;transition:border-color 0.2s;" onmouseover="this.style.borderColor='rgba(245,158,11,0.4)'" onmouseout="this.style.borderColor='var(--border)'">
-        <div style="font-size:26px;font-weight:700;color:var(--warm);font-family:'JetBrains Mono',monospace;">42%</div>
-        <div style="font-size:12px;color:var(--text);margin-top:4px;font-weight:600;">Mid&rarr;Senior salary jump</div>
-        <div style="font-size:11px;color:var(--green);margin-top:2px;">Highest-leverage move</div>
-        <div style="font-size:10px;color:var(--text-faint);margin-top:8px;">Career Levels &rarr;</div>
+      <a href="/career-level-data" class="lp-data-link">
+        <div class="lp-data-stat lp-data-stat--warm">42%</div>
+        <div class="lp-data-label">Mid&rarr;Senior salary jump</div>
+        <div class="lp-data-delta">Highest-leverage move</div>
+        <div class="lp-data-cta">Career Levels &rarr;</div>
       </a>
     </div>
 
-    <p style="text-align:center;margin-top:20px;">
-      <a href="/job-market-data" style="color:var(--accent);font-size:14px;font-weight:600;text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">View all market intelligence reports &rarr;</a>
+    <p class="lp-reports-cta">
+      <a href="/job-market-data" class="lp-reports-link">View all market intelligence reports &rarr;</a>
     </p>
   </section>
 
 
   <!-- ==================== MARKET INSIGHTS ==================== -->
-  <section class="section fade-up segment-new segment-returning segment-lapsed" id="market-insights" style="display:none">
+  <section class="section fade-up segment-new segment-returning segment-lapsed" id="market-insights" class="lp-insights-section">
     <div class="section-label">Market Intelligence</div>
     <h2>Real-time job market insights,<br>powered by data.</h2>
     <p class="section-desc">Our content engine analyzes hundreds of thousands of live job listings to surface trends, spikes, and opportunities you won't find anywhere else.</p>
     <div class="insights-grid" id="insights-grid"></div>
-    <p style="text-align:center;margin-top:20px">
-      <a href="/blog" style="color:var(--accent);font-size:14px;font-weight:600;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">Browse all market insights &rarr;</a>
+    <p class="lp-insights-cta">
+      <a href="/blog" class="lp-reports-link" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">Browse all market insights &rarr;</a>
     </p>
   </section>
 
@@ -1314,14 +1330,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <button class="price-btn price-btn-primary" onclick="openModal('signup')">Start Free</button>
       </div>
     </div>
-    <p style="text-align:center;margin-top:20px;font-size:14px;color:var(--text-dim);">Credits power AI features like resume scoring and smart matching. <a href="/pricing">See full pricing &amp; credit details →</a></p>
+    <p class="lp-credits-note">Credits power AI features like resume scoring and smart matching. <a href="/pricing">See full pricing &amp; credit details →</a></p>
   </section>
 
   <!-- ==================== SOCIAL PROOF ==================== -->
-  <div class="section fade-up" style="padding-bottom:0;">
-    <div style="text-align:center;padding:32px 24px;background:var(--bg-card);border:1px solid var(--border);border-radius:14px;">
-      <div style="font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-faint);font-weight:600;margin-bottom:16px;">Built for job seekers by a job seeker</div>
-      <div style="font-size:14px;color:var(--text-dim);line-height:1.6;">We're in private beta. Early numbers are real and published — we don't fake metrics.</div>
+  <div class="section fade-up lp-founder-section">
+    <div class="lp-founder-card">
+      <div class="lp-founder-label">Built for job seekers by a job seeker</div>
+      <div class="lp-founder-body">We're in private beta. Early numbers are real and published — we don't fake metrics.</div>
     </div>
   </div>
 
@@ -1379,10 +1395,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </section>
 
   <!-- ==================== BOTTOM CTA ==================== -->
-  <section class="section fade-up" style="text-align:center;padding-bottom:120px;">
-    <h2 style="margin-bottom:16px;">You've been searching their way.<br>Try yours.</h2>
-    <p class="section-desc" style="margin:0 auto 32px;">Free to start. No credit card. No employer-subsidized nonsense. Just a better way to find work.</p>
-    <button class="btn btn-primary" id="bottom-signup-btn" style="font-size:16px;padding:16px 36px;background:var(--accent);color:#fff;box-shadow:0 4px 20px rgba(61,126,255,0.25);">Start Free</button>
+  <section class="section fade-up lp-bottom-cta">
+    <h2 class="lp-bottom-heading">You've been searching their way.<br>Try yours.</h2>
+    <p class="section-desc lp-bottom-desc">Free to start. No credit card. No employer-subsidized nonsense. Just a better way to find work.</p>
+    <button class="btn btn-primary" id="bottom-signup-btn" class="lp-bottom-btn">Start Free</button>
   </section>
 
   </main>
@@ -1427,8 +1443,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           <button class="btn-auth" id="login-btn">Log In</button>
           <div class="msg" id="login-msg" aria-live="polite"></div></form>
           <div class="forgot-section" id="forgot-section">
-            <div style="font-size:12px;color:var(--text-faint);margin-bottom:8px;">Enter your email above and click below.</div>
-            <button class="btn-auth" id="forgot-btn" style="background:var(--bg-input);color:var(--text-dim);font-size:13px;padding:10px;">Send Password Reset Email</button>
+            <div class="auth-forgot-hint">Enter your email above and click below.</div>
+            <button class="btn-auth" id="forgot-btn" class="btn-auth--muted btn-auth--forgot">Send Password Reset Email</button>
             <div class="msg" id="forgot-msg" aria-live="polite"></div>
           </div>
         </div>
@@ -1436,23 +1452,23 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <div class="auth-form" id="form-signup" style="display:none !important;"></div>
         <div class="auth-form" id="form-forgot"><form onsubmit="return false;">
           <div class="field"><label for="forgot-email">Email</label><input type="email" id="forgot-email" placeholder="you@email.com"></div>
-          <button class="btn-auth" id="forgot-send-btn" style="background:var(--bg-input);color:var(--text-dim);">Send Password Reset Email</button>
+          <button class="btn-auth" id="forgot-send-btn" class="btn-auth--muted">Send Password Reset Email</button>
           <div class="msg" id="forgot-send-msg" aria-live="polite"></div>
-          <div style="text-align:center;margin-top:12px;"><span class="forgot-link" onclick="switchTab('login')">Back to Log In</span></div>
+          <div class="auth-back-link"><span class="forgot-link" onclick="switchTab('login')">Back to Log In</span></div>
         </form></div>
       </div>
       <div class="logged-in-view" id="logged-in-view">
         <div class="user-badge" id="li-email"></div>
         <div id="li-pending">
           <div class="status-pill pill-pending">Verifying</div>
-          <p style="font-size:13px;color:var(--text-dim);margin-bottom:8px;">We're verifying your account. This usually takes a few seconds — refresh to check.</p>
+          <p class="auth-pending-text">We're verifying your account. This usually takes a few seconds — refresh to check.</p>
         </div>
-        <div id="li-approved" style="display:none;">
+        <div id="li-approved" class="lp-hidden">
           <div class="status-pill pill-approved">✓ Active</div>
-          <p style="font-size:14px;color:var(--text-dim);margin:12px 0;">You're all set!</p>
-          <a href="/dashboard" class="btn-auth" style="display:block;text-align:center;text-decoration:none;margin-top:8px;">Go to Dashboard →</a>
+          <p class="auth-approved-text">You're all set!</p>
+          <a href="/dashboard" class="btn-auth auth-dashboard-link">Go to Dashboard →</a>
         </div>
-        <button class="btn-logout" id="logout-btn" style="margin-top:12px;">Log Out</button>
+        <button class="btn-logout" id="logout-btn" class="btn-logout--margin">Log Out</button>
       </div>
     </div>
   </div>
@@ -1735,6 +1751,7 @@ document.addEventListener('DOMContentLoaded', function() {
         signupStartedAt = null;
 
       } catch (e) {
+        bjError('signup_error', e);
         console.error('[BJ] Signup error:', e);
         $('#signup-btn').disabled = false;
         $('#signup-btn').textContent = 'Create Account';
@@ -1755,6 +1772,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const result = await res.json();
         console.log('[BJ] Signup validation:', result.approved ? 'approved' : 'provisional', result.reason);
       } catch (e) {
+        bjError('validation_call_failed', e);
         console.log('[BJ] Validation call failed (will default to manual review):', e.message);
       }
     }
@@ -1770,15 +1788,28 @@ document.addEventListener('DOMContentLoaded', function() {
       loggedView.classList.add('active');
       $('#li-email').textContent = user.email;
 
-      try {
-        var profileResult = await sb.from('profiles').select('approved').eq('id', user.id).single();
-        if (profileResult.data && profileResult.data.approved === true) {
-          window.location.href = '/dashboard';
-          return;
+      // CS-014: FIX-15c — profile check with 10s timeout + 1 retry
+      async function profileCheckWithTimeout(userId, attempt) {
+        attempt = attempt || 1;
+        var controller = new AbortController();
+        var timeout = setTimeout(function() { controller.abort(); }, 10000);
+        try {
+          var profileResult = await sb.from('profiles').select('approved').eq('id', userId).single().abortSignal(controller.signal);
+          clearTimeout(timeout);
+          if (profileResult.data && profileResult.data.approved === true) {
+            window.location.href = '/dashboard';
+            return;
+          }
+        } catch (e) {
+          clearTimeout(timeout);
+          bjError('profile_check_error', e, { attempt: attempt });
+          console.error('Profile check error (attempt ' + attempt + '):', e);
+          if (attempt < 2) {
+            return profileCheckWithTimeout(userId, attempt + 1);
+          }
         }
-      } catch (e) {
-        console.error('Profile check error:', e);
       }
+      await profileCheckWithTimeout(user.id);
 
       try {
         const { data: { session } } = await sb.auth.getSession();
@@ -1791,7 +1822,7 @@ document.addEventListener('DOMContentLoaded', function() {
             email: user.email
           }, window.location.origin);
         }
-      } catch (e) {}
+      } catch (e) { bjError('extension_auth_post', e); }
     }
 
     // ============================================================
@@ -1874,26 +1905,48 @@ document.addEventListener('DOMContentLoaded', function() {
         });
       }
       document.querySelectorAll('.stat-num').forEach(el => el.classList.add('loading'));
-      try {
-        const cached = JSON.parse(localStorage.getItem(CACHE_KEY));
-        if (cached && cached.jobs != null && Date.now() - cached.ts < CACHE_TTL) { applyStats(cached); return; }
-      } catch (e) {}
-      try {
-        await loadSupabase();
-        const { data, error } = await sb.rpc('get_landing_stats');
-        if (error) throw new Error('stats fetch failed');
-        const stats = { jobs: data.jobs, companies: data.companies, metros: data.metros, ts: Date.now() };
-        localStorage.setItem(CACHE_KEY, JSON.stringify(stats));
-        applyStats(stats);
-      } catch (e) {
-        console.log('[BJ] Stats fetch error:', e.message);
-        document.getElementById('lp-active-jobs').textContent = '400,000+';
-        document.getElementById('lp-companies').textContent = '8,700+';
-        document.getElementById('lp-metros').textContent = '199';
-        document.querySelectorAll('.stat-num').forEach(el => {
-          el.classList.remove('loading'); el.classList.add('loaded');
-        });
+      var statsRetryCount = 0;
+      async function fetchLandingStats() {
+        try {
+          const cached = JSON.parse(localStorage.getItem(CACHE_KEY));
+          if (cached && cached.jobs != null && Date.now() - cached.ts < CACHE_TTL) {
+            applyStats(cached);
+            // CS-014: staleness badge — show if cache is older than 1 hour
+            if (Date.now() - cached.ts > 3600000) {
+              var badge = document.getElementById('stats-stale-badge');
+              if (badge) badge.style.display = 'inline';
+            }
+            return;
+          }
+        } catch (e) { bjError('stats_cache_parse', e); }
+        try {
+          await loadSupabase();
+          const { data, error } = await sb.rpc('get_landing_stats');
+          if (error) throw new Error('stats fetch failed');
+          const stats = { jobs: data.jobs, companies: data.companies, metros: data.metros, ts: Date.now() };
+          localStorage.setItem(CACHE_KEY, JSON.stringify(stats));
+          applyStats(stats);
+          var badge = document.getElementById('stats-stale-badge');
+          if (badge) badge.style.display = 'none';
+          var retryBtn = document.getElementById('stats-retry-btn');
+          if (retryBtn) retryBtn.style.display = 'none';
+        } catch (e) {
+          bjError('stats_fetch_error', e, { attempt: statsRetryCount + 1 });
+          console.log('[BJ] Stats fetch error:', e.message);
+          document.getElementById('lp-active-jobs').textContent = '400,000+';
+          document.getElementById('lp-companies').textContent = '8,700+';
+          document.getElementById('lp-metros').textContent = '199';
+          document.querySelectorAll('.stat-num').forEach(el => {
+            el.classList.remove('loading'); el.classList.add('loaded');
+          });
+          // CS-014: retry button (max 2 retries)
+          if (statsRetryCount < 2) {
+            var retryBtn = document.getElementById('stats-retry-btn');
+            if (retryBtn) { retryBtn.style.display = 'inline-block'; retryBtn.onclick = function() { statsRetryCount++; retryBtn.style.display = 'none'; fetchLandingStats(); }; }
+          }
+        }
       }
+      fetchLandingStats();
     })();
 
     // ============================================================
@@ -1930,6 +1983,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         bar.classList.remove('hidden');
       } catch (e) {
+        bjError('social_proof_error', e);
         console.log('[BJ] Social proof skipped:', e.message);
       }
     })();
@@ -2001,9 +2055,10 @@ document.addEventListener('DOMContentLoaded', function() {
             previewGoBtn.textContent = 'Search (' + data.queries_remaining + ' left)';
           }
         } catch (e) {
+          bjError('preview_error', e);
           console.error('[BJ] Preview error:', e);
           previewGoBtn.disabled = false;
-          previewGoBtn.textContent = 'Search';
+          previewGoBtn.textContent = 'Retry Search';
           // Show error state
           document.getElementById('preview-results').style.display = '';
           document.getElementById('pv-total').textContent = '—';
@@ -2145,7 +2200,30 @@ document.addEventListener('DOMContentLoaded', function() {
 
       if (window.posthog) posthog.capture('merch_insights_shown', { count: cards.length });
     })
-    .catch(function(e) { console.log('[Merch] Load error:', e); });
+    .catch(function(e) {
+      bjError('merch_load_error', e);
+      console.log('[Merch] Load error:', e);
+      // CS-014: retry merch load once
+      if (!window._merchRetried) {
+        window._merchRetried = true;
+        setTimeout(function() {
+          fetch('/content-api/merch-index').then(function(r) { return r.json(); }).then(function(cards) {
+            if (!cards || !cards.length) return;
+            section.style.display = 'block';
+            grid.innerHTML = DOMPurify.sanitize(cards.slice(0, 3).map(function(c) {
+              var col = catColors[c.category] || { bg:'#f3f4f6', fg:'#374151' };
+              return '<div class="insight-card">'
+                + '<span class="insight-cat" style="background:' + col.bg + ';color:' + col.fg + '">' + (c.category || 'insight') + '</span>'
+                + (c.key_stat ? '<div class="insight-stat">' + c.key_stat + '</div>' : '')
+                + '<div class="insight-headline">' + c.headline + '</div>'
+                + '<p class="insight-lede">' + (c.lede || '') + '</p>'
+                + '<a href="/blog/' + c.slug + '" class="insight-link">Read more &rarr;</a>'
+                + '</div>';
+            }).join(''));
+          }).catch(function(e2) { bjError('merch_retry_error', e2); });
+        }, 3000);
+      }
+    });
 })();
 </script>
 
@@ -2160,7 +2238,7 @@ document.addEventListener('DOMContentLoaded', function() {
       var d = new Date(); d.setTime(d.getTime() + 30*24*60*60*1000);
       document.cookie = 'bj_ref=' + encodeURIComponent(ref) + ';expires=' + d.toUTCString() + ';path=/;SameSite=Lax';
       // Also store in localStorage for backup
-      try { localStorage.setItem('bj_ref', ref); } catch(e) {}
+      try { localStorage.setItem('bj_ref', ref); } catch(e) { bjError('referral_ls_write', e); }
       // Track the referral click
       if (window.posthog) posthog.capture('referral_link_clicked', { ref_code: ref, source: params.get('utm_source') || 'direct' });
       console.log('[BJ] Referral code captured:', ref);
@@ -2169,9 +2247,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Capture referral channel from UTM
     var channel = params.get('utm_source') || params.get('channel');
     if (channel) {
-      try { localStorage.setItem('bj_ref_channel', channel); } catch(e) {}
+      try { localStorage.setItem('bj_ref_channel', channel); } catch(e) { bjError('referral_channel_ls_write', e); }
     }
-  } catch(e) { /* silent */ }
+  } catch(e) { bjError('referral_attribution_error', e); }
 })();
 </script>
 
