@@ -25,7 +25,7 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 | 4 | Test (Prod) | Validate fixes in the live production environment |
 | 5 | Sync Environments | Apply changes to staging + dev (if separate envs exist) |
 | 6 | Version Bump | Apply git tags listed in the session details below |
-| 7 | Update Docs | Update ROADMAP.md, /roadmap page, mark findings RESOLVED |
+| 7 | Update Docs | Update ROADMAP.md **AND** `/roadmap` page (`roadmap.html`) — BOTH must be updated every session. Mark findings RESOLVED. |
 | 8 | Update HANDOFF.md | Update THIS FILE as the last commit of the session |
 
 ---
@@ -70,7 +70,7 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 | 3 | **Push code to prod** | ~15m | `git push` to trigger Vercel deploy of admin changes + dashboard. Verify admin kill-switch panel loads. |
 | 4 | **Test (local + prod)** | ~2h | See test plan below. |
 | 5 | **Apply version tags** | ~10m | `dashboard@0.7.0-rls`, `extension@0.5.0-killswitch`, `admin@0.7.0-killswitch` |
-| 6 | **Update ROADMAP.md** | ~10m | Phase 0b: "Kill-switch + RLS + extension reliability — DONE [date]". Launch gate 4 (kill-switch) — CLEARED. |
+| 6 | **Update ROADMAP.md + /roadmap page** | ~10m | Phase 0b: "Kill-switch + RLS + extension reliability — DONE [date]". Launch gate 4 (kill-switch) — CLEARED. **Both files must be updated — ROADMAP.md (markdown) AND roadmap.html (rendered page).** |
 | 7 | **Update this HANDOFF.md** | ~10m | Move CS-013 to Completed. Set CS-014 as Next Session. |
 
 ### Test Plan
@@ -242,6 +242,7 @@ None as of CS-013 (in progress).
    - Update "What Remains" with exact remaining tasks, effort, and file references
    - Keep "Next Session" pointing to the session AFTER this one
 3. Always:
+   - **Update BOTH `ROADMAP.md` AND `roadmap.html`** — every session, no exceptions. `ROADMAP.md` is the markdown source of truth; `roadmap.html` is the rendered `/roadmap` page users see. If you update one and not the other they drift apart.
    - Update "Deferred Items" if anything was pushed
    - Update "Blockers" if any were discovered
    - Commit this file as part of the session's final push
