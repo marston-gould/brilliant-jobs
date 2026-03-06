@@ -56,7 +56,7 @@ describe('Dashboard structure', () => {
   it('loads Supabase client before other scripts', () => {
     const scripts = Array.from(document.querySelectorAll('script[src]'));
     const supabaseIdx = scripts.findIndex(s => s.src.includes('supabase'));
-    const appIdx = scripts.findIndex(s => s.src.includes('dashboard-core.min.js'));
+    const appIdx = scripts.findIndex(s => s.src.includes('dashboard-shell.min.js'));
     expect(supabaseIdx).toBeGreaterThan(-1);
     expect(appIdx).toBeGreaterThan(-1);
     expect(supabaseIdx).toBeLessThan(appIdx);
@@ -81,12 +81,17 @@ describe('Dashboard structure', () => {
     }
   });
 
-  // CS-015: FIX-09 — Tab guard script loaded
-  it('loads tab-guard.js for error boundaries', () => {
-    const tabGuardScript = Array.from(document.querySelectorAll('script[src]')).find(s =>
-      s.src.includes('tab-guard')
+  // CS-015: FIX-09 — Tab guard bundled in shell chunk (CS-016)
+  it('includes tab-guard in dashboard shell bundle', () => {
+    const shellScript = Array.from(document.querySelectorAll('script[src]')).find(s =>
+      s.src.includes('dashboard-shell')
     );
-    expect(tabGuardScript).toBeTruthy();
+    expect(shellScript).toBeTruthy();
+    // Verify tab-guard source still exists for the build
+    const fs = require('fs');
+    const { join } = require('path');
+    const tabGuardExists = fs.existsSync(join(__dirname, '..', 'js', 'tab-guard.js'));
+    expect(tabGuardExists).toBe(true);
   });
 
   // CS-015: FIX-09 — Error boundary CSS present
@@ -123,7 +128,7 @@ describe('Login flow', () => {
   it('references auth session check in scripts', () => {
     // The dashboard loads a bundled JS that calls sb.auth.getSession()
     // Verify the script tag for the dashboard bundle exists
-    const dashScript = document.querySelector('script[src*="dashboard-core.min.js"]');
+    const dashScript = document.querySelector('script[src*="dashboard-shell.min.js"]');
     expect(dashScript).toBeTruthy();
   });
 
@@ -304,4 +309,63 @@ describe('Script module syntax', () => {
       }
     });
   }
+});
+
+// CS-016: FIX-10 — Code-split bundle verification
+describe('Code-split bundle architecture', () => {
+  const expectedChunks = ['shell', 'feed', 'keywords', 'pipeline', 'tuning', 'deferred'];
+
+  for (const chunk of expectedChunks) {
+    it(`dist/dashboard-${chunk}.min.js exists`, () => {
+      const filePath = join(__dirname, '..', 'dist', `dashboard-${chunk}.min.js`);
+      const exists = require('fs').existsSync(filePath);
+      expect(exists, `Missing chunk: dashboard-${chunk}.min.js`).toBe(true);
+    });
+
+    it(`dist/dashboard-${chunk}.min.js has sourcemap`, () => {
+      const mapPath = join(__dirname, '..', 'dist', `dashboard-${chunk}.min.js.map`);
+      const exists = require('fs').existsSync(mapPath);
+      expect(exists, `Missing sourcemap: dashboard-${chunk}.min.js.map`).toBe(true);
+    });
+  }
+
+  it('initial payload (shell + feed) is under 200KB', () => {
+    const shellSize = readFileSync(join(__dirname, '..', 'dist', 'dashboard-shell.min.js'), 'utf-8').length;
+    const feedSize = readFileSync(join(__dirname, '..', 'dist', 'dashboard-feed.min.js'), 'utf-8').length;
+    const totalKB = (shellSize + feedSize) / 1024;
+    expect(totalKB).toBeLessThan(200);
+  });
+
+  it('shell chunk includes lazy-loader utility', () => {
+    const shell = readFileSync(join(__dirname, '..', 'dist', 'dashboard-shell.min.js'), 'utf-8');
+    expect(shell).toContain('bjLoadChunk');
+    expect(shell).toContain('bjEnsureTab');
+  });
+
+  it('shell chunk includes tab-guard error boundaries', () => {
+    const shell = readFileSync(join(__dirname, '..', 'dist', 'dashboard-shell.min.js'), 'utf-8');
+    expect(shell).toContain('bjTabGuard');
+  });
+
+  it('dashboard.html loads shell and feed chunks', () => {
+    const scripts = Array.from(document.querySelectorAll('script[src]'));
+    const shellScript = scripts.find(s => s.src.includes('dashboard-shell'));
+    const feedScript = scripts.find(s => s.src.includes('dashboard-feed'));
+    expect(shellScript).toBeTruthy();
+    expect(feedScript).toBeTruthy();
+  });
+
+  it('dashboard.html does NOT load old core/deferred bundles', () => {
+    const scripts = Array.from(document.querySelectorAll('script[src]'));
+    const oldCore = scripts.find(s => s.src.includes('dashboard-core'));
+    const oldDeferred = scripts.find(s => s.src.includes('dashboard-deferred'));
+    expect(oldCore).toBeFalsy();
+    expect(oldDeferred).toBeFalsy();
+  });
+
+  it('lazy-loader.js source exists', () => {
+    const filePath = join(__dirname, '..', 'js', 'lazy-loader.js');
+    const exists = require('fs').existsSync(filePath);
+    expect(exists).toBe(true);
+  });
 });

@@ -46,7 +46,7 @@ async function fetchSeoData() {
   try {
     var session = (await sb.auth.getSession()).data.session;
     if (session) hdr = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + session.access_token };
-  } catch(e) {}
+  } catch(e) { if (typeof reportError === 'function') reportError('admin-seo', e); }
   var authHeaders = hdr;
 
   var urlFilter = _seoUrl ? '&url=eq.' + encodeURIComponent(_seoUrl) : '';
@@ -454,7 +454,7 @@ function renderUrlInspection() {
     chartHtml += '<table class="admin-platform-table" style="font-size:11px;"><thead><tr><th>URL</th><th>Status</th><th>Coverage</th></tr></thead><tbody>';
     rows.forEach(function(r) {
       var path = '/';
-      try { path = new URL(r.url).pathname || '/'; } catch(e) {}
+      try { path = new URL(r.url).pathname || '/'; } catch(e) { /* CS-016: invalid URL in GSC data — default to / */ }
       var vc = r.verdict === 'PASS' ? 'admin-green' : r.verdict === 'NEUTRAL' ? 'admin-amber' : 'admin-red';
       chartHtml += '<tr><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + path + '</td>' +
         '<td class="' + vc + '">' + (r.verdict || '—') + '</td>' +
@@ -575,7 +575,7 @@ function renderDfsAudit() {
       latest.map(function(r) {
         var m = r.metrics || {};
         var path = '/';
-        try { path = new URL(r.url).pathname || '/'; } catch(e) {}
+        try { path = new URL(r.url).pathname || '/'; } catch(e) { /* CS-016: invalid URL — default to / */ }
         var sc = r.score;
         var scColor = sc >= 90 ? 'admin-green' : sc >= 50 ? 'admin-amber' : sc != null ? 'admin-red' : '';
         return '<tr><td class="admin-platform-name" style="font-family:var(--mono)!important;">' + path + '</td>' +

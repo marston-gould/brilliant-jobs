@@ -1268,7 +1268,7 @@ async function testSendTemplate() {
 
   // Get current admin user
   var user = null;
-  try { user = (await sb.auth.getUser()).data.user; } catch(e) {}
+  try { user = (await sb.auth.getUser()).data.user; } catch(e) { if (typeof reportError === 'function') reportError('admin-notif', e); }
   if (!user) {
     status.textContent = 'Not logged in.';
     status.style.color = '#ef4444';

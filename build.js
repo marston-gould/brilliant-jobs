@@ -1,51 +1,104 @@
 import { buildSync } from 'esbuild';
-import { readFileSync, writeFileSync, mkdirSync, unlinkSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync, unlinkSync, existsSync } from 'fs';
 
-// CX-06: Split into core (first render) and deferred (tab-specific) bundles
-const coreFiles = [
-  'js/version.js',
-  'js/globals.js',
-  'js/sync.js',
-  'js/query-builder.js',
-  'js/job-feed.js',
-  'js/sort-bar.js',
-  'js/keywords.js',
-  'js/browsers.js',
-  'js/location.js',
-  'js/pipeline.js',
-  'js/tuning.js',
-  'js/tier-gating.js',
-  'js/fingerprint.js',
-  'js/app.js',
-];
+// ============================================================
+// CS-016 FIX-10: Code-split build — route-based lazy loading
+// ============================================================
+// Chunks:
+//   shell    — app skeleton: globals, routing, auth, tab-guard, lazy-loader
+//   feed     — default tab (job feed, sort, query, location)
+//   keywords — keyword extraction + company browser (lazy, ~200KB source)
+//   pipeline — pipeline tab (lazy)
+//   tuning   — tuning tab (lazy)
+//   deferred — all other tabs: resumes, stats, billing, settings, etc. (lazy)
+//
+// Initial payload = shell + feed → target <200KB minified
+// ============================================================
 
-const deferredFiles = [
-  'js/resumes.js',
-  'js/integrations.js',
-  'js/applications.js',
-  'js/settings.js',
-  'js/stats.js',
-  'js/billing.js',
-  'js/micro-surveys.js',
-  'js/rewrite.js',
-  'js/resume-archive.js',
-  'js/resume-metrics.js',
-  'js/overlay-analytics.js',
-  'js/pipeline-overlay-tab.js',
-  'js/chat.js',
-  'js/apply-workflow.js',
-  'js/referrals.js',
-  'js/referral-outreach.js',
-];
-
-const jsFiles = [...coreFiles, ...deferredFiles];
-
-// Full combined bundle (backward compat)
-const combined = jsFiles.map(f => `// === ${f} ===\n${readFileSync(f, 'utf-8')}`).join('\n\n');
+const chunks = {
+  shell: [
+    'js/version.js',
+    'js/globals.js',
+    'js/sync.js',
+    'js/fingerprint.js',
+    'js/tier-gating.js',
+    'js/lazy-loader.js',
+    'js/tab-guard.js',
+    'js/app.js',
+  ],
+  feed: [
+    'js/job-feed.js',
+    'js/sort-bar.js',
+    'js/query-builder.js',
+  ],
+  keywords: [
+    'js/keywords.js',
+    'js/browsers.js',
+    'js/location.js',
+  ],
+  pipeline: [
+    'js/pipeline.js',
+    'js/pipeline-overlay-tab.js',
+  ],
+  tuning: [
+    'js/tuning.js',
+  ],
+  deferred: [
+    'js/resumes.js',
+    'js/integrations.js',
+    'js/applications.js',
+    'js/settings.js',
+    'js/stats.js',
+    'js/billing.js',
+    'js/micro-surveys.js',
+    'js/rewrite.js',
+    'js/resume-archive.js',
+    'js/resume-metrics.js',
+    'js/overlay-analytics.js',
+    'js/chat.js',
+    'js/apply-workflow.js',
+    'js/referrals.js',
+    'js/referral-outreach.js',
+  ],
+};
 
 mkdirSync('dist', { recursive: true });
-writeFileSync('dist/dashboard.js', combined);
-writeFileSync('dist/_tmp.js', combined);
+
+let totalOrig = 0;
+let totalMin = 0;
+const report = [];
+
+for (const [name, files] of Object.entries(chunks)) {
+  const combined = files.map(f => `// === ${f} ===\n${readFileSync(f, 'utf-8')}`).join('\n\n');
+  const tmpFile = `dist/_tmp_${name}.js`;
+
+  writeFileSync(tmpFile, combined);
+
+  buildSync({
+    entryPoints: [tmpFile],
+    outfile: `dist/dashboard-${name}.min.js`,
+    minifySyntax: true,
+    minifyWhitespace: true,
+    minifyIdentifiers: false,
+    sourcemap: true,
+    target: 'es2020',
+    bundle: false,
+  });
+
+  unlinkSync(tmpFile);
+
+  const origSize = combined.length;
+  const minSize = readFileSync(`dist/dashboard-${name}.min.js`, 'utf-8').length;
+  totalOrig += origSize;
+  totalMin += minSize;
+  report.push({ name, files: files.length, orig: origSize, min: minSize });
+}
+
+// Also build the full combined bundle for backward compat / fallback
+const allFiles = Object.values(chunks).flat();
+const fullCombined = allFiles.map(f => `// === ${f} ===\n${readFileSync(f, 'utf-8')}`).join('\n\n');
+writeFileSync('dist/dashboard.js', fullCombined);
+writeFileSync('dist/_tmp.js', fullCombined);
 
 buildSync({
   entryPoints: ['dist/_tmp.js'],
@@ -59,44 +112,26 @@ buildSync({
 });
 unlinkSync('dist/_tmp.js');
 
-// CX-06: Deferred bundle (loaded after first render)
-const deferredCombined = deferredFiles.map(f => `// === ${f} ===\n${readFileSync(f, 'utf-8')}`).join('\n\n');
-writeFileSync('dist/_tmp_deferred.js', deferredCombined);
+const fullMinSize = readFileSync('dist/dashboard.min.js', 'utf-8').length;
 
-buildSync({
-  entryPoints: ['dist/_tmp_deferred.js'],
-  outfile: 'dist/dashboard-deferred.min.js',
-  minifySyntax: true,
-  minifyWhitespace: true,
-  minifyIdentifiers: false,
-  sourcemap: true,
-  target: 'es2020',
-  bundle: false,
-});
-unlinkSync('dist/_tmp_deferred.js');
+// Report
+console.log('\n📦 CS-016 Build Report — Code-Split Chunks\n');
+console.log('Chunk            Files   Source     Minified');
+console.log('─'.repeat(52));
+for (const r of report) {
+  const pad = (s, n) => String(s).padEnd(n);
+  const padR = (s, n) => String(s).padStart(n);
+  console.log(
+    `${pad(r.name, 17)}${padR(r.files, 3)}   ${padR((r.orig/1024).toFixed(1) + 'KB', 10)}  ${padR((r.min/1024).toFixed(1) + 'KB', 10)}`
+  );
+}
+console.log('─'.repeat(52));
 
-// CX-06: Core bundle (first render critical path)
-const coreCombined = coreFiles.map(f => `// === ${f} ===\n${readFileSync(f, 'utf-8')}`).join('\n\n');
-writeFileSync('dist/_tmp_core.js', coreCombined);
+const shellMin = report.find(r => r.name === 'shell').min;
+const feedMin = report.find(r => r.name === 'feed').min;
+const initialPayload = shellMin + feedMin;
 
-buildSync({
-  entryPoints: ['dist/_tmp_core.js'],
-  outfile: 'dist/dashboard-core.min.js',
-  minifySyntax: true,
-  minifyWhitespace: true,
-  minifyIdentifiers: false,
-  sourcemap: true,
-  target: 'es2020',
-  bundle: false,
-});
-unlinkSync('dist/_tmp_core.js');
-
-const origSize = combined.length;
-const minSize = readFileSync('dist/dashboard.min.js', 'utf-8').length;
-const coreSize = readFileSync('dist/dashboard-core.min.js', 'utf-8').length;
-const deferredSize = readFileSync('dist/dashboard-deferred.min.js', 'utf-8').length;
-console.log(`✅ dist/dashboard.min.js (full)`);
-console.log(`   ${jsFiles.length} files → ${(origSize/1024).toFixed(1)}KB → ${(minSize/1024).toFixed(1)}KB minified (${((1-minSize/origSize)*100).toFixed(0)}% smaller)`);
-console.log(`✅ dist/dashboard-core.min.js (${coreFiles.length} files → ${(coreSize/1024).toFixed(1)}KB)`);
-console.log(`✅ dist/dashboard-deferred.min.js (${deferredFiles.length} files → ${(deferredSize/1024).toFixed(1)}KB)`);
-
+console.log(`\nInitial payload (shell + feed): ${(initialPayload/1024).toFixed(1)}KB`);
+console.log(`Full bundle (backward compat):  ${(fullMinSize/1024).toFixed(1)}KB`);
+console.log(`Target: <200KB initial ← ${initialPayload < 200 * 1024 ? '✅ PASS' : '❌ FAIL'}`);
+console.log('');

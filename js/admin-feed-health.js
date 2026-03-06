@@ -113,7 +113,7 @@ function renderFeedHealthPanel(container, d) {
     setTimeout(function() {
       var el = document.getElementById('feed-health-chart');
       if (!el) return;
-      if (_feedHealthChartInst) { try { _feedHealthChartInst.dispose(); } catch(e){} }
+      if (_feedHealthChartInst) { try { _feedHealthChartInst.dispose(); } catch(e){ /* CS-016: chart cleanup — safe to ignore */ } }
       _feedHealthChartInst = echarts.init(el, 'dark');
 
       var series = platforms.map(function(plat) {

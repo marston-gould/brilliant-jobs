@@ -2750,6 +2750,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | CS-013 | 2026-03-06 | FIX-08, FIX-12, FIX-13, FIX-14 | dashboard@0.7.0-rls, extension@0.5.0-killswitch, admin@0.7.0-killswitch | FIX-08: RLS enabled on all public tables (16 tables, 30+ policies). Feature flag seeded. FIX-12: fetchWithRetry wired to 30 extension fetch calls. FIX-13: 3-layer kill-switch (heartbeat directive, externally_connectable, DB flag poll) + admin toggle UI. FIX-14: PII minimization per-question subsets. Column schema fix (id/enabled vs key/value) applied to EF, admin UI, extension. Deployed + tested. |
 | CS-014 | 2026-03-06 | FIX-15c, CX-09, CX-10 | index@0.5.0-p1, dashboard@0.8.0-echarts, extension@0.6.0-shadowdom | FIX-15c: 12 landing page catches wired to PostHog via bjError(). Loading/error/retry UI on stats fetch, preview search, merch load. Staleness badge on stats. Profile check 10s timeout + retry. Zero empty catch blocks remaining. CX-09: ECharts lazy-loaded on Stats tab open (removed eager CDN load). Extension overlays isolated in Shadow DOM. CX-10: 98 inline styles extracted to landing.css (7.4KB cacheable). 4 inline styles remain. 1024px + 768px responsive breakpoints added. |
 | CS-015 | 2026-03-06 | FIX-15 (FE-002/003/004, DE-001/002/003), FIX-09, FIX-15b (CP-003, DM-001/002, CE-001) | dashboard@0.9.0-core | FIX-09: bjTabGuard error boundaries on all dashboard tabs with fallback UI + retry. FIX-15: bjSkeleton loaders (6 types) on tab switch. Resume archive pagination (100-row limit). Performance indexes on 7 tables (15 indexes). Geospatial composite index for bounding-box queries. cron_run_log table for failure alerting. FIX-15b: pgAudit extension enabled (DDL + write). npm audit clean (0 vulnerabilities). SRI hashes on all 4 CDN scripts (pdf.js, mammoth, DOMPurify, docx). Rate limits on enrich-job (60/hr), create-checkout (10/hr), data-export (5/hr). Tests: 68 pass (+4 new, 2 pre-existing fixed). |
+| CS-016 | 2026-03-06 | FIX-10 (FE-001), FIX-16 (AD-FIX-09, AD-FIX-10) | dashboard@1.0.0-bundle, admin@0.8.0-errors | FIX-10 (FE-001): Code-split build — 6 chunks (shell 70KB, feed 83KB, keywords 241KB, pipeline 46KB, tuning 52KB, deferred 340KB). Initial payload 153KB (was 491KB). Lazy loader (bjLoadChunk/bjEnsureTab) with preload-after-idle for keywords+location chunk. Tab switching triggers chunk load before init. FIX-16 (AD-FIX-09+10): 3 empty catches in admin-seo.js fixed (reportError + documented URL parse guards). 8 console-only catches in admin.js converted to toast + reportError (auth check, feed health charts, discovery pipeline, auto-apply, MV staleness, growth chart, sessions chart, cohort list). Additional empty catches fixed in admin-notifications.js (auth), admin-templates.js (status toggle), admin-feed-health.js (chart dispose). Error boundary + loading state added to all admin section init (navigateAdminSubpage). Zero empty catches remaining across all admin files. Tests: 86 pass (+18 new code-split tests). |
 
 **Status:** COMPLETE — CS-013 deployed and verified (2026-03-06)
 **Pods:** Pod 3 (Technical Audit, 113+ findings across 17 sessions) + Pod 4 (CX Examination, 46 findings across 5 sessions)
@@ -2861,7 +2862,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.056 | FE-001: 818KB unsplit bundle → code split | 6h | — | 🔲 | Route-based split. <200KB initial. 3 sessions. |
+| 0.056 | FE-001: 818KB unsplit bundle → code split | 6h | CS-016 | ✅ | Route-based split. 153KB initial (was 491KB). 6 chunks with lazy loading. |
 | 0.057 | FE-005: Global scope pollution (30 JS via window) | 4h | — | 🔲 | Module wrapper per ADR-004. |
 | 0.058 | FE-006: No TypeScript | 4h | — | 🔲 | Incremental: new files .ts, tsconfig strict. |
 | 0.059 | BE-007: No API versioning | 1h | — | 🔲 | Design versioning approach for Edge Functions. |
@@ -2974,7 +2975,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.114 | DS1-1: Bundle Phase 1 — lazy loading | 2h | — | 🔲 | Defer tab JS until activation. Precursor to full split (0.056). |
+| 0.114 | DS1-1: Bundle Phase 1 — lazy loading | 2h | CS-016 | ✅ | Tab JS deferred via bjEnsureTab. Chunks loaded on first tab activation. |
 | 0.115 | DS1-3: Inline style audit kickoff | 1h | — | 🔲 | 827 dashboard inline styles. Categorize: token-migrate vs keep. Enables Sprint 2. |
 
 ### 0-V: CX — Dashboard P2 (Pod 4)

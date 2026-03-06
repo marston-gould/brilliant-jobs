@@ -203,7 +203,7 @@ async function tplToggleStatus(id, currentStatus) {
   var newStatus = currentStatus === 'active' ? 'draft' : 'active';
   var tpl = _tplList.find(function(t) { return t.id === id; });
   if (tpl) tpl.status = newStatus;
-  try { await sb.from('notification_templates').update({ status: newStatus }).eq('id', id); } catch (e) {}
+  try { await sb.from('notification_templates').update({ status: newStatus }).eq('id', id); } catch (e) { console.error('[Admin] Template status toggle failed:', e); if (typeof reportError === 'function') reportError('admin-templates', e); if (typeof toastWarning === 'function') toastWarning('Template status update failed'); }
   var detail = document.getElementById('tpl-detail-panel');
   if (detail && tpl) detail.innerHTML = _renderTplDetail(tpl);
 }

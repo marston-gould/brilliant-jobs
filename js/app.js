@@ -279,9 +279,9 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   if (typeof syncHealthCheck === 'function') {
     setTimeout(function() { syncHealthCheck(); }, 500);
   }
-  loadStats();
+  if (typeof loadStats === 'function') loadStats();
   checkExtensionStatus();
-  loadCollections();
+  if (typeof loadCollections === 'function') loadCollections();
   // Initialize Notification Center (Session 2 — loads state, prefs, opt-in check)
   if (typeof initNotificationCenter === 'function') initNotificationCenter();
   // Start session heartbeat
@@ -370,31 +370,44 @@ $$('.nav-item').forEach(item => {
     // CS-015: FIX-09 — Error boundaries on tab init + FIX-15 skeleton loaders
     var _tab = item.dataset.page;
     if (window.bjSkeleton) bjSkeleton.show(_tab);
-    // Init stats charts when stats tab is shown
-    if (_tab === 'stats' && typeof initStatsPage === 'function') { if (window.bjTabGuard) bjTabGuard('stats', initStatsPage); else initStatsPage(); }
-    // Admin moved to /admin page (v6.26)
-    if (_tab === 'feedback' && typeof initCannyFeedback === 'function') { if (window.bjTabGuard) bjTabGuard('feedback', initCannyFeedback); else initCannyFeedback(); }
-    if (_tab === 'ghost' && typeof renderGhostMonitor === 'function') { if (window.bjTabGuard) bjTabGuard('ghost', renderGhostMonitor); else renderGhostMonitor(); }
-    if (_tab === 'referrals' && typeof initReferralHub === 'function') { if (window.bjTabGuard) bjTabGuard('referrals', initReferralHub); else initReferralHub(); }
-    // Refresh resumes when switching to resumes tab
-    if (_tab === 'resumes') {
-      if (window.bjTabGuard) bjTabGuard('resumes', function() {
-        if (typeof renderResumes === 'function') renderResumes();
-        var activeCount = (resumes || []).filter(function(r) { return !r.archived; }).length;
-        if (activeCount === 0 && typeof reconcileResumeArchive === 'function' && typeof currentUser !== 'undefined' && currentUser) {
-          reconcileResumeArchive();
-        }
-      }); else {
-        if (typeof renderResumes === 'function') renderResumes();
-        var activeCount = (resumes || []).filter(function(r) { return !r.archived; }).length;
-        if (activeCount === 0 && typeof reconcileResumeArchive === 'function' && typeof currentUser !== 'undefined' && currentUser) {
-          reconcileResumeArchive();
+    // CS-016 FIX-10: Lazy-load tab chunks before init
+    var _initTab = function() {
+      // Init stats charts when stats tab is shown
+      if (_tab === 'stats' && typeof initStatsPage === 'function') { if (window.bjTabGuard) bjTabGuard('stats', initStatsPage); else initStatsPage(); }
+      // Admin moved to /admin page (v6.26)
+      if (_tab === 'feedback' && typeof initCannyFeedback === 'function') { if (window.bjTabGuard) bjTabGuard('feedback', initCannyFeedback); else initCannyFeedback(); }
+      if (_tab === 'ghost' && typeof renderGhostMonitor === 'function') { if (window.bjTabGuard) bjTabGuard('ghost', renderGhostMonitor); else renderGhostMonitor(); }
+      if (_tab === 'referrals' && typeof initReferralHub === 'function') { if (window.bjTabGuard) bjTabGuard('referrals', initReferralHub); else initReferralHub(); }
+      // Refresh resumes when switching to resumes tab
+      if (_tab === 'resumes') {
+        if (window.bjTabGuard) bjTabGuard('resumes', function() {
+          if (typeof renderResumes === 'function') renderResumes();
+          var activeCount = (resumes || []).filter(function(r) { return !r.archived; }).length;
+          if (activeCount === 0 && typeof reconcileResumeArchive === 'function' && typeof currentUser !== 'undefined' && currentUser) {
+            reconcileResumeArchive();
+          }
+        }); else {
+          if (typeof renderResumes === 'function') renderResumes();
+          var activeCount = (resumes || []).filter(function(r) { return !r.archived; }).length;
+          if (activeCount === 0 && typeof reconcileResumeArchive === 'function' && typeof currentUser !== 'undefined' && currentUser) {
+            reconcileResumeArchive();
+          }
         }
       }
-    }
-    // Tabs without explicit init get skeleton hidden after a short delay (content is static HTML)
-    if (!['stats','feedback','ghost','referrals','resumes'].includes(_tab) && window.bjSkeleton) {
-      setTimeout(function() { bjSkeleton.hide(_tab); }, 150);
+      // Tabs without explicit init get skeleton hidden after a short delay (content is static HTML)
+      if (!['stats','feedback','ghost','referrals','resumes'].includes(_tab) && window.bjSkeleton) {
+        setTimeout(function() { bjSkeleton.hide(_tab); }, 150);
+      }
+    };
+    // Load required chunks then init
+    if (typeof bjEnsureTab === 'function') {
+      bjEnsureTab(_tab).then(_initTab).catch(function(err) {
+        console.error('[BJ] Chunk load failed for tab:', _tab, err);
+        if (typeof reportError === 'function') reportError('lazy-loader', err);
+        _initTab(); // attempt init anyway — code may already be present
+      });
+    } else {
+      _initTab();
     }
     // Close help panel on page switch
     const hp = $('#page-help-panel'); if (hp) hp.style.display = 'none';
@@ -413,10 +426,21 @@ if (lastTab && $(`#page-${lastTab}`)) {
     n.classList.toggle('active', n.dataset.page === lastTab);
   });
   // CS-015: FIX-09 — Error boundaries on tab restore
-  if (lastTab === 'stats' && typeof initStatsPage === 'function') { if (window.bjTabGuard) bjTabGuard('stats', initStatsPage); else initStatsPage(); }
-  if (lastTab === 'feedback' && typeof initCannyFeedback === 'function') { if (window.bjTabGuard) bjTabGuard('feedback', initCannyFeedback); else initCannyFeedback(); }
-  if (lastTab === 'referrals' && typeof initReferralHub === 'function') { if (window.bjTabGuard) bjTabGuard('referrals', initReferralHub); else initReferralHub(); }
-  if (lastTab === 'ghost' && typeof renderGhostMonitor === 'function') { if (window.bjTabGuard) bjTabGuard('ghost', renderGhostMonitor); else renderGhostMonitor(); }
+  // CS-016 FIX-10: Lazy-load chunks for restored tab
+  var _restoreInit = function() {
+    if (lastTab === 'stats' && typeof initStatsPage === 'function') { if (window.bjTabGuard) bjTabGuard('stats', initStatsPage); else initStatsPage(); }
+    if (lastTab === 'feedback' && typeof initCannyFeedback === 'function') { if (window.bjTabGuard) bjTabGuard('feedback', initCannyFeedback); else initCannyFeedback(); }
+    if (lastTab === 'referrals' && typeof initReferralHub === 'function') { if (window.bjTabGuard) bjTabGuard('referrals', initReferralHub); else initReferralHub(); }
+    if (lastTab === 'ghost' && typeof renderGhostMonitor === 'function') { if (window.bjTabGuard) bjTabGuard('ghost', renderGhostMonitor); else renderGhostMonitor(); }
+  };
+  if (typeof bjEnsureTab === 'function') {
+    bjEnsureTab(lastTab).then(_restoreInit).catch(function(err) {
+      console.error('[BJ] Chunk load failed for restore tab:', lastTab, err);
+      _restoreInit();
+    });
+  } else {
+    _restoreInit();
+  }
   }
 }
 

@@ -1146,8 +1146,8 @@ function checkAdminAccess() {
         var nav = document.getElementById('nav-admin');
         if (nav) { nav.style.display = ''; console.log('[Admin] ✓ Nav shown'); }
       }
-    }).catch(function(e) { console.error('[Admin] Profile query failed:', e); });
-  }).catch(function(e) { console.error('[Admin] getUser failed:', e); });
+    }).catch(function(e) { console.error('[Admin] Profile query failed:', e); if (typeof reportError === 'function') reportError('admin-init', e); if (typeof toastWarning === 'function') toastWarning('Admin profile check failed'); });
+  }).catch(function(e) { console.error('[Admin] getUser failed:', e); if (typeof reportError === 'function') reportError('admin-init', e); if (typeof toastWarning === 'function') toastWarning('Admin auth check failed'); });
 }
 
 // ─── AD-FIX-07: Audit Trail Helper (CS-012) ───
@@ -1236,7 +1236,7 @@ function _loadAdminNavState() {
   try {
     var raw = localStorage.getItem('bj_admin_state');
     if (raw) { _adminNavState = JSON.parse(raw); }
-  } catch(e) {}
+  } catch(e) { /* CS-016: localStorage may be unavailable (private browsing); defaults apply */ }
   if (!_adminNavState) {
     _adminNavState = { active: 'feed-health', collapsed: {} };
   }
@@ -1248,7 +1248,7 @@ function _saveAdminNavState() {
     localStorage.setItem('bj_admin_state', JSON.stringify(_adminNavState));
     // Keep legacy key in sync
     localStorage.setItem('bj_admin_tab', _adminNavState.active);
-  } catch(e) {}
+  } catch(e) { /* CS-016: localStorage may be unavailable */ }
 }
 
 // ─── Build Sidebar ───
@@ -1349,10 +1349,38 @@ function navigateAdminSubpage(key) {
   adminActiveTab = key;
   _saveAdminNavState();
 
-  // Lazy-init
+  // Lazy-init with error boundary + loading state (CS-016: AD-FIX-10)
   if (!_adminTabInit[key] && sp.init) {
     _adminTabInit[key] = true;
-    sp.init();
+    // CS-016: Show loading state
+    if (panel) {
+      var existingContent = panel.innerHTML;
+      var loadingEl = document.createElement('div');
+      loadingEl.className = 'admin-loading-state';
+      loadingEl.innerHTML = '<div style="display:flex;align-items:center;gap:8px;padding:16px;color:var(--text-dim);font-size:13px;">' +
+        '<span class="admin-spinner" style="display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent,#6b82a8);border-radius:50%;animation:spin 0.6s linear infinite;"></span>' +
+        'Loading ' + sp.label + '…</div>';
+      panel.prepend(loadingEl);
+    }
+    try {
+      sp.init();
+    } catch (err) {
+      console.error('[Admin] Section init error (' + key + '):', err);
+      if (typeof reportError === 'function') reportError('admin-section-' + key, err);
+      _adminTabInit[key] = false; // allow retry
+      if (panel) {
+        panel.innerHTML = '<div style="padding:24px;text-align:center;">' +
+          '<div style="color:var(--danger,#ef4444);font-weight:600;margin-bottom:8px;">⚠ Failed to load ' + sp.label + '</div>' +
+          '<div style="color:var(--text-dim);font-size:13px;margin-bottom:12px;">' + (err.message || 'Unknown error') + '</div>' +
+          '<button onclick="navigateAdminSubpage(\'' + key + '\')" style="padding:6px 16px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text);cursor:pointer;font-size:13px;">Retry</button>' +
+          '</div>';
+      }
+    }
+    // Remove loading state
+    if (panel) {
+      var loader = panel.querySelector('.admin-loading-state');
+      if (loader) loader.remove();
+    }
   }
 }
 
@@ -1507,12 +1535,12 @@ async function loadBoardHealth() {
     }
 
     // Load feed health charts
-    loadFeedHealthCharts().catch(function(e) { console.warn('[Admin] Feed health charts failed:', e.message); });
+    loadFeedHealthCharts().catch(function(e) { console.warn('[Admin] Feed health charts failed:', e.message); if (typeof reportError === 'function') reportError('admin-feed-health', e); if (typeof toastWarning === 'function') toastWarning('Feed health charts failed'); });
     // Load discovery pipeline + auto-apply stats (isolated to prevent cascading failures)
-    loadDiscoveryPipelineStats().catch(function(e) { console.warn('[Admin] Discovery pipeline stats failed:', e.message); });
-    loadAutoApplyStats().catch(function(e) { console.warn('[Admin] Auto-apply stats failed:', e.message); });
+    loadDiscoveryPipelineStats().catch(function(e) { console.warn('[Admin] Discovery pipeline stats failed:', e.message); if (typeof reportError === 'function') reportError('admin-discovery', e); if (typeof toastWarning === 'function') toastWarning('Discovery pipeline stats failed'); });
+    loadAutoApplyStats().catch(function(e) { console.warn('[Admin] Auto-apply stats failed:', e.message); if (typeof reportError === 'function') reportError('admin-autoapply', e); if (typeof toastWarning === 'function') toastWarning('Auto-apply stats failed'); });
     // A15 S5: Show MV staleness in feed health header
-    loadMVStalenessIndicator().catch(function(e) { console.warn('[Admin] MV staleness check failed:', e.message); });
+    loadMVStalenessIndicator().catch(function(e) { console.warn('[Admin] MV staleness check failed:', e.message); if (typeof reportError === 'function') reportError('admin-mv-staleness', e); });
   } catch (err) {
     console.error('[Admin] loadBoardHealth error:', err); toastError('Failed to load board health');
   }
@@ -2057,7 +2085,7 @@ async function loadEntitlementsTab() {
           select.appendChild(opt);
         });
       }
-    } catch (e) {}
+    } catch (e) { console.warn('[Admin] Cohort list load error:', e); if (typeof reportError === 'function') reportError('admin-cohort', e); }
     select.addEventListener('change', function() { loadEntitlementRows(select.value); });
   }
 
@@ -2167,7 +2195,7 @@ async function renderCohortGrowthChart() {
       series: [{ type: 'line', data: cumulative, smooth: true, lineStyle: { color: '#6b82a8', width: 2 }, itemStyle: { color: '#6b82a8' }, areaStyle: { color: 'rgba(107,130,168,0.06)' }, symbol: 'circle', symbolSize: 4 }]
     }), true);
     window.addEventListener('resize', function() { chart.resize(); });
-  } catch (e) { console.error('[Admin] Growth chart error:', e); toastWarning('Growth chart failed to render'); }
+  } catch (e) { console.error('[Admin] Growth chart error:', e); if (typeof reportError === 'function') reportError('admin-growth-chart', e); toastWarning('Growth chart failed to render'); }
 }
 
 async function renderCohortSessionsChart() {
@@ -2198,7 +2226,7 @@ async function renderCohortSessionsChart() {
       series: [{ type: 'bar', data: counts, itemStyle: { color: '#5b8a72', borderRadius: [3,3,0,0] } }]
     }), true);
     window.addEventListener('resize', function() { chart.resize(); });
-  } catch (e) { console.error('[Admin] Sessions chart error:', e); toastWarning('Sessions chart failed to render'); }
+  } catch (e) { console.error('[Admin] Sessions chart error:', e); if (typeof reportError === 'function') reportError('admin-sessions-chart', e); toastWarning('Sessions chart failed to render'); }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -4577,7 +4605,7 @@ async function testSendTemplate() {
 
   // Get current admin user
   var user = null;
-  try { user = (await sb.auth.getUser()).data.user; } catch(e) {}
+  try { user = (await sb.auth.getUser()).data.user; } catch(e) { if (typeof reportError === 'function') reportError('admin-notif', e); }
   if (!user) {
     status.textContent = 'Not logged in.';
     status.style.color = '#ef4444';
@@ -6814,7 +6842,7 @@ function renderFeedHealthPanel(container, d) {
     setTimeout(function() {
       var el = document.getElementById('feed-health-chart');
       if (!el) return;
-      if (_feedHealthChartInst) { try { _feedHealthChartInst.dispose(); } catch(e){} }
+      if (_feedHealthChartInst) { try { _feedHealthChartInst.dispose(); } catch(e){ /* CS-016: chart cleanup — safe to ignore */ } }
       _feedHealthChartInst = echarts.init(el, 'dark');
 
       var series = platforms.map(function(plat) {
@@ -7419,7 +7447,7 @@ async function fetchSeoData() {
   try {
     var session = (await sb.auth.getSession()).data.session;
     if (session) hdr = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + session.access_token };
-  } catch(e) {}
+  } catch(e) { if (typeof reportError === 'function') reportError('admin-seo', e); }
   var authHeaders = hdr;
 
   var urlFilter = _seoUrl ? '&url=eq.' + encodeURIComponent(_seoUrl) : '';
@@ -7827,7 +7855,7 @@ function renderUrlInspection() {
     chartHtml += '<table class="admin-platform-table" style="font-size:11px;"><thead><tr><th>URL</th><th>Status</th><th>Coverage</th></tr></thead><tbody>';
     rows.forEach(function(r) {
       var path = '/';
-      try { path = new URL(r.url).pathname || '/'; } catch(e) {}
+      try { path = new URL(r.url).pathname || '/'; } catch(e) { /* CS-016: invalid URL in GSC data — default to / */ }
       var vc = r.verdict === 'PASS' ? 'admin-green' : r.verdict === 'NEUTRAL' ? 'admin-amber' : 'admin-red';
       chartHtml += '<tr><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + path + '</td>' +
         '<td class="' + vc + '">' + (r.verdict || '—') + '</td>' +
@@ -7948,7 +7976,7 @@ function renderDfsAudit() {
       latest.map(function(r) {
         var m = r.metrics || {};
         var path = '/';
-        try { path = new URL(r.url).pathname || '/'; } catch(e) {}
+        try { path = new URL(r.url).pathname || '/'; } catch(e) { /* CS-016: invalid URL — default to / */ }
         var sc = r.score;
         var scColor = sc >= 90 ? 'admin-green' : sc >= 50 ? 'admin-amber' : sc != null ? 'admin-red' : '';
         return '<tr><td class="admin-platform-name" style="font-family:var(--mono)!important;">' + path + '</td>' +
@@ -10898,7 +10926,7 @@ async function tplToggleStatus(id, currentStatus) {
   var newStatus = currentStatus === 'active' ? 'draft' : 'active';
   var tpl = _tplList.find(function(t) { return t.id === id; });
   if (tpl) tpl.status = newStatus;
-  try { await sb.from('notification_templates').update({ status: newStatus }).eq('id', id); } catch (e) {}
+  try { await sb.from('notification_templates').update({ status: newStatus }).eq('id', id); } catch (e) { console.error('[Admin] Template status toggle failed:', e); if (typeof reportError === 'function') reportError('admin-templates', e); if (typeof toastWarning === 'function') toastWarning('Template status update failed'); }
   var detail = document.getElementById('tpl-detail-panel');
   if (detail && tpl) detail.innerHTML = _renderTplDetail(tpl);
 }

@@ -34,12 +34,11 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**CS-015** — Dashboard P1 Bundle: Error Boundaries + Skeleton Loaders + Indexes + Rate Limits
+**CS-016** — Bundle Splitting + Lazy Loading (FE-001) + Admin Frontend Cleanup
 - Completed: 2026-03-06
-- Commit: `31de3f1`
-- Tags: `dashboard@0.9.0-core`
-- Fix items resolved: FIX-15 (FE-002, FE-003, FE-004, DE-001, DE-002, DE-003), FIX-09 (FE-002), FIX-15b (CP-003, DM-001, DM-002, CE-001)
-- Notes: bjTabGuard error boundaries on all dashboard tabs with fallback UI + retry. bjSkeleton loaders (6 types) on tab switch. Resume archive 100-row pagination limit. 15 performance indexes on 7 tables (ats_jobs geospatial, loc_state, updated_at, company_slug, is_remote; profiles plan+role, cohort; resume_archive, notification_log, user_pipeline, pending_applications, referrals, billing_events). cron_run_log table for failure alerting. pgAudit extension enabled (DDL + write). npm audit 0 vulnerabilities. SRI hashes on 4 CDN scripts (pdf.js, mammoth, DOMPurify, docx). Rate limits on enrich-job (60/hr), create-checkout (10/hr), data-export (5/hr). 68 tests pass (4 new, 2 pre-existing fixed).
+- Tags: `dashboard@1.0.0-bundle`, `admin@0.8.0-errors`
+- Fix items resolved: FIX-10 (FE-001), FIX-16 (AD-FIX-09, AD-FIX-10)
+- Notes: Code-split build — 6 chunks (shell 70KB, feed 83KB, keywords 241KB, pipeline 46KB, tuning 52KB, deferred 340KB). Initial payload 153KB (was 491KB). Lazy loader (bjLoadChunk/bjEnsureTab) with preload-after-idle for keywords+location chunk. Tab switching triggers chunk load before init. Admin: 3 empty catches in admin-seo.js fixed, 8 console-only catches in admin.js converted to toast + reportError, additional catches fixed in admin-notifications.js, admin-templates.js, admin-feed-health.js. Error boundary + loading state on all admin section init. Zero empty catches across all admin files. Tests: 86 pass (18 new code-split tests).
 
 ---
 
@@ -51,32 +50,31 @@ None.
 
 ## Next Session
 
-**CS-016** — Bundle Splitting + Lazy Loading (FE-001) + Admin Frontend Cleanup
+**CS-017** — Extension Selector Monitoring (FIX-17: EXT-FE-004)
 
 | Field | Detail |
 |-------|--------|
-| Surface | Dashboard + Admin |
-| Fix Items | FIX-10 (FE-001), FIX-16 (AD-FIX-09, AD-FIX-10) |
-| Hours | 22–32h |
-| Pair | Frontend + Eng Lead |
-| Expected tags | dashboard@1.0.0-bundle, admin@0.8.0-errors |
+| Surface | Extension + CI |
+| Fix Items | FIX-17 (EXT-FE-004) |
+| Hours | 12–18h |
+| Pair | Frontend + QA |
+| Expected tags | extension@0.7.0-monitoring |
 
 ### Entry Gate (verify before starting)
 
-- [x] CS-015 complete — Error boundaries + skeleton loaders deployed → `dashboard@0.9.0-core`
-- [x] CS-010 complete — Smoke tests exist to catch regressions
+- [x] CS-016 complete — Bundle splitting + lazy loading deployed → `dashboard@1.0.0-bundle`
+- [x] CS-013 complete — Kill-switch operational (extension stable)
+- [x] CS-010 complete — Extension handler tests exist
 
 ### What To Build
 
-1. **FIX-10 (FE-001)**: Bundle splitting + lazy loading — module wrap → esbuild bundler → route-based code split. Target initial bundle <200KB.
-2. **FIX-16 (AD-FIX-09 + AD-FIX-10)**: Admin frontend cleanup — fix empty catches in admin-seo.js, add loading states to admin modules, error boundary pattern for admin tabs, convert 8 console-only catches to toast + log in admin.js.
+1. **FIX-17 (EXT-FE-004)**: Automated selector health monitoring — weekly CI job runs against live ATS sites (LinkedIn, Greenhouse, Lever, Workday). Alert on breakage for all 15 handlers. PostHog events on selector miss rates.
 
 ### Exit Gate
 
-- Initial bundle <200KB
-- Per-tab chunks lazy-loaded
-- Admin error handling coverage: all catches surfaced
-- Admin loading states visible on all sections
+- CI job runs and detects intentional selector breakage
+- All 15 handlers have monitored selectors
+- Alert pipeline operational (PostHog or email)
 - All existing tests still passing
 
 ---
@@ -85,16 +83,16 @@ None.
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| Dashboard | `dashboard@0.9.0-core` | CS-015 |
+| Dashboard | `dashboard@1.0.0-bundle` | CS-016 |
 | Extension | `extension@0.6.0-shadowdom` | CS-014 |
 | Landing Page | `index@0.5.0-p1` | CS-014 |
-| Admin | `admin@0.7.0-killswitch` | CS-013 |
+| Admin | `admin@0.8.0-errors` | CS-016 |
 | SEO Pages | (no remediation tag yet) | — |
 | Email Templates | `email-templates@0.1.0-utm` | CS-011 |
 
 ---
 
-## Completed Sessions (15 of 24)
+## Completed Sessions (16 of 24)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
@@ -113,15 +111,15 @@ None.
 | CS-013 | 2026-03-06 | FIX-08, FIX-12, FIX-13, FIX-14 | dashboard@0.7.0-rls, extension@0.5.0-killswitch, admin@0.7.0-killswitch |
 | CS-014 | 2026-03-06 | FIX-15c, CX-09, CX-10 | index@0.5.0-p1, dashboard@0.8.0-echarts, extension@0.6.0-shadowdom |
 | CS-015 | 2026-03-06 | FIX-15 (FE-002/003/004, DE-001/002/003), FIX-09 (FE-002), FIX-15b (CP-003, DM-001/002, CE-001) | dashboard@0.9.0-core |
+| CS-016 | 2026-03-06 | FIX-10 (FE-001), FIX-16 (AD-FIX-09, AD-FIX-10) | dashboard@1.0.0-bundle, admin@0.8.0-errors |
 
 ---
 
-## Remaining Sessions (9 of 24)
+## Remaining Sessions (8 of 24)
 
 | Session | Fix Items | Phase | Notes |
 |---------|-----------|-------|-------|
-| CS-016 | FIX-10 (FE-001), FIX-16 (AD-FIX-09/10) | Phase 4: Code Quality + Architecture | Requires CS-015 complete (error boundaries in place) |
-| CS-017 | FIX-17 | Phase 4 |  |
+| CS-017 | FIX-17 | Phase 4 | Extension selector monitoring |
 | CS-018 | FIX-19a | Phase 4 |  |
 | CS-019 | FIX-18 | Phase 4 |  |
 | CS-020 | FIX-20, FIX-21 | Phase 5: Validation + Launch |  |
