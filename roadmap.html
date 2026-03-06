@@ -1851,7 +1851,7 @@ const features = [
 { s: 'done', b: 'pre-launch', n: '0.013 EXT-SEC-001: Token encryption', d: 'CS-004: authSession added to AES-GCM encrypted storage. getAuth()/setAuth() helpers wired in background.js + popup.js.', p: 75, e: '1h' },
 { s: 'done', b: 'pre-launch', n: '0.014 EXT-SEC-002: Scope web_accessible_resources', d: 'CS-004: Scoped from utils/*.js + <all_urls> to utils/fillMetrics.js + 19 ATS domains.', p: 75, e: '1h' },
 { s: 'done', b: 'pre-launch', n: '0.015 EXT-SEC-003: Popup innerHTML XSS', d: 'CS-004: escHtml() sanitizer in popup.js + inject-overlay.js. Zero unsanitized dynamic innerHTML.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.016 EXT-SEC-004: PII minimization AI answerer', d: 'Full profile every call. Per-question field subsets.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.016 EXT-SEC-004: PII minimization AI answerer', d: 'CS-013 FIX-14: Per-question profile field subsets via _selectProfileFields() pattern matching. Resume truncated to 2000 chars, only sent for experience/skill questions via _needsResume(). Full profile no longer sent on every call.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.017 EXT-SEC-005: Content script CSP bypass', d: 'Audit all injection points in ATS pages.', p: 75, e: '1h' },
 
 // 0-D: Security — Admin (Pod 3, P0)
@@ -1887,13 +1887,14 @@ const features = [
 { s: 'todo', b: 'pre-launch', n: '0.041 EXT-ES-002: 19 fire-and-forget', d: 'chrome.runtime.sendMessage .catch(()=>{}).', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.042 EXT-ES-003: 7 console/comment handlers', d: 'Catch with only console or comment.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.043 EXT-ES-004: 14+ missing lastError', d: 'Only toolbar-overlay checks. All other chrome API skip.', p: 75, e: '2h' },
-{ s: 'todo', b: 'pre-launch', n: '0.044 EXT-BE-001: No fetch timeouts', d: 'Zero AbortController. Add timeout all fetches.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.045 EXT-BE-002: No retry with backoff', d: 'Zero retry. Exponential backoff on auth, scan, pipeline.', p: 75, e: '2h' },
+{ s: 'done', b: 'pre-launch', n: '0.044 EXT-BE-001: No fetch timeouts', d: 'CS-013 FIX-12: fetchWithRetry utility with AbortSignal.timeout (10–15s per call criticality). Wired into 27 service-worker/popup fetch calls + 3 content-script calls get AbortSignal.timeout. Zero bare fetch() remaining in extension source.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.045 EXT-BE-002: No retry with backoff', d: 'CS-013 FIX-12: Exponential backoff with jitter (baseDelay 1s, maxDelay 8s) in fetchWithRetry. 5xx auto-retry. fetchFireAndForget for telemetry calls (PostHog, extension_events). All 30 extension fetch sites covered.', p: 75, e: '2h' },
 
 // 0-H: Error Handling — Landing (Pod 3, P1)
 { s: 'done', b: 'pre-launch', n: '0.046 IX-ES-001: safeReadLS undefined', d: 'CS-005: window.safeReadLS() defined inline before merch-client.js. Try/catch + JSON.parse fallback. Returning visitors no longer get ReferenceError.', p: 75, e: '15min' },
 { s: 'done', b: 'pre-launch', n: '0.047 IX-ES-002: Stale anon key referral', d: 'CS-005: Replaced stale key (iat:Jan2025) with current (iat:Feb2026) in referral-capture.js. Referral attribution restored. Also resolves IX-DA-002.', p: 75, e: '10min' },
 { s: 'done', b: 'pre-launch', n: 'AD-FIX-01: RLS fixes — feature_flags, merch, admin_notification_config, 6 SEO tables', d: 'CS-006: Dropped 5 broken policies. feature_flags write restricted to is_admin(). Merch policies fixed (was auth.jwt()>>role, now profiles.role). admin_notification_config admin-only. RLS enabled on 6 SEO tables with public read + admin write.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: 'FIX-08: RLS on remaining dashboard tables', d: 'CS-013: Migration for 14+ tables — profiles, resumes, subscriptions, connections, feedback, notification_log, notification_actions, plans, cohorts, ats_companies, ats_jobs, audit_log, company_ghost_stats, ghost_alerts_sent, content_stories. Policies: user-owned (auth.uid()=user_id), public-read (ats_jobs, ats_companies for SEO), admin-only (audit_log). feature_flags seeded with extension_kill_switch. Deployment pending.', p: 75, e: '2h' },
 { s: 'done', b: 'pre-launch', n: 'AD-FIX-02: MFA enforcement in admin-shell.js', d: 'CS-006: Checks sb.auth.mfa.listFactors() after admin role check. No TOTP → inline setup (QR + manual secret). AAL1 → challenge flow. Both use Supabase MFA API.', p: 75, e: '1.5h' },
 { s: 'done', b: 'pre-launch', n: 'AD-FIX-03: approve-content admin check + EF rate limiting', d: 'CS-006: approve-content checks profiles.role=admin. generate-editorial 10/hr, seo-sync 5/hr via check_ef_rate_limit(). ef_rate_limits table + auto-cleanup.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.048 IX-FE-003: 7 empty + 5 console catches', d: '12 silenced on public landing. PostHog wire.', p: 75, e: '1h' },
@@ -1921,7 +1922,7 @@ const features = [
 { s: 'todo', b: 'pre-launch', n: '0.064 QA-003: Integration tests critical APIs', d: 'enrich-job, score-resume, generate-filter, preview-jobs E2E.', p: 75, e: '3h' },
 
 // 0-L: Extension reliability (Pod 3, P1)
-{ s: 'todo', b: 'pre-launch', n: '0.065 EXT-FEAT-001: Kill-switch 3-layer', d: 'Heartbeat + externally_connectable + DB flag. Admin toggle. 2 sessions.', p: 75, e: '4h' },
+{ s: 'done', b: 'pre-launch', n: '0.065 EXT-FEAT-001: Kill-switch 3-layer', d: 'CS-013 FIX-13: Layer 1 — heartbeat EF reads feature_flags.extension_kill_switch, returns directive in response. Layer 2 — externally_connectable + onMessageExternal for real-time admin commands. Layer 3 — DB flag polling on startup + hourly alarm. Admin kill-switch panel (admin-killswitch.js) with state display, toggle, direct send, active scanners table. Deployment pending.', p: 75, e: '4h' },
 { s: 'todo', b: 'pre-launch', n: '0.066 EXT-BE-003: Token refresh reliability', d: 'Refresh fails silently. Retry + notify + re-auth.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.067 EXT-CWS-001: Manifest permissions minimize', d: 'Justify each or remove.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.068 EXT-CWS-002: Privacy policy + manifest', d: 'Publish + link. Required for distribution.', p: 75, e: '1h' },
@@ -2055,6 +2056,7 @@ const features = [
 
 // 0-BB: Post-Launch Admin Monitoring (Phase 0b)
 { s: 'done', b: 'pre-launch', n: '0.160 Cron Health Panel (AD-FIX-06)', d: 'CS-012: v_cron_health view (cron.job + cron.job_run_details), 64 jobs with color-coded status (red/amber/green/disabled), auto-refresh 60s, filter buttons. New admin-cron.js + Operations sidebar entry.', p: 76, e: '2h' },
+{ s: 'done', b: 'pre-launch', n: '0.160a Kill-Switch Panel (FIX-13)', d: 'CS-013: Admin kill-switch toggle panel (admin-killswitch.js). State display (red KILLED / green ACTIVE), confirmation-gated toggle writing feature_flags table, direct send via chrome.runtime.sendMessage to connected extensions, active scanners table from extension_events (24h window), auto-refresh 30s, audit trail via _logAdminAction(). Operations sidebar entry.', p: 76, e: '2h' },
 { s: 'todo', b: 'post-launch', n: '0.161 Cron Dashboard — admin UI', d: '45 jobs, status, history, duration. Color-coded.', p: 76, e: '3h' },
 { s: 'todo', b: 'post-launch', n: '0.162 Cron Dashboard — alerts', d: 'PostHog: P0-cron fail, 2+ missed, 2x duration.', p: 76, e: '1h' },
 { s: 'todo', b: 'post-launch', n: '0.163 Feed Health — views', d: 'Pattern 1. ats_jobs, pipeline, resumes timestamps.', p: 76, e: '2h' },
