@@ -1927,6 +1927,12 @@ const features = [
 { s: 'todo', b: 'pre-launch', n: '0.068 EXT-CWS-002: Privacy policy + manifest', d: 'Publish + link. Required for distribution.', p: 75, e: '1h' },
 { s: 'done', b: 'pre-launch', n: '0.069 EXT-FE-001: Selector fragility', d: 'CS-010: LinkedIn selectors hardened with 4+ fallbacks (role=dialog anchor). Greenhouse/Lever/Legacy wrapped in safeFill() graceful degradation. resilientDOM.js utility. PostHog selector miss + handler error telemetry.', p: 75, e: '2h' },
 
+// CS-011: Extension a11y + CX Sprint 2
+{ s: 'done', b: 'pre-launch', n: '0.069a CX-05: Extension popup accessibility', d: 'CS-011: ARIA tablist/tab/tabpanel, keyboard nav (Arrow/Home/End), skip-link, focus-visible, auth form labels, aria-live regions, main landmark. Score 1.0 → 3.5+.', p: 80, e: '8h' },
+{ s: 'done', b: 'pre-launch', n: '0.069b CX-06: Dashboard lazy loading + PostHog', d: 'CS-011: Build split into core (479KB) + deferred (346KB). 8 PostHog events: tab views, notification opt-in, billing checkout/portal. Revenue + notification instrumented.', p: 80, e: '6h' },
+{ s: 'done', b: 'pre-launch', n: '0.069c CX-07: Inline style audit', d: 'CS-011: 1,843 inline style declarations categorized. Top: keywords.js (371), dashboard.html (803). 5-phase migration plan delivered. Input for CX-10.', p: 80, e: '4h' },
+{ s: 'done', b: 'pre-launch', n: '0.069d CX-08: Email UTM + landing a11y', d: 'CS-011: baseLayout + whiteBaseLayout auto-tag all email links with UTM (source=email, medium=notification). 100% CTA coverage. Landing H1 fix confirmed working.', p: 80, e: '4h' },
+
 // 0-M: Data Engineering (Pod 3, P1/P2)
 { s: 'todo', b: 'pre-launch', n: '0.070 DE-001: Cron failure alerting', d: '45 crons zero alerting. PostHog hooks.', p: 75, e: '2h' },
 { s: 'todo', b: 'pre-launch', n: '0.071 DE-002: Stale MV indicators', d: '"Live" on stale data. Add refreshed_at.', p: 75, e: '1h' },
