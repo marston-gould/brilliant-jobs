@@ -36,6 +36,7 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 **CS-016** — Bundle Splitting + Lazy Loading (FE-001) + Admin Frontend Cleanup
 - Completed: 2026-03-06
+- Commit: `7a88bde`
 - Tags: `dashboard@1.0.0-bundle`, `admin@0.8.0-errors`
 - Fix items resolved: FIX-10 (FE-001), FIX-16 (AD-FIX-09, AD-FIX-10)
 - Notes: Code-split build — 6 chunks (shell 70KB, feed 83KB, keywords 241KB, pipeline 46KB, tuning 52KB, deferred 340KB). Initial payload 153KB (was 491KB). Lazy loader (bjLoadChunk/bjEnsureTab) with preload-after-idle for keywords+location chunk. Tab switching triggers chunk load before init. Admin: 3 empty catches in admin-seo.js fixed, 8 console-only catches in admin.js converted to toast + reportError, additional catches fixed in admin-notifications.js, admin-templates.js, admin-feed-health.js. Error boundary + loading state on all admin section init. Zero empty catches across all admin files. Tests: 86 pass (18 new code-split tests).
