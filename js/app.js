@@ -8,6 +8,13 @@ async function init() {
   const { data: { session } } = await sb.auth.getSession();
   if (!session?.user) { window.location.href = '/'; return; }
   currentUser = session.user;
+  // CS-003: PostHog identity resolution — identify user post-login (CX-01)
+  if (window.posthog && currentUser) {
+    posthog.identify(currentUser.id, {
+      email: currentUser.email,
+      created_at: currentUser.created_at,
+    });
+  }
   // Persist account flag for landing page segment detection (survives logout)
   localStorage.setItem('bj_has_account', 'true');
 

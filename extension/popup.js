@@ -4,6 +4,37 @@ const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
 // ============================================================
+// CS-003: PostHog event capture for extension (CX-02)
+// ============================================================
+const _PH_API_KEY = 'phc_RqMlQQfq0G0DOikTlgyRO43USYm1h4Jd1aBneeIR6ww';
+const _PH_HOST = 'https://us.i.posthog.com';
+
+async function phCapture(eventName, properties = {}) {
+  try {
+    const data = await chrome.storage.local.get('authSession');
+    const distinctId = data.authSession?.user_id || 'anonymous';
+    fetch(`${_PH_HOST}/capture/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: _PH_API_KEY,
+        event: eventName,
+        properties: {
+          distinct_id: distinctId,
+          $lib: 'brilliant-jobs-extension',
+          $lib_version: chrome.runtime.getManifest().version,
+          ...properties,
+        },
+        timestamp: new Date().toISOString(),
+      }),
+    }).catch(() => {});
+  } catch { /* analytics should never break functionality */ }
+}
+
+// Track popup opened
+phCapture('popup_opened');
+
+// ============================================================
 // AUTH GATE
 // ============================================================
 
@@ -867,6 +898,7 @@ function showScanButtons(mode) {
 
 $('#s-start').addEventListener('click', async () => {
   const includePast = $('#s-include-past').checked;
+  phCapture('scan_started', { include_past: includePast }); // CS-003
   await chrome.runtime.sendMessage({ type: 'startScanner', includePast });
   refreshScannerState();
 });

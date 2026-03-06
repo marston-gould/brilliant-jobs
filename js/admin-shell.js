@@ -55,6 +55,16 @@
     gate.style.display = 'none';
     shell.style.display = 'block';
 
+    // CS-003: PostHog identity resolution for admin surface (CX-01)
+    if (window.posthog) {
+      posthog.identify(user.id, {
+        email: user.email,
+        role: profile.role,
+        plan: profile.plan,
+      });
+      posthog.register({ bj_surface: 'admin' });
+    }
+
     // Set user email in topbar
     var emailEl = document.getElementById('admin-user-email');
     if (emailEl) emailEl.textContent = user.email;

@@ -107,7 +107,17 @@
     posthog.init('phc_RqMlQQfq0G0DOikTlgyRO43USYm1h4Jd1aBneeIR6ww', {
         api_host: 'https://us.i.posthog.com',
         person_profiles: 'identified_only',
+        autocapture: true,
+        capture_pageview: true,
+        capture_pageleave: true,
+        session_recording: {
+          maskAllInputs: true,
+          maskTextSelector: '.sensitive-data',
+        },
+        enable_recording_console_log: false,
     })
+    // CS-003: Start exception autocapture for error tracking (DO-001)
+    if (posthog.startExceptionAutocapture) posthog.startExceptionAutocapture();
   </script>
 </head>
 <body>

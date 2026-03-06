@@ -13,6 +13,34 @@ importScripts('supabase.js');
 importScripts('utils/autoTracker.js');
 
 // ============================================================
+// CS-003: PostHog event capture for extension background (CX-02)
+// ============================================================
+const _BG_PH_KEY = 'phc_RqMlQQfq0G0DOikTlgyRO43USYm1h4Jd1aBneeIR6ww';
+const _BG_PH_HOST = 'https://us.i.posthog.com';
+
+async function captureEvent(eventName, properties = {}) {
+  try {
+    const data = await chrome.storage.local.get('authSession');
+    const distinctId = data.authSession?.user_id || 'anonymous';
+    fetch(`${_BG_PH_HOST}/capture/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: _BG_PH_KEY,
+        event: eventName,
+        properties: {
+          distinct_id: distinctId,
+          $lib: 'brilliant-jobs-extension',
+          $lib_version: chrome.runtime.getManifest().version,
+          ...properties,
+        },
+        timestamp: new Date().toISOString(),
+      }),
+    }).catch(() => {});
+  } catch { /* silent fail */ }
+}
+
+// ============================================================
 // STATE
 // ============================================================
 
@@ -485,6 +513,12 @@ function stopScanner() {
   chrome.alarms.clear('nextVisit');
   // Keep scheduledResume alarm alive so it can auto-restart tomorrow
   logMsg('Scanner stopped.', 'info');
+  // CS-003: Track scan completion
+  captureEvent('scan_completed', {
+    total_visited: scannerState.totalVisited || 0,
+    total_queued: scannerState.totalQueued || 0,
+    today_visited: scannerState.todayVisited || 0,
+  });
   saveState();
   syncStateToSupabase();
 }
@@ -1306,6 +1340,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         if (resp.ok) {
           const result = await resp.json();
           console.log('[BJ Toolbar] pipeline-write:', result.action, result.id);
+          // CS-003: Track job_saved event
+          captureEvent('job_saved', {
+            action: result.action,
+            source_platform: p.source_platform || 'unknown',
+            stage: p.stage || 'saved',
+            entry_source: 'overlay',
+          });
           sendResponse({ success: true, ...result });
         } else {
           const err = await resp.text();

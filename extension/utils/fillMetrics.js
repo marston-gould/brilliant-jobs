@@ -11,7 +11,7 @@
 // POSTHOG INTEGRATION
 // ============================================================
 
-const POSTHOG_API_KEY = 'phc_brilliant_jobs'; // placeholder — wire to actual key
+const POSTHOG_API_KEY = 'phc_RqMlQQfq0G0DOikTlgyRO43USYm1h4Jd1aBneeIR6ww'; // CS-003: wired to prod key
 const POSTHOG_HOST = 'https://us.i.posthog.com';
 
 async function getDistinctId() {
