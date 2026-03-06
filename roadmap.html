@@ -1897,11 +1897,11 @@ const features = [
 { s: 'done', b: 'pre-launch', n: 'FIX-08: RLS on remaining dashboard tables', d: 'CS-013: RLS enabled on all 16 public tables. Policies: user-owned (auth.uid()=user_id), public-read (ats_jobs, ats_companies for SEO), admin-only (audit_log). feature_flags seeded with extension_kill_switch. Deployed and verified — zero tables without RLS (except PostGIS spatial_ref_sys).', p: 75, e: '2h' },
 { s: 'done', b: 'pre-launch', n: 'AD-FIX-02: MFA enforcement in admin-shell.js', d: 'CS-006: Checks sb.auth.mfa.listFactors() after admin role check. No TOTP → inline setup (QR + manual secret). AAL1 → challenge flow. Both use Supabase MFA API.', p: 75, e: '1.5h' },
 { s: 'done', b: 'pre-launch', n: 'AD-FIX-03: approve-content admin check + EF rate limiting', d: 'CS-006: approve-content checks profiles.role=admin. generate-editorial 10/hr, seo-sync 5/hr via check_ef_rate_limit(). ef_rate_limits table + auto-cleanup.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.048 IX-FE-003: 7 empty + 5 console catches', d: '12 silenced on public landing. PostHog wire.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.049 IX-FE-004: Loading/error/retry 5 flows', d: 'preview-jobs, profile, merch, referral, auth — no feedback.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.048 IX-FE-003: 7 empty + 5 console catches', d: 'CS-014: 12 catches wired to PostHog via bjError(). Zero empty catch blocks remaining.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.049 IX-FE-004: Loading/error/retry 5 flows', d: 'CS-014: Loading/error/retry UI on stats fetch, preview search, merch load. Retry buttons with max 2 attempts.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.050 IX-BE-001: preview-jobs no auth/rate limit', d: 'Public EF no limiting. Add rate limit.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.051 IX-BE-003: Supabase re-init per call', d: 'New client per function. Singleton.', p: 75, e: '30min' },
-{ s: 'todo', b: 'pre-launch', n: '0.052 IX-BE-004: Profile check stuck state', d: 'No timeout. AbortController + 10s + error state.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.052 IX-BE-004: Profile check stuck state', d: 'CS-014: profileCheckWithTimeout() with 10s AbortController + 1 retry. bjError logged.', p: 75, e: '1h' },
 
 // 0-I: Error Handling — Admin (Pod 3, P1)
 { s: 'done', b: 'pre-launch', n: '0.053 AD-ES-001: Admin EF empty catches', d: 'CS-009: All admin module empty catches replaced with reportError(). Zero remaining in admin source.', p: 75, e: '1h' },
@@ -1969,7 +1969,7 @@ const features = [
 { s: 'todo', b: 'pre-launch', n: '0.093 IX-SEO-003: JSON-LD stale', d: '315K vs 400K mismatch.', p: 75, e: '15min' },
 { s: 'todo', b: 'pre-launch', n: '0.094 IX-DA-001: PostHog no identity', d: 'Combined with DS1-4.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.095 IX-DA-002: Broken referral pipeline', d: 'Resolved by anon key fix.', p: 75, e: '30min' },
-{ s: 'todo', b: 'pre-launch', n: '0.096 IX-BE-002: Stale "Live" labels', d: 'Add staleness badge.', p: 75, e: '30min' },
+{ s: 'done', b: 'pre-launch', n: '0.096 IX-BE-002: Stale "Live" labels', d: 'CS-014: Staleness badge shows when stats cache > 1h old. Retry button on fetch failure.', p: 75, e: '30min' },
 { s: 'todo', b: 'pre-launch', n: '0.097 IX-FE-006: URL hardcoding .io refs', d: 'Old domain. Replace.', p: 75, e: '30min' },
 
 // 0-R: DevOps (Pod 3, P2)

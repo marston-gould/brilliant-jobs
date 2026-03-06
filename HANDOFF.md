@@ -32,12 +32,12 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**CS-013** — Dashboard RLS + Extension Retry/Timeout + Kill-Switch
+**CS-014** — Landing Page P1s + CX Sprint 3 Start (CSS + Shadow DOM)
 - Completed: 2026-03-06
-- Commit: `e61f281`
-- Tags: `dashboard@0.7.0-rls`, `extension@0.5.0-killswitch`, `admin@0.7.0-killswitch`
-- Fix items resolved: FIX-08, FIX-12, FIX-13, FIX-14
-- Notes: Fixed feature_flags column schema mismatch (id/enabled vs key/value) in heartbeat EF, admin UI, and extension. RLS deployed on all public tables. Kill-switch tested via REST API. Launch gate G4 cleared.
+- Commit: `447051e`
+- Tags: `index@0.5.0-p1`, `dashboard@0.8.0-echarts`, `extension@0.6.0-shadowdom`
+- Fix items resolved: FIX-15c (IX-FE-003, IX-FE-004, IX-A11Y-001/002, IX-BE-002, IX-BE-004), CX-09, CX-10
+- Notes: 12 landing catches wired to PostHog via bjError(). Loading/error/retry on 3 async flows. Stats staleness badge. Profile check 10s timeout + retry. ECharts lazy-loaded on Stats tab. Extension overlays in Shadow DOM. 98 inline styles extracted to landing.css (4 remain). 1024px + 768px responsive breakpoints.
 
 ---
 
@@ -49,36 +49,33 @@ None.
 
 ## Next Session
 
-**CS-014** — Landing Page P1s + CX Sprint 3 Start (CSS + Shadow DOM)
+**CS-015** — Dashboard Core Fixes + Extension Hardening + Landing P2s
 
 | Field | Detail |
 |-------|--------|
-| Surface | Landing Page + Dashboard + Extension |
-| Fix Items | FIX-15c (IX-FE-003, IX-FE-004, IX-A11Y-001/002, IX-BE-002, IX-BE-004) + CX-09 + CX-10 |
-| Hours | 35–55h |
-| Pair | Frontend + CSS + Backend + Pod 4 |
-| Expected tags | index@0.5.0-p1, dashboard@0.8.0-echarts, extension@0.6.0-shadowdom |
+| Surface | Dashboard + Extension + Landing Page |
+| Fix Items | FIX-15 (FE-002/003, BE-003/004/005), FIX-09, FIX-15b |
+| Hours | 30–45h |
+| Pair | Frontend + Backend + Security |
+| Expected tags | dashboard@0.9.0-core, extension@0.7.0-hardening, index@0.6.0-p2 |
 
 ### Entry Gate (verify before starting)
 
-- [x] CS-003 complete — Sentry live → `dashboard@0.2.0-posthog`
-- [x] CS-009 complete — safeQuery patterns established → `dashboard@0.4.0-safequery`
-- [x] CS-007 complete — a11y baseline set → `dashboard@0.3.0-a11y`
+- [x] CS-013 complete — RLS deployed → `dashboard@0.7.0-rls`
+- [x] CS-014 complete — Landing P1s + ECharts lazy load + Shadow DOM → `index@0.5.0-p1`
 
 ### What To Build
 
-1. **FIX-15c**: Wire 12 landing page empty/console catches to Sentry. Add loading/error/retry UI to 5 async flows. Add staleness badge to stats. Add profile check 10s timeout with retry.
-2. **CX-09**: Lazy load ECharts on Stats page. Extension Shadow DOM isolation + token alignment with dashboard.
-3. **CX-10**: Landing page CSS extraction — 97 inline styles → external stylesheet (30KB cacheable). Add 1024px responsive breakpoint.
+1. **FIX-15**: Dashboard core fixes — stale cache invalidation, error boundary improvements, retry logic for failed queries.
+2. **FIX-09**: Extension selector hardening — resilient to DOM changes on target sites.
+3. **FIX-15b**: Landing page P2 fixes — remaining console-only warnings, minor UX polish.
 
 ### Exit Gate
 
-- 12 landing catches wired to Sentry
-- 5 async flows have loading/error/retry
-- Inline styles <50 on landing
-- Stats page LCP improved
-- Extension Shadow DOM active
-- 1024px breakpoint present
+- Dashboard error boundaries operational
+- Extension selector hardening verified on 3+ ATS platforms
+- Landing page P2 findings addressed
+- All existing tests still passing
 
 ---
 
@@ -86,16 +83,16 @@ None.
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| Dashboard | `dashboard@0.7.0-rls` | CS-013 |
-| Extension | `extension@0.5.0-killswitch` | CS-013 |
-| Landing Page | `index@0.4.0-a11y` | CS-011 |
+| Dashboard | `dashboard@0.8.0-echarts` | CS-014 |
+| Extension | `extension@0.6.0-shadowdom` | CS-014 |
+| Landing Page | `index@0.5.0-p1` | CS-014 |
 | Admin | `admin@0.7.0-killswitch` | CS-013 |
 | SEO Pages | (no remediation tag yet) | — |
 | Email Templates | `email-templates@0.1.0-utm` | CS-011 |
 
 ---
 
-## Completed Sessions (13 of 24)
+## Completed Sessions (14 of 24)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
@@ -112,14 +109,14 @@ None.
 | CS-011 | 2026-03-06 | CX-05, CX-06, CX-07, CX-08 | extension@0.4.0-a11y, dashboard@0.6.0-cx-s2, index@0.4.0-a11y |
 | CS-012 | 2026-03-06 | AD-FIX-06, AD-FIX-07, AD-FIX-08 | admin@0.6.0-visibility |
 | CS-013 | 2026-03-06 | FIX-08, FIX-12, FIX-13, FIX-14 | dashboard@0.7.0-rls, extension@0.5.0-killswitch, admin@0.7.0-killswitch |
+| CS-014 | 2026-03-06 | FIX-15c, CX-09, CX-10 | index@0.5.0-p1, dashboard@0.8.0-echarts, extension@0.6.0-shadowdom |
 
 ---
 
-## Remaining Sessions (11 of 24)
+## Remaining Sessions (10 of 24)
 
 | Session | Fix Items | Phase | Notes |
 |---------|-----------|-------|-------|
-| CS-014 | FIX-15c, CX-09, CX-10 | Phase 3 | Can run in parallel with CS-013 remaining |
 | CS-015 | FIX-15, FIX-09, FIX-15b | Phase 3 | Requires CS-013 complete (RLS deployed) |
 | CS-016 | FIX-10 (FE-001), FIX-16 | Phase 4: Code Quality + Architecture |  |
 | CS-017 | FIX-17 | Phase 4 |  |
@@ -169,7 +166,7 @@ None.
 
 ## Blockers
 
-None as of CS-013 (in progress).
+None as of CS-014 complete.
 
 ---
 

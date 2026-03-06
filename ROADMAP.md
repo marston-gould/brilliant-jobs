@@ -2748,6 +2748,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | CS-012 | 2026-03-06 | AD-FIX-06, AD-FIX-07, AD-FIX-08 | admin@0.6.0-visibility | AD-FIX-06: Cron health panel — v_cron_health view (cron.job + latest cron.job_run_details), color-coded status (red/amber/green/disabled), auto-refresh 60s, filter by health. 64 jobs displayed. AD-FIX-07: Audit trail wiring — _logAdminAction() async fire-and-forget helper. Wired into content approvals, notification config saves, merch placement CRUD, Stripe plan overrides, admin email searches. AD-FIX-08: Biz-ops tables created (paid_spend_log, social_post_log, vendor_cost_log) with admin-only RLS. Init functions wired for paid/social/analytics/costs/forecasting tabs. |
 
 | CS-013 | 2026-03-06 | FIX-08, FIX-12, FIX-13, FIX-14 | dashboard@0.7.0-rls, extension@0.5.0-killswitch, admin@0.7.0-killswitch | FIX-08: RLS enabled on all public tables (16 tables, 30+ policies). Feature flag seeded. FIX-12: fetchWithRetry wired to 30 extension fetch calls. FIX-13: 3-layer kill-switch (heartbeat directive, externally_connectable, DB flag poll) + admin toggle UI. FIX-14: PII minimization per-question subsets. Column schema fix (id/enabled vs key/value) applied to EF, admin UI, extension. Deployed + tested. |
+| CS-014 | 2026-03-06 | FIX-15c, CX-09, CX-10 | index@0.5.0-p1, dashboard@0.8.0-echarts, extension@0.6.0-shadowdom | FIX-15c: 12 landing page catches wired to PostHog via bjError(). Loading/error/retry UI on stats fetch, preview search, merch load. Staleness badge on stats. Profile check 10s timeout + retry. Zero empty catch blocks remaining. CX-09: ECharts lazy-loaded on Stats tab open (removed eager CDN load). Extension overlays isolated in Shadow DOM. CX-10: 98 inline styles extracted to landing.css (7.4KB cacheable). 4 inline styles remain. 1024px + 768px responsive breakpoints added. |
 
 **Status:** COMPLETE — CS-013 deployed and verified (2026-03-06)
 **Pods:** Pod 3 (Technical Audit, 113+ findings across 17 sessions) + Pod 4 (CX Examination, 46 findings across 5 sessions)
@@ -2841,11 +2842,11 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 |---|------|------|--------|--------|-------|
 | 0.046 | IX-ES-001: safeReadLS undefined | 30min | 15min | ✅ | CS-005: window.safeReadLS() defined inline before merch-client.js loads. Wraps localStorage.getItem in try/catch with JSON.parse fallback. Resolves ReferenceError for returning visitors. Deployed 2026-03-06. |
 | 0.047 | IX-ES-002: Stale anon key referral-capture.js | 30min | 10min | ✅ | CS-005: Replaced stale anon key (iat:1738367665, Jan 2025) with current key (iat:1770569066, Feb 2026) in referral-capture.js. Key now matches index.html + merch-client.js. Referral attribution tracking restored. Also resolves IX-DA-002 (broken referral pipeline). Deployed 2026-03-06. |
-| 0.048 | IX-FE-003: 7 empty + 5 console-only catches | 1h | — | 🔲 | 12 silenced errors on public landing. Wire to PostHog. |
-| 0.049 | IX-FE-004: Loading/error/retry states (5 flows) | 1h | — | 🔲 | preview-jobs, profile check, merch, referral, auth — all missing feedback. |
+| 0.048 | IX-FE-003: 7 empty + 5 console-only catches | 1h | CS-014 | ✅ | 12 silenced errors on public landing. Wire to PostHog. |
+| 0.049 | IX-FE-004: Loading/error/retry states (5 flows) | 1h | CS-014 | ✅ | preview-jobs, profile check, merch, referral, auth — all missing feedback. |
 | 0.050 | IX-BE-001: preview-jobs no auth + no rate limit | 1h | — | 🔲 | Public EF, no rate limiting. Add rate limit + optional auth. |
 | 0.051 | IX-BE-003: Supabase client re-initialization | 30min | — | 🔲 | New client per call instead of singleton. |
-| 0.052 | IX-BE-004: Profile verification stuck state | 1h | — | 🔲 | No timeout. Spinner forever. AbortController + 10s timeout + error state. |
+| 0.052 | IX-BE-004: Profile verification stuck state | 1h | CS-014 | ✅ | No timeout. Spinner forever. AbortController + 10s timeout + error state. |
 
 ### 0-I: Error Handling — Admin (Pod 3, P1)
 
@@ -2934,7 +2935,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.093 | IX-SEO-003: JSON-LD structured data stale | 15min | — | 🔲 | 315K vs 400K mismatch. |
 | 0.094 | IX-DA-001: PostHog no identity bridge | 1h | 0h | ✅ | CS-003: Combined with DS1-4 (0.101). Direct posthog.init() on landing page replaces GTM dependency. |
 | 0.095 | IX-DA-002: Broken referral pipeline | 30min | — | 🔲 | Resolved by 0.047 anon key fix. |
-| 0.096 | IX-BE-002: Stale "Live" stats labels | 30min | — | 🔲 | Add staleness badge with refresh timestamp. |
+| 0.096 | IX-BE-002: Stale "Live" stats labels | 30min | CS-014 | ✅ | Add staleness badge with refresh timestamp. |
 | 0.097 | IX-FE-006: URL hardcoding (brilliantjobs.io refs) | 30min | — | 🔲 | Old domain refs. Replace. |
 
 ### 0-R: DevOps + Infra (Pod 3, P2)
