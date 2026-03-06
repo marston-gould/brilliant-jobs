@@ -36,7 +36,7 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 **CS-020** — Load Testing + Staging Environment + CI/CD (FIX-20, FIX-21)
 - Completed: 2026-03-06
-- Commit: (pending push)
+- Commit: `64fc628`
 - Tags: `loadtest@1.0.0`, `cicd@1.0.0`
 - Fix items resolved: FIX-20 (Load Testing), FIX-21 (Staging + CI/CD)
 - Notes: k6 load test suite for 4 surfaces (preview-jobs, dashboard API, extension heartbeat, admin concurrent). Full-suite combined test at 1,200 VUs. 5 profiles (smoke, ramp, spike, soak, full-suite). GitHub Actions: ci.yml (tests+build+version on PRs), deploy.yml enhanced (admin bundle, extension artifact), load-test.yml (manual k6). Staging docs updated. 64 new tests (387 total).
