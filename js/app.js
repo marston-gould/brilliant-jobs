@@ -106,12 +106,13 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
     if (userId && savedFilters.length > 0 && !localStorage.getItem('bj_filters_migrated')) {
       for (let i = 0; i < savedFilters.length; i++) {
         const f = savedFilters[i];
-        await sb.from('user_filters').insert({
+        var { error: fltErr } = await sb.from('user_filters').insert({
           user_id: userId,
           name: f.name || 'Untitled',
           filter_data: f,
           sort_order: i,
         });
+        if (fltErr) { reportError('app:filter-migrate', fltErr); break; }
       }
       localStorage.setItem('bj_filters_migrated', '1');
       showToast('Your saved searches are now synced to the cloud.', { type: 'success', duration: 5000 });
@@ -196,11 +197,12 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
     tuningSettings = safeReadLS('bj_tuning', {});
     // Migrate to Supabase
     if (userId && Object.keys(tuningSettings).length > 0 && !localStorage.getItem('bj_tuning_migrated')) {
-      await sb.from('user_tuning').upsert({
+      var { error: tunErr } = await sb.from('user_tuning').upsert({
         user_id: userId,
         tuning_data: tuningSettings,
       }, { onConflict: 'user_id' });
-      localStorage.setItem('bj_tuning_migrated', '1');
+      if (tunErr) reportError('app:tuning-migrate', tunErr);
+      else localStorage.setItem('bj_tuning_migrated', '1');
     }
   }
   
@@ -288,7 +290,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   if (bjSessionId) {
     setInterval(() => {
       if (document.visibilityState === 'visible') {
-        sb.rpc('session_heartbeat', { p_session_id: bjSessionId });
+        sb.rpc('session_heartbeat', { p_session_id: bjSessionId }).then(r => { if (r.error) reportError('app:heartbeat', r.error); });
       }
     }, 5 * 60 * 1000);
   }
@@ -298,7 +300,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
 async function initSession() {
   const existing = sessionStorage.getItem('bj_session_id');
   if (existing) {
-    sb.rpc('session_heartbeat', { p_session_id: existing });
+    sb.rpc('session_heartbeat', { p_session_id: existing }).then(r => { if (r.error) reportError('app:heartbeat-resume', r.error); });
     return existing;
   }
   const deviceType = window.innerWidth < 768 ? 'mobile' :

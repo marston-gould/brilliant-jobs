@@ -209,7 +209,7 @@ function sendReferralTemplate() {
     try {
       var sb = window.bjSupabase;
       if (!sb) return;
-      await sb.rpc('upsert_referral_outreach', {
+      var { error: rpcErr } = await sb.rpc('upsert_referral_outreach', {
         p_job_id: String(job.greenhouse_id || ''),
         p_company: job.company_name || '',
         p_job_title: job.title || '',
@@ -217,6 +217,7 @@ function sendReferralTemplate() {
         p_their_name: theirName || null,
         p_status: 'sent'
       });
+      if (rpcErr) reportError('referral-outreach:upsert', rpcErr);
       if (window.posthog) {
         posthog.capture('referral_saved', {
           job_id: job.greenhouse_id,

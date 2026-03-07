@@ -1996,7 +1996,7 @@ async function bjSubmitFeedback(stateKey) {
       var session = await sb.auth.getSession();
       if (session.data.session) {
         var SRK = session.data.session.access_token;
-        await sb.from('rewrite_rounds')
+        var { error: fbErr } = await sb.from('rewrite_rounds')
           .update({
             rating_overall: state.feedback.overall,
             rating_accuracy: state.feedback.accuracy,
@@ -2007,6 +2007,7 @@ async function bjSubmitFeedback(stateKey) {
           })
           .eq('session_id', state.rewriteResult.session_id)
           .eq('round_number', state.rewriteResult.round_number || 1);
+        if (fbErr) reportError('keywords:rewrite-feedback', fbErr);
       }
     } catch(e) { reportError('keywords', e); console.error('[BJ] Feedback save error:', e); }
   }
@@ -2449,7 +2450,7 @@ document.addEventListener('click', e => {
     openJobModal(link.dataset.jobid);
     // Log click signal (fire-and-forget)
     if (typeof sb !== 'undefined' && sb.auth) {
-      Promise.resolve(sb.rpc('log_feed_signal', { p_greenhouse_id: link.dataset.jobid, p_signal_type: 'click' })).catch(() => {});
+      Promise.resolve(sb.rpc('log_feed_signal', { p_greenhouse_id: link.dataset.jobid, p_signal_type: 'click' })).catch(e => reportError('keywords:signal-click', e));
     }
   }
   // "→" click in preview snippet opens modal
@@ -3270,7 +3271,7 @@ function modalApply(jobId, url) {
   window.open(url, '_blank');
   // Log apply signal
   if (typeof sb !== 'undefined' && sb.auth) {
-    Promise.resolve(sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'apply' })).catch(() => {});
+    Promise.resolve(sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'apply' })).catch(e => reportError('keywords:signal-apply', e));
   }
   // Don't auto-mark as applied — the webRequest listener or manual confirmation will handle it
 }
@@ -3440,7 +3441,7 @@ function hideJob(jobId, btn) {
   const job = currentJobs.find(j => j.greenhouse_id === jobId) || {};
   // Log hide signal
   if (typeof sb !== 'undefined' && sb.auth) {
-    Promise.resolve(sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'hide' })).catch(() => {});
+    Promise.resolve(sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'hide' })).catch(e => reportError('keywords:signal-hide', e));
   }
   // Track which filter(s) were active when this job was hidden
   var activeFilterIdxs = [];
@@ -3467,7 +3468,7 @@ function toggleSaveJob(jobId, btn) {
     btn.classList.add('saved-btn');
     // Log save signal
     if (typeof sb !== 'undefined' && sb.auth) {
-      Promise.resolve(sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'save' })).catch(() => {});
+      Promise.resolve(sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'save' })).catch(e => reportError('keywords:signal-save', e));
     }
     if (!meta[jobId]) meta[jobId] = { stage: 'saved', savedAt: new Date().toISOString(), filterTags: [] };
   }
@@ -3848,10 +3849,11 @@ async function bjRenderCoverLetterArchive() {
     var clIds = covers.map(function(c) { return c.id; });
     var aiScores = {};
     try {
-      var { data: scores } = await sb.from('content_ai_scores')
+      var { data: scores, error: scErr } = await sb.from('content_ai_scores')
         .select('content_id,ai_label,ai_generated_score,confidence,summary')
         .eq('content_type', 'cover_letter')
         .in('content_id', clIds);
+      if (scErr) reportError('keywords:cl-ai-scores', scErr);
       if (scores) scores.forEach(function(s) { aiScores[s.content_id] = s; });
     } catch(e) { reportError('keywords', e); console.warn('[ai-score] CL score fetch error:', e.message); }
 
@@ -3909,7 +3911,7 @@ async function bjRenderCoverLetterArchive() {
 
 async function bjDeleteCoverLetter(id) {
   if (!confirm('Delete this cover letter?')) return;
-  try { await sb.from('cover_letters').delete().eq('id', id); bjRenderCoverLetterArchive(); }
+  try { var { error: delErr } = await sb.from('cover_letters').delete().eq('id', id); if (delErr) { reportError('keywords:delete-cover-letter', delErr); return; } bjRenderCoverLetterArchive(); }
   catch(e) { reportError('keywords', e); console.error('[BJ] Delete cover letter error:', e); }
 }
 

@@ -353,7 +353,7 @@ async function debitCreditsForAction(amount, costCategory, description, costCent
       p_cost_cents: costCents || 0
     });
     if (result.error) {
-      console.error('[Billing] debit_credits error:', result.error); toastError('Credit deduction failed');
+      reportError('billing:debit-credits', result.error); toastError('Credit deduction failed');
       return { success: false, error: result.error.message };
     }
     var data = result.data;

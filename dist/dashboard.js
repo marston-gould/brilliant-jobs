@@ -1,5 +1,5 @@
 // === js/version.js ===
-var BJ_VERSION = 'v7.28';
+var BJ_VERSION = 'v7.29';
 (function() {
   function populateVersion() {
     document.querySelectorAll(".bj-version, [id$=\"-version\"]").forEach(function(el) {
@@ -1961,12 +1961,13 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
     if (userId && savedFilters.length > 0 && !localStorage.getItem('bj_filters_migrated')) {
       for (let i = 0; i < savedFilters.length; i++) {
         const f = savedFilters[i];
-        await sb.from('user_filters').insert({
+        var { error: fltErr } = await sb.from('user_filters').insert({
           user_id: userId,
           name: f.name || 'Untitled',
           filter_data: f,
           sort_order: i,
         });
+        if (fltErr) { reportError('app:filter-migrate', fltErr); break; }
       }
       localStorage.setItem('bj_filters_migrated', '1');
       showToast('Your saved searches are now synced to the cloud.', { type: 'success', duration: 5000 });
@@ -2051,11 +2052,12 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
     tuningSettings = safeReadLS('bj_tuning', {});
     // Migrate to Supabase
     if (userId && Object.keys(tuningSettings).length > 0 && !localStorage.getItem('bj_tuning_migrated')) {
-      await sb.from('user_tuning').upsert({
+      var { error: tunErr } = await sb.from('user_tuning').upsert({
         user_id: userId,
         tuning_data: tuningSettings,
       }, { onConflict: 'user_id' });
-      localStorage.setItem('bj_tuning_migrated', '1');
+      if (tunErr) reportError('app:tuning-migrate', tunErr);
+      else localStorage.setItem('bj_tuning_migrated', '1');
     }
   }
   
@@ -2143,7 +2145,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   if (bjSessionId) {
     setInterval(() => {
       if (document.visibilityState === 'visible') {
-        sb.rpc('session_heartbeat', { p_session_id: bjSessionId });
+        sb.rpc('session_heartbeat', { p_session_id: bjSessionId }).then(r => { if (r.error) reportError('app:heartbeat', r.error); });
       }
     }, 5 * 60 * 1000);
   }
@@ -2153,7 +2155,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
 async function initSession() {
   const existing = sessionStorage.getItem('bj_session_id');
   if (existing) {
-    sb.rpc('session_heartbeat', { p_session_id: existing });
+    sb.rpc('session_heartbeat', { p_session_id: existing }).then(r => { if (r.error) reportError('app:heartbeat-resume', r.error); });
     return existing;
   }
   const deviceType = window.innerWidth < 768 ? 'mobile' :
@@ -4447,6 +4449,7 @@ window.addEventListener('ai-scoring-prefs-changed', function(e) {
     try {
       if (typeof sb === 'undefined' || typeof currentUser === 'undefined' || !currentUser) return;
       var resp = await sb.from('profiles').select('ai_scoring_prefs').eq('id', currentUser.id).single();
+      if (resp.error && resp.error.code !== 'PGRST116') reportError('job-feed:ai-scoring-prefs', resp.error);
       if (resp.data && resp.data.ai_scoring_prefs) {
         _userAiScoringPrefsCache = resp.data.ai_scoring_prefs;
       }
@@ -7908,7 +7911,7 @@ async function bjSubmitFeedback(stateKey) {
       var session = await sb.auth.getSession();
       if (session.data.session) {
         var SRK = session.data.session.access_token;
-        await sb.from('rewrite_rounds')
+        var { error: fbErr } = await sb.from('rewrite_rounds')
           .update({
             rating_overall: state.feedback.overall,
             rating_accuracy: state.feedback.accuracy,
@@ -7919,6 +7922,7 @@ async function bjSubmitFeedback(stateKey) {
           })
           .eq('session_id', state.rewriteResult.session_id)
           .eq('round_number', state.rewriteResult.round_number || 1);
+        if (fbErr) reportError('keywords:rewrite-feedback', fbErr);
       }
     } catch(e) { reportError('keywords', e); console.error('[BJ] Feedback save error:', e); }
   }
@@ -8361,7 +8365,7 @@ document.addEventListener('click', e => {
     openJobModal(link.dataset.jobid);
     // Log click signal (fire-and-forget)
     if (typeof sb !== 'undefined' && sb.auth) {
-      Promise.resolve(sb.rpc('log_feed_signal', { p_greenhouse_id: link.dataset.jobid, p_signal_type: 'click' })).catch(() => {});
+      Promise.resolve(sb.rpc('log_feed_signal', { p_greenhouse_id: link.dataset.jobid, p_signal_type: 'click' })).catch(e => reportError('keywords:signal-click', e));
     }
   }
   // "→" click in preview snippet opens modal
@@ -9182,7 +9186,7 @@ function modalApply(jobId, url) {
   window.open(url, '_blank');
   // Log apply signal
   if (typeof sb !== 'undefined' && sb.auth) {
-    Promise.resolve(sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'apply' })).catch(() => {});
+    Promise.resolve(sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'apply' })).catch(e => reportError('keywords:signal-apply', e));
   }
   // Don't auto-mark as applied — the webRequest listener or manual confirmation will handle it
 }
@@ -9352,7 +9356,7 @@ function hideJob(jobId, btn) {
   const job = currentJobs.find(j => j.greenhouse_id === jobId) || {};
   // Log hide signal
   if (typeof sb !== 'undefined' && sb.auth) {
-    Promise.resolve(sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'hide' })).catch(() => {});
+    Promise.resolve(sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'hide' })).catch(e => reportError('keywords:signal-hide', e));
   }
   // Track which filter(s) were active when this job was hidden
   var activeFilterIdxs = [];
@@ -9379,7 +9383,7 @@ function toggleSaveJob(jobId, btn) {
     btn.classList.add('saved-btn');
     // Log save signal
     if (typeof sb !== 'undefined' && sb.auth) {
-      Promise.resolve(sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'save' })).catch(() => {});
+      Promise.resolve(sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'save' })).catch(e => reportError('keywords:signal-save', e));
     }
     if (!meta[jobId]) meta[jobId] = { stage: 'saved', savedAt: new Date().toISOString(), filterTags: [] };
   }
@@ -9760,10 +9764,11 @@ async function bjRenderCoverLetterArchive() {
     var clIds = covers.map(function(c) { return c.id; });
     var aiScores = {};
     try {
-      var { data: scores } = await sb.from('content_ai_scores')
+      var { data: scores, error: scErr } = await sb.from('content_ai_scores')
         .select('content_id,ai_label,ai_generated_score,confidence,summary')
         .eq('content_type', 'cover_letter')
         .in('content_id', clIds);
+      if (scErr) reportError('keywords:cl-ai-scores', scErr);
       if (scores) scores.forEach(function(s) { aiScores[s.content_id] = s; });
     } catch(e) { reportError('keywords', e); console.warn('[ai-score] CL score fetch error:', e.message); }
 
@@ -9821,7 +9826,7 @@ async function bjRenderCoverLetterArchive() {
 
 async function bjDeleteCoverLetter(id) {
   if (!confirm('Delete this cover letter?')) return;
-  try { await sb.from('cover_letters').delete().eq('id', id); bjRenderCoverLetterArchive(); }
+  try { var { error: delErr } = await sb.from('cover_letters').delete().eq('id', id); if (delErr) { reportError('keywords:delete-cover-letter', delErr); return; } bjRenderCoverLetterArchive(); }
   catch(e) { reportError('keywords', e); console.error('[BJ] Delete cover letter error:', e); }
 }
 
@@ -13295,11 +13300,12 @@ async function unsaveFromPipeline(jobId) {
   // Remove from Supabase
   if (currentUser?.id) {
     try {
-      await sb.from('user_pipeline')
+      var { error: delErr } = await sb.from('user_pipeline')
         .delete()
         .eq('user_id', currentUser.id)
         .eq('job_id', jobId);
-    } catch (e) { console.error('[BJ] Pipeline delete error:', e); toastError('Failed to remove pipeline entry'); }
+      if (delErr) { reportError('pipeline:delete', delErr); toastError('Failed to remove pipeline entry'); }
+    } catch (e) { reportError('pipeline:delete', e); toastError('Failed to remove pipeline entry'); }
   }
 
   // A14 Session 3: invalidate feed/stats caches after pipeline removal
@@ -13808,9 +13814,10 @@ async function setTrackingMode(jobId, mode) {
   if (!meta?._dbId) return;
   meta.tracking_mode = mode;
   try {
-    await sb.from('user_pipeline').update({ tracking_mode: mode }).eq('id', meta._dbId);
+    var { error: trkErr } = await sb.from('user_pipeline').update({ tracking_mode: mode }).eq('id', meta._dbId);
+    if (trkErr) { reportError('pipeline:tracking-mode', trkErr); toastError('Failed to change tracking mode'); return; }
     renderPipeline();
-  } catch (e) { console.error('[BJ] Tracking mode error:', e); toastError('Failed to change tracking mode'); }
+  } catch (e) { reportError('pipeline:tracking-mode', e); toastError('Failed to change tracking mode'); }
 }
 
 function showCustomReminder(jobId) {
@@ -17748,16 +17755,19 @@ async function loadNotifPrefs() {
   if (!currentUser) return;
   try {
     // Global prefs — upsert defaults if row doesn't exist yet
-    await sb.from('notification_preferences').upsert({
+    var { error: upsErr } = await sb.from('notification_preferences').upsert({
       user_id: currentUser.id
     }, { onConflict: 'user_id', ignoreDuplicates: true });
-    const { data: prefs } = await sb.from('notification_preferences')
+    if (upsErr) reportError('applications:notif-pref-upsert', upsErr);
+    const { data: prefs, error: prefErr } = await sb.from('notification_preferences')
       .select('*').eq('user_id', currentUser.id).single();
+    if (prefErr && prefErr.code !== 'PGRST116') reportError('applications:notif-pref-load', prefErr);
     notifPrefs = prefs;
 
     // Per-type channels
-    const { data: channels } = await sb.from('notification_channels')
+    const { data: channels, error: chanErr } = await sb.from('notification_channels')
       .select('*').eq('user_id', currentUser.id);
+    if (chanErr) reportError('applications:notif-channels', chanErr);
     notifChannels = {};
     (channels || []).forEach(c => { notifChannels[c.notification_type] = c; });
 
@@ -17831,11 +17841,12 @@ $('#notif-save-prefs')?.addEventListener('click', async () => {
 
   try {
     // Upsert global prefs
-    await sb.from('notification_preferences').upsert({
+    var { error: gpErr } = await sb.from('notification_preferences').upsert({
       user_id: currentUser.id,
       email_enabled: true,
       updated_at: new Date().toISOString()
     }, { onConflict: 'user_id' });
+    if (gpErr) { reportError('applications:save-global-prefs', gpErr); throw gpErr; }
 
     // Upsert per-type channels
     const rows = [];
@@ -17854,13 +17865,14 @@ $('#notif-save-prefs')?.addEventListener('click', async () => {
       });
     });
     if (rows.length > 0) {
-      await sb.from('notification_channels').upsert(rows, { onConflict: 'user_id,notification_type' });
+      var { error: chErr } = await sb.from('notification_channels').upsert(rows, { onConflict: 'user_id,notification_type' });
+      if (chErr) { reportError('applications:save-channels', chErr); throw chErr; }
     }
 
     btn.textContent = 'Saved';
     setTimeout(() => { btn.textContent = 'Save Preferences'; btn.disabled = false; }, 1500);
   } catch (e) {
-    console.error('[Notif] Save failed:', e);
+    reportError('applications:save-prefs', e);
     btn.textContent = 'Error — retry';
     btn.disabled = false;
   }
@@ -18051,10 +18063,11 @@ $('#override-filter-select')?.addEventListener('change', async (e) => {
   let overrides = {};
   if (currentUser) {
     try {
-      const { data } = await sb.from('notification_filter_overrides')
+      const { data, error } = await sb.from('notification_filter_overrides')
         .select('*')
         .eq('user_id', currentUser.id)
         .eq('filter_name', filterName);
+      if (error) { reportError('applications:overrides', error); }
       (data || []).forEach(o => { overrides[o.notification_type] = o; });
     } catch(e) { reportError('applications:ignore', e); }
   }
@@ -18213,11 +18226,12 @@ $$('#nlog-filter-type, #nlog-filter-channel, #nlog-filter-status').forEach(el =>
 $('#notif-export-csv')?.addEventListener('click', async () => {
   if (!currentUser) return;
   try {
-    const { data: logs } = await sb.from('notification_log')
+    const { data: logs, error: logErr } = await sb.from('notification_log')
       .select('*')
       .eq('user_id', currentUser.id)
       .order('created_at', { ascending: false })
       .limit(1000);
+    if (logErr) { reportError('applications:notif-csv', logErr); alert('Failed to export.'); return; }
 
     if (!logs || logs.length === 0) { alert('No notifications to export.'); return; }
 
@@ -18243,9 +18257,10 @@ async function checkNavPulses() {
   if (!currentUser) return;
   try {
     // Get last_seen_at
-    const { data: profile } = await sb.from('profiles')
+    const { data: profile, error: profErr } = await sb.from('profiles')
       .select('last_seen_at')
       .eq('id', currentUser.id).single();
+    if (profErr && profErr.code !== 'PGRST116') reportError('applications:nav-pulse', profErr);
     const lastSeen = profile?.last_seen_at || new Date(0).toISOString();
 
     // Applications: pending notification actions
@@ -18314,8 +18329,9 @@ if (currentUser) {
 async function loadPipelineIntelligenceSettings() {
   if (!currentUser?.id) return;
   try {
-    const { data } = await sb.from('pipeline_tracking_settings')
+    const { data, error } = await sb.from('pipeline_tracking_settings')
       .select('*').eq('user_id', currentUser.id).single();
+    if (error && error.code !== 'PGRST116') { reportError('applications:pipeline-settings', error); return; }
     if (!data) return;
     const el = (id) => document.getElementById(id);
     if (el('pi-smart-prompts')) el('pi-smart-prompts').checked = data.smart_prompts_enabled !== false;
@@ -18337,8 +18353,9 @@ async function loadPipelineIntelligenceSettings() {
   }
   // Show Gmail status
   try {
-    const { data: conn } = await sb.from('gmail_connections')
+    const { data: conn, error: connErr } = await sb.from('gmail_connections')
       .select('sync_status').eq('user_id', currentUser.id).single();
+    if (connErr && connErr.code !== 'PGRST116') reportError('applications:gmail-status', connErr);
     const statusEl = document.getElementById('pi-gmail-status');
     if (statusEl) statusEl.style.display = '';
     if (conn?.sync_status === 'active') {
@@ -18733,8 +18750,9 @@ async function syncPassiveNotificationChannels() {
     // When passive ON: suppress new_jobs_daily by setting frequency = 'none'
     // When passive OFF: restore to 'daily'
     var freq = _passiveMode ? 'none' : 'daily';
-    await sb.from('notification_channels')
+    var { error: chanErr } = await sb.from('notification_channels')
       .upsert({ user_id: currentUser.id, notification_type: 'new_jobs_daily', frequency: freq }, { onConflict: 'user_id,notification_type' });
+    if (chanErr) reportError('settings:passive-channel', chanErr);
   } catch(e) { reportError('settings', e); console.warn('[BJ] Passive notification channel sync error:', e); }
 }
 
@@ -20431,6 +20449,7 @@ function hideMVFreshnessNotice() {
 async function checkMVStaleness() {
   try {
     var result = await sb.from('mv_landing_stats').select('refreshed_at').single();
+    if (result.error && result.error.code !== 'PGRST116') reportError('stats:mv-staleness', result.error);
     if (result && result.data) {
       var refreshedAt = new Date(result.data.refreshed_at);
       var ageMs = Date.now() - refreshedAt.getTime();
@@ -20906,7 +20925,7 @@ async function debitCreditsForAction(amount, costCategory, description, costCent
       p_cost_cents: costCents || 0
     });
     if (result.error) {
-      console.error('[Billing] debit_credits error:', result.error); toastError('Credit deduction failed');
+      reportError('billing:debit-credits', result.error); toastError('Credit deduction failed');
       return { success: false, error: result.error.message };
     }
     var data = result.data;
@@ -21678,7 +21697,8 @@ async function _rwCanRewrite() {
   }
 
   // Check credit balance
-  var { data: balance } = await sb.rpc('get_credit_balance', { p_user_id: currentUser.id });
+  var { data: balance, error: balErr } = await sb.rpc('get_credit_balance', { p_user_id: currentUser.id });
+  if (balErr) { reportError('rewrite:credit-balance', balErr); showToast('Could not check credit balance. Try again.', { type: 'error' }); return false; }
   if (balance < 3) {
     showToast('This rewrite costs 3 credits. You have ' + balance + '. Purchase more in Settings.', { type: 'error', duration: 5000 });
     return false;
@@ -21881,10 +21901,11 @@ async function _rwAcceptAll() {
 
     // Update session record with file path
     if (_rwState.sessionId) {
-      await sb.from('rewrite_sessions').update({
+      var { error: updErr } = await sb.from('rewrite_sessions').update({
         output_file_path: storagePath,
         status: 'accepted',
       }).eq('id', _rwState.sessionId);
+      if (updErr) reportError('rewrite:session-update', updErr);
     }
 
     // Auto-download
@@ -26354,7 +26375,8 @@ Or use my code: ${referralStats.referral_code}`);
     try {
       const sb = window.bjSupabase || window.supabase?.createClient?.(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
       const { data: { user } } = await sb.auth.getUser();
-      await sb.from('profiles').update({ sharing_enabled: enabled }).eq('id', user.id);
+      var { error: shareErr } = await sb.from('profiles').update({ sharing_enabled: enabled }).eq('id', user.id);
+      if (shareErr) { reportError('referrals:toggle-leaderboard', shareErr); return; }
       if (enabled) loadLeaderboard(_lbPeriod);
       else {
         const body = document.getElementById('ref-leaderboard-body');
@@ -26382,7 +26404,8 @@ Or use my code: ${referralStats.referral_code}`);
 
       if (!data || data.length === 0) {
         // Check 20-user threshold — count opted-in users
-        const { count } = await sb.from('profiles').select('*', { count: 'exact', head: true }).eq('sharing_enabled', true);
+        const { count, error: cntErr } = await sb.from('profiles').select('*', { count: 'exact', head: true }).eq('sharing_enabled', true);
+        if (cntErr) reportError('referrals:leaderboard-count', cntErr);
         const optedIn = count || 0;
         if (optedIn < 20) {
           body.innerHTML = `
@@ -26439,11 +26462,12 @@ Or use my code: ${referralStats.referral_code}`);
     try {
       const sb = window.bjSupabase || window.supabase?.createClient?.(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
       const { data: { user } } = await sb.auth.getUser();
-      await sb.from('referral_invites').insert({
+      var { error: invErr } = await sb.from('referral_invites').insert({
         referrer_id: user.id,
         channel: channel,
         utm_medium: channel
       });
+      if (invErr) reportError('referrals:track-invite', invErr);
     } catch(err) { reportError('referrals', err); console.error('[Referrals] Track invite error:', err);
     }
   }
@@ -26684,6 +26708,10 @@ Or use my code: ${referralStats.referral_code}`);
 
     _outreachRows = (outreachResult.status === 'fulfilled' && outreachResult.value.data) ? outreachResult.value.data : [];
     _correlationData = (correlationResult.status === 'fulfilled' && correlationResult.value.data) ? correlationResult.value.data : null;
+    if (outreachResult.status === 'fulfilled' && outreachResult.value.error) reportError('referrals:outreach-rpc', outreachResult.value.error);
+    if (correlationResult.status === 'fulfilled' && correlationResult.value.error) reportError('referrals:correlation-rpc', correlationResult.value.error);
+    if (outreachResult.status === 'rejected') reportError('referrals:outreach-rejected', outreachResult.reason);
+    if (correlationResult.status === 'rejected') reportError('referrals:correlation-rejected', correlationResult.reason);
 
     // PostHog: referral_log_viewed
     if (window.posthog) {
@@ -27028,7 +27056,7 @@ function sendReferralTemplate() {
     try {
       var sb = window.bjSupabase;
       if (!sb) return;
-      await sb.rpc('upsert_referral_outreach', {
+      var { error: rpcErr } = await sb.rpc('upsert_referral_outreach', {
         p_job_id: String(job.greenhouse_id || ''),
         p_company: job.company_name || '',
         p_job_title: job.title || '',
@@ -27036,6 +27064,7 @@ function sendReferralTemplate() {
         p_their_name: theirName || null,
         p_status: 'sent'
       });
+      if (rpcErr) reportError('referral-outreach:upsert', rpcErr);
       if (window.posthog) {
         posthog.capture('referral_saved', {
           job_id: job.greenhouse_id,

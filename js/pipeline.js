@@ -495,11 +495,12 @@ async function unsaveFromPipeline(jobId) {
   // Remove from Supabase
   if (currentUser?.id) {
     try {
-      await sb.from('user_pipeline')
+      var { error: delErr } = await sb.from('user_pipeline')
         .delete()
         .eq('user_id', currentUser.id)
         .eq('job_id', jobId);
-    } catch (e) { console.error('[BJ] Pipeline delete error:', e); toastError('Failed to remove pipeline entry'); }
+      if (delErr) { reportError('pipeline:delete', delErr); toastError('Failed to remove pipeline entry'); }
+    } catch (e) { reportError('pipeline:delete', e); toastError('Failed to remove pipeline entry'); }
   }
 
   // A14 Session 3: invalidate feed/stats caches after pipeline removal
@@ -1008,9 +1009,10 @@ async function setTrackingMode(jobId, mode) {
   if (!meta?._dbId) return;
   meta.tracking_mode = mode;
   try {
-    await sb.from('user_pipeline').update({ tracking_mode: mode }).eq('id', meta._dbId);
+    var { error: trkErr } = await sb.from('user_pipeline').update({ tracking_mode: mode }).eq('id', meta._dbId);
+    if (trkErr) { reportError('pipeline:tracking-mode', trkErr); toastError('Failed to change tracking mode'); return; }
     renderPipeline();
-  } catch (e) { console.error('[BJ] Tracking mode error:', e); toastError('Failed to change tracking mode'); }
+  } catch (e) { reportError('pipeline:tracking-mode', e); toastError('Failed to change tracking mode'); }
 }
 
 function showCustomReminder(jobId) {

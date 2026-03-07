@@ -1536,6 +1536,7 @@ window.addEventListener('ai-scoring-prefs-changed', function(e) {
     try {
       if (typeof sb === 'undefined' || typeof currentUser === 'undefined' || !currentUser) return;
       var resp = await sb.from('profiles').select('ai_scoring_prefs').eq('id', currentUser.id).single();
+      if (resp.error && resp.error.code !== 'PGRST116') reportError('job-feed:ai-scoring-prefs', resp.error);
       if (resp.data && resp.data.ai_scoring_prefs) {
         _userAiScoringPrefsCache = resp.data.ai_scoring_prefs;
       }

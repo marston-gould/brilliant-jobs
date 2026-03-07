@@ -2822,8 +2822,8 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.030 | BE-001: safeQuery() wiring — 22 call sites + reportError | 6h | CS-009 | ✅ | safeQuery exists, zero calls. 3 batches ~12-15. Highest-leverage code change. |
 | 0.031 | ES-001: Replace 130 empty/console catches | 6h | CS-009 | ✅ | 67 catch(e){} vanish errors. 3 batches ~22. safeQuery.handleError + PostHog. |
 | 0.032 | ES-002: Replace 40 console-only catches | 3h | — | 🔲 | Invisible in production. Upgrade to PostHog capture. |
-| 0.033 | BE-003: 17 unchecked {data, error} | 2h | — | 🔲 | Supabase errors produce undefined silently. Billing, resumes, browsers. |
-| 0.034 | BE-004: 7 fire-and-forget RPCs | 1h | — | 🔲 | Analytics calls discard failures. Wire to PostHog. |
+| 0.033 | BE-003: 17 unchecked {data, error} | 2h | CS-P1-003 | ✅ | Error checks added to all dashboard sb.from() calls. reportError() wired. |
+| 0.034 | BE-004: 7 fire-and-forget RPCs | 1h | CS-P1-003 | ✅ | Heartbeats, signals, outreach RPCs all have .then() error handlers or reportError(). |
 | 0.035 | BE-005: Suppressed network errors | 1h | — | 🔲 | Network failures hidden. Retry + user notification. |
 | 0.036 | BE-006: Edge Function empty catches | 2h | — | 🔲 | EF catches mirror dashboard pattern. |
 | 0.037 | FE-002: Error boundaries all tabs | 2h | CS-015 | ✅ | Zero error boundaries. Blank screen on failure. Fallback UI + retry. |
@@ -2948,8 +2948,8 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
 | 0.098 | DO-005: Staging environment + CI/CD | 3h | 3h | ✅ | CS-020: ci.yml + deploy.yml + load-test.yml. Staging branch + Vercel preview. |
-| 0.099 | FE-007: 3 sync scripts blocking render | 1h | — | 🔲 | Ahrefs, GTM, other. Defer or async. |
-| 0.100 | FE-008: No content hashing static assets | 1h | — | 🔲 | Stale CDN. Hash filenames or cache-bust params. |
+| 0.099 | FE-007: 3 sync scripts blocking render | 1h | CS-P1-003 | ✅ | All 5 sync scripts in dashboard.html now have defer. Execution order preserved. |
+| 0.100 | FE-008: No content hashing static assets | 1h | CS-P1-003 | ✅ | Immutable cache headers on /dist/, /js/, /styles.css. Content hash manifest in build.js. ?v= params handle busting. |
 
 ### 0-S: CX — PostHog Identity + Instrumentation (Pod 4, P1)
 

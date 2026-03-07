@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.28"></script>
+  <script src="/js/version.js?v=v7.29"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -1874,8 +1874,8 @@ const features = [
 { s: 'done', b: 'pre-launch', n: '0.030 BE-001: safeQuery() 22 call sites + reportError', d: 'CS-009: safeQuery wired to 22 call sites. reportError() surfaces all errors in PostHog. safeRpc() convenience wrapper added.', p: 75, e: '6h' },
 { s: 'done', b: 'pre-launch', n: '0.031 ES-001: Replace 130 empty/console catches', d: 'CS-009: 130 empty and console-only catches replaced with reportError() across 22 files. Zero empty catches in dashboard + admin.', p: 75, e: '6h' },
 { s: 'todo', b: 'pre-launch', n: '0.032 ES-002: Replace 40 console-only catches', d: 'Invisible in production. PostHog capture.', p: 75, e: '3h' },
-{ s: 'todo', b: 'pre-launch', n: '0.033 BE-003: 17 unchecked {data,error}', d: 'Supabase errors → undefined silently. Billing, resumes, browsers.', p: 75, e: '2h' },
-{ s: 'todo', b: 'pre-launch', n: '0.034 BE-004: 7 fire-and-forget RPCs', d: 'Analytics calls discard failures. Wire to PostHog.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.033 BE-003: 17 unchecked {data,error}', d: 'CS-P1-003: Error checks added to all dashboard sb.from() calls. reportError() wired.', p: 75, e: '2h' },
+{ s: 'done', b: 'pre-launch', n: '0.034 BE-004: 7 fire-and-forget RPCs', d: 'CS-P1-003: Heartbeats, signals, outreach RPCs error-handled via .then() or reportError().', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.035 BE-005: Suppressed network errors', d: 'Network failures hidden. Retry + notification.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.036 BE-006: Edge Function empty catches', d: 'EF catches mirror dashboard pattern.', p: 75, e: '2h' },
 { s: 'done', b: 'pre-launch', n: '0.037 FE-002: Error boundaries all tabs', d: 'CS-015: bjTabGuard wraps all tab inits with try/catch + fallback UI + retry button.', p: 75, e: '2h' },
@@ -1974,8 +1974,8 @@ const features = [
 
 // 0-R: DevOps (Pod 3, P2)
 { s: 'done', b: 'pre-launch', n: '0.098 DO-005: Staging + CI/CD', d: 'CS-020: ci.yml + deploy.yml + load-test.yml. Staging branch + Vercel preview.', p: 75, e: '3h' },
-{ s: 'todo', b: 'pre-launch', n: '0.099 FE-007: 3 sync scripts block render', d: 'Ahrefs, GTM. Defer/async.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.100 FE-008: No content hashing', d: 'Stale CDN. Hash filenames.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.099 FE-007: 3 sync scripts block render', d: 'CS-P1-003: All 5 sync scripts in dashboard.html now defer. Execution order preserved.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.100 FE-008: No content hashing', d: 'CS-P1-003: Immutable cache headers + content hash manifest. ?v= params bust cache.', p: 75, e: '1h' },
 
 // 0-S: CX PostHog Identity (Pod 4, P1)
 { s: 'todo', b: 'pre-launch', n: '0.101 DS1-4: PostHog identity resolution', d: 'posthog.identify() all surfaces. 0%→100%. HIGHEST-LEVERAGE. Unblocks 9.', p: 75, e: '1h' },

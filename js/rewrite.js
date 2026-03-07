@@ -97,7 +97,8 @@ async function _rwCanRewrite() {
   }
 
   // Check credit balance
-  var { data: balance } = await sb.rpc('get_credit_balance', { p_user_id: currentUser.id });
+  var { data: balance, error: balErr } = await sb.rpc('get_credit_balance', { p_user_id: currentUser.id });
+  if (balErr) { reportError('rewrite:credit-balance', balErr); showToast('Could not check credit balance. Try again.', { type: 'error' }); return false; }
   if (balance < 3) {
     showToast('This rewrite costs 3 credits. You have ' + balance + '. Purchase more in Settings.', { type: 'error', duration: 5000 });
     return false;
@@ -300,10 +301,11 @@ async function _rwAcceptAll() {
 
     // Update session record with file path
     if (_rwState.sessionId) {
-      await sb.from('rewrite_sessions').update({
+      var { error: updErr } = await sb.from('rewrite_sessions').update({
         output_file_path: storagePath,
         status: 'accepted',
       }).eq('id', _rwState.sessionId);
+      if (updErr) reportError('rewrite:session-update', updErr);
     }
 
     // Auto-download

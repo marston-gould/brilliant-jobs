@@ -1181,6 +1181,7 @@ function hideMVFreshnessNotice() {
 async function checkMVStaleness() {
   try {
     var result = await sb.from('mv_landing_stats').select('refreshed_at').single();
+    if (result.error && result.error.code !== 'PGRST116') reportError('stats:mv-staleness', result.error);
     if (result && result.data) {
       var refreshedAt = new Date(result.data.refreshed_at);
       var ageMs = Date.now() - refreshedAt.getTime();

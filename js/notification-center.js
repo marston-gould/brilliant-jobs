@@ -71,9 +71,10 @@ async function ncLoadState() {
       .select('*').eq('user_id', currentUser.id).single();
     if (error && error.code === 'PGRST116') {
       // No row yet — create one
-      var { data: newRow } = await sb.from('user_notification_state')
+      var { data: newRow, error: insErr } = await sb.from('user_notification_state')
         .insert({ user_id: currentUser.id })
         .select().single();
+      if (insErr) reportError('nc:state-insert', insErr);
       ncState = newRow;
     } else {
       ncState = data;
@@ -226,8 +227,9 @@ async function ncSaveOptInPreferences() {
     });
 
     // Upsert all preference rows
-    await sb.from('user_notification_preferences')
+    var { error: prefErr } = await sb.from('user_notification_preferences')
       .upsert(rows, { onConflict: 'user_id,notification_type' });
+    if (prefErr) { reportError('nc:save-prefs', prefErr); ncShowToast('Failed to save preferences', 'error'); return; }
 
     // Update notification state: preferences completed + marketing opt-in
     var stateUpdate = {
@@ -238,9 +240,10 @@ async function ncSaveOptInPreferences() {
       stateUpdate.marketing_opt_in = true;
       stateUpdate.marketing_opt_in_at = new Date().toISOString();
     }
-    await sb.from('user_notification_state')
+    var { error: stateErr } = await sb.from('user_notification_state')
       .update(stateUpdate)
       .eq('user_id', currentUser.id);
+    if (stateErr) reportError('nc:save-state', stateErr);
 
     // Refresh local state
     ncState = Object.assign(ncState || {}, stateUpdate);
@@ -296,9 +299,10 @@ async function ncSyncFromUI() {
     });
 
     if (rows.length > 0) {
-      await sb.from('user_notification_preferences')
+      var { error: syncErr } = await sb.from('user_notification_preferences')
         .upsert(rows, { onConflict: 'user_id,notification_type' });
-      console.log('[NC] Synced ' + rows.length + ' preferences to user_notification_preferences');
+      if (syncErr) reportError('nc:sync-prefs', syncErr);
+      else console.log('[NC] Synced ' + rows.length + ' preferences to user_notification_preferences');
     }
   } catch(e) { reportError('notification-center', e); console.warn('[NC] Sync to new table failed:', e);
   }
@@ -331,10 +335,11 @@ async function ncToggleSmsForType(type, enabled) {
     return;
   }
   try {
-    await sb.from('user_notification_preferences')
+    var { error: smsErr } = await sb.from('user_notification_preferences')
       .update({ sms_enabled: enabled })
       .eq('user_id', currentUser.id)
       .eq('notification_type', type);
+    if (smsErr) { reportError('nc:sms-toggle', smsErr); return; }
     if (ncPrefs[type]) ncPrefs[type].sms_enabled = enabled;
     console.log('[NC] SMS ' + (enabled ? 'enabled' : 'disabled') + ' for ' + type);
     // CX-06: PostHog — notification SMS toggled

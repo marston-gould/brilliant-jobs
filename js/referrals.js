@@ -411,7 +411,8 @@ Or use my code: ${referralStats.referral_code}`);
     try {
       const sb = window.bjSupabase || window.supabase?.createClient?.(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
       const { data: { user } } = await sb.auth.getUser();
-      await sb.from('profiles').update({ sharing_enabled: enabled }).eq('id', user.id);
+      var { error: shareErr } = await sb.from('profiles').update({ sharing_enabled: enabled }).eq('id', user.id);
+      if (shareErr) { reportError('referrals:toggle-leaderboard', shareErr); return; }
       if (enabled) loadLeaderboard(_lbPeriod);
       else {
         const body = document.getElementById('ref-leaderboard-body');
@@ -439,7 +440,8 @@ Or use my code: ${referralStats.referral_code}`);
 
       if (!data || data.length === 0) {
         // Check 20-user threshold — count opted-in users
-        const { count } = await sb.from('profiles').select('*', { count: 'exact', head: true }).eq('sharing_enabled', true);
+        const { count, error: cntErr } = await sb.from('profiles').select('*', { count: 'exact', head: true }).eq('sharing_enabled', true);
+        if (cntErr) reportError('referrals:leaderboard-count', cntErr);
         const optedIn = count || 0;
         if (optedIn < 20) {
           body.innerHTML = `
@@ -496,11 +498,12 @@ Or use my code: ${referralStats.referral_code}`);
     try {
       const sb = window.bjSupabase || window.supabase?.createClient?.(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
       const { data: { user } } = await sb.auth.getUser();
-      await sb.from('referral_invites').insert({
+      var { error: invErr } = await sb.from('referral_invites').insert({
         referrer_id: user.id,
         channel: channel,
         utm_medium: channel
       });
+      if (invErr) reportError('referrals:track-invite', invErr);
     } catch(err) { reportError('referrals', err); console.error('[Referrals] Track invite error:', err);
     }
   }
@@ -741,6 +744,10 @@ Or use my code: ${referralStats.referral_code}`);
 
     _outreachRows = (outreachResult.status === 'fulfilled' && outreachResult.value.data) ? outreachResult.value.data : [];
     _correlationData = (correlationResult.status === 'fulfilled' && correlationResult.value.data) ? correlationResult.value.data : null;
+    if (outreachResult.status === 'fulfilled' && outreachResult.value.error) reportError('referrals:outreach-rpc', outreachResult.value.error);
+    if (correlationResult.status === 'fulfilled' && correlationResult.value.error) reportError('referrals:correlation-rpc', correlationResult.value.error);
+    if (outreachResult.status === 'rejected') reportError('referrals:outreach-rejected', outreachResult.reason);
+    if (correlationResult.status === 'rejected') reportError('referrals:correlation-rejected', correlationResult.reason);
 
     // PostHog: referral_log_viewed
     if (window.posthog) {

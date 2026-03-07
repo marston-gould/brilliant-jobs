@@ -317,16 +317,19 @@ async function loadNotifPrefs() {
   if (!currentUser) return;
   try {
     // Global prefs — upsert defaults if row doesn't exist yet
-    await sb.from('notification_preferences').upsert({
+    var { error: upsErr } = await sb.from('notification_preferences').upsert({
       user_id: currentUser.id
     }, { onConflict: 'user_id', ignoreDuplicates: true });
-    const { data: prefs } = await sb.from('notification_preferences')
+    if (upsErr) reportError('applications:notif-pref-upsert', upsErr);
+    const { data: prefs, error: prefErr } = await sb.from('notification_preferences')
       .select('*').eq('user_id', currentUser.id).single();
+    if (prefErr && prefErr.code !== 'PGRST116') reportError('applications:notif-pref-load', prefErr);
     notifPrefs = prefs;
 
     // Per-type channels
-    const { data: channels } = await sb.from('notification_channels')
+    const { data: channels, error: chanErr } = await sb.from('notification_channels')
       .select('*').eq('user_id', currentUser.id);
+    if (chanErr) reportError('applications:notif-channels', chanErr);
     notifChannels = {};
     (channels || []).forEach(c => { notifChannels[c.notification_type] = c; });
 
@@ -400,11 +403,12 @@ $('#notif-save-prefs')?.addEventListener('click', async () => {
 
   try {
     // Upsert global prefs
-    await sb.from('notification_preferences').upsert({
+    var { error: gpErr } = await sb.from('notification_preferences').upsert({
       user_id: currentUser.id,
       email_enabled: true,
       updated_at: new Date().toISOString()
     }, { onConflict: 'user_id' });
+    if (gpErr) { reportError('applications:save-global-prefs', gpErr); throw gpErr; }
 
     // Upsert per-type channels
     const rows = [];
@@ -423,13 +427,14 @@ $('#notif-save-prefs')?.addEventListener('click', async () => {
       });
     });
     if (rows.length > 0) {
-      await sb.from('notification_channels').upsert(rows, { onConflict: 'user_id,notification_type' });
+      var { error: chErr } = await sb.from('notification_channels').upsert(rows, { onConflict: 'user_id,notification_type' });
+      if (chErr) { reportError('applications:save-channels', chErr); throw chErr; }
     }
 
     btn.textContent = 'Saved';
     setTimeout(() => { btn.textContent = 'Save Preferences'; btn.disabled = false; }, 1500);
   } catch (e) {
-    console.error('[Notif] Save failed:', e);
+    reportError('applications:save-prefs', e);
     btn.textContent = 'Error — retry';
     btn.disabled = false;
   }
@@ -620,10 +625,11 @@ $('#override-filter-select')?.addEventListener('change', async (e) => {
   let overrides = {};
   if (currentUser) {
     try {
-      const { data } = await sb.from('notification_filter_overrides')
+      const { data, error } = await sb.from('notification_filter_overrides')
         .select('*')
         .eq('user_id', currentUser.id)
         .eq('filter_name', filterName);
+      if (error) { reportError('applications:overrides', error); }
       (data || []).forEach(o => { overrides[o.notification_type] = o; });
     } catch(e) { reportError('applications:ignore', e); }
   }
@@ -782,11 +788,12 @@ $$('#nlog-filter-type, #nlog-filter-channel, #nlog-filter-status').forEach(el =>
 $('#notif-export-csv')?.addEventListener('click', async () => {
   if (!currentUser) return;
   try {
-    const { data: logs } = await sb.from('notification_log')
+    const { data: logs, error: logErr } = await sb.from('notification_log')
       .select('*')
       .eq('user_id', currentUser.id)
       .order('created_at', { ascending: false })
       .limit(1000);
+    if (logErr) { reportError('applications:notif-csv', logErr); alert('Failed to export.'); return; }
 
     if (!logs || logs.length === 0) { alert('No notifications to export.'); return; }
 
@@ -812,9 +819,10 @@ async function checkNavPulses() {
   if (!currentUser) return;
   try {
     // Get last_seen_at
-    const { data: profile } = await sb.from('profiles')
+    const { data: profile, error: profErr } = await sb.from('profiles')
       .select('last_seen_at')
       .eq('id', currentUser.id).single();
+    if (profErr && profErr.code !== 'PGRST116') reportError('applications:nav-pulse', profErr);
     const lastSeen = profile?.last_seen_at || new Date(0).toISOString();
 
     // Applications: pending notification actions
@@ -883,8 +891,9 @@ if (currentUser) {
 async function loadPipelineIntelligenceSettings() {
   if (!currentUser?.id) return;
   try {
-    const { data } = await sb.from('pipeline_tracking_settings')
+    const { data, error } = await sb.from('pipeline_tracking_settings')
       .select('*').eq('user_id', currentUser.id).single();
+    if (error && error.code !== 'PGRST116') { reportError('applications:pipeline-settings', error); return; }
     if (!data) return;
     const el = (id) => document.getElementById(id);
     if (el('pi-smart-prompts')) el('pi-smart-prompts').checked = data.smart_prompts_enabled !== false;
@@ -906,8 +915,9 @@ async function loadPipelineIntelligenceSettings() {
   }
   // Show Gmail status
   try {
-    const { data: conn } = await sb.from('gmail_connections')
+    const { data: conn, error: connErr } = await sb.from('gmail_connections')
       .select('sync_status').eq('user_id', currentUser.id).single();
+    if (connErr && connErr.code !== 'PGRST116') reportError('applications:gmail-status', connErr);
     const statusEl = document.getElementById('pi-gmail-status');
     if (statusEl) statusEl.style.display = '';
     if (conn?.sync_status === 'active') {

@@ -341,8 +341,9 @@ async function syncPassiveNotificationChannels() {
     // When passive ON: suppress new_jobs_daily by setting frequency = 'none'
     // When passive OFF: restore to 'daily'
     var freq = _passiveMode ? 'none' : 'daily';
-    await sb.from('notification_channels')
+    var { error: chanErr } = await sb.from('notification_channels')
       .upsert({ user_id: currentUser.id, notification_type: 'new_jobs_daily', frequency: freq }, { onConflict: 'user_id,notification_type' });
+    if (chanErr) reportError('settings:passive-channel', chanErr);
   } catch(e) { reportError('settings', e); console.warn('[BJ] Passive notification channel sync error:', e); }
 }
 

@@ -1,5 +1,6 @@
 import { buildSync } from 'esbuild';
 import { readFileSync, writeFileSync, mkdirSync, unlinkSync, existsSync } from 'fs';
+import { createHash } from 'crypto';
 
 // ============================================================
 // CS-016 FIX-10: Code-split build — route-based lazy loading
@@ -134,4 +135,33 @@ const initialPayload = shellMin + feedMin;
 console.log(`\nInitial payload (shell + feed): ${(initialPayload/1024).toFixed(1)}KB`);
 console.log(`Full bundle (backward compat):  ${(fullMinSize/1024).toFixed(1)}KB`);
 console.log(`Target: <200KB initial ← ${initialPayload < 200 * 1024 ? '✅ PASS' : '❌ FAIL'}`);
+
+// CS-P1-003 FE-006: Generate content hashes for cache-busting verification
+const manifest = {};
+for (const r of report) {
+  const filePath = `dist/dashboard-${r.name}.min.js`;
+  const content = readFileSync(filePath);
+  const hash = createHash('md5').update(content).digest('hex').slice(0, 8);
+  manifest[r.name] = { file: `dashboard-${r.name}.min.js`, hash, size: r.min };
+}
+// Also hash the full bundle
+const fullContent = readFileSync('dist/dashboard.min.js');
+const fullHash = createHash('md5').update(fullContent).digest('hex').slice(0, 8);
+manifest['full'] = { file: 'dashboard.min.js', hash: fullHash, size: fullMinSize };
+
+// Hash CSS
+if (existsSync('dist/styles.css')) {
+  const cssContent = readFileSync('dist/styles.css');
+  const cssHash = createHash('md5').update(cssContent).digest('hex').slice(0, 8);
+  manifest['styles'] = { file: 'styles.css', hash: cssHash, size: cssContent.length };
+}
+
+// Write combined build hash (all chunk hashes concatenated and re-hashed)
+const combinedHash = createHash('md5')
+  .update(Object.values(manifest).map(m => m.hash).join(''))
+  .digest('hex').slice(0, 8);
+manifest._buildHash = combinedHash;
+
+writeFileSync('dist/manifest.json', JSON.stringify(manifest, null, 2));
+console.log(`\n🔒 Content hashes written to dist/manifest.json (build: ${combinedHash})`);
 console.log('');
