@@ -10,6 +10,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { fetchWithRetry, TIMEOUT_CONFIGS } from "../_shared/resilience.ts";
 import { passiveHighBarAlertEmail } from "../_shared/email-templates.ts";
+import { safeSms } from "../_shared/sms-templates.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -89,6 +90,9 @@ interface NotificationRequest {
   user_cohort?: string;
   template_version?: string;
   filter_name?: string;
+  // CS-P1-012 (TS1-4): A/B experiment tracking
+  ab_experiment_id?: string;
+  ab_variant_id?: string;
 }
 
 interface SendDecision {
@@ -264,11 +268,89 @@ async function canSendNotification(
 // ═══════════════════════════════════════════════════════════
 // TEMPLATE RESOLUTION (Deliverable 6)
 // ═══════════════════════════════════════════════════════════
+// CS-P1-012 (TS1-4): A/B EXPERIMENT VARIANT ASSIGNMENT
+// ═══════════════════════════════════════════════════════════
+
+interface ABVariant {
+  variant_id: string;
+  weight: number;
+  subject_override?: string;
+  template_version?: string;
+}
+
+/**
+ * Assign user to an experiment variant (or return existing assignment).
+ * Uses weighted random selection. Sticky: once assigned, same variant returned.
+ */
+async function assignVariant(
+  experimentId: string,
+  userId: string,
+  variants: ABVariant[]
+): Promise<ABVariant | null> {
+  if (!variants.length) return null;
+
+  // Check for existing sticky assignment
+  const { data: existing } = await sb
+    .from("ab_assignments")
+    .select("variant_id")
+    .eq("experiment_id", experimentId)
+    .eq("user_id", userId)
+    .single();
+
+  if (existing) {
+    return variants.find(v => v.variant_id === existing.variant_id) || variants[0];
+  }
+
+  // Weighted random selection
+  const totalWeight = variants.reduce((s, v) => s + (v.weight || 1), 0);
+  let roll = Math.random() * totalWeight;
+  let selected = variants[0];
+  for (const v of variants) {
+    roll -= (v.weight || 1);
+    if (roll <= 0) { selected = v; break; }
+  }
+
+  // Persist sticky assignment
+  await sb.from("ab_assignments").insert({
+    experiment_id: experimentId,
+    user_id: userId,
+    variant_id: selected.variant_id,
+  }).single();
+
+  return selected;
+}
+
+// ═══════════════════════════════════════════════════════════
 async function resolveTemplate(
   notificationType: string,
   channel: string,
-  cohortId?: string
-): Promise<{ subject?: string; html?: string; sms_body?: string; version?: string } | null> {
+  cohortId?: string,
+  userId?: string
+): Promise<{ subject?: string; html?: string; sms_body?: string; version?: string; ab_experiment_id?: string; ab_variant_id?: string } | null> {
+  // CS-P1-012 (TS1-4): Check for active A/B experiment on this notification type
+  let abOverride: { subject?: string; experimentId?: string; variantId?: string } = {};
+  if (userId) {
+    const { data: experiment } = await sb
+      .from("ab_experiments")
+      .select("id, variants")
+      .eq("notification_type", notificationType)
+      .eq("channel", channel)
+      .eq("status", "active")
+      .limit(1)
+      .single();
+
+    if (experiment) {
+      const variant = await assignVariant(experiment.id, userId, experiment.variants as ABVariant[]);
+      if (variant) {
+        abOverride = {
+          subject: variant.subject_override,
+          experimentId: experiment.id,
+          variantId: variant.variant_id,
+        };
+      }
+    }
+  }
+
   // 1. Try cohort-specific production template
   if (cohortId) {
     const { data: tmpl } = await sb
@@ -280,7 +362,14 @@ async function resolveTemplate(
       .eq("is_production", true)
       .limit(1)
       .single();
-    if (tmpl) return { subject: tmpl.subject_line, html: tmpl.html_body, sms_body: tmpl.sms_body, version: tmpl.version };
+    if (tmpl) return {
+      subject: abOverride.subject || tmpl.subject_line,
+      html: tmpl.html_body,
+      sms_body: tmpl.sms_body,
+      version: tmpl.version,
+      ab_experiment_id: abOverride.experimentId,
+      ab_variant_id: abOverride.variantId,
+    };
   }
 
   // 2. Fall back to default cohort
@@ -293,7 +382,14 @@ async function resolveTemplate(
     .eq("is_production", true)
     .limit(1)
     .single();
-  if (fallback) return { subject: fallback.subject_line, html: fallback.html_body, sms_body: fallback.sms_body, version: fallback.version };
+  if (fallback) return {
+    subject: abOverride.subject || fallback.subject_line,
+    html: fallback.html_body,
+    sms_body: fallback.sms_body,
+    version: fallback.version,
+    ab_experiment_id: abOverride.experimentId,
+    ab_variant_id: abOverride.variantId,
+  };
 
   // 3. No template found
   return null;
@@ -450,6 +546,8 @@ async function sendSMS(
   if (!VONAGE_API_KEY || !VONAGE_API_SECRET || !VONAGE_FROM) {
     return { ok: false, error: "Vonage credentials not configured" };
   }
+  // CS-P1-012 (TS1-5): Safety net — enforce 160-char single-segment limit
+  const safeText = safeSms(text);
   try {
     const res = await fetchWithRetry("https://rest.nexmo.com/sms/json", {
       method: "POST",
@@ -459,7 +557,7 @@ async function sendSMS(
         api_secret: VONAGE_API_SECRET,
         from: VONAGE_FROM,
         to: to.replace(/\D/g, ""),
-        text,
+        text: safeText,
       }),
     }, TIMEOUT_CONFIGS.vonage);
 
@@ -793,6 +891,8 @@ async function logNotification(
         ...(error ? { error } : {}),
         job_title: req.job_title || null,
         filter_name: req.filter_name || null,
+        // CS-P1-012 (TS1-4): A/B experiment tracking
+        ...(req.ab_experiment_id ? { ab_experiment_id: req.ab_experiment_id, ab_variant_id: req.ab_variant_id } : {}),
       },
       idempotency_key: req.idempotency_key || null,
       user_plan: req.user_plan || null,
@@ -971,15 +1071,20 @@ serve(async (req: Request) => {
     }
 
     if (!subject || !html) {
-      const tmpl = await resolveTemplate(notification_type, "email", body.user_cohort);
+      const tmpl = await resolveTemplate(notification_type, "email", body.user_cohort, user_id);
       if (tmpl) {
         subject = subject || tmpl.subject;
         html = html || tmpl.html;
         body.template_version = tmpl.version;
+        // CS-P1-012 (TS1-4): Track A/B variant for notification_log
+        if (tmpl.ab_experiment_id) {
+          body.ab_experiment_id = tmpl.ab_experiment_id;
+          body.ab_variant_id = tmpl.ab_variant_id;
+        }
       }
     }
     if (!smsText) {
-      const smsTmpl = await resolveTemplate(notification_type, "sms", body.user_cohort);
+      const smsTmpl = await resolveTemplate(notification_type, "sms", body.user_cohort, user_id);
       if (smsTmpl) smsText = smsTmpl.sms_body;
     }
 
@@ -1046,6 +1151,14 @@ serve(async (req: Request) => {
       const emailResult = await sendEmail(userEmail, subject, html, body.text);
       result.email_sent = emailResult.ok;
       result.email_error = emailResult.error;
+
+      // CS-P1-012 (TS1-4): Mark A/B assignment as sent for experiment tracking
+      if (emailResult.ok && body.ab_experiment_id) {
+        await sb.from("ab_assignments")
+          .update({ email_sent: true })
+          .eq("experiment_id", body.ab_experiment_id)
+          .eq("user_id", user_id);
+      }
 
       await logNotification(
         user_id, notification_type, "email",

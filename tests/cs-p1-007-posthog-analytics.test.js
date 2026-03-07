@@ -256,19 +256,20 @@ describe('LS1-3: PostHog landing page init and UTM capture', () => {
 // TS1-1: Email UTM Attribution
 // ═══════════════════════════════════════════════════════════
 describe('TS1-1: Email UTM attribution', () => {
-  const emailTemplates = readFile('supabase/functions/_shared/email-templates.ts');
+  // CS-P1-012: email-templates.ts is now a barrel re-export; read the base module for helpers
+  const emailBase = readFile('supabase/functions/_shared/email-base.ts');
 
   test('utmLink helper exists', () => {
-    expect(emailTemplates).toContain('function utmLink(');
+    expect(emailBase).toContain('function utmLink(');
   });
 
   test('Dark baseLayout auto-tags brilliantjobs.app links with UTM', () => {
-    expect(emailTemplates).toContain("utm_source=email&utm_medium=notification");
+    expect(emailBase).toContain("utm_source=email&utm_medium=notification");
   });
 
   test('White baseLayout auto-tags brilliantjobs.app links with UTM', () => {
     // Both layouts use the same regex pattern
-    const matches = emailTemplates.match(/utm_source=email&utm_medium=notification/g);
+    const matches = emailBase.match(/utm_source=email&utm_medium=notification/g);
     expect(matches.length).toBeGreaterThanOrEqual(2);
   });
 });
@@ -277,33 +278,37 @@ describe('TS1-1: Email UTM attribution', () => {
 // TS1-2: SMS UTM Attribution
 // ═══════════════════════════════════════════════════════════
 describe('TS1-2: SMS UTM attribution', () => {
-  const emailTemplates = readFile('supabase/functions/_shared/email-templates.ts');
+  // CS-P1-012: Read all email template modules for full coverage
+  const emailBase = readFile('supabase/functions/_shared/email-base.ts');
+  const allModules = ['email-core.ts', 'email-credits.ts', 'email-onboarding.ts',
+    'email-analytics.ts', 'email-referral.ts', 'email-billing.ts', 'email-engagement.ts']
+    .map(f => readFile(`supabase/functions/_shared/${f}`)).join('\n');
 
   test('smsUtmLink helper exists', () => {
-    expect(emailTemplates).toContain('function smsUtmLink(');
+    expect(emailBase).toContain('function smsUtmLink(');
   });
 
   test('smsUtmLink uses utm_source=sms', () => {
-    expect(emailTemplates).toContain("utm_source=sms&utm_medium=notification");
+    expect(emailBase).toContain("utm_source=sms&utm_medium=notification");
   });
 
   test('All SMS templates include UTM-tagged links', () => {
     // Count smsUtmLink calls in sms_text fields
-    const smsMatches = emailTemplates.match(/smsUtmLink\(/g);
+    const smsMatches = allModules.match(/smsUtmLink\(/g);
     expect(smsMatches).toBeTruthy();
     // At least 9 SMS templates should have UTM links
     expect(smsMatches.length).toBeGreaterThanOrEqual(9);
   });
 
   test('SMS templates have correct campaign names', () => {
-    expect(emailTemplates).toContain("smsUtmLink('match_alert')");
-    expect(emailTemplates).toContain("smsUtmLink('interview_scheduled')");
-    expect(emailTemplates).toContain("smsUtmLink('offer_received')");
-    expect(emailTemplates).toContain("smsUtmLink('network_match')");
-    expect(emailTemplates).toContain("smsUtmLink('resume_rewrite')");
-    expect(emailTemplates).toContain("smsUtmLink('bulk_apply_complete')");
-    expect(emailTemplates).toContain("smsUtmLink('interview_confirmed')");
-    expect(emailTemplates).toContain("smsUtmLink('interview_tomorrow')");
-    expect(emailTemplates).toContain("smsUtmLink('interview_1hr')");
+    expect(allModules).toContain("smsUtmLink('match_alert')");
+    expect(allModules).toContain("smsUtmLink('interview_scheduled')");
+    expect(allModules).toContain("smsUtmLink('offer_received')");
+    expect(allModules).toContain("smsUtmLink('network_match')");
+    expect(allModules).toContain("smsUtmLink('resume_rewrite')");
+    expect(allModules).toContain("smsUtmLink('bulk_apply_complete')");
+    expect(allModules).toContain("smsUtmLink('interview_confirmed')");
+    expect(allModules).toContain("smsUtmLink('interview_tomorrow')");
+    expect(allModules).toContain("smsUtmLink('interview_1hr')");
   });
 });
