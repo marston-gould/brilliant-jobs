@@ -542,7 +542,7 @@ async function initHarvestStats() {
       $('#h-last-date').textContent = `${dateStr} at ${timeStr}`;
       $('#h-last-harvest').classList.remove('hidden');
     }
-  } catch (e) {}
+  } catch (e) { console.warn('[BJ] harvest stats error:', e.message); }
 }
 initHarvestStats();
 
@@ -586,7 +586,7 @@ async function startHarvest() {
   let preHarvestCount = 0;
   try {
     preHarvestCount = await supabase.count('connections');
-  } catch (e) {}
+  } catch (e) { console.warn('[BJ] pre-harvest count failed:', e.message); }
 
   $('#h-start').disabled = true;
   $('#h-start').textContent = 'Harvesting...';
@@ -794,7 +794,7 @@ async function startHarvest() {
     } else {
       addLog('h-log', `No new connections — Supabase already had all ${postCount}`, 'info');
     }
-  } catch (e) {}
+  } catch (e) { console.warn('[BJ] post-harvest count failed:', e.message); phCapture('extension_catch_error', { context: 'post_harvest_count', error: e.message }); }
 
   // Save last harvest timestamp
   await chrome.storage.local.set({ lastHarvestAt: new Date().toISOString() });
@@ -856,7 +856,7 @@ async function refreshScannerState() {
           queued = await supabase.count('connections', 'visit_status=eq.pending');
           cachedVisited = visited;
           cachedQueued = queued;
-        } catch (e) {}
+        } catch (e) { console.warn('[BJ] scan count refresh failed:', e.message); }
       }
     }
 
@@ -1398,7 +1398,7 @@ async function refreshDataCounts() {
       const otwCount = await supabase.count('connections', 'hiring_signal=eq.open_to_work');
       $('#d-hiring').textContent = hiringCount;
       $('#d-otw').textContent = otwCount;
-    } catch (e) {}
+    } catch (e) { console.warn('[BJ] hiring signal counts failed:', e.message); }
 
     // Top companies by connection count (paginated to avoid statement timeout)
     try {
@@ -1440,7 +1440,7 @@ async function refreshDataCounts() {
       } else {
         listEl.innerHTML = '<div style="color: #5a6070;">Scan profiles to discover companies</div>';
       }
-    } catch (e) {}
+    } catch (e) { console.warn('[BJ] company list render failed:', e.message); }
 
   } catch (e) {
     addLog('d-log', `Error: ${e.message}`, 'error');

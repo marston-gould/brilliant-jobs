@@ -239,7 +239,7 @@ async function safeFill(opts) {
         url: window.location.href,
         timestamp: new Date().toISOString()
       }).catch(() => {});
-    } catch (_) {}
+    } catch (_) { console.warn('[BJ] lever error report failed'); }
     return {
       success: false,
       error: `lever handler failed: ${errorMsg}`,

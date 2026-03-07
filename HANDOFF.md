@@ -34,13 +34,17 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**CS-P1-017** — Compliance Dashboard: PII Map + Deletion + Export (Phase G: Admin Monitoring)
+**FIX-11** — Extension Empty Catch Remediation (EXT-ES-001)
 - Completed: 2026-03-07
-- Tags: `p1-017@1.0.0-compliance-dashboard`, `admin@1.4.0-compliance`
-- 0.172: PII data map — visual admin page with 8 PII categories, 40+ table detail, third-party data flows, ON DELETE behavior map, data retention policy summary.
-- 0.173: User deletion cascade — admin-triggered deletion with email/ID search, double-confirmation, 30-day grace period, cancel flow, hard-delete (cascade RPC + storage cleanup + auth deletion). Admin users protected.
-- 0.174: Data export + compliance dashboard — stats cards (users, deletions, exports, PII accesses), JSON data export via data-export EF, PII access log viewer, compliance audit trail, 10-point compliance readiness checklist.
-- 54 new tests (1375+ total). Product version bumped to v7.43.
+- Tags: `extension@2.22.0-error-handling`
+- All 22 empty catch blocks in extension source remediated:
+  - background.js (7): console.warn for scroll/message failures, comment for expected JSON.parse, comment for tab race
+  - popup.js (6): console.warn + phCapture for data flow errors
+  - handlers (5): console.warn on error-report-about-error catches
+  - resilientDOM.js (2): console.warn on error/selector-miss report catches
+  - interceptor.js (1): console.warn with URL context
+  - build-extension.js (1): explanatory comment
+- 31 new tests (1406+ total).
 
 ---
 
@@ -61,7 +65,7 @@ None.
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
 | Dashboard | `dashboard@1.2.0-typescript` | CS-P1-015 |
-| Extension | `extension@2.21.0-cx-hardening` | CS-P1-011 |
+| Extension | `extension@2.22.0-error-handling` | FIX-11 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
 | Admin | `admin@1.4.0-compliance` | CS-P1-017 |
 | Load Tests | `loadtest@1.0.0` | CS-020 |
@@ -78,6 +82,7 @@ None.
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
+| FIX-11 | 2026-03-07 | EXT-ES-001 (22 empty catches → console.warn + PostHog + comments) | extension@2.22.0-error-handling |
 | CS-P1-017 | 2026-03-07 | 0.172 (PII data map), 0.173 (user deletion cascade), 0.174 (data export + compliance dash) | p1-017@1.0.0-compliance-dashboard |
 | CS-P1-016 | 2026-03-07 | 0.161 (cron management UI), 0.162 (cron alert config), 0.175 (PostHog funnel+retention), 0.176 (first A/B test), 0.177 (UX review), 0.178 (design system assessment) | p1-016@1.0.0-admin-monitoring |
 | CS-P1-015 | 2026-03-07 | FE-006 (TypeScript migration: tsconfig strict, 7 core .ts modules, shared types, CI gate, ADR-04) | p1-015@1.0.0-typescript |

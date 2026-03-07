@@ -2834,7 +2834,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.040 | EXT-ES-001: 20 empty catches | 2h | — | 🔲 | popup.js(6), background.js(8), handlers(1), utils(3), build-ext(1), interceptor(1). |
+| 0.040 | EXT-ES-001: 20 empty catches | 2h | 2h | ✅ | FIX-11: All 22 empty catches remediated. background.js(7→console.warn+comment), popup.js(6→console.warn+phCapture), handlers(5→console.warn), interceptor(1→console.warn), resilientDOM(2→console.warn), build-ext(1→comment). Zero empty catches in extension source. |
 | 0.041 | EXT-ES-002: 19 fire-and-forget .catch(()=>{}) | 1h | — | 🔲 | chrome.runtime.sendMessage calls suppress errors. |
 | 0.042 | EXT-ES-003: 7 console/comment-only handlers | 1h | — | 🔲 | Catch blocks with only console or comment. |
 | 0.043 | EXT-ES-004: 14+ missing lastError checks | 2h | — | 🔲 | Only toolbar-overlay checks (4x). All other chrome API calls skip. |

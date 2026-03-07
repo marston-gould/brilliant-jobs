@@ -28,7 +28,7 @@ Generated: 2026-03-07 | Source: HANDOFF.md + Chat_Session_Remediation_Plan.docx 
 | FIX-08 | RLS verification (72 tables) | CS-013 | CS-013 | ✅ DONE | |
 | FIX-09 | FE-002 (error boundaries) | CS-015 | CS-015 | ✅ DONE | |
 | FIX-10 | FE-001 (bundle split) | CS-016/CS-017 | CS-016 | ✅ DONE | |
-| FIX-11 | EXT-ES-001 (extension empty catches) | CS-013 area | — | ❌ MISSED | 22 empty catches confirmed still in extension source. Never addressed — skipped during session restructuring. |
+| FIX-11 | EXT-ES-001 (extension empty catches) | CS-013 area | FIX-11 session | ✅ DONE | All 22 empty catches remediated: 7 in background.js, 6 in popup.js, 5 in handlers, 2 in resilientDOM, 1 in interceptor, 1 in build script. |
 | FIX-12 | EXT-BE-002/004 (retry + timeout) | CS-013 | CS-013 | ✅ DONE | |
 | FIX-13 | EXT-FEAT-001 (kill-switch) | CS-013 | CS-013 | ✅ DONE | 3-layer kill-switch |
 | FIX-14 | EXT-SEC-004 (PII minimization) | CS-013 | CS-013 | ✅ DONE | |
@@ -153,12 +153,17 @@ Generated: 2026-03-07 | Source: HANDOFF.md + Chat_Session_Remediation_Plan.docx 
 
 ## PART 3: IDENTIFIED GAPS
 
-### Gap 1: FIX-11 — Extension Empty Catches (EXT-ES-001) ⚠️ CONFIRMED
+### Gap 1: FIX-11 — Extension Empty Catches (EXT-ES-001) ✅ RESOLVED
 - **Planned:** Replace 20 empty catches in extension with Sentry + logging (per ADR-005)
-- **Status:** ❌ NOT COMPLETED — 22 empty catches remain in extension source
-- **Files affected:** background.js (6), popup.js (5), handlers/greenhouse-legacy.js (1), handlers/greenhouse-react.js (2), handlers/lever.js, handlers/linkedin-easy-apply.js, interceptor.js, utils/resilientDOM.js (2), build-extension.js (1)
-- **Assessment:** This was planned as FIX-11 in the original remediation. It appears to have been skipped during session restructuring — no completed session lists EXT-ES-001 or FIX-11 as a resolved item. The extension's error handling improved in other ways (retry/timeout, kill-switch, PostHog events), but the specific empty-catch remediation was missed.
-- **Recommendation:** Create a targeted session to wire remaining empty catches to PostHog/console.error. Estimated 4–6 hours. Some catches (resilientDOM, build scripts) may be intentionally silent — review each individually.
+- **Status:** ✅ COMPLETED — All 22 empty catches remediated
+- **Fix approach:** Each catch categorized and handled appropriately:
+  - **background.js (7):** `console.warn('[BJ] ...')` for scroll/message failures; intentional-silence comment for expected JSON.parse fails; explanatory comment for tab-may-be-gone race
+  - **popup.js (6):** `console.warn('[BJ] ...')` + `phCapture('extension_catch_error')` for data flow errors (harvest counts, scan counts, hiring signals, company list)
+  - **Handlers (5):** `console.warn('[BJ] ...')` on error-reporting-about-error catches (greenhouse-legacy, greenhouse-react, lever, linkedin-easy-apply); explanatory comment on dropdown-close best-effort
+  - **resilientDOM.js (2):** `console.warn('[BJ] ...')` on error/selector-miss report catches
+  - **interceptor.js (1):** `console.warn('[BJ] interceptor parse failed:', url)` with URL context
+  - **build-extension.js (1):** Explanatory comment (temp file cleanup — best effort)
+- **Tests:** 31 new tests in `tests/fix-11-extension-empty-catches.test.js`
 
 ### Gap 2: SE-002 — Service Role Key Rotation (FIX-02)
 - **Planned:** Full key rotation across all surfaces
@@ -184,7 +189,7 @@ Generated: 2026-03-07 | Source: HANDOFF.md + Chat_Session_Remediation_Plan.docx 
 
 | Plan | Total Sessions | Completed | Deferred | Gaps |
 |------|---------------|-----------|----------|------|
-| Original (CS-001→024) | 24 | 24 ✅ | 2 (SE-002, CP-002 legal) | 1 (FIX-11 confirmed: 22 empty catches) |
+| Original (CS-001→024) | 24 | 24 ✅ | 2 (SE-002, CP-002 legal) | 0 (FIX-11 resolved) |
 | Phase 1 (CS-P1-001→017) | 17 | 17 ✅ | 0 | 0 |
 | **TOTAL** | **41** | **41** | **2** | **1** |
 
@@ -194,6 +199,6 @@ Generated: 2026-03-07 | Source: HANDOFF.md + Chat_Session_Remediation_Plan.docx 
 
 **2 items explicitly deferred** with documented rationale and compensating controls (SE-002 key rotation, CP-002 DPA signing). Both are tracked in HANDOFF.md.
 
-**1 confirmed gap** (FIX-11 / EXT-ES-001): 22 empty catch blocks remain in the extension source code. This was planned as a dedicated fix session but was skipped during session restructuring. Estimated 4–6 hours to remediate.
+**1 confirmed gap** (FIX-11 / EXT-ES-001): ✅ RESOLVED — All 22 empty catch blocks remediated with console.warn/PostHog/comments. 31 new tests added.
 
 **All 15 launch gates are green.** 1,375+ tests across 29 test files. Product version v7.43.

@@ -459,7 +459,7 @@ async function safeFill(opts) {
         url: window.location.href,
         timestamp: new Date().toISOString()
       }).catch(() => {});
-    } catch (_) {}
+    } catch (_) { console.warn('[BJ] greenhouse-legacy error report failed'); }
     return {
       success: false,
       error: `greenhouse-legacy handler failed: ${errorMsg}`,

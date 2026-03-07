@@ -134,7 +134,7 @@ export function withGracefulDegradation(fillFn, handlerId) {
           url: window.location.href,
           timestamp: new Date().toISOString()
         }).catch(() => {});
-      } catch (_) {}
+      } catch (_) { console.warn('[BJ]', handlerId, 'error report failed'); }
 
       return {
         success: false,
@@ -184,5 +184,5 @@ function _flushMisses() {
       count: misses.length,
       url: window.location.href
     }).catch(() => {});
-  } catch (_) {}
+  } catch (_) { console.warn('[BJ] selector miss report failed'); }
 }

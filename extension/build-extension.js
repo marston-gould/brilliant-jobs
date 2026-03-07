@@ -196,7 +196,7 @@ function processJsFile(srcPath, outPath, channelMap) {
       charset: 'utf8',
     });
   } finally {
-    try { unlinkSync(tmpPath); } catch (e) {}
+    try { unlinkSync(tmpPath); } catch (_) { /* temp file cleanup — best effort */ }
   }
 }
 

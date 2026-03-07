@@ -394,7 +394,7 @@ async function fillReactSelectDropdown(container, value) {
 
   } catch (err) {
     // Always try to close dropdown on error
-    try { document.body.click(); } catch (_) {}
+    try { document.body.click(); } catch (_) { /* dropdown close best-effort */ }
     return { success: false, error: err.message };
   }
 }
@@ -655,7 +655,7 @@ async function safeFill(opts) {
         url: window.location.href,
         timestamp: new Date().toISOString()
       }).catch(() => {});
-    } catch (_) {}
+    } catch (_) { console.warn('[BJ] greenhouse-react error report failed'); }
     return {
       success: false,
       error: `greenhouse-react handler failed: ${errorMsg}`,

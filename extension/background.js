@@ -839,7 +839,7 @@ async function visitNextProfile() {
           func: (p) => { window.scrollTo({ top: document.body.scrollHeight * 0.6 * p, behavior: 'smooth' }); },
           args: [pct]
         });
-      } catch (e) {}
+      } catch (e) { console.warn('[BJ] scroll inject failed:', e.message); }
       await sleep(1000);
     }
 
@@ -852,7 +852,7 @@ async function visitNextProfile() {
           if (exp) exp.scrollIntoView({ behavior: 'instant', block: 'center' });
         }
       });
-    } catch (e) {}
+    } catch (e) { console.warn('[BJ] experience scroll failed:', e.message); }
     await sleep(2000);
 
     // === PHASE 2.5: NETWORK INTERCEPTION (primary) + DOM FALLBACK ===
@@ -925,7 +925,7 @@ async function visitNextProfile() {
       // Clear intercepted data for this profile
       try {
         await chrome.tabs.sendMessage(tabId, { type: 'clearInterceptedData' });
-      } catch (e) {}
+      } catch (e) { console.warn('[BJ] clearInterceptedData failed:', e.message); }
 
     } else {
       // === FALLBACK: DOM scraping (original method) ===
@@ -954,13 +954,13 @@ async function visitNextProfile() {
                 const str = JSON.stringify(JSON.parse(s.textContent));
                 if (str.includes('OPEN_TO_WORK')) return 'open_to_work';
                 if (str.includes('HIRING')) return 'hiring';
-              } catch (e) {}
+              } catch (_) { /* expected: non-JSON script tags */ }
             }
             return null;
           }
         });
         hiringSignal = signalResults?.[0]?.result || null;
-      } catch (e) {}
+      } catch (e) { console.warn('[BJ] hiring signal detection failed:', e.message); }
 
       try {
         const results = await chrome.scripting.executeScript({
@@ -984,7 +984,7 @@ async function visitNextProfile() {
               target: { tabId },
               func: () => { window.scrollTo(0, document.body.scrollHeight); }
             });
-          } catch (e) {}
+          } catch (e) { console.warn('[BJ] experience detail scroll failed:', e.message); }
           await sleep(2000);
 
           const moreResults = await chrome.scripting.executeScript({
@@ -2019,7 +2019,7 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
   try {
     const tab = await chrome.tabs.get(activeInfo.tabId);
     updateIcon(tab.url);
-  } catch (e) {}
+  } catch (e) { /* tab may be gone before get() completes */ }
 });
 
 // Update icon when tab URL changes

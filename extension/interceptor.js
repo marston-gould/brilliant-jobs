@@ -61,7 +61,7 @@
         try {
           const data = JSON.parse(this.responseText);
           processInterceptedData(this._bjUrl, data);
-        } catch (e) {}
+        } catch (e) { console.warn('[BJ] interceptor parse failed:', this._bjUrl?.substring(0, 80)); }
       });
     }
     return originalXHRSend.apply(this, args);

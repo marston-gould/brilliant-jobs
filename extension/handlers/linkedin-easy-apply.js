@@ -195,7 +195,7 @@ function waitForElement(selector, timeout = 5000) {
           count: 1,
           url: window.location.href
         }).catch(() => {});
-      } catch (_) {}
+      } catch (_) { console.warn('[BJ] linkedin selector miss report failed'); }
       resolve(null);
     }, timeout);
   });
