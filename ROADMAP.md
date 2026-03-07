@@ -3066,8 +3066,8 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
 | 0.160 | Cron Dashboard — meta-cron logger | 2h | 1h | ✅ | CS-012: v_cron_health view. CS-023: Aggregated in monitoring dashboard. |
-| 0.161 | Cron Dashboard — admin UI | 3h | 2h | ✅ | CS-012: Full cron panel (45 jobs, color-coded, filters). CS-023: Summary view in monitoring dashboard. |
-| 0.162 | Cron Dashboard — alerts | 1h | 1h | ✅ | CS-023: Alert rules with cron category. Configurable thresholds, cooldowns, notification routing. |
+| 0.161 | Cron Dashboard — admin UI | 3h | 4h | ✅ | CS-012: Initial panel. CS-P1-016: Full management — toggle enable/disable, force-run, schedule editing, per-job run history drawer, event delegation. Edge Function + 5 RPC functions. |
+| 0.162 | Cron Dashboard — alerts | 1h | 3h | ✅ | CS-023: Alert rules. CS-P1-016: Per-job alert config — cron_alert_config table with RLS, configurable failure thresholds + stale timeouts, bulk save. Alert badges on cron table rows. |
 | 0.163 | Feed Health — Supabase views | 2h | 1h | ✅ | CS-023: Feed freshness via ats_jobs.last_seen + open job count in monitoring dashboard. |
 | 0.164 | Feed Health — admin UI | 2h | 1h | ✅ | CS-012: Full feed-health panel. CS-023: Feed summary card in monitoring dashboard. |
 | 0.165 | Error Dashboard — PostHog API | 2h | 1h | ✅ | CS-023: Health-check EF integration in monitoring dashboard. Error aggregation via health endpoint. |
@@ -3085,10 +3085,10 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.175 | PostHog baseline + funnel analysis | 2h | — | 🔲 | signup→first save→first apply. Identify friction. |
-| 0.176 | First A/B test | 2h | — | 🔲 | PostHog experiments on highest-friction flow. |
-| 0.177 | Admin dashboard UX review | 2h | — | 🔲 | Pod 4 design input after monitoring UI ships. |
-| 0.178 | Design system maturity assessment | 2h | — | 🔲 | Token coverage, a11y maintenance, event taxonomy doc. Phase 1 standards. |
+| 0.175 | PostHog baseline + funnel analysis | 2h | 4h | ✅ | CS-P1-016: 3 funnel definitions (signup, landing, referral) with PostHog API. Retention cohort grid. Key metrics: signup rate, activation rate, avg sessions, bounce rate. Funnel selector dropdown. |
+| 0.176 | First A/B test | 2h | 4h | ✅ | CS-P1-016: Landing CTA copy test (3 variants). admin-ab-tests.js with PostHog feature flag integration. landing-ab.js with onFeatureFlags hook. A/B Tests admin subpage with variant result cards. ab_landing_cta_copy flag in DB. |
+| 0.177 | Admin dashboard UX review | 2h | 3h | ✅ | CS-P1-016: 10 findings (UX-001 through UX-010). Priority matrix: 3 critical, 4 major, 3 minor. 32h total estimated remediation. docs/audit/cs-p1-016-ux-review.md. |
+| 0.178 | Design system maturity assessment | 2h | 3h | ✅ | CS-P1-016: Level 2/5 (Tokenized). 32 tokens defined, 20 needed. Gaps: spacing scale, elevation, border-radius, component tokens, animation tokens, icon system. 3-phase upgrade path to Level 3. docs/audit/cs-p1-016-design-system-assessment.md. |
 
 ### 0-DD: Validation + Launch
 

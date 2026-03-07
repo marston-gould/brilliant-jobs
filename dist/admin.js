@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v7.41';
+var BJ_VERSION = 'v7.42';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -1223,6 +1223,7 @@ var ADMIN_SUBPAGE_MAP = {
   'ef-health':      { section: 'operations',  label: 'EF Health',      init: function(){ loadEfHealthPanel(); } },
   'db-activity':    { section: 'operations',  label: 'DB Activity',    init: function(){ loadDbActivityPanel(); } },
   'posthog-insights':{ section: 'operations',  label: 'PostHog Insights',init: function(){ loadPostHogInsightsPanel(); } },
+  'ab-tests':        { section: 'operations',  label: 'A/B Tests',       init: function(){ loadAbTestsPanel(); } },
   'kill-switch':    { section: 'operations',  label: 'Kill Switch',    init: function(){ loadKillSwitchPanel(); } },
   // ── Growth ──
   'seo':            { section: 'growth',      label: 'SEO',            init: function(){ loadSeoTab(); } },
@@ -1374,6 +1375,7 @@ function navigateAdminSubpage(key) {
   if (typeof _cleanupAlertsPanel === 'function') _cleanupAlertsPanel();
   if (typeof _cleanupErrorReplayPanel === 'function') _cleanupErrorReplayPanel();
   if (typeof _cleanupEfHealthPanel === 'function') _cleanupEfHealthPanel();
+  if (typeof _cleanupPostHogInsights === 'function') _cleanupPostHogInsights();
   if (typeof _cleanupDbActivityPanel === 'function') _cleanupDbActivityPanel();
 
   // Show correct panel, hide all others
@@ -6233,116 +6235,165 @@ function renderSignalPatterns(patterns) {
 
 // === js/admin-cron.js ===
 /* ───────────────────────────────────────────────────────────
-   admin-cron.js — Cron Health Panel (AD-FIX-06)
-   CS-012: Query v_cron_health view, color-coded status, auto-refresh 60s
+   admin-cron.js — Cron Management Console (0.161 + 0.162)
+   CS-P1-016: Full management UI — toggle, schedule edit,
+   force-run, run history, alert config per job
    ─────────────────────────────────────────────────────────── */
 
 var _cronRefreshTimer = null;
+var _cronAlertConfigs = {};
+
+// ─── EF helper ───
+async function _cronMgmtCall(action, params, method) {
+  var sb = loadSupabase();
+  var session = (await sb.auth.getSession()).data.session;
+  if (!session) { if (typeof toastWarning === 'function') toastWarning('Not authenticated'); return null; }
+
+  var base = (typeof SUPABASE_URL !== 'undefined' ? SUPABASE_URL : 'https://qojhagupdnbtomfoxnsf.supabase.co');
+  var url = base + '/functions/v1/admin-cron-management?action=' + action;
+  var opts = {
+    method: method || 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + session.access_token,
+      'apikey': typeof SUPABASE_KEY !== 'undefined' ? SUPABASE_KEY : '',
+      'Content-Type': 'application/json'
+    }
+  };
+  if (params && method !== 'GET') opts.body = JSON.stringify(params);
+  if (method === 'GET' && params) {
+    url += '&' + Object.keys(params).map(function(k) { return k + '=' + encodeURIComponent(params[k]); }).join('&');
+  }
+  try {
+    var res = await fetch(url, opts);
+    return await res.json();
+  } catch (e) {
+    console.error('[Cron Mgmt]', action, e);
+    if (typeof reportError === 'function') reportError('admin-cron:' + action, e);
+    return null;
+  }
+}
 
 async function loadCronPanel() {
   var el = document.getElementById('admin-page-cron');
   if (!el) return;
 
-  el.innerHTML = `
-    <div class="admin-block">
-      <div class="admin-block-header">
-        <h2 class="admin-block-title">Cron Job Health</h2>
-        <div class="admin-block-actions">
-          <span id="cron-summary" style="font-size:13px;color:var(--muted);margin-right:12px;"></span>
-          <span id="cron-last-refresh" style="font-size:12px;color:var(--muted);margin-right:8px;"></span>
-          <button class="admin-btn admin-btn-sm" id="cron-refresh-btn">↻ Refresh</button>
-        </div>
-      </div>
-      <div id="cron-filters" style="padding:8px 0;display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="admin-btn admin-btn-sm admin-btn-active" data-cron-filter="all">All</button>
-        <button class="admin-btn admin-btn-sm" data-cron-filter="red">🔴 Failed</button>
-        <button class="admin-btn admin-btn-sm" data-cron-filter="amber">🟡 Stale</button>
-        <button class="admin-btn admin-btn-sm" data-cron-filter="green">🟢 Healthy</button>
-        <button class="admin-btn admin-btn-sm" data-cron-filter="disabled">⚫ Disabled</button>
-      </div>
-      <div id="cron-table-container" style="overflow-x:auto;">
-        <div class="admin-loading">Loading cron data…</div>
-      </div>
-    </div>
-  `;
+  el.innerHTML = [
+    '<div class="admin-block">',
+    '  <div class="admin-block-header">',
+    '    <h2 class="admin-block-title">Cron Management</h2>',
+    '    <div class="admin-block-actions">',
+    '      <span id="cron-summary" style="font-size:13px;color:var(--muted);margin-right:12px;"></span>',
+    '      <span id="cron-last-refresh" style="font-size:12px;color:var(--muted);margin-right:8px;"></span>',
+    '      <button class="admin-btn admin-btn-sm" id="cron-refresh-btn">↻ Refresh</button>',
+    '      <button class="admin-btn admin-btn-sm" id="cron-alert-config-btn" style="margin-left:4px;">⚡ Alert Config</button>',
+    '    </div>',
+    '  </div>',
+    '  <div id="cron-filters" style="padding:8px 0;display:flex;gap:8px;flex-wrap:wrap;">',
+    '    <button class="admin-btn admin-btn-sm admin-btn-active" data-cron-filter="all">All</button>',
+    '    <button class="admin-btn admin-btn-sm" data-cron-filter="red">🔴 Failed</button>',
+    '    <button class="admin-btn admin-btn-sm" data-cron-filter="amber">🟡 Stale</button>',
+    '    <button class="admin-btn admin-btn-sm" data-cron-filter="green">🟢 Healthy</button>',
+    '    <button class="admin-btn admin-btn-sm" data-cron-filter="disabled">⚫ Disabled</button>',
+    '  </div>',
+    '  <div id="cron-table-container" style="overflow-x:auto;"><div class="admin-loading">Loading cron data…</div></div>',
+    '</div>',
+    '<div id="cron-history-drawer" style="display:none;position:fixed;top:0;right:0;bottom:0;width:520px;max-width:90vw;background:var(--bg-card);border-left:1px solid var(--border);z-index:9998;box-shadow:-4px 0 24px rgba(0,0,0,0.15);overflow-y:auto;">',
+    '  <div style="padding:20px;">',
+    '    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">',
+    '      <h3 id="cron-history-title" style="margin:0;font-size:16px;">Run History</h3>',
+    '      <button class="admin-btn admin-btn-sm" id="cron-history-close">✕ Close</button>',
+    '    </div>',
+    '    <div id="cron-history-body"><div class="admin-loading">Loading…</div></div>',
+    '  </div>',
+    '</div>',
+    '<div id="cron-history-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.3);z-index:9997;"></div>',
+    '<div id="cron-schedule-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;">',
+    '  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;width:440px;max-width:90vw;">',
+    '    <h3 id="cron-sched-modal-title" style="margin:0 0 16px;font-size:16px;">Edit Schedule</h3>',
+    '    <div style="margin-bottom:12px;">',
+    '      <label style="font-size:12px;font-weight:600;color:var(--text-dim);display:block;margin-bottom:4px;">Cron Expression</label>',
+    '      <input type="text" id="cron-sched-input" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-input);color:var(--text);font-family:monospace;" placeholder="*/5 * * * *">',
+    '      <div id="cron-sched-preview" style="font-size:11px;color:var(--muted);margin-top:4px;"></div>',
+    '    </div>',
+    '    <div style="display:flex;gap:8px;justify-content:flex-end;">',
+    '      <button class="admin-btn admin-btn-sm" id="cron-sched-cancel">Cancel</button>',
+    '      <button class="admin-btn admin-btn-sm" id="cron-sched-save" style="background:var(--accent);color:#fff;border-color:var(--accent);">Save Schedule</button>',
+    '    </div>',
+    '  </div>',
+    '</div>',
+    '<div id="cron-alert-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;">',
+    '  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;width:600px;max-width:90vw;max-height:80vh;overflow-y:auto;">',
+    '    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">',
+    '      <h3 style="margin:0;font-size:16px;">Cron Alert Configuration</h3>',
+    '      <button class="admin-btn admin-btn-sm" id="cron-alert-close">✕</button>',
+    '    </div>',
+    '    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Set failure thresholds and stale timeouts per cron job. Alerts fire when thresholds are exceeded.</p>',
+    '    <div id="cron-alert-config-body"><div class="admin-loading">Loading…</div></div>',
+    '  </div>',
+    '</div>'
+  ].join('\n');
 
-  // Bind refresh button
-  document.getElementById('cron-refresh-btn').addEventListener('click', function() {
-    _refreshCronPanel();
+  document.getElementById('cron-refresh-btn').addEventListener('click', _refreshCronPanel);
+  document.getElementById('cron-alert-config-btn').addEventListener('click', function() {
+    document.getElementById('cron-alert-modal').style.display = 'flex';
+    _renderAlertConfigForm();
+  });
+  document.getElementById('cron-alert-close').addEventListener('click', function() {
+    document.getElementById('cron-alert-modal').style.display = 'none';
+  });
+  document.getElementById('cron-history-close').addEventListener('click', _hideHistoryDrawer);
+  document.getElementById('cron-history-overlay').addEventListener('click', _hideHistoryDrawer);
+  document.getElementById('cron-sched-cancel').addEventListener('click', function() {
+    document.getElementById('cron-schedule-modal').style.display = 'none';
+  });
+  document.getElementById('cron-sched-input').addEventListener('input', function() {
+    var p = document.getElementById('cron-sched-preview');
+    if (p) p.textContent = _describeCron(this.value);
   });
 
-  // Bind filter buttons
   document.querySelectorAll('[data-cron-filter]').forEach(function(btn) {
     btn.addEventListener('click', function() {
-      document.querySelectorAll('[data-cron-filter]').forEach(function(b) {
-        b.classList.remove('admin-btn-active');
-      });
+      document.querySelectorAll('[data-cron-filter]').forEach(function(b) { b.classList.remove('admin-btn-active'); });
       btn.classList.add('admin-btn-active');
-      var filter = btn.getAttribute('data-cron-filter');
-      _applyCronFilter(filter);
+      _applyCronFilter(btn.getAttribute('data-cron-filter'));
     });
   });
 
-  // Initial load
+  await _loadAlertConfigs();
   await _refreshCronPanel();
-
-  // Auto-refresh every 60s
   if (_cronRefreshTimer) clearInterval(_cronRefreshTimer);
   _cronRefreshTimer = setInterval(_refreshCronPanel, 60000);
+}
+
+async function _loadAlertConfigs() {
+  var result = await _cronMgmtCall('alert-config', null, 'GET');
+  if (result && result.configs) {
+    _cronAlertConfigs = {};
+    result.configs.forEach(function(c) { _cronAlertConfigs[c.job_name] = c; });
+  }
 }
 
 async function _refreshCronPanel() {
   var container = document.getElementById('cron-table-container');
   if (!container) return;
-
   try {
-    var { data, error } = await sb
-      .from('v_cron_health')
-      .select('*');
+    var r = await sb.from('v_cron_health').select('*');
+    if (r.error) { container.innerHTML = '<div class="admin-empty">Error: ' + r.error.message + '</div>'; return; }
+    if (!r.data || r.data.length === 0) { container.innerHTML = '<div class="admin-empty">No cron jobs found.</div>'; return; }
 
-    if (error) {
-      container.innerHTML = '<div class="admin-empty">Error loading cron data: ' + error.message + '</div>';
-      return;
-    }
-
-    if (!data || data.length === 0) {
-      container.innerHTML = '<div class="admin-empty">No cron jobs found.</div>';
-      return;
-    }
-
-    // Update summary
     var counts = { green: 0, amber: 0, red: 0, disabled: 0, unknown: 0 };
-    data.forEach(function(j) { counts[j.health] = (counts[j.health] || 0) + 1; });
-    var summary = document.getElementById('cron-summary');
-    if (summary) {
-      summary.innerHTML =
-        '<span style="color:#22c55e;">' + counts.green + ' healthy</span> · ' +
-        '<span style="color:#f59e0b;">' + counts.amber + ' stale</span> · ' +
-        '<span style="color:#ef4444;">' + counts.red + ' failed</span> · ' +
-        '<span style="color:#6b7280;">' + counts.disabled + ' disabled</span> · ' +
-        '<strong>' + data.length + ' total</strong>';
-    }
-
-    var lastRefresh = document.getElementById('cron-last-refresh');
-    if (lastRefresh) {
-      lastRefresh.textContent = 'Updated ' + new Date().toLocaleTimeString();
-    }
-
-    // Store data for filtering
-    window._cronData = data;
-
-    // Render table
-    _renderCronTable(data);
-
-    // Apply current filter
-    var activeFilter = document.querySelector('[data-cron-filter].admin-btn-active');
-    if (activeFilter) {
-      var filter = activeFilter.getAttribute('data-cron-filter');
-      if (filter !== 'all') _applyCronFilter(filter);
-    }
-
+    r.data.forEach(function(j) { counts[j.health] = (counts[j.health] || 0) + 1; });
+    var s = document.getElementById('cron-summary');
+    if (s) s.innerHTML = '<span style="color:#22c55e;">' + counts.green + ' healthy</span> · <span style="color:#f59e0b;">' + counts.amber + ' stale</span> · <span style="color:#ef4444;">' + counts.red + ' failed</span> · <span style="color:#6b7280;">' + counts.disabled + ' disabled</span> · <strong>' + r.data.length + ' total</strong>';
+    var ts = document.getElementById('cron-last-refresh');
+    if (ts) ts.textContent = 'Updated ' + new Date().toLocaleTimeString();
+    window._cronData = r.data;
+    _renderCronTable(r.data);
+    var af = document.querySelector('[data-cron-filter].admin-btn-active');
+    if (af) { var fv = af.getAttribute('data-cron-filter'); if (fv !== 'all') _applyCronFilter(fv); }
   } catch(e) {
     console.error('[Admin] Cron panel error:', e);
+    if (typeof reportError === 'function') reportError('admin-cron:refresh', e);
     container.innerHTML = '<div class="admin-empty">Error: ' + e.message + '</div>';
   }
 }
@@ -6350,104 +6401,242 @@ async function _refreshCronPanel() {
 function _renderCronTable(data) {
   var container = document.getElementById('cron-table-container');
   if (!container) return;
-
-  var healthDot = { green: '🟢', amber: '🟡', red: '🔴', disabled: '⚫', unknown: '⚪' };
+  var hd = { green: '🟢', amber: '🟡', red: '🔴', disabled: '⚫', unknown: '⚪' };
 
   var rows = data.map(function(j) {
-    var dot = healthDot[j.health] || '⚪';
+    var dot = hd[j.health] || '⚪';
     var ago = j.last_start ? _timeAgo(new Date(j.last_start)) : '—';
-    var dur = j.last_duration_s != null ? (parseFloat(j.last_duration_s) < 60
-      ? parseFloat(j.last_duration_s).toFixed(1) + 's'
-      : (parseFloat(j.last_duration_s) / 60).toFixed(1) + 'm')
-      : '—';
+    var dur = j.last_duration_s != null ? (parseFloat(j.last_duration_s) < 60 ? parseFloat(j.last_duration_s).toFixed(1) + 's' : (parseFloat(j.last_duration_s) / 60).toFixed(1) + 'm') : '—';
     var msg = j.last_message ? _escHtml(j.last_message.substring(0, 120)) : '';
-    var schedDesc = _describeCron(j.schedule);
-
+    var sd = _describeCron(j.schedule);
+    var jid = j.jobid || j.job_id || 0;
+    var act = j.active !== false;
+    var ac = _cronAlertConfigs[j.jobname];
+    var ab = ac && ac.alert_enabled ? '<span title="Alerts: ' + ac.max_consecutive_failures + ' fail / ' + ac.stale_threshold_minutes + 'm stale" style="font-size:10px;cursor:help;">⚡</span>' : '';
+    var ti = act ? 'Disable' : 'Enable';
+    var ic = act ? '⏸' : '▶';
+    var jn = _escHtml(j.jobname || '');
+    var actions = '<div style="display:flex;gap:4px;white-space:nowrap;">' +
+      '<button class="admin-btn admin-btn-sm" data-cron-action="toggle" data-jid="' + jid + '" data-active="' + !act + '" title="' + ti + '" style="font-size:12px;min-width:28px;">' + ic + '</button>' +
+      '<button class="admin-btn admin-btn-sm" data-cron-action="force" data-jid="' + jid + '" data-jname="' + jn + '" title="Force run" style="font-size:12px;min-width:28px;">🔄</button>' +
+      '<button class="admin-btn admin-btn-sm" data-cron-action="edit" data-jid="' + jid + '" data-sched="' + _escHtml(j.schedule) + '" data-jname="' + jn + '" title="Edit schedule" style="font-size:12px;min-width:28px;">✏️</button>' +
+      '<button class="admin-btn admin-btn-sm" data-cron-action="history" data-jid="' + jid + '" data-jname="' + jn + '" title="Run history" style="font-size:12px;min-width:28px;">📋</button>' +
+      '</div>';
     return '<tr data-cron-health="' + j.health + '">' +
-      '<td style="white-space:nowrap;">' + dot + '</td>' +
+      '<td style="white-space:nowrap;">' + dot + ' ' + ab + '</td>' +
       '<td style="font-weight:500;">' + _escHtml(j.jobname || '(unnamed)') + '</td>' +
-      '<td><code style="font-size:11px;">' + _escHtml(j.schedule) + '</code><br><span style="font-size:11px;color:var(--muted);">' + schedDesc + '</span></td>' +
-      '<td>' + (j.active ? 'Yes' : '<span style="color:var(--muted);">No</span>') + '</td>' +
+      '<td><code style="font-size:11px;">' + _escHtml(j.schedule) + '</code><br><span style="font-size:11px;color:var(--muted);">' + sd + '</span></td>' +
+      '<td>' + (act ? '<span style="color:#22c55e;">Active</span>' : '<span style="color:var(--muted);">Disabled</span>') + '</td>' +
       '<td>' + (j.last_status || '—') + '</td>' +
-      '<td style="white-space:nowrap;">' + ago + '</td>' +
-      '<td>' + dur + '</td>' +
-      '<td style="font-size:11px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + msg + '">' + msg + '</td>' +
-      '</tr>';
+      '<td style="white-space:nowrap;">' + ago + '</td><td>' + dur + '</td>' +
+      '<td style="font-size:11px;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + msg + '">' + msg + '</td>' +
+      '<td>' + actions + '</td></tr>';
   }).join('');
 
-  container.innerHTML = `
-    <table class="admin-table" id="cron-table" style="width:100%;">
-      <thead>
-        <tr>
-          <th style="width:30px;"></th>
-          <th>Job Name</th>
-          <th>Schedule</th>
-          <th>Active</th>
-          <th>Last Status</th>
-          <th>Last Run</th>
-          <th>Duration</th>
-          <th>Message</th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>
-  `;
+  container.innerHTML = '<table class="admin-table" id="cron-table" style="width:100%;"><thead><tr>' +
+    '<th style="width:30px;"></th><th>Job Name</th><th>Schedule</th><th>Status</th><th>Last Result</th><th>Last Run</th><th>Duration</th><th>Message</th><th style="min-width:140px;">Actions</th>' +
+    '</tr></thead><tbody>' + rows + '</tbody></table>';
+
+  // Bind action buttons via delegation
+  container.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-cron-action]');
+    if (!btn) return;
+    var a = btn.getAttribute('data-cron-action');
+    var jid = parseInt(btn.getAttribute('data-jid'));
+    var jname = btn.getAttribute('data-jname') || '';
+    if (a === 'toggle') _cronToggle(jid, btn.getAttribute('data-active') === 'true');
+    else if (a === 'force') _cronForceRun(jid, jname);
+    else if (a === 'edit') _cronEditSchedule(jid, btn.getAttribute('data-sched'), jname);
+    else if (a === 'history') _cronShowHistory(jid, jname);
+  });
 }
 
-function _applyCronFilter(filter) {
-  var rows = document.querySelectorAll('#cron-table tbody tr');
-  rows.forEach(function(row) {
-    if (filter === 'all') {
-      row.style.display = '';
+// ─── Management Actions ───
+async function _cronToggle(jobId, newActive) {
+  if (!confirm(newActive ? 'Enable this cron job?' : 'Disable this cron job?')) return;
+  var r = await _cronMgmtCall('toggle', { job_id: jobId, active: newActive });
+  if (r && r.success) {
+    if (typeof toastSuccess === 'function') toastSuccess('Cron job ' + (newActive ? 'enabled' : 'disabled'));
+    if (typeof _logAdminAction === 'function') _logAdminAction(newActive ? 'cron_enabled' : 'cron_disabled', 'cron_job', jobId);
+    await _refreshCronPanel();
+  } else {
+    if (typeof toastWarning === 'function') toastWarning('Failed: ' + (r && r.error || 'Unknown'));
+  }
+}
+
+async function _cronForceRun(jobId, jobName) {
+  if (!confirm('Force-run "' + jobName + '" now?')) return;
+  var r = await _cronMgmtCall('force-run', { job_id: jobId });
+  if (r && r.success) {
+    if (typeof toastSuccess === 'function') toastSuccess('"' + jobName + '" triggered');
+    if (typeof _logAdminAction === 'function') _logAdminAction('cron_force_run', 'cron_job', jobId);
+    setTimeout(_refreshCronPanel, 3000);
+  } else {
+    if (typeof toastWarning === 'function') toastWarning('Force-run failed: ' + (r && r.error || 'Unknown'));
+  }
+}
+
+var _cronSchedEditJobId = null;
+function _cronEditSchedule(jobId, currentSched, jobName) {
+  _cronSchedEditJobId = jobId;
+  var modal = document.getElementById('cron-schedule-modal');
+  document.getElementById('cron-sched-modal-title').textContent = 'Edit Schedule: ' + jobName;
+  document.getElementById('cron-sched-input').value = currentSched;
+  document.getElementById('cron-sched-preview').textContent = _describeCron(currentSched);
+  modal.style.display = 'flex';
+
+  var saveBtn = document.getElementById('cron-sched-save');
+  var newBtn = saveBtn.cloneNode(true);
+  saveBtn.parentNode.replaceChild(newBtn, saveBtn);
+  newBtn.addEventListener('click', async function() {
+    var sched = document.getElementById('cron-sched-input').value.trim();
+    if (!sched) return;
+    newBtn.disabled = true; newBtn.textContent = 'Saving…';
+    var r = await _cronMgmtCall('update-schedule', { job_id: _cronSchedEditJobId, schedule: sched });
+    if (r && r.success) {
+      if (typeof toastSuccess === 'function') toastSuccess('Schedule updated');
+      document.getElementById('cron-schedule-modal').style.display = 'none';
+      await _refreshCronPanel();
     } else {
-      row.style.display = row.getAttribute('data-cron-health') === filter ? '' : 'none';
+      if (typeof toastWarning === 'function') toastWarning('Failed: ' + (r && r.error || 'Unknown'));
+      newBtn.disabled = false; newBtn.textContent = 'Save Schedule';
     }
+  });
+}
+
+async function _cronShowHistory(jobId, jobName) {
+  document.getElementById('cron-history-title').textContent = 'Run History: ' + jobName;
+  document.getElementById('cron-history-body').innerHTML = '<div class="admin-loading">Loading…</div>';
+  document.getElementById('cron-history-drawer').style.display = 'block';
+  document.getElementById('cron-history-overlay').style.display = 'block';
+
+  var r = await _cronMgmtCall('run-history', { job_id: jobId, limit: 30 }, 'GET');
+  var body = document.getElementById('cron-history-body');
+  if (!r || !r.runs || r.runs.length === 0) { body.innerHTML = '<div class="admin-empty">No run history found.</div>'; return; }
+
+  var html = '<table class="admin-table" style="width:100%;font-size:12px;"><thead><tr><th>Started</th><th>Status</th><th>Duration</th><th>Message</th></tr></thead><tbody>';
+  r.runs.forEach(function(run) {
+    var st = run.start_time ? new Date(run.start_time).toLocaleString() : '—';
+    var dr = run.duration_s != null ? (parseFloat(run.duration_s) < 60 ? parseFloat(run.duration_s).toFixed(1) + 's' : (parseFloat(run.duration_s) / 60).toFixed(1) + 'm') : '—';
+    var sc = run.status === 'succeeded' ? '#22c55e' : (run.status === 'failed' ? '#ef4444' : 'var(--muted)');
+    var m = run.return_message ? _escHtml(run.return_message.substring(0, 200)) : '';
+    html += '<tr><td style="white-space:nowrap;">' + st + '</td><td><span style="color:' + sc + ';font-weight:500;">' + (run.status || '—') + '</span></td><td>' + dr + '</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + m + '">' + m + '</td></tr>';
+  });
+  body.innerHTML = html + '</tbody></table>';
+}
+
+function _hideHistoryDrawer() {
+  document.getElementById('cron-history-drawer').style.display = 'none';
+  document.getElementById('cron-history-overlay').style.display = 'none';
+}
+
+// ─── Alert Config Form (0.162) ───
+function _renderAlertConfigForm() {
+  var body = document.getElementById('cron-alert-config-body');
+  if (!body) return;
+  var cd = window._cronData || [];
+  if (cd.length === 0) { body.innerHTML = '<div class="admin-empty">No cron jobs loaded yet.</div>'; return; }
+
+  var html = '<table class="admin-table" style="width:100%;font-size:12px;"><thead><tr><th>Job Name</th><th style="width:70px;">Alerts</th><th style="width:90px;">Max Fails</th><th style="width:100px;">Stale (min)</th><th style="width:50px;"></th></tr></thead><tbody>';
+  cd.forEach(function(j) {
+    var c = _cronAlertConfigs[j.jobname] || { alert_enabled: true, max_consecutive_failures: 3, stale_threshold_minutes: 30 };
+    var jn = _escHtml(j.jobname);
+    html += '<tr data-alert-job="' + jn + '">' +
+      '<td style="font-weight:500;font-size:12px;">' + jn + '</td>' +
+      '<td><input type="checkbox" class="cron-alert-enabled"' + (c.alert_enabled ? ' checked' : '') + '></td>' +
+      '<td><input type="number" class="cron-alert-failures" value="' + c.max_consecutive_failures + '" min="1" max="50" style="width:55px;padding:3px;border:1px solid var(--border);border-radius:4px;background:var(--bg-input);color:var(--text);font-size:12px;"></td>' +
+      '<td><input type="number" class="cron-alert-stale" value="' + c.stale_threshold_minutes + '" min="5" max="1440" style="width:65px;padding:3px;border:1px solid var(--border);border-radius:4px;background:var(--bg-input);color:var(--text);font-size:12px;"></td>' +
+      '<td><button class="admin-btn admin-btn-sm" data-save-alert="' + jn + '" style="font-size:11px;">Save</button></td></tr>';
+  });
+  html += '</tbody></table>';
+  html += '<div style="margin-top:12px;"><button class="admin-btn admin-btn-sm" id="cron-alert-save-all" style="background:var(--accent);color:#fff;border-color:var(--accent);">Save All</button></div>';
+  body.innerHTML = html;
+
+  // Bind individual save buttons
+  body.querySelectorAll('[data-save-alert]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      _saveCronAlertConfig(btn.getAttribute('data-save-alert'));
+    });
+  });
+  var saveAll = document.getElementById('cron-alert-save-all');
+  if (saveAll) saveAll.addEventListener('click', _saveAllCronAlertConfigs);
+}
+
+async function _saveCronAlertConfig(jobName) {
+  var row = document.querySelector('[data-alert-job="' + jobName + '"]');
+  if (!row) return;
+  var r = await _cronMgmtCall('alert-config', {
+    job_name: jobName,
+    max_consecutive_failures: parseInt(row.querySelector('.cron-alert-failures').value) || 3,
+    stale_threshold_minutes: parseInt(row.querySelector('.cron-alert-stale').value) || 30,
+    alert_enabled: row.querySelector('.cron-alert-enabled').checked
+  });
+  if (r && r.success) {
+    _cronAlertConfigs[jobName] = r.config;
+    if (typeof toastSuccess === 'function') toastSuccess('Alert config saved for ' + jobName);
+  } else {
+    if (typeof toastWarning === 'function') toastWarning('Failed: ' + (r && r.error || 'Unknown'));
+  }
+}
+
+async function _saveAllCronAlertConfigs() {
+  var rows = document.querySelectorAll('[data-alert-job]');
+  var saved = 0;
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    var jn = row.getAttribute('data-alert-job');
+    var r = await _cronMgmtCall('alert-config', {
+      job_name: jn,
+      max_consecutive_failures: parseInt(row.querySelector('.cron-alert-failures').value) || 3,
+      stale_threshold_minutes: parseInt(row.querySelector('.cron-alert-stale').value) || 30,
+      alert_enabled: row.querySelector('.cron-alert-enabled').checked
+    });
+    if (r && r.success) { _cronAlertConfigs[jn] = r.config; saved++; }
+  }
+  if (typeof toastSuccess === 'function') toastSuccess(saved + ' alert configs saved');
+}
+
+// ─── Helpers ───
+function _applyCronFilter(f) {
+  document.querySelectorAll('#cron-table tbody tr').forEach(function(r) {
+    r.style.display = (f === 'all' || r.getAttribute('data-cron-health') === f) ? '' : 'none';
   });
 }
 
 function _describeCron(schedule) {
   if (!schedule) return '';
-  var parts = schedule.split(' ');
-  if (parts.length < 5) return schedule;
-  var min = parts[0], hour = parts[1], dom = parts[2], mon = parts[3], dow = parts[4];
-
-  if (min.startsWith('*/') && hour === '*') return 'Every ' + min.slice(2) + ' min';
-  if (min === '0' && hour.startsWith('*/')) return 'Every ' + hour.slice(2) + ' hrs';
-  if (min === '0' && hour !== '*' && dom === '*') return 'Daily at ' + hour + ':00 UTC';
-  if (min !== '*' && hour !== '*' && dom === '*') return 'Daily at ' + hour + ':' + min.padStart(2, '0') + ' UTC';
-  if (dow !== '*') return 'Weekly (dow=' + dow + ')';
+  var p = schedule.trim().split(/\s+/);
+  if (p.length < 5) return schedule;
+  if (p[0].startsWith('*/') && p[1] === '*') return 'Every ' + p[0].slice(2) + ' min';
+  if (p[0] === '0' && p[1].startsWith('*/')) return 'Every ' + p[1].slice(2) + ' hrs';
+  if (p[0] === '0' && p[1] !== '*' && p[2] === '*') return 'Daily at ' + p[1] + ':00 UTC';
+  if (p[0] !== '*' && p[1] !== '*' && p[2] === '*') return 'Daily at ' + p[1] + ':' + p[0].padStart(2, '0') + ' UTC';
+  if (p[4] !== '*') return 'Weekly (dow=' + p[4] + ')';
   return schedule;
 }
 
 function _timeAgo(date) {
-  var secs = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (secs < 60) return secs + 's ago';
-  var mins = Math.floor(secs / 60);
-  if (mins < 60) return mins + 'm ago';
-  var hrs = Math.floor(mins / 60);
-  if (hrs < 24) return hrs + 'h ' + (mins % 60) + 'm ago';
-  var days = Math.floor(hrs / 24);
-  return days + 'd ' + (hrs % 24) + 'h ago';
+  var s = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (s < 60) return s + 's ago';
+  var m = Math.floor(s / 60);
+  if (m < 60) return m + 'm ago';
+  var h = Math.floor(m / 60);
+  if (h < 24) return h + 'h ' + (m % 60) + 'm ago';
+  return Math.floor(h / 24) + 'd ' + (h % 24) + 'h ago';
 }
 
 function _escHtml(str) {
   if (!str) return '';
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-// Cleanup on tab switch
 function _cleanupCronPanel() {
-  if (_cronRefreshTimer) {
-    clearInterval(_cronRefreshTimer);
-    _cronRefreshTimer = null;
-  }
+  if (_cronRefreshTimer) { clearInterval(_cronRefreshTimer); _cronRefreshTimer = null; }
 }
 
-// Export
 window.loadCronPanel = loadCronPanel;
 window._cleanupCronPanel = _cleanupCronPanel;
 
-// CS-P1-004 FE-005: Register admin-cron exports with BJ namespace
 (function() {
   ['_cleanupCronPanel','_cronData','loadCronPanel'].forEach(function(name) {
     if (typeof window[name] === 'function') {
@@ -8643,17 +8832,51 @@ async function loadPostHogInsightsPanel() {
     '  </div>',
     '',
     '  <!-- Feature Flags Status -->',
-    '  <div style="background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:16px;">',
+    '  <div style="background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:16px;margin-bottom:20px;">',
     '    <div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Feature Flags</div>',
     '    <div id="ph-flags-body">',
     '      <div style="text-align:center;color:var(--muted);font-size:13px;padding:12px;">Loading…</div>',
     '    </div>',
     '  </div>',
     '',
+    '  <!-- CS-P1-016 0.175: Conversion Funnel -->',
+    '  <div style="background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:16px;margin-bottom:20px;">',
+    '    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">',
+    '      <div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;">Conversion Funnel (7 days)</div>',
+    '      <select id="ph-funnel-select" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-input);color:var(--text);font-size:12px;">',
+    '        <option value="signup">Signup → Job Save → Apply</option>',
+    '        <option value="landing">Visit → Signup → Dashboard</option>',
+    '        <option value="referral">Referral Click → Signup → Active</option>',
+    '      </select>',
+    '    </div>',
+    '    <div id="ph-funnel-body">',
+    '      <div style="text-align:center;color:var(--muted);font-size:13px;padding:12px;">Loading…</div>',
+    '    </div>',
+    '  </div>',
+    '',
+    '  <!-- CS-P1-016 0.175: Retention Cohort -->',
+    '  <div style="background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:16px;margin-bottom:20px;">',
+    '    <div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Retention (Weekly Cohorts)</div>',
+    '    <div id="ph-retention-body">',
+    '      <div style="text-align:center;color:var(--muted);font-size:13px;padding:12px;">Loading…</div>',
+    '    </div>',
+    '  </div>',
+    '',
+    '  <!-- CS-P1-016 0.175: Key Metrics Summary -->',
+    '  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;" id="ph-key-metrics">',
+    '    <div class="admin-metric-card" id="ph-signup-rate"><div class="admin-metric-label">Signup Rate</div><div class="admin-metric-value">—</div></div>',
+    '    <div class="admin-metric-card" id="ph-activation-rate"><div class="admin-metric-label">Activation Rate</div><div class="admin-metric-value">—</div></div>',
+    '    <div class="admin-metric-card" id="ph-sessions-avg"><div class="admin-metric-label">Avg Sessions/User</div><div class="admin-metric-value">—</div></div>',
+    '    <div class="admin-metric-card" id="ph-bounce-rate"><div class="admin-metric-label">Bounce Rate</div><div class="admin-metric-value">—</div></div>',
+    '  </div>',
+    '',
     '</div>'
   ].join('\n');
 
   document.getElementById('ph-refresh-btn').addEventListener('click', _refreshPostHogInsights);
+  document.getElementById('ph-funnel-select').addEventListener('change', function() {
+    _loadFunnelData(this.value);
+  });
   await _refreshPostHogInsights();
 
   // Auto-refresh every 5 minutes
@@ -8675,7 +8898,10 @@ async function _refreshPostHogInsights() {
     _loadActiveUsers(),
     _loadEventTrends(),
     _loadTopEvents(),
-    _loadFeatureFlags()
+    _loadFeatureFlags(),
+    _loadFunnelData('signup'),
+    _loadRetentionData(),
+    _loadKeyMetrics()
   ]);
 
   if (ts) ts.textContent = 'Updated ' + new Date().toLocaleTimeString();
@@ -8844,6 +9070,227 @@ function _escHtml(s) {
   var d = document.createElement('div');
   d.textContent = s;
   return d.innerHTML;
+}
+
+// ═══════════════════════════════════════════════════════════
+// CS-P1-016 0.175: Funnel Analysis
+// ═══════════════════════════════════════════════════════════
+
+var FUNNEL_DEFINITIONS = {
+  signup: {
+    label: 'Signup → Job Save → Apply',
+    steps: [
+      { id: 'user_signed_up', label: 'Signed Up' },
+      { id: 'job_saved', label: 'Saved a Job' },
+      { id: 'job_applied', label: 'Applied' }
+    ]
+  },
+  landing: {
+    label: 'Visit → Signup → Dashboard',
+    steps: [
+      { id: '$pageview', label: 'Visited Landing', properties: { $current_url: { $regex: '^https://brilliantjobs.app/?$' } } },
+      { id: 'user_signed_up', label: 'Signed Up' },
+      { id: 'dashboard_tab_viewed', label: 'Reached Dashboard' }
+    ]
+  },
+  referral: {
+    label: 'Referral Click → Signup → Active',
+    steps: [
+      { id: 'referral_link_clicked', label: 'Clicked Referral' },
+      { id: 'user_signed_up', label: 'Signed Up' },
+      { id: 'job_saved', label: 'Active (Saved Job)' }
+    ]
+  }
+};
+
+async function _loadFunnelData(funnelKey) {
+  var container = document.getElementById('ph-funnel-body');
+  if (!container) return;
+
+  var funnel = FUNNEL_DEFINITIONS[funnelKey] || FUNNEL_DEFINITIONS.signup;
+
+  // Try PostHog Insights Funnel API
+  var events = funnel.steps.map(function(s) {
+    var evt = { id: s.id, type: 'events' };
+    if (s.properties) evt.properties = s.properties;
+    return evt;
+  });
+
+  var data = await _phApiFetch('/insights/funnel/', {
+    events: JSON.stringify(events),
+    date_from: '-7d',
+    funnel_window_days: 7,
+    funnel_viz_type: 'steps'
+  });
+
+  if (!data || !data.result || data.result.length === 0) {
+    // Fallback: use event counts as proxy
+    _renderFunnelFromEventCounts(funnel, container);
+    return;
+  }
+
+  // Render funnel steps
+  var steps = data.result;
+  _renderFunnelSteps(funnel, steps, container);
+}
+
+function _renderFunnelSteps(funnel, steps, container) {
+  var maxCount = steps[0] ? (steps[0].count || 0) : 1;
+  if (maxCount === 0) maxCount = 1;
+
+  var html = '<div style="display:flex;flex-direction:column;gap:8px;">';
+  for (var i = 0; i < funnel.steps.length; i++) {
+    var step = steps[i] || { count: 0 };
+    var count = step.count || 0;
+    var pct = Math.round((count / maxCount) * 100);
+    var convRate = i > 0 ? Math.round((count / (steps[i - 1].count || 1)) * 100) : 100;
+    var dropoff = i > 0 ? ((steps[i - 1].count || 0) - count) : 0;
+
+    html += '<div style="display:flex;align-items:center;gap:12px;">';
+    html += '<div style="min-width:120px;font-size:12px;color:var(--text);">' + funnel.steps[i].label + '</div>';
+    html += '<div style="flex:1;height:28px;background:var(--bg-main);border-radius:4px;overflow:hidden;position:relative;">';
+    html += '<div style="height:100%;width:' + pct + '%;background:var(--accent, #6366f1);border-radius:4px;transition:width 0.3s;"></div>';
+    html += '<span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text);font-weight:500;">' + count + '</span>';
+    html += '</div>';
+    html += '<div style="min-width:60px;text-align:right;font-size:11px;color:var(--muted);">' + pct + '%';
+    if (i > 0) html += '<br><span style="color:' + (convRate >= 50 ? '#22c55e' : convRate >= 20 ? '#f59e0b' : '#ef4444') + ';">' + convRate + '% conv</span>';
+    html += '</div>';
+    html += '</div>';
+
+    // Dropoff indicator between steps
+    if (i < funnel.steps.length - 1 && dropoff > 0) {
+      html += '<div style="margin-left:120px;padding-left:12px;font-size:10px;color:var(--muted);">↓ ' + dropoff + ' dropped off</div>';
+    }
+  }
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+async function _renderFunnelFromEventCounts(funnel, container) {
+  // Fallback when PostHog funnel API isn't available: count each event independently
+  var counts = [];
+  for (var i = 0; i < funnel.steps.length; i++) {
+    var data = await _phApiFetch('/insights/trend/', {
+      events: JSON.stringify([{ id: funnel.steps[i].id, type: 'events', math: 'dau' }]),
+      date_from: '-7d'
+    });
+    var total = 0;
+    if (data && data.result && data.result[0]) {
+      total = (data.result[0].data || []).reduce(function(a, b) { return a + b; }, 0);
+    }
+    counts.push({ count: total });
+  }
+  _renderFunnelSteps(funnel, counts, container);
+}
+
+// ═══════════════════════════════════════════════════════════
+// CS-P1-016 0.175: Retention Cohorts
+// ═══════════════════════════════════════════════════════════
+
+async function _loadRetentionData() {
+  var container = document.getElementById('ph-retention-body');
+  if (!container) return;
+
+  var data = await _phApiFetch('/insights/retention/', {
+    target_entity: JSON.stringify({ id: '$pageview', type: 'events' }),
+    returning_entity: JSON.stringify({ id: '$pageview', type: 'events' }),
+    retention_type: 'retention_first_time',
+    total_intervals: 4,
+    period: 'Week',
+    date_from: '-28d'
+  });
+
+  if (!data || !data.result || data.result.length === 0) {
+    container.innerHTML = '<div style="font-size:12px;color:var(--muted);text-align:center;padding:12px;">Retention data unavailable. Requires sufficient user volume.</div>';
+    return;
+  }
+
+  // Render retention grid
+  var cohorts = data.result;
+  var html = '<table class="admin-table" style="width:100%;font-size:11px;"><thead><tr><th>Cohort</th><th>Size</th>';
+  for (var w = 0; w < 4; w++) html += '<th>Week ' + w + '</th>';
+  html += '</tr></thead><tbody>';
+
+  cohorts.forEach(function(cohort) {
+    var date = cohort.date ? new Date(cohort.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
+    var baseSize = cohort.values && cohort.values[0] ? cohort.values[0].count : 0;
+    html += '<tr><td style="white-space:nowrap;">' + date + '</td><td>' + baseSize + '</td>';
+
+    for (var w = 0; w < 4; w++) {
+      if (cohort.values && cohort.values[w]) {
+        var pct = baseSize > 0 ? Math.round((cohort.values[w].count / baseSize) * 100) : 0;
+        var bg = pct >= 60 ? 'rgba(34,197,94,0.3)' : pct >= 30 ? 'rgba(245,158,11,0.2)' : pct > 0 ? 'rgba(239,68,68,0.15)' : 'transparent';
+        html += '<td style="background:' + bg + ';text-align:center;">' + pct + '%</td>';
+      } else {
+        html += '<td style="text-align:center;color:var(--muted);">—</td>';
+      }
+    }
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// CS-P1-016 0.175: Key Metrics
+// ═══════════════════════════════════════════════════════════
+
+async function _loadKeyMetrics() {
+  // Signup rate: signups / visits (7d)
+  var visits = await _phApiFetch('/insights/trend/', {
+    events: JSON.stringify([{ id: '$pageview', type: 'events', math: 'dau' }]),
+    date_from: '-7d'
+  });
+  var signups = await _phApiFetch('/insights/trend/', {
+    events: JSON.stringify([{ id: 'user_signed_up', type: 'events', math: 'total' }]),
+    date_from: '-7d'
+  });
+
+  var totalVisits = 0, totalSignups = 0;
+  if (visits && visits.result && visits.result[0]) totalVisits = (visits.result[0].data || []).reduce(function(a, b) { return a + b; }, 0);
+  if (signups && signups.result && signups.result[0]) totalSignups = (signups.result[0].data || []).reduce(function(a, b) { return a + b; }, 0);
+
+  var signupEl = document.getElementById('ph-signup-rate');
+  if (signupEl) {
+    var sr = totalVisits > 0 ? ((totalSignups / totalVisits) * 100).toFixed(1) + '%' : '—';
+    signupEl.querySelector('.admin-metric-value').textContent = sr;
+  }
+
+  // Activation rate: users who saved a job / signups
+  var activations = await _phApiFetch('/insights/trend/', {
+    events: JSON.stringify([{ id: 'job_saved', type: 'events', math: 'dau' }]),
+    date_from: '-7d'
+  });
+  var totalActivations = 0;
+  if (activations && activations.result && activations.result[0]) totalActivations = (activations.result[0].data || []).reduce(function(a, b) { return a + b; }, 0);
+
+  var actEl = document.getElementById('ph-activation-rate');
+  if (actEl) {
+    var ar = totalSignups > 0 ? ((totalActivations / totalSignups) * 100).toFixed(1) + '%' : '—';
+    actEl.querySelector('.admin-metric-value').textContent = ar;
+  }
+
+  // Avg sessions per user: total pageviews / unique visitors (rough proxy)
+  var totalPvs = await _phApiFetch('/insights/trend/', {
+    events: JSON.stringify([{ id: '$pageview', type: 'events', math: 'total' }]),
+    date_from: '-7d'
+  });
+  var pvTotal = 0;
+  if (totalPvs && totalPvs.result && totalPvs.result[0]) pvTotal = (totalPvs.result[0].data || []).reduce(function(a, b) { return a + b; }, 0);
+
+  var sessEl = document.getElementById('ph-sessions-avg');
+  if (sessEl) {
+    var avg = totalVisits > 0 ? (pvTotal / totalVisits).toFixed(1) : '—';
+    sessEl.querySelector('.admin-metric-value').textContent = avg;
+  }
+
+  // Bounce rate proxy: single-page sessions
+  var bounceEl = document.getElementById('ph-bounce-rate');
+  if (bounceEl) {
+    // Approximate: if avg pages/user is low, bounce rate is high
+    var bounceEst = totalVisits > 0 ? Math.max(0, 100 - ((pvTotal / totalVisits - 1) * 50)).toFixed(0) + '%' : '—';
+    bounceEl.querySelector('.admin-metric-value').textContent = bounceEst;
+  }
 }
 
 

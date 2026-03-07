@@ -66,6 +66,7 @@ var ADMIN_SUBPAGE_MAP = {
   'ef-health':      { section: 'operations',  label: 'EF Health',      init: function(){ loadEfHealthPanel(); } },
   'db-activity':    { section: 'operations',  label: 'DB Activity',    init: function(){ loadDbActivityPanel(); } },
   'posthog-insights':{ section: 'operations',  label: 'PostHog Insights',init: function(){ loadPostHogInsightsPanel(); } },
+  'ab-tests':        { section: 'operations',  label: 'A/B Tests',       init: function(){ loadAbTestsPanel(); } },
   'kill-switch':    { section: 'operations',  label: 'Kill Switch',    init: function(){ loadKillSwitchPanel(); } },
   // ── Growth ──
   'seo':            { section: 'growth',      label: 'SEO',            init: function(){ loadSeoTab(); } },
@@ -217,6 +218,7 @@ function navigateAdminSubpage(key) {
   if (typeof _cleanupAlertsPanel === 'function') _cleanupAlertsPanel();
   if (typeof _cleanupErrorReplayPanel === 'function') _cleanupErrorReplayPanel();
   if (typeof _cleanupEfHealthPanel === 'function') _cleanupEfHealthPanel();
+  if (typeof _cleanupPostHogInsights === 'function') _cleanupPostHogInsights();
   if (typeof _cleanupDbActivityPanel === 'function') _cleanupDbActivityPanel();
 
   // Show correct panel, hide all others
