@@ -83,10 +83,31 @@ describe('SE-005: CSP enforcement', () => {
     expect(scriptSrc[0]).not.toContain('unsafe-inline');
   });
 
-  it('vercel.json catch-all CSP does not contain unsafe-inline for scripts', () => {
+  it('vercel.json catch-all CSP retains unsafe-inline (SEO pages need inline scripts)', () => {
     const catchAllRoute = vercelJson.headers.find(h => h.source === '/(.*)');
     expect(catchAllRoute).toBeTruthy();
     const cspHeader = catchAllRoute.headers.find(h => h.key === 'Content-Security-Policy');
+    expect(cspHeader).toBeTruthy();
+    const scriptSrc = cspHeader.value.match(/script-src[^;]*/i);
+    expect(scriptSrc).toBeTruthy();
+    // Catch-all keeps unsafe-inline because api/seo-page.js generates inline scripts
+    expect(scriptSrc[0]).toContain('unsafe-inline');
+  });
+
+  it('vercel.json dashboard route CSP does NOT contain unsafe-inline for scripts', () => {
+    const dashRoute = vercelJson.headers.find(h => h.source === '/dashboard');
+    expect(dashRoute).toBeTruthy();
+    const cspHeader = dashRoute.headers.find(h => h.key === 'Content-Security-Policy');
+    expect(cspHeader).toBeTruthy();
+    const scriptSrc = cspHeader.value.match(/script-src[^;]*/i);
+    expect(scriptSrc).toBeTruthy();
+    expect(scriptSrc[0]).not.toContain('unsafe-inline');
+  });
+
+  it('vercel.json admin route CSP does NOT contain unsafe-inline for scripts', () => {
+    const adminRoute = vercelJson.headers.find(h => h.source === '/admin');
+    expect(adminRoute).toBeTruthy();
+    const cspHeader = adminRoute.headers.find(h => h.key === 'Content-Security-Policy');
     expect(cspHeader).toBeTruthy();
     const scriptSrc = cspHeader.value.match(/script-src[^;]*/i);
     expect(scriptSrc).toBeTruthy();

@@ -48,7 +48,10 @@ The service role key was exposed in git history (commit `4a5191787f15`, Feb 23 2
 ## Security Headers
 
 All surfaces enforce the following via `vercel.json`:
-- `Content-Security-Policy` — no `unsafe-inline` in script-src (CS-P1-002)
+- `Content-Security-Policy` — **layered enforcement:**
+  - `/dashboard` and `/admin` routes: no `unsafe-inline` in script-src (all inline scripts externalized in CS-P1-002)
+  - `/` (landing page): no `unsafe-inline` in script-src (inline scripts externalized in CS-018)
+  - `/(.*)`catch-all: retains `unsafe-inline` because `api/seo-page.js` generates inline scripts for SEO data pages (future: externalize these too)
 - `X-Content-Type-Options: nosniff`
 - `X-Frame-Options: DENY`
 - `Strict-Transport-Security` with preload
