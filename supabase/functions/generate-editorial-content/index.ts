@@ -4,6 +4,7 @@
 // NEVER goes straight to published. All content requires editorial approval via approve-content EF.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireAdmin, authErrorResponse } from "../_shared/admin-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -420,48 +421,22 @@ Deno.serve(async (req) => {
     const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // CS-001: Auth fix — was: zero authentication, anyone could trigger Anthropic spend
-    const authHeader = req.headers.get("Authorization") || "";
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Authorization required" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    // Allow service_role calls (from cron jobs), otherwise verify admin
-    const bearerToken = authHeader.replace("Bearer ", "");
+    // G11: Auth via shared admin-auth middleware (supports service_role for cron)
     let isServiceRole = false;
     try {
-      const payload = JSON.parse(atob(bearerToken.split(".")[1]));
-      isServiceRole = payload.role === "service_role";
-    } catch { /* not a valid JWT — will fail user auth below */ }
-    if (!isServiceRole) {
-      const { data: { user }, error: authErr } = await supabase.auth.getUser(bearerToken);
-      if (authErr || !user) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-      if (profile?.role !== "admin") {
-        return new Response(JSON.stringify({ error: "Admin only" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      const authResult = await requireAdmin(req);
+      isServiceRole = authResult.isServiceRole;
+    } catch (err) {
+      return authErrorResponse(err, corsHeaders);
     }
 
-    // Get pending stories that need content generation
     // CS-006: AD-FIX-03 — Rate limit: 10 calls/hr for non-service-role callers
     if (!isServiceRole) {
+      const authHeader = req.headers.get("Authorization") || "";
+      const callerToken = authHeader.replace("Bearer ", "");
       const { data: allowed } = await supabase.rpc('check_ef_rate_limit', {
         p_function_name: 'generate-editorial-content',
-        p_caller_id: bearerToken.split('.')[1]?.substring(0, 20) || 'unknown',
+        p_caller_id: callerToken.split('.')[1]?.substring(0, 20) || 'unknown',
         p_max_calls: 10,
         p_window_minutes: 60
       });

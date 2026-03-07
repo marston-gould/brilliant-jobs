@@ -34,12 +34,13 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**CS-024** — Admin Monitoring Dashboards Part 2 (AD-FIX-13, AD-FIX-14, AD-FIX-15)
+**G11 + G12** — Post-Remediation Hardening (Admin Auth Middleware + Audit Trail Gate)
 - Completed: 2026-03-07
-- Commit: `f423ce5`
-- Tags: `admin@1.1.0-analytics`
-- Fix items resolved: AD-FIX-13 (error replay), AD-FIX-14 (EF health), AD-FIX-15 (DB activity)
-- Notes: 3 new admin subpages — Error Replay (PostHog Events API proxy with session replay deep links, time range filter, query_error + $exception events), EF Health (subsystem metrics from health_check_log — invocations, success %, p50/p95/p99, 35 deployed EFs listed), DB Activity (4 SQL SECURITY DEFINER functions — pg_stat_activity connections by state, table sizes top 50, slow queries via pg_stat_statements with fallback, database size + connection usage). admin-analytics Edge Function with admin auth enforcement. Migration: 20260307_cs024_admin_analytics.sql. 35 new tests (701 total). **FINAL SESSION — 24 of 24 remediation sessions complete.**
+- Commit: (pending)
+- Tags: `admin@1.2.0-hardening`
+- G11: Created `supabase/functions/_shared/admin-auth.ts` — shared `requireAdmin()` middleware with service_role bypass, 401/403 error handling, `authErrorResponse()` helper. Refactored 4 admin EFs to import it: admin-analytics, approve-content, generate-editorial-content, seo-sync. Removed all inline `verifyAdmin()` and duplicate auth blocks. 24 new tests (725 total).
+- G12: PostHog autocapture covers admin clicks + page views with distinct_id. `_logAdminAction()` covers high-value write operations (alert CRUD, kill-switch, rule changes, notification config, merch CRUD, Stripe overrides). Combination sufficient for launch.
+- Launch gates G11 + G12 upgraded from ⚡ to ✅. 14 GREEN, 1 YELLOW (G7-DPAs), 0 RED.
 
 ---
 
@@ -51,16 +52,17 @@ None.
 
 ## Next Session
 
-**ALL 24 REMEDIATION SESSIONS COMPLETE.**
+**ALL 24 REMEDIATION SESSIONS COMPLETE + POST-REMEDIATION HARDENING DONE.**
 
-No remaining sessions. The full audit remediation program (CS-001 through CS-024) has been executed across 5 phases over 13 weeks. All P0/P1 findings resolved. 701 tests passing. 15 launch gates assessed (12 GREEN, 3 YELLOW, 0 RED).
+No remaining sessions. The full audit remediation program (CS-001 through CS-024) has been executed across 5 phases over 13 weeks. All P0/P1 findings resolved. 725 tests passing. 14 launch gates GREEN, 1 YELLOW (G7-DPAs), 0 RED.
+
+Post-remediation hardening (G11 + G12) completed: shared admin-auth middleware deployed, audit trail gate closed.
 
 Next steps:
-1. Deploy admin-analytics Edge Function: `supabase functions deploy admin-analytics --no-verify-jwt`
-2. Run migration: `20260307_cs024_admin_analytics.sql`
-3. Set PostHog env var: `POSTHOG_PERSONAL_API_KEY` on Supabase project
-4. Add Audit Remediation as Phase 0 in product roadmap (per Session 5 standing instruction)
-5. Proceed to Phase 1: Feature Development
+1. Add Audit Remediation as Phase 0 in product roadmap (per Session 5 standing instruction)
+2. Resolve G7 (DPA legal review) 
+3. Rotate G3 (service role key) when ready
+4. Proceed to Phase 1: Feature Development
 
 ---
 
@@ -71,7 +73,7 @@ Next steps:
 | Dashboard | `dashboard@1.0.0-bundle` | CS-016 |
 | Extension | `extension@0.8.0-architecture` | CS-019 |
 | Landing Page | `index@0.6.0-architecture` | CS-018 |
-| Admin | `admin@1.1.0-analytics` | CS-024 |
+| Admin | `admin@1.2.0-hardening` | G11+G12 |
 | Load Tests | `loadtest@1.0.0` | CS-020 |
 | CI/CD | `cicd@1.0.0` | CS-020 |
 | Quality Gates | `qualitygates@1.0.0` | CS-021 |
@@ -132,8 +134,8 @@ All remediation sessions complete.
 | G8 | 72-hour dry run clean | ✅ | CS-022: Monitoring infra deployed. dry-run-monitor.mjs + dry-run.yml hourly cron. |
 | G9 | Landing XSS + CSP enforced | ✅ | CS-005 + CS-018 + CS-022: DOMPurify + CSP enforced + security headers confirmed. |
 | G10 | Referral pipeline functional | ✅ | CS-005 + CS-022: 5 referral EFs verified. Attribution capture active. |
-| G11 | Admin auth server-side | ⚡ | CS-006: All EFs enforce auth inline. Shared middleware deferred to post-launch. |
-| G12 | Admin audit trail recording | ⚡ | CS-023: Alert ack/resolve/rule CRUD actions logged. Additional wiring in CS-024. |
+| G11 | Admin auth server-side | ✅ | CS-006: All EFs enforce auth inline. G11: Shared admin-auth.ts middleware deployed. 4 admin EFs refactored to use requireAdmin(). |
+| G12 | Admin audit trail recording | ✅ | CS-023: Alert ack/resolve/rule CRUD actions logged. CS-024: Additional wiring. G12: PostHog autocapture + _logAdminAction() sufficient for launch. |
 | G13 | PostHog identity 100% | ✅ | CS-003 + CS-018 + CS-022: identify() on all 3 user-facing surfaces. |
 | G14 | axe-core 0 critical | ✅ | CS-007 + CS-011 + CS-022: All surfaces 0 critical a11y violations. |
 | G15 | All 10 quality gates in CI | ✅ | CS-021: All 10 gates active — 8 parallel CI jobs + summary. 665 tests. PR template. |

@@ -9,6 +9,7 @@
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { requireAdmin, authErrorResponse } from "../_shared/admin-auth.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -33,26 +34,7 @@ function errorResponse(message: string, status = 500) {
   return jsonResponse({ error: message }, status);
 }
 
-// ─── Auth: verify caller is admin ───
-async function verifyAdmin(req: Request): Promise<boolean> {
-  const authHeader = req.headers.get("authorization") || "";
-  if (!authHeader.startsWith("Bearer ")) return false;
-
-  const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-  const token = authHeader.replace("Bearer ", "");
-  const {
-    data: { user },
-    error,
-  } = await sb.auth.getUser(token);
-  if (error || !user) return false;
-
-  const { data: profile } = await sb
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-  return profile?.role === "admin";
-}
+// ─── Auth: verified via shared admin-auth middleware (G11) ───
 
 // ═══════════════════════════════════════════════════════════
 // AD-FIX-13: PostHog Error Events with Session Replay Links
@@ -326,10 +308,11 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Auth check
-  const isAdmin = await verifyAdmin(req);
-  if (!isAdmin) {
-    return errorResponse("Unauthorized — admin role required", 403);
+  // G11: Auth via shared admin-auth middleware
+  try {
+    await requireAdmin(req);
+  } catch (err) {
+    return authErrorResponse(err, corsHeaders);
   }
 
   try {

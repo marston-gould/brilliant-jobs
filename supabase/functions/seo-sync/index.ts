@@ -5,6 +5,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { requireAdmin, authErrorResponse } from '../_shared/admin-auth.ts';
 
 const SB_URL  = Deno.env.get('SUPABASE_URL')!;
 const SB_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -638,36 +639,21 @@ async function syncCloudflare(daysBack = 7): Promise<{ days: number }> {
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
   try {
-    // CS-001: Auth fix — reject if no Authorization header (was: no header = bypass all checks)
-    const auth = req.headers.get('Authorization');
-    if (!auth) {
-      return new Response(JSON.stringify({ error: 'Authorization required' }),
-        { status: 401, headers: { ...CORS, 'Content-Type': 'application/json' } });
-    }
-    const bearerToken = auth.replace('Bearer ', '');
-    // Check if this is a service_role JWT (used by cron jobs / server-side calls)
+    // G11: Auth via shared admin-auth middleware (supports service_role for cron)
     let isServiceRole = false;
     try {
-      const payload = JSON.parse(atob(bearerToken.split('.')[1]));
-      isServiceRole = payload.role === 'service_role';
-    } catch { /* not a valid JWT — will fail user auth below */ }
-    if (!isServiceRole) {
-      const { data: { user } } = await sb.auth.getUser(bearerToken);
-      if (!user) {
-        return new Response(JSON.stringify({ error: 'Invalid token' }),
-          { status: 401, headers: { ...CORS, 'Content-Type': 'application/json' } });
-      }
-      const { data: p } = await sb.from('profiles').select('role').eq('id', user.id).single();
-      if (p?.role !== 'admin') {
-        return new Response(JSON.stringify({ error: 'Admin only' }),
-          { status: 403, headers: { ...CORS, 'Content-Type': 'application/json' } });
-      }
+      const authResult = await requireAdmin(req);
+      isServiceRole = authResult.isServiceRole;
+    } catch (err) {
+      return authErrorResponse(err, CORS);
     }
     // CS-006: AD-FIX-03 — Rate limit: 5 calls/hr for non-service-role callers
     if (!isServiceRole) {
+      const authHeader = req.headers.get('Authorization') || '';
+      const callerToken = authHeader.replace('Bearer ', '');
       const { data: allowed } = await sb.rpc('check_ef_rate_limit', {
         p_function_name: 'seo-sync',
-        p_caller_id: bearerToken.split('.')[1]?.substring(0, 20) || 'unknown',
+        p_caller_id: callerToken.split('.')[1]?.substring(0, 20) || 'unknown',
         p_max_calls: 5,
         p_window_minutes: 60
       });

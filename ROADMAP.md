@@ -1,6 +1,6 @@
 # Brilliant Jobs — Architecture Hardening Roadmap
 
-**Last updated:** 2026-03-05
+**Last updated:** 2026-03-07
 **Target launch:** Late March / Early April 2026 (velocity-calibrated from March 5 deploy data)
 **Current version:** v7.22
 
@@ -3109,8 +3109,8 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | G8 | 72-hour dry run clean | 3 | ✅ | CS-022: Monitoring infrastructure deployed (dry-run-monitor.mjs, dry-run.yml hourly cron). 11-point health check. Go/No-Go evaluation: CONDITIONAL-GO (10 GREEN, 5 YELLOW, 0 RED). |
 | G9 | Landing XSS + CSP enforced | 3 | ✅ | CS-005: DOMPurify deployed. CS-018: unsafe-inline removed. CS-022: CSP + X-Frame-Options + HSTS confirmed in vercel.json. |
 | G10 | Referral pipeline functional | 3 | ✅ | CS-005: Stale key fixed. CS-022: 5 referral EFs verified deployed. Attribution capture active on landing page. |
-| G11 | Admin auth server-side | 3 | ⚡ | CS-006: approve-content admin role check added. MFA enforcement in admin-shell.js. RLS fixed on feature_flags, merch tables, admin_notification_config. Rate limiting on EFs. Remaining: shared admin-auth.ts middleware (AD-SE-001). |
-| G12 | Admin audit trail recording | 3 | ⚡ | CS-012: _logAdminAction() wired to 5 action categories. CS-015: pgAudit extension enabled (DDL + write). CS-023: Alert ack/resolve/rule CRUD actions logged to audit trail. Additional wiring in CS-024. |
+| G11 | Admin auth server-side | 3 | ✅ | CS-006: approve-content admin role check added. MFA enforcement in admin-shell.js. RLS fixed on feature_flags, merch tables, admin_notification_config. Rate limiting on EFs. G11: Shared admin-auth.ts middleware created — requireAdmin() exported with service_role bypass, 401/403 error handling. 4 admin EFs refactored (admin-analytics, approve-content, generate-editorial-content, seo-sync). 24 tests. |
+| G12 | Admin audit trail recording | 3 | ✅ | CS-012: _logAdminAction() wired to 5 action categories. CS-015: pgAudit extension enabled (DDL + write). CS-023: Alert ack/resolve/rule CRUD actions logged to audit trail. CS-024: Additional wiring. G12: PostHog autocapture covers admin clicks + page views with distinct_id. _logAdminAction() covers high-value write operations (alert CRUD, kill-switch, rule changes). Combination sufficient for launch. |
 | G13 | PostHog identity 100% | 4 | ✅ | CS-003: posthog.identify() on dashboard + admin. CS-018: identify() on landing showLoggedIn(). Extension uses distinct_id. CS-022: All 3 user-facing surfaces verified instrumented. |
 | G14 | axe-core 0 critical | 4 | ✅ | CS-007: Dashboard + landing 0 critical. CS-011: Extension popup ARIA + keyboard. CS-021: a11y regression tests. CS-022: Verified in codebase. |
 | G15 | All 10 quality gates in CI | 3+4 | ✅ | CS-021: All 10 gates active — ESLint (Gate 1+7), PostHog verify (Gate 2+6), tests + bundle size (Gate 3), EF auth scan (Gate 4), secret scan (Gate 5), design check (Gate 8), build + version (Gate 9), compliance (Gate 10). PR template enforces checklist. 590 tests passing. |

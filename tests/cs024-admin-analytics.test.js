@@ -262,15 +262,15 @@ describe('CS-024: Admin Infrastructure Integration', () => {
     expect(content).toContain('posthog-errors');
     expect(content).toContain('ef-health');
     expect(content).toContain('db-activity');
-    expect(content).toContain('verifyAdmin');
+    expect(content).toContain('requireAdmin');
     expect(content).toContain('POSTHOG_PERSONAL_API_KEY');
   });
 
-  it('admin-analytics EF enforces admin auth', () => {
+  it('admin-analytics EF enforces admin auth via shared middleware (G11)', () => {
     const content = readFileSync(join(ROOT, 'supabase/functions/admin-analytics/index.ts'), 'utf8');
-    expect(content).toContain('verifyAdmin');
-    expect(content).toContain('Unauthorized');
-    expect(content).toContain('role === "admin"');
+    expect(content).toContain('requireAdmin');
+    expect(content).toContain('authErrorResponse');
+    expect(content).toContain("_shared/admin-auth.ts");
   });
 
   it('admin-analytics EF constructs PostHog session replay URLs', () => {

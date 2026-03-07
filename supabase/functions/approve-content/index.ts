@@ -4,6 +4,7 @@
 // Requires authenticated admin user (CPO or editorial reviewer).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireAdmin, authErrorResponse } from "../_shared/admin-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,52 +22,20 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Auth check — extract user from JWT
-    const authHeader = req.headers.get("Authorization") || "";
-    const token = authHeader.replace("Bearer ", "");
-
-    // CS-006: Allow service_role calls (from cron), otherwise verify admin
-    let isServiceRole = false;
-    try {
-      const payload = JSON.parse(atob(token.split(".")[1]));
-      isServiceRole = payload.role === "service_role";
-    } catch { /* not a valid JWT — will fail user auth below */ }
-
+    // G11: Auth via shared admin-auth middleware (supports service_role for cron)
     let userId: string | undefined;
     let userEmail: string | undefined;
-
-    if (isServiceRole) {
-      userId = "service_role";
-      userEmail = "service_role";
-    } else {
-      const {
-        data: { user },
-        error: authErr,
-      } = await supabase.auth.getUser(token);
-
-      if (authErr || !user) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+    try {
+      const authResult = await requireAdmin(req);
+      if (authResult.isServiceRole) {
+        userId = "service_role";
+        userEmail = "service_role";
+      } else {
+        userId = authResult.user!.id;
+        userEmail = authResult.user!.email;
       }
-
-      // CS-006: AD-FIX-03 — Verify admin role via profiles table
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-      if (profile?.role !== "admin") {
-        return new Response(JSON.stringify({ error: "Admin only" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      userId = user.id;
-      userEmail = user.email;
+    } catch (err) {
+      return authErrorResponse(err, corsHeaders);
     }
 
     // Parse request body
