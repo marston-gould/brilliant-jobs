@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.31"></script>
+  <script src="/js/version.js?v=v7.32"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -1918,8 +1918,8 @@ const features = [
 
 // 0-K: Tests (Pod 3, P0)
 { s: 'done', b: 'pre-launch', n: '0.062 QA-001: Critical-path smoke tests', d: 'CS-010+CS-021: 590 tests across 7 suites. Kill-switch integration, handler DOM snapshots, quality gates, security regressions, infrastructure.', p: 75, e: '6h' },
-{ s: 'done', b: 'pre-launch', n: '0.063 QA-002: Extension DOM snapshot tests', d: 'CS-021: All 15 handlers tested — export, empty catch, error handling, selectors, innerHTML safety.', p: 75, e: '3h' },
-{ s: 'todo', b: 'pre-launch', n: '0.064 QA-003: Integration tests critical APIs', d: 'enrich-job, score-resume, generate-filter, preview-jobs E2E.', p: 75, e: '3h' },
+{ s: 'done', b: 'pre-launch', n: '0.063 QA-002: Extension DOM snapshot tests', d: 'CS-021+CS-P1-006: Handler tests + 21 DOM snapshots (overlay, toolbar, contentScript). Shadow DOM, style isolation, bj-prefix, z-index, XSS escaping.', p: 75, e: '3h' },
+{ s: 'done', b: 'pre-launch', n: '0.064 QA-003: Integration tests critical APIs', d: 'CS-P1-006: 90 integration tests — 15 critical EFs, contract validation (auth, rate limiting, CORS, error handling, webhook signatures, AI spend controls).', p: 75, e: '3h' },
 
 // 0-L: Extension reliability (Pod 3, P1)
 { s: 'done', b: 'pre-launch', n: '0.065 EXT-FEAT-001: Kill-switch 3-layer', d: 'CS-013 FIX-13: All 3 layers deployed + tested. Layer 1: heartbeat directive. Layer 2: externally_connectable + onMessageExternal. Layer 3: DB flag polling. Admin toggle UI live. Kill directive verified via REST API. Launch gate G4 CLEARED.', p: 75, e: '4h' },
@@ -1938,8 +1938,8 @@ const features = [
 { s: 'done', b: 'pre-launch', n: '0.070 DE-001: Cron failure alerting', d: 'CS-015: cron_run_log table + index for failure alerting queries.', p: 75, e: '2h' },
 { s: 'done', b: 'pre-launch', n: '0.071 DE-002: Performance indexes 7 tables', d: 'CS-015: 15 indexes on ats_jobs, profiles, resume_archive, notification_log, user_pipeline, pending_applications, referrals, billing_events.', p: 75, e: '1h' },
 { s: 'done', b: 'pre-launch', n: '0.072 DE-003: Geospatial + scale indexes', d: 'CS-015: Composite (job_lat, job_lng) WHERE status=open. Partial indexes on all high-traffic filter columns.', p: 75, e: '2h' },
-{ s: 'todo', b: 'pre-launch', n: '0.073 DE-004: Dead cron #78 (Feb 31)', d: 'Impossible date. Remove.', p: 75, e: '15min' },
-{ s: 'todo', b: 'pre-launch', n: '0.074 DE-005: Redundant purge crons', d: '#22 and #24 both purge Sundays. Remove dup.', p: 75, e: '15min' },
+{ s: 'done', b: 'pre-launch', n: '0.073 DE-004: Dead cron #78 (Feb 31)', d: 'CS-P1-006: Dead/broken crons removed. validate_cron_schedule() hook. Unified data-hygiene cron.', p: 75, e: '15min' },
+{ s: 'done', b: 'pre-launch', n: '0.074 DE-005: Redundant purge crons', d: 'CS-P1-006: Consolidated into unified-data-hygiene cron. run_data_hygiene() covers 6 cleanup targets. v_cron_audit view.', p: 75, e: '15min' },
 
 // 0-N: CSS (Pod 3, P2/P3)
 { s: 'done', b: 'pre-launch', n: '0.075 CSS-001: Zero a11y dashboard', d: 'CS-007: ARIA labels, keyboard nav, focus management on dashboard. Combined with Pod 4 DS1-2.', p: 75, e: '3h' },
@@ -1961,7 +1961,7 @@ const features = [
 { s: 'done', b: 'pre-launch', n: '0.087 DM-002: SRI hashes all CDN scripts', d: 'CS-015: sha384 integrity + crossorigin=anonymous on pdf.js, mammoth, DOMPurify, docx.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.088 IX-DM-001: Landing CDN no SRI', d: 'Landing-specific SRI pass.', p: 75, e: '30min' },
 { s: 'done', b: 'pre-launch', n: '0.089 CE-001: EF rate limits expanded', d: 'CS-015: Rate limits on enrich-job (60/hr), create-checkout (10/hr), data-export (5/hr). DEFAULT_LIMITS registry updated.', p: 75, e: '2h' },
-{ s: 'done', b: 'pre-launch', n: '0.090 CE-002: No cost visibility', d: 'CS-019: Budget alerts per vendor, progress bars, edit form, chart budget line, vendor_cost_budgets table.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.090 CE-002: No cost visibility', d: 'CS-019+CS-P1-006: Budget alerts + cost-per-user modeling (8 vendor curves, configurable scenarios, projection chart).', p: 75, e: '1h' },
 
 // 0-Q: Landing SEO+Analytics (Pod 3, P2)
 { s: 'todo', b: 'pre-launch', n: '0.091 IX-SEO-001: No canonical URL', d: 'Duplicate URL risk.', p: 75, e: '15min' },

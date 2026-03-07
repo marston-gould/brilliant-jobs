@@ -1,5 +1,5 @@
 // === js/version.js ===
-var BJ_VERSION = 'v7.31';
+var BJ_VERSION = 'v7.32';
 (function() {
   function populateVersion() {
     document.querySelectorAll(".bj-version, [id$=\"-version\"]").forEach(function(el) {
@@ -14531,9 +14531,45 @@ async function loadCostsTab() {
         <h2 class="admin-block-title">Cost Log</h2>
       </div>
       <div id="costs-log-container"><div class="admin-loading">Loading...</div></div>
+    </div>
+    <div class="admin-block">
+      <div class="admin-block-header">
+        <h2 class="admin-block-title">Cost-per-User Modeling</h2>
+        <span style="font-size:11px;color:var(--text-faint);">CE-002: Infrastructure cost projection</span>
+      </div>
+      <div style="padding:8px 0;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
+          <div>
+            <label class="admin-label">Current Users</label>
+            <input type="number" id="cpu-current-users" class="admin-input" value="1" min="1" step="1">
+          </div>
+          <div>
+            <label class="admin-label">Scenario A (users)</label>
+            <input type="number" id="cpu-scenario-a" class="admin-input" value="100" min="1">
+          </div>
+          <div>
+            <label class="admin-label">Scenario B (users)</label>
+            <input type="number" id="cpu-scenario-b" class="admin-input" value="500" min="1">
+          </div>
+          <div>
+            <label class="admin-label">Scenario C (users)</label>
+            <input type="number" id="cpu-scenario-c" class="admin-input" value="1000" min="1">
+          </div>
+        </div>
+        <button class="admin-btn admin-btn-sm" id="cpu-run-model">Run Model</button>
+      </div>
+      <div id="cpu-results"><div class="admin-empty" style="font-size:13px;">Click "Run Model" to project costs at different user scales.</div></div>
+      <div id="cpu-chart" style="height:280px;margin-top:12px;"></div>
     </div>`;
 
   await _loadCostsData();
+
+  // CE-002: Cost-per-user modeling
+  document.getElementById('cpu-run-model').addEventListener('click', async function() {
+    await _runCostPerUserModel();
+  });
+  // Run model on initial load with defaults
+  _runCostPerUserModel();
 
   document.getElementById('costs-add-btn').addEventListener('click', () => {
     const f = document.getElementById('costs-add-form');
@@ -14708,6 +14744,124 @@ async function _loadCostsData() {
       <thead><tr><th>Month</th><th>Vendor</th><th>Amount</th><th>Notes</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
+}
+
+// ─── CE-002: Cost-per-User Modeling ──────────────────────────────────────────
+// Models infrastructure costs at different user scales.
+// Vendor cost curves based on documented pricing tiers.
+const _VENDOR_COST_CURVES = {
+  // Each vendor: { base: fixed monthly, perUser: variable per user, tiers: [{at, perUser}] }
+  Supabase:    { base: 25,  perUser: 0.00,  tiers: [{ at: 100, base: 25 }, { at: 1000, base: 75 }, { at: 10000, base: 599 }], notes: 'Free→Pro→Team' },
+  Vercel:      { base: 20,  perUser: 0.00,  tiers: [{ at: 100, base: 20 }, { at: 500, base: 20 }, { at: 1000, base: 150 }], notes: 'Pro plan, bandwidth scales' },
+  Anthropic:   { base: 0,   perUser: 0.12,  tiers: [{ at: 100, perUser: 0.12 }, { at: 500, perUser: 0.10 }, { at: 1000, perUser: 0.08 }], notes: 'Per enrichment/rewrite call' },
+  Cloudflare:  { base: 0,   perUser: 0.00,  tiers: [{ at: 100, base: 0 }, { at: 1000, base: 5 }, { at: 10000, base: 25 }], notes: 'Free tier generous' },
+  Resend:      { base: 0,   perUser: 0.01,  tiers: [{ at: 100, perUser: 0.01 }, { at: 500, perUser: 0.008 }, { at: 1000, perUser: 0.005 }], notes: 'Per email sent' },
+  Vonage:      { base: 0,   perUser: 0.02,  tiers: [{ at: 100, perUser: 0.02 }, { at: 500, perUser: 0.015 }, { at: 1000, perUser: 0.012 }], notes: 'Per SMS, opt-in users only' },
+  DataForSEO:  { base: 50,  perUser: 0.00,  tiers: [{ at: 100, base: 50 }, { at: 500, base: 100 }, { at: 1000, base: 200 }], notes: 'API call volume scales with job board coverage' },
+  PostHog:     { base: 0,   perUser: 0.00,  tiers: [{ at: 1000, base: 0 }, { at: 10000, base: 50 }], notes: 'Free up to 1M events/mo' },
+};
+
+function _estimateVendorCost(vendor, userCount) {
+  const curve = _VENDOR_COST_CURVES[vendor];
+  if (!curve) return 0;
+
+  // Find applicable tier
+  let base = curve.base;
+  let perUser = curve.perUser;
+  if (curve.tiers) {
+    for (const tier of curve.tiers) {
+      if (userCount >= tier.at) {
+        if (tier.base !== undefined) base = tier.base;
+        if (tier.perUser !== undefined) perUser = tier.perUser;
+      }
+    }
+  }
+
+  return base + (perUser * userCount);
+}
+
+async function _runCostPerUserModel() {
+  const currentUsers = parseInt(document.getElementById('cpu-current-users')?.value) || 1;
+  const scenarioA = parseInt(document.getElementById('cpu-scenario-a')?.value) || 100;
+  const scenarioB = parseInt(document.getElementById('cpu-scenario-b')?.value) || 500;
+  const scenarioC = parseInt(document.getElementById('cpu-scenario-c')?.value) || 1000;
+
+  const scenarios = [
+    { label: 'Current (' + currentUsers + ')', users: currentUsers },
+    { label: scenarioA + ' users', users: scenarioA },
+    { label: scenarioB + ' users', users: scenarioB },
+    { label: scenarioC + ' users', users: scenarioC },
+  ];
+
+  const vendors = Object.keys(_VENDOR_COST_CURVES);
+  const resultsEl = document.getElementById('cpu-results');
+
+  // Build results table
+  let headerCols = '<th style="text-align:left;">Vendor</th>';
+  scenarios.forEach(s => { headerCols += '<th style="text-align:right;">' + _escHtml(s.label) + '</th>'; });
+  headerCols += '<th style="text-align:left;font-size:11px;color:var(--text-faint);">Notes</th>';
+
+  let rows = '';
+  const scenarioTotals = scenarios.map(() => 0);
+
+  vendors.forEach(vendor => {
+    const curve = _VENDOR_COST_CURVES[vendor];
+    let cells = '<td style="font-weight:600;">' + _escHtml(vendor) + '</td>';
+    scenarios.forEach((s, idx) => {
+      const cost = _estimateVendorCost(vendor, s.users);
+      scenarioTotals[idx] += cost;
+      cells += '<td style="text-align:right;">$' + cost.toFixed(2) + '</td>';
+    });
+    cells += '<td style="font-size:11px;color:var(--text-faint);">' + _escHtml(curve.notes) + '</td>';
+    rows += '<tr>' + cells + '</tr>';
+  });
+
+  // Total row
+  let totalCells = '<td style="font-weight:700;border-top:2px solid var(--border);">TOTAL</td>';
+  scenarios.forEach((s, idx) => {
+    totalCells += '<td style="text-align:right;font-weight:700;border-top:2px solid var(--border);">$' + scenarioTotals[idx].toFixed(2) + '</td>';
+  });
+  totalCells += '<td style="border-top:2px solid var(--border);"></td>';
+  rows += '<tr>' + totalCells + '</tr>';
+
+  // Per-user row
+  let puCells = '<td style="font-size:12px;color:var(--text-dim);">Per-User / Month</td>';
+  scenarios.forEach((s, idx) => {
+    const pu = s.users > 0 ? scenarioTotals[idx] / s.users : 0;
+    puCells += '<td style="text-align:right;font-size:12px;color:var(--text-dim);">$' + pu.toFixed(3) + '</td>';
+  });
+  puCells += '<td></td>';
+  rows += '<tr>' + puCells + '</tr>';
+
+  resultsEl.innerHTML = '<table class="admin-table"><thead><tr>' + headerCols + '</tr></thead><tbody>' + rows + '</tbody></table>';
+
+  // Render cost projection chart
+  const chartEl = document.getElementById('cpu-chart');
+  if (chartEl && typeof echarts !== 'undefined') {
+    const userCounts = [1, 10, 50, 100, 250, 500, 750, 1000, 1500, 2000];
+    const totalCosts = userCounts.map(u => {
+      return vendors.reduce((sum, v) => sum + _estimateVendorCost(v, u), 0);
+    });
+    const perUserCosts = userCounts.map((u, i) => u > 0 ? totalCosts[i] / u : 0);
+
+    let chart = echarts.getInstanceByDom(chartEl) || echarts.init(chartEl, 'dark');
+    chart.setOption({
+      backgroundColor: 'transparent',
+      tooltip: { trigger: 'axis', formatter: function(p) { return p.map(function(i) { return i.seriesName + ': $' + i.value.toFixed(2); }).join('<br>'); } },
+      legend: { data: ['Total Monthly Cost', 'Per-User Cost'], textStyle: { color: '#aaa', fontSize: 11 }, top: 0 },
+      grid: { left: 60, right: 60, top: 35, bottom: 40 },
+      xAxis: { type: 'category', data: userCounts.map(function(u) { return u + ' users'; }), axisLabel: { color: '#aaa', fontSize: 11, rotate: 30 } },
+      yAxis: [
+        { type: 'value', name: 'Total ($)', nameTextStyle: { color: '#aaa' }, axisLabel: { color: '#aaa', fontSize: 11, formatter: function(v) { return '$' + v; } } },
+        { type: 'value', name: '$/user', nameTextStyle: { color: '#aaa' }, axisLabel: { color: '#aaa', fontSize: 11, formatter: function(v) { return '$' + v.toFixed(2); } } }
+      ],
+      series: [
+        { name: 'Total Monthly Cost', type: 'bar', data: totalCosts, itemStyle: { color: '#e55' } },
+        { name: 'Per-User Cost', type: 'line', yAxisIndex: 1, data: perUserCosts, itemStyle: { color: '#34d399' }, smooth: true }
+      ]
+    });
+    window.addEventListener('resize', function() { chart.resize(); });
+  }
 }
 
 async function _saveBudgets() {

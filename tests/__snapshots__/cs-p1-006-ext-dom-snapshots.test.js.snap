@@ -1,0 +1,3 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`QA-002: inject-overlay.js DOM injection > overlay structure snapshot — initial state > overlay-shadow-host-shown 1`] = `"<div id="bj-overlay-shadow-host" style="position: fixed; bottom: 0px; right: 0px; z-index: 2147483647; pointer-events: none;"></div>"`;

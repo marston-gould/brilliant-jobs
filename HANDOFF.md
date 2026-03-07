@@ -34,19 +34,17 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**CS-P1-005** — Observability Completion + Feature Flags (Phase C: Observability + Data)
+**CS-P1-006** — Data Pipeline + Cron Cleanup + Cost Visibility (Phase C: Observability + Data)
 - Completed: 2026-03-07
 - Commit: (pending push)
-- Tags: `p1-005@1.0.0-observability-flags`
-- DO-001 (completion): PostHog verified operational on all 4 surfaces — identify(), exception autocapture, session recording confirmed.
-- DO-003: Feature flags via PostHog — feature-flags.js with isFeatureEnabled() + DB fallback. Rollout %, plan gating, per-user targeting. is_feature_enabled() SQL function. Loaded on dashboard, admin, landing.
-- DO-004: Cron failure alerting — evaluate-alerts EF checks v_cron_health + health status + feed freshness + error rates + surface latency. Fires to alert_history with cooldown. Critical → email via Resend. pg_cron */5 min.
-- AD-DO-001: Structured logging — structured-logger.js deployed all 3 HTML surfaces. JSON logs with PII stripping, PostHog batch, surface detection. Monitoring infra: availability_checks table + v_availability_summary view.
-- AD-DO-002: PostHog API for admin — admin-posthog-insights.js with DAU/WAU/MAU, event trends (7d), top events (24h), feature flag status. API key from Vault via admin-analytics EF.
-- AD-DO-003: Alerting pipeline — evaluate-alerts EF is unified pipeline. 10 alert rule types seeded. Cooldown-aware, email routing for critical.
-- AD-DO-004: Admin availability — availability_checks table + v_availability_summary. health-check EF records per-surface availability. pg_cron */10 min. Alert rules for surface-down.
-- 62 new tests (910 total, 0 failures in session tests).
-- Version bumped to v7.31.
+- Tags: `p1-006@1.0.0-data-pipeline`
+- DE-004: Dead/broken crons removed. validate_cron_schedule() hook prevents impossible dates. v_cron_audit view.
+- DE-005: Redundant purge crons consolidated into unified-data-hygiene cron. run_data_hygiene() covers 6 cleanup targets (cron logs, rate limits, health checks, alert history, notification log, heartbeats). Daily 3:00 AM UTC.
+- CE-002: Cost-per-user modeling added to admin costs panel. Vendor cost curves for 8 vendors (Supabase, Vercel, Anthropic, Cloudflare, Resend, Vonage, DataForSEO, PostHog). Configurable scenarios (100/500/1000 users). Per-user + total cost projection chart.
+- QA-002: 21 extension DOM snapshot tests — inject-overlay.js, toolbar-overlay.js, contentScript.js. Shadow DOM isolation, style leakage prevention, bj- prefix enforcement, z-index consistency, XSS escaping.
+- QA-003: 90 API integration tests — 15 critical EFs. Contract validation: auth requirements, rate limiting, CORS, error handling, webhook signatures, AI spend controls, admin auth, cron migration structure.
+- 111 new tests (1022 total, 2 pre-existing failures unrelated to session).
+- Version bumped to v7.32.
 
 ---
 
@@ -58,18 +56,18 @@ None.
 
 ## Next Session
 
-**CS-P1-006: Data Pipeline + Cron Cleanup + Cost Visibility** (Phase C: Observability + Data)
+**CS-P1-007: PostHog Analytics + Attribution CX** (Phase D: CX + Analytics)
 
 | Field | Detail |
 |-------|--------|
-| Surface | Dashboard + Admin |
-| Fix Items | DE-004, DE-005, CE-002, QA-002, QA-003 |
-| Hours | 12–18h |
-| Pair | Data + QA |
+| Surface | All Surfaces |
+| Fix Items | DS1-4, DS1-6, DS1-12, ES1-1, LS1-3, TS1-1, TS1-2 |
+| Hours | 14–20h |
+| Pair | Frontend + Data |
 
-**Entry Gate:** CS-P1-005 complete.
+**Entry Gate:** CS-P1-006 complete.
 
-**Exit Gate:** Dead crons removed. Data pipeline validated. Cost visibility dashboard. Test coverage expanded.
+**Exit Gate:** PostHog identity resolution clean. 14-page pageview events. Attribution CX complete.
 
 ---
 
@@ -87,14 +85,15 @@ None.
 | Dry Run | `dryrun@1.0.0` | CS-022 |
 | SEO Pages | (no remediation tag yet) | — |
 | Email Templates | `email-templates@0.1.0-utm` | CS-011 |
-| Phase 1 Security | `p1-005@1.0.0-observability-flags` | CS-P1-005 |
+| Phase 1 Security | `p1-006@1.0.0-data-pipeline` | CS-P1-006 |
 
 ---
 
-## Completed Sessions (24 of 24 + 5 Phase 1)
+## Completed Sessions (24 of 24 + 6 Phase 1)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
+| CS-P1-006 | 2026-03-07 | DE-004 (dead crons), DE-005 (purge consolidation), CE-002 (cost-per-user modeling), QA-002 (21 DOM snapshots), QA-003 (90 API integration tests) | p1-006@1.0.0-data-pipeline |
 | CS-P1-005 | 2026-03-07 | DO-001 (verified), DO-003 (feature flags), DO-004 (cron alerting), AD-DO-001 (structured logging), AD-DO-002 (PostHog API), AD-DO-003 (alerting pipeline), AD-DO-004 (availability) | p1-005@1.0.0-observability-flags |
 | CS-P1-004 | 2026-03-07 | IX-BE-003 (verified), FE-005 (BJ namespace), BE-007 (API versioning), IX-FE-005 (verified), FE-007 (landing defer), FE-008 (landing cache-bust) | p1-004@1.0.0-api-hardening |
 | CS-P1-003 | 2026-03-07 | FE-005 (defer), FE-006 (immutable cache), BE-003 (error checks), BE-004 (fire-and-forget) | p1-003@1.0.0-error-handling |
@@ -127,11 +126,10 @@ None.
 
 ---
 
-## Remaining Sessions (12 of 17 Phase 1)
+## Remaining Sessions (11 of 17 Phase 1)
 
 | Session | Phase | Title | Hours |
 |---------|-------|-------|-------|
-| CS-P1-006 | C | Data Pipeline + Cron Cleanup + Cost Visibility | 12–18h |
 | CS-P1-007 | D | PostHog Analytics + Attribution CX | 14–20h |
 | CS-P1-008 | D | Landing Page CX + Accessibility | 18–26h |
 | CS-P1-009 | D | Dashboard Dark Mode + Design System Foundation | 24–36h |

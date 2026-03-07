@@ -2877,8 +2877,8 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
 | 0.062 | QA-001: Critical-path smoke tests | 6h | — | ✅ | CS-021: 590 tests across 7 test suites. Kill-switch integration, handler DOM snapshots, quality gate validation, security regression, infrastructure. |
-| 0.063 | QA-002: Extension handler DOM snapshot tests | 3h | — | ✅ | CS-021: All 15 handlers tested — export validation, empty catch detection, error handling, selector presence, innerHTML safety. |
-| 0.064 | QA-003: Integration tests critical API paths | 3h | — | 🔲 | enrich-job, score-resume, generate-filter, preview-jobs E2E. |
+| 0.063 | QA-002: Extension handler DOM snapshot tests | 3h | CS-021+CS-P1-006 | ✅ | CS-021: All 15 handlers tested. CS-P1-006: 21 DOM snapshot tests — inject-overlay.js, toolbar-overlay.js, contentScript.js injection. Shadow DOM isolation, style leakage prevention, bj- prefix enforcement, z-index consistency, XSS escaping. |
+| 0.064 | QA-003: Integration tests critical API paths | 3h | CS-P1-006 | ✅ | 90 integration tests covering 15 critical EFs: health-check, preview-jobs, validate-signup, extension-heartbeat, evaluate-alerts, pipeline-write, account-delete, data-export. Contract validation: auth, rate limiting, CORS, error handling, webhook signatures, AI spend controls. |
 
 ### 0-L: Extension Features + Reliability (Pod 3, P1)
 
@@ -2897,8 +2897,8 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.070 | DE-001: Cron failure alerting | 2h | CS-015 | ✅ | 45 crons zero alerting. PostHog hooks. |
 | 0.071 | DE-002: Stale MV indicators + indexes | 1h | CS-015 | ✅ | "Live" badge on stale data. Add refreshed_at display. |
 | 0.072 | DE-003: Scale ceiling at 1M records | 2h | CS-015 | ✅ | EXPLAIN ANALYZE primary queries. Missing indexes. |
-| 0.073 | DE-004: Dead cron #78 (Feb 31) | 15min | — | 🔲 | Impossible date. Remove. |
-| 0.074 | DE-005: Redundant purge crons #22/#24 | 15min | — | 🔲 | Both purge email_signals Sunday. Remove duplicate. |
+| 0.073 | DE-004: Dead cron #78 (Feb 31) | 15min | CS-P1-006 | ✅ | Dead/broken crons removed. validate_cron_schedule() hook prevents future impossible dates. Unified data-hygiene cron consolidates all cleanup. |
+| 0.074 | DE-005: Redundant purge crons #22/#24 | 15min | CS-P1-006 | ✅ | Duplicate purge crons consolidated into unified-data-hygiene cron. run_data_hygiene() covers 6 cleanup targets. v_cron_audit view for ongoing monitoring. |
 
 ### 0-N: CSS + Design System (Pod 3, P2/P3)
 
@@ -2929,7 +2929,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.087 | DM-002: CDN deps without SRI hashes | 1h | CS-015 | ✅ | 5+ scripts no integrity=. Generate SRI for all. |
 | 0.088 | IX-DM-001: Landing CDN deps without SRI | 30min | — | 🔲 | Landing-specific SRI pass. |
 | 0.089 | CE-001: No AI API spend controls | 2h | CS-015 | ✅ | Uncontrolled Anthropic spend. Per-function tracking + budget alerts + kill switches. |
-| 0.090 | CE-002: No infrastructure cost visibility | 1h | 1h | ✅ | CS-019: Cost dashboard enhanced with budget alerts. vendor_cost_budgets table (per-vendor monthly budget + alert threshold). Admin UI: progress bars (green/yellow/red), budget edit form, budget line on monthly chart. 8 vendors seeded with default budgets. |
+| 0.090 | CE-002: No infrastructure cost visibility | 1h | CS-019+CS-P1-006 | ✅ | CS-019: Cost dashboard with budget alerts. CS-P1-006: Added cost-per-user modeling — vendor cost curves for 8 vendors (Supabase, Vercel, Anthropic, Cloudflare, Resend, Vonage, DataForSEO, PostHog), configurable user scenarios (100/500/1000), per-user and total cost projection chart. |
 
 ### 0-Q: Landing Page — SEO + Analytics (Pod 3, P2)
 

@@ -1,3 +1,11 @@
+## v7.32 CS-P1-006: Data Pipeline + Cron Cleanup + Cost Visibility (2026-03-07)
+- DE-004: Dead/broken crons removed. validate_cron_schedule() prevents impossible dates. v_cron_audit view.
+- DE-005: Redundant purge crons consolidated into unified-data-hygiene cron (daily 3AM UTC, 6 cleanup targets).
+- CE-002: Cost-per-user modeling — 8 vendor cost curves, configurable scenarios, projection chart.
+- QA-002: 21 extension DOM snapshot tests (overlay, toolbar, contentScript injection).
+- QA-003: 90 API integration tests (15 critical EFs, contract validation).
+- 111 new tests (1022 total). Version v7.32.
+
 ## v7.31 Session NN: TITLE (2026-03-07)
 - DESCRIBE CHANGES HERE
 
