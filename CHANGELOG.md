@@ -1,3 +1,6 @@
+## v7.27 Session NN: TITLE (2026-03-07)
+- DESCRIBE CHANGES HERE
+
 ## v7.26 — CS-024: Admin Monitoring Dashboards Part 2 (AD-FIX-13, AD-FIX-14, AD-FIX-15) (2026-03-07)
 ### Error Replay Integration (AD-FIX-13)
 - New "Error Replay" admin subpage with PostHog session replay deep links
