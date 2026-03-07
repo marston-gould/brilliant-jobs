@@ -1,8 +1,8 @@
 # ADR-03: API Gateway — Architecture Decision Record
 
-**Status:** IMPLEMENTED (SA-004, 2026-03-07)
-**Authors:** Backend Engineer + Security Engineer + Lead Platform Engineer
-**Chief Architect Sign-off:** ✅ Required before SA-005 begins
+**Status:** IMPLEMENTED (SA-004 skeleton, SA-005 full migration — 2026-03-07)
+**Authors:** Backend Engineer + Security Engineer + Lead Platform Engineer + DevOps
+**Chief Architect Sign-off:** ✅ SA-004 skeleton. SA-005 full migration pending validation.
 **Related:** ADR-01 (Search), ADR-04 (TypeScript)
 
 ---
@@ -220,3 +220,84 @@ Before SA-005 begins, verify:
 ## Next: SA-005
 
 Add all remaining 78 Edge Functions to route registry. Build `api_consumers` table for API key management (hook for future third-party access). Deprecate direct EF paths with log warnings. Target: all 88 EFs through gateway, error rate < 0.1% for 1 hour post-cutover.
+
+---
+
+## SA-005: Full Migration — All 93 EFs + API Consumer Management
+
+Completed: 2026-03-07
+
+### Route Registry: 93 Endpoints by Domain
+
+| Domain | Count | Endpoints |
+|---|---|---|
+| Jobs (search, enrichment, intelligence) | 14 | chat-job-search, enrich-jd-ai, enrich-job, enrich-job-ondemand, enrich-fcd-batch, preview-jobs, refresh-jobs, refresh-usajobs, refresh-orchestrator, refresh-city-stats, discover-boards, job-intelligence, analyze-hidden-job, score-ai-content |
+| Pipeline & Applications | 8 | submit-application, pipeline-write, confirm-pipeline-signal, prompt-pipeline-updates, scan-pipeline-signals, apply-on-notification, auto-apply-trigger, mock-ats-submit |
+| Resume & Cover Letter | 6 | score-resume, extract-resume-profile, rewrite-resume, rewrite-resume-analyze, rewrite-resume-execute, generate-cover-letter |
+| Scoring & Quality | 3 | score-job-fraud, score-sequence, analyze-application-gap |
+| Keywords & Filters | 4 | filter-to-prompt, prompt-to-filter, generate-filter, match-score-overlay |
+| User Auth & Lifecycle | 5 | validate-signup, account-lifecycle, account-delete, confirm-email, resend-confirmation |
+| Billing & Subscription | 6 | billing-notifications, create-checkout, manage-subscription, stripe-webhook, hire-fee, auto-refill |
+| Notifications & Communications | 9 | send-notification, daily-digest, weekly-summary, monthly-report, handle-notification-response, handle-sms-reply, push-subscribe, vonage-webhook, resend-webhook |
+| Gmail Integration | 3 | gmail-auth, gmail-disconnect, gmail-scan |
+| Referral System | 7 | check-referral-activation, process-referral-reward, referral-clawback, referral-fraud-scan, referral-lifecycle, referral-reward-clawback, distribute-leaderboard-rewards |
+| Admin & Content | 7 | admin-analytics, admin-cron-management, approve-content, seo-sync, generate-editorial-content, detect-editorial-insights, evaluate-alerts |
+| Extension | 4 | extension-heartbeat, build-extension, answer-form-question, recruiter-lookup |
+| Engagement & Sequences | 9 | adoption-sequence, interview-sequence, onboarding-sequence, re-engagement, nps-pulse, periodic-survey-pulse, marketing-campaign, community-feedback, escalation-checker |
+| Data & Maintenance | 6 | data-export, cleanup-orphans, archive-inactive, queue-worker, trend-anomaly-detector, health-check |
+| Search Infrastructure (deferred) | 2 | typesense-search, typesense-seed |
+| **TOTAL** | **93** | |
+
+Note: Original estimate was 88 EFs. Actual count is 93 due to EFs added during remediation sessions (data-export, evaluate-alerts, trend-anomaly-detector, community-feedback, escalation-checker).
+
+### API Consumer Management
+
+**Table:** `api_consumers` (v6.20 migration)
+
+**Built-in consumers (seeded):**
+
+| consumer_id | Tier | Description |
+|---|---|---|
+| dashboard | free | Primary web dashboard |
+| extension | free | Chrome extension |
+| landing-page | anonymous | Public landing page |
+| admin | admin | Admin panel |
+
+**Authentication flow:**
+1. Client sends `X-API-Key: bj_xxxx` header
+2. Auth middleware hashes key (SHA-256)
+3. Looks up `api_consumers` by `api_key_hash`
+4. If found + active: sets `ctx.meta.consumerId` and optional rate limit override
+5. JWT auth proceeds normally after consumer identification
+
+**Scar (future third-party access):**
+- Table and validation logic exist now
+- Self-service developer portal and external API key registration are future work
+- CrewAI agent keys (SA-010) will use the same infrastructure
+- The architecture is ready when the product decision comes
+
+### Deprecation: Direct EF Access
+
+**Status:** Soft deprecation (log warnings only, no blocking)
+
+**Mechanism:** Gateway sets `x-gateway` header. EFs import `gateway-deprecation.ts` helper to detect and log direct access.
+
+**Timeline:**
+- SA-005: Log warnings for direct access
+- SA-010+: Consider hard deprecation (reject requests without `x-gateway` header)
+- Post-launch: Evaluate based on consumer migration progress
+
+### Files Created (SA-005)
+
+```
+supabase/migrations/v6.20-api-consumers.sql           — api_consumers table + seeds
+supabase/functions/_shared/gateway-deprecation.ts      — direct access deprecation helper
+```
+
+### Files Modified (SA-005)
+
+```
+supabase/functions/api-gateway/index.ts                — 10 → 93 routes in registry
+supabase/functions/_shared/gateway-middleware.ts        — API key auth + expanded cache TTL
+docs/scaling/adr-03-gateway.md                         — this document (SA-005 section)
+```

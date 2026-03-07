@@ -1,13 +1,18 @@
 /**
- * SA-004: API Gateway — Middleware Plugin Architecture
+ * SA-004 + SA-005: API Gateway — Middleware Plugin Architecture
  *
  * This module defines the middleware interface contract and the four
  * built-in middleware plugins that ship with the gateway:
  *
- *   1. auth          — JWT verification + role extraction
- *   2. rate-limiter  — sliding-window per tier using Supabase rate_limits table
- *   3. request-logger — sanitized structured logging (no PII)
+ *   1. request-logger — sanitized structured logging (no PII)
+ *   2. auth           — JWT verification + API key consumer identification
+ *   3. rate-limiter   — sliding-window per tier using Supabase rate_limits table
  *   4. response-cache — Cache-Control headers for CDN edge caching
+ *
+ * SA-005 additions:
+ *   - API consumer key validation in auth middleware (api_consumers table)
+ *   - Consumer identification via X-API-Key header
+ *   - Consumer rate limit overrides
  *
  * EXTENSION POINT (Hook):
  *   Future middleware — analytics, A/B routing, webhook dispatch,
@@ -124,18 +129,60 @@ const ROLE_TO_TIER: Record<string, RateLimitTier> = {
 };
 
 /**
- * JWT verification + role extraction middleware.
+ * JWT verification + API key consumer identification middleware.
  * - Missing/invalid JWT → sets anonymous tier, allows request to continue
  *   (downstream EFs enforce their own auth if the endpoint requires login)
  * - Valid JWT → populates ctx.userId + ctx.userRole + ctx.rateLimitTier
+ * - X-API-Key header → identifies API consumer, may override rate limit tier
+ *
+ * SA-005: Added API consumer key validation (scar for future third-party access)
  */
 export const authMiddleware: MiddlewareFn = async (req, ctx, next) => {
+  // ── Step 1: Identify API consumer via X-API-Key header ──
+  const apiKey = req.headers.get("X-API-Key");
+  if (apiKey) {
+    try {
+      const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      // Hash the key and look up consumer
+      const keyHash = await hashApiKey(apiKey);
+      const { data: consumer } = await adminClient
+        .from("api_consumers")
+        .select("consumer_id, tier, rate_limit_override, is_active")
+        .eq("api_key_hash", keyHash)
+        .eq("is_active", true)
+        .single();
+
+      if (consumer) {
+        ctx.meta.consumerId = consumer.consumer_id;
+        ctx.meta.consumerTier = consumer.tier;
+        ctx.meta.consumerRateLimitOverride = consumer.rate_limit_override;
+        // Update last_used_at (fire-and-forget)
+        adminClient
+          .from("api_consumers")
+          .update({ last_used_at: new Date().toISOString() })
+          .eq("consumer_id", consumer.consumer_id)
+          .then(() => {})
+          .catch(() => {}); // never fail request
+      }
+    } catch {
+      // API key lookup failure is non-fatal — fall through to JWT auth
+      ctx.logger.warn("gateway:auth:api_key_lookup_failed", {
+        correlationId: ctx.correlationId,
+      });
+    }
+  }
+
+  // ── Step 2: JWT authentication (unchanged from SA-004) ──
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     // No token — anonymous
     ctx.userId = null;
     ctx.userRole = null;
     ctx.rateLimitTier = "anonymous";
+    // If consumer has a tier override, apply it
+    if (ctx.meta.consumerTier) {
+      ctx.rateLimitTier = ctx.meta.consumerTier as RateLimitTier;
+    }
     return next();
   }
 
@@ -173,6 +220,12 @@ export const authMiddleware: MiddlewareFn = async (req, ctx, next) => {
     ctx.userId = user.id;
     ctx.userRole = role;
     ctx.rateLimitTier = ROLE_TO_TIER[role] ?? "free";
+
+    // Consumer rate_limit_override takes precedence over user tier
+    if (ctx.meta.consumerRateLimitOverride) {
+      // Override is a raw number — store in meta for rate limiter to use
+      ctx.meta.rateLimitOverride = ctx.meta.consumerRateLimitOverride;
+    }
   } catch (err) {
     ctx.logger.warn("gateway:auth:error", { error: String(err) });
     ctx.userId = null;
@@ -182,6 +235,18 @@ export const authMiddleware: MiddlewareFn = async (req, ctx, next) => {
 
   return next();
 };
+
+/**
+ * Hash an API key using SHA-256 to match against api_consumers.api_key_hash.
+ * Uses Web Crypto API (available in Deno).
+ */
+async function hashApiKey(key: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(key);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 // ─── Middleware 3: Rate Limiter ───────────────────────────────────────────────
 
@@ -295,9 +360,21 @@ function deriveEndpointPattern(pathname: string): string {
  *   other GET         — 0s (no-store, prevents accidental caching of auth responses)
  */
 const CACHE_TTL_MAP: Record<string, number> = {
+  // ── High-frequency user-facing reads (short TTL) ──
   "chat-job-search": 60,
+  "preview-jobs": 60,
+  "match-score-overlay": 60,
+  "extension-heartbeat": 30,
+
+  // ── Moderate-frequency reads (medium TTL) ──
+  "job-intelligence": 300,
+  "recruiter-lookup": 300,
+  "health-check": 120,
+
+  // ── Aggregate / stats reads (long TTL) ──
   "refresh-city-stats": 600,
   "admin-analytics": 600,
+  "trend-anomaly-detector": 600,
 };
 
 export const responseCacheMiddleware: MiddlewareFn = async (req, ctx, next) => {

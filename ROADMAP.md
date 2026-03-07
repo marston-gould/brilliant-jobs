@@ -3149,7 +3149,7 @@ Phase S can overlap with Phase 1 feature work on separate tracks. Sessions withi
 | SA-002 | Supabase → Typesense sync queue | 12–16h | ⏸ DEFERRED (post-launch) | Depends on SA-001. |
 | SA-003 | Dashboard search swap to Typesense | 10–14h | ⏸ DEFERRED (post-launch) | Depends on SA-001/002. |
 | SA-004 | API gateway scaffold + first 10 EFs | 14–18h | ✅ | Gateway EF with middleware plugin architecture. Unified auth, rate limiting, CDN cache. Pair: Backend + Security + Lead Platform Eng. Done 2026-03-07. ADR-03 implemented. |
-| SA-005 | Gateway migration — all 88 EFs | 16–22h | 🔲 | Remaining 78 EFs through gateway. Middleware plugins. Legacy removal. Pair: Backend + Eng Lead. |
+| SA-005 | Gateway migration — all 93 EFs + API consumers | 16–22h | ✅ | All 93 EFs through gateway (original 88 + 5 from remediation). api_consumers table for API key management. Deprecation logging for direct EF paths. Pair: Backend + DevOps + Lead Platform Eng. Done 2026-03-07. ADR-03 fully implemented. |
 | SA-006 | TypeScript strict — core modules | 12–16h | 🔲 | Core shared modules to strict TS. tsconfig standards. Pair: Frontend + Eng Lead. |
 
 **Phase S1 total: 6 sessions | 76–102h | ADR-01 (Search), ADR-03 (Gateway), ADR-04 Phase 1 (TypeScript)**

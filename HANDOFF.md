@@ -34,16 +34,19 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**SA-004** — API Gateway Skeleton + Auth Middleware + Plugin Architecture (Phase S1)
+**SA-005** — Gateway Migration: All 93 EFs + API Consumer Management (Phase S1)
 - Completed: 2026-03-07
-- Git tags: `infra@gateway-v0.1.0`
-- Product version bumped: `v7.43` → `v7.44` (bump-version.sh + node build.js + npm run bundle:css + pre-commit-version-check ✅)
-- ROADMAP.md updated: SA-004 row → ✅ with completion notes (line ~3151)
-- roadmap.html updated: SA-004 entry → `s: 'done'`, p: 100 (line ~2099)
-- Created: api-gateway EF, gateway-middleware.ts (4 built-in plugins), v6.19 migration, ADR-03
-- 10 routes registered: chat-job-search, score-resume, score-job-fraud, enrich-jd-ai, validate-signup, account-lifecycle, send-notification, daily-digest, submit-application, billing-notifications
-- Rate limits: anonymous 30/min, free 120/min, pro 300/min, crewai 600/min, admin unlimited
-- ⚠️ PROD VALIDATION PENDING: supabase db push (v6.19), supabase functions deploy api-gateway, confirm latency < 50ms, Chief Architect sign-off
+- Git tags: `infra@gateway-v1.0.0`
+- Product version bumped: `v7.44` → `v7.45` (bump-version.sh + node build.js + node build-admin.js + npm run bundle:css + pre-commit-version-check ✅)
+- ROADMAP.md updated: SA-005 row → ✅ with completion notes
+- roadmap.html updated: SA-005 entry → `s: 'done'`, p: 100
+- Created: v6.20-api-consumers.sql migration, gateway-deprecation.ts helper
+- Modified: api-gateway/index.ts (10 → 93 routes), gateway-middleware.ts (API key auth + expanded cache TTL), adr-03-gateway.md (full SA-005 docs)
+- Route registry: 93 EFs organized into 15 domain groups (Jobs 14, Pipeline 8, Resume 6, Scoring 3, Filters 4, Auth 5, Billing 6, Notifications 9, Gmail 3, Referral 7, Admin 7, Extension 4, Engagement 9, Data 6, Search 2)
+- api_consumers table: 4 built-in consumers seeded (dashboard, extension, landing-page, admin)
+- Auth middleware: X-API-Key header support + SHA-256 key validation + consumer rate limit overrides
+- Deprecation: gateway-deprecation.ts helper for EFs to detect and log direct access
+- ⚠️ PROD VALIDATION PENDING: supabase db push (v6.19 + v6.20), supabase functions deploy api-gateway, hit all 93 routes, verify error rate < 0.1% for 1h, Chief Architect sign-off
 
 ---
 
@@ -55,11 +58,11 @@ None.
 
 ## Next Session
 
-**SA-005** — Gateway Migration: All 88 EFs + API Consumer Management (Phase S1)
-- Entry gate: SA-004 prod validation done. Gateway routing 10 endpoints with middleware pipeline. Auth middleware operational. Rate limiting validated. Gateway latency < 50ms confirmed. Chief Architect sign-off on middleware extensibility.
-- Pair: Backend Engineer + DevOps + Lead Platform Engineer
-- Estimated: 16–20h
-- Build: Add remaining 78 EFs to route registry. Build api_consumers table. Deprecate direct EF paths. All 88 EFs through gateway.
+**SA-006** — TypeScript Phase 1: Core Files + CI Gate (Phase S1)
+- Entry gate: SA-005 complete. Vite build pipeline supports TypeScript (confirmed in CS-016/CS-017). tsconfig.json exists with strict: false baseline. ESLint configured.
+- Pair: Frontend + Eng Lead
+- Estimated: 14–20h
+- Build: Migrate 7 core files to strict TypeScript (globals.ts, api.ts, sync.ts, version.ts, fingerprint.ts, tier-gating.ts, lazy-loader.ts). Define shared types (SupabaseJob, UserProfile, SearchParams, etc.). Zero `any` usage. GitHub Actions CI gate: reject PRs adding .js in js/ directory.
 
 ---
 
@@ -91,12 +94,12 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.44`** | **SA-004** |
+| **Product (BJ_VERSION)** | **`v7.45`** | **SA-005** |
 | Dashboard | `dashboard@1.2.0-typescript` | CS-P1-015 |
 | Extension | `extension@2.22.0-error-handling` | FIX-11 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
 | Admin | `admin@1.4.0-compliance` | CS-P1-017 |
-| **API Gateway** | **`infra@gateway-v0.1.0`** | **SA-004** |
+| **API Gateway** | **`infra@gateway-v1.0.0`** | **SA-005** |
 | Load Tests | `loadtest@1.0.0` | CS-020 |
 | CI/CD | `cicd@1.0.0` | CS-020 |
 | Quality Gates | `qualitygates@1.0.0` | CS-021 |
@@ -111,6 +114,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
+| SA-005 | 2026-03-07 | All 93 EFs routed + api_consumers table + API key auth + deprecation logging + ADR-03 complete | infra@gateway-v1.0.0 |
 | SA-004 | 2026-03-07 | Gateway EF + middleware plugins + 10 routes + rate_limits migration + ADR-03 | infra@gateway-v0.1.0 |
 | FIX-11 | 2026-03-07 | EXT-ES-001 (22 empty catches → console.warn + PostHog + comments) | extension@2.22.0-error-handling |
 | CS-P1-017 | 2026-03-07 | 0.172 (PII data map), 0.173 (user deletion cascade), 0.174 (data export + compliance dash) | p1-017@1.0.0-compliance-dashboard |

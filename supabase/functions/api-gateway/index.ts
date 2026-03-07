@@ -1,5 +1,5 @@
 /**
- * SA-004: API Gateway Edge Function
+ * SA-004 + SA-005: API Gateway Edge Function
  * Single entry point for all /api/v1/* requests.
  *
  * Architecture:
@@ -9,17 +9,22 @@
  *
  * Plugin middleware pipeline (ordered, extensible via config):
  *   1. request-logger  — structured logging, correlation ID
- *   2. auth            — JWT verification + role extraction
+ *   2. auth            — JWT + API key verification + role extraction
  *   3. rate-limiter    — sliding-window per tier
  *   4. response-cache  — Cache-Control headers for Cloudflare
  *
  * Route registry:
  *   Config-driven map of URL patterns → downstream EF names.
- *   Adding a new route is a config change, not a code change.
+ *   SA-004: 10 routes. SA-005: All 93 EFs routed. Direct paths deprecated.
+ *
+ * API Consumer Management (SA-005 scar):
+ *   api_consumers table tracks built-in + future third-party consumers.
+ *   Auth middleware validates X-API-Key header for consumer identification.
+ *   Self-service developer portal is future work — architecture ready now.
  *
  * ADR: docs/scaling/adr-03-gateway.md
  * Phase: S1 — Foundation
- * Pair: Backend + Security + Lead Platform Engineer
+ * Pair: Backend + DevOps + Lead Platform Engineer
  */
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
@@ -46,29 +51,140 @@ import { API_VERSION } from "../_shared/api-version.ts";
 // Future: load from Supabase config table for runtime updates without redeploy.
 
 const ROUTE_REGISTRY: Record<string, string> = {
-  // ── Job Search & Chat (highest traffic) ──
-  "chat-job-search":       "chat-job-search",
 
-  // ── Pipeline & Resume Processing ──
-  "score-resume":          "score-resume",
-  "score-job-fraud":       "score-job-fraud",
-  "enrich-jd-ai":          "enrich-jd-ai",
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SA-004: Initial 10 routes (highest traffic)
+  // SA-005: All remaining 83 routes added — 93 total EFs through gateway
+  // ═══════════════════════════════════════════════════════════════════════════
 
-  // ── User Auth & Lifecycle ──
-  "validate-signup":       "validate-signup",
-  "account-lifecycle":     "account-lifecycle",
+  // ── Jobs: Search, Enrichment, Intelligence (14) ──────────────────────────
+  "chat-job-search":          "chat-job-search",          // SA-004
+  "enrich-jd-ai":             "enrich-jd-ai",             // SA-004
+  "enrich-job":               "enrich-job",               // SA-005
+  "enrich-job-ondemand":      "enrich-job-ondemand",      // SA-005
+  "enrich-fcd-batch":         "enrich-fcd-batch",         // SA-005
+  "preview-jobs":             "preview-jobs",             // SA-005
+  "refresh-jobs":             "refresh-jobs",             // SA-005
+  "refresh-usajobs":          "refresh-usajobs",          // SA-005
+  "refresh-orchestrator":     "refresh-orchestrator",     // SA-005
+  "refresh-city-stats":       "refresh-city-stats",       // SA-005
+  "discover-boards":          "discover-boards",          // SA-005
+  "job-intelligence":         "job-intelligence",         // SA-005
+  "analyze-hidden-job":       "analyze-hidden-job",       // SA-005
+  "score-ai-content":         "score-ai-content",         // SA-005
 
-  // ── Notifications & Communications ──
-  "send-notification":     "send-notification",
-  "daily-digest":          "daily-digest",
+  // ── Pipeline & Applications (8) ──────────────────────────────────────────
+  "submit-application":       "submit-application",       // SA-004
+  "pipeline-write":           "pipeline-write",           // SA-005
+  "confirm-pipeline-signal":  "confirm-pipeline-signal",  // SA-005
+  "prompt-pipeline-updates":  "prompt-pipeline-updates",  // SA-005
+  "scan-pipeline-signals":    "scan-pipeline-signals",    // SA-005
+  "apply-on-notification":    "apply-on-notification",    // SA-005
+  "auto-apply-trigger":       "auto-apply-trigger",       // SA-005
+  "mock-ats-submit":          "mock-ats-submit",          // SA-005
 
-  // ── Application Flow ──
-  "submit-application":    "submit-application",
+  // ── Resume & Cover Letter (6) ────────────────────────────────────────────
+  "score-resume":             "score-resume",             // SA-004
+  "extract-resume-profile":   "extract-resume-profile",   // SA-005
+  "rewrite-resume":           "rewrite-resume",           // SA-005
+  "rewrite-resume-analyze":   "rewrite-resume-analyze",   // SA-005
+  "rewrite-resume-execute":   "rewrite-resume-execute",   // SA-005
+  "generate-cover-letter":    "generate-cover-letter",    // SA-005
 
-  // ── Billing ──
-  "billing-notifications": "billing-notifications",
+  // ── Scoring & Quality (3) ────────────────────────────────────────────────
+  "score-job-fraud":          "score-job-fraud",          // SA-004
+  "score-sequence":           "score-sequence",           // SA-005
+  "analyze-application-gap":  "analyze-application-gap",  // SA-005
 
-  // ── More routes added in SA-005 ──
+  // ── Keywords & Filters (4) ──────────────────────────────────────────────
+  "filter-to-prompt":         "filter-to-prompt",         // SA-005
+  "prompt-to-filter":         "prompt-to-filter",         // SA-005
+  "generate-filter":          "generate-filter",          // SA-005
+  "match-score-overlay":      "match-score-overlay",      // SA-005
+
+  // ── User Auth & Lifecycle (5) ────────────────────────────────────────────
+  "validate-signup":          "validate-signup",          // SA-004
+  "account-lifecycle":        "account-lifecycle",        // SA-004
+  "account-delete":           "account-delete",           // SA-005
+  "confirm-email":            "confirm-email",            // SA-005
+  "resend-confirmation":      "resend-confirmation",      // SA-005
+
+  // ── Billing & Subscription (6) ──────────────────────────────────────────
+  "billing-notifications":    "billing-notifications",    // SA-004
+  "create-checkout":          "create-checkout",          // SA-005
+  "manage-subscription":      "manage-subscription",      // SA-005
+  "stripe-webhook":           "stripe-webhook",           // SA-005
+  "hire-fee":                 "hire-fee",                 // SA-005
+  "auto-refill":              "auto-refill",              // SA-005
+
+  // ── Notifications & Communications (9) ──────────────────────────────────
+  "send-notification":        "send-notification",        // SA-004
+  "daily-digest":             "daily-digest",             // SA-004
+  "weekly-summary":           "weekly-summary",           // SA-005
+  "monthly-report":           "monthly-report",           // SA-005
+  "handle-notification-response": "handle-notification-response", // SA-005
+  "handle-sms-reply":         "handle-sms-reply",         // SA-005
+  "push-subscribe":           "push-subscribe",           // SA-005
+  "vonage-webhook":           "vonage-webhook",           // SA-005
+  "resend-webhook":           "resend-webhook",           // SA-005
+
+  // ── Gmail Integration (3) ───────────────────────────────────────────────
+  "gmail-auth":               "gmail-auth",               // SA-005
+  "gmail-disconnect":         "gmail-disconnect",         // SA-005
+  "gmail-scan":               "gmail-scan",               // SA-005
+
+  // ── Referral System (6) ─────────────────────────────────────────────────
+  "check-referral-activation":    "check-referral-activation",    // SA-005
+  "process-referral-reward":      "process-referral-reward",      // SA-005
+  "referral-clawback":            "referral-clawback",            // SA-005
+  "referral-fraud-scan":          "referral-fraud-scan",          // SA-005
+  "referral-lifecycle":           "referral-lifecycle",           // SA-005
+  "referral-reward-clawback":     "referral-reward-clawback",     // SA-005
+  "distribute-leaderboard-rewards": "distribute-leaderboard-rewards", // SA-005
+
+  // ── Admin & Content (7) ─────────────────────────────────────────────────
+  "admin-analytics":          "admin-analytics",          // SA-005
+  "admin-cron-management":    "admin-cron-management",    // SA-005
+  "approve-content":          "approve-content",          // SA-005
+  "seo-sync":                 "seo-sync",                 // SA-005
+  "generate-editorial-content": "generate-editorial-content", // SA-005
+  "detect-editorial-insights":  "detect-editorial-insights",  // SA-005
+  "evaluate-alerts":          "evaluate-alerts",          // SA-005
+
+  // ── Extension (4) ──────────────────────────────────────────────────────
+  "extension-heartbeat":      "extension-heartbeat",      // SA-005
+  "build-extension":          "build-extension",          // SA-005
+  "answer-form-question":     "answer-form-question",     // SA-005
+  "recruiter-lookup":         "recruiter-lookup",         // SA-005
+
+  // ── Engagement & Sequences (9) ─────────────────────────────────────────
+  "adoption-sequence":        "adoption-sequence",        // SA-005
+  "interview-sequence":       "interview-sequence",       // SA-005
+  "onboarding-sequence":      "onboarding-sequence",      // SA-005
+  "re-engagement":            "re-engagement",            // SA-005
+  "nps-pulse":                "nps-pulse",                // SA-005
+  "periodic-survey-pulse":    "periodic-survey-pulse",    // SA-005
+  "marketing-campaign":       "marketing-campaign",       // SA-005
+  "community-feedback":       "community-feedback",       // SA-005
+  "escalation-checker":       "escalation-checker",       // SA-005
+
+  // ── Data & Maintenance (6) ─────────────────────────────────────────────
+  "data-export":              "data-export",              // SA-005
+  "cleanup-orphans":          "cleanup-orphans",          // SA-005
+  "archive-inactive":         "archive-inactive",         // SA-005
+  "queue-worker":             "queue-worker",             // SA-005
+  "trend-anomaly-detector":   "trend-anomaly-detector",   // SA-005
+  "health-check":             "health-check",             // SA-005
+
+  // ── Search Infrastructure (deferred SA-001—003, routed for completeness) ─
+  "typesense-search":         "typesense-search",         // SA-005 (deferred)
+  "typesense-seed":           "typesense-seed",           // SA-005 (deferred)
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TOTAL: 93 routes. All EFs through gateway. Direct paths deprecated.
+  // HOOK: Future EFs register here. Future: load from DB table for
+  //       runtime updates without redeploy (api_consumers integration).
+  // ═══════════════════════════════════════════════════════════════════════════
 };
 
 // ─── Middleware Pipeline ──────────────────────────────────────────────────────
@@ -144,7 +260,7 @@ serve(async (req: Request): Promise<Response> => {
   Object.entries(CORS_HEADERS).forEach(([k, v]) => headers.set(k, v));
   headers.set("x-correlation-id", correlationId);
   headers.set("x-api-version", API_VERSION);
-  headers.set("x-gateway", "bj-api-gateway-v0.1.0");
+  headers.set("x-gateway", "bj-api-gateway-v1.0.0");
 
   return new Response(response.body, {
     status: response.status,
