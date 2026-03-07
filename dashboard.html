@@ -651,7 +651,7 @@
                 <div class="ext-dot off" id="ext-dot" role="status" aria-label="Extension not connected"></div>
               </div>
               <div class="setup-int-body">
-                <div class="ext-status" id="ext-status-bar" class="u-mb-14">
+                <div class="ext-status u-mb-14" id="ext-status-bar">
                   <div>
                     <div style="font-size:13px;font-weight:600;" id="ext-status-text">Extension not detected</div>
                     <div class="u-meta" id="ext-status-detail">Download and install below</div>
@@ -696,7 +696,7 @@
                         <button class="btn btn-sm btn-secondary u-mt-8" onclick="markExtStep(1)" style="font-size:11px;padding:3px 10px;">Done &rarr;</button>
                       </div>
                     </div>
-                    <div class="install-step" id="ext-step-2" data-step="2" class="u-dim-25">
+                    <div class="install-step u-dim-25" id="ext-step-2" data-step="2">
                       <div class="step-num-circle">2</div>
                       <div class="step-content">
                         <h4>Open Chrome Extensions</h4>
@@ -704,7 +704,7 @@
                         <button class="btn btn-sm btn-secondary u-mt-8" onclick="markExtStep(2)" style="font-size:11px;padding:3px 10px;">Done &rarr;</button>
                       </div>
                     </div>
-                    <div class="install-step" id="ext-step-3" data-step="3" class="u-dim-25">
+                    <div class="install-step u-dim-25" id="ext-step-3" data-step="3">
                       <div class="step-num-circle">3</div>
                       <div class="step-content">
                         <h4>Load the extension</h4>
@@ -712,7 +712,7 @@
                         <button class="btn btn-sm btn-secondary u-mt-8" onclick="markExtStep(3)" style="font-size:11px;padding:3px 10px;">Done &rarr;</button>
                       </div>
                     </div>
-                    <div class="install-step" id="ext-step-4" data-step="4" class="u-dim-25">
+                    <div class="install-step u-dim-25" id="ext-step-4" data-step="4">
                       <div class="step-num-circle">4</div>
                       <div class="step-content">
                         <h4>Pin and open</h4>
@@ -743,7 +743,7 @@
                     <div class="phone-verified-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Connected</div>
                     <span id="gmail-address" style="font-size:12px;color:var(--text-dim);font-family:var(--mono);"></span>
                   </div>
-                  <button class="btn btn-sm btn-secondary" onclick="disconnectGmail()" class="u-fs-11">Disconnect Gmail</button>
+                  <button class="btn btn-sm btn-secondary u-fs-11" onclick="disconnectGmail()">Disconnect Gmail</button>
                 </div>
                 <div id="gmail-setup-disconnected" style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
                   <button class="btn btn-sm btn-primary" id="gmail-setup-connect-btn" onclick="connectGmail()">Connect Gmail</button>
@@ -799,7 +799,7 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                   <button class="btn btn-sm btn-primary" id="gdrive-connect-btn" onclick="connectGoogleDrive()">Connect Drive</button>
-                  <button class="btn btn-sm btn-secondary" id="gdrive-disconnect-btn" class="u-hidden" onclick="disconnectGoogleDrive()">Disconnect</button>
+                  <button class="btn btn-sm btn-secondary u-hidden" id="gdrive-disconnect-btn" onclick="disconnectGoogleDrive()">Disconnect</button>
                   <span class="u-meta">Read-only access</span>
                 </div>
                 <div id="gdrive-files" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">
@@ -860,18 +860,18 @@
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                 <span class="chat-header-title">Chat Search</span>
                 <span class="chat-msg-counter" id="chat-msg-counter">0/10</span>
-                <span class="chat-remaining" id="chat-remaining" class="u-hidden"></span>
+                <span class="chat-remaining u-hidden" id="chat-remaining"></span>
               </div>
               <div class="chat-header-actions">
-                <span class="chat-loaded-prompt" id="chat-loaded-prompt" class="u-hidden"></span>
+                <span class="chat-loaded-prompt u-hidden" id="chat-loaded-prompt"></span>
                 <button class="chat-clear-btn" id="chat-clear-btn" title="Clear conversation">
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                 </button>
               </div>
             </div>
-            <div class="chat-filter-banner" id="chat-filter-banner" class="u-hidden"></div>
-            <div class="chat-rate-banner" id="chat-rate-banner" class="u-hidden"></div>
-            <div class="chat-sync-banner" id="chat-sync-banner" class="u-hidden"></div>
+            <div class="chat-filter-banner u-hidden" id="chat-filter-banner"></div>
+            <div class="chat-rate-banner u-hidden" id="chat-rate-banner"></div>
+            <div class="chat-sync-banner u-hidden" id="chat-sync-banner"></div>
             <div class="chat-messages" id="chat-messages">
               <div class="chat-empty">
                 <div class="chat-empty-icon"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
@@ -879,7 +879,7 @@
                 <div class="chat-empty-sub">Try: "Senior product manager roles in Austin, TX paying over $150K" or "Remote React developer positions at mid-size companies"</div>
               </div>
             </div>
-            <div class="chat-typing" id="chat-typing" class="u-hidden">
+            <div class="chat-typing u-hidden" id="chat-typing">
               <div class="chat-typing-dots"><span></span><span></span><span></span></div>
               <span>Searching jobs...</span>
             </div>
@@ -891,7 +891,7 @@
             </div>
 
             <!-- Save Prompt Dialog (Session 4) -->
-            <div class="chat-save-dialog" id="chat-save-dialog" class="u-hidden">
+            <div class="chat-save-dialog u-hidden" id="chat-save-dialog">
               <div class="csd-overlay" onclick="closeSaveDialog()"></div>
               <div class="csd-content">
                 <div class="csd-title">Save Prompt</div>
@@ -926,7 +926,7 @@
                 <span class="intel-card-type" style="background:rgba(34,197,94,0.1);color:var(--green);">Your Market</span>
                 <div class="intel-card-title" id="intel-insight-title">Loading market data…</div>
                 <div class="intel-card-sub" id="intel-insight-sub"></div>
-                <a class="intel-card-cta" id="intel-insight-cta" href="#" class="u-hidden">See details →</a>
+                <a class="intel-card-cta u-hidden" id="intel-insight-cta" href="#">See details →</a>
               </div>
               <button class="intel-dismiss" onclick="this.closest('.intel-card').style.display='none'">&times;</button>
             </div>
@@ -983,7 +983,7 @@
           <div class="qb-row-pair">
             <div class="qb-row">
               <label class="qb-row-label">Where</label>
-              <div class="query-builder" id="query-builder-where" class="u-pos-rel">
+              <div class="query-builder u-pos-rel" id="query-builder-where">
                 <input type="text" class="qb-input" id="qb-input-where" placeholder="city, state, remote…" autocomplete="off">
                 <div id="location-dropdown" class="company-dropdown"></div>
               </div>
@@ -999,8 +999,8 @@
           <div class="qb-row-pair">
             <div class="qb-row">
               <label class="qb-row-label">Who</label>
-              <div class="query-builder" id="query-builder-who" class="u-pos-rel">
-                <input type="text" class="qb-input" id="qb-input-who" placeholder="company name…" autocomplete="off" class="u-pr-70">
+              <div class="query-builder u-pos-rel" id="query-builder-who">
+                <input class="qb-input u-pr-70" type="text" id="qb-input-who" placeholder="company name…" autocomplete="off">
                 <div id="company-dropdown" class="company-dropdown"></div>
                 <span class="browse-companies-btn" id="browse-who-btn" title="Browse all companies">Browse</span>
               </div>
@@ -1008,7 +1008,7 @@
             <div class="qb-row">
               <label class="qb-row-label not-label">Not</label>
               <div class="query-builder" id="query-builder-who-not" style="border-color:rgba(148,163,184,0.2);position:relative;">
-                <input type="text" class="qb-input" id="qb-input-who-not" placeholder="exclude companies…" autocomplete="off" class="u-pr-70">
+                <input class="qb-input u-pr-70" type="text" id="qb-input-who-not" placeholder="exclude companies…" autocomplete="off">
                 <div id="company-not-dropdown" class="company-dropdown"></div>
                 <span class="browse-companies-btn" id="browse-who-not-btn" title="Browse companies to exclude">Browse</span>
               </div>
@@ -1073,7 +1073,7 @@
           </div>
 
           <div class="filter-toolbar">
-            <div class="save-filter-row" id="save-filter-row" class="u-hidden">
+            <div class="save-filter-row u-hidden" id="save-filter-row">
               <label class="save-label">Save Filter:</label>
               <input type="text" class="save-filter-name" id="save-filter-name" placeholder="name this filter…" maxlength="40">
               <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-faint);cursor:pointer;white-space:nowrap;">
@@ -1094,10 +1094,10 @@
           <div class="sf-collapse-header" id="sf-toggle">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="qb-chevron" id="sf-chevron"><polyline points="6 9 12 15 18 9"/></svg>
             <span>Saved Searches</span>
-            <span class="sf-active-count" id="sf-active-count" class="u-hidden"></span>
+            <span class="sf-active-count u-hidden" id="sf-active-count"></span>
           </div>
           <div class="sf-collapse-body" id="sf-collapse-body">
-          <div class="saved-filters-section" id="saved-filters-section" class="u-hidden">
+          <div class="saved-filters-section u-hidden" id="saved-filters-section">
             <div class="sf-header">
               <div class="u-flex-gap-8">
                 <input type="checkbox" id="sf-select-all" style="margin:0;cursor:pointer;" title="Select all">
@@ -1138,8 +1138,8 @@
                   <input type="checkbox" class="trust-cb" value="unknown" checked> <span class="u-text-faint">Unscored</span>
                 </label>
                 <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px;display:flex;gap:6px;">
-                  <button class="btn btn-sm" onclick="setAllTrustFilters(true)" class="u-flex-pill">All</button>
-                  <button class="btn btn-sm" onclick="setAllTrustFilters(false)" class="u-flex-pill">None</button>
+                  <button class="btn btn-sm u-flex-pill" onclick="setAllTrustFilters(true)">All</button>
+                  <button class="btn btn-sm u-flex-pill" onclick="setAllTrustFilters(false)">None</button>
                 </div>
               </div>
             </div>
@@ -1150,21 +1150,21 @@
               </button>
               <div id="ai-filter-dropdown" style="display:none;position:absolute;top:100%;left:0;z-index:60;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.2);padding:8px;min-width:190px;margin-top:4px;">
                 <div style="font-size:10px;font-weight:700;color:var(--text-dim);padding:2px 6px 6px;border-bottom:1px solid var(--border);margin-bottom:4px;">Show jobs by AI content level:</div>
-                <label class="ai-filter-opt" data-label="human" class="u-btn-action">
+                <label class="ai-filter-opt u-btn-action" data-label="human">
                   <input type="checkbox" class="ai-filter-cb" value="human" checked> <span style="color:var(--green);font-weight:500;">Human-Written</span>
                 </label>
-                <label class="ai-filter-opt" data-label="mixed" class="u-btn-action">
+                <label class="ai-filter-opt u-btn-action" data-label="mixed">
                   <input type="checkbox" class="ai-filter-cb" value="mixed" checked> <span style="color:var(--warm);font-weight:500;">Mixed Content</span>
                 </label>
-                <label class="ai-filter-opt" data-label="ai_generated" class="u-btn-action">
+                <label class="ai-filter-opt u-btn-action" data-label="ai_generated">
                   <input type="checkbox" class="ai-filter-cb" value="ai_generated" checked> <span style="color:var(--red);font-weight:500;">AI-Generated</span>
                 </label>
-                <label class="ai-filter-opt" data-label="unscored" class="u-btn-action">
+                <label class="ai-filter-opt u-btn-action" data-label="unscored">
                   <input type="checkbox" class="ai-filter-cb" value="unscored" checked> <span class="u-text-faint">Unscored</span>
                 </label>
                 <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px;display:flex;gap:6px;">
-                  <button class="btn btn-sm" onclick="setAllAiFilters(true)" class="u-flex-pill">All</button>
-                  <button class="btn btn-sm" onclick="setAllAiFilters(false)" class="u-flex-pill">None</button>
+                  <button class="btn btn-sm u-flex-pill" onclick="setAllAiFilters(true)">All</button>
+                  <button class="btn btn-sm u-flex-pill" onclick="setAllAiFilters(false)">None</button>
                 </div>
               </div>
             </div>
@@ -1175,14 +1175,14 @@
             <div class="sort-add-wrap u-pos-rel">
               <button id="sort-add-btn" class="btn btn-sm" style="padding:2px 8px;font-size:10px;color:var(--text-faint);border:1px dashed var(--border);background:transparent;cursor:pointer;">+ Sort</button>
               <div id="sort-dropdown" style="display:none;position:absolute;top:100%;left:0;z-index:50;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.15);padding:4px;min-width:120px;">
-                <div class="sort-opt" data-field="title" class="u-btn-compact">Title</div>
-                <div class="sort-opt" data-field="company_name" class="u-btn-compact">Company</div>
-                <div class="sort-opt" data-field="location" class="u-btn-compact">Location</div>
-                <div class="sort-opt" data-field="updated_at" class="u-btn-compact">Days</div>
-                <div class="sort-opt" data-field="level" class="u-btn-compact">Level</div>
-                <div class="sort-opt" data-field="salary_max" class="u-btn-compact">Salary</div>
-                <div class="sort-opt" data-field="fraud_score" class="u-btn-compact" title="Sort by fraud trust score (safest first)">Trust Score</div>
-                <div class="sort-opt" data-field="relevance" class="u-btn-compact" title="Sort by JD content match (requires JD Contains filter)">Relevance</div>
+                <div class="sort-opt u-btn-compact" data-field="title">Title</div>
+                <div class="sort-opt u-btn-compact" data-field="company_name">Company</div>
+                <div class="sort-opt u-btn-compact" data-field="location">Location</div>
+                <div class="sort-opt u-btn-compact" data-field="updated_at">Days</div>
+                <div class="sort-opt u-btn-compact" data-field="level">Level</div>
+                <div class="sort-opt u-btn-compact" data-field="salary_max">Salary</div>
+                <div class="sort-opt u-btn-compact" data-field="fraud_score" title="Sort by fraud trust score (safest first)">Trust Score</div>
+                <div class="sort-opt u-btn-compact" data-field="relevance" title="Sort by JD content match (requires JD Contains filter)">Relevance</div>
               </div>
             </div>
           </div>
@@ -1303,7 +1303,7 @@
             <div class="tuning-card-sub">Jobs from companies in these industries will be hidden from all filters</div>
             <div class="tuning-card-body">
               <div class="query-builder" id="tuning-industry-exclude" style="min-height:40px;position:relative;">
-                <input type="text" class="qb-input" id="tuning-ind-excl-input" placeholder="type to search industries… e.g. staffing, insurance, military" autocomplete="off" class="u-pr-70">
+                <input class="qb-input u-pr-70" type="text" id="tuning-ind-excl-input" placeholder="type to search industries… e.g. staffing, insurance, military" autocomplete="off">
                 <div id="industry-dropdown" class="company-dropdown u-mh-240"></div>
                 <span class="browse-companies-btn" id="browse-tuning-ind-btn" title="Browse industries">Browse</span>
               </div>
@@ -1409,9 +1409,9 @@
             <div class="card-title" style="font-size:13px;">Add External Application</div>
             <div class="card-sub" style="margin-block-end:10px;">Track a job you applied to outside Brilliant Jobs</div>
             <div class="u-grid-2">
-              <input type="text" id="pl-man-title" class="save-filter-name" placeholder="Job title (e.g., Senior Engineer)" class="u-fs-12">
-              <input type="text" id="pl-man-company" class="save-filter-name" placeholder="Company name" class="u-fs-12">
-              <input type="url" id="pl-man-url" class="save-filter-name" placeholder="Job URL (optional)" class="u-fs-12">
+              <input class="save-filter-name u-fs-12" type="text" id="pl-man-title" placeholder="Job title (e.g., Senior Engineer)">
+              <input class="save-filter-name u-fs-12" type="text" id="pl-man-company" placeholder="Company name">
+              <input class="save-filter-name u-fs-12" type="url" id="pl-man-url" placeholder="Job URL (optional)">
               <select id="pl-man-stage" class="u-select-base">
                 <option value="saved">Saved</option>
                 <option value="applied" selected>Applied</option>
@@ -1433,7 +1433,7 @@
                 <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                 <span class="pl-stage-name">Saved</span>
                 <span class="pl-stage-count" id="pc-saved">0</span>
-                <span class="pl-stage-match-summary" id="pm-saved"></span><span class="pl-signal-badge" id="psig-saved" class="u-hidden"></span>
+                <span class="pl-stage-match-summary" id="pm-saved"></span><span class="pl-signal-badge u-hidden" id="psig-saved"></span>
               </div>
               <div class="pl-stage-body" id="pb-saved"></div>
             </div>
@@ -1442,7 +1442,7 @@
                 <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                 <span class="pl-stage-name">Applied</span>
                 <span class="pl-stage-count" id="pc-applied">0</span>
-                <span class="pl-stage-match-summary" id="pm-applied"></span><span class="pl-signal-badge" id="psig-applied" class="u-hidden"></span>
+                <span class="pl-stage-match-summary" id="pm-applied"></span><span class="pl-signal-badge u-hidden" id="psig-applied"></span>
               </div>
               <div class="pl-stage-body" id="pb-applied"></div>
             </div>
@@ -1451,7 +1451,7 @@
                 <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                 <span class="pl-stage-name">Posting Closed</span>
                 <span class="pl-stage-count" id="pc-posting_closed">0</span>
-                <span class="pl-stage-match-summary" id="pm-posting_closed"></span><span class="pl-signal-badge" id="psig-posting_closed" class="u-hidden"></span>
+                <span class="pl-stage-match-summary" id="pm-posting_closed"></span><span class="pl-signal-badge u-hidden" id="psig-posting_closed"></span>
               </div>
               <div class="pl-stage-body" id="pb-posting_closed"></div>
             </div>
@@ -1460,7 +1460,7 @@
                 <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                 <span class="pl-stage-name">Responded</span>
                 <span class="pl-stage-count" id="pc-responded">0</span>
-                <span class="pl-stage-match-summary" id="pm-responded"></span><span class="pl-signal-badge" id="psig-responded" class="u-hidden"></span>
+                <span class="pl-stage-match-summary" id="pm-responded"></span><span class="pl-signal-badge u-hidden" id="psig-responded"></span>
               </div>
               <div class="pl-stage-body" id="pb-responded"></div>
             </div>
@@ -1469,7 +1469,7 @@
                 <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                 <span class="pl-stage-name">Interview</span>
                 <span class="pl-stage-count" id="pc-interview">0</span>
-                <span class="pl-stage-match-summary" id="pm-interview"></span><span class="pl-signal-badge" id="psig-interview" class="u-hidden"></span>
+                <span class="pl-stage-match-summary" id="pm-interview"></span><span class="pl-signal-badge u-hidden" id="psig-interview"></span>
               </div>
               <div class="pl-stage-body" id="pb-interview"></div>
             </div>
@@ -1478,7 +1478,7 @@
                 <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                 <span class="pl-stage-name">Offer</span>
                 <span class="pl-stage-count" id="pc-offer">0</span>
-                <span class="pl-stage-match-summary" id="pm-offer"></span><span class="pl-signal-badge" id="psig-offer" class="u-hidden"></span>
+                <span class="pl-stage-match-summary" id="pm-offer"></span><span class="pl-signal-badge u-hidden" id="psig-offer"></span>
               </div>
               <div class="pl-stage-body" id="pb-offer"></div>
             </div>
@@ -1487,7 +1487,7 @@
                 <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                 <span class="pl-stage-name">Rejected / Ghosted</span>
                 <span class="pl-stage-count" id="pc-rejected">0</span>
-                <span class="pl-stage-match-summary" id="pm-rejected"></span><span class="pl-signal-badge" id="psig-rejected" class="u-hidden"></span>
+                <span class="pl-stage-match-summary" id="pm-rejected"></span><span class="pl-signal-badge u-hidden" id="psig-rejected"></span>
               </div>
               <div class="pl-stage-body" id="pb-rejected"></div>
             </div>
@@ -1514,7 +1514,7 @@
 
           <!-- Overlay Pipeline view (pipeline table, S10) -->
           <div id="pl-view-overlay" class="u-hidden">
-            <div class="stat-grid" id="pl-overlay-stats" class="u-mb-16"></div>
+            <div class="stat-grid u-mb-16" id="pl-overlay-stats"></div>
             <div id="pl-overlay-stages"></div>
           </div><!-- /pl-view-overlay -->
 
@@ -1548,10 +1548,10 @@
 
           <!-- Resume Tab Toggle -->
           <div class="app-view-toggle-bar u-tab-bar">
-            <button class="btn btn-sm resume-tab-toggle active" id="resume-tab-active" onclick="switchResumeTab('active')" class="u-btn-pill">
+            <button class="btn btn-sm resume-tab-toggle active u-btn-pill" id="resume-tab-active" onclick="switchResumeTab('active')">
               Active Resumes
             </button>
-            <button class="btn btn-sm resume-tab-toggle" id="resume-tab-archive" onclick="switchResumeTab('archive')" class="u-btn-pill">
+            <button class="btn btn-sm resume-tab-toggle u-btn-pill" id="resume-tab-archive" onclick="switchResumeTab('archive')">
               Archive
             </button>
           </div>
@@ -1697,11 +1697,11 @@
         <div class="page-body">
           <!-- List / Board toggle -->
           <div class="u-tab-bar">
-            <button class="btn btn-sm app-view-toggle active" id="app-view-list" data-view="list" onclick="switchAppView('list')" class="u-btn-pill">
+            <button class="btn btn-sm app-view-toggle active u-btn-pill" id="app-view-list" data-view="list" onclick="switchAppView('list')">
               <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
               List
             </button>
-            <button class="btn btn-sm app-view-toggle" id="app-view-board" data-view="board" onclick="switchAppView('board')" class="u-btn-pill">
+            <button class="btn btn-sm app-view-toggle u-btn-pill" id="app-view-board" data-view="board" onclick="switchAppView('board')">
               <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
               Board
             </button>
@@ -1786,23 +1786,23 @@
                   <div class="u-card-label">Manual</div>
                   <div class="u-sub-meta">I review each job and click Apply</div>
                 </button>
-                <button class="btn btn-secondary btn-sm app-mode-select" data-mode="score_gated" class="u-text-left-pad">
+                <button class="btn btn-secondary btn-sm app-mode-select u-text-left-pad" data-mode="score_gated">
                   <div class="u-card-label">Score-Gated</div>
                   <div class="u-sub-meta">I click Apply, but low scores get a check first</div>
                 </button>
-                <button class="btn btn-secondary btn-sm app-mode-select" data-mode="auto" class="u-text-left-pad">
+                <button class="btn btn-secondary btn-sm app-mode-select u-text-left-pad" data-mode="auto">
                   <div class="u-card-label">Auto-Apply</div>
                   <div class="u-sub-meta">Submit my resume automatically</div>
                 </button>
-                <button class="btn btn-secondary btn-sm app-mode-select" data-mode="score_gated_auto" class="u-text-left-pad">
+                <button class="btn btn-secondary btn-sm app-mode-select u-text-left-pad" data-mode="score_gated_auto">
                   <div class="u-card-label">Auto + Score Gate</div>
                   <div class="u-sub-meta">Auto-apply only if score meets threshold</div>
                 </button>
-                <button class="btn btn-secondary btn-sm app-mode-select" data-mode="auto_rewrite" class="u-text-left-pad">
+                <button class="btn btn-secondary btn-sm app-mode-select u-text-left-pad" data-mode="auto_rewrite">
                   <div class="u-card-label">Auto + Rewrite</div>
                   <div class="u-sub-meta">Auto-rewrite weak resumes, then submit</div>
                 </button>
-                <button class="btn btn-secondary btn-sm app-mode-select" data-mode="autopilot" class="u-text-left-pad">
+                <button class="btn btn-secondary btn-sm app-mode-select u-text-left-pad" data-mode="autopilot">
                   <div class="u-card-label">Full Autopilot</div>
                   <div class="u-sub-meta">Score, rewrite, submit — no approval needed</div>
                 </button>
@@ -1829,14 +1829,14 @@
                     <label class="fas-radio"><input type="radio" name="fas-unscored" value="apply_anyway"> Apply anyway</label>
                   </div>
                 </div>
-                <div class="fas-row" id="fas-rewrite-row" class="u-hidden">
+                <div class="fas-row u-hidden" id="fas-rewrite-row">
                   <span class="fas-label">Auto-rewrite below threshold</span>
                   <label class="toggle-switch">
                     <input type="checkbox" id="fas-auto-rewrite">
                     <span class="toggle-slider"></span>
                   </label>
                 </div>
-                <div class="fas-row" id="fas-rewrite-approval-row" class="u-hidden">
+                <div class="fas-row u-hidden" id="fas-rewrite-approval-row">
                   <span class="fas-label">Rewrite approval</span>
                   <div class="fas-radio-group">
                     <label class="fas-radio"><input type="radio" name="fas-rewrite-approval" value="approve_before" checked> Review before submit</label>
@@ -1848,7 +1848,7 @@
             </div>
 
             <!-- Approval Settings (visible for auto modes) -->
-            <div class="card" id="approval-settings" class="u-hidden">
+            <div class="card u-hidden" id="approval-settings">
               <div class="card-title">Approval Settings</div>
               <div class="card-sub">When auto-applying, do you want a chance to review before submission?</div>
               <div class="fas-panel">
@@ -1951,7 +1951,7 @@
                   <div class="app-rule-desc">Auto-apply when a company re-posts a role you previously applied to (they may have lost your application)</div>
                 </div>
               </div>
-              <button class="btn btn-secondary btn-sm" id="add-rule-btn" class="u-mt-12">+ Add Custom Rule</button>
+              <button class="btn btn-secondary btn-sm u-mt-12" id="add-rule-btn">+ Add Custom Rule</button>
             </div>
 
             <div class="card">
@@ -1993,10 +1993,10 @@
                     <span class="toggle-slider"></span>
                   </label>
                 </div>
-                <div class="notify-config-row" id="pi-gmail-status" class="u-hidden">
+                <div class="notify-config-row u-hidden" id="pi-gmail-status">
                   <label>Gmail connection</label>
                   <span id="pi-gmail-connected" style="font-size:12px;color:var(--green);display:none;">Connected</span>
-                  <button class="btn btn-secondary btn-sm" id="pi-gmail-connect" onclick="window.location.hash='setup'" class="u-fs-11">Connect Gmail on Setup page</button>
+                  <button class="btn btn-secondary btn-sm u-fs-11" id="pi-gmail-connect" onclick="window.location.hash='setup'">Connect Gmail on Setup page</button>
                 </div>
               </div>
               <details class="u-mt-12">
@@ -2105,7 +2105,7 @@
                   <div class="card-title">Notification Log</div>
                   <div class="card-sub" style="margin-top:2px;">All sent notifications with delivery status and actions taken</div>
                 </div>
-                <button class="btn btn-secondary btn-sm" id="notif-export-csv" class="u-fs-11">Export CSV</button>
+                <button class="btn btn-secondary btn-sm u-fs-11" id="notif-export-csv">Export CSV</button>
               </div>
               <div class="notif-log-filters">
                 <select id="nlog-filter-type">
@@ -2373,31 +2373,31 @@
                     <!-- Required transactional — always sent, cannot be disabled -->
                     <tr class="notif-section-label"><td colspan="4">Required transactional <span style="font-size:10px;color:var(--text-dim);font-weight:400;margin-left:6px;">Always sent</span></td></tr>
                     <tr data-notif="subscription_confirm" class="notif-locked">
-                      <td><svg class="notif-lock-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-inline"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Payment confirmations</td>
+                      <td><svg class="notif-lock-icon u-icon-inline" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Payment confirmations</td>
                       <td><label class="toggle-switch disabled" title="Required — cannot be disabled"><input type="checkbox" class="nch-email" checked disabled><span class="toggle-slider"></span></label></td>
                       <td><label class="toggle-switch disabled"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
                       <td><span class="u-label">Always</span></td>
                     </tr>
                     <tr data-notif="payment_failed" class="notif-locked">
-                      <td><svg class="notif-lock-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-inline"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Payment failed alerts</td>
+                      <td><svg class="notif-lock-icon u-icon-inline" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Payment failed alerts</td>
                       <td><label class="toggle-switch disabled" title="Required — cannot be disabled"><input type="checkbox" class="nch-email" checked disabled><span class="toggle-slider"></span></label></td>
                       <td><label class="toggle-switch disabled"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
                       <td><span class="u-label">Always</span></td>
                     </tr>
                     <tr data-notif="plan_change_confirm" class="notif-locked">
-                      <td><svg class="notif-lock-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-inline"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Plan changes</td>
+                      <td><svg class="notif-lock-icon u-icon-inline" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Plan changes</td>
                       <td><label class="toggle-switch disabled" title="Required — cannot be disabled"><input type="checkbox" class="nch-email" checked disabled><span class="toggle-slider"></span></label></td>
                       <td><label class="toggle-switch disabled"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
                       <td><span class="u-label">Always</span></td>
                     </tr>
                     <tr data-notif="invoice_generated" class="notif-locked">
-                      <td><svg class="notif-lock-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-inline"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Invoices &amp; receipts</td>
+                      <td><svg class="notif-lock-icon u-icon-inline" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Invoices &amp; receipts</td>
                       <td><label class="toggle-switch disabled" title="Required — cannot be disabled"><input type="checkbox" class="nch-email" checked disabled><span class="toggle-slider"></span></label></td>
                       <td><label class="toggle-switch disabled"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
                       <td><span class="u-label">Always</span></td>
                     </tr>
                     <tr data-notif="refund_processed" class="notif-locked">
-                      <td><svg class="notif-lock-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="u-icon-inline"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Refund confirmations</td>
+                      <td><svg class="notif-lock-icon u-icon-inline" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Refund confirmations</td>
                       <td><label class="toggle-switch disabled" title="Required — cannot be disabled"><input type="checkbox" class="nch-email" checked disabled><span class="toggle-slider"></span></label></td>
                       <td><label class="toggle-switch disabled"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
                       <td><span class="u-label">Always</span></td>
@@ -2433,7 +2433,7 @@
                       <button class="btn btn-primary btn-sm" id="phone-send-otp">Send Verification Code</button>
                     </div>
                   </div>
-                  <div class="notify-config-row" id="otp-row" class="u-hidden">
+                  <div class="notify-config-row u-hidden" id="otp-row">
                     <label>Verification code</label>
                     <div class="phone-setup-row">
                       <input type="text" class="otp-input" id="otp-code" placeholder="000000" maxlength="6">
@@ -2454,7 +2454,7 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                         Verified
                       </span>
-                      <button class="btn btn-secondary btn-sm" id="phone-change" class="u-fs-11">Change</button>
+                      <button class="btn btn-secondary btn-sm u-fs-11" id="phone-change">Change</button>
                     </div>
                   </div>
                 </div>
@@ -2545,7 +2545,7 @@
                     <span id="override-filter-name"></span>
                     <span class="override-badge">Custom</span>
                   </div>
-                  <button class="btn btn-secondary btn-sm" id="override-clear" class="u-fs-11">Clear Overrides</button>
+                  <button class="btn btn-secondary btn-sm u-fs-11" id="override-clear">Clear Overrides</button>
                 </div>
                 <div class="u-overflow-x">
                   <table class="notif-matrix" id="override-matrix">
@@ -2579,7 +2579,7 @@
                   <div class="card-title">Notification Log</div>
                   <div class="card-sub" style="margin-top:2px;">All sent notifications with delivery status and actions taken</div>
                 </div>
-                <button class="btn btn-secondary btn-sm" id="nc-notif-export-csv" class="u-fs-11">Export CSV</button>
+                <button class="btn btn-secondary btn-sm u-fs-11" id="nc-notif-export-csv">Export CSV</button>
               </div>
               <div class="notif-log-filters">
                 <select id="nc-nlog-filter-type">
@@ -2703,13 +2703,13 @@
         <div class="page-body">
           <!-- Stats/Metrics Tab Toggle -->
           <div class="u-tab-bar">
-            <button class="btn btn-sm stats-tab-toggle active" id="stats-tab-market" onclick="switchStatsTab('market')" class="u-btn-pill">
+            <button class="btn btn-sm stats-tab-toggle active u-btn-pill" id="stats-tab-market" onclick="switchStatsTab('market')">
               Market Stats
             </button>
-            <button class="btn btn-sm stats-tab-toggle" id="stats-tab-resume" onclick="switchStatsTab('resume')" class="u-btn-pill">
+            <button class="btn btn-sm stats-tab-toggle u-btn-pill" id="stats-tab-resume" onclick="switchStatsTab('resume')">
               Resume Metrics
             </button>
-            <button class="btn btn-sm stats-tab-toggle" id="stats-tab-overlay" onclick="switchStatsTab('overlay')" class="u-btn-pill">
+            <button class="btn btn-sm stats-tab-toggle u-btn-pill" id="stats-tab-overlay" onclick="switchStatsTab('overlay')">
               Overlay Analytics
             </button>
           </div>
@@ -2744,28 +2744,28 @@
           <div class="stats-grid" id="stats-charts-grid">
             <div class="stats-chart-card full">
               <div class="stats-chart-title">Job Count Over Time</div>
-              <div class="ec" id="chart-timeline" class="u-chart-box"></div>
+              <div class="ec u-chart-box" id="chart-timeline"></div>
             </div>
             <div class="stats-chart-card full">
               <div class="stats-chart-title">Posting Age</div>
-              <div class="ec" id="chart-posting-age" class="u-chart-box"></div>
+              <div class="ec u-chart-box" id="chart-posting-age"></div>
             </div>
             <div class="stats-chart-card">
               <div class="stats-chart-title">Salary Distribution</div>
               <div class="stats-chart-sub" id="chart-salary-sub"></div>
-              <div class="ec" id="chart-salary" class="u-chart-box"></div>
+              <div class="ec u-chart-box" id="chart-salary"></div>
             </div>
             <div class="stats-chart-card">
               <div class="stats-chart-title">Seniority Breakdown</div>
-              <div class="ec" id="chart-funnel" class="u-chart-box"></div>
+              <div class="ec u-chart-box" id="chart-funnel"></div>
             </div>
             <div class="stats-chart-card">
               <div class="stats-chart-title">Jobs by Industry</div>
-              <div class="ec" id="chart-companies" class="u-chart-box"></div>
+              <div class="ec u-chart-box" id="chart-companies"></div>
             </div>
             <div class="stats-chart-card">
               <div class="stats-chart-title">Work Arrangement</div>
-              <div class="ec" id="chart-location" class="u-chart-box"></div>
+              <div class="ec u-chart-box" id="chart-location"></div>
             </div>
             <div class="stats-chart-card full">
               <div class="stats-chart-title">Salary Ladder</div>
@@ -2780,11 +2780,11 @@
             </div>
             <div class="stats-chart-card">
               <div class="stats-chart-title">ATS Source Breakdown</div>
-              <div class="ec" id="chart-source" class="u-chart-box"></div>
+              <div class="ec u-chart-box" id="chart-source"></div>
             </div>
             <div class="stats-chart-card">
               <div class="stats-chart-title">Industry Detail</div>
-              <div class="ec" id="chart-industry" class="u-chart-box"></div>
+              <div class="ec u-chart-box" id="chart-industry"></div>
             </div>
 
           </div><!-- /stats-tab-content-market -->
@@ -2819,7 +2819,7 @@
             </div>
 
             <!-- Metrics Charts Grid -->
-            <div class="stats-grid" id="metrics-charts-grid" class="u-hidden">
+            <div class="stats-grid u-hidden" id="metrics-charts-grid">
               <div class="stats-chart-card">
                 <div class="stats-chart-title">Level Fit</div>
                 <div id="metrics-level-fit-insight" style="font-size:10px;color:var(--text-faint);margin-bottom:8px;"></div>
@@ -2867,7 +2867,7 @@
           <!-- === Overlay Analytics Tab === -->
           <div id="stats-tab-content-overlay" class="u-hidden">
             <!-- Stat cards -->
-            <div class="stat-grid" id="oa-stat-cards" class="u-mb-16"></div>
+            <div class="stat-grid u-mb-16" id="oa-stat-cards"></div>
             <!-- Drilldown to Pipeline Overlay tab -->
             <div id="oa-drilldown-link" style="margin-bottom:8px;"></div>
             <!-- Charts grid -->
@@ -3056,7 +3056,7 @@
         <div class="page-body">
 
           <!-- Low Credit Alert Banner (hidden by default) -->
-          <div class="sub-alert" id="sub-credit-alert" class="u-hidden">
+          <div class="sub-alert u-hidden" id="sub-credit-alert">
             <div class="sub-alert-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warm)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
             <div class="sub-alert-text">
               <strong>Running low on credits</strong>
@@ -3073,7 +3073,7 @@
               <div class="sub-plan-price" id="sub-plan-price">$0/mo</div>
               <div class="sub-plan-detail" id="sub-plan-credits-included">0 credits included/month</div>
               <div class="sub-plan-detail" id="sub-plan-payg">PAYG rate: $0.25/credit</div>
-              <div class="sub-plan-detail" id="sub-plan-period" class="u-hidden">Renews: <span id="sub-plan-renew-date">—</span></div>
+              <div class="sub-plan-detail u-hidden" id="sub-plan-period">Renews: <span id="sub-plan-renew-date">—</span></div>
               <button class="btn-secondary btn-sm u-mt-12" onclick="openCustomerPortal()" id="sub-manage-btn" title="Payment method, invoices, cancel">Manage Billing</button>
             </div>
 
@@ -3081,7 +3081,7 @@
               <div class="card-title">Credit Balance</div>
               <div class="sub-balance-number" id="sub-balance-number">0</div>
               <div class="sub-balance-label">credits available</div>
-              <div class="sub-burn-rate" id="sub-burn-rate" class="u-hidden">
+              <div class="sub-burn-rate u-hidden" id="sub-burn-rate">
                 At your current usage (~<span id="sub-daily-burn">0</span>/day), you have <strong><span id="sub-days-left">—</span> days</strong> of credits remaining
               </div>
               <button class="btn-primary btn-sm u-mt-12" onclick="document.getElementById('sub-packs-section').scrollIntoView({behavior:'smooth'})">Buy Credits</button>
@@ -3171,7 +3171,7 @@
               <label class="sub-refill-toggle">
                 <input type="checkbox" id="sub-refill-enabled"> Enable auto-refill
               </label>
-              <div class="sub-refill-levels" id="sub-refill-levels" class="u-hidden">
+              <div class="sub-refill-levels u-hidden" id="sub-refill-levels">
                 <div class="sub-refill-level" data-level="low">
                   <input type="radio" name="refill-level" value="low" id="refill-low">
                   <label for="refill-low">
@@ -3212,7 +3212,7 @@
                   <button class="btn-primary btn-sm" onclick="setupHireFee()">Authorize Card</button>
                 </div>
               </div>
-              <div class="sub-hire-fee-active" id="sub-hire-fee-active" class="u-hidden">
+              <div class="sub-hire-fee-active u-hidden" id="sub-hire-fee-active">
                 <div style="display:flex;align-items:center;gap:12px;padding:16px;background:hsl(142,50%,96%);border:1px solid hsl(142,40%,85%);border-radius:10px;">
                   <div style="font-size:24px;">✅</div>
                   <div class="u-flex-1">
@@ -3229,7 +3229,7 @@
           </div>
 
           <!-- Upgrade CTA (shown for free/starter users) -->
-          <div class="sub-upgrade-banner" id="sub-upgrade-banner" class="u-hidden">
+          <div class="sub-upgrade-banner u-hidden" id="sub-upgrade-banner">
             <div class="sub-upgrade-text">
               <strong id="sub-upgrade-headline">Unlock more with Pro</strong>
               <span id="sub-upgrade-detail">300 credits/month, $0.10/credit PAYG, 15% auto-refill discount</span>
@@ -3307,7 +3307,7 @@
         </div>
 
         <!-- Bug Reports Panel (Canny) -->
-        <div class="feedback-panel" id="fb-panel-bugs" class="u-hidden">
+        <div class="feedback-panel u-hidden" id="fb-panel-bugs">
           <div id="canny-widget-container-bugs" style="min-height:400px;">
             <div data-canny id="canny-embed-bugs"></div>
           </div>
@@ -3350,7 +3350,7 @@
             </div>
           </div>
           <div class="cb-alpha-nav" id="lb-alpha-nav-1"></div>
-          <div class="cb-alpha-nav" id="lb-alpha-nav-2" class="u-mb-14"></div>
+          <div class="cb-alpha-nav u-mb-14" id="lb-alpha-nav-2"></div>
           <div class="cb-list-container" id="lb-list"></div>
         </div>
       </div>
@@ -3375,7 +3375,7 @@
             </div>
           </div>
           <div class="cb-alpha-nav" id="ib-alpha-nav-1"></div>
-          <div class="cb-alpha-nav" id="ib-alpha-nav-2" class="u-mb-14"></div>
+          <div class="cb-alpha-nav u-mb-14" id="ib-alpha-nav-2"></div>
           <div class="cb-list-container" id="ib-list"></div>
         </div>
       </div>
@@ -3407,9 +3407,9 @@
           </div>
           <div class="cb-sort-bar" id="cb-sort-bar" style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:11px;color:var(--text-dim);">
             <span style="font-weight:600;">Sort:</span>
-            <button class="cb-sort-btn active" data-sort="name" class="u-btn-outline-sm">Name</button>
-            <button class="cb-sort-btn" data-sort="jobs" class="u-btn-outline-sm">Jobs</button>
-            <button class="cb-sort-btn" data-sort="ai_jd_rate" class="u-btn-outline-sm">AI JD Rate</button>
+            <button class="cb-sort-btn active u-btn-outline-sm" data-sort="name">Name</button>
+            <button class="cb-sort-btn u-btn-outline-sm" data-sort="jobs">Jobs</button>
+            <button class="cb-sort-btn u-btn-outline-sm" data-sort="ai_jd_rate">AI JD Rate</button>
           </div>
           <!-- AI Aggregation Health Panel (v6.95 Session 4.3) -->
           <div id="cb-ai-health-panel" style="display:none;margin:10px 0;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;font-size:12px;">
@@ -3428,7 +3428,7 @@
             <div id="cb-ai-health-labels" style="margin-top:8px;display:flex;gap:12px;flex-wrap:wrap;"></div>
           </div>
           <div class="cb-alpha-nav" id="cb-alpha-nav-1"></div>
-          <div class="cb-alpha-nav" id="cb-alpha-nav-2" class="u-mb-14"></div>
+          <div class="cb-alpha-nav u-mb-14" id="cb-alpha-nav-2"></div>
           <div class="cb-list-container" id="cb-list"></div>
         </div>
       </div>
@@ -3448,7 +3448,7 @@
     </div>
   </div>
 
-  <div class="job-modal-overlay" id="job-modal-overlay" class="u-hidden" onclick="closeJobModal(event)" role="dialog" aria-modal="true" aria-labelledby="job-modal-title" aria-hidden="true">
+  <div class="job-modal-overlay u-hidden" id="job-modal-overlay" onclick="closeJobModal(event)" role="dialog" aria-modal="true" aria-labelledby="job-modal-title" aria-hidden="true">
     <div class="job-modal" onclick="event.stopPropagation()">
       <div class="job-modal-header">
         <div class="job-modal-title-wrap">
@@ -3469,12 +3469,12 @@
 
 
   <!-- Referral Outreach Modal — v7.06 -->
-  <div class="job-modal-overlay" id="referral-outreach-modal" class="u-hidden" onclick="closeReferralOutreachModal(event)">
+  <div class="job-modal-overlay u-hidden" id="referral-outreach-modal" onclick="closeReferralOutreachModal(event)">
     <div class="job-modal" onclick="event.stopPropagation()" style="max-width:580px;">
       <div class="job-modal-header">
         <div class="job-modal-title-wrap">
           <h3 class="job-modal-title">Request a Referral</h3>
-          <div class="job-modal-meta" id="ro-job-label" class="u-label-dim"></div>
+          <div class="job-modal-meta u-label-dim" id="ro-job-label"></div>
         </div>
         <div class="job-modal-actions">
           <button class="job-modal-close" onclick="_closeReferralModal()">&times;</button>
@@ -3540,7 +3540,7 @@
   </div>
 
   <!-- AI Filter Suggest Modal -->
-  <div class="job-modal-overlay" id="ai-filter-modal" class="u-hidden" onclick="closeAiFilterModal(event)">
+  <div class="job-modal-overlay u-hidden" id="ai-filter-modal" onclick="closeAiFilterModal(event)">
     <div class="job-modal" onclick="event.stopPropagation()" style="max-width:560px;">
       <div class="job-modal-header">
         <div class="job-modal-title-wrap">
@@ -3551,10 +3551,10 @@
           <button class="job-modal-close" onclick="closeAiFilterModal()">&times;</button>
         </div>
       </div>
-      <div class="job-modal-body" id="ai-filter-body" class="u-p-16">
+      <div class="job-modal-body u-p-16" id="ai-filter-body">
         <div style="text-align:center;padding:40px;color:var(--text-faint);">Loading…</div>
       </div>
-      <div class="job-modal-footer" id="ai-filter-footer" class="u-hidden">
+      <div class="job-modal-footer u-hidden" id="ai-filter-footer">
         <button class="btn btn-primary btn-sm" id="ai-filter-accept" onclick="acceptAiFilter()">Create Filter</button>
         <button class="btn btn-sm" onclick="closeAiFilterModal()" style="background:var(--bg-card-hover);color:var(--text-dim);border:1px solid var(--border);">Cancel</button>
       </div>
@@ -3662,7 +3662,7 @@
 </style>
 
 <!-- AI Resume Rewrite Panel (v4.32) -->
-<div class="rw-panel-overlay" id="rewrite-panel" class="u-hidden" onclick="if(event.target===this)closeRewritePanel()">
+<div class="rw-panel-overlay u-hidden" id="rewrite-panel" onclick="if(event.target===this)closeRewritePanel()">
   <div class="rw-panel" onclick="event.stopPropagation()">
     <div class="rw-panel-header">
       <div>

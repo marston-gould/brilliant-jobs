@@ -423,7 +423,7 @@ height="0" width="0" class="gtm-iframe"></iframe></noscript>
         <button class="btn btn-primary preview-go" id="preview-go">Search</button>
       </div>
 
-      <div class="preview-results" id="preview-results" class="lp-hidden">
+      <div class="preview-results lp-hidden" id="preview-results">
         <div class="preview-stats">
           <div class="preview-stat"><span class="preview-stat-val" id="pv-total">—</span><span class="preview-stat-label">Jobs Found</span></div>
           <div class="preview-stat"><span class="preview-stat-val" id="pv-salary">—</span><span class="preview-stat-label">Median Salary</span></div>
@@ -437,7 +437,7 @@ height="0" width="0" class="gtm-iframe"></iframe></noscript>
         </div>
       </div>
 
-      <div class="preview-locked" id="preview-locked" class="lp-hidden">
+      <div class="preview-locked lp-hidden" id="preview-locked">
         <p>You've previewed the data — sign up free to explore unlimited filters, salary data, and more.</p>
         <button class="btn btn-primary" id="pv-locked-signup">Start Free</button>
       </div>
@@ -580,7 +580,7 @@ height="0" width="0" class="gtm-iframe"></iframe></noscript>
 
 
   <!-- ==================== MARKET INSIGHTS ==================== -->
-  <section class="section fade-up segment-new segment-returning segment-lapsed" id="market-insights" class="lp-insights-section">
+  <section class="section fade-up segment-new segment-returning segment-lapsed lp-insights-section" id="market-insights">
     <div class="section-label">Market Intelligence</div>
     <h2>Real-time job market insights,<br>powered by data.</h2>
     <p class="section-desc">Our content engine analyzes hundreds of thousands of live job listings to surface trends, spikes, and opportunities you won't find anywhere else.</p>
@@ -712,7 +712,7 @@ height="0" width="0" class="gtm-iframe"></iframe></noscript>
   <section class="section fade-up lp-bottom-cta">
     <h2 class="lp-bottom-heading">You've been searching their way.<br>Try yours.</h2>
     <p class="section-desc lp-bottom-desc">Free to start. No credit card. No employer-subsidized nonsense. Just a better way to find work.</p>
-    <button class="btn btn-primary" id="bottom-signup-btn" class="lp-bottom-btn">Start Free</button>
+    <button class="btn btn-primary lp-bottom-btn" id="bottom-signup-btn">Start Free</button>
   </section>
 
   </main>
@@ -758,7 +758,7 @@ height="0" width="0" class="gtm-iframe"></iframe></noscript>
           <div class="msg" id="login-msg" aria-live="polite"></div></form>
           <div class="forgot-section" id="forgot-section">
             <div class="auth-forgot-hint">Enter your email above and click below.</div>
-            <button class="btn-auth" id="forgot-btn" class="btn-auth--muted btn-auth--forgot">Send Password Reset Email</button>
+            <button class="btn-auth btn-auth--muted btn-auth--forgot" id="forgot-btn">Send Password Reset Email</button>
             <div class="msg" id="forgot-msg" aria-live="polite"></div>
           </div>
         </div>
@@ -766,7 +766,7 @@ height="0" width="0" class="gtm-iframe"></iframe></noscript>
         <div class="auth-form" id="form-signup" style="display:none !important;"></div>
         <div class="auth-form" id="form-forgot"><form onsubmit="return false;">
           <div class="field"><label for="forgot-email">Email</label><input type="email" id="forgot-email" placeholder="you@email.com"></div>
-          <button class="btn-auth" id="forgot-send-btn" class="btn-auth--muted">Send Password Reset Email</button>
+          <button class="btn-auth btn-auth--muted" id="forgot-send-btn">Send Password Reset Email</button>
           <div class="msg" id="forgot-send-msg" aria-live="polite"></div>
           <div class="auth-back-link"><span class="forgot-link" onclick="switchTab('login')">Back to Log In</span></div>
         </form></div>
@@ -782,7 +782,7 @@ height="0" width="0" class="gtm-iframe"></iframe></noscript>
           <p class="auth-approved-text">You're all set!</p>
           <a href="/dashboard" class="btn-auth auth-dashboard-link">Go to Dashboard →</a>
         </div>
-        <button class="btn-logout" id="logout-btn" class="btn-logout--margin">Log Out</button>
+        <button class="btn-logout btn-logout--margin" id="logout-btn">Log Out</button>
       </div>
     </div>
   </div>
