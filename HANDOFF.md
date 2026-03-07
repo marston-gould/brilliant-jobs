@@ -34,6 +34,12 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**SA-006** — TypeScript Phase 1: Core Files + CI Gate (Phase S1)
+- Completed: 2026-03-07 (already satisfied by CS-P1-015 — no new code needed)
+- All 7 core .ts files, shared types, strict tsconfig, CI gate — all present from Phase 1 remediation
+- Phase S1 COMPLETE (SA-004 ✅, SA-005 ✅, SA-006 ✅, SA-001–003 deferred post-launch)
+- Team manifest created: docs/scaling/pod-team-manifest.md (5 new Pod 4 roles added)
+
 **SA-005** — Gateway Migration: All 93 EFs + API Consumer Management (Phase S1)
 - Completed: 2026-03-07
 - Git tags: `infra@gateway-v1.0.0`
@@ -58,11 +64,19 @@ None.
 
 ## Next Session
 
-**SA-006** — TypeScript Phase 1: Core Files + CI Gate (Phase S1)
-- Entry gate: SA-005 complete. Vite build pipeline supports TypeScript (confirmed in CS-016/CS-017). tsconfig.json exists with strict: false baseline. ESLint configured.
-- Pair: Frontend + Eng Lead
-- Estimated: 14–20h
-- Build: Migrate 7 core files to strict TypeScript (globals.ts, api.ts, sync.ts, version.ts, fingerprint.ts, tier-gating.ts, lazy-loader.ts). Define shared types (SupabaseJob, UserProfile, SearchParams, etc.). Zero `any` usage. GitHub Actions CI gate: reject PRs adding .js in js/ directory.
+**SA-007** — Common Crawl Ingestion Worker + Staging Table (Phase S2)
+- Entry gate: SA-005 complete ✅. SA-006 complete ✅. Gateway operational ✅. **Modified gate:** SA-001/SA-002 (Typesense) deferred — Common Crawl records ingest to Postgres `ats_jobs` directly without Typesense sync queue. Sync queue will be added post-launch when Typesense is provisioned.
+- Pair: Data Eng + Backend
+- Estimated: 14–18h
+- Build: Common Crawl WARC download worker, job extraction pipeline, staging table (`cc_staging_jobs`), dedup logic, promotion to `ats_jobs`, pg_cron scheduling.
+
+**OR SA-010** — CrewAI Agent Framework + Content QA Agent (Phase S2, parallel track)
+- Entry gate: SA-005 complete ✅ (gateway with middleware plugin architecture operational).
+- Pair: Backend + Eng Lead + Forward-Looking Dev
+- Estimated: 16–22h
+- Build: CrewAI framework, agent lifecycle manager, Content QA Agent (Agent 1) in observe mode, admin panel integration.
+
+> ⚠️ Awaiting Marston decision on Phase S2 entry path.
 
 ---
 
@@ -114,6 +128,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
+| SA-006 | 2026-03-07 | ALREADY SATISFIED by CS-P1-015 (tsconfig strict, 7 core .ts modules, shared types, CI gate, ADR-04). No new code needed. | (see p1-015@1.0.0-typescript) |
 | SA-005 | 2026-03-07 | All 93 EFs routed + api_consumers table + API key auth + deprecation logging + ADR-03 complete | infra@gateway-v1.0.0 |
 | SA-004 | 2026-03-07 | Gateway EF + middleware plugins + 10 routes + rate_limits migration + ADR-03 | infra@gateway-v0.1.0 |
 | FIX-11 | 2026-03-07 | EXT-ES-001 (22 empty catches → console.warn + PostHog + comments) | extension@2.22.0-error-handling |

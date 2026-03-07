@@ -2098,7 +2098,7 @@ const features = [
 { s: 'deferred', b: 'post-launch', n: 'SA-003 Dashboard search swap to Typesense', d: 'DEFERRED post-launch. Depends on SA-001/002.', p: 90, e: '14h' },
 { s: 'done', b: 'post-launch', n: 'SA-004 API gateway scaffold + first 10 EFs', d: 'Gateway EF built with middleware plugin architecture. Auth, rate-limiter, request-logger, response-cache middleware. rate_limits + gateway_request_log tables. 10 high-traffic routes registered. ADR-03 implemented. 2026-03-07.', p: 100, e: '18h' },
 { s: 'done', b: 'post-launch', n: 'SA-005 Gateway migration — all 93 EFs + API consumers', d: 'All 93 EFs routed through gateway (original 88 + 5 from remediation). api_consumers table for API key management (scar for future third-party access). SHA-256 API key auth in middleware. Deprecation logging for direct EF paths. ADR-03 fully implemented. 2026-03-07.', p: 100, e: '22h' },
-{ s: 'todo', b: 'post-launch', n: 'SA-006 TypeScript strict — core modules', d: 'Migrate core shared modules (globals.js, supabase client, utilities) to strict TypeScript. Establish tsconfig standards. Pair: Frontend + Eng Lead. 12-16h.', p: 90, e: '16h' },
+{ s: 'done', b: 'post-launch', n: 'SA-006 TypeScript strict — core modules', d: 'Already satisfied by CS-P1-015 (Phase 1 remediation). 7 core .ts files, shared types, tsconfig strict, CI gate. ADR-04 Phase 1 complete. Confirmed 2026-03-07.', p: 100, e: '0h (pre-existing)' },
 
 // Phase S2: Automation + Data (Weeks 3-8) — ADR-05, ADR-06
 { s: 'todo', b: 'post-launch', n: 'SA-007 Common Crawl ingestion pipeline', d: 'Build ingestion pipeline for Common Crawl job postings. S3 → parse → normalize → deduplicate → insert. Target: 50K+ records per batch. Pair: Data Eng + Backend. 14-18h.', p: 91, e: '18h' },
