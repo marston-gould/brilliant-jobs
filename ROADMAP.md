@@ -2955,12 +2955,12 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.101 | DS1-4: PostHog identity resolution | 1h | 1h | ✅ | CS-003: posthog.identify() wired post-login on dashboard (app.js), admin (admin-shell.js). Extension identify via distinct_id in API calls. Landing page: identified_only person_profiles. 0%→100% for authenticated sessions. Deployed 2026-03-06. |
-| 0.102 | DS1-6: Pageview events (14 pages) | 1h | — | 🔲 | 10/14 dark. posthog.capture('$pageview') every tab change. |
-| 0.103 | ES1-1: Extension PostHog — zero events | 2h | — | 🔲 | 100% dark. popup_opened, scan_started, scan_complete, pipeline_save. |
-| 0.104 | LS1-3: PostHog not initialized (GTM-dependent) | 1h | — | 🔲 | All 12 events fragile. Direct init. Upgraded P2→P1. |
-| 0.105 | TS1-1: Email-to-PostHog attribution | 2h | — | 🔲 | Zero UTM. No email→dashboard attribution. |
-| 0.106 | TS1-2: SMS-to-PostHog attribution | 1h | — | 🔲 | Zero SMS tracking. UTM + events. |
+| 0.101 | DS1-4: PostHog identity resolution | 1h | 2h | ✅ | CS-P1-007: posthog.identify() with $set_once (first_seen_at, signup_source). posthog.reset() on all logout paths (settings, forced, landing). bj_surface super property on dashboard+admin. Session super props include bj_plan_id. Clean anonymous→identified merge. |
+| 0.102 | DS1-6: Pageview events (14 pages) | 1h | 3h | ✅ | CS-P1-007: Virtual $pageview events for all 14 dashboard pages. Title+section maps. Hash-based $pathname. Initial pageview on load. Replaced dashboard_tab_viewed with proper $pageview. |
+| 0.103 | ES1-1: Extension PostHog — zero events | 2h | 3h | ✅ | CS-P1-007: Baseline events added — extension_lifecycle (install/update), scan_started, scan_paused, scan_resumed, scan_stopped, killswitch_triggered, extension_error (global handler). Popup: scan controls + popup_opened. |
+| 0.104 | LS1-3: PostHog not initialized (GTM-dependent) | 1h | 2h | ✅ | CS-P1-007: PostHog loads directly via cookie-consent.js (independent of GTM). UTM params captured from URL on page load, persisted in sessionStorage, registered as session super properties after consent. First-touch attribution via $set_once. |
+| 0.105 | TS1-1: Email-to-PostHog attribution | 2h | 2h | ✅ | CS-P1-007: utmLink() helper + auto-tagging regex in both baseLayout and whiteBaseLayout. All brilliantjobs.app links in emails get utm_source=email&utm_medium=notification. Landing page captures and registers UTM params to PostHog. |
+| 0.106 | TS1-2: SMS-to-PostHog attribution | 1h | 2h | ✅ | CS-P1-007: smsUtmLink() helper. All 9 SMS templates now include UTM-tagged dashboard links (utm_source=sms). Campaign names: match_alert, interview_scheduled, offer_received, network_match, resume_rewrite, bulk_apply_complete, interview_confirmed, interview_tomorrow, interview_1hr. |
 
 ### 0-T: CX — Accessibility (Pod 4, P1)
 
@@ -2993,7 +2993,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.121 | DS1A-14: Tuning page dark | 1h | — | 🔲 | Zero events. filter_changed, weight_adjusted, save_tuning. |
 | 0.122 | DS1A-17: 75 notification inputs, 0 events | 1h | — | 🔲 | Quick-win instrumentation. |
 | 0.123 | DS1A-19: Subscription page dark | 1h | — | 🔲 | plan_viewed, upgrade_clicked, payment_started. |
-| 0.124 | DS1-12: No perf timing events | 1h | — | 🔲 | page_load_time, tab_switch_time, api_response_time. |
+| 0.124 | DS1-12: No perf timing events | 1h | 2h | ✅ | CS-P1-007: posthog-perf.js added to dashboard+landing+admin. Navigation Timing (TTFB, DOM interactive/complete, load, DNS, TLS). LCP + FID via PerformanceObserver. Tab render timing via bjPerfMark(). |
 
 ### 0-W: CX — Dashboard P3 (Pod 4)
 

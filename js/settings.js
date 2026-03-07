@@ -29,6 +29,10 @@ $('#st-export')?.addEventListener('click', async () => {
 
 // Logout
 $('#logout-btn').addEventListener('click', async () => {
+  // CS-P1-007 DS1-4: Reset PostHog identity before signout to prevent cross-session pollution
+  if (window.posthog) {
+    try { posthog.reset(); } catch (_) { /* reset must never block logout */ }
+  }
   await sb.auth.signOut();
   window.location.href = '/';
 });

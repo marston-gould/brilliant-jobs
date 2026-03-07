@@ -364,6 +364,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // LOGOUT
     // ============================================================
     $('#logout-btn').addEventListener('click', async () => {
+      // CS-P1-007 DS1-4: Reset PostHog identity on logout
+      if (window.posthog) { try { posthog.reset(); } catch (_) {} }
       await loadSupabase();
       await sb.auth.signOut();
       $('#logged-in-view').classList.remove('active');

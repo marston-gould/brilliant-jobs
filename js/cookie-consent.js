@@ -32,8 +32,48 @@
       + ';path=/;SameSite=Lax;Secure';
   }
 
+  // ── CS-P1-007 LS1-3: Capture UTM params immediately (before consent decision) ──
+  var _utmParams = {};
+  try {
+    var sp = new URLSearchParams(window.location.search);
+    ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].forEach(function(k) {
+      var v = sp.get(k);
+      if (v) _utmParams[k] = v;
+    });
+    // Also capture referral code if present
+    var ref = sp.get('ref') || sp.get('referral');
+    if (ref) _utmParams.bj_referral_code = ref;
+    // Persist UTM to sessionStorage so they survive consent banner interaction
+    if (Object.keys(_utmParams).length) {
+      sessionStorage.setItem('bj_utm', JSON.stringify(_utmParams));
+    }
+  } catch (_) {}
+
   // ── Analytics loaders ──
   var _analyticsLoaded = false;
+
+  function _registerUtmParams() {
+    // LS1-3 + TS1-1 + TS1-2: Register persisted UTM params as PostHog super properties
+    if (!window.posthog) return;
+    try {
+      var stored = sessionStorage.getItem('bj_utm');
+      var params = stored ? JSON.parse(stored) : _utmParams;
+      if (params && Object.keys(params).length) {
+        posthog.register_for_session(params);
+        // Set person properties so UTM flows into user profile
+        posthog.setPersonProperties({
+          initial_utm_source: params.utm_source || null,
+          initial_utm_medium: params.utm_medium || null,
+          initial_utm_campaign: params.utm_campaign || null,
+        }, {
+          // $set_once — only set first touch attribution
+          first_utm_source: params.utm_source || null,
+          first_utm_medium: params.utm_medium || null,
+          first_utm_campaign: params.utm_campaign || null,
+        });
+      }
+    } catch (_) {}
+  }
 
   function loadPostHog() {
     if (window.posthog && window.posthog.__loaded) return;
@@ -61,6 +101,8 @@
     _analyticsLoaded = true;
     loadPostHog();
     loadGTM();
+    // CS-P1-007 LS1-3: Register UTM params after PostHog init
+    _registerUtmParams();
   }
 
   // ── bjError reporter (works with or without PostHog) ──

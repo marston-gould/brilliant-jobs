@@ -34,17 +34,19 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**CS-P1-006** — Data Pipeline + Cron Cleanup + Cost Visibility (Phase C: Observability + Data)
+**CS-P1-007** — PostHog Analytics + Attribution CX (Phase D: CX + Analytics)
 - Completed: 2026-03-07
 - Commit: (pending push)
-- Tags: `p1-006@1.0.0-data-pipeline`
-- DE-004: Dead/broken crons removed. validate_cron_schedule() hook prevents impossible dates. v_cron_audit view.
-- DE-005: Redundant purge crons consolidated into unified-data-hygiene cron. run_data_hygiene() covers 6 cleanup targets (cron logs, rate limits, health checks, alert history, notification log, heartbeats). Daily 3:00 AM UTC.
-- CE-002: Cost-per-user modeling added to admin costs panel. Vendor cost curves for 8 vendors (Supabase, Vercel, Anthropic, Cloudflare, Resend, Vonage, DataForSEO, PostHog). Configurable scenarios (100/500/1000 users). Per-user + total cost projection chart.
-- QA-002: 21 extension DOM snapshot tests — inject-overlay.js, toolbar-overlay.js, contentScript.js. Shadow DOM isolation, style leakage prevention, bj- prefix enforcement, z-index consistency, XSS escaping.
-- QA-003: 90 API integration tests — 15 critical EFs. Contract validation: auth requirements, rate limiting, CORS, error handling, webhook signatures, AI spend controls, admin auth, cron migration structure.
-- 111 new tests (1022 total, 2 pre-existing failures unrelated to session).
-- Version bumped to v7.32.
+- Tags: `p1-007@1.0.0-posthog-analytics`
+- DS1-4: PostHog identity resolution — posthog.identify() with $set_once (first_seen_at, signup_source), posthog.reset() on all 3 logout paths, bj_surface super property.
+- DS1-6: Virtual $pageview events for all 14 dashboard pages with title+section maps, hash-based $pathname, initial load pageview.
+- DS1-12: posthog-perf.js — Navigation Timing (TTFB, DOM, load), LCP + FID via PerformanceObserver, bjPerfMark() for tab render timing. Added to dashboard+landing+admin.
+- ES1-1: Extension baseline events — extension_lifecycle (install/update), scan_started/paused/resumed/stopped, killswitch_triggered, global error handler (error + unhandledrejection).
+- LS1-3: PostHog loads directly via cookie-consent.js (GTM-independent). UTM params captured on page load, persisted in sessionStorage, registered as session super properties after consent. First-touch attribution via $set_once.
+- TS1-1: Email UTM attribution — utmLink() helper + auto-tagging regex in both baseLayout and whiteBaseLayout. All brilliantjobs.app email links tagged.
+- TS1-2: SMS UTM attribution — smsUtmLink() helper. All 9 SMS templates include UTM-tagged dashboard links (utm_source=sms).
+- 42 new tests (1064 total, 2 pre-existing failures unrelated to session).
+- Version bumped to v7.33.
 
 ---
 
@@ -56,18 +58,18 @@ None.
 
 ## Next Session
 
-**CS-P1-007: PostHog Analytics + Attribution CX** (Phase D: CX + Analytics)
+**CS-P1-008: Landing Page CX + Accessibility** (Phase D: CX + Analytics)
 
 | Field | Detail |
 |-------|--------|
-| Surface | All Surfaces |
-| Fix Items | DS1-4, DS1-6, DS1-12, ES1-1, LS1-3, TS1-1, TS1-2 |
-| Hours | 14–20h |
-| Pair | Frontend + Data |
+| Surface | Landing Page |
+| Fix Items | LS1-2, LS1-4, LS1-5, LS1-6, LS1-7, LS1-8, LS1-9, LS1-10, LS1-11, IX-A11Y-003 |
+| Hours | 18–26h |
+| Pair | Frontend + CSS |
 
-**Entry Gate:** CS-P1-006 complete.
+**Entry Gate:** CS-P1-007 complete.
 
-**Exit Gate:** PostHog identity resolution clean. 14-page pageview events. Attribution CX complete.
+**Exit Gate:** Inline styles extracted. Single H1. Breakpoints responsive. A11y violations resolved.
 
 ---
 
@@ -85,14 +87,15 @@ None.
 | Dry Run | `dryrun@1.0.0` | CS-022 |
 | SEO Pages | (no remediation tag yet) | — |
 | Email Templates | `email-templates@0.1.0-utm` | CS-011 |
-| Phase 1 Security | `p1-006@1.0.0-data-pipeline` | CS-P1-006 |
+| Phase 1 Security | `p1-007@1.0.0-posthog-analytics` | CS-P1-007 |
 
 ---
 
-## Completed Sessions (24 of 24 + 6 Phase 1)
+## Completed Sessions (24 of 24 + 7 Phase 1)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
+| CS-P1-007 | 2026-03-07 | DS1-4 (identity resolution), DS1-6 (14-page pageviews), DS1-12 (perf timing), ES1-1 (extension baseline), LS1-3 (UTM capture), TS1-1 (email UTM), TS1-2 (SMS UTM) | p1-007@1.0.0-posthog-analytics |
 | CS-P1-006 | 2026-03-07 | DE-004 (dead crons), DE-005 (purge consolidation), CE-002 (cost-per-user modeling), QA-002 (21 DOM snapshots), QA-003 (90 API integration tests) | p1-006@1.0.0-data-pipeline |
 | CS-P1-005 | 2026-03-07 | DO-001 (verified), DO-003 (feature flags), DO-004 (cron alerting), AD-DO-001 (structured logging), AD-DO-002 (PostHog API), AD-DO-003 (alerting pipeline), AD-DO-004 (availability) | p1-005@1.0.0-observability-flags |
 | CS-P1-004 | 2026-03-07 | IX-BE-003 (verified), FE-005 (BJ namespace), BE-007 (API versioning), IX-FE-005 (verified), FE-007 (landing defer), FE-008 (landing cache-bust) | p1-004@1.0.0-api-hardening |
@@ -126,11 +129,10 @@ None.
 
 ---
 
-## Remaining Sessions (11 of 17 Phase 1)
+## Remaining Sessions (10 of 17 Phase 1)
 
 | Session | Phase | Title | Hours |
 |---------|-------|-------|-------|
-| CS-P1-007 | D | PostHog Analytics + Attribution CX | 14–20h |
 | CS-P1-008 | D | Landing Page CX + Accessibility | 18–26h |
 | CS-P1-009 | D | Dashboard Dark Mode + Design System Foundation | 24–36h |
 | CS-P1-010 | D | Dashboard CX Polish | 16–24h |

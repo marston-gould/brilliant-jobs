@@ -1,3 +1,6 @@
+## v7.33 Session NN: TITLE (2026-03-07)
+- DESCRIBE CHANGES HERE
+
 ## v7.32 CS-P1-006: Data Pipeline + Cron Cleanup + Cost Visibility (2026-03-07)
 - DE-004: Dead/broken crons removed. validate_cron_schedule() prevents impossible dates. v_cron_audit view.
 - DE-005: Redundant purge crons consolidated into unified-data-hygiene cron (daily 3AM UTC, 6 cleanup targets).

@@ -68,6 +68,22 @@ async function captureEvent(eventName, properties = {}) {
   } catch { /* silent fail */ }
 }
 
+// CS-P1-007 ES1-1: Global error handler — report unhandled service worker errors to PostHog
+self.addEventListener('error', function(event) {
+  captureEvent('extension_error', {
+    message: event.message || 'unknown',
+    filename: event.filename || '',
+    lineno: event.lineno || 0,
+    type: 'unhandled',
+  });
+});
+self.addEventListener('unhandledrejection', function(event) {
+  captureEvent('extension_error', {
+    message: event.reason ? String(event.reason) : 'unhandled_promise',
+    type: 'unhandled_promise',
+  });
+});
+
 // ============================================================
 // STATE
 // ============================================================
@@ -521,6 +537,12 @@ async function startScanner(includePast = true) {
   logMsg(`Scanner started. ${scannerState.totalQueued} profiles in queue.`, 'success');
   saveState();
   syncStateToSupabase();
+  // CS-P1-007 ES1-1: Extension baseline — scan started
+  captureEvent('scan_started', {
+    include_past: includePast,
+    queue_size: scannerState.totalQueued,
+    daily_limit: scannerState.todayLimit,
+  });
 
   // Ensure alarms are running
   setupAlarms();
@@ -557,11 +579,21 @@ function pauseScanner() {
   chrome.alarms.clear('nextVisit');
   logMsg('Scanner paused.', 'info');
   saveState();
+  // CS-P1-007 ES1-1: Extension baseline — scan paused
+  captureEvent('scan_paused', {
+    today_visited: scannerState.todayVisited,
+    session_visited: scannerState.sessionVisited,
+  });
 }
 
 function resumeScanner() {
   scannerState.paused = false;
   logMsg('Scanner resumed.', 'info');
+  // CS-P1-007 ES1-1: Extension baseline — scan resumed
+  captureEvent('scan_resumed', {
+    today_visited: scannerState.todayVisited,
+    session_visited: scannerState.sessionVisited,
+  });
   scheduleNextVisit();
 }
 
@@ -1883,7 +1915,13 @@ chrome.action.onClicked.addListener((tab) => {
 });
 
 // On install or update
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener((details) => {
+  // CS-P1-007 ES1-1: Extension baseline — installed/updated
+  captureEvent('extension_lifecycle', {
+    reason: details ? details.reason : 'unknown',
+    version: chrome.runtime.getManifest().version,
+    previous_version: details && details.previousVersion ? details.previousVersion : null,
+  });
   setupAlarms();
   sendHeartbeat(); // Initial heartbeat on install/update (v6.08)
   // Run encrypted storage migration (Item #9)
@@ -1983,6 +2021,8 @@ let _bjKillSwitch = {
       '_bj_kill_reason': this._reason
     });
     console.warn(`[kill-switch] ACTIVATED via ${layer}:`, this._reason);
+    // CS-P1-007 ES1-1: Extension baseline — killswitch triggered
+    captureEvent('killswitch_triggered', { reason: this._reason, layer: layer || 'unknown' });
     // Notify content scripts
     chrome.tabs.query({}, tabs => {
       tabs.forEach(tab => {

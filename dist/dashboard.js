@@ -1,5 +1,5 @@
 // === js/version.js ===
-var BJ_VERSION = 'v7.32';
+var BJ_VERSION = 'v7.33';
 (function() {
   function populateVersion() {
     document.querySelectorAll(".bj-version, [id$=\"-version\"]").forEach(function(el) {
@@ -378,6 +378,8 @@ function _checkInactivity() {
   // Force logout after 2x the inactivity timeout
   if (idle > _SESSION_INACTIVITY_MS * 2) {
     _clearSensitiveData();
+    // CS-P1-007 DS1-4: Reset PostHog identity on forced logout
+    if (window.posthog) { try { posthog.reset(); } catch (_) {} }
     sb.auth.signOut();
   }
 }
@@ -1921,17 +1923,38 @@ console.log('[BJ] Dashboard v7.22 loaded');
 // BJ_VERSION is defined in js/version.js (single source of truth)
 // version.js auto-populates #nav-version and .bj-version elements
 
+// CS-P1-007 DS1-6: Page metadata for virtual $pageview events (all 14 pages)
+var _bjPageTitles = {
+  brilliant: 'Get Started', setup: 'Setup', jobs: 'Jobs Feed', tuning: 'Search Tuning',
+  resumes: 'Resumes', applications: 'My Applications', notifications: 'Notifications',
+  ghost: 'Ghost Monitor', stats: 'Stats', referrals: 'Referrals', settings: 'Settings',
+  subscription: 'Subscription', feedback: 'Feedback', pipeline: 'Pipeline'
+};
+var _bjPageSections = {
+  brilliant: 'onboarding', setup: 'onboarding', jobs: 'search', tuning: 'search',
+  resumes: 'search', applications: 'tracking', notifications: 'tracking',
+  ghost: 'intelligence', stats: 'intelligence', referrals: 'growth',
+  settings: 'account', subscription: 'account', feedback: 'account', pipeline: 'tracking'
+};
+
 // Auth
 async function init() {
   const { data: { session } } = await sb.auth.getSession();
   if (!session?.user) { window.location.href = '/'; return; }
   currentUser = session.user;
-  // CS-003: PostHog identity resolution — identify user post-login (CX-01)
+  // CS-003 + CS-P1-007 DS1-4: PostHog identity resolution — identify user post-login
   if (window.posthog && currentUser) {
     posthog.identify(currentUser.id, {
       email: currentUser.email,
       created_at: currentUser.created_at,
     });
+    // DS1-4: $set_once for immutable first-seen props (won't overwrite on subsequent logins)
+    posthog.setPersonProperties({}, {
+      first_seen_at: currentUser.created_at,
+      signup_source: 'dashboard',
+    });
+    // DS1-4: Surface super property — all dashboard events tagged
+    posthog.register({ bj_surface: 'dashboard' });
   }
   // Persist account flag for landing page segment detection (survives logout)
   localStorage.setItem('bj_has_account', 'true');
@@ -2000,7 +2023,21 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
     posthog.register({
       bj_session_id: bjSessionId,
       bj_cohort_id: currentUser._cohortId || null,
-      bj_plan_id: window._bjUserPlan || 'free'
+      bj_plan_id: window._bjUserPlan || 'free',
+      bj_surface: 'dashboard'
+    });
+  }
+  // CS-P1-007 DS1-6: Initial virtual $pageview on dashboard load
+  if (window.posthog) {
+    var _initPage = localStorage.getItem('bj_active_tab') || 'brilliant';
+    var _initTitle = _bjPageTitles[_initPage] || _initPage;
+    posthog.capture('$pageview', {
+      $current_url: window.location.origin + '/dashboard.html#' + _initPage,
+      $pathname: '/dashboard.html#' + _initPage,
+      title: 'Brilliant Jobs — ' + _initTitle,
+      bj_page: _initPage,
+      bj_page_section: _bjPageSections[_initPage] || 'other',
+      bj_initial_load: true,
     });
   }
   // Re-init admin page if it was the active tab (tab restore runs before auth)
@@ -2285,8 +2322,17 @@ $$('.nav-item').forEach(item => {
     $(`#page-${item.dataset.page}`).classList.add('active');
     // Persist active tab
     localStorage.setItem('bj_active_tab', item.dataset.page);
-    // CX-06: PostHog — dashboard tab viewed
-    if (window.posthog) posthog.capture('dashboard_tab_viewed', { tab: item.dataset.page });
+    // CS-P1-007 DS1-6: Virtual $pageview for all 14 dashboard pages (SPA)
+    if (window.posthog) {
+      var _pgTitle = _bjPageTitles[item.dataset.page] || item.dataset.page;
+      posthog.capture('$pageview', {
+        $current_url: window.location.origin + '/dashboard.html#' + item.dataset.page,
+        $pathname: '/dashboard.html#' + item.dataset.page,
+        title: 'Brilliant Jobs — ' + _pgTitle,
+        bj_page: item.dataset.page,
+        bj_page_section: _bjPageSections[item.dataset.page] || 'other',
+      });
+    }
     // CS-015: FIX-09 — Error boundaries on tab init + FIX-15 skeleton loaders
     var _tab = item.dataset.page;
     if (window.bjSkeleton) bjSkeleton.show(_tab);
@@ -18612,6 +18658,10 @@ $('#st-export')?.addEventListener('click', async () => {
 
 // Logout
 $('#logout-btn').addEventListener('click', async () => {
+  // CS-P1-007 DS1-4: Reset PostHog identity before signout to prevent cross-session pollution
+  if (window.posthog) {
+    try { posthog.reset(); } catch (_) { /* reset must never block logout */ }
+  }
   await sb.auth.signOut();
   window.location.href = '/';
 });

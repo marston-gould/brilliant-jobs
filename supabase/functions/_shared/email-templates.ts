@@ -13,6 +13,11 @@ function utmLink(url: string, campaign: string, content?: string): string {
   return url + utm;
 }
 
+// CS-P1-007 TS1-2: SMS UTM attribution helper — appends utm_source=sms to dashboard links
+function smsUtmLink(campaign: string): string {
+  return `${DASHBOARD_URL}?utm_source=sms&utm_medium=notification&utm_campaign=${encodeURIComponent(campaign)}`;
+}
+
 // ---- Base Layout ----
 function baseLayout(title: string, bodyHtml: string, footerExtra?: string, campaign?: string): string {
   // CX-08: If campaign provided, auto-tag all brilliantjobs.app links with UTM
@@ -286,7 +291,7 @@ export function applyAlertEmail(
         <p class="text" style="font-size:11px;text-align:center;margin-top:12px;">If you don't respond, we'll send an SMS reminder based on your escalation settings.</p>
       </div>
     `),
-    sms_text: `Brilliant Jobs: New match — ${job.title} at ${job.company}. Reply Y to apply, N to pass.`,
+    sms_text: `Brilliant Jobs: New match — ${job.title} at ${job.company}. Reply Y to apply, N to pass. ${smsUtmLink('match_alert')}`,
   };
 }
 
@@ -319,7 +324,7 @@ export function interviewScheduledEmail(company: string, jobTitle: string): { su
         </div>
       </div>
     `),
-    sms_text: `Brilliant Jobs: Interview stage! ${jobTitle} at ${company}. Check your dashboard.`,
+    sms_text: `Brilliant Jobs: Interview stage! ${jobTitle} at ${company}. ${smsUtmLink('interview_scheduled')}`,
   };
 }
 
@@ -336,7 +341,7 @@ export function offerReceivedEmail(company: string, jobTitle: string): { subject
         </div>
       </div>
     `),
-    sms_text: `Brilliant Jobs: OFFER received! ${jobTitle} at ${company}. Check your dashboard!`,
+    sms_text: `Brilliant Jobs: OFFER received! ${jobTitle} at ${company}. ${smsUtmLink('offer_received')}`,
   };
 }
 
@@ -412,7 +417,7 @@ export function networkMatchEmail(company: string, jobTitle: string, connectionN
         </div>
       </div>
     `),
-    sms_text: `Brilliant Jobs: ${connectionNames.length} connections at ${company} which just posted ${jobTitle}. Check your dashboard for details.`,
+    sms_text: `Brilliant Jobs: ${connectionNames.length} connections at ${company} which just posted ${jobTitle}. ${smsUtmLink('network_match')}`,
   };
 }
 
@@ -789,7 +794,7 @@ export function applyRewritePendingEmail(
         </div>
       </div>
     `),
-    sms_text: `Brilliant Jobs: Resume rewritten for ${jobTitle} at ${company} (${beforeScore}→${afterScore}). Review in app.`,
+    sms_text: `Brilliant Jobs: Resume rewritten for ${jobTitle} at ${company} (${beforeScore}→${afterScore}). ${smsUtmLink('resume_rewrite')}`,
   };
 }
 
@@ -854,7 +859,7 @@ export function applyBulkCompleteEmail(
         </div>
       </div>
     `),
-    sms_text: `Brilliant Jobs: Bulk apply done — ${totalSubmitted} submitted, ${totalSkipped} skipped, ${totalFailed} failed.`,
+    sms_text: `Brilliant Jobs: Bulk apply done — ${totalSubmitted} submitted, ${totalSkipped} skipped, ${totalFailed} failed. ${smsUtmLink('bulk_apply_complete')}`,
   };
 }
 
@@ -1456,7 +1461,7 @@ export function interviewScheduledWhiteEmail(
         </div>
       </div>
     `),
-    sms_text: `Interview confirmed: ${title} at ${company}, ${date} at ${time}. Details in your dashboard.`,
+    sms_text: `Interview confirmed: ${title} at ${company}, ${date} at ${time}. ${smsUtmLink('interview_confirmed')}`,
   };
 }
 
@@ -1512,7 +1517,7 @@ export function interviewReminder24hEmail(
         </div>
       </div>
     `),
-    sms_text: `Tomorrow: ${title} interview at ${company}, ${time}. You're ready.`,
+    sms_text: `Tomorrow: ${title} interview at ${company}, ${time}. You're ready. ${smsUtmLink('interview_tomorrow')}`,
   };
 }
 
@@ -1571,7 +1576,7 @@ export function interviewReminder1hEmail(
         </div>
       </div>
     `),
-    sms_text: `Interview in 1hr: ${title} at ${company}. ${format}. You've got this.`,
+    sms_text: `Interview in 1hr: ${title} at ${company}. ${format}. You've got this. ${smsUtmLink('interview_1hr')}`,
   };
 }
 

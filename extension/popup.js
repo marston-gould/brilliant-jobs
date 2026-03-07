@@ -947,16 +947,19 @@ $('#s-start').addEventListener('click', async () => {
 
 $('#s-pause').addEventListener('click', async () => {
   await chrome.runtime.sendMessage({ type: 'pauseScanner' });
+  phCapture('scan_paused'); // CS-P1-007 ES1-1
   refreshScannerState();
 });
 
 $('#s-resume').addEventListener('click', async () => {
   await chrome.runtime.sendMessage({ type: 'resumeScanner' });
+  phCapture('scan_resumed'); // CS-P1-007 ES1-1
   refreshScannerState();
 });
 
 $('#s-stop').addEventListener('click', async () => {
   await chrome.runtime.sendMessage({ type: 'stopScanner' });
+  phCapture('scan_stopped'); // CS-P1-007 ES1-1
   refreshScannerState();
 });
 

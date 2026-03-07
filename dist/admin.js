@@ -1,5 +1,5 @@
 // === js/version.js ===
-var BJ_VERSION = 'v7.32';
+var BJ_VERSION = 'v7.33';
 (function() {
   function populateVersion() {
     document.querySelectorAll(".bj-version, [id$=\"-version\"]").forEach(function(el) {
@@ -378,6 +378,8 @@ function _checkInactivity() {
   // Force logout after 2x the inactivity timeout
   if (idle > _SESSION_INACTIVITY_MS * 2) {
     _clearSensitiveData();
+    // CS-P1-007 DS1-4: Reset PostHog identity on forced logout
+    if (window.posthog) { try { posthog.reset(); } catch (_) {} }
     sb.auth.signOut();
   }
 }

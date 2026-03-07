@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.32"></script>
+  <script src="/js/version.js?v=v7.33"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -1978,12 +1978,12 @@ const features = [
 { s: 'done', b: 'pre-launch', n: '0.100 FE-008: No content hashing', d: 'CS-P1-003 + CS-P1-004: Dashboard immutable cache + manifest. Landing all 9 scripts ?v= cache-busted.', p: 75, e: '1h' },
 
 // 0-S: CX PostHog Identity (Pod 4, P1)
-{ s: 'todo', b: 'pre-launch', n: '0.101 DS1-4: PostHog identity resolution', d: 'posthog.identify() all surfaces. 0%→100%. HIGHEST-LEVERAGE. Unblocks 9.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.102 DS1-6: Pageview events 14 pages', d: '10/14 dark. $pageview on tab change.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.103 ES1-1: Extension PostHog zero', d: '100% dark. popup_opened, scan, pipeline events.', p: 75, e: '2h' },
-{ s: 'todo', b: 'pre-launch', n: '0.104 LS1-3: PostHog not init (GTM)', d: 'All 12 events fragile. Direct init. P2→P1.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.105 TS1-1: Email PostHog attribution', d: 'Zero UTM. No email→dashboard chain.', p: 75, e: '2h' },
-{ s: 'todo', b: 'pre-launch', n: '0.106 TS1-2: SMS PostHog attribution', d: 'Zero SMS tracking.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.101 DS1-4: PostHog identity resolution', d: 'CS-P1-007: identify + $set_once + reset on logout + bj_surface super prop.', p: 100, e: '2h' },
+{ s: 'done', b: 'pre-launch', n: '0.102 DS1-6: Pageview events 14 pages', d: 'CS-P1-007: Virtual $pageview for all 14 pages with title/section maps.', p: 100, e: '3h' },
+{ s: 'done', b: 'pre-launch', n: '0.103 ES1-1: Extension PostHog baseline', d: 'CS-P1-007: lifecycle, scan start/pause/resume/stop, killswitch, error handler.', p: 100, e: '3h' },
+{ s: 'done', b: 'pre-launch', n: '0.104 LS1-3: PostHog init + UTM capture', d: 'CS-P1-007: Direct init via cookie-consent. UTM capture + sessionStorage persist + register_for_session.', p: 100, e: '2h' },
+{ s: 'done', b: 'pre-launch', n: '0.105 TS1-1: Email PostHog attribution', d: 'CS-P1-007: utmLink + auto-tagging regex in both layouts. UTM captured on landing.', p: 100, e: '2h' },
+{ s: 'done', b: 'pre-launch', n: '0.106 TS1-2: SMS PostHog attribution', d: 'CS-P1-007: smsUtmLink() helper. All 9 SMS templates UTM-tagged.', p: 100, e: '2h' },
 
 // 0-T: CX Accessibility (Pod 4, P1)
 { s: 'done', b: 'pre-launch', n: '0.107 DS1-2: Dashboard a11y Phase 1', d: 'CS-007: role=button + tabindex on nav items, keyboard Enter/Space, job modal role=dialog + aria-modal + focus trap + Escape + focus return, skip link, role=main. axe-core added.', p: 75, e: '3h' },
@@ -2007,7 +2007,7 @@ const features = [
 { s: 'todo', b: 'pre-launch', n: '0.121 DS1A-14: Tuning page dark', d: 'Zero events. filter_changed, weight_adjusted.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.122 DS1A-17: 75 notif inputs 0 events', d: 'Quick-win instrumentation.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.123 DS1A-19: Subscription page dark', d: 'plan_viewed, upgrade_clicked.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.124 DS1-12: No perf timing events', d: 'page_load_time, tab_switch, api_response.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.124 DS1-12: Performance timing events', d: 'CS-P1-007: posthog-perf.js — Nav Timing, LCP, FID, tab render marks.', p: 100, e: '2h' },
 
 // 0-W: CX Dashboard P3 (Pod 4)
 { s: 'todo', b: 'pre-launch', n: '0.125 DS1-5: Dark mode 14 pages', d: 'CSS vars ready. 2×7 batches.', p: 75, e: '4h' },
