@@ -1,0 +1,76 @@
+# Brilliant Jobs — 72-Hour Dry Run Monitor
+# CS-022 FIX-23: Runs health checks hourly for 72 hours
+# Activate: Enable this workflow in GitHub Actions UI
+# Deactivate: Disable after Go/No-Go decision
+
+name: Dry Run Monitor
+
+on:
+  schedule:
+    # Run every hour during dry run period
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Run mode'
+        required: true
+        type: choice
+        options:
+          - single   # One-shot health check
+          - report   # Generate summary of all logged runs
+        default: single
+
+jobs:
+  health-check:
+    name: Production Health Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Dry Run Monitor
+        id: monitor
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          node scripts/dry-run-monitor.mjs --json > /tmp/dry-run-result.json 2>&1
+          cat /tmp/dry-run-result.json
+          
+          # Extract overall status for badge/annotation
+          STATUS=$(node -e "const r=require('/tmp/dry-run-result.json'); console.log(r.overallStatus)")
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
+          
+          FAILED=$(node -e "const r=require('/tmp/dry-run-result.json'); console.log(r.failed)")
+          echo "failed=$FAILED" >> $GITHUB_OUTPUT
+
+      - name: Upload result artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dry-run-${{ github.run_id }}-${{ github.run_number }}
+          path: /tmp/dry-run-result.json
+          retention-days: 7
+
+      - name: Annotate on failure
+        if: steps.monitor.outputs.failed != '0'
+        run: |
+          echo "::error::Dry run health check detected ${{ steps.monitor.outputs.failed }} failure(s). Status: ${{ steps.monitor.outputs.status }}"
+
+      - name: Summary
+        run: |
+          echo "## 🔍 Dry Run Health Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ steps.monitor.outputs.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Failed checks:** ${{ steps.monitor.outputs.failed }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Run:** $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          cat /tmp/dry-run-result.json >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
