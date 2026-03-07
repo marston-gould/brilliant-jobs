@@ -34,18 +34,22 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**CS-P1-009** — Dashboard Dark Mode + Design System Foundation (Phase D: CX + Analytics)
+**CS-P1-010** — Dashboard CX Polish (Phase D: CX + Analytics)
 - Completed: 2026-03-07
-- Tags: `p1-009@1.0.0-dark-mode`
-- CSS-002: Dark mode via [data-theme="dark"] CSS custom properties. 3 modes (light/dark/auto). Toggle in nav + settings page. Flash-prevention inline script in <head>.
-- CSS-003: Safelist consolidated 14→7 patterns. Alpha-char-after-dash fix prevents Tailwind utility collision (eliminated ~30 false-positive pl-/sub-/or- classes).
-- CSS-004: 66 dead CSS rules removed. Raw: 148KB (up from 128KB due to dark mode + utility additions). Gzip: 25KB. <100KB raw deferred to SA-013 CSS splitting.
-- DS1-3: 797→390 inline styles (51% reduction). 50+ utility classes created (u-meta, u-flex-between, u-btn-pill, etc.).
-- DS1-5: All 14 pages dark-mode via CSS custom property overrides. Input/select/card/scrollbar/modal dark overrides.
-- DS1-7: Pipeline CSS dark overrides. Hardcoded hex (#f59e0b, #22c55e, #ef4444) → CSS variables in pipeline.js, job-feed.js, applications.js, resumes.js.
-- DS1-10: ADR written (docs/audit/adr-ds1-10-single-html.md). Defer HTML splitting to SA-013 React Router.
-- theme.js: Theme toggle module added to shell chunk. Persists to localStorage. Respects prefers-color-scheme.
-- 25 new tests (1129 total). Version v7.35.
+- Tags: `p1-010@1.0.0-cx-polish`
+- DS1A-16: Resume #f59e0b → var(--warm) + _cssColor() for ECharts.
+- DS1A-18: Snooze duplicate class attrs fixed, inline styles → passive-snooze-* CSS classes.
+- DS1A-14: Tuning page dark mode overrides (card shadow, badge, level checkbox).
+- DS1A-19: Subscription page HSL → CSS variables for dark mode compatibility.
+- DS1A-15: Pipeline added to nav sidebar with icon, duplicate class attrs fixed.
+- DS1A-20: Admin survey gated to _isAdmin, Feature Requests default tab.
+- DS1A-21: Referral !important overrides eliminated, #f59e0b → var(--warm).
+- DS1A-17: PostHog notification events (ncWirePreferenceEvents, notification_email_toggled, notification_frequency_changed).
+- DS1-8: Gmail connect button in onboarding Step 2 with live status.
+- DS1A-13: Extension sideload guided walkthrough with progressive steps + PostHog tracking.
+- DS1-11: Unified Setup Progress bar, updateSetupProgress() checks real connection state.
+- Also: posthog-insights registered in admin subpage map, evaluate-alerts added to EF auth registry.
+- 16 new tests (1145 total). Version v7.36.
 
 ---
 
@@ -57,18 +61,18 @@ None.
 
 ## Next Session
 
-**CS-P1-010: Dashboard CX Polish** (Phase D: CX + Analytics)
+**CS-P1-011: Extension CX Hardening** (Phase D: CX + Analytics)
 
 | Field | Detail |
 |-------|--------|
-| Surface | Dashboard + Admin |
-| Fix Items | DS1-8, DS1-11, DS1A-13, DS1A-14, DS1A-15, DS1A-16, DS1A-17, DS1A-18, DS1A-19, DS1A-20, DS1A-21 |
-| Hours | 16–24h |
-| Pair | Frontend + CSS |
+| Surface | Extension |
+| Fix Items | ES1-2, ES1-3, ES1-4, ES1-5, ES1-6, ES1-7, ES1-8, ES1-9, ES1-10 |
+| Hours | 12–18h |
+| Pair | Frontend + Security |
 
-**Entry Gate:** CS-P1-009 complete (dark mode foundation in place).
+**Entry Gate:** CS-P1-010 complete (dashboard CX polish done).
 
-**Exit Gate:** All dashboard pages dark-mode compatible. Onboarding consolidated. Notification events wired.
+**Exit Gate:** Extension UI polished, dark mode compatible, all extension CX findings resolved.
 
 ---
 
@@ -86,14 +90,15 @@ None.
 | Dry Run | `dryrun@1.0.0` | CS-022 |
 | SEO Pages | (no remediation tag yet) | — |
 | Email Templates | `email-templates@0.1.0-utm` | CS-011 |
-| Phase 1 Security | `p1-009@1.0.0-dark-mode` | CS-P1-009 |
+| Phase 1 Security | `p1-010@1.0.0-cx-polish` | CS-P1-010 |
 
 ---
 
-## Completed Sessions (24 of 24 + 9 Phase 1)
+## Completed Sessions (24 of 24 + 10 Phase 1)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
+| CS-P1-010 | 2026-03-07 | DS1-8 (Gmail onboarding), DS1-11 (unified setup), DS1A-13 (extension walkthrough), DS1A-14 (tuning dark), DS1A-15 (pipeline nav), DS1A-16 (resume color), DS1A-17 (notif events), DS1A-18 (snooze dedup), DS1A-19 (sub dark), DS1A-20 (admin survey gate), DS1A-21 (referral !important) | p1-010@1.0.0-cx-polish |
 | CS-P1-009 | 2026-03-07 | CSS-002 (dark mode), CSS-003 (safelist), CSS-004 (purge), DS1-3 (inline styles), DS1-5 (14-page dark), DS1-7 (pipeline dark), DS1-10 (ADR) | p1-009@1.0.0-dark-mode |
 | CS-P1-008 | 2026-03-07 | LS1-10 (JSON-LD sync), LS1-4 (single H1), LS1-8 (localStorage safety), IX-A11Y-003 (form labels), LS1-7 (breakpoints), LS1-11 (carousel fallback), LS1-2/5/9 (verified) | p1-008@1.0.0-landing-cx |
 | CS-P1-007 | 2026-03-07 | DS1-4 (identity resolution), DS1-6 (14-page pageviews), DS1-12 (perf timing), ES1-1 (extension baseline), LS1-3 (UTM capture), TS1-1 (email UTM), TS1-2 (SMS UTM) | p1-007@1.0.0-posthog-analytics |
@@ -130,11 +135,10 @@ None.
 
 ---
 
-## Remaining Sessions (8 of 17 Phase 1)
+## Remaining Sessions (7 of 17 Phase 1)
 
 | Session | Phase | Title | Hours |
 |---------|-------|-------|-------|
-| CS-P1-010 | D | Dashboard CX Polish | 16–24h |
 | CS-P1-011 | D | Extension CX Hardening | 12–18h |
 | CS-P1-012 | D | Email/SMS Templates + Transactional CX | 10–16h |
 | CS-P1-013 | E | SEO + SRI + Referral Pipeline | 12–18h |

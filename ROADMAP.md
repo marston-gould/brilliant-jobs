@@ -2986,13 +2986,13 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
 | 0.116 | DS1-7: Pipeline drag-drop dark mode | 1h | CS-P1-009 | ✅ | Pipeline CSS dark overrides. Hardcoded hex→CSS variables in pipeline.js. |
-| 0.117 | DS1-8: Gmail connection buried | 1h | — | 🔲 | IA/UX improvement for discoverability. |
+| 0.117 | DS1-8: Gmail connection buried | 1h | CS-P1-010 | ✅ | IA/UX improvement for discoverability. |
 | 0.118 | DS1-9: ECharts global load | 1h | CS-014 | ✅ | ECharts lazy-loaded via loadECharts() on first Stats tab open. Removed from dashboard head. |
 | 0.119 | DS1-10: 14 pages single HTML | 4h | CS-P1-009 | ✅ | ADR: defer to SA-013 (React Router). Current arch adequate for launch (48KB gzip). |
-| 0.120 | DS1A-13: Extension sideload friction | 1h | — | 🔲 | Smoother install UX for website distribution (ADR-008). |
-| 0.121 | DS1A-14: Tuning page dark | 1h | — | 🔲 | Zero events. filter_changed, weight_adjusted, save_tuning. |
-| 0.122 | DS1A-17: 75 notification inputs, 0 events | 1h | — | 🔲 | Quick-win instrumentation. |
-| 0.123 | DS1A-19: Subscription page dark | 1h | — | 🔲 | plan_viewed, upgrade_clicked, payment_started. |
+| 0.120 | DS1A-13: Extension sideload friction | 1h | CS-P1-010 | ✅ | Smoother install UX for website distribution (ADR-008). |
+| 0.121 | DS1A-14: Tuning page dark | 1h | CS-P1-010 | ✅ | Zero events. filter_changed, weight_adjusted, save_tuning. |
+| 0.122 | DS1A-17: 75 notification inputs, 0 events | 1h | CS-P1-010 | ✅ | Quick-win instrumentation. |
+| 0.123 | DS1A-19: Subscription page dark | 1h | CS-P1-010 | ✅ | plan_viewed, upgrade_clicked, payment_started. |
 | 0.124 | DS1-12: No perf timing events | 1h | 2h | ✅ | CS-P1-007: posthog-perf.js added to dashboard+landing+admin. Navigation Timing (TTFB, DOM interactive/complete, load, DNS, TLS). LCP + FID via PerformanceObserver. Tab render timing via bjPerfMark(). |
 
 ### 0-W: CX — Dashboard P3 (Pod 4)
@@ -3000,12 +3000,12 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
 | 0.125 | DS1-5: Dark mode (14 pages) | 4h | CS-P1-009 | ✅ | All 14 pages dark-mode via CSS custom properties. Input/select/card/scrollbar overrides. |
-| 0.126 | DS1-11: Competing onboarding paths | 1h | — | 🔲 | Setup + Get Started both exist. Rationalize. |
-| 0.127 | DS1A-15: Pipeline hidden page | 30min | — | 🔲 | Force-hidden CSS. Confirm intentional or remove. |
-| 0.128 | DS1A-16: Resume token bypass #f59e0b | 30min | — | 🔲 | Hardcoded hex → var(--amber). |
-| 0.129 | DS1A-18: Settings snooze duplication | 30min | — | 🔲 | Duplicate CSS. Consolidate. |
-| 0.130 | DS1A-20: Admin survey data in Feedback | 30min | — | 🔲 | user_feedback visible to non-admin. Scope review. |
-| 0.131 | DS1A-21: Referrals !important fights | 1h | — | 🔲 | JS renders with inline styles fighting Tailwind. Refactor. |
+| 0.126 | DS1-11: Competing onboarding paths | 1h | CS-P1-010 | ✅ | Setup + Get Started both exist. Rationalize. |
+| 0.127 | DS1A-15: Pipeline hidden page | 30min | CS-P1-010 | ✅ | Force-hidden CSS. Confirm intentional or remove. |
+| 0.128 | DS1A-16: Resume token bypass #f59e0b | 30min | CS-P1-010 | ✅ | Hardcoded hex → var(--amber). |
+| 0.129 | DS1A-18: Settings snooze duplication | 30min | CS-P1-010 | ✅ | Duplicate CSS. Consolidate. |
+| 0.130 | DS1A-20: Admin survey data in Feedback | 30min | CS-P1-010 | ✅ | user_feedback visible to non-admin. Scope review. |
+| 0.131 | DS1A-21: Referrals !important fights | 1h | CS-P1-010 | ✅ | JS renders with inline styles fighting Tailwind. Refactor. |
 
 ### 0-X: CX — Extension (Pod 4, P2/P3)
 
