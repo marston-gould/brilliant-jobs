@@ -2093,9 +2093,9 @@ const features = [
 // ═══════════════════════════════════════════════════════════════
 
 // Phase S1: Foundation (Weeks 1-4) — ADR-01, ADR-03, ADR-04 P1
-{ s: 'todo', b: 'post-launch', n: 'SA-001 Typesense deployment + config', d: 'Deploy Typesense instance. Configure collections for ats_jobs. Define schema with searchable/filterable/sortable fields. Seed initial data. Pair: Data Eng + DevOps. 12-16h.', p: 90, e: '16h' },
-{ s: 'todo', b: 'post-launch', n: 'SA-002 Supabase → Typesense sync queue', d: 'Build real-time sync pipeline: DB trigger on ats_jobs → queue table → sync Edge Function → Typesense upsert. Backfill existing records. Pair: Backend + Data Eng. 12-16h.', p: 90, e: '16h' },
-{ s: 'todo', b: 'post-launch', n: 'SA-003 Dashboard search swap to Typesense', d: 'Replace Supabase full-text search with Typesense on dashboard feed. Faceted filtering, typo tolerance, instant results. Verify <200ms p95. Pair: Frontend + Data Eng. 10-14h.', p: 90, e: '14h' },
+{ s: 'deferred', b: 'post-launch', n: 'SA-001 Typesense deployment + config', d: 'DEFERRED post-launch. Code artifacts committed (schema, seed EF, search EF, ADR-01, seed script). Cluster provisioned 2026-03-07 but 1GB tier hit OOM — resize to 2vCPU/4GB before activating. Postgres FTS sufficient at 413K jobs. Revival triggers: search complaints in PostHog, OR job count >750K, OR faceted filter UX becomes product priority.', p: 90, e: '16h' },
+{ s: 'deferred', b: 'post-launch', n: 'SA-002 Supabase → Typesense sync queue', d: 'DEFERRED post-launch. Depends on SA-001.', p: 90, e: '16h' },
+{ s: 'deferred', b: 'post-launch', n: 'SA-003 Dashboard search swap to Typesense', d: 'DEFERRED post-launch. Depends on SA-001/002.', p: 90, e: '14h' },
 { s: 'todo', b: 'post-launch', n: 'SA-004 API gateway scaffold + first 10 EFs', d: 'Build gateway Edge Function with middleware plugin architecture. Migrate first 10 high-traffic EFs. Unified auth, rate limiting, CDN cache headers. Pair: Backend + DevOps. 14-18h.', p: 90, e: '18h' },
 { s: 'todo', b: 'post-launch', n: 'SA-005 Gateway migration — all 88 EFs', d: 'Migrate remaining 78 Edge Functions through gateway. Middleware plugins for logging, auth, rate limiting. Legacy direct-call removal. Pair: Backend + Eng Lead. 16-22h.', p: 90, e: '22h' },
 { s: 'todo', b: 'post-launch', n: 'SA-006 TypeScript strict — core modules', d: 'Migrate core shared modules (globals.js, supabase client, utilities) to strict TypeScript. Establish tsconfig standards. Pair: Frontend + Eng Lead. 12-16h.', p: 90, e: '16h' },
@@ -2388,9 +2388,9 @@ function render() {
       </div>`;
       html += '<div class="phase-group-body"><ul class="feature-list">';
       phaseItems.forEach((f, i) => {
-        const statusCls = f.s === 'done' ? 'status-done' : (f.s === 'progress' ? 'status-progress' : (f.s === 'wontdo' ? 'status-wontdo' : 'status-todo'));
-        const statusIcon = f.s === 'done' ? '\u2713' : (f.s === 'progress' ? '\u25D0' : (f.s === 'wontdo' ? '\u2717' : '\u25CB'));
-        const nameCls = f.s === 'done' ? 'feature-name is-done' : (f.s === 'wontdo' ? 'feature-name is-done' : 'feature-name');
+        const statusCls = f.s === 'done' ? 'status-done' : (f.s === 'progress' ? 'status-progress' : (f.s === 'wontdo' ? 'status-wontdo' : (f.s === 'deferred' ? 'status-wontdo' : 'status-todo')));
+        const statusIcon = f.s === 'done' ? '\u2713' : (f.s === 'progress' ? '\u25D0' : (f.s === 'wontdo' ? '\u2717' : (f.s === 'deferred' ? '\u23F8' : '\u25CB')));
+        const nameCls = f.s === 'done' ? 'feature-name is-done' : (f.s === 'wontdo' ? 'feature-name is-done' : (f.s === 'deferred' ? 'feature-name is-done' : 'feature-name'));
         const blockedMap = {
           'post-launch': ['bt-postlaunch', 'POST-LAUNCH'],
           'needs-users': ['bt-postlaunch', 'NEEDS USERS'],

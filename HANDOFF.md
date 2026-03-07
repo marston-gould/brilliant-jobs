@@ -27,7 +27,7 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 | 4 | Test (Prod) | Validate fixes in the live production environment |
 | 5 | Sync Environments | Apply changes to staging + dev (if separate envs exist) |
 | 6 | Version Bump | **TWO version systems:** (1) Git tags for audit tracking (e.g., `extension@0.8.0-architecture`). (2) **Product version** (`BJ_VERSION` in `js/version.js`) — controls cache busting on ALL HTML surfaces. Run `bash scripts/bump-version.sh X.YY` to bump, then `node build.js && node build-admin.js && npm run bundle:css` to rebuild. Run `bash scripts/pre-commit-version-check.sh` to verify all surfaces in sync. **Every session that changes JS/CSS/HTML must bump the product version.** |
-| 7 | Update Docs | Update ROADMAP.md **AND** `/roadmap` page (`roadmap.html`) — BOTH must be updated every session. Mark findings RESOLVED. |
+| 7 | Update Docs | Update **ROADMAP.md** AND **roadmap.html** — BOTH files, every session, no exceptions. `ROADMAP.md` is the markdown source; `roadmap.html` is the live `/roadmap` page users see. Search both files for every finding ID touched this session. If you update one and not the other they drift apart. |
 | 8 | Update HANDOFF.md | Update THIS FILE as the last commit of the session |
 
 ---
