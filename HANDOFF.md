@@ -34,16 +34,16 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**CS-P1-014** — Compliance: PII Inventory + DPAs + Data Rights (Phase E: SEO + Compliance)
+**CS-P1-015** — TypeScript Migration (Incremental) (Phase F: Architecture)
 - Completed: 2026-03-07
-- Tags: `p1-014@1.0.0-compliance`, `dashboard@1.1.0-compliance`
-- CP-001: PII inventory v2 (docs/compliance/pii-inventory.md) — 66 tables, 18 Anthropic EFs, 5 third-party PII flows, retention periods, right-to-erasure coverage.
-- CP-002: DPA register (docs/compliance/dpa-register.md) — 13 services documented, Anthropic zero-retention confirmed, priority actions listed.
-- AD-CP-001: admin_pii_access_log table + RLS + log_admin_pii_access() RPC for PII access tracking.
-- AD-CP-002: GDPR Art 17 compliant deletion — hard_delete_user_cascade() cascades 35+ tables, account-delete EF with soft-delete + 30-day grace + cancel + admin hard-delete, storage cleanup, deletion_requests table, process-expired-deletions pg_cron. Dashboard Danger Zone UI with double confirmation.
-- AD-CP-003: data-export EF v2.0 — 37 user tables + auth metadata, rate limited, admin export-any-user, Dashboard "Download All My Data" button.
-- Additional: privacy_consent tracking table, privacy infrastructure.
-- 37 new tests (1386 total). Product version bumped to v7.40.
+- Tags: `p1-015@1.0.0-typescript`, `dashboard@1.2.0-typescript`
+- FE-006: tsconfig strict mode. 7 core modules migrated to .ts (version, globals, api, sync, fingerprint, tier-gating, lazy-loader).
+- Shared type definitions: js/types/index.d.ts (~400 lines) — SupabaseJob, UserProfile, BJNamespace, Window augmentation, external library declarations.
+- Build system: .ts sources compiled to .js via esbuild transformSync for direct HTML loading. Temp files use .ts extension for type stripping in chunk builds.
+- CI gate: tsc --noEmit added to Gate 1+7. Guard rejects edits to generated .js files.
+- ADR-04: docs/adr/adr-04-typescript.md — 6-phase incremental migration path.
+- globals.ts has @ts-nocheck (Phase 2 removes it). Other 6 files pass strict type checking.
+- 31 new tests (1282+ total). Product version bumped to v7.41.
 
 ---
 
@@ -55,18 +55,18 @@ None.
 
 ## Next Session
 
-**CS-P1-015: TypeScript Migration (Incremental)** (Phase F: Architecture)
+**CS-P1-016: Admin Monitoring: Cron + PostHog + A/B + UX** (Phase G: Admin Monitoring)
 
 | Field | Detail |
 |-------|--------|
-| Surface | Dashboard |
-| Fix Items | FE-006 |
-| Hours | 24–40h |
-| Pair | Eng Lead + Frontend |
+| Surface | Admin |
+| Fix Items | P76: 0.161, 0.162, 0.175, 0.176, 0.177, 0.178 |
+| Hours | 20–30h |
+| Pair | Frontend + Data + DevOps |
 
-**Entry Gate:** CS-P1-014 complete (compliance done).
+**Entry Gate:** CS-P1-015 complete (TypeScript migration done).
 
-**Exit Gate:** tsconfig strict. Core modules typed. CI type-check gate passing. Incremental path documented.
+**Exit Gate:** Cron management UI complete. PostHog funnel in admin. First A/B test shipped. Admin UX review done. Design system assessment complete.
 
 ---
 
@@ -74,7 +74,7 @@ None.
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| Dashboard | `dashboard@1.0.0-bundle` | CS-016 |
+| Dashboard | `dashboard@1.2.0-typescript` | CS-P1-015 |
 | Extension | `extension@2.21.0-cx-hardening` | CS-P1-011 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
 | Admin | `admin@1.2.0-hardening` | G11+G12 |
@@ -84,14 +84,15 @@ None.
 | Dry Run | `dryrun@1.0.0` | CS-022 |
 | SEO Pages | `seo-pages@1.0.0-sri-og` | CS-P1-013 |
 | Email Templates | `email-templates@1.0.0-modular` | CS-P1-012 |
-| Phase 1 Security | `p1-014@1.0.0-compliance` | CS-P1-014 |
+| Phase 1 Security | `p1-015@1.0.0-typescript` | CS-P1-015 |
 
 ---
 
-## Completed Sessions (24 of 24 + 14 Phase 1)
+## Completed Sessions (24 of 24 + 15 Phase 1)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
+| CS-P1-015 | 2026-03-07 | FE-006 (TypeScript migration: tsconfig strict, 7 core .ts modules, shared types, CI gate, ADR-04) | p1-015@1.0.0-typescript |
 | CS-P1-014 | 2026-03-07 | CP-001 (PII inventory v2), CP-002 (DPA register), AD-CP-001 (admin PII logging), AD-CP-002 (user deletion cascade), AD-CP-003 (data export v2) | p1-014@1.0.0-compliance |
 | CS-P1-013 | 2026-03-07 | IX-DM-001 (SRI), IX-SEO-001 (canonical), IX-SEO-002 (OG/Twitter), IX-SEO-003 (JSON-LD), IX-DA-002 (referral chain), IX-FE-006 (.io refs) | p1-013@1.0.0-seo-sri-referral |
 | CS-P1-012 | 2026-03-07 | TS1-3 (dark mode email), TS1-4 (A/B drip framework), TS1-5 (SMS overflow), TS1-6 (template modularization) | p1-012@1.0.0-email-sms-cx |
@@ -133,11 +134,10 @@ None.
 
 ---
 
-## Remaining Sessions (3 of 17 Phase 1)
+## Remaining Sessions (2 of 17 Phase 1)
 
 | Session | Phase | Title | Hours |
 |---------|-------|-------|-------|
-| CS-P1-015 | F | TypeScript Migration (Incremental) | 24–40h |
 | CS-P1-016 | G | Admin Monitoring: Cron + PostHog + A/B + UX | 20–30h |
 | CS-P1-017 | G | Compliance Dashboard: PII Map + Deletion + Export | 18–28h |
 
