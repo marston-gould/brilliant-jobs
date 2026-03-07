@@ -3145,9 +3145,9 @@ Phase S can overlap with Phase 1 feature work on separate tracks. Sessions withi
 
 | # | Item | Est. | Status | Notes |
 |---|------|------|--------|-------|
-| SA-001 | Typesense deployment + configuration | 12–16h | 🔄 IN PROGRESS | Code complete (schema, seed EF, search EF, ADR-01 log, seed orchestration script). **BLOCKED:** Typesense Cloud account not yet created — Marston action required (see adr-01-search.md §Deployment Steps). Pair: Data Eng + DevOps. |
-| SA-002 | Supabase → Typesense sync queue | 12–16h | 🔲 | Real-time sync pipeline. DB trigger → queue → sync EF → Typesense. Backfill existing. Pair: Backend + Data Eng. |
-| SA-003 | Dashboard search swap to Typesense | 10–14h | 🔲 | Replace Supabase FTS. Faceted filtering, typo tolerance. <200ms p95. Pair: Frontend + Data Eng. |
+| SA-001 | Typesense deployment + configuration | 12–16h | ⏸ DEFERRED (post-launch) | All code artifacts committed. Cluster deleted — 1GB OOM, 4GB cost not justified pre-launch. Postgres FTS sufficient at current volume. Revisit when job count >750K or search latency complaints surface in PostHog. |
+| SA-002 | Supabase → Typesense sync queue | 12–16h | ⏸ DEFERRED (post-launch) | Depends on SA-001. |
+| SA-003 | Dashboard search swap to Typesense | 10–14h | ⏸ DEFERRED (post-launch) | Depends on SA-001/002. |
 | SA-004 | API gateway scaffold + first 10 EFs | 14–18h | 🔲 | Gateway EF with middleware plugin architecture. Unified auth, rate limiting, CDN cache. Pair: Backend + DevOps. |
 | SA-005 | Gateway migration — all 88 EFs | 16–22h | 🔲 | Remaining 78 EFs through gateway. Middleware plugins. Legacy removal. Pair: Backend + Eng Lead. |
 | SA-006 | TypeScript strict — core modules | 12–16h | 🔲 | Core shared modules to strict TS. tsconfig standards. Pair: Frontend + Eng Lead. |

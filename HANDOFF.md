@@ -50,39 +50,42 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Session In Progress
 
-**SA-001** — Typesense Cloud Setup + Schema Design + Initial Index (Phase S1)
-- Started: 2026-03-07
-- Pair: Data Engineer + DevOps Engineer
-
-### What Was Done
-- `docs/scaling/typesense-schema.json` — 29-field collection schema (14 facets, composite id, epoch timestamps)
-- `supabase/functions/typesense-seed/index.ts` — seed Edge Function (batch-resumable, upsert, dry-run flag)
-- `supabase/functions/typesense-search/index.ts` — search EF with Typesense primary + Postgres FTS fallback
-- `docs/scaling/adr-01-search.md` — ADR-01 implementation log with hook points, scar points, and deployment steps
-- `scripts/run-typesense-seed.js` — orchestration script to drive full 413,929-row seed
-- ROADMAP.md updated: SA-001 marked IN PROGRESS
-- Index sizing confirmed: 413,929 open jobs, 6 ATS sources
-
-### What Remains (BLOCKED on Typesense Cloud account)
-
-**Marston must create the Typesense Cloud account before Steps 3–8 can proceed:**
-1. https://cloud.typesense.org → Create Cluster (us-east-1, 2vcpu_4gb_64gb)
-2. `supabase secrets set TYPESENSE_HOST=xxx.a1.typesense.net TYPESENSE_API_KEY=xxx`
-3. `curl -X POST 'https://HOST/collections' -H 'X-TYPESENSE-API-KEY: KEY' -d @docs/scaling/typesense-schema.json`
-4. `supabase functions deploy typesense-seed typesense-search`
-5. `SUPABASE_SERVICE_KEY=xxx node scripts/run-typesense-seed.js --dry-run` then without --dry-run
-6. Validate: doc count within 0.1% of 413,929. Run 50 sample queries (see adr-01-search.md).
-7. `git tag infra@typesense-v0.1.0 && git push --tags`
-8. Update ROADMAP.md + roadmap.html: SA-001 DONE
+None.
 
 ---
 
 ## Next Session
 
-**SA-002** — Sync Queue + Cron Job + Typesense Monitoring (Phase S1)
-- Entry gate: SA-001 complete. Typesense running with full index. Vault secrets set.
-- Pair: Data Engineer + Backend Engineer
-- Build: `sync_queue` table, Postgres trigger on ats_jobs, `typesense-sync` EF, pg_cron 30s, weekly re-index
+**SA-004** — API Gateway Skeleton + Auth Middleware + Plugin Architecture (Phase S1)
+- Entry gate: Remediation complete (all 17 Phase 1 sessions done). ✅
+- Pair: Backend Engineer + Security Engineer + Lead Platform Engineer
+- Estimated: 14–18h
+- Build: Gateway Edge Function with middleware plugin architecture, unified auth, rate limiting, CDN cache headers
+- No infrastructure cost — pure code
+
+---
+
+## Deferred: SA-001 / SA-002 / SA-003 (Typesense)
+
+**Decision (2026-03-07):** SA-001 through SA-003 deferred to post-launch.
+
+Rationale: Postgres FTS handles 413K jobs without performance issues. Typesense's primary value
+(typo tolerance, faceted counts, sub-50ms at 1M+ docs) does not solve any current user-facing pain
+point. The 1GB cluster provisioned during SA-001 ran out of memory before the collection could even
+be created — the right cluster size (4GB+) adds meaningful recurring cost with no launch-blocking
+benefit. All code artifacts are committed and ready to execute post-launch when there is user
+evidence that search is a bottleneck.
+
+**What was built (preserved in repo, not deployed):**
+- `docs/scaling/typesense-schema.json` — 29-field collection schema
+- `supabase/functions/typesense-seed/index.ts` — batch-resumable seed EF
+- `supabase/functions/typesense-search/index.ts` — search EF with Postgres FTS fallback
+- `docs/scaling/adr-01-search.md` — full ADR-01 implementation log
+- `scripts/run-typesense-seed.js` — seed orchestration script
+- Vault secrets set: TYPESENSE_HOST, TYPESENSE_API_KEY (cluster deleted — secrets are stale, reset on revival)
+
+**Post-launch trigger:** Revisit when search latency complaints appear in PostHog, OR when job
+count exceeds 750K rows, OR when faceted filter UX becomes a product priority — whichever comes first.
 
 ---
 
