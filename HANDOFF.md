@@ -36,7 +36,7 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 **G11 + G12** — Post-Remediation Hardening (Admin Auth Middleware + Audit Trail Gate)
 - Completed: 2026-03-07
-- Commit: (pending)
+- Commit: `ce06870`
 - Tags: `admin@1.2.0-hardening`
 - G11: Created `supabase/functions/_shared/admin-auth.ts` — shared `requireAdmin()` middleware with service_role bypass, 401/403 error handling, `authErrorResponse()` helper. Refactored 4 admin EFs to import it: admin-analytics, approve-content, generate-editorial-content, seo-sync. Removed all inline `verifyAdmin()` and duplicate auth blocks. 24 new tests (725 total).
 - G12: PostHog autocapture covers admin clicks + page views with distinct_id. `_logAdminAction()` covers high-value write operations (alert CRUD, kill-switch, rule changes, notification config, merch CRUD, Stripe overrides). Combination sufficient for launch.
