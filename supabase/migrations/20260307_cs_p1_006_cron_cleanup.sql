@@ -152,7 +152,7 @@ BEGIN
 
   -- 6. Clean old extension heartbeat entries (keep 30 days)
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'extension_heartbeats') THEN
-    DELETE FROM extension_heartbeats WHERE last_seen < NOW() - INTERVAL '30 days';
+    DELETE FROM extension_heartbeats WHERE last_heartbeat_at < NOW() - INTERVAL '30 days';
     GET DIAGNOSTICS _count = ROW_COUNT;
     _result := _result || jsonb_build_object('heartbeats_purged', _count);
   END IF;
@@ -179,6 +179,10 @@ BEGIN
   BEGIN PERFORM cron.unschedule('purge-old-notifications'); EXCEPTION WHEN OTHERS THEN NULL; END;
   BEGIN PERFORM cron.unschedule('purge-email-signals'); EXCEPTION WHEN OTHERS THEN NULL; END;
   BEGIN PERFORM cron.unschedule('purge-email-signals-weekly'); EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN PERFORM cron.unschedule('purge-old-email-signals'); EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN PERFORM cron.unschedule('auto-check-fraud-backfill'); EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN PERFORM cron.unschedule('chat_usage_cleanup'); EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN PERFORM cron.unschedule('backfill-content-tsv'); EXCEPTION WHEN OTHERS THEN NULL; END;
 
   -- Schedule the unified hygiene job
   IF NOT EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'unified-data-hygiene') THEN
