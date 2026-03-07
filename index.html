@@ -181,14 +181,14 @@
 <!-- CS-014: CX-10 — External landing page stylesheet -->
 
 </head>
-<body>
+<body itemscope itemtype="https://schema.org/WebPage">
   <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PLHNJQLC"
 height="0" width="0" class="gtm-iframe"></iframe></noscript>
   <!-- CS-007: CX-04 — Skip navigation link -->
   <a href="#main-content" class="skip-link" onfocus="this.style.top='0'" onblur="this.style.top='-40px'">Skip to main content</a>
 
   <nav class="site-nav segment-new segment-returning" aria-label="Main navigation">
-    <div class="nav-logo"><div class="mark">B</div> Brilliant Jobs</div>
+    <div class="nav-logo" itemscope itemtype="https://schema.org/Organization"><div class="mark" itemprop="logo">B</div> <span itemprop="name">Brilliant Jobs</span></div>
     <div class="nav-links">
       <a href="#why">Why</a>
       <a href="#benefits">Benefits</a>
@@ -202,7 +202,7 @@ height="0" width="0" class="gtm-iframe"></iframe></noscript>
 
   <!-- Lapsed nav: simplified -->
   <nav class="site-nav segment-lapsed" aria-label="Main navigation">
-    <div class="nav-logo"><div class="mark">B</div> Brilliant Jobs</div>
+    <div class="nav-logo" itemscope itemtype="https://schema.org/Organization"><div class="mark" itemprop="logo">B</div> <span itemprop="name">Brilliant Jobs</span></div>
     <div class="nav-links">
       <a href="#why">Why</a>
       <a href="#benefits">Benefits</a>
@@ -214,7 +214,7 @@ height="0" width="0" class="gtm-iframe"></iframe></noscript>
     </div>
   </nav>
 
-  <main id="main-content">
+  <main id="main-content" itemprop="mainContentOfPage">
 
   <!-- ==================== HERO: NEW VISITOR (full pitch) ==================== -->
   <section class="hero segment-new">
@@ -472,25 +472,25 @@ height="0" width="0" class="gtm-iframe"></iframe></noscript>
   </section>
 
   <!-- ==================== OBJECTION FAQ (returning visitors, visit 3+) ==================== -->
-  <section class="section fade-up faq-objections" id="objection-faq">
+  <section class="section fade-up faq-objections" id="objection-faq" itemscope itemtype="https://schema.org/FAQPage">
     <div class="section-label">Common Questions</div>
     <h2>You might be wondering...</h2>
     <div class="faq-list">
-      <details class="faq-item">
-        <summary>Is my data safe?</summary>
-        <p class="faq-answer">We never sell your data. Your search filters, resumes, and application history are encrypted and visible only to you. We make money from paid plans and credit packs, not from selling your information to recruiters.</p>
+      <details class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <summary itemprop="name">Is my data safe?</summary>
+        <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><p class="faq-answer" itemprop="text">We never sell your data. Your search filters, resumes, and application history are encrypted and visible only to you. We make money from paid plans and credit packs, not from selling your information to recruiters.</p></div>
       </details>
-      <details class="faq-item">
-        <summary>Why not just use LinkedIn?</summary>
-        <p class="faq-answer">LinkedIn shows you the jobs that employers pay to promote. We show you every job posted on 39,000+ company career pages — including the ones that never make it to LinkedIn. Plus salary data and ghost rate tracking that LinkedIn will never offer.</p>
+      <details class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <summary itemprop="name">Why not just use LinkedIn?</summary>
+        <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><p class="faq-answer" itemprop="text">LinkedIn shows you the jobs that employers pay to promote. We show you every job posted on 39,000+ company career pages — including the ones that never make it to LinkedIn. Plus salary data and ghost rate tracking that LinkedIn will never offer.</p></div>
       </details>
-      <details class="faq-item">
-        <summary>What does the free plan include?</summary>
-        <p class="faq-answer">One saved search, full job feed access, salary data, and ghost rates. Paid plans unlock AI resume scoring, more saved searches, credits for AI features, and priority notifications.</p>
+      <details class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <summary itemprop="name">What does the free plan include?</summary>
+        <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><p class="faq-answer" itemprop="text">One saved search, full job feed access, salary data, and ghost rates. Paid plans unlock AI resume scoring, more saved searches, credits for AI features, and priority notifications.</p></div>
       </details>
-      <details class="faq-item">
-        <summary>How current are the job listings?</summary>
-        <p class="faq-answer">Jobs are refreshed on a rolling schedule — most boards are checked every 24-48 hours. Stale listings are flagged automatically so you're not wasting time on ghost jobs.</p>
+      <details class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <summary itemprop="name">How current are the job listings?</summary>
+        <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><p class="faq-answer" itemprop="text">Jobs are refreshed on a rolling schedule — most boards are checked every 24-48 hours. Stale listings are flagged automatically so you're not wasting time on ghost jobs.</p></div>
       </details>
     </div>
   </section>
@@ -589,16 +589,19 @@ height="0" width="0" class="gtm-iframe"></iframe></noscript>
   </section>
 
   <!-- ==================== PRICING ==================== -->
-  <section class="section fade-up" id="pricing">
+  <section class="section fade-up" id="pricing" itemscope itemtype="https://schema.org/SoftwareApplication">
+    <meta itemprop="name" content="Brilliant Jobs">
+    <meta itemprop="applicationCategory" content="BusinessApplication">
+    <meta itemprop="operatingSystem" content="Web, Chrome">
     <div class="section-label">Pricing</div>
     <h2>We make money when you get hired.<br>That's it.</h2>
-    <p class="section-desc">No ads. No sponsored listings. No selling your data to recruiters. Full access during beta — early adopters keep upgraded access.</p>
+    <p class="section-desc" itemprop="description">No ads. No sponsored listings. No selling your data to recruiters. Full access during beta — early adopters keep upgraded access.</p>
 
     <div class="pricing-grid">
-      <div class="price-card">
-        <div class="price-name">Free</div>
+      <div class="price-card" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+        <div class="price-name" itemprop="name">Free</div>
         <div class="price-desc">Core search and filtering</div>
-        <div class="price-amount">$0</div>
+        <div class="price-amount"><meta itemprop="price" content="0"><meta itemprop="priceCurrency" content="USD">$0</div>
         <div class="price-period">forever</div>
         <ul class="price-features">
           <li>Jobs from all company career pages</li>
@@ -609,10 +612,10 @@ height="0" width="0" class="gtm-iframe"></iframe></noscript>
         <button class="price-btn price-btn-outline" onclick="openModal('signup')">Start Free</button>
       </div>
 
-      <div class="price-card featured">
-        <div class="price-name">Starter</div>
+      <div class="price-card featured" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+        <div class="price-name" itemprop="name">Starter</div>
         <div class="price-desc">AI-powered tools to stand out</div>
-        <div class="price-amount">$20</div>
+        <div class="price-amount"><meta itemprop="price" content="20"><meta itemprop="priceCurrency" content="USD">$20</div>
         <div class="price-period">per month</div>
         <ul class="price-features">
           <li>Everything in Free</li>
@@ -624,10 +627,10 @@ height="0" width="0" class="gtm-iframe"></iframe></noscript>
         <button class="price-btn price-btn-primary" onclick="openModal('signup')">Start Free</button>
       </div>
 
-      <div class="price-card">
-        <div class="price-name">Pro</div>
+      <div class="price-card" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+        <div class="price-name" itemprop="name">Pro</div>
         <div class="price-desc">Full power for serious searchers</div>
-        <div class="price-amount">$40</div>
+        <div class="price-amount"><meta itemprop="price" content="40"><meta itemprop="priceCurrency" content="USD">$40</div>
         <div class="price-period">per month</div>
         <ul class="price-features">
           <li>Everything in Starter</li>

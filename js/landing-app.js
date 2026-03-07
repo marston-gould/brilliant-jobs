@@ -437,6 +437,52 @@ document.addEventListener('DOMContentLoaded', function() {
         if (stats.metros != null) {
           document.getElementById('lp-metros').textContent = stats.metros.toLocaleString();
         }
+        // CS-P1-008 (LS1-10): Sync JSON-LD structured data with live counts
+        try {
+          var ldScripts = document.querySelectorAll('script[type="application/ld+json"]');
+          ldScripts.forEach(function(script) {
+            try {
+              var ld = JSON.parse(script.textContent);
+              var changed = false;
+              if (ld['@graph']) {
+                ld['@graph'].forEach(function(node) {
+                  if (node['@type'] === 'SoftwareApplication' && stats.jobs != null) {
+                    var rounded = (Math.floor(stats.jobs / 1000) * 1000).toLocaleString() + '+';
+                    node.description = node.description.replace(/[\d,]+\+?\s*jobs/, rounded + ' jobs');
+                    if (stats.companies != null) {
+                      node.description = node.description.replace(/[\d,]+\+?\s*company/, stats.companies.toLocaleString() + '+ company');
+                      var featureList = node.featureList;
+                      if (featureList) {
+                        for (var i = 0; i < featureList.length; i++) {
+                          featureList[i] = featureList[i].replace(/[\d,]+\+?\s*company/, stats.companies.toLocaleString() + '+ company');
+                        }
+                      }
+                    }
+                    changed = true;
+                  }
+                  if (node['@type'] === 'Organization' && stats.companies != null) {
+                    node.description = node.description.replace(/[\d,]+\+?\s*company/, stats.companies.toLocaleString() + '+ company');
+                    changed = true;
+                  }
+                  if (node['@type'] === 'FAQPage' && node.mainEntity) {
+                    node.mainEntity.forEach(function(q) {
+                      if (q.acceptedAnswer && q.acceptedAnswer.text) {
+                        if (stats.jobs != null) {
+                          q.acceptedAnswer.text = q.acceptedAnswer.text.replace(/[\d,]+\+?\s*open jobs/, (Math.floor(stats.jobs / 1000) * 1000).toLocaleString() + '+ open jobs');
+                        }
+                        if (stats.companies != null) {
+                          q.acceptedAnswer.text = q.acceptedAnswer.text.replace(/[\d,]+\+?\s*company career/, stats.companies.toLocaleString() + '+ company career');
+                        }
+                      }
+                    });
+                    changed = true;
+                  }
+                });
+              }
+              if (changed) script.textContent = JSON.stringify(ld);
+            } catch (e) { /* skip malformed JSON-LD blocks */ }
+          });
+        } catch (e) { bjError('jsonld_sync_error', e); }
         document.querySelectorAll('.stat-num').forEach(el => {
           el.classList.remove('loading'); el.classList.add('loaded');
         });
