@@ -1836,7 +1836,7 @@ const features = [
 { s: 'todo', b: 'pre-launch', n: '0.002 SE-002: Service role key rotation', d: 'CS-001: git purge DONE. CS-P1-002: Rotation procedure scripted (scripts/rotate-jwt-secret.sh), SECURITY.md documents compensating controls. Execution requires maintenance window.', p: 75, e: '2h' },
 { s: 'done', b: 'pre-launch', n: '0.003 SE-003: Auth on generate-editorial-content', d: 'CS-001: Auth + admin role check (requireAdmin). G11: Shared middleware. Verified CS-P1-001.', p: 75, e: '1h' },
 { s: 'done', b: 'pre-launch', n: '0.004 SE-004: Classify+gate 89 Edge Functions', d: 'CS-P1-001: All 89 EFs classified in edge-function-auth.yaml (4 admin, 28 auth, 46 cron, 7 webhook, 4 public). CI Gate 04 validates registry.', p: 75, e: '6h' },
-{ s: 'done', b: 'pre-launch', n: '0.005 SE-005: CSP unsafe-inline on dashboard', d: 'CS-P1-002: All inline scripts externalized. Layered CSP: /dashboard and /admin routes remove unsafe-inline from script-src. Catch-all retains it for SEO pages. style-src retains unsafe-inline.', p: 75, e: '3h' },
+{ s: 'todo', b: 'pre-launch', n: '0.005 SE-005: CSP unsafe-inline on dashboard', d: 'CS-P1-002: All inline script blocks extracted (4 new external JS files). Enforcement deferred — 122 dashboard + 21 admin inline event handlers (onclick=, onchange=) also blocked by strict CSP. Handler extraction is prerequisite.', p: 75, e: '3h' },
 
 // 0-B: Security — Landing Page (Pod 3, P0)
 { s: 'done', b: 'pre-launch', n: '0.006 IX-SE-001: postMessage wildcard → restrict', d: 'CS-005: postMessage restricted to window.location.origin. Auth tokens no longer leaked to wildcard. X-Frame-Options DENY + frame-ancestors none confirmed.', p: 75, e: '15min' },

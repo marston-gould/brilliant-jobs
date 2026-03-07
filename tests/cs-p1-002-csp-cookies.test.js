@@ -73,45 +73,24 @@ describe('SE-005: CSP enforcement', () => {
     expect(content).toContain('Skip to main content');
   });
 
-  it('dashboard CSP meta tag does not contain unsafe-inline for scripts', () => {
+  it('dashboard CSP meta tag is minimal (enforcement deferred until inline handlers extracted)', () => {
     const cspMeta = dashboardHtml.match(/<meta[^>]*Content-Security-Policy[^>]*>/i);
     expect(cspMeta).toBeTruthy();
-    const cspContent = cspMeta[0];
-    // Extract script-src directive
-    const scriptSrc = cspContent.match(/script-src[^;]*/i);
-    expect(scriptSrc).toBeTruthy();
-    expect(scriptSrc[0]).not.toContain('unsafe-inline');
+    // Should only contain upgrade-insecure-requests (not a full CSP)
+    expect(cspMeta[0]).toContain('upgrade-insecure-requests');
+    // Should NOT try to restrict script-src yet (119 inline onclick handlers remain)
+    expect(cspMeta[0]).not.toContain('script-src');
   });
 
-  it('vercel.json catch-all CSP retains unsafe-inline (SEO pages need inline scripts)', () => {
+  it('vercel.json catch-all CSP retains unsafe-inline (SEO pages + inline handlers need it)', () => {
     const catchAllRoute = vercelJson.headers.find(h => h.source === '/(.*)');
     expect(catchAllRoute).toBeTruthy();
     const cspHeader = catchAllRoute.headers.find(h => h.key === 'Content-Security-Policy');
     expect(cspHeader).toBeTruthy();
     const scriptSrc = cspHeader.value.match(/script-src[^;]*/i);
     expect(scriptSrc).toBeTruthy();
-    // Catch-all keeps unsafe-inline because api/seo-page.js generates inline scripts
+    // Catch-all keeps unsafe-inline: api/seo-page.js inline scripts + 119 dashboard onclick handlers
     expect(scriptSrc[0]).toContain('unsafe-inline');
-  });
-
-  it('vercel.json dashboard route CSP does NOT contain unsafe-inline for scripts', () => {
-    const dashRoute = vercelJson.headers.find(h => h.source === '/dashboard');
-    expect(dashRoute).toBeTruthy();
-    const cspHeader = dashRoute.headers.find(h => h.key === 'Content-Security-Policy');
-    expect(cspHeader).toBeTruthy();
-    const scriptSrc = cspHeader.value.match(/script-src[^;]*/i);
-    expect(scriptSrc).toBeTruthy();
-    expect(scriptSrc[0]).not.toContain('unsafe-inline');
-  });
-
-  it('vercel.json admin route CSP does NOT contain unsafe-inline for scripts', () => {
-    const adminRoute = vercelJson.headers.find(h => h.source === '/admin');
-    expect(adminRoute).toBeTruthy();
-    const cspHeader = adminRoute.headers.find(h => h.key === 'Content-Security-Policy');
-    expect(cspHeader).toBeTruthy();
-    const scriptSrc = cspHeader.value.match(/script-src[^;]*/i);
-    expect(scriptSrc).toBeTruthy();
-    expect(scriptSrc[0]).not.toContain('unsafe-inline');
   });
 
   it('vercel.json landing page CSP does not contain unsafe-inline for scripts', () => {
@@ -257,5 +236,23 @@ describe('SE-002: Key rotation procedure', () => {
     expect(content).toContain('SE-002');
     expect(content).toContain('Deferred');
     expect(content).toContain('git-filter-repo');
+  });
+});
+
+// ── SE-005 Deferred: Inline handler count (regression gate) ──
+
+describe('SE-005 deferred: inline handler inventory', () => {
+  it('dashboard.html inline handler count is documented (122 at CS-P1-002)', () => {
+    const dashboardHtml = fs.readFileSync(path.join(ROOT, 'dashboard.html'), 'utf-8');
+    const handlers = dashboardHtml.match(/\bon(?:click|change|submit|load|error|keydown|keyup|focus|blur|mousedown|mouseover|input)\s*=/gi) || [];
+    // This number should only go DOWN as handlers are extracted.
+    // When it reaches 0, SE-005 CSP enforcement can be activated.
+    expect(handlers.length).toBeLessThanOrEqual(122);
+  });
+
+  it('admin.html inline handler count is documented (21 at CS-P1-002)', () => {
+    const adminHtml = fs.readFileSync(path.join(ROOT, 'admin.html'), 'utf-8');
+    const handlers = adminHtml.match(/\bon(?:click|change|submit|load|error|keydown|keyup|focus|blur|mousedown|mouseover|input)\s*=/gi) || [];
+    expect(handlers.length).toBeLessThanOrEqual(21);
   });
 });

@@ -38,7 +38,7 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 - Completed: 2026-03-07
 - Commit: 4611ee5
 - Tags: `p1-002@1.0.0-csp-cookies`
-- SE-005: All inline scripts externalized from dashboard.html (5 scripts) and admin.html (2 scripts) into 4 new external JS files. Layered CSP: `/dashboard` and `/admin` routes remove `unsafe-inline` from script-src. Catch-all retains it for SEO pages (`api/seo-page.js` generates inline scripts). Dashboard meta tag also enforces strict CSP.
+- SE-005: All inline scripts externalized from dashboard.html (5 scripts) and admin.html (2 scripts) into 4 new external JS files. CSP enforcement DEFERRED — 122 dashboard + 21 admin inline event handlers (`onclick=`, `onchange=`) also require extraction before `unsafe-inline` can be removed. Inline handler extraction added as deferred scope item.
 - IX-SE-006: Secure flag added to all 3 cookie-setting files (referral-capture.js, cookie-consent.js, landing-app.js). All cookies now SameSite=Lax + Secure.
 - IX-SE-008: Accepted risk documented in SECURITY.md. Anon key is public by Supabase design; mitigated by RLS.
 - AD-SE-001: Verified still in place from G11 (admin-auth.ts middleware, requireAdmin()).
@@ -172,6 +172,7 @@ None.
 | Item | Original Session | Reason | Target |
 |------|-----------------|--------|--------|
 | SE-002 key rotation | CS-002/CS-P1-002 | Procedure scripted (scripts/rotate-jwt-secret.sh), SECURITY.md documents compensating controls | Requires maintenance window + Marston coordination |
+| SE-005 CSP enforcement | CS-P1-002 | Inline scripts extracted but 122+21 inline handlers (onclick=) block enforcement | Extract handlers → then remove unsafe-inline |
 | CP-002 DPA initiation | CS-004 | Legal review required (not a code task) | Pre-launch legal workstream |
 | QA-001 (full) | CS-010 | ✅ CS-021: 590 tests. Kill-switch, DOM snapshots, quality gates, security regressions. | DONE |
 | CSP report-only → enforce | CS-005 | ✅ CS-018: Landing page CSP enforced (no unsafe-inline). Dashboard/admin still report-only. | DONE (landing) |

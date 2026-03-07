@@ -48,10 +48,10 @@ The service role key was exposed in git history (commit `4a5191787f15`, Feb 23 2
 ## Security Headers
 
 All surfaces enforce the following via `vercel.json`:
-- `Content-Security-Policy` — **layered enforcement:**
-  - `/dashboard` and `/admin` routes: no `unsafe-inline` in script-src (all inline scripts externalized in CS-P1-002)
+- `Content-Security-Policy` — current state:
   - `/` (landing page): no `unsafe-inline` in script-src (inline scripts externalized in CS-018)
-  - `/(.*)`catch-all: retains `unsafe-inline` because `api/seo-page.js` generates inline scripts for SEO data pages (future: externalize these too)
+  - `/(.*)`catch-all (dashboard, admin, SEO pages): retains `unsafe-inline` because `api/seo-page.js` generates inline scripts for SEO pages, and dashboard/admin have 122/21 inline event handlers (`onclick=`, `onchange=`) respectively
+  - **CS-P1-002 progress:** All inline `<script>` blocks extracted from dashboard (5) and admin (2). CSP enforcement blocked by inline handlers — extracting these is a future scope item.
 - `X-Content-Type-Options: nosniff`
 - `X-Frame-Options: DENY`
 - `Strict-Transport-Security` with preload
