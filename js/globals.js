@@ -3,6 +3,29 @@
 // Must load before all other JS modules
 // ============================================================
 
+// ============================================================
+// CS-P1-004 FE-005: Controlled namespace registry
+// All new function exports MUST go through BJ.export() instead of window.X = Y.
+// Existing window.X aliases kept for backward compat with onclick handlers.
+// Phase F (TypeScript migration) will remove window.X aliases entirely.
+// ============================================================
+window.BJ = window.BJ || {};
+window.BJ._registry = {};
+/**
+ * Register a function in the BJ namespace.
+ * Also sets window[name] for backward compat with HTML onclick handlers.
+ * @param {string} name - Function name
+ * @param {Function} fn - The function to register
+ * @param {string} [module] - Source module for debugging
+ */
+window.BJ.export = function(name, fn, module) {
+  window.BJ[name] = fn;
+  window.BJ._registry[name] = { module: module || 'unknown', registered: Date.now() };
+  // Backward compat: also set on window for onclick= handlers
+  // TODO(Phase-F): Remove after migrating all onclick handlers to event delegation
+  window[name] = fn;
+};
+
 const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
 

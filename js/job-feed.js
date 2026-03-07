@@ -2292,3 +2292,13 @@ async function backgroundEnrichSalary() {
     if (typeof computeVisibleJobScores === 'function') computeVisibleJobScores();
   }
 }
+
+// CS-P1-004 FE-005: Register job-feed exports with BJ namespace
+(function() {
+  ['_activeLevelHierarchy','_chatFilterOverride'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'job-feed', registered: Date.now() };
+    }
+  });
+})();

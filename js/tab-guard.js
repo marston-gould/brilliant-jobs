@@ -204,3 +204,13 @@
   };
 
 })();
+
+// CS-P1-004 FE-005: Register tab-guard exports with BJ namespace
+(function() {
+  ['bjSkeleton','bjTabGuard'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'tab-guard', registered: Date.now() };
+    }
+  });
+})();

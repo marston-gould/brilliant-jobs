@@ -4,6 +4,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { fetchWithRetry, TIMEOUT_CONFIGS } from '../_shared/resilience.ts'
+import { API_VERSION } from '../_shared/api-version.ts';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 
 const ALLOWED_ORIGINS = [
@@ -83,7 +84,8 @@ serve(async (req) => {
   if (!checkRateLimit(clientIP)) {
     return new Response(
       JSON.stringify({ error: 'rate_limit_exceeded', retry_after: 3600 }),
-      { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '3600' } }
+      { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json',
+  'x-api-version': API_VERSION, 'Retry-After': '3600' } }
     );
   }
 
@@ -543,6 +545,7 @@ async function verifyProfileViaSERP(
         headers: {
           'Authorization': authHeader,
           'Content-Type': 'application/json',
+  'x-api-version': API_VERSION,
         },
         body: JSON.stringify([{
           keyword,

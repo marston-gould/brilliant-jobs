@@ -1491,3 +1491,13 @@ function acceptAnalyzeHidden() {
   if (typeof renderSavedFilters === 'function') renderSavedFilters();
   if (typeof debouncedSearchJobs === 'function') debouncedSearchJobs();
 }
+
+// CS-P1-004 FE-005: Register tuning.js exports with BJ namespace
+(function() {
+  ['editFilterLevelHierarchy', 'unhideJob', 'addSuggestedExclusion'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'tuning', registered: Date.now() };
+    }
+  });
+})();

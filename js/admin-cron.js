@@ -212,3 +212,13 @@ function _cleanupCronPanel() {
 // Export
 window.loadCronPanel = loadCronPanel;
 window._cleanupCronPanel = _cleanupCronPanel;
+
+// CS-P1-004 FE-005: Register admin-cron exports with BJ namespace
+(function() {
+  ['_cleanupCronPanel','_cronData','loadCronPanel'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin-cron', registered: Date.now() };
+    }
+  });
+})();

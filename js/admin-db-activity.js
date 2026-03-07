@@ -292,3 +292,13 @@ function _cleanupDbActivityPanel() {
 
 window.loadDbActivityPanel = loadDbActivityPanel;
 window._cleanupDbActivityPanel = _cleanupDbActivityPanel;
+
+// CS-P1-004 FE-005: Register admin-db-activity exports with BJ namespace
+(function() {
+  ['_cleanupDbActivityPanel','loadDbActivityPanel'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin-db-activity', registered: Date.now() };
+    }
+  });
+})();

@@ -1157,3 +1157,13 @@ async function loadUsersTab() {
     console.error('[Admin] loadUsersTab error:', err); toastError('Failed to load users data');
   }
 }
+
+// CS-P1-004 FE-005: Register admin exports with BJ namespace
+(function() {
+  ['_cohortList','_logAdminAction','updateCohortCharts'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin', registered: Date.now() };
+    }
+  });
+})();

@@ -1098,3 +1098,13 @@ function updateApplySettingsVisibility(mode) {
   if (rewriteRow) rewriteRow.style.display = usesRewrite ? '' : 'none';
   if (rewriteApprovalRow) rewriteApprovalRow.style.display = usesRewrite && document.getElementById('fas-auto-rewrite') && document.getElementById('fas-auto-rewrite').checked ? '' : 'none';
 }
+
+// CS-P1-004 FE-005: Register apply-workflow exports with BJ namespace
+(function() {
+  ['jobMatchScores'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'apply-workflow', registered: Date.now() };
+    }
+  });
+})();

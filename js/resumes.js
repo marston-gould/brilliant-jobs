@@ -1598,3 +1598,20 @@ window.onGapTermClick = function(term) {
     showToast('"' + term + '" noted — resume keyword injection coming soon.', { duration: 2500 });
   }
 };
+
+// CS-P1-004 FE-005: Register resumes.js exports with BJ namespace
+(function() {
+  var exports = [
+    'toggleResumeFilter', 'setResumeLevel', 'archiveResume', 'unarchiveResume',
+    'rescoreResumeAI', 'handleRescore', 'toggleResumeKeywords', 'toggleResumePanel',
+    'renameResume', 'confirmDeleteResume', 'removeResume', 'downloadResume',
+    'replaceResumePlaceholder', 'reUploadResume', 'launchRewriteInterview',
+    'triggerGapAnalysis', 'renderGapInsights', 'onGapTermClick'
+  ];
+  exports.forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'resumes', registered: Date.now() };
+    }
+  });
+})();

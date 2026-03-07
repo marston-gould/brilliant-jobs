@@ -20,6 +20,29 @@ var BJ_VERSION = 'v7.29';
 // Must load before all other JS modules
 // ============================================================
 
+// ============================================================
+// CS-P1-004 FE-005: Controlled namespace registry
+// All new function exports MUST go through BJ.export() instead of window.X = Y.
+// Existing window.X aliases kept for backward compat with onclick handlers.
+// Phase F (TypeScript migration) will remove window.X aliases entirely.
+// ============================================================
+window.BJ = window.BJ || {};
+window.BJ._registry = {};
+/**
+ * Register a function in the BJ namespace.
+ * Also sets window[name] for backward compat with HTML onclick handlers.
+ * @param {string} name - Function name
+ * @param {Function} fn - The function to register
+ * @param {string} [module] - Source module for debugging
+ */
+window.BJ.export = function(name, fn, module) {
+  window.BJ[name] = fn;
+  window.BJ._registry[name] = { module: module || 'unknown', registered: Date.now() };
+  // Backward compat: also set on window for onclick= handlers
+  // TODO(Phase-F): Remove after migrating all onclick handlers to event delegation
+  window[name] = fn;
+};
+
 const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
 
@@ -1277,6 +1300,16 @@ async function syncHealthCheck() {
 // Expose globally
 window.syncHealthCheck = syncHealthCheck;
 
+// CS-P1-004 FE-005: Register sync exports with BJ namespace
+(function() {
+  ['syncHealthCheck'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'sync', registered: Date.now() };
+    }
+  });
+})();
+
 
 // === js/fingerprint.js ===
 /**
@@ -1524,6 +1557,16 @@ window.canAccessFeature = canAccess;
 window.getUserTier = getUserTier;
 window.requiredTierFor = requiredTier;
 
+// CS-P1-004 FE-005: Register tier-gating exports with BJ namespace
+(function() {
+  ['canAccessFeature','getUserTier','removeTierGate','requiredTierFor','showTierGate'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'tier-gating', registered: Date.now() };
+    }
+  });
+})();
+
 
 // === js/lazy-loader.js ===
 // ============================================================
@@ -1640,6 +1683,16 @@ window.requiredTierFor = requiredTier;
   window.bjLoadChunk = bjLoadChunk;
   window.bjEnsureTab = bjEnsureTab;
   window.bjPreloadChunks = bjPreloadChunks;
+})();
+
+// CS-P1-004 FE-005: Register lazy-loader exports with BJ namespace
+(function() {
+  ['bjEnsureTab','bjLoadChunk','bjPreloadChunks'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'lazy-loader', registered: Date.now() };
+    }
+  });
 })();
 
 
@@ -1849,6 +1902,16 @@ window.requiredTierFor = requiredTier;
     }
   };
 
+})();
+
+// CS-P1-004 FE-005: Register tab-guard exports with BJ namespace
+(function() {
+  ['bjSkeleton','bjTabGuard'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'tab-guard', registered: Date.now() };
+    }
+  });
 })();
 
 
@@ -2908,6 +2971,17 @@ async function processReferralAttribution(user) {
     sessionStorage.removeItem('bj_referral_source');
   } catch(e) { reportError('app:app', e); }
 }
+
+// CS-P1-004 FE-005: Register app.js exports with BJ namespace
+(function() {
+  ['togglePageHelp', 'connectGmail', 'disconnectGmail', 'switchAppView',
+   'handleOnboardResume', 'createFilterFromProfile'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'app', registered: Date.now() };
+    }
+  });
+})();
 
 
 // === js/job-feed.js ===
@@ -5205,6 +5279,16 @@ async function backgroundEnrichSalary() {
     if (typeof computeVisibleJobScores === 'function') computeVisibleJobScores();
   }
 }
+
+// CS-P1-004 FE-005: Register job-feed exports with BJ namespace
+(function() {
+  ['_activeLevelHierarchy','_chatFilterOverride'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'job-feed', registered: Date.now() };
+    }
+  });
+})();
 
 
 // === js/sort-bar.js ===
@@ -9988,6 +10072,19 @@ function _startClRescoreCooldown(clId) {
   }, 1000);
 }
 
+// CS-P1-004 FE-005: Register keywords.js exports with BJ namespace
+(function() {
+  var exports = [
+    'handleScoreClick', '_selectScoreMode', 'addResume', 'bjRescoreCoverLetter'
+  ];
+  exports.forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'keywords', registered: Date.now() };
+    }
+  });
+})();
+
 
 // === js/browsers.js ===
 // ---- Company Browser + Collections ----
@@ -12801,6 +12898,16 @@ if (document.readyState === 'loading') {
   initAiFilterButton();
 }
 
+// CS-P1-004 FE-005: Register location exports with BJ namespace
+(function() {
+  ['_aiResumeChoice','_editingFilterIdx','_initialSearchDone'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'location', registered: Date.now() };
+    }
+  });
+})();
+
 
 // === js/pipeline.js ===
 // ============================================================
@@ -14068,6 +14175,16 @@ async function loadRecruiterContacts() {
 }
 
 
+// CS-P1-004 FE-005: Register pipeline exports with BJ namespace
+(function() {
+  ['_newPipelineCache','_newPipelineLoaded'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'pipeline', registered: Date.now() };
+    }
+  });
+})();
+
 
 // === js/pipeline-overlay-tab.js ===
 // === js/pipeline-overlay-tab.js ===
@@ -14221,6 +14338,16 @@ window.drillDownToOverlayPipeline = function() {
   }, 150);
 };
 
+})();
+
+// CS-P1-004 FE-005: Register pipeline-overlay-tab exports with BJ namespace
+(function() {
+  ['drillDownToOverlayPipeline','renderOverlayPipelineTab','switchPipelineView'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'pipeline-overlay-tab', registered: Date.now() };
+    }
+  });
 })();
 
 
@@ -15718,6 +15845,16 @@ function acceptAnalyzeHidden() {
   if (typeof renderSavedFilters === 'function') renderSavedFilters();
   if (typeof debouncedSearchJobs === 'function') debouncedSearchJobs();
 }
+
+// CS-P1-004 FE-005: Register tuning.js exports with BJ namespace
+(function() {
+  ['editFilterLevelHierarchy', 'unhideJob', 'addSuggestedExclusion'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'tuning', registered: Date.now() };
+    }
+  });
+})();
 
 
 // === js/resumes.js ===
@@ -17322,6 +17459,23 @@ window.onGapTermClick = function(term) {
   }
 };
 
+// CS-P1-004 FE-005: Register resumes.js exports with BJ namespace
+(function() {
+  var exports = [
+    'toggleResumeFilter', 'setResumeLevel', 'archiveResume', 'unarchiveResume',
+    'rescoreResumeAI', 'handleRescore', 'toggleResumeKeywords', 'toggleResumePanel',
+    'renameResume', 'confirmDeleteResume', 'removeResume', 'downloadResume',
+    'replaceResumePlaceholder', 'reUploadResume', 'launchRewriteInterview',
+    'triggerGapAnalysis', 'renderGapInsights', 'onGapTermClick'
+  ];
+  exports.forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'resumes', registered: Date.now() };
+    }
+  });
+})();
+
 
 // === js/integrations.js ===
 // ============================================================
@@ -17433,6 +17587,16 @@ window.importGdriveAsResume = function(idx) {
 
 renderGdriveState();
 
+
+// CS-P1-004 FE-005: Register integrations exports with BJ namespace
+(function() {
+  ['addGdriveFile','connectGoogleDrive','disconnectGoogleDrive','importGdriveAsResume','unlinkGdriveFile'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'integrations', registered: Date.now() };
+    }
+  });
+})();
 
 
 // === js/applications.js ===
@@ -18405,6 +18569,16 @@ if (typeof _origInitApplications === 'undefined') {
   var _origInitApplications = typeof initApplications === 'function' ? initApplications : null;
 }
 
+// CS-P1-004 FE-005: Register applications exports with BJ namespace
+(function() {
+  ['removeFromQueue','switchSettingsTab','toggleAppSettings'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'applications', registered: Date.now() };
+    }
+  });
+})();
+
 
 // === js/settings.js ===
 // Stats — now powered by stats.js (ECharts dashboard)
@@ -19263,6 +19437,16 @@ async function autoHirePause(jobTitle) {
   } catch(e) { reportError('settings', e); console.warn('[BJ] autoHirePause exception:', e);
   }
 }
+
+// CS-P1-004 FE-005: Register settings exports with BJ namespace
+(function() {
+  ['_conditionalWakeHooked'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'settings', registered: Date.now() };
+    }
+  });
+})();
 
 
 // === js/stats.js ===
@@ -21235,6 +21419,16 @@ function _initTierChangeListener() {
   }
 }
 
+// CS-P1-004 FE-005: Register billing exports with BJ namespace
+(function() {
+  ['getUserCredits'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'billing', registered: Date.now() };
+    }
+  });
+})();
+
 
 // === js/micro-surveys.js ===
 // js/micro-surveys.js — P13-04/05/06/09 Inline micro-survey components
@@ -21594,6 +21788,16 @@ function _initTierChangeListener() {
     }
   };
 
+})();
+
+// CS-P1-004 FE-005: Register micro-surveys exports with BJ namespace
+(function() {
+  ['cancelDataViewTimer','showApplyConfidence','showDataValue','showPaywallFriction','showSearchRelevance','startDataViewTimer','trackSearchForSurvey'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'micro-surveys', registered: Date.now() };
+    }
+  });
 })();
 
 
@@ -22380,6 +22584,16 @@ function matchBadgeWithBoost(result, jobId, jobTitle, company) {
   return badge;
 }
 
+// CS-P1-004 FE-005: Register rewrite exports with BJ namespace
+(function() {
+  ['_rwToggleSection'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'rewrite', registered: Date.now() };
+    }
+  });
+})();
+
 
 // === js/resume-archive.js ===
 // === Resume Archive Module ===
@@ -22727,6 +22941,16 @@ window.restoreArchiveResume = async function(resumeId) {
     alert('Restore failed: ' + e.message);
   }
 };
+
+// CS-P1-004 FE-005: Register resume-archive exports with BJ namespace
+(function() {
+  ['archiveDbResume','deleteArchiveResume','loadResumeArchive','restoreArchiveResume','showVersionTimeline','switchResumeTab'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'resume-archive', registered: Date.now() };
+    }
+  });
+})();
 
 
 // === js/resume-metrics.js ===
@@ -23086,6 +23310,16 @@ window.addEventListener('resize', function() {
   }
 })();
 
+// CS-P1-004 FE-005: Register resume-metrics exports with BJ namespace
+(function() {
+  ['loadResumeMetrics','switchStatsTab'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'resume-metrics', registered: Date.now() };
+    }
+  });
+})();
+
 
 // === js/overlay-analytics.js ===
 // === js/overlay-analytics.js ===
@@ -23321,6 +23555,16 @@ window.addEventListener('resize', function() {
   Object.values(_oaCharts).forEach(function(c) { if (c && !c.isDisposed()) c.resize(); });
 });
 
+
+// CS-P1-004 FE-005: Register overlay-analytics exports with BJ namespace
+(function() {
+  ['switchStatsTab'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'overlay-analytics', registered: Date.now() };
+    }
+  });
+})();
 
 
 // === js/chat.js ===
@@ -24857,6 +25101,16 @@ if (document.readyState === 'loading') {
   initChatMode();
 }
 
+// CS-P1-004 FE-005: Register chat exports with BJ namespace
+(function() {
+  ['_assignResumeToPrompt','_getPromptAutoApplyConfigs'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'chat', registered: Date.now() };
+    }
+  });
+})();
+
 
 // === js/apply-workflow.js ===
 /**
@@ -25960,6 +26214,16 @@ function updateApplySettingsVisibility(mode) {
   if (rewriteApprovalRow) rewriteApprovalRow.style.display = usesRewrite && document.getElementById('fas-auto-rewrite') && document.getElementById('fas-auto-rewrite').checked ? '' : 'none';
 }
 
+// CS-P1-004 FE-005: Register apply-workflow exports with BJ namespace
+(function() {
+  ['jobMatchScores'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'apply-workflow', registered: Date.now() };
+    }
+  });
+})();
+
 
 // === js/referrals.js ===
 // ============================================================
@@ -26840,6 +27104,19 @@ Or use my code: ${referralStats.referral_code}`);
       });
     }
   };
+
+  // CS-P1-004 FE-005: Register referrals.js exports with BJ namespace
+  [
+    'initReferralHub', '_refCopyLink', '_refCopyCode', '_refShareLinkedIn',
+    '_refShareEmail', '_refShareSMS', '_refSwitchPeriod', '_refToggleLeaderboard',
+    'showReferralShareModal', 'initReferralTracking', '_updateOutreachStatus',
+    '_saveReferralLink', '_trackReferralLinkClick'
+  ].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'referrals', registered: Date.now() };
+    }
+  });
 
 })();
 

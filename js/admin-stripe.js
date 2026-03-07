@@ -320,3 +320,13 @@ async function confirmStripeCancelEOT(userId) {
   toastWarning('Cancel EOT: requires Edge Function wiring (stub). Use Stripe Dashboard to cancel manually.');
 }
 window.confirmStripeCancelEOT = confirmStripeCancelEOT;
+
+// CS-P1-004 FE-005: Register admin-stripe exports with BJ namespace
+(function() {
+  ['confirmStripeCancelEOT','loadStripeCustomer','openStripePlanOverride','stripeSearchDebounce','stripeSearchNow'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin-stripe', registered: Date.now() };
+    }
+  });
+})();

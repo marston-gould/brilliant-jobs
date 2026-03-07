@@ -107,3 +107,13 @@ window.importGdriveAsResume = function(idx) {
 
 renderGdriveState();
 
+
+// CS-P1-004 FE-005: Register integrations exports with BJ namespace
+(function() {
+  ['addGdriveFile','connectGoogleDrive','disconnectGoogleDrive','importGdriveAsResume','unlinkGdriveFile'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'integrations', registered: Date.now() };
+    }
+  });
+})();

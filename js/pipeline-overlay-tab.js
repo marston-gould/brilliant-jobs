@@ -150,3 +150,13 @@ window.drillDownToOverlayPipeline = function() {
 };
 
 })();
+
+// CS-P1-004 FE-005: Register pipeline-overlay-tab exports with BJ namespace
+(function() {
+  ['drillDownToOverlayPipeline','renderOverlayPipelineTab','switchPipelineView'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'pipeline-overlay-tab', registered: Date.now() };
+    }
+  });
+})();

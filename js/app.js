@@ -1053,3 +1053,14 @@ async function processReferralAttribution(user) {
     sessionStorage.removeItem('bj_referral_source');
   } catch(e) { reportError('app:app', e); }
 }
+
+// CS-P1-004 FE-005: Register app.js exports with BJ namespace
+(function() {
+  ['togglePageHelp', 'connectGmail', 'disconnectGmail', 'switchAppView',
+   'handleOnboardResume', 'createFilterFromProfile'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'app', registered: Date.now() };
+    }
+  });
+})();

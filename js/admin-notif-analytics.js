@@ -674,3 +674,13 @@ async function _fetchNotifLog() {
   }
 }
 window._fetchNotifLog = _fetchNotifLog;
+
+// CS-P1-004 FE-005: Register admin-notif-analytics exports with BJ namespace
+(function() {
+  ['_fetchNotifLog','filterCadenceTable','loadCadenceTab','loadEmailCohortsTab','loadNotifAnalyticsTab','loadNotifLogTab'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin-notif-analytics', registered: Date.now() };
+    }
+  });
+})();

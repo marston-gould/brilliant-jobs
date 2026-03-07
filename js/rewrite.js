@@ -779,3 +779,13 @@ function matchBadgeWithBoost(result, jobId, jobTitle, company) {
 
   return badge;
 }
+
+// CS-P1-004 FE-005: Register rewrite exports with BJ namespace
+(function() {
+  ['_rwToggleSection'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'rewrite', registered: Date.now() };
+    }
+  });
+})();

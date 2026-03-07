@@ -4072,3 +4072,16 @@ function _startClRescoreCooldown(clId) {
     }
   }, 1000);
 }
+
+// CS-P1-004 FE-005: Register keywords.js exports with BJ namespace
+(function() {
+  var exports = [
+    'handleScoreClick', '_selectScoreMode', 'addResume', 'bjRescoreCoverLetter'
+  ];
+  exports.forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'keywords', registered: Date.now() };
+    }
+  });
+})();

@@ -1262,3 +1262,13 @@ async function loadRecruiterContacts() {
   }
 }
 
+
+// CS-P1-004 FE-005: Register pipeline exports with BJ namespace
+(function() {
+  ['_newPipelineCache','_newPipelineLoaded'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'pipeline', registered: Date.now() };
+    }
+  });
+})();

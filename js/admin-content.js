@@ -170,3 +170,13 @@ async function contentAction(id, newStatus) {
     document.getElementById("ct-action-status").textContent = e.message;
   }
 }
+
+// CS-P1-004 FE-005: Register admin-content exports with BJ namespace
+(function() {
+  ['_contentStories'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin-content', registered: Date.now() };
+    }
+  });
+})();

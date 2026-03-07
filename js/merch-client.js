@@ -150,3 +150,13 @@
     if (e.key === 'bj_lp_stats') hydrateMerchStats();
   });
 })();
+
+// CS-P1-004 FE-005: Register merch-client exports with BJ namespace
+(function() {
+  ['_merchContentId','_merchElementId'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'merch-client', registered: Date.now() };
+    }
+  });
+})();

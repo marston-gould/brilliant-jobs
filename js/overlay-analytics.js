@@ -231,3 +231,13 @@ window.addEventListener('resize', function() {
   Object.values(_oaCharts).forEach(function(c) { if (c && !c.isDisposed()) c.resize(); });
 });
 
+
+// CS-P1-004 FE-005: Register overlay-analytics exports with BJ namespace
+(function() {
+  ['switchStatsTab'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'overlay-analytics', registered: Date.now() };
+    }
+  });
+})();

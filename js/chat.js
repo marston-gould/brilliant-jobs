@@ -1530,3 +1530,13 @@ if (document.readyState === 'loading') {
 } else {
   initChatMode();
 }
+
+// CS-P1-004 FE-005: Register chat exports with BJ namespace
+(function() {
+  ['_assignResumeToPrompt','_getPromptAutoApplyConfigs'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'chat', registered: Date.now() };
+    }
+  });
+})();

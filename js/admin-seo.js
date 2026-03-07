@@ -1487,3 +1487,13 @@ window.triggerFeedbackSync = async function() {
   });
 })();
 
+
+// CS-P1-004 FE-005: Register admin-seo exports with BJ namespace
+(function() {
+  ['closeFeedbackDetail','generateSeoReport','loadSurveyData','openFeedbackDetail','sortFeedbackBy','triggerFeedbackSync','updateFeedbackStatus'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin-seo', registered: Date.now() };
+    }
+  });
+})();

@@ -113,3 +113,13 @@
   window.bjEnsureTab = bjEnsureTab;
   window.bjPreloadChunks = bjPreloadChunks;
 })();
+
+// CS-P1-004 FE-005: Register lazy-loader exports with BJ namespace
+(function() {
+  ['bjEnsureTab','bjLoadChunk','bjPreloadChunks'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'lazy-loader', registered: Date.now() };
+    }
+  });
+})();

@@ -966,3 +966,13 @@ async function savePipelineIntelligenceSettings() {
 if (typeof _origInitApplications === 'undefined') {
   var _origInitApplications = typeof initApplications === 'function' ? initApplications : null;
 }
+
+// CS-P1-004 FE-005: Register applications exports with BJ namespace
+(function() {
+  ['removeFromQueue','switchSettingsTab','toggleAppSettings'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'applications', registered: Date.now() };
+    }
+  });
+})();

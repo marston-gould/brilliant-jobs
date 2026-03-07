@@ -343,3 +343,13 @@ window.restoreArchiveResume = async function(resumeId) {
     alert('Restore failed: ' + e.message);
   }
 };
+
+// CS-P1-004 FE-005: Register resume-archive exports with BJ namespace
+(function() {
+  ['archiveDbResume','deleteArchiveResume','loadResumeArchive','restoreArchiveResume','showVersionTimeline','switchResumeTab'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'resume-archive', registered: Date.now() };
+    }
+  });
+})();

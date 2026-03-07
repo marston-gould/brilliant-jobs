@@ -785,3 +785,13 @@ window.loadSocialTab = loadSocialTab;
 window.loadAnalyticsOverviewTab = loadAnalyticsOverviewTab;
 window.loadCostsTab = loadCostsTab;
 window.loadForecastingTab = loadForecastingTab;
+
+// CS-P1-004 FE-005: Register admin-biz-ops exports with BJ namespace
+(function() {
+  ['loadAnalyticsOverviewTab','loadCostsTab','loadForecastingTab','loadPaidTab','loadSocialTab'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin-biz-ops', registered: Date.now() };
+    }
+  });
+})();

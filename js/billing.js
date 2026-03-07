@@ -662,3 +662,13 @@ function _initTierChangeListener() {
   } catch(e) { reportError('billing', e); console.warn('[billing] Tier change listener setup failed:', e);
   }
 }
+
+// CS-P1-004 FE-005: Register billing exports with BJ namespace
+(function() {
+  ['getUserCredits'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'billing', registered: Date.now() };
+    }
+  });
+})();

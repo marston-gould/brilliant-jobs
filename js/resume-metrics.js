@@ -353,3 +353,13 @@ window.addEventListener('resize', function() {
     setTimeout(function() { switchStatsTab('resume'); }, 300);
   }
 })();
+
+// CS-P1-004 FE-005: Register resume-metrics exports with BJ namespace
+(function() {
+  ['loadResumeMetrics','switchStatsTab'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'resume-metrics', registered: Date.now() };
+    }
+  });
+})();

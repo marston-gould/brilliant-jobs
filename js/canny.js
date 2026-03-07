@@ -123,3 +123,13 @@
   };
 
 })();
+
+// CS-P1-004 FE-005: Register canny exports with BJ namespace
+(function() {
+  ['Canny','initCannyFeedback','switchCannyBoard'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'canny', registered: Date.now() };
+    }
+  });
+})();

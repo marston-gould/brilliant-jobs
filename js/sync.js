@@ -147,3 +147,13 @@ async function syncHealthCheck() {
 
 // Expose globally
 window.syncHealthCheck = syncHealthCheck;
+
+// CS-P1-004 FE-005: Register sync exports with BJ namespace
+(function() {
+  ['syncHealthCheck'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'sync', registered: Date.now() };
+    }
+  });
+})();

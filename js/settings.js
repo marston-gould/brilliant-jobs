@@ -854,3 +854,13 @@ async function autoHirePause(jobTitle) {
   } catch(e) { reportError('settings', e); console.warn('[BJ] autoHirePause exception:', e);
   }
 }
+
+// CS-P1-004 FE-005: Register settings exports with BJ namespace
+(function() {
+  ['_conditionalWakeHooked'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'settings', registered: Date.now() };
+    }
+  });
+})();

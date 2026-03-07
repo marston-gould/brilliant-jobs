@@ -5,6 +5,7 @@
 // Reference: VERSION_METHODOLOGY.docx
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { API_VERSION } from '../_shared/api-version.ts';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 
 const SB_URL = Deno.env.get('SUPABASE_URL')!;
@@ -195,6 +196,7 @@ serve(async (req: Request) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+  'x-api-version': API_VERSION,
         'x-api-key': ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01',
       },

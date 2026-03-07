@@ -215,3 +215,13 @@ window.adminUnban = async function(userId) {
     console.error('[Admin] Unban error:', e); toastError('Unban failed');
   }
 };
+
+// CS-P1-004 FE-005: Register admin-referrals exports with BJ namespace
+(function() {
+  ['adminClawback','adminRefAction','adminUnban'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin-referrals', registered: Date.now() };
+    }
+  });
+})();

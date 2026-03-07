@@ -877,4 +877,17 @@ Or use my code: ${referralStats.referral_code}`);
     }
   };
 
+  // CS-P1-004 FE-005: Register referrals.js exports with BJ namespace
+  [
+    'initReferralHub', '_refCopyLink', '_refCopyCode', '_refShareLinkedIn',
+    '_refShareEmail', '_refShareSMS', '_refSwitchPeriod', '_refToggleLeaderboard',
+    'showReferralShareModal', 'initReferralTracking', '_updateOutreachStatus',
+    '_saveReferralLink', '_trackReferralLinkClick'
+  ].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'referrals', registered: Date.now() };
+    }
+  });
+
 })();

@@ -227,3 +227,13 @@ function _cleanupEfHealthPanel() {
 
 window.loadEfHealthPanel = loadEfHealthPanel;
 window._cleanupEfHealthPanel = _cleanupEfHealthPanel;
+
+// CS-P1-004 FE-005: Register admin-ef-health exports with BJ namespace
+(function() {
+  ['_cleanupEfHealthPanel','loadEfHealthPanel'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin-ef-health', registered: Date.now() };
+    }
+  });
+})();

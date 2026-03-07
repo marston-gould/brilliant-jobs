@@ -281,3 +281,13 @@ async function _loadSubMrrChart() {
     chart.setOption({ title: { text: 'MRR Trend', subtext: 'Chart error', left: 'center', top: 'center', textStyle: { color: '#d1d5db', fontSize: 13 } } });
   }
 }
+
+// CS-P1-004 FE-005: Register admin-subscription exports with BJ namespace
+(function() {
+  ['loadSubscriptionTab'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin-subscription', registered: Date.now() };
+    }
+  });
+})();

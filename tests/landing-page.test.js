@@ -32,23 +32,23 @@ describe('index.html — inline code extraction', () => {
   });
 
   it('loads cookie-consent.js in head', () => {
-    expect(html).toContain('<script src="/js/cookie-consent.js"></script>');
+    expect(html).toContain('<script src="/js/cookie-consent.js?v=');
   });
 
   it('loads landing-segment.js synchronously', () => {
-    expect(html).toContain('<script src="/js/landing-segment.js"></script>');
+    expect(html).toContain('<script src="/js/landing-segment.js?v=');
     // Must NOT have defer or async
-    const match = html.match(/<script src="\/js\/landing-segment\.js"[^>]*>/);
+    const match = html.match(/<script src="\/js\/landing-segment\.js[^"]*"[^>]*>/);
     expect(match[0]).not.toContain('defer');
     expect(match[0]).not.toContain('async');
   });
 
   it('loads landing-app.js as deferred', () => {
-    expect(html).toMatch(/<script src="\/js\/landing-app\.js"\s+defer>/);
+    expect(html).toMatch(/<script src="\/js\/landing-app\.js\?v=[^"]*"\s+defer>/);
   });
 
   it('loads safe-read-ls.js', () => {
-    expect(html).toContain('<script src="/js/safe-read-ls.js"></script>');
+    expect(html).toContain('<script src="/js/safe-read-ls.js?v=');
   });
 
   it('has ≤5 inline style= attributes', () => {

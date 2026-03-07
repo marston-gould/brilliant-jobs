@@ -533,3 +533,13 @@ function _cleanupAlertsPanel() {
 // Export
 window.loadAlertsPanel = loadAlertsPanel;
 window._cleanupAlertsPanel = _cleanupAlertsPanel;
+
+// CS-P1-004 FE-005: Register admin-alerts exports with BJ namespace
+(function() {
+  ['_ackAlert','_alertRulesCache','_cleanupAlertsPanel','_deleteRule','_editRule','_resolveAlert','_toggleRule','loadAlertsPanel'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin-alerts', registered: Date.now() };
+    }
+  });
+})();

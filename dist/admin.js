@@ -20,6 +20,29 @@ var BJ_VERSION = 'v7.29';
 // Must load before all other JS modules
 // ============================================================
 
+// ============================================================
+// CS-P1-004 FE-005: Controlled namespace registry
+// All new function exports MUST go through BJ.export() instead of window.X = Y.
+// Existing window.X aliases kept for backward compat with onclick handlers.
+// Phase F (TypeScript migration) will remove window.X aliases entirely.
+// ============================================================
+window.BJ = window.BJ || {};
+window.BJ._registry = {};
+/**
+ * Register a function in the BJ namespace.
+ * Also sets window[name] for backward compat with HTML onclick handlers.
+ * @param {string} name - Function name
+ * @param {Function} fn - The function to register
+ * @param {string} [module] - Source module for debugging
+ */
+window.BJ.export = function(name, fn, module) {
+  window.BJ[name] = fn;
+  window.BJ._registry[name] = { module: module || 'unknown', registered: Date.now() };
+  // Backward compat: also set on window for onclick= handlers
+  // TODO(Phase-F): Remove after migrating all onclick handlers to event delegation
+  window[name] = fn;
+};
+
 const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
 
@@ -2286,6 +2309,16 @@ async function loadUsersTab() {
     console.error('[Admin] loadUsersTab error:', err); toastError('Failed to load users data');
   }
 }
+
+// CS-P1-004 FE-005: Register admin exports with BJ namespace
+(function() {
+  ['_cohortList','_logAdminAction','updateCohortCharts'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin', registered: Date.now() };
+    }
+  });
+})();
 
 
 // === js/admin-blocks.js ===
@@ -6408,6 +6441,16 @@ function _cleanupCronPanel() {
 window.loadCronPanel = loadCronPanel;
 window._cleanupCronPanel = _cleanupCronPanel;
 
+// CS-P1-004 FE-005: Register admin-cron exports with BJ namespace
+(function() {
+  ['_cleanupCronPanel','_cronData','loadCronPanel'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin-cron', registered: Date.now() };
+    }
+  });
+})();
+
 
 // === js/admin-killswitch.js ===
 /* ───────────────────────────────────────────────────────────
@@ -7159,6 +7202,16 @@ function _cleanupMonitoringPanel() {
 window.loadMonitoringPanel = loadMonitoringPanel;
 window._cleanupMonitoringPanel = _cleanupMonitoringPanel;
 
+// CS-P1-004 FE-005: Register admin-monitoring exports with BJ namespace
+(function() {
+  ['_cleanupMonitoringPanel','loadMonitoringPanel'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin-monitoring', registered: Date.now() };
+    }
+  });
+})();
+
 
 // === js/admin-alerts.js ===
 /* ───────────────────────────────────────────────────────────
@@ -7697,6 +7750,16 @@ function _cleanupAlertsPanel() {
 window.loadAlertsPanel = loadAlertsPanel;
 window._cleanupAlertsPanel = _cleanupAlertsPanel;
 
+// CS-P1-004 FE-005: Register admin-alerts exports with BJ namespace
+(function() {
+  ['_ackAlert','_alertRulesCache','_cleanupAlertsPanel','_deleteRule','_editRule','_resolveAlert','_toggleRule','loadAlertsPanel'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin-alerts', registered: Date.now() };
+    }
+  });
+})();
+
 
 // === js/admin-error-replay.js ===
 /* ───────────────────────────────────────────────────────────
@@ -7903,6 +7966,16 @@ function _cleanupErrorReplayPanel() {
 
 window.loadErrorReplayPanel = loadErrorReplayPanel;
 window._cleanupErrorReplayPanel = _cleanupErrorReplayPanel;
+
+// CS-P1-004 FE-005: Register admin-error-replay exports with BJ namespace
+(function() {
+  ['_cleanupErrorReplayPanel','loadErrorReplayPanel'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin-error-replay', registered: Date.now() };
+    }
+  });
+})();
 
 
 // === js/admin-ef-health.js ===
@@ -8135,6 +8208,16 @@ function _cleanupEfHealthPanel() {
 
 window.loadEfHealthPanel = loadEfHealthPanel;
 window._cleanupEfHealthPanel = _cleanupEfHealthPanel;
+
+// CS-P1-004 FE-005: Register admin-ef-health exports with BJ namespace
+(function() {
+  ['_cleanupEfHealthPanel','loadEfHealthPanel'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin-ef-health', registered: Date.now() };
+    }
+  });
+})();
 
 
 // === js/admin-db-activity.js ===
@@ -8432,6 +8515,16 @@ function _cleanupDbActivityPanel() {
 
 window.loadDbActivityPanel = loadDbActivityPanel;
 window._cleanupDbActivityPanel = _cleanupDbActivityPanel;
+
+// CS-P1-004 FE-005: Register admin-db-activity exports with BJ namespace
+(function() {
+  ['_cleanupDbActivityPanel','loadDbActivityPanel'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin-db-activity', registered: Date.now() };
+    }
+  });
+})();
 
 
 // === js/admin-feed-health.js ===
@@ -10597,6 +10690,16 @@ window.triggerFeedbackSync = async function() {
 })();
 
 
+// CS-P1-004 FE-005: Register admin-seo exports with BJ namespace
+(function() {
+  ['closeFeedbackDetail','generateSeoReport','loadSurveyData','openFeedbackDetail','sortFeedbackBy','triggerFeedbackSync','updateFeedbackStatus'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin-seo', registered: Date.now() };
+    }
+  });
+})();
+
 
 // === js/admin-content.js ===
 
@@ -10771,6 +10874,16 @@ async function contentAction(id, newStatus) {
     document.getElementById("ct-action-status").textContent = e.message;
   }
 }
+
+// CS-P1-004 FE-005: Register admin-content exports with BJ namespace
+(function() {
+  ['_contentStories'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin-content', registered: Date.now() };
+    }
+  });
+})();
 
 
 // === js/admin-merch.js ===
@@ -11596,6 +11709,16 @@ window.adminUnban = async function(userId) {
   }
 };
 
+// CS-P1-004 FE-005: Register admin-referrals exports with BJ namespace
+(function() {
+  ['adminClawback','adminRefAction','adminUnban'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin-referrals', registered: Date.now() };
+    }
+  });
+})();
+
 
 // === js/admin-stripe.js ===
 // ═══════════════════════════════════════════════════════════
@@ -11921,6 +12044,16 @@ async function confirmStripeCancelEOT(userId) {
 }
 window.confirmStripeCancelEOT = confirmStripeCancelEOT;
 
+// CS-P1-004 FE-005: Register admin-stripe exports with BJ namespace
+(function() {
+  ['confirmStripeCancelEOT','loadStripeCustomer','openStripePlanOverride','stripeSearchDebounce','stripeSearchNow'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin-stripe', registered: Date.now() };
+    }
+  });
+})();
+
 
 // === js/admin-subscription.js ===
 // ═══════════════════════════════════════════════════════════
@@ -12206,6 +12339,16 @@ async function _loadSubMrrChart() {
     chart.setOption({ title: { text: 'MRR Trend', subtext: 'Chart error', left: 'center', top: 'center', textStyle: { color: '#d1d5db', fontSize: 13 } } });
   }
 }
+
+// CS-P1-004 FE-005: Register admin-subscription exports with BJ namespace
+(function() {
+  ['loadSubscriptionTab'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin-subscription', registered: Date.now() };
+    }
+  });
+})();
 
 
 // === js/admin-ghost.js ===
@@ -13606,6 +13749,16 @@ async function _fetchNotifLog() {
 }
 window._fetchNotifLog = _fetchNotifLog;
 
+// CS-P1-004 FE-005: Register admin-notif-analytics exports with BJ namespace
+(function() {
+  ['_fetchNotifLog','filterCadenceTable','loadCadenceTab','loadEmailCohortsTab','loadNotifAnalyticsTab','loadNotifLogTab'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin-notif-analytics', registered: Date.now() };
+    }
+  });
+})();
+
 
 // === js/admin-biz-ops.js ===
 // === js/admin-biz-ops.js ===
@@ -14396,6 +14549,16 @@ window.loadAnalyticsOverviewTab = loadAnalyticsOverviewTab;
 window.loadCostsTab = loadCostsTab;
 window.loadForecastingTab = loadForecastingTab;
 
+// CS-P1-004 FE-005: Register admin-biz-ops exports with BJ namespace
+(function() {
+  ['loadAnalyticsOverviewTab','loadCostsTab','loadForecastingTab','loadPaidTab','loadSocialTab'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin-biz-ops', registered: Date.now() };
+    }
+  });
+})();
+
 
 // === js/admin-shell.js ===
 /* ───────────────────────────────────────────────────────────
@@ -14666,6 +14829,16 @@ window.loadForecastingTab = loadForecastingTab;
   sb.auth.onAuthStateChange(function(event, session) {
     if (event === 'SIGNED_OUT') {
       window.location.href = '/';
+    }
+  });
+})();
+
+// CS-P1-004 FE-005: Register admin-shell exports with BJ namespace
+(function() {
+  ['currentUser'].forEach(function(name) {
+    if (window[name] !== undefined) {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin-shell', registered: Date.now() };
     }
   });
 })();

@@ -419,3 +419,13 @@ function _cleanupMonitoringPanel() {
 // Export
 window.loadMonitoringPanel = loadMonitoringPanel;
 window._cleanupMonitoringPanel = _cleanupMonitoringPanel;
+
+// CS-P1-004 FE-005: Register admin-monitoring exports with BJ namespace
+(function() {
+  ['_cleanupMonitoringPanel','loadMonitoringPanel'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin-monitoring', registered: Date.now() };
+    }
+  });
+})();

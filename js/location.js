@@ -1705,3 +1705,13 @@ if (document.readyState === 'loading') {
 } else {
   initAiFilterButton();
 }
+
+// CS-P1-004 FE-005: Register location exports with BJ namespace
+(function() {
+  ['_aiResumeChoice','_editingFilterIdx','_initialSearchDone'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'location', registered: Date.now() };
+    }
+  });
+})();

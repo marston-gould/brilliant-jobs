@@ -130,3 +130,13 @@ if (_origLoadResumeMetrics) {
 window.canAccessFeature = canAccess;
 window.getUserTier = getUserTier;
 window.requiredTierFor = requiredTier;
+
+// CS-P1-004 FE-005: Register tier-gating exports with BJ namespace
+(function() {
+  ['canAccessFeature','getUserTier','removeTierGate','requiredTierFor','showTierGate'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'tier-gating', registered: Date.now() };
+    }
+  });
+})();

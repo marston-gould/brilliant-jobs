@@ -5,6 +5,7 @@
 //   2. Dead job detected (status = 'closed')
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { API_VERSION } from '../_shared/api-version.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 // CS-002: CORS restricted to brilliantjobs.app (was: wildcard *)
@@ -80,7 +81,8 @@ serve(async (req) => {
       if (allowed === false) {
         return new Response(
           JSON.stringify({ error: 'Rate limit exceeded. Max 60 calls per hour.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '3600' } }
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json',
+  'x-api-version': API_VERSION, 'Retry-After': '3600' } }
         );
       }
     } catch (e) {

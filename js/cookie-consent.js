@@ -132,3 +132,13 @@
     }
   };
 })();
+
+// CS-P1-004 FE-005: Register cookie-consent exports with BJ namespace
+(function() {
+  ['bjConsent','bjError'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'cookie-consent', registered: Date.now() };
+    }
+  });
+})();

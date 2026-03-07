@@ -356,3 +356,13 @@
   };
 
 })();
+
+// CS-P1-004 FE-005: Register micro-surveys exports with BJ namespace
+(function() {
+  ['cancelDataViewTimer','showApplyConfidence','showDataValue','showPaywallFriction','showSearchRelevance','startDataViewTimer','trackSearchForSurvey'].forEach(function(name) {
+    if (typeof window[name] === 'function') {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'micro-surveys', registered: Date.now() };
+    }
+  });
+})();

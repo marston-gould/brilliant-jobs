@@ -269,3 +269,13 @@
     }
   });
 })();
+
+// CS-P1-004 FE-005: Register admin-shell exports with BJ namespace
+(function() {
+  ['currentUser'].forEach(function(name) {
+    if (window[name] !== undefined) {
+      window.BJ[name] = window[name];
+      window.BJ._registry[name] = { module: 'admin-shell', registered: Date.now() };
+    }
+  });
+})();
