@@ -316,7 +316,7 @@ document.addEventListener('DOMContentLoaded', function() {
           });
         } catch (e) { bjError('posthog_identify_landing', e); }
       }
-      document.cookie = 'bj_returning=1; max-age=31536000; path=/; SameSite=Lax';
+      document.cookie = 'bj_returning=1; max-age=31536000; path=/; SameSite=Lax; Secure';
       await loadSupabase();
       $('#auth-forms').style.display = 'none';
       const loggedView = $('#logged-in-view');

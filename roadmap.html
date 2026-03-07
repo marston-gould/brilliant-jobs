@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.27"></script>
+  <script src="/js/version.js?v=v7.28"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -1833,18 +1833,18 @@ const features = [
 
 // 0-A: Security — Dashboard + Platform (Pod 3, P0)
 { s: 'done', b: 'pre-launch', n: '0.001 SE-001: JWT auth on enrich-job', d: 'CS-002: JWT auth + CORS restriction added (2026-03-06). Unauthenticated → 401. CORS restricted to brilliantjobs.app. Service_role passthrough. Dashboard enrichJob() uses session token.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.002 SE-002: Service role key rotation', d: 'CS-001: git purge DONE. Downgraded to hygiene — only Marston + Claude accessed repo, no unauthorized exposure. Bundle with future multi-surface config session.', p: 75, e: '2h' },
+{ s: 'todo', b: 'pre-launch', n: '0.002 SE-002: Service role key rotation', d: 'CS-001: git purge DONE. CS-P1-002: Rotation procedure scripted (scripts/rotate-jwt-secret.sh), SECURITY.md documents compensating controls. Execution requires maintenance window.', p: 75, e: '2h' },
 { s: 'done', b: 'pre-launch', n: '0.003 SE-003: Auth on generate-editorial-content', d: 'CS-001: Auth + admin role check (requireAdmin). G11: Shared middleware. Verified CS-P1-001.', p: 75, e: '1h' },
 { s: 'done', b: 'pre-launch', n: '0.004 SE-004: Classify+gate 89 Edge Functions', d: 'CS-P1-001: All 89 EFs classified in edge-function-auth.yaml (4 admin, 28 auth, 46 cron, 7 webhook, 4 public). CI Gate 04 validates registry.', p: 75, e: '6h' },
-{ s: 'todo', b: 'pre-launch', n: '0.005 SE-005: CSP unsafe-inline on dashboard', d: 'Tighten to nonce-based after module wrapper.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.005 SE-005: CSP unsafe-inline on dashboard', d: 'CS-P1-002: All inline scripts externalized (posthog-dashboard.js, dashboard-inline.js, posthog-admin.js, admin-inline.js). unsafe-inline removed from script-src in vercel.json and dashboard CSP meta. style-src retains unsafe-inline.', p: 75, e: '3h' },
 
 // 0-B: Security — Landing Page (Pod 3, P0)
 { s: 'done', b: 'pre-launch', n: '0.006 IX-SE-001: postMessage wildcard → restrict', d: 'CS-005: postMessage restricted to window.location.origin. Auth tokens no longer leaked to wildcard. X-Frame-Options DENY + frame-ancestors none confirmed.', p: 75, e: '15min' },
 { s: 'done', b: 'pre-launch', n: '0.007 IX-SE-004: DOMPurify on 3 innerHTML injections', d: 'CS-005: DOMPurify v3.2.4 self-hosted. Sanitizes preview titles, merch grid, merch-client content injection.', p: 75, e: '30min' },
 { s: 'done', b: 'pre-launch', n: '0.008 IX-SE-005: Tighten profiles RLS for anon', d: 'CS-013: RLS enabled. Own-profile + admin-read policies only. No anon access. Verified CS-P1-001.', p: 75, e: '0h' },
-{ s: 'todo', b: 'pre-launch', n: '0.009 IX-SE-006: Cookies without Secure/HttpOnly', d: 'CS-018: bj_consent cookie uses SameSite=Lax. Secure flag requires HTTPS enforcement pass.', p: 75, e: '30min' },
+{ s: 'done', b: 'pre-launch', n: '0.009 IX-SE-006: Cookies without Secure/HttpOnly', d: 'CS-P1-002: Secure flag added to all 3 cookie-setting files (referral-capture.js, cookie-consent.js, landing-app.js). SameSite=Lax + Secure on all cookies.', p: 75, e: '30min' },
 { s: 'done', b: 'pre-launch', n: '0.010 IX-SE-007: CSP + security headers landing', d: 'CS-005 verified: Full header suite in vercel.json — CSP, HSTS, X-Frame-Options DENY, frame-ancestors none, Referrer-Policy, Permissions-Policy, X-Content-Type-Options. CSP report-only→enforce pass remains Phase 2.', p: 75, e: '—' },
-{ s: 'todo', b: 'pre-launch', n: '0.011 IX-SE-008: Anon key exposed in source', d: 'Mitigated by RLS tightening. Document accepted risk.', p: 75, e: '30min' },
+{ s: 'done', b: 'pre-launch', n: '0.011 IX-SE-008: Anon key exposed in source', d: 'CS-P1-002: Accepted risk documented in SECURITY.md. RLS mitigations, service role key separated, PostHog monitoring. Anon key is public by Supabase design.', p: 75, e: '30min' },
 { s: 'done', b: 'pre-launch', n: '0.012 IX-SE-003: validate-signup hardening', d: 'CS-P1-001: NOT dead — active in signup flow. CORS tightened to brilliantjobs.app. Rate limited 5/hr/IP. Method restricted to POST.', p: 75, e: '2h' },
 
 // 0-C: Security — Extension (Pod 3, P0)
@@ -1857,7 +1857,7 @@ const features = [
 // 0-D: Security — Admin (Pod 3, P0)
 { s: 'done', b: 'pre-launch', n: '0.018 AD-SE-001: Admin auth server-side', d: 'G11: Shared admin-auth.ts middleware created. requireAdmin() with service_role bypass, 401/403 error handling, authErrorResponse() helper. 4 admin EFs refactored (admin-analytics, approve-content, generate-editorial-content, seo-sync). 24 tests.', p: 75, e: '2h' },
 { s: 'done', b: 'pre-launch', n: '0.019 AD-SE-002: Admin EF auth (3 functions)', d: 'CS-001: seo-sync + generate-editorial DONE. CS-006: approve-content admin role check added. All 3 EFs enforce auth + admin role.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.020 AD-SE-003: Service role key in admin client', d: 'Remove client-side refs after rotation.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.020 AD-SE-003: Service role key in admin client', d: 'CS-P1-002: Verified — service role key NOT in any client JS. globals.js uses anon key. Service role only in Edge Functions via Deno.env.get().', p: 75, e: '0h' },
 { s: 'done', b: 'pre-launch', n: '0.021 AD-SE-004+CP-004: Admin audit trail', d: 'CS-012: _logAdminAction() async fire-and-forget helper. Wired into content approvals, notification config saves, merch placement CRUD, Stripe plan overrides, admin email searches. audit_log table already existed (A4).', p: 75, e: '2h' },
 
 // 0-E: Observability (Pod 3, P0/P1)

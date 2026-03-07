@@ -2766,10 +2766,10 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
 | 0.001 | SE-001: JWT auth on enrich-job endpoint | 1h | 1h | ✅ | CS-002: JWT auth + CORS restriction added (2026-03-06). Unauthenticated → 401. CORS restricted to brilliantjobs.app. Service_role passthrough for cron. Dashboard enrichJob() now uses session token. |
-| 0.002 | SE-002: Service role key rotation + git history clean | 2h | 1h | ⚡ | CS-001: git-filter-repo purge DONE (5 secrets redacted, force-pushed 2026-03-05). Key rotation downgraded to hygiene — only Marston + Claude ever accessed repo, no unauthorized exposure. Bundle with future multi-surface config session (CS-005 or CS-006). |
+| 0.002 | SE-002: Service role key rotation + git history clean | 2h | 1h | ⚡ | CS-001: git-filter-repo purge DONE. CS-P1-002: Rotation procedure scripted (scripts/rotate-jwt-secret.sh), SECURITY.md documents compensating controls. Execution requires maintenance window + Marston coordination. |
 | 0.003 | SE-003: Auth on generate-editorial-content | 1h | 1h | ✅ | CS-001: Auth + admin role check added. Service_role passthrough for cron. Deployed 2026-03-05. |
 | 0.004 | SE-004: Classify + gate 25 unauthenticated Edge Functions | 3h | 6h | ✅ | CS-P1-001: All 89 EFs classified in edge-function-auth.yaml (4 admin-only, 28 authenticated, 46 cron-internal, 7 webhook, 4 public). CI Gate 04 validates registry + code match. Deployed 2026-03-06. |
-| 0.005 | SE-005: CSP unsafe-inline on dashboard | 1h | — | 🔲 | Tighten to nonce-based after module wrapper (0.057). |
+| 0.005 | SE-005: CSP unsafe-inline on dashboard | 1h | 3h | ✅ | CS-P1-002: All inline scripts externalized (posthog-dashboard.js, dashboard-inline.js, posthog-admin.js, admin-inline.js). `unsafe-inline` removed from script-src in vercel.json and dashboard CSP meta tag. style-src retains unsafe-inline (practical necessity). |
 
 ### 0-B: Security — Landing Page (Pod 3, P0)
 
@@ -2778,9 +2778,9 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.006 | IX-SE-001: postMessage wildcard origin → restrict | 30min | 15min | ✅ | CS-005: postMessage restricted to window.location.origin. Auth tokens no longer leaked to wildcard. X-Frame-Options: DENY + frame-ancestors 'none' already in vercel.json. Deployed 2026-03-06. |
 | 0.007 | IX-SE-004: DOMPurify on 3 innerHTML injections | 1h | 30min | ✅ | CS-005: DOMPurify v3.2.4 self-hosted at /js/vendor/purify.min.js. Sanitizes: preview job titles (index.html), merch insights grid (index.html), merch-client.js content injection. CSP compliant (script-src 'self'). Deployed 2026-03-06. |
 | 0.008 | IX-SE-005: Tighten profiles RLS for anon | 1h | 0h | ✅ | CS-013: RLS enabled on profiles table. Only own-profile SELECT + admin read-all policies. No anon access. Verified CS-P1-001. |
-| 0.009 | IX-SE-006: Cookies without Secure/HttpOnly | 30min | — | ⚡ | CS-018: bj_consent cookie uses SameSite=Lax. Secure flag requires HTTPS enforcement pass (bundle with headers). |
+| 0.009 | IX-SE-006: Cookies without Secure/HttpOnly | 30min | 30min | ✅ | CS-P1-002: Secure flag added to all 3 cookie-setting files (referral-capture.js, cookie-consent.js, landing-app.js). All cookies now set with SameSite=Lax + Secure. HttpOnly not applicable (client-side JS cookies). |
 | 0.010 | IX-SE-007: CSP + security headers | 1h | — | ⚡ | CS-005 verified: X-Frame-Options DENY, CSP with frame-ancestors 'none', X-Content-Type-Options nosniff, HSTS, Referrer-Policy, Permissions-Policy all deployed in vercel.json. CSP includes script-src allowlist for PostHog, Ahrefs, CDNs. CSP report-only → enforce pass remains for Phase 2. |
-| 0.011 | IX-SE-008: Anon key exposed in source | 30min | — | 🔲 | Mitigated by RLS tightening (0.008). Document as accepted. |
+| 0.011 | IX-SE-008: Anon key exposed in source | 30min | 30min | ✅ | CS-P1-002: Accepted risk documented in SECURITY.md. RLS mitigations (no anon table access), service role key separated, monitoring via PostHog. Supabase anon key is public by design. |
 | 0.012 | IX-SE-003: validate-signup hardening | 30min | 2h | ✅ | CS-P1-001: NOT dead — active in signup flow. CORS tightened to brilliantjobs.app (was *). Rate limiting added (5/hr/IP). Method restricted to POST. Deployed 2026-03-06. |
 
 ### 0-C: Security — Extension (Pod 3, P0)
@@ -2797,9 +2797,9 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.018 | AD-SE-001: Admin auth enforcement — server-side | 2h | — | 🔲 | Client-side only or none. Shared admin-auth.ts middleware. 401/403 non-admin. |
+| 0.018 | AD-SE-001: Admin auth enforcement — server-side | 2h | 2h | ✅ | G11: Shared admin-auth.ts middleware created. requireAdmin() with service_role bypass, 401/403 error handling, authErrorResponse() helper. 4 admin EFs refactored. CS-P1-002: Verified still in place, regression tests added. |
 | 0.019 | AD-SE-002: Admin Edge Function auth (3 functions) | 1h | 1h | ✅ | CS-001: seo-sync + generate-editorial DONE. CS-006: approve-content admin role check added (profiles.role='admin'). All 3 EFs now enforce auth + admin role. Deployed 2026-03-06. |
-| 0.020 | AD-SE-003: Service role key in admin client code | 1h | — | 🔲 | Remove client-side refs after 0.002 rotation. |
+| 0.020 | AD-SE-003: Service role key in admin client code | 1h | 0h | ✅ | CS-P1-002: Verified — service role key is NOT in any client-side JS. globals.js uses anon key only. Service role key only accessed via Deno.env.get() in Edge Functions. No action needed. |
 | 0.021 | AD-SE-004 + AD-CP-004: Admin audit trail | 2h | — | 🔲 | admin_audit_log table + logAdminAction() async + wire all admin EFs. |
 
 ### 0-E: Observability + Monitoring (Pod 3, P0/P1)
