@@ -36,7 +36,10 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 **SA-004** — API Gateway Skeleton + Auth Middleware + Plugin Architecture (Phase S1)
 - Completed: 2026-03-07
-- Tags: `infra@gateway-v0.1.0`, product version `v7.44`
+- Git tags: `infra@gateway-v0.1.0`
+- Product version bumped: `v7.43` → `v7.44` (bump-version.sh + node build.js + npm run bundle:css + pre-commit-version-check ✅)
+- ROADMAP.md updated: SA-004 row → ✅ with completion notes (line ~3151)
+- roadmap.html updated: SA-004 entry → `s: 'done'`, p: 100 (line ~2099)
 - Created: api-gateway EF, gateway-middleware.ts (4 built-in plugins), v6.19 migration, ADR-03
 - 10 routes registered: chat-job-search, score-resume, score-job-fraud, enrich-jd-ai, validate-signup, account-lifecycle, send-notification, daily-digest, submit-application, billing-notifications
 - Rate limits: anonymous 30/min, free 120/min, pro 300/min, crewai 600/min, admin unlimited
@@ -88,10 +91,12 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
+| **Product (BJ_VERSION)** | **`v7.44`** | **SA-004** |
 | Dashboard | `dashboard@1.2.0-typescript` | CS-P1-015 |
 | Extension | `extension@2.22.0-error-handling` | FIX-11 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
 | Admin | `admin@1.4.0-compliance` | CS-P1-017 |
+| **API Gateway** | **`infra@gateway-v0.1.0`** | **SA-004** |
 | Load Tests | `loadtest@1.0.0` | CS-020 |
 | CI/CD | `cicd@1.0.0` | CS-020 |
 | Quality Gates | `qualitygates@1.0.0` | CS-021 |
