@@ -34,12 +34,12 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**CS-022** — 72-Hour Dry Run + Go/No-Go (FIX-23)
+**CS-023** — Admin Monitoring Dashboards Part 1 (AD-FIX-11, AD-FIX-12)
 - Completed: 2026-03-07
-- Commit: `a6f3698`
-- Tags: `dryrun@1.0.0`
-- Fix items resolved: FIX-23 (72-hour dry run + Go/No-Go)
-- Notes: Monitoring infrastructure deployed (scripts/dry-run-monitor.mjs — 11-point health check; .github/workflows/dry-run.yml — hourly cron). Launch gate evaluator (scripts/evaluate-launch-gates.mjs) assessed all 15 gates: 10 GREEN, 5 YELLOW, 0 RED. Go/No-Go decision: CONDITIONAL-GO. 5 accepted risks documented (G3 key rotation, G7 DPAs pending legal, G11 shared middleware, G12 partial audit wiring, G13 prod verification). Go/No-Go document at docs/audit/CS-022-GoNoGo.md. 39 new tests (629 total). All launch gates updated in ROADMAP.md + roadmap.html.
+- Commit: (pending push)
+- Tags: `admin@1.0.0-monitoring`
+- Fix items resolved: AD-FIX-11 (monitoring dashboard), AD-FIX-12 (operational alerts)
+- Notes: New "Monitoring" subpage — aggregated health dashboard (health-check EF, cron summary, feed freshness, surface latency, recent alerts, summary cards, status banner). New "Alerts" subpage — alert rules CRUD, alert history with ack/resolve workflow, rule creation modal, PostHog + email notification routing, 6 default rules seeded. Migration: health_check_log, alert_rules, alert_history tables + v_monitoring_summary view. 36 new tests (665 total). Audit trail wired for all alert actions. Both panels auto-refresh with cleanup.
 
 ---
 
@@ -51,31 +51,33 @@ None.
 
 ## Next Session
 
-**CS-023** — Admin Monitoring Dashboards Part 1 (AD-FIX-11, AD-FIX-12)
+**CS-024** — Admin Monitoring Dashboards Part 2 (AD-FIX-13, AD-FIX-14, AD-FIX-15)
 
 | Field | Detail |
 |-------|--------|
 | Surface | Admin |
-| Fix Items | AD-FIX-11, AD-FIX-12 |
+| Fix Items | AD-FIX-13, AD-FIX-14, AD-FIX-15 |
 | Phase | Post-Launch: Admin Monitoring |
 | Pair | Senior Backend + Senior Frontend |
 | Expected tags | TBD |
 
 ### Entry Gate (verify before starting)
 
-- [x] CS-022 complete — Go/No-Go decision documented
-- [x] 629+ tests passing
-- [x] G8 monitoring infrastructure deployed
+- [x] CS-023 complete — Monitoring dashboard + alerts panel deployed
+- [x] 665+ tests passing
+- [x] alert_rules and alert_history tables created
 
 ### What To Build
 
-1. **AD-FIX-11**: Admin monitoring dashboard infrastructure — cron health, feed status, error aggregation
-2. **AD-FIX-12**: Admin operational alerts — PostHog alert rules, notification routing
+1. **AD-FIX-13**: Error replay integration — PostHog session replay links from error dashboard
+2. **AD-FIX-14**: Edge Function health dashboard — invocations, errors, latency p50/p95/p99 for all EFs
+3. **AD-FIX-15**: Database activity panel — connections, slow queries, table sizes via pg_stat
 
 ### Exit Gate
 
-- Admin monitoring dashboards rendering live data
-- Alert pipeline configured and tested
+- Error replay links functional in monitoring dashboard
+- EF health metrics rendering live data
+- Database activity panel operational
 
 ---
 
@@ -86,7 +88,7 @@ None.
 | Dashboard | `dashboard@1.0.0-bundle` | CS-016 |
 | Extension | `extension@0.8.0-architecture` | CS-019 |
 | Landing Page | `index@0.6.0-architecture` | CS-018 |
-| Admin | `admin@0.9.0-cost` | CS-019 |
+| Admin | `admin@1.0.0-monitoring` | CS-023 |
 | Load Tests | `loadtest@1.0.0` | CS-020 |
 | CI/CD | `cicd@1.0.0` | CS-020 |
 | Quality Gates | `qualitygates@1.0.0` | CS-021 |
@@ -96,7 +98,7 @@ None.
 
 ---
 
-## Completed Sessions (22 of 24)
+## Completed Sessions (23 of 24)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
@@ -122,14 +124,14 @@ None.
 | CS-020 | 2026-03-06 | FIX-20 (Load Testing), FIX-21 (Staging + CI/CD) | loadtest@1.0.0, cicd@1.0.0 |
 | CS-021 | 2026-03-06 | FIX-22 (Quality Gates + E2E) | qualitygates@1.0.0 |
 | CS-022 | 2026-03-07 | FIX-23 (72-hour dry run + Go/No-Go) | dryrun@1.0.0 |
+| CS-023 | 2026-03-07 | AD-FIX-11, AD-FIX-12 (monitoring + alerts) | admin@1.0.0-monitoring |
 
 ---
 
-## Remaining Sessions (2 of 24)
+## Remaining Sessions (1 of 24)
 
 | Session | Fix Items | Phase | Notes |
 |---------|-----------|-------|-------|
-| CS-023 | AD-FIX-11, AD-FIX-12 | Post-Launch: Admin Monitoring |  |
 | CS-024 | AD-FIX-13, AD-FIX-14, AD-FIX-15 | Post-Launch: Admin Monitoring |  |
 
 ---
@@ -142,17 +144,17 @@ None.
 | G2 | PostHog error tracking live | ✅ | CS-003 + CS-022: SDK on all 4 surfaces, exception autocapture. |
 | G3 | Service role key rotated | ⚡ | Accepted risk. Repo access limited to Marston + Claude. git-filter-repo purge done. |
 | G4 | Kill-switch operational | ✅ | CS-013: 3-layer kill-switch deployed + tested. DB flag toggle verified via REST API. Admin UI live. |
-| G5 | Critical-path tests pass | ✅ | CS-022: 629 tests across 8 suites, all passing. |
+| G5 | Critical-path tests pass | ✅ | CS-023: 665 tests across 9 suites, all passing. |
 | G6 | Connection pooler live (300+) | ✅ | CS-009: Supavisor enabled. CS-020: Load tested. |
 | G7 | Privacy policy + DPAs sent | ⚡ | Privacy policy + PII inventory complete. DPAs pending legal review. |
 | G8 | 72-hour dry run clean | ✅ | CS-022: Monitoring infra deployed. dry-run-monitor.mjs + dry-run.yml hourly cron. |
 | G9 | Landing XSS + CSP enforced | ✅ | CS-005 + CS-018 + CS-022: DOMPurify + CSP enforced + security headers confirmed. |
 | G10 | Referral pipeline functional | ✅ | CS-005 + CS-022: 5 referral EFs verified. Attribution capture active. |
 | G11 | Admin auth server-side | ⚡ | CS-006: All EFs enforce auth inline. Shared middleware deferred to post-launch. |
-| G12 | Admin audit trail recording | ⚡ | CS-012 + CS-015: _logAdminAction() + pgAudit active. Additional wiring in CS-023/CS-024. |
+| G12 | Admin audit trail recording | ⚡ | CS-023: Alert ack/resolve/rule CRUD actions logged. Additional wiring in CS-024. |
 | G13 | PostHog identity 100% | ✅ | CS-003 + CS-018 + CS-022: identify() on all 3 user-facing surfaces. |
 | G14 | axe-core 0 critical | ✅ | CS-007 + CS-011 + CS-022: All surfaces 0 critical a11y violations. |
-| G15 | All 10 quality gates in CI | ✅ | CS-021: All 10 gates active — 8 parallel CI jobs + summary. 629 tests. PR template. |
+| G15 | All 10 quality gates in CI | ✅ | CS-021: All 10 gates active — 8 parallel CI jobs + summary. 665 tests. PR template. |
 
 ---
 

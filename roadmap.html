@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.24"></script>
+  <script src="/js/version.js?v=v7.25"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2057,13 +2057,13 @@ const features = [
 // 0-BB: Post-Launch Admin Monitoring (Phase 0b)
 { s: 'done', b: 'pre-launch', n: '0.160 Cron Health Panel (AD-FIX-06)', d: 'CS-012: v_cron_health view (cron.job + cron.job_run_details), 64 jobs with color-coded status (red/amber/green/disabled), auto-refresh 60s, filter buttons. New admin-cron.js + Operations sidebar entry.', p: 76, e: '2h' },
 { s: 'done', b: 'pre-launch', n: '0.160a Kill-Switch Panel (FIX-13)', d: 'CS-013: Admin kill-switch toggle panel deployed. State display (red/green), confirmation-gated toggle, direct send via chrome.runtime.sendMessage, active scanners table, auto-refresh 30s, audit trail. Column schema fix applied (id/enabled). Live in prod.', p: 76, e: '2h' },
-{ s: 'todo', b: 'post-launch', n: '0.161 Cron Dashboard — admin UI', d: '45 jobs, status, history, duration. Color-coded.', p: 76, e: '3h' },
-{ s: 'todo', b: 'post-launch', n: '0.162 Cron Dashboard — alerts', d: 'PostHog: P0-cron fail, 2+ missed, 2x duration.', p: 76, e: '1h' },
-{ s: 'todo', b: 'post-launch', n: '0.163 Feed Health — views', d: 'Pattern 1. ats_jobs, pipeline, resumes timestamps.', p: 76, e: '2h' },
-{ s: 'todo', b: 'post-launch', n: '0.164 Feed Health — admin UI', d: 'Cards, throughput, staleness, error rate, 24h chart.', p: 76, e: '2h' },
-{ s: 'todo', b: 'post-launch', n: '0.165 Error Dashboard — PostHog API', d: 'Pattern 3. Real-time error feed.', p: 76, e: '2h' },
-{ s: 'todo', b: 'post-launch', n: '0.166 Error Dashboard — UI + replay', d: 'Trends, click-to-replay, new vs recurring.', p: 76, e: '2h' },
-{ s: 'todo', b: 'post-launch', n: '0.167 Alerting pipeline', d: 'Error spikes, cron/feed conditions. Channels.', p: 76, e: '2h' },
+{ s: 'done', b: 'post-launch', n: '0.161 Cron Dashboard — admin UI', d: 'CS-012: Full cron panel. CS-023: Summary in monitoring dashboard.', p: 76, e: '3h' },
+{ s: 'done', b: 'post-launch', n: '0.162 Cron Dashboard — alerts', d: 'CS-023: Alert rules with cron category. Configurable thresholds, cooldowns, notification routing.', p: 76, e: '1h' },
+{ s: 'done', b: 'post-launch', n: '0.163 Feed Health — views', d: 'CS-023: Feed freshness via ats_jobs.last_seen + open job count in monitoring dashboard.', p: 76, e: '2h' },
+{ s: 'done', b: 'post-launch', n: '0.164 Feed Health — admin UI', d: 'CS-012: Full feed-health panel. CS-023: Feed summary in monitoring dashboard.', p: 76, e: '2h' },
+{ s: 'done', b: 'post-launch', n: '0.165 Error Dashboard — PostHog API', d: 'CS-023: Health-check EF integration in monitoring dashboard. Error aggregation via health endpoint.', p: 76, e: '2h' },
+{ s: 'todo', b: 'post-launch', n: '0.166 Error Dashboard — UI + replay', d: 'CS-023: Framework in place. Replay integration deferred to CS-024.', p: 76, e: '2h' },
+{ s: 'done', b: 'post-launch', n: '0.167 Alerting pipeline', d: 'CS-023: alert_rules + alert_history tables. CRUD UI. Ack/resolve. PostHog + email. 6 default rules.', p: 76, e: '2h' },
 { s: 'todo', b: 'post-launch', n: '0.168 Edge Function Health', d: 'Pattern 2. 88 EFs: invocations, errors, latency.', p: 76, e: '3h' },
 { s: 'todo', b: 'post-launch', n: '0.169 Database Activity', d: 'pg_stat connections, slow queries, table sizes.', p: 76, e: '3h' },
 { s: 'todo', b: 'post-launch', n: '0.170 Cost Monitoring — proxy', d: 'Pattern 2. Anthropic API. Daily/weekly/monthly.', p: 76, e: '3h' },
@@ -2083,7 +2083,7 @@ const features = [
 { s: 'done', b: 'pre-launch', n: '0.180 Staging + CI/CD automation', d: 'CS-020: ci.yml, deploy.yml enhanced, load-test.yml, staging docs.', p: 75, e: '3h' },
 { s: 'todo', b: 'pre-launch', n: '0.181 Extension E2E live ATS', d: '15 handlers validated. Snapshots.', p: 75, e: '2h' },
 { s: 'todo', b: 'pre-launch', n: '0.182 Kill-switch integration test', d: 'Bulk disable 15 min. Re-enable.', p: 75, e: '1h' },
-{ s: 'done', b: 'pre-launch', n: '0.183 72-hour dry run', d: 'CS-022: Monitoring deployed (dry-run-monitor.mjs, dry-run.yml hourly cron). Go/No-Go: CONDITIONAL-GO (10 GREEN, 5 YELLOW, 0 RED). 629 tests.', p: 75, e: '72h' },
+{ s: 'done', b: 'pre-launch', n: '0.183 72-hour dry run', d: 'CS-022: Monitoring deployed (dry-run-monitor.mjs, dry-run.yml hourly cron). Go/No-Go: CONDITIONAL-GO (10 GREEN, 5 YELLOW, 0 RED). CS-023: 665 tests.', p: 75, e: '72h' },
 { s: 'todo', b: 'pre-launch', n: '0.184 Final CX validation', d: 'axe 0 critical. PostHog 100%. All targets.', p: 75, e: '2h' },
 
 

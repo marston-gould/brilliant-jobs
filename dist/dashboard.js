@@ -1,5 +1,5 @@
 // === js/version.js ===
-var BJ_VERSION = 'v7.24';
+var BJ_VERSION = 'v7.25';
 (function() {
   function populateVersion() {
     document.querySelectorAll(".bj-version, [id$=\"-version\"]").forEach(function(el) {

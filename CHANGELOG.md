@@ -1,3 +1,29 @@
+## v7.25 — CS-023: Admin Monitoring Dashboards Part 1 (AD-FIX-11, AD-FIX-12) (2026-03-07)
+### Monitoring Dashboard (AD-FIX-11)
+- **Platform health monitor** — new "Monitoring" subpage under Operations
+- **Health-check EF integration** — real-time status from `/functions/v1/health-check`
+- **Status banner** — healthy/degraded/unhealthy with color-coded display
+- **Summary cards** — 5 metrics (checks 24h, unhealthy, degraded, alerts, unresolved)
+- **Surface latency probes** — Landing, Dashboard, Admin, Roadmap with ms timing
+- **Cron summary** — aggregated view from v_cron_health with failed job callouts
+- **Feed freshness** — ats_jobs.last_seen + open job count
+- **Recent alerts** — last 24h from alert_history table
+- **Auto-refresh 90s** with cleanup on tab switch
+### Operational Alerts (AD-FIX-12)
+- **Alert rules CRUD** — full create/edit/delete/toggle UI with modal form
+- **6 default rules seeded** — cron failure, health degraded/unhealthy, feed stale, high error rate, surface latency
+- **Alert history** — 7-day view with status filter (all/active/ack'd/resolved)
+- **Ack/resolve workflow** — acknowledge and resolve active alerts with audit trail
+- **PostHog + email notification routing** — configurable per rule
+- **Rule conditions** — metric, operator, threshold, window_minutes, cooldown
+### Database Migration
+- `health_check_log` table for periodic health check results
+- `alert_rules` table with RLS (admin-only CRUD)
+- `alert_history` table with status workflow (fired→acknowledged→resolved)
+- `v_monitoring_summary` view for dashboard summary cards
+### Tests
+- 36 new tests (665 total): monitoring panel, alerts panel, integration, migration
+
 ## v7.24 — CS-020: Load Testing + Staging + CI/CD (FIX-20, FIX-21) (2026-03-06)
 ### Load Testing (FIX-20)
 - **k6 load test suite** for all 4 surfaces: preview-jobs, dashboard API, extension heartbeat, admin concurrent

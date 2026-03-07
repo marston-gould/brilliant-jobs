@@ -1,8 +1,8 @@
 /* ───────────────────────────────────────────────────────────
    admin.js — Admin Console with Sidebar Navigation (IA v2)
-   v7.20 — CS-012: cron panel, audit trail wiring, biz-ops tables
+   v7.20 — CS-023: monitoring dashboard, alerts panel
    4 sections: Operations, Growth, Audience, Business
-   28 sub-pages with lazy initialization
+   30 sub-pages with lazy initialization
    ─────────────────────────────────────────────────────────── */
 
 // ─── Admin access gate (dashboard nav-item visibility) ───
@@ -60,6 +60,8 @@ var ADMIN_SUBPAGE_MAP = {
   'cache':          { section: 'operations',  label: 'Cache Health',   init: function(){ refreshCacheHealthPanel(); } },
   'signals':        { section: 'operations',  label: 'Signals',        init: function(){ loadAdminSignals(); } },
   'cron':           { section: 'operations',  label: 'Cron Health',    init: function(){ loadCronPanel(); } },
+  'monitoring':     { section: 'operations',  label: 'Monitoring',     init: function(){ loadMonitoringPanel(); } },
+  'alerts':         { section: 'operations',  label: 'Alerts',         init: function(){ loadAlertsPanel(); } },
   'kill-switch':    { section: 'operations',  label: 'Kill Switch',    init: function(){ loadKillSwitchPanel(); } },
   // ── Growth ──
   'seo':            { section: 'growth',      label: 'SEO',            init: function(){ loadSeoTab(); } },
@@ -207,6 +209,8 @@ function navigateAdminSubpage(key) {
   // Cleanup any timers from previous tab (e.g. cron auto-refresh, kill-switch auto-refresh)
   if (typeof _cleanupCronPanel === 'function') _cleanupCronPanel();
   if (typeof _cleanupKillSwitchPanel === 'function') _cleanupKillSwitchPanel();
+  if (typeof _cleanupMonitoringPanel === 'function') _cleanupMonitoringPanel();
+  if (typeof _cleanupAlertsPanel === 'function') _cleanupAlertsPanel();
 
   // Show correct panel, hide all others
   document.querySelectorAll('.admin-panel').forEach(function(p) {
