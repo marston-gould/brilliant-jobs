@@ -36,7 +36,7 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 **CS-024** — Admin Monitoring Dashboards Part 2 (AD-FIX-13, AD-FIX-14, AD-FIX-15)
 - Completed: 2026-03-07
-- Commit: (pending push)
+- Commit: `f423ce5`
 - Tags: `admin@1.1.0-analytics`
 - Fix items resolved: AD-FIX-13 (error replay), AD-FIX-14 (EF health), AD-FIX-15 (DB activity)
 - Notes: 3 new admin subpages — Error Replay (PostHog Events API proxy with session replay deep links, time range filter, query_error + $exception events), EF Health (subsystem metrics from health_check_log — invocations, success %, p50/p95/p99, 35 deployed EFs listed), DB Activity (4 SQL SECURITY DEFINER functions — pg_stat_activity connections by state, table sizes top 50, slow queries via pg_stat_statements with fallback, database size + connection usage). admin-analytics Edge Function with admin auth enforcement. Migration: 20260307_cs024_admin_analytics.sql. 35 new tests (701 total). **FINAL SESSION — 24 of 24 remediation sessions complete.**
