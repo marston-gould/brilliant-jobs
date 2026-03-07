@@ -131,3 +131,134 @@ describe('landing-app.js — JSON-LD sync (LS1-10)', () => {
     expect(js).toContain('if (changed) script.textContent');
   });
 });
+
+// ── LS1-4: Single H1 ──
+describe('index.html — single H1 (LS1-4)', () => {
+  let html;
+  beforeEach(() => {
+    html = readFileSync(resolve(__dirname, '..', 'index.html'), 'utf8');
+  });
+
+  it('has exactly one H1 tag', () => {
+    const h1s = html.match(/<h1[\s>]/g);
+    expect(h1s).toHaveLength(1);
+  });
+
+  it('returning hero uses H2 with hero-heading class', () => {
+    expect(html).toMatch(/<h2 class="hero-heading"[^>]*>See what's new/);
+  });
+
+  it('lapsed hero uses H2 with hero-heading class', () => {
+    expect(html).toMatch(/<h2 class="hero-heading"[^>]*>Welcome back/);
+  });
+});
+
+// ── LS1-8: localStorage safety ──
+describe('landing-segment.js — localStorage safety (LS1-8)', () => {
+  let js;
+  beforeEach(() => {
+    js = readFileSync(resolve(__dirname, '..', 'js', 'landing-segment.js'), 'utf8');
+  });
+
+  it('wraps localStorage access in try/catch', () => {
+    expect(js).toContain('try {');
+    expect(js).toContain('catch (e)');
+  });
+
+  it('references LS1-8 in header comment', () => {
+    expect(js).toContain('LS1-8');
+  });
+
+  it('defaults to segment new on failure', () => {
+    // segment should be initialized to 'new' before the try block
+    expect(js).toMatch(/var segment = ['"]new['"]/);
+  });
+});
+
+// ── IX-A11Y-003: Form labels ──
+describe('index.html — form labels (IX-A11Y-003)', () => {
+  let html;
+  beforeEach(() => {
+    html = readFileSync(resolve(__dirname, '..', 'index.html'), 'utf8');
+  });
+
+  it('has label for preview-keyword', () => {
+    expect(html).toMatch(/<label for="preview-keyword"/);
+  });
+
+  it('has label for preview-location', () => {
+    expect(html).toMatch(/<label for="preview-location"/);
+  });
+
+  it('preview labels use sr-only class', () => {
+    const labels = html.match(/<label for="preview-\w+" class="sr-only">/g);
+    expect(labels).toHaveLength(2);
+  });
+
+  it('auth modal inputs have visible labels', () => {
+    expect(html).toContain('<label for="login-email">');
+    expect(html).toContain('<label for="login-password">');
+    expect(html).toContain('<label for="forgot-email">');
+  });
+});
+
+// ── LS1-7: Responsive breakpoints ──
+describe('landing.css — breakpoints (LS1-7)', () => {
+  let css;
+  beforeEach(() => {
+    css = readFileSync(resolve(__dirname, '..', 'landing.css'), 'utf8');
+  });
+
+  it('has at least 5 breakpoints', () => {
+    const breakpoints = css.match(/@media\s*\(max-width:\s*\d+px\)/g);
+    expect(breakpoints.length).toBeGreaterThanOrEqual(5);
+  });
+
+  it('has 900px tablet breakpoint', () => {
+    expect(css).toContain('max-width: 900px');
+  });
+
+  it('has 1024px breakpoint', () => {
+    expect(css).toContain('max-width: 1024px');
+  });
+
+  it('has 768px breakpoint', () => {
+    expect(css).toContain('max-width: 768px');
+  });
+
+  it('has 480px breakpoint', () => {
+    expect(css).toContain('max-width: 480px');
+  });
+});
+
+// ── LS1-11: Carousel no-JS fallback ──
+describe('landing.css — carousel no-JS fallback (LS1-11)', () => {
+  let css;
+  beforeEach(() => {
+    css = readFileSync(resolve(__dirname, '..', 'landing.css'), 'utf8');
+  });
+
+  it('has no-JS fallback for carousel track', () => {
+    expect(css).toContain('html:not([data-segment]) .carousel .carousel-track');
+  });
+
+  it('hides carousel dots without JS', () => {
+    expect(css).toContain('html:not([data-segment]) .carousel .carousel-dots');
+  });
+});
+
+// ── CSS utility classes ──
+describe('landing.css — utility classes', () => {
+  let css;
+  beforeEach(() => {
+    css = readFileSync(resolve(__dirname, '..', 'landing.css'), 'utf8');
+  });
+
+  it('has sr-only class for visually hidden content', () => {
+    expect(css).toMatch(/\.sr-only\s*\{/);
+  });
+
+  it('hero-heading shares styles with hero h1', () => {
+    expect(css).toMatch(/\.hero h1,\s*\.hero \.hero-heading/);
+  });
+});

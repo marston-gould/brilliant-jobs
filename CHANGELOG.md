@@ -1,5 +1,20 @@
-## v7.33 Session NN: TITLE (2026-03-07)
-- DESCRIBE CHANGES HERE
+## v7.34 CS-P1-008: Landing Page CX + Accessibility (2026-03-07)
+- LS1-10: JSON-LD structured data syncs live job/company counts from API via applyStats()
+- Schema.org microdata: WebPage on body, Organization on nav logos, FAQPage with Q&A, SoftwareApplication with Offer on pricing
+- LS1-4: Single H1 tag — returning/lapsed hero headings demoted to H2 with shared .hero-heading styles
+- LS1-8: landing-segment.js localStorage wrapped in try/catch for private browsing safety
+- IX-A11Y-003: Preview filter inputs linked with sr-only <label for> elements
+- LS1-7: Added 900px tablet breakpoint (5 breakpoints total: 1024/900/768/600/480)
+- LS1-11: Carousel no-JS fallback via html:not([data-segment]) CSS selector
+- LS1-2/LS1-5: Verified complete (1 inline style, 0 inline style blocks — CS-018 extraction)
+- LS1-9: Verified complete (focus trap, escape key, focus return — CS-007)
+- 40 new tests (1104 total). Version v7.34.
+
+## v7.33 CS-P1-007: PostHog Analytics + Attribution CX (2026-03-07)
+- DS1-4: PostHog identity resolution, DS1-6: 14-page pageviews, DS1-12: perf timing
+- ES1-1: Extension baseline events, LS1-3: Direct PostHog init + UTM capture
+- TS1-1: Email UTM attribution, TS1-2: SMS UTM attribution
+- 42 new tests (1064 total). Version v7.33.
 
 ## v7.32 CS-P1-006: Data Pipeline + Cron Cleanup + Cost Visibility (2026-03-07)
 - DE-004: Dead/broken crons removed. validate_cron_schedule() prevents impossible dates. v_cron_audit view.

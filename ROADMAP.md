@@ -2969,10 +2969,10 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.107 | DS1-2: Dashboard accessibility Phase 1 | 3h | — | 🔲 | Scored 1.0/5.0. ARIA tablist/tab/tabpanel, focus mgmt, :focus-visible. axe-core 0 critical. |
 | 0.108 | ES1-2: Extension accessibility 1.0 | 2h | — | 🔲 | Scored 1.0/5.0. ARIA popup, keyboard nav, focus, screen reader. |
 | 0.109 | LS1-1: Landing accessibility (19 btns, 6 inputs, 0 ARIA) | 2h | — | 🔲 | Scored 2.0/5.0. Zero ARIA. Roles, labels, states needed. |
-| 0.110 | LS1-4: 3 H1 tags in DOM | 30min | — | 🔲 | display:none→conditional render. SEO + a11y. Upgraded P2→P1. |
+| 0.110 | LS1-4: 3 H1 tags in DOM | 30min | CS-P1-008 | ✅ | display:none→conditional render. SEO + a11y. Upgraded P2→P1. |
 | 0.111 | IX-A11Y-001: Zero ARIA landing page | 2h | — | 🔲 | Combined with LS1-1 (0.109). |
 | 0.112 | IX-A11Y-002: Keyboard trap auth modal | 1h | — | 🔲 | No Tab trap, no Escape handler. |
-| 0.113 | IX-A11Y-003: Form labels not linked | 30min | — | 🔲 | 6 inputs no for/id. Screen readers can't identify. |
+| 0.113 | IX-A11Y-003: Form labels not linked | 30min | CS-P1-008 | ✅ | 6 inputs no for/id. Screen readers can't identify. |
 
 ### 0-U: CX — Bundle + Audit (Pod 4, P1)
 
@@ -3022,14 +3022,14 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.138 | LS1-2: 97 inline styles (token bypass) | 1h | — | 🔲 | Migrate to CSS variables. |
-| 0.139 | LS1-5: 30KB inline CSS uncacheable | 2h | — | 🔲 | Extract to external file. Upgraded P3→P2. |
+| 0.138 | LS1-2: 97 inline styles (token bypass) | 1h | CS-018+P1-008 | ✅ | Migrate to CSS variables. |
+| 0.139 | LS1-5: 30KB inline CSS uncacheable | 2h | CS-018+P1-008 | ✅ | Extract to external file. Upgraded P3→P2. |
 | 0.140 | LS1-6: Ahrefs analytics audit | 30min | — | 🔲 | If redundant with PostHog+GSC, remove. Decision item. |
-| 0.141 | LS1-7: Only 2 responsive breakpoints | 1h | — | 🔲 | Add 1024px. Benefits/pricing/comparison break 768→desktop. |
-| 0.142 | LS1-8: Segment localStorage fragility | 30min | — | 🔲 | Incognito resets to 'new'. Fix detection order. |
-| 0.143 | LS1-9: Auth modal a11y refinements | 30min | — | 🔲 | aria-pressed, aria-live, heading structure. |
-| 0.144 | LS1-10: JSON-LD count mismatch | 15min | — | 🔲 | 315K vs 400K vs live. Make consistent. |
-| 0.145 | LS1-11: Carousel lazy-load + fallback | 30min | — | 🔲 | 5 SVGs load regardless of scroll. No JS-off fallback. |
+| 0.141 | LS1-7: Only 2 responsive breakpoints | 1h | CS-P1-008 | ✅ | Add 1024px. Benefits/pricing/comparison break 768→desktop. |
+| 0.142 | LS1-8: Segment localStorage fragility | 30min | CS-P1-008 | ✅ | Incognito resets to 'new'. Fix detection order. |
+| 0.143 | LS1-9: Auth modal a11y refinements | 30min | CS-007+P1-008 | ✅ | aria-pressed, aria-live, heading structure. |
+| 0.144 | LS1-10: JSON-LD count mismatch | 15min | CS-P1-008 | ✅ | 315K vs 400K vs live. Make consistent. |
+| 0.145 | LS1-11: Carousel lazy-load + fallback | 30min | CS-018+P1-008 | ✅ | 5 SVGs load regardless of scroll. No JS-off fallback. |
 
 ### 0-Z: CX — Transactional Email/SMS (Pod 4, P2/P3)
 

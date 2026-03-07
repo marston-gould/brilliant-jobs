@@ -110,13 +110,13 @@ a:hover { color: var(--accent-hover); }
   animation: pulse 2s infinite;
 }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-.hero h1 {
+.hero h1, .hero .hero-heading {
   font-size: clamp(36px, 5.5vw, 62px);
   font-weight: 800; line-height: 1.08; margin-bottom: 24px;
   max-width: 800px; margin-left: auto; margin-right: auto;
   letter-spacing: -0.025em; position: relative; z-index: 1;
 }
-.hero h1 .accent { color: #f59e0b; }
+.hero h1 .accent, .hero .hero-heading .accent { color: #f59e0b; }
 .hero-sub {
   font-size: 18px; color: rgba(255,255,255,0.6); max-width: 580px;
   margin: 0 auto 40px; line-height: 1.65; font-weight: 300;
@@ -320,6 +320,22 @@ a:hover { color: var(--accent-hover); }
 .preview-locked p { font-size: 14px; color: var(--text-dim); margin-bottom: 20px; line-height: 1.6; }
 
 /* ─── Walkthrough Carousel ─── */
+/* CS-P1-008 (LS1-11): No-JS carousel fallback — show all slides vertically */
+noscript + .carousel .carousel-track,
+html:not([data-segment]) .carousel .carousel-track {
+  flex-wrap: wrap;
+  overflow: visible;
+}
+noscript + .carousel .carousel-slide,
+html:not([data-segment]) .carousel .carousel-slide {
+  flex: 0 0 100%;
+  margin-bottom: 16px;
+}
+noscript + .carousel .carousel-dots,
+html:not([data-segment]) .carousel .carousel-dots {
+  display: none;
+}
+
 .carousel { position: relative; overflow: hidden; border-radius: 14px; }
 .carousel-track {
   display: flex; overflow-x: auto; scroll-snap-type: x mandatory;
@@ -555,11 +571,24 @@ a:hover { color: var(--accent-hover); }
 .fade-up { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
 .fade-up.visible { opacity: 1; transform: translateY(0); }
 
+/* CS-P1-008 (LS1-7): Tablet intermediate breakpoint */
+@media (max-width: 900px) {
+  .hero { padding: 120px 28px 60px; }
+  .hero h1, .hero .hero-heading { font-size: clamp(30px, 4.5vw, 48px); }
+  .hero-sub { font-size: 16px; max-width: 480px; }
+  .section { padding: 56px 24px; }
+  .preview-input-row { flex-wrap: wrap; }
+  .preview-input-row .preview-input { flex: 1 1 200px; }
+  .steps { grid-template-columns: 1fr 1fr; }
+  .compare-table { font-size: 13px; }
+  .nav-links a:not(.nav-cta):not([href="#pricing"]):not([href="#benefits"]) { display: none; }
+}
+
 @media (max-width: 768px) {
   .site-nav { padding: 0 16px; }
   .nav-links a:not(.nav-cta) { display: none; }
   .hero { padding: 120px 20px 60px; }
-  .hero h1 { font-size: 32px; }
+  .hero h1, .hero .hero-heading { font-size: 32px; }
   .hero-sub { font-size: 16px; }
   .section { padding: 48px 20px; }
   .data-stats-grid { grid-template-columns: 1fr 1fr !important; }
@@ -643,6 +672,19 @@ html:not([data-segment]) footer.segment-new { display: block; }
   text-decoration: none;
 }
 .skip-link:focus { top: 0; }
+
+/* CS-P1-008 (IX-A11Y-003): Screen-reader-only utility for form labels */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 
 /* ── Hero (logged-in redirect state) ── */
 .hero--redirect {
