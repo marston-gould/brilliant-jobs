@@ -2806,14 +2806,14 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.022 | DO-001: PostHog SDK integration — all surfaces | 1h | 1h | ✅ | CS-003: posthog.init() on dashboard+admin+landing+extension. Error tracking (exception autocapture) + session recording (masked) + event taxonomy. Direct init on landing (no GTM dependency). Extension wired via HTTP capture API. Deployed 2026-03-06. |
+| 0.022 | DO-001: PostHog SDK integration — all surfaces | 1h | 1h | ✅ | CS-003: posthog.init() on dashboard+admin+landing+extension. Error tracking (exception autocapture) + session recording (masked) + event taxonomy. Direct init on landing (no GTM dependency). Extension wired via HTTP capture API. Deployed 2026-03-06. CS-P1-005: Verified fully operational all 4 surfaces. |
 | 0.023 | DO-002: Supavisor connection pooler + 30s timeout | 1h | CS-009 | ✅ | No pooling. Exhausts at ~50 concurrent. Enable, validate 300+. |
-| 0.024 | DO-003: Feature flags via PostHog | 30min | — | 🔲 | PostHog native. posthog.isFeatureEnabled() wrapper. |
-| 0.025 | DO-004: Cron failure alerting | 2h | — | 🔲 | 45 pg_cron jobs zero alerting. PostHog alerts on failure. |
-| 0.026 | AD-DO-001: Monitoring infra baseline inventory | 1h | — | 🔲 | Inventory Supabase metrics, Vercel logs, PostHog. Document gaps. |
-| 0.027 | AD-DO-002: PostHog API for admin error dashboard | 1h | — | 🔲 | Rate limits, retention, query patterns for admin UI. |
-| 0.028 | AD-DO-003: Alerting pipeline — no infrastructure | 2h | — | 🔲 | PostHog alerts + custom routing for cron/feed/error. |
-| 0.029 | AD-DO-004: Admin availability during outages | 1h | — | 🔲 | Assess independent health check for admin surface. |
+| 0.024 | DO-003: Feature flags via PostHog | 30min | 4h | ✅ | CS-P1-005: feature-flags.js with PostHog-native isFeatureEnabled() + DB fallback. Supports rollout %, plan gating, per-user targeting. is_feature_enabled() SQL function. Loaded on all 3 HTML surfaces. |
+| 0.025 | DO-004: Cron failure alerting | 2h | 3h | ✅ | CS-P1-005: evaluate-alerts EF checks v_cron_health + health status + feed freshness + error rates + surface latency. Fires to alert_history with cooldown. Critical alerts → email via Resend. Scheduled pg_cron */5 min. |
+| 0.026 | AD-DO-001: Monitoring infra baseline inventory | 1h | 2h | ✅ | CS-P1-005: structured-logger.js deployed all surfaces. JSON-structured logs with PII stripping, PostHog batch forwarding, surface detection. Monitoring infra: health-check EF + availability_checks table + v_availability_summary view. |
+| 0.027 | AD-DO-002: PostHog API for admin error dashboard | 1h | 3h | ✅ | CS-P1-005: admin-posthog-insights.js — active users (DAU/WAU/MAU), event trends (7d bar chart), top events (24h), feature flag status. PostHog API key fetched via admin-analytics EF from Vault. |
+| 0.028 | AD-DO-003: Alerting pipeline — no infrastructure | 2h | 3h | ✅ | CS-P1-005: evaluate-alerts EF is unified pipeline. 10 alert rule types seeded (cron, health, feed, error, latency, availability). Cooldown-aware, email routing for critical. |
+| 0.029 | AD-DO-004: Admin availability during outages | 1h | 2h | ✅ | CS-P1-005: availability_checks table + v_availability_summary view (uptime %, avg latency). health-check EF records per-surface availability. pg_cron */10 min. Alert rules for surface-down events. |
 
 ### 0-F: Error Handling — Dashboard (Pod 3, P0/P1)
 

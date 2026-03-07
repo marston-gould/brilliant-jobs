@@ -34,18 +34,19 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**CS-P1-004** — Backend Architecture + API Hardening (Phase B: Core)
+**CS-P1-005** — Observability Completion + Feature Flags (Phase C: Observability + Data)
 - Completed: 2026-03-07
-- Commit: 65e0a58, 3d2d8cd
-- Tags: `p1-004@1.0.0-api-hardening`
-- IX-BE-003: Verified resolved — singleton loadSupabase() in landing-app.js (done CS-018).
-- FE-005: BJ namespace registry created — window.BJ consolidates exports from 42 files. BJ.export() + _registry for tracking. Backward-compat window aliases kept for 133 HTML onclick handlers. Full module migration deferred to Phase F (TypeScript).
-- BE-007: API versioning implemented — date-based (2026-03-07), api-version.ts shared module, withVersionHeaders() + versionedJsonResponse() helpers. x-api-version header on 10 EFs (7 direct + 3 via withCorrelation middleware).
-- IX-FE-005: Verified resolved — dashboard has 300ms debounce in job-feed.js; landing uses button-click + disable-during-request + server rate limiting.
-- FE-007: Landing page scripts — 4 scripts (version.js, cookie-consent.js, purify.min.js, safe-read-ls.js) now deferred. landing-segment.js stays sync for FOUC prevention + active user redirect.
-- FE-008: Landing page cache-busting — all 9 scripts now have ?v= query strings. bump-version.sh will maintain them.
-- 45 new tests (848 total, 0 failures).
-- Version bumped to v7.30.
+- Commit: (pending push)
+- Tags: `p1-005@1.0.0-observability-flags`
+- DO-001 (completion): PostHog verified operational on all 4 surfaces — identify(), exception autocapture, session recording confirmed.
+- DO-003: Feature flags via PostHog — feature-flags.js with isFeatureEnabled() + DB fallback. Rollout %, plan gating, per-user targeting. is_feature_enabled() SQL function. Loaded on dashboard, admin, landing.
+- DO-004: Cron failure alerting — evaluate-alerts EF checks v_cron_health + health status + feed freshness + error rates + surface latency. Fires to alert_history with cooldown. Critical → email via Resend. pg_cron */5 min.
+- AD-DO-001: Structured logging — structured-logger.js deployed all 3 HTML surfaces. JSON logs with PII stripping, PostHog batch, surface detection. Monitoring infra: availability_checks table + v_availability_summary view.
+- AD-DO-002: PostHog API for admin — admin-posthog-insights.js with DAU/WAU/MAU, event trends (7d), top events (24h), feature flag status. API key from Vault via admin-analytics EF.
+- AD-DO-003: Alerting pipeline — evaluate-alerts EF is unified pipeline. 10 alert rule types seeded. Cooldown-aware, email routing for critical.
+- AD-DO-004: Admin availability — availability_checks table + v_availability_summary. health-check EF records per-surface availability. pg_cron */10 min. Alert rules for surface-down.
+- 62 new tests (910 total, 0 failures in session tests).
+- Version bumped to v7.31.
 
 ---
 
@@ -57,18 +58,18 @@ None.
 
 ## Next Session
 
-**CS-P1-005: Observability Completion + Feature Flags** (Phase C: Observability + Data)
+**CS-P1-006: Data Pipeline + Cron Cleanup + Cost Visibility** (Phase C: Observability + Data)
 
 | Field | Detail |
 |-------|--------|
-| Surface | All Surfaces |
-| Fix Items | DO-001 (completion), DO-003, DO-004, AD-DO-001, AD-DO-002, AD-DO-003, AD-DO-004 |
-| Hours | 16–24h |
-| Pair | DevOps + Backend |
+| Surface | Dashboard + Admin |
+| Fix Items | DE-004, DE-005, CE-002, QA-002, QA-003 |
+| Hours | 12–18h |
+| Pair | Data + QA |
 
-**Entry Gate:** CS-P1-004 complete. PostHog deployed (CS-003).
+**Entry Gate:** CS-P1-005 complete.
 
-**Exit Gate:** PostHog fully operational all surfaces. Feature flags operational. Structured logging. Alert thresholds configured.
+**Exit Gate:** Dead crons removed. Data pipeline validated. Cost visibility dashboard. Test coverage expanded.
 
 ---
 
@@ -86,14 +87,15 @@ None.
 | Dry Run | `dryrun@1.0.0` | CS-022 |
 | SEO Pages | (no remediation tag yet) | — |
 | Email Templates | `email-templates@0.1.0-utm` | CS-011 |
-| Phase 1 Security | `p1-004@1.0.0-api-hardening` | CS-P1-004 |
+| Phase 1 Security | `p1-005@1.0.0-observability-flags` | CS-P1-005 |
 
 ---
 
-## Completed Sessions (24 of 24 + 4 Phase 1)
+## Completed Sessions (24 of 24 + 5 Phase 1)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
+| CS-P1-005 | 2026-03-07 | DO-001 (verified), DO-003 (feature flags), DO-004 (cron alerting), AD-DO-001 (structured logging), AD-DO-002 (PostHog API), AD-DO-003 (alerting pipeline), AD-DO-004 (availability) | p1-005@1.0.0-observability-flags |
 | CS-P1-004 | 2026-03-07 | IX-BE-003 (verified), FE-005 (BJ namespace), BE-007 (API versioning), IX-FE-005 (verified), FE-007 (landing defer), FE-008 (landing cache-bust) | p1-004@1.0.0-api-hardening |
 | CS-P1-003 | 2026-03-07 | FE-005 (defer), FE-006 (immutable cache), BE-003 (error checks), BE-004 (fire-and-forget) | p1-003@1.0.0-error-handling |
 | CS-P1-002 | 2026-03-07 | SE-005, IX-SE-006, IX-SE-008 (AD-SE-001/AD-SE-003 verified done, SE-002 procedure scripted) | p1-002@1.0.0-csp-cookies |
@@ -125,11 +127,10 @@ None.
 
 ---
 
-## Remaining Sessions (13 of 17 Phase 1)
+## Remaining Sessions (12 of 17 Phase 1)
 
 | Session | Phase | Title | Hours |
 |---------|-------|-------|-------|
-| CS-P1-005 | C | Observability Completion + Feature Flags | 16–24h |
 | CS-P1-006 | C | Data Pipeline + Cron Cleanup + Cost Visibility | 12–18h |
 | CS-P1-007 | D | PostHog Analytics + Attribution CX | 14–20h |
 | CS-P1-008 | D | Landing Page CX + Accessibility | 18–26h |

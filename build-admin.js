@@ -18,6 +18,7 @@ const jsFiles = [
   'js/admin-error-replay.js',
   'js/admin-ef-health.js',
   'js/admin-db-activity.js',
+  'js/admin-posthog-insights.js',
   'js/admin-feed-health.js',
   'js/admin-cache-health.js',
   'js/admin-enrichment.js',

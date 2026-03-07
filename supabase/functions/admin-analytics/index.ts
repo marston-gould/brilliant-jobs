@@ -340,9 +340,17 @@ serve(async (req) => {
         return jsonResponse(data);
       }
 
+      case "get_posthog_key": {
+        // AD-DO-002: Provide PostHog Personal API key to admin frontend
+        if (!POSTHOG_PERSONAL_API_KEY) {
+          return jsonResponse({ key: null, error: "PostHog API key not configured" });
+        }
+        return jsonResponse({ key: POSTHOG_PERSONAL_API_KEY });
+      }
+
       default:
         return errorResponse(
-          "Unknown action. Use: posthog-errors, ef-health, db-activity",
+          "Unknown action. Use: posthog-errors, ef-health, db-activity, get_posthog_key",
           400
         );
     }

@@ -158,6 +158,35 @@ serve(async (req) => {
     ),
   });
 
+  // AD-DO-004: Record availability data for uptime monitoring
+  try {
+    const body = req.method === "POST" ? await req.clone().json().catch(() => ({})) : {};
+    // Always record to health_check_log (existing behavior)
+    await sb.from("health_check_log").insert({
+      overall: health.status,
+      checks: health.checks,
+      created_at: health.timestamp,
+    });
+
+    // Record per-surface availability (new for AD-DO-004)
+    const surfaces = [
+      { name: "database", status: health.checks.database?.status === "pass" ? "up" : "down", latency: health.checks.database?.latencyMs },
+      { name: "edge_functions", status: health.checks.edge_functions?.status === "pass" ? "up" : "down", latency: health.checks.edge_functions?.latencyMs },
+      { name: "notifications", status: health.checks.notifications?.status === "pass" ? "up" : "down", latency: health.checks.notifications?.latencyMs },
+    ];
+
+    const availRows = surfaces.map(s => ({
+      surface: s.name,
+      status: s.status,
+      latency_ms: s.latency || null,
+      checked_at: health.timestamp,
+    }));
+
+    await sb.from("availability_checks").insert(availRows);
+  } catch (e) {
+    logger.warn("Failed to record availability", { error: (e as Error).message });
+  }
+
   const statusCode = health.status === "healthy" ? 200 : health.status === "degraded" ? 200 : 503;
 
   return new Response(JSON.stringify(health, null, 2), {

@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.30"></script>
+  <script src="/js/version.js?v=v7.31"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -1861,14 +1861,14 @@ const features = [
 { s: 'done', b: 'pre-launch', n: '0.021 AD-SE-004+CP-004: Admin audit trail', d: 'CS-012: _logAdminAction() async fire-and-forget helper. Wired into content approvals, notification config saves, merch placement CRUD, Stripe plan overrides, admin email searches. audit_log table already existed (A4).', p: 75, e: '2h' },
 
 // 0-E: Observability (Pod 3, P0/P1)
-{ s: 'todo', b: 'pre-launch', n: '0.022 DO-001: PostHog SDK all surfaces', d: 'Zero error monitoring. posthog.init() dashboard+admin+landing. Replaces Sentry per AD-ADR-001.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.022 DO-001: PostHog SDK all surfaces', d: 'CS-003: posthog.init() all 4 surfaces. CS-P1-005: Verified fully operational — identify(), exception autocapture, session recording confirmed.', p: 75, e: '1h' },
 { s: 'done', b: 'pre-launch', n: '0.023 DO-002: Supavisor connection pooler', d: 'CS-009: 30s fetch timeout, explicit schema config, autoRefreshToken. Supavisor enabled at project level.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.024 DO-003: Feature flags via PostHog', d: 'PostHog native. posthog.isFeatureEnabled() wrapper.', p: 75, e: '30min' },
-{ s: 'todo', b: 'pre-launch', n: '0.025 DO-004: Cron failure alerting', d: '45 pg_cron jobs zero alerting. PostHog alerts on failure.', p: 75, e: '2h' },
-{ s: 'todo', b: 'pre-launch', n: '0.026 AD-DO-001: Monitoring infra baseline', d: 'Inventory Supabase metrics, Vercel logs, PostHog. Document gaps.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.027 AD-DO-002: PostHog API for admin', d: 'Rate limits, retention, query patterns for admin UI.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.028 AD-DO-003: Alerting pipeline', d: 'PostHog alerts + custom routing for cron/feed/error.', p: 75, e: '2h' },
-{ s: 'todo', b: 'pre-launch', n: '0.029 AD-DO-004: Admin availability', d: 'Assess independent health check for admin surface.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.024 DO-003: Feature flags via PostHog', d: 'CS-P1-005: feature-flags.js — PostHog isFeatureEnabled() + DB fallback. Rollout %, plan gating, per-user targeting. is_feature_enabled() SQL function. All surfaces.', p: 75, e: '4h' },
+{ s: 'done', b: 'pre-launch', n: '0.025 DO-004: Cron failure alerting', d: 'CS-P1-005: evaluate-alerts EF checks cron health + metrics. Fires to alert_history with cooldown. Critical → email via Resend. pg_cron */5 min.', p: 75, e: '3h' },
+{ s: 'done', b: 'pre-launch', n: '0.026 AD-DO-001: Monitoring infra baseline', d: 'CS-P1-005: structured-logger.js all surfaces. JSON logs, PII stripping, PostHog batch. availability_checks table + v_availability_summary.', p: 75, e: '2h' },
+{ s: 'done', b: 'pre-launch', n: '0.027 AD-DO-002: PostHog API for admin', d: 'CS-P1-005: admin-posthog-insights.js — DAU/WAU/MAU, event trends, top events, feature flag status. API key from Vault via EF.', p: 75, e: '3h' },
+{ s: 'done', b: 'pre-launch', n: '0.028 AD-DO-003: Alerting pipeline', d: 'CS-P1-005: evaluate-alerts EF unified pipeline. 10 alert rule types, cooldown-aware, email routing for critical.', p: 75, e: '3h' },
+{ s: 'done', b: 'pre-launch', n: '0.029 AD-DO-004: Admin availability', d: 'CS-P1-005: availability_checks + v_availability_summary. health-check EF records per-surface. pg_cron */10 min. Alert rules for surface-down.', p: 75, e: '2h' },
 
 // 0-F: Error Handling — Dashboard (Pod 3, P0/P1)
 { s: 'done', b: 'pre-launch', n: '0.030 BE-001: safeQuery() 22 call sites + reportError', d: 'CS-009: safeQuery wired to 22 call sites. reportError() surfaces all errors in PostHog. safeRpc() convenience wrapper added.', p: 75, e: '6h' },
