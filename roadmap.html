@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.38"></script>
+  <script src="/js/version.js?v=v7.39"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -1959,18 +1959,18 @@ const features = [
 // 0-P: Dependencies + Cost (Pod 3, P1)
 { s: 'done', b: 'pre-launch', n: '0.086 DM-001: npm audit clean', d: 'CS-015: npm audit 0 vulnerabilities. CI gate deferred to CS-021.', p: 75, e: '1h' },
 { s: 'done', b: 'pre-launch', n: '0.087 DM-002: SRI hashes all CDN scripts', d: 'CS-015: sha384 integrity + crossorigin=anonymous on pdf.js, mammoth, DOMPurify, docx.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.088 IX-DM-001: Landing CDN no SRI', d: 'Landing-specific SRI pass.', p: 75, e: '30min' },
+{ s: 'done', b: 'pre-launch', n: '0.088 IX-DM-001: Landing CDN no SRI', d: 'CS-P1-013: SRI on echarts + supabase-js (21 pages). Admin echarts pinned @5.6.0. Ahrefs/GTM accepted risk.', p: 75, e: '2h' },
 { s: 'done', b: 'pre-launch', n: '0.089 CE-001: EF rate limits expanded', d: 'CS-015: Rate limits on enrich-job (60/hr), create-checkout (10/hr), data-export (5/hr). DEFAULT_LIMITS registry updated.', p: 75, e: '2h' },
 { s: 'done', b: 'pre-launch', n: '0.090 CE-002: No cost visibility', d: 'CS-019+CS-P1-006: Budget alerts + cost-per-user modeling (8 vendor curves, configurable scenarios, projection chart).', p: 75, e: '1h' },
 
 // 0-Q: Landing SEO+Analytics (Pod 3, P2)
-{ s: 'todo', b: 'pre-launch', n: '0.091 IX-SEO-001: No canonical URL', d: 'Duplicate URL risk.', p: 75, e: '15min' },
-{ s: 'todo', b: 'pre-launch', n: '0.092 IX-SEO-002: No OG/Twitter cards', d: 'Blank social preview.', p: 75, e: '15min' },
-{ s: 'todo', b: 'pre-launch', n: '0.093 IX-SEO-003: JSON-LD stale', d: '315K vs 400K mismatch.', p: 75, e: '15min' },
+{ s: 'done', b: 'pre-launch', n: '0.091 IX-SEO-001: No canonical URL', d: 'CS-P1-013: Verified present on all surfaces.', p: 75, e: '5min' },
+{ s: 'done', b: 'pre-launch', n: '0.092 IX-SEO-002: OG + Twitter cards', d: 'CS-P1-013: Twitter cards + og:url/image on 21 pages.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.093 IX-SEO-003: JSON-LD stale', d: 'CS-P1-013: FAQ updated to tier pricing. Schema verified.', p: 75, e: '30min' },
 { s: 'done', b: 'pre-launch', n: '0.094 IX-DA-001: PostHog no identity', d: 'CS-003 + CS-018: posthog.identify() on landing showLoggedIn(), dashboard init, extension via user_id. Full cross-surface identity merge.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.095 IX-DA-002: Broken referral pipeline', d: 'Resolved by anon key fix.', p: 75, e: '30min' },
+{ s: 'done', b: 'pre-launch', n: '0.095 IX-DA-002: Referral attribution chain', d: 'CS-P1-013: signUp passes referral_code. linkReferral() calls lifecycle EF. Server-side code lookup.', p: 75, e: '2h' },
 { s: 'done', b: 'pre-launch', n: '0.096 IX-BE-002: Stale "Live" labels', d: 'CS-014: Staleness badge shows when stats cache > 1h old. Retry button on fetch failure.', p: 75, e: '30min' },
-{ s: 'todo', b: 'pre-launch', n: '0.097 IX-FE-006: URL hardcoding .io refs', d: 'Old domain. Replace.', p: 75, e: '30min' },
+{ s: 'done', b: 'pre-launch', n: '0.097 IX-FE-006: URL hardcoding .io refs', d: 'CS-P1-013: Verified clean. No brilliantjobs.io in source.', p: 75, e: '5min' },
 
 // 0-R: DevOps (Pod 3, P2)
 { s: 'done', b: 'pre-launch', n: '0.098 DO-005: Staging + CI/CD', d: 'CS-020: ci.yml + deploy.yml + load-test.yml. Staging branch + Vercel preview.', p: 75, e: '3h' },

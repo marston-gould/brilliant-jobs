@@ -2927,7 +2927,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 |---|------|------|--------|--------|-------|
 | 0.086 | DM-001: No vulnerability scanning | 1h | CS-015 | ✅ | Add to CI pipeline. |
 | 0.087 | DM-002: CDN deps without SRI hashes | 1h | CS-015 | ✅ | 5+ scripts no integrity=. Generate SRI for all. |
-| 0.088 | IX-DM-001: Landing CDN deps without SRI | 30min | — | 🔲 | Landing-specific SRI pass. |
+| 0.088 | IX-DM-001: Landing CDN deps without SRI | 30min | 2h | ✅ | CS-P1-013: SRI hashes on all CDN echarts + supabase-js scripts. Pinned supabase-js to @2.98.0, echarts admin to @5.6.0. Ahrefs/GTM documented as accepted risk (dynamic scripts). |
 | 0.089 | CE-001: No AI API spend controls | 2h | CS-015 | ✅ | Uncontrolled Anthropic spend. Per-function tracking + budget alerts + kill switches. |
 | 0.090 | CE-002: No infrastructure cost visibility | 1h | CS-019+CS-P1-006 | ✅ | CS-019: Cost dashboard with budget alerts. CS-P1-006: Added cost-per-user modeling — vendor cost curves for 8 vendors (Supabase, Vercel, Anthropic, Cloudflare, Resend, Vonage, DataForSEO, PostHog), configurable user scenarios (100/500/1000), per-user and total cost projection chart. |
 
@@ -2935,13 +2935,13 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.091 | IX-SEO-001: No canonical URL tag | 15min | — | 🔲 | Duplicate URL indexing risk. |
-| 0.092 | IX-SEO-002: No OG / Twitter Card tags | 15min | — | 🔲 | Blank social sharing preview. |
-| 0.093 | IX-SEO-003: JSON-LD structured data stale | 15min | — | 🔲 | 315K vs 400K mismatch. |
+| 0.091 | IX-SEO-001: No canonical URL tag | 15min | 5min | ✅ | CS-P1-013: Canonical tags verified on all surfaces (already present from prior sessions). |
+| 0.092 | IX-SEO-002: No OG / Twitter Card tags | 15min | 1h | ✅ | CS-P1-013: Twitter Card + og:url/image added to 6 SEO pages + 15 industry pages. All surfaces now have og:title + twitter:card. |
+| 0.093 | IX-SEO-003: JSON-LD structured data stale | 15min | 30min | ✅ | CS-P1-013: FAQ answer updated (removed stale beta text, added tier pricing). Pricing schema verified ($0/$20/$40). Organization logo URL present. |
 | 0.094 | IX-DA-001: PostHog no identity bridge | 1h | 0h | ✅ | CS-003: PostHog init on all surfaces. CS-018: posthog.identify() in landing showLoggedIn(). Dashboard + extension already identified. Full cross-surface identity merge. |
-| 0.095 | IX-DA-002: Broken referral pipeline | 30min | — | 🔲 | Resolved by 0.047 anon key fix. |
+| 0.095 | IX-DA-002: Broken referral pipeline | 30min | 2h | ✅ | CS-P1-013: Referral code now passed in signUp metadata + linkReferral() calls referral-lifecycle after signup. Server-side handles referral_code lookup. End-to-end attribution chain restored. |
 | 0.096 | IX-BE-002: Stale "Live" stats labels | 30min | CS-014 | ✅ | Add staleness badge with refresh timestamp. |
-| 0.097 | IX-FE-006: URL hardcoding (brilliantjobs.io refs) | 30min | — | 🔲 | Old domain refs. Replace. |
+| 0.097 | IX-FE-006: URL hardcoding (brilliantjobs.io refs) | 30min | 5min | ✅ | CS-P1-013: Verified — zero brilliantjobs.io refs in source (already cleaned in prior sessions). |
 
 ### 0-R: DevOps + Infra (Pod 3, P2)
 
@@ -3039,6 +3039,12 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.147 | TS1-4: No A/B testing drip emails | 2h | CS-P1-012 | ✅ | A/B framework: ab_experiments + ab_assignments + ab_results tables, assignVariant(), resolveTemplate wired, PostHog tracking. 3 draft experiments seeded. |
 | 0.148 | TS1-5: Credit alert SMS overflow | 30min | CS-P1-012 | ✅ | safeSms() enforces 160-char limit. Applied to all templates + sendSMS safety net. creditAlertSms compact phrasing. |
 | 0.149 | TS1-6: 181KB monolithic email template | 3h | CS-P1-012 | ✅ | Split into 8 modules (largest 45.9KB). Barrel re-export preserves all existing imports. |
+| 0.150 | IX-DM-001: CDN SRI hashes | 2h | CS-P1-013 | ✅ | SRI on echarts + supabase-js across 21 pages. Admin echarts pinned @5.6.0. Ahrefs/GTM accepted risk (dynamic). |
+| 0.151 | IX-SEO-001: Canonical URL tag | 5min | CS-P1-013 | ✅ | Verified present on all surfaces. |
+| 0.152 | IX-SEO-002: OG + Twitter Card tags | 1h | CS-P1-013 | ✅ | Twitter Card added to 21 pages. og:url + og:image added where missing. |
+| 0.153 | IX-SEO-003: JSON-LD stale values | 30min | CS-P1-013 | ✅ | FAQ updated to tier pricing. Schema pricing verified. Organization logo present. |
+| 0.154 | IX-DA-002: Referral attribution chain | 2h | CS-P1-013 | ✅ | signUp passes referral_code/source. linkReferral() fires referee_signup to lifecycle EF. Server-side code lookup. |
+| 0.155 | IX-FE-006: URL hardcoding .io refs | 5min | CS-P1-013 | ✅ | Verified clean — no brilliantjobs.io in source. |
 
 ### 0-AA: Quality Gates — Regression Prevention (Phase 0d, parallel)
 

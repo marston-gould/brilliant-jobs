@@ -34,15 +34,16 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**CS-P1-012** — Email/SMS Templates + Transactional CX (Phase D: CX + Analytics)
+**CS-P1-013** — SEO + SRI + Referral Pipeline (Phase E: SEO + Compliance)
 - Completed: 2026-03-07
-- Tags: `p1-012@1.0.0-email-sms-cx`, `email-templates@1.0.0-modular`
-- TS1-3: Dark mode added to whiteBaseLayout — @media (prefers-color-scheme: dark) block with full element overrides. color-scheme + supported-color-schemes meta tags added to both layouts. 49 white-theme templates now dual-mode.
-- TS1-4: A/B drip framework — ab_experiments, ab_assignments, ab_results tables with RLS. assignVariant() with weighted random + sticky assignment. resolveTemplate() wired with userId param. A/B tracking in notification_log payload. ab_assignments.email_sent marked on success. Hourly aggregation cron. 3 draft experiments seeded (onboarding_welcome, re_engagement_14d, re_engagement_30d).
-- TS1-5: SMS overflow — safeSms() utility enforcing 160-char single-segment limit with truncation + link fallback. Applied to all 4 SMS template functions. sendSMS() safety net guard added. creditAlertSms compact phrasing with plan truncation.
-- TS1-6: 188KB email-templates.ts split into 8 focused modules (email-base, email-core, email-credits, email-onboarding, email-analytics, email-referral, email-billing, email-engagement). Barrel re-export preserves all 16 existing edge function imports. Largest module: 45.9KB (exit gate: <60KB). 
-- Updated cs-p1-007 tests for modular file reads.
-- 31 new tests (1252 total). No product version bump (server-side only).
+- Tags: `p1-013@1.0.0-seo-sri-referral`, `index@0.7.0-seo`
+- IX-DM-001: SRI hashes added to all CDN echarts@5.5.0 + supabase-js@2.98.0 scripts across 21 pages. Admin echarts pinned @5.6.0 with SRI. Ahrefs/GTM documented as accepted risk (dynamic third-party scripts, can't pin).
+- IX-SEO-001: Canonical URL tags verified present on all surfaces (already deployed in prior sessions).
+- IX-SEO-002: Twitter Card meta tags + og:url + og:image added to 6 SEO pages + 15 industry pages. All pages now have full social sharing previews.
+- IX-SEO-003: JSON-LD FAQ answer updated — removed stale "free during beta" text, replaced with tier-based pricing. Schema pricing verified ($0/$20/$40). Organization logo URL present.
+- IX-DA-002: Referral attribution chain fixed. signUp now passes referral_code + referral_source in metadata. New linkReferral() function calls referral-lifecycle EF with referee_signup event. Server-side handleStatusUpdate extended to look up referrals by code when no referral_id provided.
+- IX-FE-006: Verified — zero brilliantjobs.io references in source (already cleaned in v3.44).
+- 97 new tests (1349 total). Product version bumped to v7.39.
 
 ---
 
@@ -54,18 +55,18 @@ None.
 
 ## Next Session
 
-**CS-P1-013: SEO + SRI + Referral Pipeline** (Phase E: SEO + Compliance)
+**CS-P1-014: Compliance: PII Inventory + DPAs + Data Rights** (Phase E: SEO + Compliance)
 
 | Field | Detail |
 |-------|--------|
-| Surface | Landing Page + SEO Pages |
-| Fix Items | IX-DM-001, IX-SEO-001, IX-SEO-002, IX-SEO-003, IX-DA-002, IX-FE-006 |
-| Hours | 12–18h |
-| Pair | Frontend + Data |
+| Surface | All Surfaces |
+| Fix Items | CP-001, CP-002, AD-CP-001, AD-CP-002, AD-CP-003 |
+| Hours | 20–30h |
+| Pair | Backend + Security + Legal |
 
-**Entry Gate:** CS-P1-012 complete (email/SMS templates done).
+**Entry Gate:** CS-P1-013 complete (SEO + SRI + referral done).
 
-**Exit Gate:** CDN scripts have SRI hashes. Canonical URL tag present. OG/Twitter cards deployed. JSON-LD accurate. Referral attribution chain intact through auth redirect. All .io references replaced with .app.
+**Exit Gate:** PII inventory complete. DPA with Anthropic executed. User deletion + export functional.
 
 ---
 
@@ -75,22 +76,23 @@ None.
 |---------|---------|-------------|
 | Dashboard | `dashboard@1.0.0-bundle` | CS-016 |
 | Extension | `extension@2.21.0-cx-hardening` | CS-P1-011 |
-| Landing Page | `index@0.6.0-architecture` | CS-018 |
+| Landing Page | `index@0.7.0-seo` | CS-P1-013 |
 | Admin | `admin@1.2.0-hardening` | G11+G12 |
 | Load Tests | `loadtest@1.0.0` | CS-020 |
 | CI/CD | `cicd@1.0.0` | CS-020 |
 | Quality Gates | `qualitygates@1.0.0` | CS-021 |
 | Dry Run | `dryrun@1.0.0` | CS-022 |
-| SEO Pages | (no remediation tag yet) | — |
+| SEO Pages | `seo-pages@1.0.0-sri-og` | CS-P1-013 |
 | Email Templates | `email-templates@1.0.0-modular` | CS-P1-012 |
-| Phase 1 Security | `p1-012@1.0.0-email-sms-cx` | CS-P1-012 |
+| Phase 1 Security | `p1-013@1.0.0-seo-sri-referral` | CS-P1-013 |
 
 ---
 
-## Completed Sessions (24 of 24 + 12 Phase 1)
+## Completed Sessions (24 of 24 + 13 Phase 1)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
+| CS-P1-013 | 2026-03-07 | IX-DM-001 (SRI), IX-SEO-001 (canonical), IX-SEO-002 (OG/Twitter), IX-SEO-003 (JSON-LD), IX-DA-002 (referral chain), IX-FE-006 (.io refs) | p1-013@1.0.0-seo-sri-referral |
 | CS-P1-012 | 2026-03-07 | TS1-3 (dark mode email), TS1-4 (A/B drip framework), TS1-5 (SMS overflow), TS1-6 (template modularization) | p1-012@1.0.0-email-sms-cx |
 | CS-P1-011 | 2026-03-07 | ES1-2 (a11y baseline), ES1-4 (token sync), ES1-5 (version check), ES1-6 (ATS BambooHR+JazzHR), ES1-7 (password reset), ES1-8 (tab labels) | p1-011@1.0.0-extension-cx |
 | CS-P1-010 | 2026-03-07 | DS1-8 (Gmail onboarding), DS1-11 (unified setup), DS1A-13 (extension walkthrough), DS1A-14 (tuning dark), DS1A-15 (pipeline nav), DS1A-16 (resume color), DS1A-17 (notif events), DS1A-18 (snooze dedup), DS1A-19 (sub dark), DS1A-20 (admin survey gate), DS1A-21 (referral !important) | p1-010@1.0.0-cx-polish |
@@ -130,11 +132,10 @@ None.
 
 ---
 
-## Remaining Sessions (5 of 17 Phase 1)
+## Remaining Sessions (4 of 17 Phase 1)
 
 | Session | Phase | Title | Hours |
 |---------|-------|-------|-------|
-| CS-P1-013 | E | SEO + SRI + Referral Pipeline | 12–18h |
 | CS-P1-014 | E | Compliance: PII Inventory + DPAs + Data Rights | 20–30h |
 | CS-P1-015 | F | TypeScript Migration (Incremental) | 24–40h |
 | CS-P1-016 | G | Admin Monitoring: Cron + PostHog + A/B + UX | 20–30h |

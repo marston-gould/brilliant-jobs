@@ -103,8 +103,64 @@ async function handleInviteSent(sb: any, event: ReferralEvent) {
 }
 
 async function handleStatusUpdate(sb: any, event: ReferralEvent) {
-  const { referral_id, type } = event;
-  if (!referral_id) return json({ error: 'referral_id required' }, 400);
+  const { type } = event;
+  let { referral_id } = event;
+
+  // IX-DA-002: For referee_signup, allow lookup by referral_code when referral_id not provided
+  if (!referral_id && type === 'referee_signup' && event.metadata?.referral_code) {
+    const { data: found } = await sb
+      .from('referral_invites')
+      .select('id, referral_code')
+      .eq('referral_code', event.metadata.referral_code)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (found) {
+      // Create or update referral row linking referee to this invite
+      const { data: existingRef } = await sb
+        .from('referrals')
+        .select('id')
+        .eq('referral_code', event.metadata.referral_code)
+        .is('referred_id', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (existingRef) {
+        await sb
+          .from('referrals')
+          .update({ referred_id: event.referee_id, status: 'signed_up', signed_up_at: new Date().toISOString() })
+          .eq('id', existingRef.id);
+        referral_id = existingRef.id;
+      } else {
+        // No existing referral row — check referral_invites for referrer
+        const { data: invite } = await sb
+          .from('referral_invites')
+          .select('user_id')
+          .eq('referral_code', event.metadata.referral_code)
+          .single();
+
+        if (invite) {
+          const { data: newRef } = await sb
+            .from('referrals')
+            .insert({
+              referrer_id: invite.user_id,
+              referred_id: event.referee_id,
+              referral_code: event.metadata.referral_code,
+              source: event.metadata?.source || 'direct',
+              status: 'signed_up',
+              signed_up_at: new Date().toISOString(),
+            })
+            .select('id')
+            .single();
+          if (newRef) referral_id = newRef.id;
+        }
+      }
+    }
+  }
+
+  if (!referral_id) return json({ error: 'referral_id required (or valid referral_code for signup)' }, 400);
 
   // Get referral details
   const { data: referral } = await sb

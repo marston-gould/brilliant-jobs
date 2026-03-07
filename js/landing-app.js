@@ -231,6 +231,9 @@ document.addEventListener('DOMContentLoaded', function() {
         $('#signup-btn').disabled = true;
         $('#signup-btn').textContent = 'Creating account...';
 
+        var refCode = window.bjReferral ? window.bjReferral.getCode() : '';
+        var refSource = window.bjReferral ? window.bjReferral.getSource() : '';
+
         var result = await sb.auth.signUp({
           email: email, password: password,
           options: {
@@ -238,7 +241,9 @@ document.addEventListener('DOMContentLoaded', function() {
               full_name: fullName,
               linkedin_url: linkedin,
               marketing_optin: optin,
-              signup_elapsed_seconds: elapsedSeconds
+              signup_elapsed_seconds: elapsedSeconds,
+              referral_code: refCode,
+              referral_source: refSource
             }
           }
         });
@@ -262,6 +267,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (data.user && data.user.id) {
           triggerValidation(data.user.id);
+          // IX-DA-002: Link referral attribution after signup
+          if (refCode) {
+            linkReferral(data.user.id, refCode, refSource);
+          }
         }
 
         var sessionCheck = await sb.auth.getSession();
@@ -299,6 +308,20 @@ document.addEventListener('DOMContentLoaded', function() {
       } catch (e) {
         bjError('validation_call_failed', e);
         console.log('[BJ] Validation call failed (will default to manual review):', e.message);
+      }
+    }
+
+    // IX-DA-002: Link referral after signup — fire-and-forget
+    async function linkReferral(userId, code, source) {
+      try {
+        await fetch(SUPABASE_URL + '/functions/v1/referral-lifecycle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+          body: JSON.stringify({ type: 'referee_signup', referee_id: userId, metadata: { referral_code: code, source: source } }),
+        });
+        console.log('[BJ] Referral linked:', code, '→', userId);
+      } catch (e) {
+        bjError('referral_link_failed', e);
       }
     }
 
