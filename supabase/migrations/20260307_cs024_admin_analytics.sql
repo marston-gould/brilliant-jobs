@@ -41,8 +41,7 @@ RETURNS TABLE (
   total_bytes BIGINT,
   total_size TEXT,
   index_bytes BIGINT,
-  index_size TEXT,
-  toast_bytes BIGINT
+  index_size TEXT
 )
 LANGUAGE sql
 SECURITY DEFINER
@@ -55,8 +54,7 @@ AS $$
     pg_total_relation_size(relid) AS total_bytes,
     pg_size_pretty(pg_total_relation_size(relid)) AS total_size,
     pg_indexes_size(relid) AS index_bytes,
-    pg_size_pretty(pg_indexes_size(relid)) AS index_size,
-    COALESCE(pg_total_relation_size(reltoastrelid), 0) AS toast_bytes
+    pg_size_pretty(pg_indexes_size(relid)) AS index_size
   FROM pg_stat_user_tables
   ORDER BY pg_total_relation_size(relid) DESC
   LIMIT 50;
