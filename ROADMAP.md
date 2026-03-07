@@ -2867,7 +2867,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 |---|------|------|--------|--------|-------|
 | 0.056 | FE-001: 818KB unsplit bundle → code split | 6h | CS-016 | ✅ | Route-based split. 153KB initial (was 491KB). 6 chunks with lazy loading. |
 | 0.057 | FE-005: Global scope pollution (30 JS via window) | 4h | CS-P1-004 | ✅ | BJ namespace registry (42 files). BJ.export() + _registry. Backward-compat window aliases for onclick handlers. Full module migration in Phase F. |
-| 0.058 | FE-006: No TypeScript | 4h | — | 🔲 | Incremental: new files .ts, tsconfig strict. |
+| 0.058 | FE-006: No TypeScript | 4h | CS-P1-015 | ✅ | tsconfig strict. 7 core modules (.ts): globals, api, sync, version, fingerprint, tier-gating, lazy-loader. Shared type definitions (index.d.ts). CI type-check gate (tsc --noEmit). ADR-04 documents incremental path. |
 | 0.059 | BE-007: No API versioning | 1h | CS-P1-004 | ✅ | Date-based API versioning (2026-03-07). api-version.ts shared module. x-api-version header on 10 EFs (7 direct + 3 via middleware). |
 | 0.060 | IX-FE-002: Inline CSS/JS extraction landing | 2h | CS-018 | ✅ | CS-014: 98 inline styles extracted. CS-018: Full extraction — 625-line inline style block + all inline JS moved to external files. index.html 2260→791 lines. Zero inline executable scripts. |
 | 0.061 | IX-FE-005: No search debounce | 30min | CS-P1-004 | ✅ | Dashboard: 300ms debounce in job-feed.js. Landing: button-click + disable-during-request + server rate limiting. Verified CS-P1-004. |

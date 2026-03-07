@@ -6,7 +6,7 @@
 # Usage: ./scripts/bump-version.sh 6.73
 #
 # Updates:
-#   1. js/version.js         — BJ_VERSION variable
+#   1. js/version.ts         — BJ_VERSION variable
 #   2. All HTML ?v= params   — version.js, styles.css, .min.js busters
 #   3. HTML version comments  — dashboard, index, admin, compare
 #   4. CHANGELOG.md           — prepends entry placeholder
@@ -40,7 +40,7 @@ if ! echo "$NEW_VERSION" | grep -qP '^\d+\.\d+$'; then
 fi
 
 # Extract current version
-CURRENT_VERSION=$(grep -oP "BJ_VERSION = 'v\K[0-9.]+" js/version.js)
+CURRENT_VERSION=$(grep -oP "BJ_VERSION = 'v\K[0-9.]+" js/version.ts)
 CURRENT_V="v${CURRENT_VERSION}"
 
 echo ""
@@ -51,9 +51,9 @@ echo ""
 
 CHANGED=0
 
-# --- 1. js/version.js ---
-echo -e "${YELLOW}[1/4] js/version.js${NC}"
-sed -i "s/BJ_VERSION = '${CURRENT_V}'/BJ_VERSION = '${NEW_V}'/" js/version.js
+# --- 1. js/version.ts ---
+echo -e "${YELLOW}[1/4] js/version.ts${NC}"
+sed -i "s/BJ_VERSION = '${CURRENT_V}'/BJ_VERSION = '${NEW_V}'/" js/version.ts
 echo -e "  ${GREEN}✓${NC} BJ_VERSION = '${NEW_V}'"
 CHANGED=$((CHANGED + 1))
 
@@ -120,5 +120,5 @@ echo -e "  4. Run pre-commit check: ${CYAN}bash scripts/pre-commit-version-check
 echo -e "  5. Commit, merge dev → staging → main"
 echo -e "  6. Tag: ${CYAN}git tag ${NEW_V}${NC}"
 echo -e "  7. Deploy via Vercel"
-echo -e "  8. Verify production: ${CYAN}curl -s brilliantjobs.app/js/version.js${NC}"
+echo -e "  8. Verify production: ${CYAN}curl -s brilliantjobs.app/js/version.ts${NC}"
 echo ""

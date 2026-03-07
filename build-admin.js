@@ -2,8 +2,8 @@ import { buildSync } from 'esbuild';
 import { readFileSync, writeFileSync, mkdirSync, unlinkSync } from 'fs';
 
 const jsFiles = [
-  'js/version.js',
-  'js/globals.js',
+  'js/version.ts',
+  'js/globals.ts',
   'js/admin.js',
   'js/admin-blocks.js',
   'js/admin-companies.js',
@@ -41,10 +41,10 @@ const combined = jsFiles.map(f => `// === ${f} ===\n${readFileSync(f, 'utf-8')}`
 
 mkdirSync('dist', { recursive: true });
 writeFileSync('dist/admin.js', combined);
-writeFileSync('dist/_tmp_admin.js', combined);
+writeFileSync('dist/_tmp_admin.ts', combined);
 
 buildSync({
-  entryPoints: ['dist/_tmp_admin.js'],
+  entryPoints: ['dist/_tmp_admin.ts'],
   outfile: 'dist/admin.min.js',
   minifySyntax: true,
   minifyWhitespace: true,
@@ -54,7 +54,7 @@ buildSync({
   bundle: false,
 });
 
-unlinkSync('dist/_tmp_admin.js');
+unlinkSync('dist/_tmp_admin.ts');
 
 const origSize = combined.length;
 const minSize = readFileSync('dist/admin.min.js', 'utf-8').length;

@@ -27,9 +27,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # ─── Gate 1 + 7: ESLint (No Silent Failures + Type Safety) ────────
+  # ─── Gate 1 + 7: ESLint + TypeScript (No Silent Failures + Type Safety) ─
   lint:
-    name: "Gate 1+7: ESLint"
+    name: "Gate 1+7: ESLint + TypeScript"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,8 +45,30 @@ jobs:
         run: npx eslint . --max-warnings 0 2>&1 || true
         # Note: || true during initial rollout; remove after legacy cleanup.
 
+      - name: TypeScript type-check
+        run: |
+          npx tsc --noEmit
+          echo "✅ TypeScript strict type-check passed"
+
+      - name: Reject new .js files in migrated directories
+        run: |
+          # CS-P1-015: Prevent new .js files from being added for migrated modules
+          MIGRATED_FILES="version globals sync fingerprint tier-gating lazy-loader api"
+          VIOLATIONS=""
+          for f in $MIGRATED_FILES; do
+            if git diff --name-only HEAD~1 2>/dev/null | grep -q "js/${f}.js$"; then
+              VIOLATIONS="$VIOLATIONS js/${f}.js"
+            fi
+          done
+          if [ -n "$VIOLATIONS" ]; then
+            echo "::error::New changes to migrated .js files detected:$VIOLATIONS"
+            echo "These files are auto-generated from .ts sources. Edit the .ts files instead."
+            exit 1
+          fi
+          echo "✅ No direct edits to generated .js files"
+
       - name: Gate 1+7 summary
-        run: echo "✅ Gate 1+7 ESLint checks complete" >> $GITHUB_STEP_SUMMARY
+        run: echo "✅ Gate 1+7 ESLint + TypeScript checks complete" >> $GITHUB_STEP_SUMMARY
 
   # ─── Gate 2 + 6: PostHog Monitoring + Instrumentation ─────────────
   monitoring:

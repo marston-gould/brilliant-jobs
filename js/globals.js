@@ -1,243 +1,154 @@
-// ============================================================
-// GLOBALS — Shared state across all dashboard modules
-// Must load before all other JS modules
-// ============================================================
-
-// ============================================================
-// CS-P1-004 FE-005: Controlled namespace registry
-// All new function exports MUST go through BJ.export() instead of window.X = Y.
-// Existing window.X aliases kept for backward compat with onclick handlers.
-// Phase F (TypeScript migration) will remove window.X aliases entirely.
-// ============================================================
 window.BJ = window.BJ || {};
 window.BJ._registry = {};
-/**
- * Register a function in the BJ namespace.
- * Also sets window[name] for backward compat with HTML onclick handlers.
- * @param {string} name - Function name
- * @param {Function} fn - The function to register
- * @param {string} [module] - Source module for debugging
- */
 window.BJ.export = function(name, fn, module) {
   window.BJ[name] = fn;
-  window.BJ._registry[name] = { module: module || 'unknown', registered: Date.now() };
-  // Backward compat: also set on window for onclick= handlers
-  // TODO(Phase-F): Remove after migrating all onclick handlers to event delegation
+  window.BJ._registry[name] = { module: module || "unknown", registered: Date.now() };
   window[name] = fn;
 };
-
-const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
-
-// DO-002: Connection management — Supavisor pooler enabled at project level.
-// REST API (PostgREST) is automatically pooled. Client-side uses REST only.
-// Edge Functions use pooled connection via SUPABASE_SERVICE_ROLE_KEY.
-// Global fetch wrapper adds 30s timeout to prevent hung connections.
+const SUPABASE_URL = "https://qojhagupdnbtomfoxnsf.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-  db: { schema: 'public' },
+  db: { schema: "public" },
   auth: { persistSession: true, autoRefreshToken: true },
   global: {
     fetch: function(url, options) {
       var controller = new AbortController();
-      var timeoutId = setTimeout(function() { controller.abort(); }, 30000);
-      return fetch(url, Object.assign({}, options, { signal: controller.signal }))
-        .finally(function() { clearTimeout(timeoutId); });
+      var timeoutId = setTimeout(function() {
+        controller.abort();
+      }, 3e4);
+      return fetch(url, Object.assign({}, options, { signal: controller.signal })).finally(function() {
+        clearTimeout(timeoutId);
+      });
     }
   }
 });
-window.bjSupabase = sb; // Expose for IIFE modules (referrals.js, etc.)
-window._bjSupa = sb; // Legacy alias for admin modules
-
-// PostHog analytics (A13)
-window.POSTHOG_API_KEY = 'phc_RqMlQQfq0G0DOikTlgyRO43USYm1h4Jd1aBneeIR6ww';
-const $ = s => document.querySelector(s);
-const $$ = s => document.querySelectorAll(s);
-
-// ============================================================
-// XSS PROTECTION — escapeHtml utility (v3.90)
-// ============================================================
-// Use for any user-generated content rendered via innerHTML/template literals.
-// Does NOT replace DOMPurify for untrusted rich HTML (job descriptions).
-
-var _escapeEl = document.createElement('div');
-/**
- * Escape HTML special characters to prevent XSS.
- * @param {string} str - Untrusted string
- * @returns {string} Escaped string safe for innerHTML
- */
+window.bjSupabase = sb;
+window._bjSupa = sb;
+window.POSTHOG_API_KEY = "phc_RqMlQQfq0G0DOikTlgyRO43USYm1h4Jd1aBneeIR6ww";
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => document.querySelectorAll(s);
+var _escapeEl = document.createElement("div");
 function escapeHtml(str) {
-  if (!str) return '';
+  if (!str) return "";
   _escapeEl.textContent = str;
   return _escapeEl.innerHTML;
 }
-
-/**
- * Truncate string with HTML escaping (safe for innerHTML).
- * Drop-in replacement for raw truncate() in user-generated contexts.
- * @param {string} str - Untrusted string
- * @param {number} max - Max length
- * @returns {string} Escaped and truncated string
- */
 function truncateSafe(str, max) {
-  if (!str) return '\u2014';
-  var trimmed = str.length > max ? str.slice(0, max) + '\u2026' : str;
+  if (!str) return "\u2014";
+  var trimmed = str.length > max ? str.slice(0, max) + "\u2026" : str;
   return escapeHtml(trimmed);
 }
-
-// ============================================================
-// TOAST NOTIFICATION SYSTEM — User-facing errors (v3.90)
-// ============================================================
-// Replaces silent console.error/warn for Supabase failures, auth issues, etc.
-
 var _toastContainer = null;
 var _toastQueue = [];
 var _toastCount = 0;
 var _MAX_TOASTS = 3;
-
 function _ensureToastContainer() {
   if (_toastContainer && document.body.contains(_toastContainer)) return;
-  _toastContainer = document.createElement('div');
-  _toastContainer.id = 'bj-toast-container';
-  _toastContainer.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:99998;display:flex;flex-direction:column-reverse;gap:8px;pointer-events:none;max-width:380px;';
+  _toastContainer = document.createElement("div");
+  _toastContainer.id = "bj-toast-container";
+  _toastContainer.style.cssText = "position:fixed;bottom:24px;right:24px;z-index:99998;display:flex;flex-direction:column-reverse;gap:8px;pointer-events:none;max-width:380px;";
   document.body.appendChild(_toastContainer);
 }
-
-/**
- * Show a toast notification to the user.
- * @param {string} message - Message text (will be escaped)
- * @param {object} opts - { type: 'error'|'warning'|'success'|'info', duration: ms, action: { label, fn } }
- */
 function showToast(message, opts) {
-  var type = (opts && opts.type) || 'info';
-  var duration = (opts && opts.duration) || (type === 'error' ? 6000 : 4000);
-
+  var type = opts && opts.type || "info";
+  var duration = opts && opts.duration || (type === "error" ? 6e3 : 4e3);
   _ensureToastContainer();
-
-  // Enforce max visible toasts
   if (_toastCount >= _MAX_TOASTS) {
-    var oldest = _toastContainer.querySelector('.bj-toast');
+    var oldest = _toastContainer.querySelector(".bj-toast");
     if (oldest) _dismissToast(oldest);
   }
-
   var colors = {
-    error:   { bg: 'hsl(0, 84%, 60%)',   icon: '\u2716' },
-    warning: { bg: 'hsl(38, 92%, 50%)',   icon: '\u26A0' },
-    success: { bg: 'hsl(142, 71%, 45%)',  icon: '\u2714' },
-    info:    { bg: 'hsl(217, 100%, 62%)', icon: '\u2139' }
+    error: { bg: "hsl(0, 84%, 60%)", icon: "\u2716" },
+    warning: { bg: "hsl(38, 92%, 50%)", icon: "\u26A0" },
+    success: { bg: "hsl(142, 71%, 45%)", icon: "\u2714" },
+    info: { bg: "hsl(217, 100%, 62%)", icon: "\u2139" }
   };
   var c = colors[type] || colors.info;
-
-  var toast = document.createElement('div');
-  toast.className = 'bj-toast';
-  toast.style.cssText = 'pointer-events:auto;display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:10px;background:hsl(230,28%,14%);color:#f0f1f3;font-size:13px;font-family:Outfit,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,0.3);opacity:0;transform:translateY(12px);transition:opacity .25s,transform .25s;max-width:380px;word-break:break-word;';
-
-  var iconSpan = '<span style="flex-shrink:0;width:24px;height:24px;border-radius:50%;background:' + c.bg + ';display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;">' + c.icon + '</span>';
+  var toast = document.createElement("div");
+  toast.className = "bj-toast";
+  toast.style.cssText = "pointer-events:auto;display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:10px;background:hsl(230,28%,14%);color:#f0f1f3;font-size:13px;font-family:Outfit,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,0.3);opacity:0;transform:translateY(12px);transition:opacity .25s,transform .25s;max-width:380px;word-break:break-word;";
+  var iconSpan = '<span style="flex-shrink:0;width:24px;height:24px;border-radius:50%;background:' + c.bg + ';display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;">' + c.icon + "</span>";
   var closeBtn = '<button style="flex-shrink:0;background:none;border:none;color:#94a3b8;cursor:pointer;font-size:16px;padding:0 0 0 8px;line-height:1;" title="Dismiss">\u2715</button>';
-  var actionHtml = '';
+  var actionHtml = "";
   if (opts && opts.action) {
-    actionHtml = '<button class="bj-toast-action" style="flex-shrink:0;background:none;border:1px solid rgba(255,255,255,0.25);color:#fff;border-radius:4px;padding:3px 10px;font-size:11px;cursor:pointer;white-space:nowrap;">' + escapeHtml(opts.action.label) + '</button>';
+    actionHtml = '<button class="bj-toast-action" style="flex-shrink:0;background:none;border:1px solid rgba(255,255,255,0.25);color:#fff;border-radius:4px;padding:3px 10px;font-size:11px;cursor:pointer;white-space:nowrap;">' + escapeHtml(opts.action.label) + "</button>";
   }
-  toast.innerHTML = iconSpan + '<span style="flex:1;">' + escapeHtml(message) + '</span>' + actionHtml + closeBtn;
-
-  // Close button handler
-  toast.querySelector('button:last-child').addEventListener('click', function() { _dismissToast(toast); });
-
-  // Action button handler
+  toast.innerHTML = iconSpan + '<span style="flex:1;">' + escapeHtml(message) + "</span>" + actionHtml + closeBtn;
+  toast.querySelector("button:last-child").addEventListener("click", function() {
+    _dismissToast(toast);
+  });
   if (opts && opts.action) {
-    toast.querySelector('.bj-toast-action').addEventListener('click', function() {
+    toast.querySelector(".bj-toast-action").addEventListener("click", function() {
       if (opts.action.fn) opts.action.fn();
       _dismissToast(toast);
     });
   }
-
   _toastContainer.appendChild(toast);
   _toastCount++;
-
-  // Animate in
-  requestAnimationFrame(function() { toast.style.opacity = '1'; toast.style.transform = 'translateY(0)'; });
-
-  // Auto-dismiss
+  requestAnimationFrame(function() {
+    toast.style.opacity = "1";
+    toast.style.transform = "translateY(0)";
+  });
   if (duration > 0) {
-    setTimeout(function() { _dismissToast(toast); }, duration);
+    setTimeout(function() {
+      _dismissToast(toast);
+    }, duration);
   }
-
   return toast;
 }
-
 function _dismissToast(toast) {
   if (!toast || !toast.parentNode) return;
-  toast.style.opacity = '0';
-  toast.style.transform = 'translateY(12px)';
+  toast.style.opacity = "0";
+  toast.style.transform = "translateY(12px)";
   setTimeout(function() {
     if (toast.parentNode) toast.parentNode.removeChild(toast);
     _toastCount = Math.max(0, _toastCount - 1);
   }, 250);
 }
-
-// Convenience shortcuts
-function toastError(msg, opts) { return showToast(msg, Object.assign({ type: 'error' }, opts || {})); }
-function toastWarning(msg, opts) { return showToast(msg, Object.assign({ type: 'warning' }, opts || {})); }
-function toastSuccess(msg, opts) { return showToast(msg, Object.assign({ type: 'success' }, opts || {})); }
-function toastInfo(msg, opts) { return showToast(msg, Object.assign({ type: 'info' }, opts || {})); }
-
-// ============================================================
-// LOCALSTORAGE ENCRYPTION FOR PII (v3.90)
-// ============================================================
-// Encrypts sensitive data at rest using AES-GCM with a key derived from the user's session.
-// Only PII keys are encrypted: resume text, keywords, LinkedIn profile data.
-
+function toastError(msg, opts) {
+  return showToast(msg, Object.assign({ type: "error" }, opts || {}));
+}
+function toastWarning(msg, opts) {
+  return showToast(msg, Object.assign({ type: "warning" }, opts || {}));
+}
+function toastSuccess(msg, opts) {
+  return showToast(msg, Object.assign({ type: "success" }, opts || {}));
+}
+function toastInfo(msg, opts) {
+  return showToast(msg, Object.assign({ type: "info" }, opts || {}));
+}
 var _encryptionKey = null;
-var _PII_KEYS = ['bj_resumes', 'bj_readiness'];
-
-/**
- * Derive an AES-GCM encryption key from the user's Supabase session ID.
- * Key is deterministic per user (same user = same key).
- */
+var _PII_KEYS = ["bj_resumes", "bj_readiness"];
 async function _deriveEncryptionKey(userId) {
   if (_encryptionKey) return _encryptionKey;
   var encoder = new TextEncoder();
-  var keyMaterial = await crypto.subtle.importKey('raw', encoder.encode(userId + ':bj_pii_v1'), 'PBKDF2', false, ['deriveKey']);
+  var keyMaterial = await crypto.subtle.importKey("raw", encoder.encode(userId + ":bj_pii_v1"), "PBKDF2", false, ["deriveKey"]);
   _encryptionKey = await crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt: encoder.encode('brilliant-jobs-pii-salt'), iterations: 100000, hash: 'SHA-256' },
+    { name: "PBKDF2", salt: encoder.encode("brilliant-jobs-pii-salt"), iterations: 1e5, hash: "SHA-256" },
     keyMaterial,
-    { name: 'AES-GCM', length: 256 },
+    { name: "AES-GCM", length: 256 },
     false,
-    ['encrypt', 'decrypt']
+    ["encrypt", "decrypt"]
   );
   return _encryptionKey;
 }
-
-/**
- * Encrypt a string value for localStorage storage.
- * @param {string} plaintext - Value to encrypt
- * @param {string} userId - User ID for key derivation
- * @returns {Promise<string>} Base64-encoded ciphertext with IV prefix
- */
 async function encryptForStorage(plaintext, userId) {
   try {
     var key = await _deriveEncryptionKey(userId);
     var encoder = new TextEncoder();
     var iv = crypto.getRandomValues(new Uint8Array(12));
-    var encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, encoder.encode(plaintext));
-    // Prepend IV to ciphertext
+    var encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoder.encode(plaintext));
     var combined = new Uint8Array(iv.length + encrypted.byteLength);
     combined.set(iv);
     combined.set(new Uint8Array(encrypted), iv.length);
-    return 'enc:' + btoa(String.fromCharCode.apply(null, combined));
+    return "enc:" + btoa(String.fromCharCode.apply(null, combined));
   } catch (e) {
-    console.warn('[BJ] Encryption failed, storing plaintext:', e.message);
+    console.warn("[BJ] Encryption failed, storing plaintext:", e.message);
     return plaintext;
   }
 }
-
-/**
- * Decrypt a localStorage value.
- * @param {string} ciphertext - Base64-encoded value from localStorage
- * @param {string} userId - User ID for key derivation
- * @returns {Promise<string>} Decrypted plaintext
- */
 async function decryptFromStorage(ciphertext, userId) {
-  if (!ciphertext || !ciphertext.startsWith('enc:')) return ciphertext; // Not encrypted
+  if (!ciphertext || !ciphertext.startsWith("enc:")) return ciphertext;
   try {
     var key = await _deriveEncryptionKey(userId);
     var raw = atob(ciphertext.slice(4));
@@ -245,205 +156,165 @@ async function decryptFromStorage(ciphertext, userId) {
     for (var i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
     var iv = bytes.slice(0, 12);
     var data = bytes.slice(12);
-    var decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, data);
+    var decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, data);
     return new TextDecoder().decode(decrypted);
   } catch (e) {
-    console.warn('[BJ] Decryption failed (key mismatch or corruption):', e.message);
+    console.warn("[BJ] Decryption failed (key mismatch or corruption):", e.message);
     return null;
   }
 }
-
-/** Check if a localStorage key is PII and should be encrypted */
 function isPiiKey(lsKey) {
   return _PII_KEYS.indexOf(lsKey) !== -1;
 }
-
-/**
- * Read a PII key from localStorage, decrypting if needed. (v5.16)
- * Falls back to plaintext for unencrypted legacy data (migration-safe).
- * @param {string} lsKey - localStorage key
- * @returns {Promise<any>} Parsed JSON value
- */
 async function readPiiData(lsKey) {
   var raw = localStorage.getItem(lsKey);
   if (!raw) return null;
-  if (raw.startsWith('enc:')) {
-    if (!currentUser) return null; // Can't decrypt without user — don't parse enc: string
+  if (raw.startsWith("enc:")) {
+    if (!currentUser) return null;
     var decrypted = await decryptFromStorage(raw, currentUser.id);
     if (decrypted) {
-      try { return JSON.parse(decrypted); } catch(e) { return null; }
+      try {
+        return JSON.parse(decrypted);
+      } catch (e) {
+        return null;
+      }
     }
-    return null; // Decryption failed — return null, never parse enc: as JSON
+    return null;
   }
-  try { return JSON.parse(raw); } catch(e) { return null; }
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
 }
-
-/**
- * Safe synchronous localStorage read. (v5.22 hotfix)
- * Returns fallback if the value starts with 'enc:' (encrypted, can't parse as JSON)
- * or if JSON.parse fails for any reason. Use this everywhere instead of raw
- * JSON.parse(localStorage.getItem(...)).
- */
 function safeReadLS(key, fallback) {
   try {
     var raw = localStorage.getItem(key);
     if (!raw) return fallback;
-    if (raw.startsWith('enc:')) return fallback; // Encrypted — needs async readPiiData()
+    if (raw.startsWith("enc:")) return fallback;
     return JSON.parse(raw);
-  } catch(e) { return fallback; }
+  } catch (e) {
+    return fallback;
+  }
 }
-window._safeReadLS = safeReadLS; // Expose for modules
-
-// ============================================================
-// SESSION MANAGEMENT HARDENING (v3.90)
-// ============================================================
-// - Monitors auth state changes for session expiry
-// - Auto-refreshes tokens before expiry
-// - Warns user before forced logout
-// - Inactivity timeout for PII protection
-
+window._safeReadLS = safeReadLS;
 var _sessionInactivityTimer = null;
-var _SESSION_INACTIVITY_MS = 30 * 60 * 1000; // 30 minutes
+var _SESSION_INACTIVITY_MS = 30 * 60 * 1e3;
 var _lastActivity = Date.now();
 var _sessionWarningShown = false;
-
-/** Initialize session management */
 function initSessionManagement() {
-  // Listen for auth state changes (session expiry, token refresh)
   sb.auth.onAuthStateChange(function(event, session) {
-    if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-      if (event === 'SIGNED_OUT') {
+    if (event === "SIGNED_OUT" || event === "TOKEN_REFRESHED") {
+      if (event === "SIGNED_OUT") {
         _clearSensitiveData();
-        window.location.href = '/?session_expired=1';
+        window.location.href = "/?session_expired=1";
       }
     }
-    if (event === 'TOKEN_REFRESHED') {
-      console.log('[BJ] Session token refreshed');
+    if (event === "TOKEN_REFRESHED") {
+      console.log("[BJ] Session token refreshed");
       _lastActivity = Date.now();
     }
   });
-
-  // Track user activity for inactivity timeout
-  ['click', 'keydown', 'scroll', 'mousemove'].forEach(function(evt) {
+  ["click", "keydown", "scroll", "mousemove"].forEach(function(evt) {
     document.addEventListener(evt, _trackActivity, { passive: true });
   });
-
-  // Check inactivity every minute
-  _sessionInactivityTimer = setInterval(_checkInactivity, 60000);
-
-  // Periodically verify session is still valid
-  setInterval(_verifySession, 5 * 60 * 1000); // every 5 min
+  _sessionInactivityTimer = setInterval(_checkInactivity, 6e4);
+  setInterval(_verifySession, 5 * 60 * 1e3);
 }
-
 function _trackActivity() {
   _lastActivity = Date.now();
   if (_sessionWarningShown) {
     _sessionWarningShown = false;
-    // User came back — dismiss inactivity warning
   }
 }
-
 function _checkInactivity() {
   var idle = Date.now() - _lastActivity;
   if (idle > _SESSION_INACTIVITY_MS && !_sessionWarningShown) {
     _sessionWarningShown = true;
-    showToast('Your session will expire soon due to inactivity.', {
-      type: 'warning',
-      duration: 0, // persistent until action
-      action: { label: 'Stay signed in', fn: function() {
+    showToast("Your session will expire soon due to inactivity.", {
+      type: "warning",
+      duration: 0,
+      // persistent until action
+      action: { label: "Stay signed in", fn: function() {
         _lastActivity = Date.now();
         _sessionWarningShown = false;
-        sb.auth.getSession(); // triggers refresh
-        toastSuccess('Session extended.');
-      }}
+        sb.auth.getSession();
+        toastSuccess("Session extended.");
+      } }
     });
   }
-  // Force logout after 2x the inactivity timeout
   if (idle > _SESSION_INACTIVITY_MS * 2) {
     _clearSensitiveData();
-    // CS-P1-007 DS1-4: Reset PostHog identity on forced logout
-    if (window.posthog) { try { posthog.reset(); } catch (_) {} }
+    if (window.posthog) {
+      try {
+        posthog.reset();
+      } catch (_) {
+      }
+    }
     sb.auth.signOut();
   }
 }
-
 async function _verifySession() {
   try {
     var result = await sb.auth.getSession();
     if (!result.data.session) {
-      toastError('Your session has expired. Please sign in again.', {
+      toastError("Your session has expired. Please sign in again.", {
         duration: 0,
-        action: { label: 'Sign in', fn: function() { window.location.href = '/'; } }
+        action: { label: "Sign in", fn: function() {
+          window.location.href = "/";
+        } }
       });
     }
   } catch (e) {
-    // Network error — don't force logout
   }
 }
-
-/** Clear sensitive data on logout / session expiry */
 function _clearSensitiveData() {
   _encryptionKey = null;
   _PII_KEYS.forEach(function(key) {
     localStorage.removeItem(key);
   });
-  // Clear any cached query data
   clearAllCaches();
 }
-
-// Auth
-let currentUser = null;
-
-// ============================================================
-// USER DATA SYNC — localStorage ↔ Supabase profiles.user_data
-// ============================================================
-// Maps short keys to localStorage keys
+var currentUser = null;
 const UD_KEYS = {
-  saved_filters: 'bj_saved_filters',
-  resumes: 'bj_resumes',
-  pipeline_meta: 'bj_pipeline_meta',
-  tuning: 'bj_tuning',
-  saved_jobs: 'bj_saved_jobs',
-  applied_jobs: 'bj_applied_jobs',
-  applied_dates: 'bj_applied_dates',
-  hidden_jobs: 'bj_hidden_jobs',
-  app_queue: 'bj_app_queue',
-  app_history: 'bj_app_history',
-  readiness: 'bj_readiness'
+  saved_filters: "bj_saved_filters",
+  resumes: "bj_resumes",
+  pipeline_meta: "bj_pipeline_meta",
+  tuning: "bj_tuning",
+  saved_jobs: "bj_saved_jobs",
+  applied_jobs: "bj_applied_jobs",
+  applied_dates: "bj_applied_dates",
+  hidden_jobs: "bj_hidden_jobs",
+  app_queue: "bj_app_queue",
+  app_history: "bj_app_history",
+  readiness: "bj_readiness"
 };
-const UD_LS_TO_SHORT = Object.fromEntries(Object.entries(UD_KEYS).map(([k,v]) => [v, k]));
-
-// Debounce timer for batched Supabase writes
+const UD_LS_TO_SHORT = Object.fromEntries(Object.entries(UD_KEYS).map(([k, v]) => [v, k]));
 let _udSyncTimer = null;
-let _udPendingKeys = new Set();
-
-/**
- * Save user data to localStorage AND queue Supabase sync.
- * Drop-in replacement for localStorage.setItem('bj_X', JSON.stringify(val)).
- * @param {string} lsKey - Full localStorage key (e.g. 'bj_saved_filters')
- * @param {string} jsonStr - JSON string to save
- */
+let _udPendingKeys = /* @__PURE__ */ new Set();
 function saveUserData(lsKey, jsonStr) {
-  // Size guard: warn if single key exceeds 500KB, reject if >2MB (v3.85)
   var bytes = new Blob([jsonStr]).size;
   if (bytes > 2 * 1024 * 1024) {
-    console.error('[BJ] Storage rejected: ' + lsKey + ' is ' + Math.round(bytes / 1024) + 'KB (>2MB limit)');
+    console.error("[BJ] Storage rejected: " + lsKey + " is " + Math.round(bytes / 1024) + "KB (>2MB limit)");
     return false;
   }
   if (bytes > 500 * 1024) {
-    console.warn('[BJ] Storage warning: ' + lsKey + ' is ' + Math.round(bytes / 1024) + 'KB');
+    console.warn("[BJ] Storage warning: " + lsKey + " is " + Math.round(bytes / 1024) + "KB");
   }
-  // v5.16: Encrypt PII keys at rest in localStorage
   if (isPiiKey(lsKey) && currentUser) {
     encryptForStorage(jsonStr, currentUser.id).then(function(encrypted) {
-      try { localStorage.setItem(lsKey, encrypted); }
-      catch (e) { console.error('[BJ] Storage full (encrypted):', e.message); _handleStorageFull(lsKey); }
+      try {
+        localStorage.setItem(lsKey, encrypted);
+      } catch (e) {
+        console.error("[BJ] Storage full (encrypted):", e.message);
+        _handleStorageFull(lsKey);
+      }
     });
   } else {
     try {
       localStorage.setItem(lsKey, jsonStr);
     } catch (e) {
-      console.error('[BJ] Storage full! Failed to save ' + lsKey + ':', e.message);
+      console.error("[BJ] Storage full! Failed to save " + lsKey + ":", e.message);
       _handleStorageFull(lsKey);
       return false;
     }
@@ -452,92 +323,72 @@ function saveUserData(lsKey, jsonStr) {
   if (shortKey && currentUser) {
     _udPendingKeys.add(shortKey);
     clearTimeout(_udSyncTimer);
-    _udSyncTimer = setTimeout(_flushUserData, 2000);
+    _udSyncTimer = setTimeout(_flushUserData, 2e3);
   }
   return true;
 }
-
-/** Flush all pending keys to Supabase in one PATCH */
 async function _flushUserData() {
   if (!currentUser || _udPendingKeys.size === 0) return;
   const patch = {};
   for (const key of _udPendingKeys) {
     const lsKey = UD_KEYS[key];
     try {
-      var raw = localStorage.getItem(lsKey) || 'null';
-      // v5.16: Decrypt PII before sending to cloud (cloud stays plaintext, protected by RLS)
-      if (isPiiKey(lsKey) && raw && raw.startsWith('enc:')) {
-        raw = await decryptFromStorage(raw, currentUser.id) || 'null';
+      var raw = localStorage.getItem(lsKey) || "null";
+      if (isPiiKey(lsKey) && raw && raw.startsWith("enc:")) {
+        raw = await decryptFromStorage(raw, currentUser.id) || "null";
       }
       patch[key] = JSON.parse(raw);
+    } catch {
+      patch[key] = null;
     }
-    catch { patch[key] = null; }
   }
   _udPendingKeys.clear();
   try {
-    const { error } = await sb.from('profiles')
-      .update({ user_data: sb.rpc ? undefined : undefined }) // placeholder
-      .eq('id', currentUser.id);
-    // Use raw PATCH to merge into JSONB (not overwrite entire column)
+    const { error } = await sb.from("profiles").update({ user_data: sb.rpc ? void 0 : void 0 }).eq("id", currentUser.id);
     const session = (await sb.auth.getSession())?.data?.session;
     const token = session?.access_token || SUPABASE_KEY;
-    await fetch(SUPABASE_URL + '/rest/v1/profiles?id=eq.' + currentUser.id, {
-      method: 'PATCH',
+    await fetch(SUPABASE_URL + "/rest/v1/profiles?id=eq." + currentUser.id, {
+      method: "PATCH",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token,
-        'apikey': SUPABASE_KEY,
-        'Prefer': 'return=minimal'
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token,
+        "apikey": SUPABASE_KEY,
+        "Prefer": "return=minimal"
       },
       body: JSON.stringify({ user_data: Object.assign(
-        safeReadLS('_bj_ud_cache', {}),
+        safeReadLS("_bj_ud_cache", {}),
         patch
-      )})
+      ) })
     });
-    // Update local cache of full user_data
-    const cached = safeReadLS('_bj_ud_cache', {});
+    const cached = safeReadLS("_bj_ud_cache", {});
     Object.assign(cached, patch);
-    localStorage.setItem('_bj_ud_cache', JSON.stringify(cached));
-    console.log('[sync] Flushed', Object.keys(patch).join(', '));
+    localStorage.setItem("_bj_ud_cache", JSON.stringify(cached));
+    console.log("[sync] Flushed", Object.keys(patch).join(", "));
   } catch (e) {
-    console.warn('[sync] Flush error:', e.message);
+    console.warn("[sync] Flush error:", e.message);
   }
 }
-
-/**
- * Load user data from Supabase on login. Merges with localStorage:
- * - Supabase wins if localStorage is empty for that key
- * - localStorage wins if Supabase is empty (first sync / migration)
- * - After merge, syncs back to Supabase
- */
 async function loadUserData(userId) {
   try {
-    const { data, error } = await sb.from('profiles')
-      .select('user_data')
-      .eq('id', userId)
-      .single();
+    const { data, error } = await sb.from("profiles").select("user_data").eq("id", userId).single();
     if (error || !data?.user_data) {
-      console.log('[sync] No cloud data, will sync localStorage up on next save');
+      console.log("[sync] No cloud data, will sync localStorage up on next save");
       return;
     }
     const cloud = data.user_data;
-    localStorage.setItem('_bj_ud_cache', JSON.stringify(cloud));
+    localStorage.setItem("_bj_ud_cache", JSON.stringify(cloud));
     let needsSync = false;
     for (const [shortKey, lsKey] of Object.entries(UD_KEYS)) {
       const cloudVal = cloud[shortKey];
       let localVal = localStorage.getItem(lsKey);
-      // v5.16: Decrypt PII keys before comparing with cloud
-      if (isPiiKey(lsKey) && localVal && localVal.startsWith('enc:') && userId) {
+      if (isPiiKey(lsKey) && localVal && localVal.startsWith("enc:") && userId) {
         localVal = await decryptFromStorage(localVal, userId) || localVal;
       }
       const localParsed = localVal ? JSON.parse(localVal) : null;
-      const cloudEmpty = cloudVal == null || (Array.isArray(cloudVal) && cloudVal.length === 0) || (typeof cloudVal === 'object' && !Array.isArray(cloudVal) && Object.keys(cloudVal).length === 0);
-      const localEmpty = localParsed == null || (Array.isArray(localParsed) && localParsed.length === 0) || (typeof localParsed === 'object' && !Array.isArray(localParsed) && Object.keys(localParsed).length === 0);
-
+      const cloudEmpty = cloudVal == null || Array.isArray(cloudVal) && cloudVal.length === 0 || typeof cloudVal === "object" && !Array.isArray(cloudVal) && Object.keys(cloudVal).length === 0;
+      const localEmpty = localParsed == null || Array.isArray(localParsed) && localParsed.length === 0 || typeof localParsed === "object" && !Array.isArray(localParsed) && Object.keys(localParsed).length === 0;
       if (!cloudEmpty && localEmpty) {
-        // Cloud has data, local doesn't → pull from cloud
         var cloudJson = JSON.stringify(cloudVal);
-        // v5.16: Encrypt PII when writing cloud data to localStorage
         if (isPiiKey(lsKey) && userId) {
           encryptForStorage(cloudJson, userId).then(function(enc) {
             localStorage.setItem(lsKey, enc);
@@ -545,108 +396,80 @@ async function loadUserData(userId) {
         } else {
           localStorage.setItem(lsKey, cloudJson);
         }
-        console.log('[sync] Pulled', shortKey, 'from cloud');
+        console.log("[sync] Pulled", shortKey, "from cloud");
       } else if (cloudEmpty && !localEmpty) {
-        // Local has data, cloud doesn't → queue sync up
         needsSync = true;
         _udPendingKeys.add(shortKey);
       }
-      // Both have data → local wins (user's current machine is source of truth)
     }
     if (needsSync) {
-      console.log('[sync] Local data needs upload:', [..._udPendingKeys].join(', '));
+      console.log("[sync] Local data needs upload:", [..._udPendingKeys].join(", "));
       _flushUserData();
     }
   } catch (e) {
-    console.warn('[sync] Load error:', e.message);
+    console.warn("[sync] Load error:", e.message);
   }
 }
-
-// ============================================================
-// ENTITLEMENT SYSTEM — Cohort-aware feature gating
-// Calls check_entitlement() RPC with client-side caching
-// ============================================================
-
 var _entitlementCache = {};
-var _entitlementCacheTTL = 5 * 60 * 1000; // 5 min cache
-
-/**
- * Check if user can use a feature. Returns { allowed, effective_limit, remaining, behavior, ... }
- * @param {string} feature - Feature ID (e.g. 'filters', 'resumes', 'resume_grading')
- * @param {number} [usageCount=0] - Current usage count to check against
- * @returns {Promise<object>} Entitlement result from server
- */
+var _entitlementCacheTTL = 5 * 60 * 1e3;
 async function checkEntitlement(feature, usageCount) {
-  // Admin bypass — unlimited access to all features
-  if (window._bjUserRole === 'admin') return { allowed: true, behavior: 'fixed', effective_limit: 9999, remaining: 9999 };
-  if (!currentUser) return { allowed: false, behavior: 'off', effective_limit: 0, remaining: 0 };
-  if (typeof usageCount === 'undefined') usageCount = 0;
-  var cacheKey = feature + ':' + usageCount;
+  if (window._bjUserRole === "admin") return { allowed: true, behavior: "fixed", effective_limit: 9999, remaining: 9999 };
+  if (!currentUser) return { allowed: false, behavior: "off", effective_limit: 0, remaining: 0 };
+  if (typeof usageCount === "undefined") usageCount = 0;
+  var cacheKey = feature + ":" + usageCount;
   var cached = _entitlementCache[cacheKey];
   if (cached && Date.now() - cached._ts < _entitlementCacheTTL) return cached;
   try {
-    var { data, error } = await sb.rpc('check_entitlement', {
+    var { data, error } = await sb.rpc("check_entitlement", {
       p_user_id: currentUser.id,
       p_feature: feature,
       p_usage_count: usageCount
     });
-    if (error) { console.warn('[entitlement]', feature, error.message); return { allowed: true, behavior: 'fixed', effective_limit: 99, remaining: 99 }; }
+    if (error) {
+      console.warn("[entitlement]", feature, error.message);
+      return { allowed: true, behavior: "fixed", effective_limit: 99, remaining: 99 };
+    }
     data._ts = Date.now();
     _entitlementCache[cacheKey] = data;
     return data;
   } catch (e) {
-    console.warn('[entitlement] Error:', e.message);
-    return { allowed: true, behavior: 'fixed', effective_limit: 99, remaining: 99 };
+    console.warn("[entitlement] Error:", e.message);
+    return { allowed: true, behavior: "fixed", effective_limit: 99, remaining: 99 };
   }
 }
-
-/** Clear entitlement cache (call after usage changes) */
 function clearEntitlementCache(feature) {
   if (feature) {
-    Object.keys(_entitlementCache).forEach(function(k) { if (k.startsWith(feature + ':')) delete _entitlementCache[k]; });
+    Object.keys(_entitlementCache).forEach(function(k) {
+      if (k.startsWith(feature + ":")) delete _entitlementCache[k];
+    });
   } else {
     _entitlementCache = {};
   }
 }
-
-/**
- * Show upgrade prompt when a feature is gated.
- * @param {string} featureName - Human-readable feature name
- * @param {object} ent - Entitlement result from checkEntitlement()
- * @returns {boolean} true if blocked (caller should abort)
- */
 function showUpgradePrompt(featureName, ent) {
-  var msg = ent.behavior === 'off'
-    ? featureName + ' is a Pro feature. Upgrade to unlock it.'
-    : 'You\'ve reached the ' + featureName + ' limit (' + ent.effective_limit + '). Upgrade to Pro for more.';
-  // Create a toast-style notification
-  var toast = document.createElement('div');
-  toast.className = 'upgrade-toast';
-  toast.innerHTML = '<div style="display:flex;align-items:center;gap:12px;">' +
-    '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2l2.5 5 5.5.8-4 3.9.9 5.3L10 14.5 5.1 17l.9-5.3-4-3.9 5.5-.8z" fill="var(--accent)"/></svg>' +
-    '<div><div style="font-weight:600;color:var(--text);font-size:13px;">' + msg + '</div>' +
-    '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">Go to Settings → Subscription to upgrade.</div></div>' +
-    '</div>';
+  var msg = ent.behavior === "off" ? featureName + " is a Pro feature. Upgrade to unlock it." : "You've reached the " + featureName + " limit (" + ent.effective_limit + "). Upgrade to Pro for more.";
+  var toast = document.createElement("div");
+  toast.className = "upgrade-toast";
+  toast.innerHTML = '<div style="display:flex;align-items:center;gap:12px;"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2l2.5 5 5.5.8-4 3.9.9 5.3L10 14.5 5.1 17l.9-5.3-4-3.9 5.5-.8z" fill="var(--accent)"/></svg><div><div style="font-weight:600;color:var(--text);font-size:13px;">' + msg + '</div><div style="font-size:11px;color:var(--text-dim);margin-top:2px;">Go to Settings \u2192 Subscription to upgrade.</div></div></div>';
   document.body.appendChild(toast);
-  requestAnimationFrame(function() { toast.classList.add('show'); });
-  setTimeout(function() { toast.classList.remove('show'); setTimeout(function() { toast.remove(); }, 300); }, 4000);
+  requestAnimationFrame(function() {
+    toast.classList.add("show");
+  });
+  setTimeout(function() {
+    toast.classList.remove("show");
+    setTimeout(function() {
+      toast.remove();
+    }, 300);
+  }, 4e3);
   return true;
 }
-
-// Saved filters
-var savedFilters = safeReadLS('bj_saved_filters', []);
-
-// Tuning state (refined by tuning.js when it loads)
-var tuningSettings = safeReadLS('bj_tuning', {});
+var savedFilters = safeReadLS("bj_saved_filters", []);
+var tuningSettings = safeReadLS("bj_tuning", {});
 var tuningLocExclPills = tuningSettings.locationExcludes || [];
 var tuningTitleExclPills = tuningSettings.titleExcludes || [];
 var tuningCoExclPills = tuningSettings.companyExcludes || [];
 var tuningIndExclPills = tuningSettings.industryExcludes || [];
 var levelHierarchy = tuningSettings.levelHierarchy || [];
-// Stub — overridden by tuning.js with full implementation
-// getJobLevel — provided by tuning.js (do not stub here, var assignment kills function declaration hoisting)
-
-// Pill arrays (used by query-builder.js, location.js, browsers.js)
 var whatPills = [];
 var wherePills = [];
 var whenPills = [];
@@ -659,63 +482,41 @@ var skillsPills = [];
 var levelPills = [];
 var jdPills = [];
 var deptPills = [];
-var WORKPLACE_WORDS = ['remote','hybrid','onsite','on-site','in-office'];
+var WORKPLACE_WORDS = ["remote", "hybrid", "onsite", "on-site", "in-office"];
 var SALARY_RE = /^\$?\d{2,3}k?\+?$/i;
 var DEFAULT_RADIUS = 30;
-
-// Job feed state
 var allJobs = [];
 var currentJobs = [];
-var jobSortStack = [{ field: 'first_seen_at', asc: false }];
-var hiddenJobIds = safeReadLS('bj_hidden_jobs', []);
-var savedJobIds = safeReadLS('bj_saved_jobs', []);
-var appliedJobIds = safeReadLS('bj_applied_jobs', []);
+var jobSortStack = [{ field: "first_seen_at", asc: false }];
+var hiddenJobIds = safeReadLS("bj_hidden_jobs", []);
+var savedJobIds = safeReadLS("bj_saved_jobs", []);
+var appliedJobIds = safeReadLS("bj_applied_jobs", []);
 var searchTimeout = null;
 var currentJobPage = 0;
 var JOBS_PER_PAGE = 50;
-var MAX_FEED_ROWS = 500; // A14: hard cap — no query returns more than 500 rows to client
-var _feedLoadMoreOffset = 0; // A14: tracks how many rows loaded so far for Load More
-var _feedTotalCount = 0; // A14: total matching rows (from count: 'exact')
-
-// Resume state (populated fully in resumes.js)
-var resumes = safeReadLS('bj_resumes', []);
-
-// Shared filter color palette (10 colors for numbered filter badges)
-var filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
-
-/**
- * Enrich a job via Edge Function (service_role writes).
- * Replaces direct sb.from('ats_jobs').update() calls blocked by RLS.
- * @param {string} jobId - greenhouse_id
- * @param {object} data - { content?: string, salary?: { min, max, raw, currency, rate } }
- */
+var MAX_FEED_ROWS = 500;
+var _feedLoadMoreOffset = 0;
+var _feedTotalCount = 0;
+var resumes = safeReadLS("bj_resumes", []);
+var filterColors = ["#6366f1", "#f59e0b", "#ec4899", "#22c55e", "#8b5cf6", "#ef4444", "#06b6d4", "#f97316", "#14b8a6", "#a855f7"];
 async function enrichJob(jobId, data) {
   try {
-    // CS-002: Use session access_token for auth (was: anon key with no auth check on EF)
     const session = (await sb.auth.getSession())?.data?.session;
     const token = session?.access_token || SUPABASE_KEY;
-    const resp = await fetch(SUPABASE_URL + '/functions/v1/enrich-job', {
-      method: 'POST',
+    const resp = await fetch(SUPABASE_URL + "/functions/v1/enrich-job", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token,
-        'apikey': SUPABASE_KEY
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token,
+        "apikey": SUPABASE_KEY
       },
       body: JSON.stringify({ job_id: jobId, ...data })
     });
-    if (!resp.ok) console.warn('[enrich-job] Failed for', jobId, resp.status);
+    if (!resp.ok) console.warn("[enrich-job] Failed for", jobId, resp.status);
   } catch (e) {
-    console.warn('[enrich-job] Error:', e.message);
+    console.warn("[enrich-job] Error:", e.message);
   }
 }
-
-
-
-// ============================================================
-// STORAGE HEALTH — size monitoring and emergency cleanup (v3.85)
-// ============================================================
-
-/** Get total localStorage usage in bytes */
 function getStorageUsage() {
   var total = 0;
   var keys = {};
@@ -723,93 +524,78 @@ function getStorageUsage() {
     var key = localStorage.key(i);
     var size = new Blob([localStorage.getItem(key)]).size;
     total += size + new Blob([key]).size;
-    if (key.startsWith('bj_')) keys[key] = size;
+    if (key.startsWith("bj_")) keys[key] = size;
   }
   return { totalBytes: total, totalKB: Math.round(total / 1024), bjKeys: keys };
 }
-
-/** Log storage usage to console (call from DevTools: storageHealth()) */
 function storageHealth() {
   var usage = getStorageUsage();
-  console.group('[BJ] Storage Health');
-  console.log('Total localStorage:', usage.totalKB + 'KB');
-  var sorted = Object.entries(usage.bjKeys).sort(function(a, b) { return b[1] - a[1]; });
+  console.group("[BJ] Storage Health");
+  console.log("Total localStorage:", usage.totalKB + "KB");
+  var sorted = Object.entries(usage.bjKeys).sort(function(a, b) {
+    return b[1] - a[1];
+  });
   sorted.forEach(function(entry) {
     var pct = Math.round(entry[1] / usage.totalBytes * 100);
-    console.log('  ' + entry[0] + ': ' + Math.round(entry[1] / 1024) + 'KB (' + pct + '%)');
+    console.log("  " + entry[0] + ": " + Math.round(entry[1] / 1024) + "KB (" + pct + "%)");
   });
-  console.log('Estimated limit: ~5MB (varies by browser)');
-  console.log('Usage: ' + Math.round(usage.totalBytes / (5 * 1024 * 1024) * 100) + '% of estimated limit');
+  console.log("Estimated limit: ~5MB (varies by browser)");
+  console.log("Usage: " + Math.round(usage.totalBytes / (5 * 1024 * 1024) * 100) + "% of estimated limit");
   console.groupEnd();
   return usage;
 }
-
-/** Emergency cleanup when storage is full */
 function _handleStorageFull(failedKey) {
-  console.warn('[BJ] Running emergency storage cleanup...');
-  // Priority: remove caches first, then old data
-  var sacrificial = ['bj_readiness', 'bj_ref_city_radius', '_bj_ud_cache'];
+  console.warn("[BJ] Running emergency storage cleanup...");
+  var sacrificial = ["bj_readiness", "bj_ref_city_radius", "_bj_ud_cache"];
   for (var i = 0; i < sacrificial.length; i++) {
     if (sacrificial[i] !== failedKey) {
       localStorage.removeItem(sacrificial[i]);
-      console.log('[BJ] Cleared ' + sacrificial[i]);
+      console.log("[BJ] Cleared " + sacrificial[i]);
     }
   }
-  // Trim hidden_jobs and applied_jobs to last 500
-  ['bj_hidden_jobs', 'bj_applied_jobs', 'bj_saved_jobs'].forEach(function(key) {
+  ["bj_hidden_jobs", "bj_applied_jobs", "bj_saved_jobs"].forEach(function(key) {
     try {
       var arr = safeReadLS(key, []);
       if (arr.length > 500) {
         arr = arr.slice(-500);
         localStorage.setItem(key, JSON.stringify(arr));
-        console.log('[BJ] Trimmed ' + key + ' to 500 items');
+        console.log("[BJ] Trimmed " + key + " to 500 items");
       }
-    } catch (e) { reportError('storage-trim', e); }
+    } catch (e) {
+      reportError("storage-trim", e);
+    }
   });
-  // Trim app_history to last 200
   try {
-    var hist = safeReadLS('bj_app_history', []);
+    var hist = safeReadLS("bj_app_history", []);
     if (hist.length > 200) {
       hist = hist.slice(-200);
-      saveUserData('bj_app_history', JSON.stringify(hist));
-      console.log('[BJ] Trimmed bj_app_history to 200 items');
+      saveUserData("bj_app_history", JSON.stringify(hist));
+      console.log("[BJ] Trimmed bj_app_history to 200 items");
     }
-  } catch (e) { reportError("storage-trim-history", e); }
+  } catch (e) {
+    reportError("storage-trim-history", e);
+  }
 }
-
-// ============================================================
-// CACHED QUERY — in-memory cache with TTL (v3.84)
-// ============================================================
-// ============================================================
-// IN-MEMORY QUERY CACHE (A14 — v6.54)
-// ============================================================
-// cachedQuery wraps Supabase queries with TTL-based caching.
-// Returns { data, count, cached } — cached=true means result came from cache.
-// Debug: set BJ_DEBUG_CACHE=1 in localStorage to see cache hit/miss logs.
-// Usage: const { data, cached } = await cachedQuery('companies', () => sb.from('ats_companies').select('slug,name'), { ttl: 300000 });
-
 var _queryCache = {};
+var statsCache = {};
 var _cacheHits = 0;
 var _cacheMisses = 0;
-var _cacheDebug = (typeof localStorage !== 'undefined' && localStorage.getItem('BJ_DEBUG_CACHE') === '1');
-
-// TTL tiers by key prefix (v6.55 A14 Session 2)
-// ref: = reference/lookup tables (rarely change) — 1 hour
-// feed: = job feed queries (change frequently) — 3 min
-// stats: = stats/analytics queries — 10 min
-// company: = company browser queries — 10 min
-// default = 5 min
+var _cacheDebug = typeof localStorage !== "undefined" && localStorage.getItem("BJ_DEBUG_CACHE") === "1";
 var CACHE_TTL_TIERS = {
-  'ref:': 3600000,     // 1 hour
-  'feed:': 180000,     // 3 min
-  'stats:': 600000,    // 10 min
-  'company:': 600000,  // 10 min
-  'pipeline:': 300000, // 5 min
-  'settings:': 600000  // 10 min
+  "ref:": 36e5,
+  // 1 hour
+  "feed:": 18e4,
+  // 3 min
+  "stats:": 6e5,
+  // 10 min
+  "company:": 6e5,
+  // 10 min
+  "pipeline:": 3e5,
+  // 5 min
+  "settings:": 6e5
+  // 10 min
 };
-var CACHE_TTL_DEFAULT = 300000; // 5 min
-
-/** Resolve TTL from key prefix tier or explicit opt */
+var CACHE_TTL_DEFAULT = 3e5;
 function _resolveTTL(key, opts) {
   if (opts && opts.ttl) return opts.ttl;
   var prefixes = Object.keys(CACHE_TTL_TIERS);
@@ -818,86 +604,70 @@ function _resolveTTL(key, opts) {
   }
   return CACHE_TTL_DEFAULT;
 }
-
-/**
- * Execute a Supabase query with in-memory caching.
- * @param {string} key - Unique cache key (prefix determines TTL tier)
- * @param {function} queryFn - Function returning a Supabase query promise
- * @param {object} opts - { ttl: ms (overrides tier), force: boolean }
- * @returns {Promise<{data: any, count: number|null, cached: boolean}>}
- */
 async function cachedQuery(key, queryFn, opts) {
   var ttl = _resolveTTL(key, opts);
   var force = opts && opts.force;
   var entry = _queryCache[key];
-
   if (!force && entry && Date.now() - entry.ts < ttl) {
     _cacheHits++;
-    if (_cacheDebug) console.log('[cache] HIT', key, '(' + Math.round((Date.now() - entry.ts)/1000) + 's old)');
+    if (_cacheDebug) console.log("[cache] HIT", key, "(" + Math.round((Date.now() - entry.ts) / 1e3) + "s old)");
     return { data: entry.data, count: entry.count, cached: true };
   }
-
   try {
     var result = await queryFn();
     if (result.error) {
-      console.warn('[cachedQuery] Error for', key, result.error.message);
+      console.warn("[cachedQuery] Error for", key, result.error.message);
       if (entry) return { data: entry.data, count: entry.count, cached: true };
       return { data: null, count: null, cached: false };
     }
     _queryCache[key] = { data: result.data, ts: Date.now(), count: result.count };
     _cacheMisses++;
-    if (_cacheDebug) console.log('[cache] MISS', key, '(' + (result.data ? result.data.length : 0) + ' rows)');
+    if (_cacheDebug) console.log("[cache] MISS", key, "(" + (result.data ? result.data.length : 0) + " rows)");
     return { data: result.data, count: result.count, cached: false };
   } catch (e) {
-    console.warn('[cachedQuery] Failed for', key, e.message);
+    console.warn("[cachedQuery] Failed for", key, e.message);
     if (entry) return { data: entry.data, count: entry.count, cached: true };
     return { data: null, count: null, cached: false };
   }
 }
-
-/** Get cached count (if query used { count: 'exact' }) */
 function cachedCount(key) {
   var entry = _queryCache[key];
   return entry ? entry.count : null;
 }
-
-/** Invalidate a specific cache key or all keys matching a prefix */
 function invalidateCache(keyOrPrefix) {
-  if (!keyOrPrefix) { _queryCache = {}; return; }
+  if (!keyOrPrefix) {
+    _queryCache = {};
+    return;
+  }
   Object.keys(_queryCache).forEach(function(k) {
-    if (k === keyOrPrefix || k.startsWith(keyOrPrefix + ':')) delete _queryCache[k];
+    if (k === keyOrPrefix || k.startsWith(keyOrPrefix + ":")) delete _queryCache[k];
   });
-  if (_cacheDebug) console.log('[cache] Invalidated', keyOrPrefix || 'ALL');
+  if (_cacheDebug) console.log("[cache] Invalidated", keyOrPrefix || "ALL");
 }
-
-/** Clear ALL app caches — query cache + stats cache (if present) */
 function clearAllCaches() {
   _queryCache = {};
   _cacheHits = 0;
   _cacheMisses = 0;
-  // Clear stats module cache if it exists
-  if (typeof statsCache !== 'undefined') {
-    Object.keys(statsCache).forEach(function(k) { delete statsCache[k]; });
+  if (typeof statsCache !== "undefined") {
+    Object.keys(statsCache).forEach(function(k) {
+      delete statsCache[k];
+    });
   }
-  if (_cacheDebug) console.log('[cache] All caches cleared');
+  if (_cacheDebug) console.log("[cache] All caches cleared");
 }
-
-/** Generate a deterministic cache key from filter state (A14 Session 3) */
 function _filterCacheKey(prefix, sf) {
   var parts = [];
-  ['whatPills','wherePills','whenPills','whoPills','payPills','whatNotPills','whereNotPills','whoNotPills'].forEach(function(k) {
-    var arr = sf[k] || sf.pills && k === 'whatPills' && sf.pills || [];
-    if (arr.length > 0) parts.push(k + ':' + JSON.stringify(arr));
+  ["whatPills", "wherePills", "whenPills", "whoPills", "payPills", "whatNotPills", "whereNotPills", "whoNotPills"].forEach(function(k) {
+    var arr = sf[k] || sf.pills && k === "whatPills" && sf.pills || [];
+    if (arr.length > 0) parts.push(k + ":" + JSON.stringify(arr));
   });
-  if (sf.includeRemote) parts.push('remote:1');
-  if (sf.includeNoSalary) parts.push('nosalary:1');
-  var tuning = safeReadLS('bj_tuning', {});
-  if (tuning.usOnly) parts.push('us:1');
-  if (tuning.locationExcludes) parts.push('locexcl:' + JSON.stringify(tuning.locationExcludes));
-  return prefix + ':' + btoa(parts.join('|')).slice(0, 64);
+  if (sf.includeRemote) parts.push("remote:1");
+  if (sf.includeNoSalary) parts.push("nosalary:1");
+  var tuning = safeReadLS("bj_tuning", {});
+  if (tuning.usOnly) parts.push("us:1");
+  if (tuning.locationExcludes) parts.push("locexcl:" + JSON.stringify(tuning.locationExcludes));
+  return prefix + ":" + btoa(parts.join("|")).slice(0, 64);
 }
-
-/** Get cache diagnostics — call from console: getCacheStats() */
 function getCacheStats() {
   var keys = Object.keys(_queryCache);
   var now = Date.now();
@@ -905,217 +675,192 @@ function getCacheStats() {
   var memEstimate = 0;
   var entries = keys.map(function(k) {
     var e = _queryCache[k];
-    var rows = e.data ? (Array.isArray(e.data) ? e.data.length : 1) : 0;
+    var rows = e.data ? Array.isArray(e.data) ? e.data.length : 1 : 0;
     totalRows += rows;
     var tierTTL = _resolveTTL(k, null);
     var ageMs = now - e.ts;
-    var pctLife = Math.round((ageMs / tierTTL) * 100);
-    // rough memory estimate: JSON serialization length
-    try { memEstimate += JSON.stringify(e.data).length; } catch(x) { /* circular ref ok */ }
+    var pctLife = Math.round(ageMs / tierTTL * 100);
+    try {
+      memEstimate += JSON.stringify(e.data).length;
+    } catch (x) {
+    }
     return {
       key: k,
-      age: Math.round(ageMs / 1000) + 's',
-      ttl: Math.round(tierTTL / 1000) + 's',
-      pctLife: Math.min(pctLife, 100) + '%',
-      rows: rows,
+      age: Math.round(ageMs / 1e3) + "s",
+      ttl: Math.round(tierTTL / 1e3) + "s",
+      pctLife: Math.min(pctLife, 100) + "%",
+      rows,
       stale: ageMs >= tierTTL
     };
   });
   return {
     entries: keys.length,
-    totalRows: totalRows,
+    totalRows,
     memEstimateKB: Math.round(memEstimate / 1024),
     hits: _cacheHits,
     misses: _cacheMisses,
-    hitRate: (_cacheHits + _cacheMisses) > 0 ? Math.round(_cacheHits / (_cacheHits + _cacheMisses) * 100) + '%' : 'N/A',
+    hitRate: _cacheHits + _cacheMisses > 0 ? Math.round(_cacheHits / (_cacheHits + _cacheMisses) * 100) + "%" : "N/A",
     tiers: CACHE_TTL_TIERS,
     defaultTTL: CACHE_TTL_DEFAULT,
     keys: entries
   };
 }
-
-// ============================================================
-// VISIBILITY-BASED CACHE TIMEOUT (A14)
-// ============================================================
-// Clear caches when tab has been hidden for 5+ minutes to prevent stale data
 var _visibilityHiddenAt = null;
-var VISIBILITY_CACHE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
-
-if (typeof document !== 'undefined') {
-  document.addEventListener('visibilitychange', function() {
+var VISIBILITY_CACHE_TIMEOUT = 5 * 60 * 1e3;
+if (typeof document !== "undefined") {
+  document.addEventListener("visibilitychange", function() {
     if (document.hidden) {
       _visibilityHiddenAt = Date.now();
     } else if (_visibilityHiddenAt && Date.now() - _visibilityHiddenAt >= VISIBILITY_CACHE_TIMEOUT) {
       clearAllCaches();
-      if (_cacheDebug) console.log('[cache] Cleared after', Math.round((Date.now() - _visibilityHiddenAt) / 60000), 'min hidden');
+      if (_cacheDebug) console.log("[cache] Cleared after", Math.round((Date.now() - _visibilityHiddenAt) / 6e4), "min hidden");
       _visibilityHiddenAt = null;
     } else {
       _visibilityHiddenAt = null;
     }
   });
 }
-
-/** Pre-warm static ref table caches on app init */
 async function prewarmRefCaches() {
   try {
     await Promise.all([
-      cachedQuery('ref:industries', function() {
-        return sb.from('ref_industries').select('name, category').order('name');
-      }, { ttl: 3600000 }), // 1 hour TTL — rarely changes
-      cachedQuery('ref:companies:list', function() {
-        return sb.from('ats_companies').select('slug, name, job_count, source').order('name');
-      }, { ttl: 600000 }), // 10 min TTL — job_count updates periodically
+      cachedQuery("ref:industries", function() {
+        return sb.from("ref_industries").select("name, category").order("name");
+      }, { ttl: 36e5 }),
+      // 1 hour TTL — rarely changes
+      cachedQuery("ref:companies:list", function() {
+        return sb.from("ats_companies").select("slug, name, job_count, source").order("name");
+      }, { ttl: 6e5 })
+      // 10 min TTL — job_count updates periodically
     ]);
-    console.log('[BJ] Ref caches pre-warmed');
+    console.log("[BJ] Ref caches pre-warmed");
   } catch (e) {
-    console.warn('[BJ] Ref cache pre-warm failed:', e.message);
+    console.warn("[BJ] Ref cache pre-warm failed:", e.message);
   }
 }
-
-// ============================================================
-// ERROR RECOVERY & OFFLINE RESILIENCE (v3.87)
-// ============================================================
-
 var _isOnline = navigator.onLine;
 var _offlineBanner = null;
 var _retryQueue = [];
-
-/** Check if the browser is online */
-function isOnline() { return _isOnline; }
-
-/** Initialize offline/online detection */
+function isOnline() {
+  return _isOnline;
+}
 function initOfflineDetection() {
-  window.addEventListener('online', function() {
+  window.addEventListener("online", function() {
     _isOnline = true;
-    console.log('[BJ] Back online');
+    console.log("[BJ] Back online");
     _hideOfflineBanner();
     _drainRetryQueue();
   });
-  window.addEventListener('offline', function() {
+  window.addEventListener("offline", function() {
     _isOnline = false;
-    console.warn('[BJ] Went offline');
+    console.warn("[BJ] Went offline");
     _showOfflineBanner();
   });
 }
-
 function _showOfflineBanner() {
   if (_offlineBanner) return;
-  _offlineBanner = document.createElement('div');
-  _offlineBanner.id = 'bj-offline-banner';
-  _offlineBanner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#f59e0b;color:#000;text-align:center;padding:8px 16px;font-size:14px;font-weight:600;';
-  _offlineBanner.textContent = 'You are offline — changes will sync when connection returns';
+  _offlineBanner = document.createElement("div");
+  _offlineBanner.id = "bj-offline-banner";
+  _offlineBanner.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;background:#f59e0b;color:#000;text-align:center;padding:8px 16px;font-size:14px;font-weight:600;";
+  _offlineBanner.textContent = "You are offline \u2014 changes will sync when connection returns";
   document.body.prepend(_offlineBanner);
 }
-
 function _hideOfflineBanner() {
-  if (_offlineBanner) { _offlineBanner.remove(); _offlineBanner = null; }
+  if (_offlineBanner) {
+    _offlineBanner.remove();
+    _offlineBanner = null;
+  }
 }
-
-/** Retry a failed async operation with exponential backoff */
 async function withRetry(fn, opts) {
-  var maxRetries = (opts && opts.retries) || 3;
-  var baseDelay = (opts && opts.delay) || 1000;
-  var label = (opts && opts.label) || 'operation';
-
+  var maxRetries = opts && opts.retries || 3;
+  var baseDelay = opts && opts.delay || 1e3;
+  var label = opts && opts.label || "operation";
   for (var attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await fn();
     } catch (e) {
       if (attempt === maxRetries) {
-        console.error('[BJ] ' + label + ' failed after ' + (maxRetries + 1) + ' attempts:', e.message);
+        console.error("[BJ] " + label + " failed after " + (maxRetries + 1) + " attempts:", e.message);
         throw e;
       }
       var delay = baseDelay * Math.pow(2, attempt) + Math.random() * 500;
-      console.warn('[BJ] ' + label + ' attempt ' + (attempt + 1) + ' failed, retrying in ' + Math.round(delay) + 'ms');
-      await new Promise(function(resolve) { setTimeout(resolve, delay); });
+      console.warn("[BJ] " + label + " attempt " + (attempt + 1) + " failed, retrying in " + Math.round(delay) + "ms");
+      await new Promise(function(resolve) {
+        setTimeout(resolve, delay);
+      });
     }
   }
 }
-
-/** Queue a failed write operation for retry when back online */
 function queueForRetry(fn, label) {
-  _retryQueue.push({ fn: fn, label: label || 'queued op', addedAt: Date.now() });
-  console.log('[BJ] Queued for retry: ' + label + ' (' + _retryQueue.length + ' pending)');
+  _retryQueue.push({ fn, label: label || "queued op", addedAt: Date.now() });
+  console.log("[BJ] Queued for retry: " + label + " (" + _retryQueue.length + " pending)");
 }
-
-/** Drain the retry queue (called when coming back online) */
 async function _drainRetryQueue() {
   if (_retryQueue.length === 0) return;
-  console.log('[BJ] Draining retry queue: ' + _retryQueue.length + ' items');
+  console.log("[BJ] Draining retry queue: " + _retryQueue.length + " items");
   var queue = _retryQueue.slice();
   _retryQueue = [];
   for (var i = 0; i < queue.length; i++) {
     try {
       await queue[i].fn();
-      console.log('[BJ] Retry succeeded: ' + queue[i].label);
+      console.log("[BJ] Retry succeeded: " + queue[i].label);
     } catch (e) {
-      console.warn('[BJ] Retry failed: ' + queue[i].label, e.message);
-      // Don't re-queue items older than 10 minutes
-      if (Date.now() - queue[i].addedAt < 600000) {
+      console.warn("[BJ] Retry failed: " + queue[i].label, e.message);
+      if (Date.now() - queue[i].addedAt < 6e5) {
         _retryQueue.push(queue[i]);
       }
     }
   }
 }
-
-/** Global unhandled error and rejection handlers */
 function initGlobalErrorHandlers() {
-  window.addEventListener('error', function(event) {
-    console.error('[BJ] Uncaught error:', event.message, 'at', event.filename + ':' + event.lineno);
+  window.addEventListener("error", function(event) {
+    console.error("[BJ] Uncaught error:", event.message, "at", event.filename + ":" + event.lineno);
   });
-
-  window.addEventListener('unhandledrejection', function(event) {
+  window.addEventListener("unhandledrejection", function(event) {
     var reason = event.reason;
     var msg = reason && reason.message ? reason.message : String(reason);
-    // Suppress noisy auth/network errors
-    if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('Load failed')) {
+    if (msg.includes("Failed to fetch") || msg.includes("NetworkError") || msg.includes("Load failed")) {
       if (!_isOnline) {
-        event.preventDefault(); // Don't spam console when offline
+        event.preventDefault();
         return;
       }
     }
-    console.error('[BJ] Unhandled promise rejection:', msg);
+    console.error("[BJ] Unhandled promise rejection:", msg);
   });
 }
-
-/** Safe Supabase query wrapper — handles offline, retries, fallback */
-// ── Error reporting helper ──
 function reportError(label, error, extra) {
   var msg = error && error.message ? error.message : String(error);
-  console.warn('[BJ] ' + label + ' failed:', msg);
+  console.warn("[BJ] " + label + " failed:", msg);
   try {
     if (window.posthog) {
-      posthog.capture('query_error', {
-        label: label,
+      posthog.capture("query_error", {
+        label,
         error_message: msg,
-        error_stack: error && error.stack ? error.stack.slice(0, 500) : undefined,
+        error_stack: error && error.stack ? error.stack.slice(0, 500) : void 0,
         page: window.location.pathname,
-        timestamp: new Date().toISOString(),
-        ...(extra || {})
+        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+        ...extra || {}
       });
     }
-  } catch (_) { /* never let reporting break the app */ }
+  } catch (_) {
+  }
 }
-
 async function safeQuery(queryFn, opts) {
-  var label = (opts && opts.label) || 'query';
+  var label = opts && opts.label || "query";
   var fallback = opts && opts.fallback;
   var retry = opts && opts.retry !== false;
   var silent = opts && opts.silent;
-
   if (!_isOnline) {
-    console.warn('[BJ] Offline — skipping ' + label);
-    return fallback !== undefined ? fallback : null;
+    console.warn("[BJ] Offline \u2014 skipping " + label);
+    return fallback !== void 0 ? fallback : null;
   }
-
   try {
     if (retry) {
       return await withRetry(function() {
-        return queryFn().then(function(result) {
-          if (result.error) throw new Error(result.error.message);
-          return result.data;
+        return queryFn().then(function(result2) {
+          if (result2.error) throw new Error(result2.error.message);
+          return result2.data;
         });
-      }, { retries: 2, delay: 800, label: label });
+      }, { retries: 2, delay: 800, label });
     } else {
       var result = await queryFn();
       if (result.error) throw new Error(result.error.message);
@@ -1123,12 +868,12 @@ async function safeQuery(queryFn, opts) {
     }
   } catch (e) {
     if (!silent) reportError(label, e);
-    return fallback !== undefined ? fallback : null;
+    return fallback !== void 0 ? fallback : null;
   }
 }
-
-// ── Convenience wrapper: safeRpc ──
 async function safeRpc(fnName, params, opts) {
-  var label = (opts && opts.label) || ('rpc:' + fnName);
-  return safeQuery(function() { return sb.rpc(fnName, params); }, { ...opts, label: label });
+  var label = opts && opts.label || "rpc:" + fnName;
+  return safeQuery(function() {
+    return sb.rpc(fnName, params);
+  }, { ...opts, label });
 }

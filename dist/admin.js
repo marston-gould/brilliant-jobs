@@ -1,8 +1,8 @@
-// === js/version.js ===
-var BJ_VERSION = 'v7.40';
-(function() {
-  function populateVersion() {
-    document.querySelectorAll(".bj-version, [id$=\"-version\"]").forEach(function(el) {
+// === js/version.ts ===
+var BJ_VERSION = 'v7.41';
+(function(): void {
+  function populateVersion(): void {
+    document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
       el.textContent = BJ_VERSION;
     });
   }
@@ -14,7 +14,9 @@ var BJ_VERSION = 'v7.40';
 })();
 
 
-// === js/globals.js ===
+// === js/globals.ts ===
+// @ts-nocheck — Phase 2: Remove this once globals.ts is fully strict-typed
+// Full strict typing tracked in docs/adr/adr-typescript.md
 // ============================================================
 // GLOBALS — Shared state across all dashboard modules
 // Must load before all other JS modules
@@ -35,7 +37,7 @@ window.BJ._registry = {};
  * @param {Function} fn - The function to register
  * @param {string} [module] - Source module for debugging
  */
-window.BJ.export = function(name, fn, module) {
+window.BJ.export = function(name: string, fn: Function, module?: string): void {
   window.BJ[name] = fn;
   window.BJ._registry[name] = { module: module || 'unknown', registered: Date.now() };
   // Backward compat: also set on window for onclick= handlers
@@ -54,7 +56,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
   db: { schema: 'public' },
   auth: { persistSession: true, autoRefreshToken: true },
   global: {
-    fetch: function(url, options) {
+    fetch: function(url: RequestInfo | URL, options?: RequestInit) {
       var controller = new AbortController();
       var timeoutId = setTimeout(function() { controller.abort(); }, 30000);
       return fetch(url, Object.assign({}, options, { signal: controller.signal }))
@@ -67,8 +69,8 @@ window._bjSupa = sb; // Legacy alias for admin modules
 
 // PostHog analytics (A13)
 window.POSTHOG_API_KEY = 'phc_RqMlQQfq0G0DOikTlgyRO43USYm1h4Jd1aBneeIR6ww';
-const $ = s => document.querySelector(s);
-const $$ = s => document.querySelectorAll(s);
+const $ = (s: string): Element | null => document.querySelector(s);
+const $$ = (s: string): NodeListOf<Element> => document.querySelectorAll(s);
 
 // ============================================================
 // XSS PROTECTION — escapeHtml utility (v3.90)
@@ -82,7 +84,7 @@ var _escapeEl = document.createElement('div');
  * @param {string} str - Untrusted string
  * @returns {string} Escaped string safe for innerHTML
  */
-function escapeHtml(str) {
+function escapeHtml(str: string): string {
   if (!str) return '';
   _escapeEl.textContent = str;
   return _escapeEl.innerHTML;
@@ -95,7 +97,7 @@ function escapeHtml(str) {
  * @param {number} max - Max length
  * @returns {string} Escaped and truncated string
  */
-function truncateSafe(str, max) {
+function truncateSafe(str: string, max: number): string {
   if (!str) return '\u2014';
   var trimmed = str.length > max ? str.slice(0, max) + '\u2026' : str;
   return escapeHtml(trimmed);
@@ -106,12 +108,12 @@ function truncateSafe(str, max) {
 // ============================================================
 // Replaces silent console.error/warn for Supabase failures, auth issues, etc.
 
-var _toastContainer = null;
+var _toastContainer: HTMLElement | null = null;
 var _toastQueue = [];
 var _toastCount = 0;
 var _MAX_TOASTS = 3;
 
-function _ensureToastContainer() {
+function _ensureToastContainer(): void {
   if (_toastContainer && document.body.contains(_toastContainer)) return;
   _toastContainer = document.createElement('div');
   _toastContainer.id = 'bj-toast-container';
@@ -124,7 +126,7 @@ function _ensureToastContainer() {
  * @param {string} message - Message text (will be escaped)
  * @param {object} opts - { type: 'error'|'warning'|'success'|'info', duration: ms, action: { label, fn } }
  */
-function showToast(message, opts) {
+function showToast(message: string, opts?: ToastOptions): HTMLElement {
   var type = (opts && opts.type) || 'info';
   var duration = (opts && opts.duration) || (type === 'error' ? 6000 : 4000);
 
@@ -181,7 +183,7 @@ function showToast(message, opts) {
   return toast;
 }
 
-function _dismissToast(toast) {
+function _dismissToast(toast: HTMLElement): void {
   if (!toast || !toast.parentNode) return;
   toast.style.opacity = '0';
   toast.style.transform = 'translateY(12px)';
@@ -192,10 +194,10 @@ function _dismissToast(toast) {
 }
 
 // Convenience shortcuts
-function toastError(msg, opts) { return showToast(msg, Object.assign({ type: 'error' }, opts || {})); }
-function toastWarning(msg, opts) { return showToast(msg, Object.assign({ type: 'warning' }, opts || {})); }
-function toastSuccess(msg, opts) { return showToast(msg, Object.assign({ type: 'success' }, opts || {})); }
-function toastInfo(msg, opts) { return showToast(msg, Object.assign({ type: 'info' }, opts || {})); }
+function toastError(msg: string, opts?: Partial<ToastOptions>): HTMLElement { return showToast(msg, Object.assign({ type: 'error' }, opts || {})); }
+function toastWarning(msg: string, opts?: Partial<ToastOptions>): HTMLElement { return showToast(msg, Object.assign({ type: 'warning' }, opts || {})); }
+function toastSuccess(msg: string, opts?: Partial<ToastOptions>): HTMLElement { return showToast(msg, Object.assign({ type: 'success' }, opts || {})); }
+function toastInfo(msg: string, opts?: Partial<ToastOptions>): HTMLElement { return showToast(msg, Object.assign({ type: 'info' }, opts || {})); }
 
 // ============================================================
 // LOCALSTORAGE ENCRYPTION FOR PII (v3.90)
@@ -203,14 +205,14 @@ function toastInfo(msg, opts) { return showToast(msg, Object.assign({ type: 'inf
 // Encrypts sensitive data at rest using AES-GCM with a key derived from the user's session.
 // Only PII keys are encrypted: resume text, keywords, LinkedIn profile data.
 
-var _encryptionKey = null;
+var _encryptionKey: CryptoKey | null = null;
 var _PII_KEYS = ['bj_resumes', 'bj_readiness'];
 
 /**
  * Derive an AES-GCM encryption key from the user's Supabase session ID.
  * Key is deterministic per user (same user = same key).
  */
-async function _deriveEncryptionKey(userId) {
+async function _deriveEncryptionKey(userId: string): Promise<CryptoKey> {
   if (_encryptionKey) return _encryptionKey;
   var encoder = new TextEncoder();
   var keyMaterial = await crypto.subtle.importKey('raw', encoder.encode(userId + ':bj_pii_v1'), 'PBKDF2', false, ['deriveKey']);
@@ -230,7 +232,7 @@ async function _deriveEncryptionKey(userId) {
  * @param {string} userId - User ID for key derivation
  * @returns {Promise<string>} Base64-encoded ciphertext with IV prefix
  */
-async function encryptForStorage(plaintext, userId) {
+async function encryptForStorage(plaintext: string, userId: string): Promise<string> {
   try {
     var key = await _deriveEncryptionKey(userId);
     var encoder = new TextEncoder();
@@ -241,8 +243,8 @@ async function encryptForStorage(plaintext, userId) {
     combined.set(iv);
     combined.set(new Uint8Array(encrypted), iv.length);
     return 'enc:' + btoa(String.fromCharCode.apply(null, combined));
-  } catch (e) {
-    console.warn('[BJ] Encryption failed, storing plaintext:', e.message);
+  } catch (e: unknown) {
+    console.warn('[BJ] Encryption failed, storing plaintext:', (e as Error).message);
     return plaintext;
   }
 }
@@ -253,7 +255,7 @@ async function encryptForStorage(plaintext, userId) {
  * @param {string} userId - User ID for key derivation
  * @returns {Promise<string>} Decrypted plaintext
  */
-async function decryptFromStorage(ciphertext, userId) {
+async function decryptFromStorage(ciphertext: string, userId: string): Promise<string> {
   if (!ciphertext || !ciphertext.startsWith('enc:')) return ciphertext; // Not encrypted
   try {
     var key = await _deriveEncryptionKey(userId);
@@ -264,14 +266,14 @@ async function decryptFromStorage(ciphertext, userId) {
     var data = bytes.slice(12);
     var decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, data);
     return new TextDecoder().decode(decrypted);
-  } catch (e) {
-    console.warn('[BJ] Decryption failed (key mismatch or corruption):', e.message);
+  } catch (e: unknown) {
+    console.warn('[BJ] Decryption failed (key mismatch or corruption):', (e as Error).message);
     return null;
   }
 }
 
 /** Check if a localStorage key is PII and should be encrypted */
-function isPiiKey(lsKey) {
+function isPiiKey(lsKey: string): boolean {
   return _PII_KEYS.indexOf(lsKey) !== -1;
 }
 
@@ -281,18 +283,18 @@ function isPiiKey(lsKey) {
  * @param {string} lsKey - localStorage key
  * @returns {Promise<any>} Parsed JSON value
  */
-async function readPiiData(lsKey) {
+async function readPiiData(lsKey: string): Promise<unknown> {
   var raw = localStorage.getItem(lsKey);
   if (!raw) return null;
   if (raw.startsWith('enc:')) {
     if (!currentUser) return null; // Can't decrypt without user — don't parse enc: string
     var decrypted = await decryptFromStorage(raw, currentUser.id);
     if (decrypted) {
-      try { return JSON.parse(decrypted); } catch(e) { return null; }
+      try { return JSON.parse(decrypted); } catch(e: unknown) { return null; }
     }
     return null; // Decryption failed — return null, never parse enc: as JSON
   }
-  try { return JSON.parse(raw); } catch(e) { return null; }
+  try { return JSON.parse(raw); } catch(e: unknown) { return null; }
 }
 
 /**
@@ -301,13 +303,13 @@ async function readPiiData(lsKey) {
  * or if JSON.parse fails for any reason. Use this everywhere instead of raw
  * JSON.parse(localStorage.getItem(...)).
  */
-function safeReadLS(key, fallback) {
+function safeReadLS<T>(key: string, fallback: T): T {
   try {
     var raw = localStorage.getItem(key);
     if (!raw) return fallback;
     if (raw.startsWith('enc:')) return fallback; // Encrypted — needs async readPiiData()
     return JSON.parse(raw);
-  } catch(e) { return fallback; }
+  } catch(e: unknown) { return fallback; }
 }
 window._safeReadLS = safeReadLS; // Expose for modules
 
@@ -319,13 +321,13 @@ window._safeReadLS = safeReadLS; // Expose for modules
 // - Warns user before forced logout
 // - Inactivity timeout for PII protection
 
-var _sessionInactivityTimer = null;
+var _sessionInactivityTimer: ReturnType<typeof setInterval> | null = null;
 var _SESSION_INACTIVITY_MS = 30 * 60 * 1000; // 30 minutes
 var _lastActivity = Date.now();
 var _sessionWarningShown = false;
 
 /** Initialize session management */
-function initSessionManagement() {
+function initSessionManagement(): void {
   // Listen for auth state changes (session expiry, token refresh)
   sb.auth.onAuthStateChange(function(event, session) {
     if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
@@ -352,7 +354,7 @@ function initSessionManagement() {
   setInterval(_verifySession, 5 * 60 * 1000); // every 5 min
 }
 
-function _trackActivity() {
+function _trackActivity(): void {
   _lastActivity = Date.now();
   if (_sessionWarningShown) {
     _sessionWarningShown = false;
@@ -384,7 +386,7 @@ function _checkInactivity() {
   }
 }
 
-async function _verifySession() {
+async function _verifySession(): Promise<void> {
   try {
     var result = await sb.auth.getSession();
     if (!result.data.session) {
@@ -393,13 +395,13 @@ async function _verifySession() {
         action: { label: 'Sign in', fn: function() { window.location.href = '/'; } }
       });
     }
-  } catch (e) {
+  } catch (e: unknown) {
     // Network error — don't force logout
   }
 }
 
 /** Clear sensitive data on logout / session expiry */
-function _clearSensitiveData() {
+function _clearSensitiveData(): void {
   _encryptionKey = null;
   _PII_KEYS.forEach(function(key) {
     localStorage.removeItem(key);
@@ -409,7 +411,7 @@ function _clearSensitiveData() {
 }
 
 // Auth
-let currentUser = null;
+var currentUser: SupabaseAuthUser | null = null;
 
 // ============================================================
 // USER DATA SYNC — localStorage ↔ Supabase profiles.user_data
@@ -440,7 +442,7 @@ let _udPendingKeys = new Set();
  * @param {string} lsKey - Full localStorage key (e.g. 'bj_saved_filters')
  * @param {string} jsonStr - JSON string to save
  */
-function saveUserData(lsKey, jsonStr) {
+function saveUserData(lsKey: string, jsonStr: string): boolean {
   // Size guard: warn if single key exceeds 500KB, reject if >2MB (v3.85)
   var bytes = new Blob([jsonStr]).size;
   if (bytes > 2 * 1024 * 1024) {
@@ -454,13 +456,13 @@ function saveUserData(lsKey, jsonStr) {
   if (isPiiKey(lsKey) && currentUser) {
     encryptForStorage(jsonStr, currentUser.id).then(function(encrypted) {
       try { localStorage.setItem(lsKey, encrypted); }
-      catch (e) { console.error('[BJ] Storage full (encrypted):', e.message); _handleStorageFull(lsKey); }
+      catch (e) { console.error('[BJ] Storage full (encrypted):', (e as Error).message); _handleStorageFull(lsKey); }
     });
   } else {
     try {
       localStorage.setItem(lsKey, jsonStr);
-    } catch (e) {
-      console.error('[BJ] Storage full! Failed to save ' + lsKey + ':', e.message);
+    } catch (e: unknown) {
+      console.error('[BJ] Storage full! Failed to save ' + lsKey + ':', (e as Error).message);
       _handleStorageFull(lsKey);
       return false;
     }
@@ -516,8 +518,8 @@ async function _flushUserData() {
     Object.assign(cached, patch);
     localStorage.setItem('_bj_ud_cache', JSON.stringify(cached));
     console.log('[sync] Flushed', Object.keys(patch).join(', '));
-  } catch (e) {
-    console.warn('[sync] Flush error:', e.message);
+  } catch (e: unknown) {
+    console.warn('[sync] Flush error:', (e as Error).message);
   }
 }
 
@@ -527,7 +529,7 @@ async function _flushUserData() {
  * - localStorage wins if Supabase is empty (first sync / migration)
  * - After merge, syncs back to Supabase
  */
-async function loadUserData(userId) {
+async function loadUserData(userId: string): Promise<void> {
   try {
     const { data, error } = await sb.from('profiles')
       .select('user_data')
@@ -574,8 +576,8 @@ async function loadUserData(userId) {
       console.log('[sync] Local data needs upload:', [..._udPendingKeys].join(', '));
       _flushUserData();
     }
-  } catch (e) {
-    console.warn('[sync] Load error:', e.message);
+  } catch (e: unknown) {
+    console.warn('[sync] Load error:', (e as Error).message);
   }
 }
 
@@ -593,7 +595,7 @@ var _entitlementCacheTTL = 5 * 60 * 1000; // 5 min cache
  * @param {number} [usageCount=0] - Current usage count to check against
  * @returns {Promise<object>} Entitlement result from server
  */
-async function checkEntitlement(feature, usageCount) {
+async function checkEntitlement(feature: string, usageCount: number): Promise<Record<string, unknown> | null> {
   // Admin bypass — unlimited access to all features
   if (window._bjUserRole === 'admin') return { allowed: true, behavior: 'fixed', effective_limit: 9999, remaining: 9999 };
   if (!currentUser) return { allowed: false, behavior: 'off', effective_limit: 0, remaining: 0 };
@@ -611,14 +613,14 @@ async function checkEntitlement(feature, usageCount) {
     data._ts = Date.now();
     _entitlementCache[cacheKey] = data;
     return data;
-  } catch (e) {
-    console.warn('[entitlement] Error:', e.message);
+  } catch (e: unknown) {
+    console.warn('[entitlement] Error:', (e as Error).message);
     return { allowed: true, behavior: 'fixed', effective_limit: 99, remaining: 99 };
   }
 }
 
 /** Clear entitlement cache (call after usage changes) */
-function clearEntitlementCache(feature) {
+function clearEntitlementCache(feature: string): void {
   if (feature) {
     Object.keys(_entitlementCache).forEach(function(k) { if (k.startsWith(feature + ':')) delete _entitlementCache[k]; });
   } else {
@@ -632,7 +634,7 @@ function clearEntitlementCache(feature) {
  * @param {object} ent - Entitlement result from checkEntitlement()
  * @returns {boolean} true if blocked (caller should abort)
  */
-function showUpgradePrompt(featureName, ent) {
+function showUpgradePrompt(featureName: string, ent: Record<string, unknown>): void {
   var msg = ent.behavior === 'off'
     ? featureName + ' is a Pro feature. Upgrade to unlock it.'
     : 'You\'ve reached the ' + featureName + ' limit (' + ent.effective_limit + '). Upgrade to Pro for more.';
@@ -706,7 +708,7 @@ var filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444',
  * @param {string} jobId - greenhouse_id
  * @param {object} data - { content?: string, salary?: { min, max, raw, currency, rate } }
  */
-async function enrichJob(jobId, data) {
+async function enrichJob(jobId: string, data: Record<string, unknown>): Promise<void> {
   try {
     // CS-002: Use session access_token for auth (was: anon key with no auth check on EF)
     const session = (await sb.auth.getSession())?.data?.session;
@@ -721,8 +723,8 @@ async function enrichJob(jobId, data) {
       body: JSON.stringify({ job_id: jobId, ...data })
     });
     if (!resp.ok) console.warn('[enrich-job] Failed for', jobId, resp.status);
-  } catch (e) {
-    console.warn('[enrich-job] Error:', e.message);
+  } catch (e: unknown) {
+    console.warn('[enrich-job] Error:', (e as Error).message);
   }
 }
 
@@ -733,7 +735,7 @@ async function enrichJob(jobId, data) {
 // ============================================================
 
 /** Get total localStorage usage in bytes */
-function getStorageUsage() {
+function getStorageUsage(): { used: number; quota: number; percent: number } {
   var total = 0;
   var keys = {};
   for (var i = 0; i < localStorage.length; i++) {
@@ -746,7 +748,7 @@ function getStorageUsage() {
 }
 
 /** Log storage usage to console (call from DevTools: storageHealth()) */
-function storageHealth() {
+function storageHealth(): { ok: boolean; used: number; quota: number; warnings: string[] } {
   var usage = getStorageUsage();
   console.group('[BJ] Storage Health');
   console.log('Total localStorage:', usage.totalKB + 'KB');
@@ -762,7 +764,7 @@ function storageHealth() {
 }
 
 /** Emergency cleanup when storage is full */
-function _handleStorageFull(failedKey) {
+function _handleStorageFull(failedKey: string): void {
   console.warn('[BJ] Running emergency storage cleanup...');
   // Priority: remove caches first, then old data
   var sacrificial = ['bj_readiness', 'bj_ref_city_radius', '_bj_ud_cache'];
@@ -781,7 +783,7 @@ function _handleStorageFull(failedKey) {
         localStorage.setItem(key, JSON.stringify(arr));
         console.log('[BJ] Trimmed ' + key + ' to 500 items');
       }
-    } catch (e) { reportError('storage-trim', e); }
+    } catch (e: unknown) { reportError('storage-trim', e); }
   });
   // Trim app_history to last 200
   try {
@@ -791,7 +793,7 @@ function _handleStorageFull(failedKey) {
       saveUserData('bj_app_history', JSON.stringify(hist));
       console.log('[BJ] Trimmed bj_app_history to 200 items');
     }
-  } catch (e) { reportError("storage-trim-history", e); }
+  } catch (e: unknown) { reportError("storage-trim-history", e); }
 }
 
 // ============================================================
@@ -805,10 +807,11 @@ function _handleStorageFull(failedKey) {
 // Debug: set BJ_DEBUG_CACHE=1 in localStorage to see cache hit/miss logs.
 // Usage: const { data, cached } = await cachedQuery('companies', () => sb.from('ats_companies').select('slug,name'), { ttl: 300000 });
 
-var _queryCache = {};
+var _queryCache: Record<string, CacheEntry> = {};
+var statsCache: Record<string, unknown> = {};
 var _cacheHits = 0;
 var _cacheMisses = 0;
-var _cacheDebug = (typeof localStorage !== 'undefined' && localStorage.getItem('BJ_DEBUG_CACHE') === '1');
+var _cacheDebug: boolean = (typeof localStorage !== 'undefined' && localStorage.getItem('BJ_DEBUG_CACHE') === '1');
 
 // TTL tiers by key prefix (v6.55 A14 Session 2)
 // ref: = reference/lookup tables (rarely change) — 1 hour
@@ -827,7 +830,7 @@ var CACHE_TTL_TIERS = {
 var CACHE_TTL_DEFAULT = 300000; // 5 min
 
 /** Resolve TTL from key prefix tier or explicit opt */
-function _resolveTTL(key, opts) {
+function _resolveTTL(key: string, opts?: CacheOptions): number {
   if (opts && opts.ttl) return opts.ttl;
   var prefixes = Object.keys(CACHE_TTL_TIERS);
   for (var i = 0; i < prefixes.length; i++) {
@@ -843,7 +846,7 @@ function _resolveTTL(key, opts) {
  * @param {object} opts - { ttl: ms (overrides tier), force: boolean }
  * @returns {Promise<{data: any, count: number|null, cached: boolean}>}
  */
-async function cachedQuery(key, queryFn, opts) {
+async function cachedQuery(key: string, queryFn: () => Promise<unknown>, opts?: CacheOptions): Promise<Record<string, unknown>> {
   var ttl = _resolveTTL(key, opts);
   var force = opts && opts.force;
   var entry = _queryCache[key];
@@ -865,21 +868,21 @@ async function cachedQuery(key, queryFn, opts) {
     _cacheMisses++;
     if (_cacheDebug) console.log('[cache] MISS', key, '(' + (result.data ? result.data.length : 0) + ' rows)');
     return { data: result.data, count: result.count, cached: false };
-  } catch (e) {
-    console.warn('[cachedQuery] Failed for', key, e.message);
+  } catch (e: unknown) {
+    console.warn('[cachedQuery] Failed for', key, (e as Error).message);
     if (entry) return { data: entry.data, count: entry.count, cached: true };
     return { data: null, count: null, cached: false };
   }
 }
 
 /** Get cached count (if query used { count: 'exact' }) */
-function cachedCount(key) {
+function cachedCount(key: string): number | null {
   var entry = _queryCache[key];
   return entry ? entry.count : null;
 }
 
 /** Invalidate a specific cache key or all keys matching a prefix */
-function invalidateCache(keyOrPrefix) {
+function invalidateCache(keyOrPrefix: string): void {
   if (!keyOrPrefix) { _queryCache = {}; return; }
   Object.keys(_queryCache).forEach(function(k) {
     if (k === keyOrPrefix || k.startsWith(keyOrPrefix + ':')) delete _queryCache[k];
@@ -888,7 +891,7 @@ function invalidateCache(keyOrPrefix) {
 }
 
 /** Clear ALL app caches — query cache + stats cache (if present) */
-function clearAllCaches() {
+function clearAllCaches(): void {
   _queryCache = {};
   _cacheHits = 0;
   _cacheMisses = 0;
@@ -900,7 +903,7 @@ function clearAllCaches() {
 }
 
 /** Generate a deterministic cache key from filter state (A14 Session 3) */
-function _filterCacheKey(prefix, sf) {
+function _filterCacheKey(prefix: string, sf: Record<string, unknown>): string {
   var parts = [];
   ['whatPills','wherePills','whenPills','whoPills','payPills','whatNotPills','whereNotPills','whoNotPills'].forEach(function(k) {
     var arr = sf[k] || sf.pills && k === 'whatPills' && sf.pills || [];
@@ -915,7 +918,7 @@ function _filterCacheKey(prefix, sf) {
 }
 
 /** Get cache diagnostics — call from console: getCacheStats() */
-function getCacheStats() {
+function getCacheStats(): CacheStats {
   var keys = Object.keys(_queryCache);
   var now = Date.now();
   var totalRows = 0;
@@ -955,7 +958,7 @@ function getCacheStats() {
 // VISIBILITY-BASED CACHE TIMEOUT (A14)
 // ============================================================
 // Clear caches when tab has been hidden for 5+ minutes to prevent stale data
-var _visibilityHiddenAt = null;
+var _visibilityHiddenAt: number | null = null;
 var VISIBILITY_CACHE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
 if (typeof document !== 'undefined') {
@@ -973,7 +976,7 @@ if (typeof document !== 'undefined') {
 }
 
 /** Pre-warm static ref table caches on app init */
-async function prewarmRefCaches() {
+async function prewarmRefCaches(): Promise<void> {
   try {
     await Promise.all([
       cachedQuery('ref:industries', function() {
@@ -984,8 +987,8 @@ async function prewarmRefCaches() {
       }, { ttl: 600000 }), // 10 min TTL — job_count updates periodically
     ]);
     console.log('[BJ] Ref caches pre-warmed');
-  } catch (e) {
-    console.warn('[BJ] Ref cache pre-warm failed:', e.message);
+  } catch (e: unknown) {
+    console.warn('[BJ] Ref cache pre-warm failed:', (e as Error).message);
   }
 }
 
@@ -994,14 +997,14 @@ async function prewarmRefCaches() {
 // ============================================================
 
 var _isOnline = navigator.onLine;
-var _offlineBanner = null;
-var _retryQueue = [];
+var _offlineBanner: HTMLElement | null = null;
+var _retryQueue: Array<{ fn: () => Promise<unknown>; label: string }> = [];
 
 /** Check if the browser is online */
-function isOnline() { return _isOnline; }
+function isOnline(): boolean { return _isOnline; }
 
 /** Initialize offline/online detection */
-function initOfflineDetection() {
+function initOfflineDetection(): void {
   window.addEventListener('online', function() {
     _isOnline = true;
     console.log('[BJ] Back online');
@@ -1015,7 +1018,7 @@ function initOfflineDetection() {
   });
 }
 
-function _showOfflineBanner() {
+function _showOfflineBanner(): void {
   if (_offlineBanner) return;
   _offlineBanner = document.createElement('div');
   _offlineBanner.id = 'bj-offline-banner';
@@ -1024,12 +1027,12 @@ function _showOfflineBanner() {
   document.body.prepend(_offlineBanner);
 }
 
-function _hideOfflineBanner() {
+function _hideOfflineBanner(): void {
   if (_offlineBanner) { _offlineBanner.remove(); _offlineBanner = null; }
 }
 
 /** Retry a failed async operation with exponential backoff */
-async function withRetry(fn, opts) {
+async function withRetry<T>(fn: () => Promise<T>, opts?: { retries?: number; delay?: number; label?: string }): Promise<T> {
   var maxRetries = (opts && opts.retries) || 3;
   var baseDelay = (opts && opts.delay) || 1000;
   var label = (opts && opts.label) || 'operation';
@@ -1037,9 +1040,9 @@ async function withRetry(fn, opts) {
   for (var attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await fn();
-    } catch (e) {
+    } catch (e: unknown) {
       if (attempt === maxRetries) {
-        console.error('[BJ] ' + label + ' failed after ' + (maxRetries + 1) + ' attempts:', e.message);
+        console.error('[BJ] ' + label + ' failed after ' + (maxRetries + 1) + ' attempts:', (e as Error).message);
         throw e;
       }
       var delay = baseDelay * Math.pow(2, attempt) + Math.random() * 500;
@@ -1050,13 +1053,13 @@ async function withRetry(fn, opts) {
 }
 
 /** Queue a failed write operation for retry when back online */
-function queueForRetry(fn, label) {
+function queueForRetry(fn: () => Promise<unknown>, label: string): void {
   _retryQueue.push({ fn: fn, label: label || 'queued op', addedAt: Date.now() });
   console.log('[BJ] Queued for retry: ' + label + ' (' + _retryQueue.length + ' pending)');
 }
 
 /** Drain the retry queue (called when coming back online) */
-async function _drainRetryQueue() {
+async function _drainRetryQueue(): Promise<void> {
   if (_retryQueue.length === 0) return;
   console.log('[BJ] Draining retry queue: ' + _retryQueue.length + ' items');
   var queue = _retryQueue.slice();
@@ -1065,8 +1068,8 @@ async function _drainRetryQueue() {
     try {
       await queue[i].fn();
       console.log('[BJ] Retry succeeded: ' + queue[i].label);
-    } catch (e) {
-      console.warn('[BJ] Retry failed: ' + queue[i].label, e.message);
+    } catch (e: unknown) {
+      console.warn('[BJ] Retry failed: ' + queue[i].label, (e as Error).message);
       // Don't re-queue items older than 10 minutes
       if (Date.now() - queue[i].addedAt < 600000) {
         _retryQueue.push(queue[i]);
@@ -1076,7 +1079,7 @@ async function _drainRetryQueue() {
 }
 
 /** Global unhandled error and rejection handlers */
-function initGlobalErrorHandlers() {
+function initGlobalErrorHandlers(): void {
   window.addEventListener('error', function(event) {
     console.error('[BJ] Uncaught error:', event.message, 'at', event.filename + ':' + event.lineno);
   });
@@ -1097,7 +1100,7 @@ function initGlobalErrorHandlers() {
 
 /** Safe Supabase query wrapper — handles offline, retries, fallback */
 // ── Error reporting helper ──
-function reportError(label, error, extra) {
+function reportError(label: string, error: unknown, extra?: Record<string, unknown>): void {
   var msg = error && error.message ? error.message : String(error);
   console.warn('[BJ] ' + label + ' failed:', msg);
   try {
@@ -1114,7 +1117,7 @@ function reportError(label, error, extra) {
   } catch (_) { /* never let reporting break the app */ }
 }
 
-async function safeQuery(queryFn, opts) {
+async function safeQuery(queryFn: () => Promise<unknown>, opts?: SafeQueryOptions): Promise<unknown> {
   var label = (opts && opts.label) || 'query';
   var fallback = opts && opts.fallback;
   var retry = opts && opts.retry !== false;
@@ -1138,14 +1141,14 @@ async function safeQuery(queryFn, opts) {
       if (result.error) throw new Error(result.error.message);
       return result.data;
     }
-  } catch (e) {
+  } catch (e: unknown) {
     if (!silent) reportError(label, e);
     return fallback !== undefined ? fallback : null;
   }
 }
 
 // ── Convenience wrapper: safeRpc ──
-async function safeRpc(fnName, params, opts) {
+async function safeRpc(fnName: string, params?: Record<string, unknown>, opts?: SafeQueryOptions): Promise<unknown> {
   var label = (opts && opts.label) || ('rpc:' + fnName);
   return safeQuery(function() { return sb.rpc(fnName, params); }, { ...opts, label: label });
 }

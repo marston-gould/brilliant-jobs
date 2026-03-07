@@ -1,12 +1,12 @@
-var BJ_VERSION = 'v7.40';
+var BJ_VERSION = "v7.41";
 (function() {
   function populateVersion() {
-    document.querySelectorAll(".bj-version, [id$=\"-version\"]").forEach(function(el) {
+    document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el) {
       el.textContent = BJ_VERSION;
     });
   }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', populateVersion);
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", populateVersion);
   } else {
     populateVersion();
   }

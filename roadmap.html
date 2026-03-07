@@ -1911,7 +1911,7 @@ const features = [
 // 0-J: Frontend + Performance (Pod 3, P0/P1)
 { s: 'done', b: 'pre-launch', n: '0.056 FE-001: 818KB bundle → code split', d: 'CS-016: Route-based split. 153KB initial (was 491KB). 6 chunks with lazy loading via bjEnsureTab.', p: 75, e: '6h' },
 { s: 'done', b: 'pre-launch', n: '0.057 FE-005: Global scope 30 JS via window', d: 'CS-P1-004: BJ namespace registry (42 files). BJ.export() + _registry. Backward-compat window aliases. Phase F full migration.', p: 75, e: '4h' },
-{ s: 'todo', b: 'pre-launch', n: '0.058 FE-006: No TypeScript', d: 'New files .ts. tsconfig strict.', p: 75, e: '4h' },
+{ s: 'done', b: 'pre-launch', n: '0.058 FE-006: TypeScript Migration (Phase 1)', d: 'CS-P1-015: tsconfig strict. 7 core modules migrated to .ts. Shared type definitions. CI tsc --noEmit gate. ADR-04 incremental path.', p: 75, e: '4h' },
 { s: 'done', b: 'pre-launch', n: '0.059 BE-007: No API versioning', d: 'CS-P1-004: Date-based (2026-03-07). api-version.ts module. x-api-version header on 10 EFs.', p: 75, e: '1h' },
 { s: 'done', b: 'pre-launch', n: '0.060 IX-FE-002: Inline CSS/JS extraction landing', d: 'CS-014: 98 inline styles extracted. CS-018: Full extraction — 625-line inline style block + all inline JS moved to external files. index.html 2260→791 lines (65% reduction). Zero inline executable scripts.', p: 75, e: '2h' },
 { s: 'done', b: 'pre-launch', n: '0.061 IX-FE-005: No search debounce', d: 'CS-P1-004: Dashboard 300ms debounce. Landing: button-click + rate limiting. Verified.', p: 75, e: '30min' },

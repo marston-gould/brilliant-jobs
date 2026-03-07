@@ -1,4 +1,4 @@
-import { buildSync } from 'esbuild';
+import { buildSync, transformSync } from 'esbuild';
 import { readFileSync, writeFileSync, mkdirSync, unlinkSync, existsSync } from 'fs';
 import { createHash } from 'crypto';
 
@@ -18,13 +18,13 @@ import { createHash } from 'crypto';
 
 const chunks = {
   shell: [
-    'js/version.js',
-    'js/globals.js',
+    'js/version.ts',
+    'js/globals.ts',
     'js/theme.js',
-    'js/sync.js',
-    'js/fingerprint.js',
-    'js/tier-gating.js',
-    'js/lazy-loader.js',
+    'js/sync.ts',
+    'js/fingerprint.ts',
+    'js/tier-gating.ts',
+    'js/lazy-loader.ts',
     'js/tab-guard.js',
     'js/app.js',
   ],
@@ -72,7 +72,8 @@ const report = [];
 
 for (const [name, files] of Object.entries(chunks)) {
   const combined = files.map(f => `// === ${f} ===\n${readFileSync(f, 'utf-8')}`).join('\n\n');
-  const tmpFile = `dist/_tmp_${name}.js`;
+  // CS-P1-015: Use .ts extension so esbuild strips TypeScript type annotations
+  const tmpFile = `dist/_tmp_${name}.ts`;
 
   writeFileSync(tmpFile, combined);
 
@@ -100,10 +101,10 @@ for (const [name, files] of Object.entries(chunks)) {
 const allFiles = Object.values(chunks).flat();
 const fullCombined = allFiles.map(f => `// === ${f} ===\n${readFileSync(f, 'utf-8')}`).join('\n\n');
 writeFileSync('dist/dashboard.js', fullCombined);
-writeFileSync('dist/_tmp.js', fullCombined);
+writeFileSync('dist/_tmp.ts', fullCombined);
 
 buildSync({
-  entryPoints: ['dist/_tmp.js'],
+  entryPoints: ['dist/_tmp.ts'],
   outfile: 'dist/dashboard.min.js',
   minifySyntax: true,
   minifyWhitespace: true,
@@ -112,7 +113,7 @@ buildSync({
   target: 'es2020',
   bundle: false,
 });
-unlinkSync('dist/_tmp.js');
+unlinkSync('dist/_tmp.ts');
 
 const fullMinSize = readFileSync('dist/dashboard.min.js', 'utf-8').length;
 
@@ -166,3 +167,32 @@ manifest._buildHash = combinedHash;
 writeFileSync('dist/manifest.json', JSON.stringify(manifest, null, 2));
 console.log(`\n🔒 Content hashes written to dist/manifest.json (build: ${combinedHash})`);
 console.log('');
+
+// ============================================================
+// CS-P1-015: Compile individual .ts files to .js for direct HTML loading
+// HTML pages that use <script src="/js/version.js"> etc. need plain JS.
+// The .ts files are the source of truth; .js files are generated.
+// ============================================================
+
+const tsFiles = [
+  'js/version.ts',
+  'js/globals.ts',
+  'js/sync.ts',
+  'js/fingerprint.ts',
+  'js/tier-gating.ts',
+  'js/lazy-loader.ts',
+  'js/api.ts',
+];
+
+for (const tsFile of tsFiles) {
+  const jsFile = tsFile.replace('.ts', '.js');
+  // Strip types via esbuild transform (no IIFE wrapping — preserves global scope)
+  const tsContent = readFileSync(tsFile, 'utf-8');
+  const { code } = transformSync(tsContent, {
+    loader: 'ts',
+    target: 'es2020',
+  });
+  writeFileSync(jsFile, code);
+}
+
+console.log(`\n📝 ${tsFiles.length} .ts files compiled to .js for direct HTML loading`);

@@ -24,7 +24,7 @@ echo "🔍 Version discipline check (v2 — global cache buster scan)..."
 echo ""
 
 # ── Extract source of truth from version.js ──
-VERSION_FILE="js/version.js"
+VERSION_FILE="js/version.ts"
 if [ ! -f "$VERSION_FILE" ]; then
   echo -e "${RED}✗ FAIL:${NC} $VERSION_FILE not found"
   exit 1
