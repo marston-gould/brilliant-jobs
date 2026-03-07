@@ -34,17 +34,13 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FIX-11** — Extension Empty Catch Remediation (EXT-ES-001)
+**SA-004** — API Gateway Skeleton + Auth Middleware + Plugin Architecture (Phase S1)
 - Completed: 2026-03-07
-- Tags: `extension@2.22.0-error-handling`
-- All 22 empty catch blocks in extension source remediated:
-  - background.js (7): console.warn for scroll/message failures, comment for expected JSON.parse, comment for tab race
-  - popup.js (6): console.warn + phCapture for data flow errors
-  - handlers (5): console.warn on error-report-about-error catches
-  - resilientDOM.js (2): console.warn on error/selector-miss report catches
-  - interceptor.js (1): console.warn with URL context
-  - build-extension.js (1): explanatory comment
-- 31 new tests (1406+ total).
+- Tags: `infra@gateway-v0.1.0`, product version `v7.44`
+- Created: api-gateway EF, gateway-middleware.ts (4 built-in plugins), v6.19 migration, ADR-03
+- 10 routes registered: chat-job-search, score-resume, score-job-fraud, enrich-jd-ai, validate-signup, account-lifecycle, send-notification, daily-digest, submit-application, billing-notifications
+- Rate limits: anonymous 30/min, free 120/min, pro 300/min, crewai 600/min, admin unlimited
+- ⚠️ PROD VALIDATION PENDING: supabase db push (v6.19), supabase functions deploy api-gateway, confirm latency < 50ms, Chief Architect sign-off
 
 ---
 
@@ -56,12 +52,11 @@ None.
 
 ## Next Session
 
-**SA-004** — API Gateway Skeleton + Auth Middleware + Plugin Architecture (Phase S1)
-- Entry gate: Remediation complete (all 17 Phase 1 sessions done). ✅
-- Pair: Backend Engineer + Security Engineer + Lead Platform Engineer
-- Estimated: 14–18h
-- Build: Gateway Edge Function with middleware plugin architecture, unified auth, rate limiting, CDN cache headers
-- No infrastructure cost — pure code
+**SA-005** — Gateway Migration: All 88 EFs + API Consumer Management (Phase S1)
+- Entry gate: SA-004 prod validation done. Gateway routing 10 endpoints with middleware pipeline. Auth middleware operational. Rate limiting validated. Gateway latency < 50ms confirmed. Chief Architect sign-off on middleware extensibility.
+- Pair: Backend Engineer + DevOps + Lead Platform Engineer
+- Estimated: 16–20h
+- Build: Add remaining 78 EFs to route registry. Build api_consumers table. Deprecate direct EF paths. All 88 EFs through gateway.
 
 ---
 
@@ -111,6 +106,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
+| SA-004 | 2026-03-07 | Gateway EF + middleware plugins + 10 routes + rate_limits migration + ADR-03 | infra@gateway-v0.1.0 |
 | FIX-11 | 2026-03-07 | EXT-ES-001 (22 empty catches → console.warn + PostHog + comments) | extension@2.22.0-error-handling |
 | CS-P1-017 | 2026-03-07 | 0.172 (PII data map), 0.173 (user deletion cascade), 0.174 (data export + compliance dash) | p1-017@1.0.0-compliance-dashboard |
 | CS-P1-016 | 2026-03-07 | 0.161 (cron management UI), 0.162 (cron alert config), 0.175 (PostHog funnel+retention), 0.176 (first A/B test), 0.177 (UX review), 0.178 (design system assessment) | p1-016@1.0.0-admin-monitoring |
