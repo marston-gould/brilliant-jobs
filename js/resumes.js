@@ -177,7 +177,7 @@ function renderResumes() {
     if (r.aiScoreStatus === 'scoring') {
       aiBadge = '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(148,163,184,0.1);color:#94a3b8;border:1px solid rgba(148,163,184,0.15);cursor:help;" title="Analyzing content for AI authorship…">🔄 Scoring…</span>';
     } else if (aiData && aiData.label) {
-      const aiColors = { human: { bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.2)', text: '#22c55e', icon: '✅' }, mixed: { bg: 'rgba(234,179,8,0.1)', border: 'rgba(234,179,8,0.2)', text: '#eab308', icon: '⚠️' }, ai_generated: { bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.2)', text: '#ef4444', icon: '🤖' }, unknown: { bg: 'rgba(148,163,184,0.1)', border: 'rgba(148,163,184,0.2)', text: '#94a3b8', icon: '❓' } };
+      const aiColors = { human: { bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.2)', text: 'var(--green)', icon: '✅' }, mixed: { bg: 'rgba(234,179,8,0.1)', border: 'rgba(234,179,8,0.2)', text: '#eab308', icon: '⚠️' }, ai_generated: { bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.2)', text: '#ef4444', icon: '🤖' }, unknown: { bg: 'rgba(148,163,184,0.1)', border: 'rgba(148,163,184,0.2)', text: '#94a3b8', icon: '❓' } };
       const ac = aiColors[aiData.label] || aiColors.unknown;
       const aiPct = Math.round((aiData.score || 0) * 100);
       const labelText = aiData.label === 'ai_generated' ? 'AI-Generated' : aiData.label === 'mixed' ? 'Mixed' : aiData.label === 'human' ? 'Human-Written' : 'Unknown';
@@ -204,7 +204,7 @@ function renderResumes() {
       const currPct = Math.round((aiData.score || 0) * 100);
       const delta = currPct - prevPct;
       const arrow = delta > 0 ? '\u2191' : delta < 0 ? '\u2193' : '\u2194';
-      const deltaColor = delta > 5 ? '#ef4444' : delta < -5 ? '#22c55e' : '#94a3b8';
+      const deltaColor = delta > 5 ? '#ef4444' : delta < -5 ? 'var(--green)' : '#94a3b8';
       scoreHistory = '<span style="font-size:8px;color:' + deltaColor + ';margin-left:4px;cursor:help;" title="Previous: ' + prevPct + '% AI (' + new Date(prev.scoredAt).toLocaleString() + ')">' + arrow + ' was ' + prevPct + '%</span>';
     }
 

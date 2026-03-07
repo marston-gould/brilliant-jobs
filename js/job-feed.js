@@ -675,7 +675,7 @@ function getCheckedSavedPromptFilters() {
     var promptId = cb.dataset.promptId;
     var prompt = _savedPrompts.find(function(p) { return p.id === promptId; });
     if (prompt && prompt.derived_filters && Object.keys(prompt.derived_filters).length > 0) {
-      var PROMPT_COLORS = ['#3b82f6','#22c55e','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4','#84cc16'];
+      var PROMPT_COLORS = ['#3b82f6','var(--green)','var(--warm)','var(--red)','#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4','#84cc16'];
       var color = PROMPT_COLORS[prompt.color_index || 0] || '#3b82f6';
       var filterObj = promptDerivedToFilterObj(prompt.derived_filters, prompt.name, color);
       if (filterObj) results.push(filterObj);

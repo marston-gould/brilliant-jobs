@@ -1,5 +1,5 @@
 // === js/version.js ===
-var BJ_VERSION = 'v7.34';
+var BJ_VERSION = 'v7.35';
 (function() {
   function populateVersion() {
     document.querySelectorAll(".bj-version, [id$=\"-version\"]").forEach(function(el) {
@@ -1149,6 +1149,84 @@ async function safeRpc(fnName, params, opts) {
   var label = (opts && opts.label) || ('rpc:' + fnName);
   return safeQuery(function() { return sb.rpc(fnName, params); }, { ...opts, label: label });
 }
+
+
+// === js/theme.js ===
+/* ──────────────────────────────────────────────────────────
+   Brilliant Jobs — Theme Toggle (CS-P1-009: CSS-002)
+   
+   Modes: light | dark | auto (follows OS preference)
+   Persists to localStorage. Applied before first paint via
+   inline script in <head> to prevent flash of wrong theme.
+   ────────────────────────────────────────────────────────── */
+
+(function() {
+  'use strict';
+
+  var STORAGE_KEY = 'bj-theme';
+  var VALID_THEMES = ['light', 'dark', 'auto'];
+  var ICON_SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-toggle-icon"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+  var ICON_MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-toggle-icon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+  var ICON_AUTO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-toggle-icon"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20V2z"/></svg>';
+
+  var LABELS = { light: 'Light', dark: 'Dark', auto: 'Auto' };
+  var ICONS = { light: ICON_SUN, dark: ICON_MOON, auto: ICON_AUTO };
+
+  function getStoredTheme() {
+    try {
+      var stored = localStorage.getItem(STORAGE_KEY);
+      return VALID_THEMES.indexOf(stored) !== -1 ? stored : 'auto';
+    } catch (e) {
+      return 'auto';
+    }
+  }
+
+  function setStoredTheme(theme) {
+    try { localStorage.setItem(STORAGE_KEY, theme); } catch (e) { /* storage blocked */ }
+  }
+
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    // Update toggle buttons if they exist
+    var toggles = document.querySelectorAll('.theme-toggle');
+    toggles.forEach(function(el) {
+      el.innerHTML = ICONS[theme] + '<span class="theme-toggle-label">' + LABELS[theme] + '</span>';
+      el.setAttribute('title', 'Theme: ' + LABELS[theme] + ' (click to cycle)');
+    });
+    // Track with PostHog if available
+    if (window.posthog && typeof window.posthog.capture === 'function') {
+      window.posthog.capture('theme_changed', { theme: theme });
+    }
+  }
+
+  function cycleTheme() {
+    var current = getStoredTheme();
+    var order = ['light', 'dark', 'auto'];
+    var next = order[(order.indexOf(current) + 1) % order.length];
+    setStoredTheme(next);
+    applyTheme(next);
+  }
+
+  // Apply on load
+  var theme = getStoredTheme();
+  applyTheme(theme);
+
+  // Expose for nav toggle button
+  window.BJ_Theme = {
+    cycle: cycleTheme,
+    get: getStoredTheme,
+    set: function(t) { if (VALID_THEMES.indexOf(t) !== -1) { setStoredTheme(t); applyTheme(t); } }
+  };
+
+  // Listen for OS preference changes when in auto mode
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function() {
+      if (getStoredTheme() === 'auto') {
+        applyTheme('auto');
+      }
+    });
+  }
+})();
 
 
 // === js/sync.js ===
@@ -3708,7 +3786,7 @@ function getCheckedSavedPromptFilters() {
     var promptId = cb.dataset.promptId;
     var prompt = _savedPrompts.find(function(p) { return p.id === promptId; });
     if (prompt && prompt.derived_filters && Object.keys(prompt.derived_filters).length > 0) {
-      var PROMPT_COLORS = ['#3b82f6','#22c55e','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4','#84cc16'];
+      var PROMPT_COLORS = ['#3b82f6','var(--green)','var(--warm)','var(--red)','#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4','#84cc16'];
       var color = PROMPT_COLORS[prompt.color_index || 0] || '#3b82f6';
       var filterObj = promptDerivedToFilterObj(prompt.derived_filters, prompt.name, color);
       if (filterObj) results.push(filterObj);
@@ -13718,7 +13796,7 @@ async function renderPipeline() {
       if (pendingSig) {
         const isSignal = pendingSig.signal_source !== 'time_based';
         const isCalendar = pendingSig.signal_source === 'calendar';
-        const borderColor = isSignal ? 'var(--accent)' : '#f59e0b';
+        const borderColor = isSignal ? 'var(--accent)' : 'var(--warm)';
         const icon = isCalendar ? '📅' : isSignal ? '✉' : '⏰';
         const headerText = isCalendar
           ? 'Interview detected for ' + title + ' at ' + company
@@ -13740,7 +13818,7 @@ async function renderPipeline() {
         if (roundLabel) html += '<div class="pl-signal-round"><span class="pl-round-badge">' + roundLabel + '</span></div>';
         if (pendingSig.confidence) {
           const confPct = Math.round(pendingSig.confidence * 100);
-          const confColor = confPct >= 80 ? '#22c55e' : confPct >= 60 ? '#f59e0b' : '#ef4444';
+          const confColor = confPct >= 80 ? 'var(--green)' : confPct >= 60 ? 'var(--warm)' : 'var(--red)';
           html += '<div class="pl-signal-confidence" style="color:' + confColor + ';font-size:11px;margin:2px 0;">' + confPct + '% confidence</div>';
         }
 
@@ -13858,7 +13936,7 @@ async function renderGhostMonitor() {
       const score = e.ghost_score || 0;
       const status = e.ghost_status || 'active';
       const statusColors = {
-        active: 'color:var(--green);', waiting: 'color:#f59e0b;',
+        active: 'color:var(--green);', waiting: 'color:var(--warm);',
         likely_ghosted: 'color:var(--red);', ghosted: 'color:var(--red);font-weight:600;'
       };
       const statusLabels = {
@@ -13873,7 +13951,7 @@ async function renderGhostMonitor() {
       };
 
       // Score bar color
-      const barColor = score >= 80 ? 'var(--red)' : score >= 50 ? '#f59e0b' : score >= 25 ? 'var(--accent)' : 'var(--green)';
+      const barColor = score >= 80 ? 'var(--red)' : score >= 50 ? 'var(--warm)' : score >= 25 ? 'var(--accent)' : 'var(--green)';
 
       const appliedStr = e.applied_at ? new Date(e.applied_at).toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '—';
 
@@ -14167,7 +14245,7 @@ function showRecruiterResults(jobId, company, contacts, cached) {
     const email = c.recruiter_email || '';
     const title = c.recruiter_title || '';
     const confidence = c.confidence_score || 0;
-    const confColor = confidence >= 80 ? '#22c55e' : confidence >= 60 ? '#f59e0b' : '#ef4444';
+    const confColor = confidence >= 80 ? 'var(--green)' : confidence >= 60 ? 'var(--warm)' : 'var(--red)';
     const linkedIn = c.linkedin_url ? `<a href="${c.linkedin_url}" target="_blank" style="font-size:10px;color:var(--accent);">LinkedIn</a>` : '';
 
     return `<div class="rc-contact" style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border-faint);">
@@ -16083,7 +16161,7 @@ function renderResumes() {
     if (r.aiScoreStatus === 'scoring') {
       aiBadge = '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(148,163,184,0.1);color:#94a3b8;border:1px solid rgba(148,163,184,0.15);cursor:help;" title="Analyzing content for AI authorship…">🔄 Scoring…</span>';
     } else if (aiData && aiData.label) {
-      const aiColors = { human: { bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.2)', text: '#22c55e', icon: '✅' }, mixed: { bg: 'rgba(234,179,8,0.1)', border: 'rgba(234,179,8,0.2)', text: '#eab308', icon: '⚠️' }, ai_generated: { bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.2)', text: '#ef4444', icon: '🤖' }, unknown: { bg: 'rgba(148,163,184,0.1)', border: 'rgba(148,163,184,0.2)', text: '#94a3b8', icon: '❓' } };
+      const aiColors = { human: { bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.2)', text: 'var(--green)', icon: '✅' }, mixed: { bg: 'rgba(234,179,8,0.1)', border: 'rgba(234,179,8,0.2)', text: '#eab308', icon: '⚠️' }, ai_generated: { bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.2)', text: '#ef4444', icon: '🤖' }, unknown: { bg: 'rgba(148,163,184,0.1)', border: 'rgba(148,163,184,0.2)', text: '#94a3b8', icon: '❓' } };
       const ac = aiColors[aiData.label] || aiColors.unknown;
       const aiPct = Math.round((aiData.score || 0) * 100);
       const labelText = aiData.label === 'ai_generated' ? 'AI-Generated' : aiData.label === 'mixed' ? 'Mixed' : aiData.label === 'human' ? 'Human-Written' : 'Unknown';
@@ -16110,7 +16188,7 @@ function renderResumes() {
       const currPct = Math.round((aiData.score || 0) * 100);
       const delta = currPct - prevPct;
       const arrow = delta > 0 ? '\u2191' : delta < 0 ? '\u2193' : '\u2194';
-      const deltaColor = delta > 5 ? '#ef4444' : delta < -5 ? '#22c55e' : '#94a3b8';
+      const deltaColor = delta > 5 ? '#ef4444' : delta < -5 ? 'var(--green)' : '#94a3b8';
       scoreHistory = '<span style="font-size:8px;color:' + deltaColor + ';margin-left:4px;cursor:help;" title="Previous: ' + prevPct + '% AI (' + new Date(prev.scoredAt).toLocaleString() + ')">' + arrow + ' was ' + prevPct + '%</span>';
     }
 

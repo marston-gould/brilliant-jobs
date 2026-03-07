@@ -1,3 +1,6 @@
+## v7.35 Session NN: TITLE (2026-03-07)
+- DESCRIBE CHANGES HERE
+
 ## v7.34 CS-P1-008: Landing Page CX + Accessibility (2026-03-07)
 - LS1-10: JSON-LD structured data syncs live job/company counts from API via applyStats()
 - Schema.org microdata: WebPage on body, Organization on nav logos, FAQPage with Q&A, SoftwareApplication with Offer on pricing

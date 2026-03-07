@@ -8,20 +8,17 @@
 
 module.exports = {
   safelist: [
-    { pattern: /^(page|nav|card|stat|btn|fb|rw|cb|ghost|admin|filter|jobs|micro|resume|app|main|ai-|nri-)/ },
-    { pattern: /^(qb-|sf-|pl-|rc-|gs-|ns-|ec-|jt-|rp-|st\d)/ },
-    { pattern: /^(tuning-|setup-|notif-|credit-|seo-|sort-|pill-|poor-match-|sub-)/ },
-    { pattern: /^(hide-|location-|company-|salary-|escalation-|suggestion-|install-)/ },
-    { pattern: /^(or-|not-|no-|collection-|preview-|download-|empty-state)/ },
-    { pattern: /^(badge|level|match|mode|show|tab|source|pay|top-co|ext-|type-)/ },
-    { pattern: /^(job-|save|saved|query-builder|readiness-|phone-|otp-|notify-|feedback-)/ },
-    { pattern: /^(loading|spinner|toggle-|sparkle|override-|instance-|freq-|tz-)/ },
-    { pattern: /^(when-|who-|auth-|browse-|step-|quiet-|coll-)/ },
-    { pattern: /^(high|mid|low|none|on|off|open|selected|collapsed|connected|stale|pulse|sorted|excluded|included|compact|disabled|active|inactive)$/ },
-    { pattern: /^(amber|bug|danger|dim|doc|down|dragover|email|empty|full|green|mark|pdf|red|skip|sms|tall|up|wait|warning|new-resume-item|is-placeholder|css|woff2|chip-count)$/ },
-    { pattern: /^(s[1-8]|esc-|ec$)/ },
-    { pattern: /^(feed-|hero-|intel-|hs-)/ },
-    { pattern: /^(sg-|pa-|rr-|fas-|pending-apps)/ },
+    /* CS-P1-009 (CSS-003): Consolidated from 14 patterns to 7.
+       Critical fix: patterns now require alpha char after dash to avoid
+       matching Tailwind's built-in utilities (e.g. pl-4, sub-1, etc.)
+       that inflated CSS by ~30KB. */
+    { pattern: /^(page|nav-(?!w)|card|stat-(?!ic)|btn|fb-|rw-|cb-|ghost|admin|filter|jobs|micro|resume|app-|main-|badge|level|match-|mode|show|tab-|source|pay|top-co|job-|save|saved)/ },
+    { pattern: /^(ai-|nri-|qb-|sf-|pl-[a-z]|rc-|gs-|ns-|ec-[a-z]|jt-|rp-[a-z]|st\d|ext-|type-|hs-|sg-|pa-[a-z]|rr-|fas-)/ },
+    { pattern: /^(tuning-|setup-|notif-|credit-|seo-|sort-|pill-|poor-match-|sub-[a-z]|hide-|install-|feed-|hero-|intel-)/ },
+    { pattern: /^(location-|company-|salary-|escalation-|suggestion-|or-[a-z]|not-[a-z]|no-[a-z]|collection-|preview-|download-|empty-state)/ },
+    { pattern: /^(query-builder|readiness-|phone-|otp-|notify-|feedback-|loading|spinner|toggle-|sparkle|override-|instance-|freq-|tz-|when-|who-|auth-|browse-|step-[a-z]|quiet-|coll-|pending-apps)/ },
+    { pattern: /^(high|mid|low|none|on|off|open|selected|collapsed|connected|stale|pulse|sorted|excluded|included|compact|disabled|active|inactive|amber|bug|danger|dim|doc|down|dragover|email|empty|full|green|mark|pdf|red|skip|sms|tall|up|wait|warning|new-resume-item|is-placeholder|css|woff2|chip-count|s[1-8]|esc-)$/ },
+    { pattern: /^(u-|bg-indigo-dim)/ },
   ],
   content: [
     './dashboard.html',

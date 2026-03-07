@@ -20,6 +20,7 @@ const chunks = {
   shell: [
     'js/version.js',
     'js/globals.js',
+    'js/theme.js',
     'js/sync.js',
     'js/fingerprint.js',
     'js/tier-gating.js',

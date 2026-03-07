@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.34"></script>
+  <script src="/js/version.js?v=v7.35"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -1943,9 +1943,9 @@ const features = [
 
 // 0-N: CSS (Pod 3, P2/P3)
 { s: 'done', b: 'pre-launch', n: '0.075 CSS-001: Zero a11y dashboard', d: 'CS-007: ARIA labels, keyboard nav, focus management on dashboard. Combined with Pod 4 DS1-2.', p: 75, e: '3h' },
-{ s: 'todo', b: 'pre-launch', n: '0.076 CSS-002: No dark mode', d: 'Vars ready, no dark variants. Combined with DS1-5.', p: 75, e: '4h' },
-{ s: 'todo', b: 'pre-launch', n: '0.077 CSS-003: 30+ regex safelist', d: 'Inflates CSS. Correct for arch.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.078 CSS-004: 128KB CSS from 170KB', d: 'Dead CSS possible. Usage analysis.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.076 CSS-002: No dark mode', d: 'CS-P1-009: Dark mode via data-theme CSS custom properties. 3 modes.', p: 100, e: '4h' },
+{ s: 'done', b: 'pre-launch', n: '0.077 CSS-003: 30+ regex safelist', d: 'CS-P1-009: 14→7 patterns. Alpha-char fix prevents collision.', p: 100, e: '1h' },
+{ s: 'in-progress', b: 'pre-launch', n: '0.078 CSS-004: 148KB CSS (25KB gzip)', d: 'CS-P1-009: 66 dead rules removed. <100KB raw deferred to SA-013.', p: 85, e: '1h' },
 
 // 0-O: Compliance (Pod 3, P1)
 { s: 'done', b: 'pre-launch', n: '0.079 CP-001: No PII inventory', d: 'CS-019: docs/PII_INVENTORY.md — all tables by sensitivity, extension, third-party, Edge Functions, deletion cascade, review schedule.', p: 75, e: '2h' },
@@ -1996,13 +1996,13 @@ const features = [
 
 // 0-U: CX Bundle+Audit (Pod 4, P1)
 { s: 'done', b: 'pre-launch', n: '0.114 DS1-1: Bundle lazy loading Phase 1', d: 'CS-016: Tab JS deferred via bjEnsureTab. Chunks loaded on first tab activation.', p: 75, e: '2h' },
-{ s: 'todo', b: 'pre-launch', n: '0.115 DS1-3: Inline style audit kickoff', d: '827 styles. Categorize token-migrate vs keep.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.115 DS1-3: Inline style audit', d: 'CS-P1-009: 797→390 styles (51% reduction). 50+ utility classes.', p: 100, e: '1h' },
 
 // 0-V: CX Dashboard P2 (Pod 4)
-{ s: 'todo', b: 'pre-launch', n: '0.116 DS1-7: Pipeline drag-drop dark', d: 'Zero events on applications.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.116 DS1-7: Pipeline dark mode', d: 'CS-P1-009: CSS dark overrides + hex→CSS vars.', p: 100, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.117 DS1-8: Gmail connection buried', d: 'IA/UX discoverability fix.', p: 75, e: '1h' },
 { s: 'done', b: 'pre-launch', n: '0.118 DS1-9: ECharts global load', d: 'CS-014 CX-09: ECharts lazy-loaded via loadECharts() on first Stats tab open. Removed eager CDN script from dashboard head.', p: 75, e: '1h' },
-{ s: 'todo', b: 'deferred', n: '0.119 DS1-10: 14 pages single HTML', d: 'Architectural. display:none→routing. Long-term.', p: 75, e: '4h' },
+{ s: 'done', b: 'deferred', n: '0.119 DS1-10: 14 pages single HTML', d: 'CS-P1-009: ADR written. Defer to SA-013 React Router.', p: 100, e: '4h' },
 { s: 'todo', b: 'pre-launch', n: '0.120 DS1A-13: Extension sideload friction', d: 'Smoother install UX (ADR-008).', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.121 DS1A-14: Tuning page dark', d: 'Zero events. filter_changed, weight_adjusted.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.122 DS1A-17: 75 notif inputs 0 events', d: 'Quick-win instrumentation.', p: 75, e: '1h' },
@@ -2010,7 +2010,7 @@ const features = [
 { s: 'done', b: 'pre-launch', n: '0.124 DS1-12: Performance timing events', d: 'CS-P1-007: posthog-perf.js — Nav Timing, LCP, FID, tab render marks.', p: 100, e: '2h' },
 
 // 0-W: CX Dashboard P3 (Pod 4)
-{ s: 'todo', b: 'pre-launch', n: '0.125 DS1-5: Dark mode 14 pages', d: 'CSS vars ready. 2×7 batches.', p: 75, e: '4h' },
+{ s: 'done', b: 'pre-launch', n: '0.125 DS1-5: Dark mode 14 pages', d: 'CS-P1-009: All 14 pages via CSS custom property overrides.', p: 100, e: '4h' },
 { s: 'todo', b: 'pre-launch', n: '0.126 DS1-11: Competing onboarding', d: 'Setup+Get Started. Rationalize.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.127 DS1A-15: Pipeline hidden page', d: 'Force-hidden. Confirm or remove.', p: 75, e: '30min' },
 { s: 'todo', b: 'pre-launch', n: '0.128 DS1A-16: Resume token #f59e0b', d: 'Hardcoded hex→var(--amber).', p: 75, e: '30min' },

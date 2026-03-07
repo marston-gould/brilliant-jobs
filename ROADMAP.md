@@ -2905,9 +2905,9 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
 | 0.075 | CSS-001: Zero accessibility (dashboard) | 3h | — | 🔲 | Combined with Pod 4 DS1-2 (0.107). |
-| 0.076 | CSS-002: No dark mode | 4h | — | 🔲 | CSS vars ready, no dark variants. Combined with DS1-5 (0.125). |
-| 0.077 | CSS-003: 30+ regex safelist (Tailwind) | 1h | — | 🔲 | Inflates CSS. Correct for current arch. |
-| 0.078 | CSS-004: 128KB CSS from 170KB input | 1h | — | 🔲 | Dead CSS possible. Usage analysis needed. |
+| 0.076 | CSS-002: No dark mode | 4h | CS-P1-009 | ✅ | Dark mode via [data-theme] CSS custom properties. 3 modes: light/dark/auto. Toggle in nav + settings. |
+| 0.077 | CSS-003: 30+ regex safelist (Tailwind) | 1h | CS-P1-009 | ✅ | Consolidated 14→7 patterns. Alpha-char-after-dash fix prevents Tailwind utility collision. |
+| 0.078 | CSS-004: 128KB CSS from 170KB input | 1h | CS-P1-009 | ⚠️ | 66 dead CSS rules removed. Raw: 148KB (added dark mode+utils). Gzip: 25KB. <100KB raw deferred to SA-013 CSS splitting. |
 
 ### 0-O: Compliance + Privacy (Pod 3, P1)
 
@@ -2979,16 +2979,16 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
 | 0.114 | DS1-1: Bundle Phase 1 — lazy loading | 2h | CS-016 | ✅ | Tab JS deferred via bjEnsureTab. Chunks loaded on first tab activation. |
-| 0.115 | DS1-3: Inline style audit kickoff | 1h | — | 🔲 | 827 dashboard inline styles. Categorize: token-migrate vs keep. Enables Sprint 2. |
+| 0.115 | DS1-3: Inline style audit kickoff | 1h | CS-P1-009 | ✅ | 797→390 inline styles (51% reduction). 50+ utility classes created. |
 
 ### 0-V: CX — Dashboard P2 (Pod 4)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.116 | DS1-7: Pipeline drag-drop uninstrumented | 1h | — | 🔲 | Zero events on applications pipeline. |
+| 0.116 | DS1-7: Pipeline drag-drop dark mode | 1h | CS-P1-009 | ✅ | Pipeline CSS dark overrides. Hardcoded hex→CSS variables in pipeline.js. |
 | 0.117 | DS1-8: Gmail connection buried | 1h | — | 🔲 | IA/UX improvement for discoverability. |
 | 0.118 | DS1-9: ECharts global load | 1h | CS-014 | ✅ | ECharts lazy-loaded via loadECharts() on first Stats tab open. Removed from dashboard head. |
-| 0.119 | DS1-10: 14 pages single HTML | 4h | — | 🔲 | Architectural. display:none tabs → proper routing. Long-term. |
+| 0.119 | DS1-10: 14 pages single HTML | 4h | CS-P1-009 | ✅ | ADR: defer to SA-013 (React Router). Current arch adequate for launch (48KB gzip). |
 | 0.120 | DS1A-13: Extension sideload friction | 1h | — | 🔲 | Smoother install UX for website distribution (ADR-008). |
 | 0.121 | DS1A-14: Tuning page dark | 1h | — | 🔲 | Zero events. filter_changed, weight_adjusted, save_tuning. |
 | 0.122 | DS1A-17: 75 notification inputs, 0 events | 1h | — | 🔲 | Quick-win instrumentation. |
@@ -2999,7 +2999,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.125 | DS1-5: Dark mode (14 pages) | 4h | — | 🔲 | CSS vars ready, no dark variants. 2×7 page batches. |
+| 0.125 | DS1-5: Dark mode (14 pages) | 4h | CS-P1-009 | ✅ | All 14 pages dark-mode via CSS custom properties. Input/select/card/scrollbar overrides. |
 | 0.126 | DS1-11: Competing onboarding paths | 1h | — | 🔲 | Setup + Get Started both exist. Rationalize. |
 | 0.127 | DS1A-15: Pipeline hidden page | 30min | — | 🔲 | Force-hidden CSS. Confirm intentional or remove. |
 | 0.128 | DS1A-16: Resume token bypass #f59e0b | 30min | — | 🔲 | Hardcoded hex → var(--amber). |

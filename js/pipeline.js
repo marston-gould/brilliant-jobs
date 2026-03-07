@@ -760,7 +760,7 @@ async function renderPipeline() {
       if (pendingSig) {
         const isSignal = pendingSig.signal_source !== 'time_based';
         const isCalendar = pendingSig.signal_source === 'calendar';
-        const borderColor = isSignal ? 'var(--accent)' : '#f59e0b';
+        const borderColor = isSignal ? 'var(--accent)' : 'var(--warm)';
         const icon = isCalendar ? '📅' : isSignal ? '✉' : '⏰';
         const headerText = isCalendar
           ? 'Interview detected for ' + title + ' at ' + company
@@ -782,7 +782,7 @@ async function renderPipeline() {
         if (roundLabel) html += '<div class="pl-signal-round"><span class="pl-round-badge">' + roundLabel + '</span></div>';
         if (pendingSig.confidence) {
           const confPct = Math.round(pendingSig.confidence * 100);
-          const confColor = confPct >= 80 ? '#22c55e' : confPct >= 60 ? '#f59e0b' : '#ef4444';
+          const confColor = confPct >= 80 ? 'var(--green)' : confPct >= 60 ? 'var(--warm)' : 'var(--red)';
           html += '<div class="pl-signal-confidence" style="color:' + confColor + ';font-size:11px;margin:2px 0;">' + confPct + '% confidence</div>';
         }
 
@@ -900,7 +900,7 @@ async function renderGhostMonitor() {
       const score = e.ghost_score || 0;
       const status = e.ghost_status || 'active';
       const statusColors = {
-        active: 'color:var(--green);', waiting: 'color:#f59e0b;',
+        active: 'color:var(--green);', waiting: 'color:var(--warm);',
         likely_ghosted: 'color:var(--red);', ghosted: 'color:var(--red);font-weight:600;'
       };
       const statusLabels = {
@@ -915,7 +915,7 @@ async function renderGhostMonitor() {
       };
 
       // Score bar color
-      const barColor = score >= 80 ? 'var(--red)' : score >= 50 ? '#f59e0b' : score >= 25 ? 'var(--accent)' : 'var(--green)';
+      const barColor = score >= 80 ? 'var(--red)' : score >= 50 ? 'var(--warm)' : score >= 25 ? 'var(--accent)' : 'var(--green)';
 
       const appliedStr = e.applied_at ? new Date(e.applied_at).toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '—';
 
@@ -1209,7 +1209,7 @@ function showRecruiterResults(jobId, company, contacts, cached) {
     const email = c.recruiter_email || '';
     const title = c.recruiter_title || '';
     const confidence = c.confidence_score || 0;
-    const confColor = confidence >= 80 ? '#22c55e' : confidence >= 60 ? '#f59e0b' : '#ef4444';
+    const confColor = confidence >= 80 ? 'var(--green)' : confidence >= 60 ? 'var(--warm)' : 'var(--red)';
     const linkedIn = c.linkedin_url ? `<a href="${c.linkedin_url}" target="_blank" style="font-size:10px;color:var(--accent);">LinkedIn</a>` : '';
 
     return `<div class="rc-contact" style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border-faint);">
