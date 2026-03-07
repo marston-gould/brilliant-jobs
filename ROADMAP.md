@@ -3077,9 +3077,9 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.169 | Database Activity — pg_stat + UI | 3h | 3h | ✅ | CS-024 (AD-FIX-15): DB Activity admin subpage. 4 SQL SECURITY DEFINER functions: admin_db_connections() (pg_stat_activity by state), admin_db_table_sizes() (top 50 by size with row estimates + index sizes), admin_db_slow_queries() (pg_stat_statements top 25 by mean exec time, graceful fallback if extension disabled), admin_db_size() (total size + connection counts vs max). Visual connection state bars. Size bar charts. Color-coded latency thresholds. Auto-refresh 120s. |
 | 0.170 | Cost Monitoring — Anthropic proxy + cache | 3h | — | 🔲 | Pattern 2. Daily/weekly/monthly. Per-function. |
 | 0.171 | Cost Monitoring — UI + alerts + kill switches | 3h | 1h | ✅ | CS-019: Budget alerts per vendor in admin cost dashboard. Progress bars, edit form, chart budget line. vendor_cost_budgets table. |
-| 0.172 | PII inventory + data map | 2h | 2h | ✅ | CS-019: docs/PII_INVENTORY.md. All tables mapped by sensitivity tier. Extension + third-party + Edge Function flows documented. |
-| 0.173 | User deletion (72+ table cascade) | 5h | — | 🔲 | GDPR Art 17. Cascade + third-party propagation. Admin-executable. |
-| 0.174 | Data export + compliance dashboard | 4h | — | 🔲 | GDPR Art 20 + audit log viewer + PII status + DPA tracker. |
+| 0.172 | PII inventory + data map | 2h | 2h | ✅ | CS-P1-017: Visual PII data map in admin. 8 categories, 40+ tables, third-party flows, ON DELETE behavior, retention policy. CS-019 inventory as source data. |
+| 0.173 | User deletion (72+ table cascade) | 5h | 5h | ✅ | CS-P1-017: Admin UI for user deletion. Search by email/ID, double-confirm initiation, cancel, hard-delete. Calls hard_delete_user_cascade() RPC + storage cleanup + auth deletion. 30-day grace period. |
+| 0.174 | Data export + compliance dashboard | 4h | 4h | ✅ | CS-P1-017: Admin compliance dashboard with stats (users, deletions, exports, PII accesses), data export (calls data-export EF, downloads JSON), PII access log, compliance audit trail, 10-point compliance checklist. |
 
 ### 0-CC: Post-Launch — CX Optimization (Phase 0b)
 

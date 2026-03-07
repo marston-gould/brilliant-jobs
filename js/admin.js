@@ -1,8 +1,8 @@
 /* ───────────────────────────────────────────────────────────
    admin.js — Admin Console with Sidebar Navigation (IA v2)
-   v7.21 — CS-024: error replay, EF health, DB activity panels
-   4 sections: Operations, Growth, Audience, Business
-   33 sub-pages with lazy initialization
+   v7.43 — CS-P1-017: Compliance dashboard (PII map, deletion, export)
+   5 sections: Operations, Growth, Audience, Business, Compliance
+   36 sub-pages with lazy initialization
    ─────────────────────────────────────────────────────────── */
 
 // ─── Admin access gate (dashboard nav-item visibility) ───
@@ -47,7 +47,7 @@ function _logAdminAction(action, resourceType, resourceId, details) {
 window._logAdminAction = _logAdminAction;
 
 // ═══════════════════════════════════════════════════════════
-// ADMIN SUBPAGE MAP — 28 sub-pages across 4 sections
+// ADMIN SUBPAGE MAP — 36 sub-pages across 5 sections
 // ═══════════════════════════════════════════════════════════
 
 var ADMIN_SUBPAGE_MAP = {
@@ -93,14 +93,19 @@ var ADMIN_SUBPAGE_MAP = {
   'stripe':         { section: 'business',    label: 'Stripe',         init: function(){ loadStripeTab(); } },
   'subscription':   { section: 'business',    label: 'Subscriptions',  init: function(){ loadSubscriptionTab(); } },
   'costs':          { section: 'business',    label: 'Costs',          init: function(){ loadCostsTab(); } },
-  'forecasting':    { section: 'business',    label: 'Forecasting',    init: function(){ loadForecastingTab(); } }
+  'forecasting':    { section: 'business',    label: 'Forecasting',    init: function(){ loadForecastingTab(); } },
+  // ── Compliance (CS-P1-017) ──
+  'pii-map':        { section: 'compliance',   label: 'PII Data Map',   init: function(){ loadPiiMapPanel(); } },
+  'user-deletion':  { section: 'compliance',   label: 'User Deletion',  init: function(){ loadUserDeletionPanel(); } },
+  'compliance-dash':{ section: 'compliance',   label: 'Compliance',     init: function(){ loadComplianceDashPanel(); } }
 };
 
 var ADMIN_SECTIONS = [
   { key: 'operations', label: 'Operations',  icon: '⚙' },
   { key: 'growth',     label: 'Growth',      icon: '📈' },
   { key: 'audience',   label: 'Audience',    icon: '👥' },
-  { key: 'business',   label: 'Business',    icon: '💰' }
+  { key: 'business',   label: 'Business',    icon: '💰' },
+  { key: 'compliance', label: 'Compliance',  icon: '🛡' }
 ];
 
 // ─── Nav state ───
@@ -220,6 +225,7 @@ function navigateAdminSubpage(key) {
   if (typeof _cleanupEfHealthPanel === 'function') _cleanupEfHealthPanel();
   if (typeof _cleanupPostHogInsights === 'function') _cleanupPostHogInsights();
   if (typeof _cleanupDbActivityPanel === 'function') _cleanupDbActivityPanel();
+  if (typeof _cleanupUserDeletionPanel === 'function') _cleanupUserDeletionPanel();
 
   // Show correct panel, hide all others
   document.querySelectorAll('.admin-panel').forEach(function(p) {

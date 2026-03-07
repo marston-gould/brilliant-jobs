@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Admin Console v7.42 -->
+<!-- Brilliant Jobs Admin Console v7.43 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -10,16 +10,16 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Admin Console</title>
   <script src="/js/vendor/supabase.min.js"></script>
-  <script src="/js/version.js?v=v7.42"></script>
+  <script src="/js/version.js?v=v7.43"></script>
   <!-- CS-003: PostHog SDK for admin surface (DO-001) — CS-P1-002: externalized for CSP -->
-  <script src="js/posthog-admin.js?v=v7.42"></script>
-  <script src="js/posthog-perf.js?v=v7.42" defer></script>
-  <script src="js/feature-flags.js?v=v7.42" defer></script>
-  <script src="js/structured-logger.js?v=v7.42" defer></script>
-  <script src="js/admin-posthog-insights.js?v=v7.42" defer></script>
-  <script src="js/admin-ab-tests.js?v=v7.42" defer></script>
+  <script src="js/posthog-admin.js?v=v7.43"></script>
+  <script src="js/posthog-perf.js?v=v7.43" defer></script>
+  <script src="js/feature-flags.js?v=v7.43" defer></script>
+  <script src="js/structured-logger.js?v=v7.43" defer></script>
+  <script src="js/admin-posthog-insights.js?v=v7.43" defer></script>
+  <script src="js/admin-ab-tests.js?v=v7.43" defer></script>
   <script defer src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" integrity="sha384-pPi0zxBAoDu6+JXW/C68UZLvBUUtU+7zonhif43rqj7pxsGyqyqzcian2Rj37Rss" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="styles.css?v=v7.42">
+  <link rel="stylesheet" href="styles.css?v=v7.43">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1037,6 +1037,17 @@
             <div id="admin-page-forecasting"><div class="admin-empty-state"><div class="admin-empty-state-title">Forecasting</div><div class="admin-empty-state-desc">Loading…</div></div></div>
           </div>
 
+          <!-- CS-P1-017: Compliance panels -->
+          <div class="admin-panel" id="admin-panel-pii-map">
+            <div id="admin-page-pii-map"><div class="admin-loading">Loading PII data map…</div></div>
+          </div>
+          <div class="admin-panel" id="admin-panel-user-deletion">
+            <div id="admin-page-user-deletion"><div class="admin-loading">Loading user deletion…</div></div>
+          </div>
+          <div class="admin-panel" id="admin-panel-compliance-dash">
+            <div id="admin-page-compliance-dash"><div class="admin-loading">Loading compliance dashboard…</div></div>
+          </div>
+
         </div>
       </div> <!-- end admin-main -->
     </div> <!-- end admin-layout -->
@@ -1048,10 +1059,10 @@
   </div> <!-- end admin-shell -->
 
   <!-- JS: Admin bundle loads globals, admin.js, admin-notifications.js -->
-  <script src="dist/admin.min.js?v=v7.42-g11" defer></script>
+  <script src="dist/admin.min.js?v=v7.43-g11" defer></script>
 
   <!-- CS-P1-002: Cohort handler moved to js/admin-inline.js -->
-  <script src="js/admin-inline.js?v=v7.42"></script>
+  <script src="js/admin-inline.js?v=v7.43"></script>
 </body>
 </html>
 

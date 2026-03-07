@@ -34,6 +34,7 @@ const jsFiles = [
   'js/admin-feedback.js',
   'js/admin-notif-analytics.js',
   'js/admin-biz-ops.js',
+  'js/admin-compliance.js',
   'js/admin-shell.js',
 ];
 
