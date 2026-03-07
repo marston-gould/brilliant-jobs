@@ -12,13 +12,22 @@
     "test:watch": "vitest",
     "selector:check": "node scripts/selector-health-check.mjs",
     "selector:check:registry": "node scripts/selector-health-check.mjs --report-only",
-    "selector:alert": "node scripts/selector-alert.mjs"
+    "selector:alert": "node scripts/selector-alert.mjs",
+    "lint": "eslint .",
+    "gate:posthog": "node scripts/gate-posthog-verify.mjs",
+    "gate:auth": "node scripts/gate-ef-auth-scan.mjs",
+    "gate:secrets": "node scripts/gate-secret-scan.mjs",
+    "gate:bundle": "node scripts/gate-bundle-size.mjs",
+    "gate:all": "npm run gate:posthog && npm run gate:auth && npm run gate:secrets && npm run gate:bundle"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "axe-core": "^4.11.1",
     "esbuild": "^0.25.12",
+    "eslint": "^9.39.4",
+    "eslint-plugin-no-only-tests": "^3.3.0",
     "jsdom": "^28.1.0",
     "playwright": "^1.50.0",
     "tailwindcss": "^3.4.19",

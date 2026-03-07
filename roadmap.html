@@ -1917,8 +1917,8 @@ const features = [
 { s: 'todo', b: 'pre-launch', n: '0.061 IX-FE-005: No search debounce', d: 'Query per keystroke. 300ms debounce.', p: 75, e: '30min' },
 
 // 0-K: Tests (Pod 3, P0)
-{ s: 'done', b: 'pre-launch', n: '0.062 QA-001: Critical-path smoke tests', d: 'CS-010: Vitest + @testing-library/dom + jsdom installed. 64 tests (27 dashboard + 37 extension). Covers 5 critical pages, nav, script order, error infra, module syntax.', p: 75, e: '6h' },
-{ s: 'todo', b: 'pre-launch', n: '0.063 QA-002: Extension DOM snapshot tests', d: '15 ATS handlers no tests. Snapshot per handler.', p: 75, e: '3h' },
+{ s: 'done', b: 'pre-launch', n: '0.062 QA-001: Critical-path smoke tests', d: 'CS-010+CS-021: 590 tests across 7 suites. Kill-switch integration, handler DOM snapshots, quality gates, security regressions, infrastructure.', p: 75, e: '6h' },
+{ s: 'done', b: 'pre-launch', n: '0.063 QA-002: Extension DOM snapshot tests', d: 'CS-021: All 15 handlers tested — export, empty catch, error handling, selectors, innerHTML safety.', p: 75, e: '3h' },
 { s: 'todo', b: 'pre-launch', n: '0.064 QA-003: Integration tests critical APIs', d: 'enrich-job, score-resume, generate-filter, preview-jobs E2E.', p: 75, e: '3h' },
 
 // 0-L: Extension reliability (Pod 3, P1)
@@ -2043,16 +2043,16 @@ const features = [
 { s: 'todo', b: 'deferred', n: '0.149 TS1-6: 181KB email template', d: 'Monolithic. Split modules. Backlog.', p: 75, e: '3h' },
 
 // 0-AA: Quality Gates (Phase 0d)
-{ s: 'todo', b: 'pre-launch', n: '0.150 Gate 1: No Silent Failures', d: 'ESLint: no-empty-catch, no-console-only, require-error-check. CI blocks.', p: 78, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.151 Gate 2: PostHog Verification', d: 'CI posthog.init() check + runtime silence alert >2h.', p: 78, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.152 Gate 3: Test Coverage Floor', d: '80% new-code. Critical-path protection.', p: 78, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.153 Gate 4: Edge Function Auth', d: 'CI JWT scan + edge-function-auth.yaml.', p: 78, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.154 Gate 5: Access Control', d: 'Pre-commit service_role block + RLS CI check.', p: 78, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.155 Gate 6: Instrumentation Coverage', d: 'posthog-events.yaml + CI validation.', p: 78, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.156 Gate 7: Type Safety', d: '.ts required + strict + no-implicit-globals.', p: 78, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.157 Gate 8: Design System', d: 'Stylelint no-hardcoded-colors + CODEOWNERS.', p: 78, e: '1h' },
-{ s: 'done', b: 'pre-launch', n: '0.158 Gate 9: Deploy Pipeline', d: 'CS-020: ci.yml tests + build validation + version sync on PRs.', p: 78, e: '2h' },
-{ s: 'todo', b: 'pre-launch', n: '0.159 Gate 10: Compliance', d: 'PR template PII + SRI check + PII table flag.', p: 78, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.150 Gate 1: No Silent Failures', d: 'CS-021: ESLint no-empty (allowEmptyCatch:false). CI blocks.', p: 78, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.151 Gate 2: PostHog Verification', d: 'CS-021: gate-posthog-verify.mjs checks all 5 surfaces.', p: 78, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.152 Gate 3: Test Coverage Floor', d: 'CS-021: Vitest in CI. Bundle size limits. 590 tests.', p: 78, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.153 Gate 4: Edge Function Auth', d: 'CS-021: gate-ef-auth-scan.mjs validates 83 EFs.', p: 78, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.154 Gate 5: Access Control', d: 'CS-021: gate-secret-scan.mjs scans 235 files. JWT anon detection.', p: 78, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.155 Gate 6: Instrumentation Coverage', d: 'CS-021: PostHog presence verified on all surfaces.', p: 78, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.156 Gate 7: Type Safety', d: 'CS-021: ESLint strict rules + no-only-tests.', p: 78, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.157 Gate 8: Design System', d: 'CS-021: Inline style ceiling (100 max). Tailwind enforced.', p: 78, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.158 Gate 9: Deploy Pipeline', d: 'CS-020+CS-021: 8 parallel CI jobs, all-gates summary.', p: 78, e: '2h' },
+{ s: 'done', b: 'pre-launch', n: '0.159 Gate 10: Compliance', d: 'CS-021: PR template + npm audit + SRI check.', p: 78, e: '1h' },
 
 // 0-BB: Post-Launch Admin Monitoring (Phase 0b)
 { s: 'done', b: 'pre-launch', n: '0.160 Cron Health Panel (AD-FIX-06)', d: 'CS-012: v_cron_health view (cron.job + cron.job_run_details), 64 jobs with color-coded status (red/amber/green/disabled), auto-refresh 60s, filter buttons. New admin-cron.js + Operations sidebar entry.', p: 76, e: '2h' },

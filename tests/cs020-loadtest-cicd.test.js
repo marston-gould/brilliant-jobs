@@ -249,18 +249,19 @@ describe('FIX-21: CI/CD Workflows', () => {
     });
 
     it('includes build validation job', () => {
-      expect(content).toContain('build-check');
+      // CS-021: build-check consolidated into Gate 9 build job
+      expect(content).toContain('build');
       expect(content).toContain('node build.js');
       expect(content).toContain('node build-admin.js');
     });
 
     it('includes version sync check', () => {
-      expect(content).toContain('version-check');
+      // CS-021: version-check consolidated into Gate 9 build job
       expect(content).toContain('pre-commit-version-check');
     });
 
     it('includes extension build check', () => {
-      expect(content).toContain('extension-build');
+      // CS-021: extension-build consolidated into Gate 9 build job
       expect(content).toContain('manifest.json');
     });
 
