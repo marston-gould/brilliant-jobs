@@ -1,3 +1,30 @@
+## v7.26 — CS-024: Admin Monitoring Dashboards Part 2 (AD-FIX-13, AD-FIX-14, AD-FIX-15) (2026-03-07)
+### Error Replay Integration (AD-FIX-13)
+- New "Error Replay" admin subpage with PostHog session replay deep links
+- admin-analytics Edge Function proxies PostHog Events API (query_error + $exception events)
+- Time range filter (1h/6h/24h/3d/7d), summary cards, auto-refresh every 120s
+- Replay buttons link directly to PostHog session recording for each error event
+
+### Edge Function Health Dashboard (AD-FIX-14)
+- New "EF Health" admin subpage with subsystem metrics from health_check_log
+- Invocations, success %, latency p50/p95/p99 per subsystem
+- Latest health check detail with per-check status cards
+- Deployed functions list (35 Edge Functions), color-coded thresholds
+
+### Database Activity Panel (AD-FIX-15)
+- New "DB Activity" admin subpage with live pg_stat views
+- 4 SQL SECURITY DEFINER functions: admin_db_connections(), admin_db_table_sizes(), admin_db_slow_queries(), admin_db_size()
+- Visual connection state bars, table size bar charts, slow query analysis
+- Graceful fallback when pg_stat_statements extension not enabled
+
+### Infrastructure
+- admin-analytics Edge Function (3 action handlers, admin auth enforced)
+- Migration: 20260307_cs024_admin_analytics.sql (4 DB functions)
+- 35 new tests (701 total across 10 suites)
+- Admin JS: admin-error-replay.js, admin-ef-health.js, admin-db-activity.js
+- admin.js v7.21: 33 sub-pages (was 30)
+- **FINAL REMEDIATION SESSION — 24 of 24 complete**
+
 ## v7.25 — CS-023: Admin Monitoring Dashboards Part 1 (AD-FIX-11, AD-FIX-12) (2026-03-07)
 ### Monitoring Dashboard (AD-FIX-11)
 - **Platform health monitor** — new "Monitoring" subpage under Operations

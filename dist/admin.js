@@ -1,5 +1,5 @@
 // === js/version.js ===
-var BJ_VERSION = 'v7.25';
+var BJ_VERSION = 'v7.26';
 (function() {
   function populateVersion() {
     document.querySelectorAll(".bj-version, [id$=\"-version\"]").forEach(function(el) {
@@ -1129,9 +1129,9 @@ async function safeRpc(fnName, params, opts) {
 // === js/admin.js ===
 /* ───────────────────────────────────────────────────────────
    admin.js — Admin Console with Sidebar Navigation (IA v2)
-   v7.20 — CS-023: monitoring dashboard, alerts panel
+   v7.21 — CS-024: error replay, EF health, DB activity panels
    4 sections: Operations, Growth, Audience, Business
-   30 sub-pages with lazy initialization
+   33 sub-pages with lazy initialization
    ─────────────────────────────────────────────────────────── */
 
 // ─── Admin access gate (dashboard nav-item visibility) ───
@@ -1191,6 +1191,9 @@ var ADMIN_SUBPAGE_MAP = {
   'cron':           { section: 'operations',  label: 'Cron Health',    init: function(){ loadCronPanel(); } },
   'monitoring':     { section: 'operations',  label: 'Monitoring',     init: function(){ loadMonitoringPanel(); } },
   'alerts':         { section: 'operations',  label: 'Alerts',         init: function(){ loadAlertsPanel(); } },
+  'error-replay':   { section: 'operations',  label: 'Error Replay',   init: function(){ loadErrorReplayPanel(); } },
+  'ef-health':      { section: 'operations',  label: 'EF Health',      init: function(){ loadEfHealthPanel(); } },
+  'db-activity':    { section: 'operations',  label: 'DB Activity',    init: function(){ loadDbActivityPanel(); } },
   'kill-switch':    { section: 'operations',  label: 'Kill Switch',    init: function(){ loadKillSwitchPanel(); } },
   // ── Growth ──
   'seo':            { section: 'growth',      label: 'SEO',            init: function(){ loadSeoTab(); } },
@@ -1340,6 +1343,9 @@ function navigateAdminSubpage(key) {
   if (typeof _cleanupKillSwitchPanel === 'function') _cleanupKillSwitchPanel();
   if (typeof _cleanupMonitoringPanel === 'function') _cleanupMonitoringPanel();
   if (typeof _cleanupAlertsPanel === 'function') _cleanupAlertsPanel();
+  if (typeof _cleanupErrorReplayPanel === 'function') _cleanupErrorReplayPanel();
+  if (typeof _cleanupEfHealthPanel === 'function') _cleanupEfHealthPanel();
+  if (typeof _cleanupDbActivityPanel === 'function') _cleanupDbActivityPanel();
 
   // Show correct panel, hide all others
   document.querySelectorAll('.admin-panel').forEach(function(p) {
@@ -7690,6 +7696,742 @@ function _cleanupAlertsPanel() {
 // Export
 window.loadAlertsPanel = loadAlertsPanel;
 window._cleanupAlertsPanel = _cleanupAlertsPanel;
+
+
+// === js/admin-error-replay.js ===
+/* ───────────────────────────────────────────────────────────
+   admin-error-replay.js — PostHog Error Replay Integration (AD-FIX-13)
+   CS-024: Error events from PostHog with session replay deep links.
+   Query errors + autocaptured exceptions with "View Replay" buttons.
+   ─────────────────────────────────────────────────────────── */
+
+var _errorReplayRefreshTimer = null;
+var _errorReplayHoursFilter = 24;
+
+var ADMIN_ANALYTICS_URL = (typeof SUPABASE_URL !== 'undefined' ? SUPABASE_URL : 'https://qojhagupdnbtomfoxnsf.supabase.co') + '/functions/v1/admin-analytics';
+
+async function loadErrorReplayPanel() {
+  var el = document.getElementById('admin-page-error-replay');
+  if (!el) return;
+
+  el.innerHTML = [
+    '<div class="admin-block">',
+    '  <div class="admin-block-header">',
+    '    <h2 class="admin-block-title">Error Replay</h2>',
+    '    <div class="admin-block-actions">',
+    '      <select id="er-hours-filter" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text-main);font-size:12px;margin-right:6px;">',
+    '        <option value="1">Last 1h</option>',
+    '        <option value="6">Last 6h</option>',
+    '        <option value="24" selected>Last 24h</option>',
+    '        <option value="72">Last 3d</option>',
+    '        <option value="168">Last 7d</option>',
+    '      </select>',
+    '      <span id="er-last-refresh" style="font-size:12px;color:var(--muted);margin-right:8px;"></span>',
+    '      <button class="admin-btn admin-btn-sm" id="er-refresh-btn">↻ Refresh</button>',
+    '    </div>',
+    '  </div>',
+    '',
+    '  <!-- Summary Cards -->',
+    '  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;" id="er-summary-cards">',
+    '    <div class="stat-card"><div class="stat-val" id="er-total-errors">—</div><div class="stat-label">Query Errors</div></div>',
+    '    <div class="stat-card"><div class="stat-val" id="er-total-exceptions">—</div><div class="stat-label">Exceptions</div></div>',
+    '    <div class="stat-card"><div class="stat-val" id="er-with-replay">—</div><div class="stat-label">With Replay</div></div>',
+    '    <div class="stat-card"><div class="stat-val" id="er-unique-labels">—</div><div class="stat-label">Unique Labels</div></div>',
+    '  </div>',
+    '',
+    '  <!-- Query Errors Table -->',
+    '  <div style="background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:16px;margin-bottom:20px;">',
+    '    <div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Query Errors (reportError)</div>',
+    '    <div id="er-errors-body" style="overflow-x:auto;">',
+    '      <div style="text-align:center;color:var(--muted);font-size:13px;padding:16px;">Loading error events…</div>',
+    '    </div>',
+    '  </div>',
+    '',
+    '  <!-- Autocaptured Exceptions Table -->',
+    '  <div style="background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:16px;">',
+    '    <div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Autocaptured Exceptions ($exception)</div>',
+    '    <div id="er-exceptions-body" style="overflow-x:auto;">',
+    '      <div style="text-align:center;color:var(--muted);font-size:13px;padding:16px;">Loading exceptions…</div>',
+    '    </div>',
+    '  </div>',
+    '</div>'
+  ].join('\n');
+
+  // Bind
+  document.getElementById('er-refresh-btn').addEventListener('click', function() { _refreshErrorReplay(); });
+  document.getElementById('er-hours-filter').addEventListener('change', function() {
+    _errorReplayHoursFilter = parseInt(this.value, 10) || 24;
+    _refreshErrorReplay();
+  });
+
+  await _refreshErrorReplay();
+
+  if (_errorReplayRefreshTimer) clearInterval(_errorReplayRefreshTimer);
+  _errorReplayRefreshTimer = setInterval(_refreshErrorReplay, 120000);
+}
+
+async function _refreshErrorReplay() {
+  var lastEl = document.getElementById('er-last-refresh');
+  if (lastEl) lastEl.textContent = 'Refreshing…';
+
+  try {
+    var token = '';
+    if (typeof sb !== 'undefined') {
+      var sess = await sb.auth.getSession();
+      token = (sess.data && sess.data.session) ? sess.data.session.access_token : '';
+    }
+
+    var url = ADMIN_ANALYTICS_URL + '?action=posthog-errors&hours=' + _errorReplayHoursFilter + '&limit=50';
+    var res = await fetch(url, {
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+    });
+
+    if (!res.ok) {
+      var errText = await res.text();
+      throw new Error('API ' + res.status + ': ' + errText);
+    }
+
+    var data = await res.json();
+    _renderErrorEvents(data.errors || []);
+    _renderExceptionEvents(data.exceptions || []);
+    _updateErrorSummary(data.errors || [], data.exceptions || []);
+
+  } catch (e) {
+    console.error('[ErrorReplay] Refresh error:', e);
+    if (typeof reportError === 'function') reportError('admin-error-replay', e);
+    var errBody = document.getElementById('er-errors-body');
+    if (errBody) errBody.innerHTML = '<div style="color:#ef4444;font-size:13px;padding:8px;">Error loading data: ' + _erEsc(e.message) + '</div>';
+  }
+
+  if (lastEl) lastEl.textContent = 'Updated ' + new Date().toLocaleTimeString();
+}
+
+function _updateErrorSummary(errors, exceptions) {
+  var totalEl = document.getElementById('er-total-errors');
+  var excEl = document.getElementById('er-total-exceptions');
+  var replayEl = document.getElementById('er-with-replay');
+  var labelsEl = document.getElementById('er-unique-labels');
+
+  if (totalEl) totalEl.textContent = errors.length;
+  if (excEl) excEl.textContent = exceptions.length;
+
+  var withReplay = errors.filter(function(e) { return e.replay_url; }).length +
+                   exceptions.filter(function(e) { return e.replay_url; }).length;
+  if (replayEl) {
+    replayEl.textContent = withReplay;
+    replayEl.style.color = withReplay > 0 ? '#22c55e' : 'var(--muted)';
+  }
+
+  var labels = {};
+  errors.forEach(function(e) { labels[e.label] = true; });
+  if (labelsEl) labelsEl.textContent = Object.keys(labels).length;
+}
+
+function _renderErrorEvents(errors) {
+  var container = document.getElementById('er-errors-body');
+  if (!container) return;
+
+  if (!errors.length) {
+    container.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;padding:16px;">No query errors in this time window.</div>';
+    return;
+  }
+
+  var html = '<table class="admin-table" style="width:100%;font-size:12px;">' +
+    '<thead><tr><th>Time</th><th>Label</th><th>Error</th><th>Page</th><th>Replay</th></tr></thead><tbody>';
+
+  errors.forEach(function(evt) {
+    var time = evt.timestamp ? new Date(evt.timestamp).toLocaleString() : '—';
+    var replayBtn = evt.replay_url
+      ? '<a href="' + _erEsc(evt.replay_url) + '" target="_blank" rel="noopener" class="admin-btn admin-btn-sm" style="font-size:11px;padding:2px 8px;text-decoration:none;">▶ Replay</a>'
+      : '<span style="color:var(--muted);font-size:11px;">No session</span>';
+
+    html += '<tr>' +
+      '<td style="white-space:nowrap;">' + _erEsc(time) + '</td>' +
+      '<td><code style="font-size:11px;background:var(--bg-card);padding:1px 4px;border-radius:3px;">' + _erEsc(evt.label) + '</code></td>' +
+      '<td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;" title="' + _erEsc(evt.error_message) + '">' + _erEsc(evt.error_message).substring(0, 80) + '</td>' +
+      '<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;">' + _erEsc(evt.page) + '</td>' +
+      '<td style="text-align:center;">' + replayBtn + '</td>' +
+      '</tr>';
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function _renderExceptionEvents(exceptions) {
+  var container = document.getElementById('er-exceptions-body');
+  if (!container) return;
+
+  if (!exceptions.length) {
+    container.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;padding:16px;">No autocaptured exceptions in this time window.</div>';
+    return;
+  }
+
+  var html = '<table class="admin-table" style="width:100%;font-size:12px;">' +
+    '<thead><tr><th>Time</th><th>Type</th><th>Message</th><th>Page</th><th>Replay</th></tr></thead><tbody>';
+
+  exceptions.forEach(function(evt) {
+    var time = evt.timestamp ? new Date(evt.timestamp).toLocaleString() : '—';
+    var replayBtn = evt.replay_url
+      ? '<a href="' + _erEsc(evt.replay_url) + '" target="_blank" rel="noopener" class="admin-btn admin-btn-sm" style="font-size:11px;padding:2px 8px;text-decoration:none;">▶ Replay</a>'
+      : '<span style="color:var(--muted);font-size:11px;">No session</span>';
+
+    html += '<tr>' +
+      '<td style="white-space:nowrap;">' + _erEsc(time) + '</td>' +
+      '<td><code style="font-size:11px;background:var(--bg-card);padding:1px 4px;border-radius:3px;">' + _erEsc(evt.type) + '</code></td>' +
+      '<td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;" title="' + _erEsc(evt.message) + '">' + _erEsc(evt.message).substring(0, 80) + '</td>' +
+      '<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;">' + _erEsc(evt.page) + '</td>' +
+      '<td style="text-align:center;">' + replayBtn + '</td>' +
+      '</tr>';
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function _erEsc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function _cleanupErrorReplayPanel() {
+  if (_errorReplayRefreshTimer) {
+    clearInterval(_errorReplayRefreshTimer);
+    _errorReplayRefreshTimer = null;
+  }
+}
+
+window.loadErrorReplayPanel = loadErrorReplayPanel;
+window._cleanupErrorReplayPanel = _cleanupErrorReplayPanel;
+
+
+// === js/admin-ef-health.js ===
+/* ───────────────────────────────────────────────────────────
+   admin-ef-health.js — Edge Function Health Dashboard (AD-FIX-14)
+   CS-024: Invocations, errors, latency p50/p95/p99 for all EFs.
+   Data sourced from health_check_log + admin-analytics EF.
+   ─────────────────────────────────────────────────────────── */
+
+var _efHealthRefreshTimer = null;
+
+var EF_ANALYTICS_URL = (typeof SUPABASE_URL !== 'undefined' ? SUPABASE_URL : 'https://qojhagupdnbtomfoxnsf.supabase.co') + '/functions/v1/admin-analytics';
+
+async function loadEfHealthPanel() {
+  var el = document.getElementById('admin-page-ef-health');
+  if (!el) return;
+
+  el.innerHTML = [
+    '<div class="admin-block">',
+    '  <div class="admin-block-header">',
+    '    <h2 class="admin-block-title">Edge Function Health</h2>',
+    '    <div class="admin-block-actions">',
+    '      <span id="efh-last-refresh" style="font-size:12px;color:var(--muted);margin-right:8px;"></span>',
+    '      <button class="admin-btn admin-btn-sm" id="efh-refresh-btn">↻ Refresh</button>',
+    '    </div>',
+    '  </div>',
+    '',
+    '  <!-- Summary Cards -->',
+    '  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;" id="efh-summary-cards">',
+    '    <div class="stat-card"><div class="stat-val" id="efh-total-functions">—</div><div class="stat-label">Deployed EFs</div></div>',
+    '    <div class="stat-card"><div class="stat-val" id="efh-total-checks">—</div><div class="stat-label">Health Checks</div></div>',
+    '    <div class="stat-card"><div class="stat-val" id="efh-healthy-pct">—</div><div class="stat-label">Healthy %</div></div>',
+    '    <div class="stat-card"><div class="stat-val" id="efh-last-status">—</div><div class="stat-label">Last Status</div></div>',
+    '  </div>',
+    '',
+    '  <!-- Last Health Check Detail -->',
+    '  <div style="background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:16px;margin-bottom:20px;">',
+    '    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">',
+    '      <div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;">Latest Health Check</div>',
+    '      <div id="efh-last-check-time" style="font-size:12px;color:var(--muted);"></div>',
+    '    </div>',
+    '    <div id="efh-last-check-body" style="font-size:13px;color:var(--muted);">Loading…</div>',
+    '  </div>',
+    '',
+    '  <!-- Check Metrics Table (latency/success by subsystem) -->',
+    '  <div style="background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:16px;margin-bottom:20px;">',
+    '    <div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Subsystem Metrics (from Health Checks)</div>',
+    '    <div id="efh-metrics-body" style="overflow-x:auto;">',
+    '      <div style="text-align:center;color:var(--muted);font-size:13px;padding:16px;">Loading metrics…</div>',
+    '    </div>',
+    '  </div>',
+    '',
+    '  <!-- Deployed Functions List -->',
+    '  <div style="background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:16px;">',
+    '    <div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Deployed Edge Functions</div>',
+    '    <div id="efh-functions-list" style="font-size:13px;color:var(--muted);">Loading…</div>',
+    '  </div>',
+    '</div>'
+  ].join('\n');
+
+  document.getElementById('efh-refresh-btn').addEventListener('click', function() { _refreshEfHealth(); });
+
+  await _refreshEfHealth();
+
+  if (_efHealthRefreshTimer) clearInterval(_efHealthRefreshTimer);
+  _efHealthRefreshTimer = setInterval(_refreshEfHealth, 120000);
+}
+
+async function _refreshEfHealth() {
+  var lastEl = document.getElementById('efh-last-refresh');
+  if (lastEl) lastEl.textContent = 'Refreshing…';
+
+  try {
+    var token = '';
+    if (typeof sb !== 'undefined') {
+      var sess = await sb.auth.getSession();
+      token = (sess.data && sess.data.session) ? sess.data.session.access_token : '';
+    }
+
+    var res = await fetch(EF_ANALYTICS_URL + '?action=ef-health', {
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+    });
+
+    if (!res.ok) throw new Error('API ' + res.status);
+    var data = await res.json();
+
+    _renderEfSummary(data);
+    _renderLastCheck(data.last_check);
+    _renderCheckMetrics(data.check_metrics || []);
+    _renderFunctionsList(data.functions || []);
+
+  } catch (e) {
+    console.error('[EfHealth] Refresh error:', e);
+    if (typeof reportError === 'function') reportError('admin-ef-health', e);
+  }
+
+  if (lastEl) lastEl.textContent = 'Updated ' + new Date().toLocaleTimeString();
+}
+
+function _renderEfSummary(data) {
+  var hc = data.health_checks || {};
+  var el;
+
+  el = document.getElementById('efh-total-functions');
+  if (el) el.textContent = data.function_count || 0;
+
+  el = document.getElementById('efh-total-checks');
+  if (el) el.textContent = hc.total || 0;
+
+  el = document.getElementById('efh-healthy-pct');
+  if (el) {
+    var pct = hc.total > 0 ? Math.round((hc.healthy / hc.total) * 100) : 0;
+    el.textContent = pct + '%';
+    el.style.color = pct >= 95 ? '#22c55e' : pct >= 80 ? '#f59e0b' : '#ef4444';
+  }
+
+  el = document.getElementById('efh-last-status');
+  if (el && data.last_check) {
+    var status = (data.last_check.overall || 'unknown').toUpperCase();
+    el.textContent = status;
+    el.style.color = status === 'HEALTHY' ? '#22c55e' : status === 'DEGRADED' ? '#f59e0b' : '#ef4444';
+  }
+}
+
+function _renderLastCheck(check) {
+  var body = document.getElementById('efh-last-check-body');
+  var timeEl = document.getElementById('efh-last-check-time');
+  if (!body) return;
+
+  if (!check) {
+    body.innerHTML = '<div style="color:var(--muted);font-size:13px;">No health check data available.</div>';
+    return;
+  }
+
+  if (timeEl && check.created_at) {
+    timeEl.textContent = new Date(check.created_at).toLocaleString();
+  }
+
+  var checks = check.checks || {};
+  var html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;">';
+
+  Object.entries(checks).forEach(function(entry) {
+    var name = entry[0];
+    var detail = entry[1];
+    var statusColor = detail.status === 'pass' ? '#22c55e' : '#ef4444';
+    var statusIcon = detail.status === 'pass' ? '✓' : '✗';
+
+    html += '<div style="background:var(--bg-card);border-radius:8px;padding:10px;border:1px solid var(--border);">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+      '<span style="font-weight:600;font-size:12px;">' + _efhEsc(name.replace(/_/g, ' ')) + '</span>' +
+      '<span style="color:' + statusColor + ';font-weight:600;font-size:12px;">' + statusIcon + ' ' + _efhEsc(detail.status) + '</span>' +
+      '</div>' +
+      '<div style="font-size:11px;color:var(--muted);">' +
+      (detail.latencyMs !== undefined ? detail.latencyMs + 'ms' : '') +
+      (detail.message ? ' · ' + _efhEsc(detail.message) : '') +
+      '</div></div>';
+  });
+
+  html += '</div>';
+  body.innerHTML = html;
+}
+
+function _renderCheckMetrics(metrics) {
+  var container = document.getElementById('efh-metrics-body');
+  if (!container) return;
+
+  if (!metrics.length) {
+    container.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;padding:16px;">No check metrics available yet.</div>';
+    return;
+  }
+
+  var html = '<table class="admin-table" style="width:100%;font-size:12px;">' +
+    '<thead><tr>' +
+    '<th>Subsystem</th>' +
+    '<th style="text-align:right;">Invocations</th>' +
+    '<th style="text-align:right;">Success %</th>' +
+    '<th style="text-align:right;">p50 (ms)</th>' +
+    '<th style="text-align:right;">p95 (ms)</th>' +
+    '<th style="text-align:right;">p99 (ms)</th>' +
+    '<th style="text-align:right;">Avg (ms)</th>' +
+    '</tr></thead><tbody>';
+
+  metrics.forEach(function(m) {
+    var successColor = m.success_rate >= 95 ? '#22c55e' : m.success_rate >= 80 ? '#f59e0b' : '#ef4444';
+    var p95Color = m.latency_p95 > 2000 ? '#ef4444' : m.latency_p95 > 1000 ? '#f59e0b' : 'var(--text-main)';
+
+    html += '<tr>' +
+      '<td><code style="font-size:11px;background:var(--bg-card);padding:1px 4px;border-radius:3px;">' + _efhEsc(m.name) + '</code></td>' +
+      '<td style="text-align:right;">' + m.invocations + '</td>' +
+      '<td style="text-align:right;color:' + successColor + ';font-weight:600;">' + m.success_rate + '%</td>' +
+      '<td style="text-align:right;">' + m.latency_p50 + '</td>' +
+      '<td style="text-align:right;color:' + p95Color + ';">' + m.latency_p95 + '</td>' +
+      '<td style="text-align:right;">' + m.latency_p99 + '</td>' +
+      '<td style="text-align:right;">' + m.latency_avg + '</td>' +
+      '</tr>';
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function _renderFunctionsList(functions) {
+  var container = document.getElementById('efh-functions-list');
+  if (!container) return;
+
+  if (!functions.length) {
+    container.innerHTML = '<div style="color:var(--muted);">No functions listed.</div>';
+    return;
+  }
+
+  var html = '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+  functions.forEach(function(fn) {
+    html += '<span style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:11px;font-family:var(--font-mono,monospace);">' + _efhEsc(fn) + '</span>';
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function _efhEsc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function _cleanupEfHealthPanel() {
+  if (_efHealthRefreshTimer) {
+    clearInterval(_efHealthRefreshTimer);
+    _efHealthRefreshTimer = null;
+  }
+}
+
+window.loadEfHealthPanel = loadEfHealthPanel;
+window._cleanupEfHealthPanel = _cleanupEfHealthPanel;
+
+
+// === js/admin-db-activity.js ===
+/* ───────────────────────────────────────────────────────────
+   admin-db-activity.js — Database Activity Panel (AD-FIX-15)
+   CS-024: Connections, slow queries, table sizes via pg_stat.
+   Data from admin-analytics EF (proxied SQL functions).
+   ─────────────────────────────────────────────────────────── */
+
+var _dbActivityRefreshTimer = null;
+
+var DB_ANALYTICS_URL = (typeof SUPABASE_URL !== 'undefined' ? SUPABASE_URL : 'https://qojhagupdnbtomfoxnsf.supabase.co') + '/functions/v1/admin-analytics';
+
+async function loadDbActivityPanel() {
+  var el = document.getElementById('admin-page-db-activity');
+  if (!el) return;
+
+  el.innerHTML = [
+    '<div class="admin-block">',
+    '  <div class="admin-block-header">',
+    '    <h2 class="admin-block-title">Database Activity</h2>',
+    '    <div class="admin-block-actions">',
+    '      <span id="dba-last-refresh" style="font-size:12px;color:var(--muted);margin-right:8px;"></span>',
+    '      <button class="admin-btn admin-btn-sm" id="dba-refresh-btn">↻ Refresh</button>',
+    '    </div>',
+    '  </div>',
+    '',
+    '  <!-- Summary Cards -->',
+    '  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;" id="dba-summary-cards">',
+    '    <div class="stat-card"><div class="stat-val" id="dba-db-size">—</div><div class="stat-label">Database Size</div></div>',
+    '    <div class="stat-card"><div class="stat-val" id="dba-active-conn">—</div><div class="stat-label">Active Connections</div></div>',
+    '    <div class="stat-card"><div class="stat-val" id="dba-max-conn">—</div><div class="stat-label">Max Connections</div></div>',
+    '    <div class="stat-card"><div class="stat-val" id="dba-conn-pct">—</div><div class="stat-label">Connection Usage</div></div>',
+    '  </div>',
+    '',
+    '  <!-- Connections by State -->',
+    '  <div style="background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:16px;margin-bottom:20px;">',
+    '    <div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Connections by State</div>',
+    '    <div id="dba-connections-body" style="overflow-x:auto;">',
+    '      <div style="text-align:center;color:var(--muted);font-size:13px;padding:16px;">Loading connections…</div>',
+    '    </div>',
+    '  </div>',
+    '',
+    '  <!-- Table Sizes -->',
+    '  <div style="background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:16px;margin-bottom:20px;">',
+    '    <div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Table Sizes (Top 50)</div>',
+    '    <div id="dba-tables-body" style="overflow-x:auto;">',
+    '      <div style="text-align:center;color:var(--muted);font-size:13px;padding:16px;">Loading table sizes…</div>',
+    '    </div>',
+    '  </div>',
+    '',
+    '  <!-- Slow Queries -->',
+    '  <div style="background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:16px;">',
+    '    <div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Slow Queries (by avg exec time)</div>',
+    '    <div id="dba-queries-body" style="overflow-x:auto;">',
+    '      <div style="text-align:center;color:var(--muted);font-size:13px;padding:16px;">Loading query stats…</div>',
+    '    </div>',
+    '  </div>',
+    '</div>'
+  ].join('\n');
+
+  document.getElementById('dba-refresh-btn').addEventListener('click', function() { _refreshDbActivity(); });
+
+  await _refreshDbActivity();
+
+  if (_dbActivityRefreshTimer) clearInterval(_dbActivityRefreshTimer);
+  _dbActivityRefreshTimer = setInterval(_refreshDbActivity, 120000);
+}
+
+async function _refreshDbActivity() {
+  var lastEl = document.getElementById('dba-last-refresh');
+  if (lastEl) lastEl.textContent = 'Refreshing…';
+
+  try {
+    var token = '';
+    if (typeof sb !== 'undefined') {
+      var sess = await sb.auth.getSession();
+      token = (sess.data && sess.data.session) ? sess.data.session.access_token : '';
+    }
+
+    var res = await fetch(DB_ANALYTICS_URL + '?action=db-activity', {
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+    });
+
+    if (!res.ok) throw new Error('API ' + res.status);
+    var data = await res.json();
+
+    _renderDbSummary(data.db_size, data.connections);
+    _renderConnections(data.connections, data.connections_error);
+    _renderTableSizes(data.tables, data.tables_error);
+    _renderSlowQueries(data.slow_queries, data.slow_queries_error);
+
+  } catch (e) {
+    console.error('[DbActivity] Refresh error:', e);
+    if (typeof reportError === 'function') reportError('admin-db-activity', e);
+  }
+
+  if (lastEl) lastEl.textContent = 'Updated ' + new Date().toLocaleTimeString();
+}
+
+function _renderDbSummary(dbSize, connections) {
+  var el;
+
+  el = document.getElementById('dba-db-size');
+  if (el && dbSize) el.textContent = dbSize.db_size || '—';
+
+  var totalConn = 0;
+  if (connections && connections.length) {
+    connections.forEach(function(c) { totalConn += parseInt(c.count, 10) || 0; });
+  }
+
+  el = document.getElementById('dba-active-conn');
+  if (el) {
+    el.textContent = totalConn;
+    el.style.color = totalConn > 100 ? '#ef4444' : totalConn > 50 ? '#f59e0b' : 'var(--text)';
+  }
+
+  var maxConn = (dbSize && dbSize.max_connections) || 100;
+  el = document.getElementById('dba-max-conn');
+  if (el) el.textContent = maxConn;
+
+  el = document.getElementById('dba-conn-pct');
+  if (el) {
+    var pct = Math.round((totalConn / maxConn) * 100);
+    el.textContent = pct + '%';
+    el.style.color = pct > 80 ? '#ef4444' : pct > 50 ? '#f59e0b' : '#22c55e';
+  }
+}
+
+function _renderConnections(connections, error) {
+  var container = document.getElementById('dba-connections-body');
+  if (!container) return;
+
+  if (error) {
+    container.innerHTML = '<div style="color:#ef4444;font-size:13px;">Error: ' + _dbaEsc(error) + '</div>';
+    return;
+  }
+
+  if (!connections || !connections.length) {
+    container.innerHTML = '<div style="color:var(--muted);font-size:13px;">No connection data available.</div>';
+    return;
+  }
+
+  // Render as visual bars + table
+  var total = 0;
+  connections.forEach(function(c) { total += parseInt(c.count, 10) || 0; });
+
+  var html = '<div style="display:flex;gap:4px;height:28px;border-radius:6px;overflow:hidden;margin-bottom:12px;">';
+  var stateColors = { 'active': '#22c55e', 'idle': '#60a5fa', 'idle in transaction': '#f59e0b', 'unknown': '#94a3b8' };
+
+  connections.forEach(function(c) {
+    var pct = total > 0 ? ((parseInt(c.count, 10) || 0) / total * 100) : 0;
+    var color = stateColors[c.state] || '#94a3b8';
+    if (pct > 3) {
+      html += '<div style="width:' + pct + '%;background:' + color + ';display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;font-weight:600;min-width:30px;" title="' + _dbaEsc(c.state) + ': ' + c.count + '">' +
+        c.count + '</div>';
+    }
+  });
+  html += '</div>';
+
+  html += '<table class="admin-table" style="width:100%;font-size:12px;">' +
+    '<thead><tr><th>State</th><th style="text-align:right;">Count</th><th style="text-align:right;">Max Duration (s)</th><th style="text-align:right;">Waiting</th></tr></thead><tbody>';
+
+  connections.forEach(function(c) {
+    var color = stateColors[c.state] || '#94a3b8';
+    html += '<tr>' +
+      '<td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + color + ';margin-right:6px;"></span>' + _dbaEsc(c.state) + '</td>' +
+      '<td style="text-align:right;font-weight:600;">' + c.count + '</td>' +
+      '<td style="text-align:right;">' + (c.max_duration_seconds || '—') + '</td>' +
+      '<td style="text-align:right;">' + (c.waiting || 0) + '</td>' +
+      '</tr>';
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function _renderTableSizes(tables, error) {
+  var container = document.getElementById('dba-tables-body');
+  if (!container) return;
+
+  if (error) {
+    container.innerHTML = '<div style="color:#ef4444;font-size:13px;">Error: ' + _dbaEsc(error) + '</div>';
+    return;
+  }
+
+  if (!tables || !tables.length) {
+    container.innerHTML = '<div style="color:var(--muted);font-size:13px;">No table data available.</div>';
+    return;
+  }
+
+  var html = '<table class="admin-table" style="width:100%;font-size:12px;">' +
+    '<thead><tr>' +
+    '<th>Table</th>' +
+    '<th style="text-align:right;">Rows (est.)</th>' +
+    '<th style="text-align:right;">Total Size</th>' +
+    '<th style="text-align:right;">Index Size</th>' +
+    '<th>Size Bar</th>' +
+    '</tr></thead><tbody>';
+
+  var maxBytes = tables[0] ? (parseInt(tables[0].total_bytes, 10) || 1) : 1;
+
+  tables.forEach(function(t) {
+    var barPct = Math.max(2, Math.round((parseInt(t.total_bytes, 10) || 0) / maxBytes * 100));
+    var barColor = barPct > 80 ? '#ef4444' : barPct > 40 ? '#f59e0b' : '#60a5fa';
+    var tableName = t.table_name || '—';
+    var schema = t.schema_name || 'public';
+    var displayName = schema === 'public' ? tableName : schema + '.' + tableName;
+
+    html += '<tr>' +
+      '<td><code style="font-size:11px;background:var(--bg-card);padding:1px 4px;border-radius:3px;">' + _dbaEsc(displayName) + '</code></td>' +
+      '<td style="text-align:right;">' + _dbaFormatNum(t.row_estimate) + '</td>' +
+      '<td style="text-align:right;font-weight:600;">' + _dbaEsc(t.total_size) + '</td>' +
+      '<td style="text-align:right;">' + _dbaEsc(t.index_size) + '</td>' +
+      '<td style="width:120px;"><div style="height:10px;background:var(--bg-card);border-radius:4px;overflow:hidden;">' +
+      '<div style="height:100%;width:' + barPct + '%;background:' + barColor + ';border-radius:4px;"></div></div></td>' +
+      '</tr>';
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function _renderSlowQueries(queries, error) {
+  var container = document.getElementById('dba-queries-body');
+  if (!container) return;
+
+  if (error) {
+    container.innerHTML = '<div style="color:#ef4444;font-size:13px;">Error: ' + _dbaEsc(error) + '</div>';
+    return;
+  }
+
+  if (!queries || !queries.length) {
+    container.innerHTML = '<div style="color:var(--muted);font-size:13px;">No query stats available. pg_stat_statements may not be enabled.</div>';
+    return;
+  }
+
+  // Check for fallback message
+  if (queries.length === 1 && queries[0].query_text && queries[0].query_text.indexOf('not enabled') !== -1) {
+    container.innerHTML = '<div style="color:var(--muted);font-size:13px;">' + _dbaEsc(queries[0].query_text) + '</div>';
+    return;
+  }
+
+  var html = '<table class="admin-table" style="width:100%;font-size:12px;">' +
+    '<thead><tr>' +
+    '<th>Query (truncated)</th>' +
+    '<th style="text-align:right;">Calls</th>' +
+    '<th style="text-align:right;">Mean (ms)</th>' +
+    '<th style="text-align:right;">Max (ms)</th>' +
+    '<th style="text-align:right;">Total (ms)</th>' +
+    '<th style="text-align:right;">Rows</th>' +
+    '</tr></thead><tbody>';
+
+  queries.forEach(function(q) {
+    var meanColor = q.mean_time_ms > 500 ? '#ef4444' : q.mean_time_ms > 100 ? '#f59e0b' : 'var(--text-main)';
+
+    html += '<tr>' +
+      '<td style="max-width:350px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + _dbaEsc(q.query_text) + '">' +
+      '<code style="font-size:10px;">' + _dbaEsc(q.query_text) + '</code></td>' +
+      '<td style="text-align:right;">' + _dbaFormatNum(q.calls) + '</td>' +
+      '<td style="text-align:right;color:' + meanColor + ';font-weight:600;">' + _dbaFormatMs(q.mean_time_ms) + '</td>' +
+      '<td style="text-align:right;">' + _dbaFormatMs(q.max_time_ms) + '</td>' +
+      '<td style="text-align:right;">' + _dbaFormatMs(q.total_time_ms) + '</td>' +
+      '<td style="text-align:right;">' + _dbaFormatNum(q.rows_returned) + '</td>' +
+      '</tr>';
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function _dbaFormatNum(n) {
+  if (n === null || n === undefined) return '—';
+  return Number(n).toLocaleString();
+}
+
+function _dbaFormatMs(ms) {
+  if (ms === null || ms === undefined) return '—';
+  var n = parseFloat(ms);
+  if (n >= 1000) return (n / 1000).toFixed(1) + 's';
+  return n.toFixed(1) + 'ms';
+}
+
+function _dbaEsc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function _cleanupDbActivityPanel() {
+  if (_dbActivityRefreshTimer) {
+    clearInterval(_dbActivityRefreshTimer);
+    _dbActivityRefreshTimer = null;
+  }
+}
+
+window.loadDbActivityPanel = loadDbActivityPanel;
+window._cleanupDbActivityPanel = _cleanupDbActivityPanel;
 
 
 // === js/admin-feed-health.js ===

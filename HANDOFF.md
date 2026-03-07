@@ -34,12 +34,12 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**CS-023** — Admin Monitoring Dashboards Part 1 (AD-FIX-11, AD-FIX-12)
+**CS-024** — Admin Monitoring Dashboards Part 2 (AD-FIX-13, AD-FIX-14, AD-FIX-15)
 - Completed: 2026-03-07
-- Commit: `087436e`
-- Tags: `admin@1.0.0-monitoring`
-- Fix items resolved: AD-FIX-11 (monitoring dashboard), AD-FIX-12 (operational alerts)
-- Notes: New "Monitoring" subpage — aggregated health dashboard (health-check EF, cron summary, feed freshness, surface latency, recent alerts, summary cards, status banner). New "Alerts" subpage — alert rules CRUD, alert history with ack/resolve workflow, rule creation modal, PostHog + email notification routing, 6 default rules seeded. Migration: health_check_log, alert_rules, alert_history tables + v_monitoring_summary view. 36 new tests (665 total). Audit trail wired for all alert actions. Both panels auto-refresh with cleanup.
+- Commit: (pending push)
+- Tags: `admin@1.1.0-analytics`
+- Fix items resolved: AD-FIX-13 (error replay), AD-FIX-14 (EF health), AD-FIX-15 (DB activity)
+- Notes: 3 new admin subpages — Error Replay (PostHog Events API proxy with session replay deep links, time range filter, query_error + $exception events), EF Health (subsystem metrics from health_check_log — invocations, success %, p50/p95/p99, 35 deployed EFs listed), DB Activity (4 SQL SECURITY DEFINER functions — pg_stat_activity connections by state, table sizes top 50, slow queries via pg_stat_statements with fallback, database size + connection usage). admin-analytics Edge Function with admin auth enforcement. Migration: 20260307_cs024_admin_analytics.sql. 35 new tests (701 total). **FINAL SESSION — 24 of 24 remediation sessions complete.**
 
 ---
 
@@ -51,33 +51,16 @@ None.
 
 ## Next Session
 
-**CS-024** — Admin Monitoring Dashboards Part 2 (AD-FIX-13, AD-FIX-14, AD-FIX-15)
+**ALL 24 REMEDIATION SESSIONS COMPLETE.**
 
-| Field | Detail |
-|-------|--------|
-| Surface | Admin |
-| Fix Items | AD-FIX-13, AD-FIX-14, AD-FIX-15 |
-| Phase | Post-Launch: Admin Monitoring |
-| Pair | Senior Backend + Senior Frontend |
-| Expected tags | TBD |
+No remaining sessions. The full audit remediation program (CS-001 through CS-024) has been executed across 5 phases over 13 weeks. All P0/P1 findings resolved. 701 tests passing. 15 launch gates assessed (12 GREEN, 3 YELLOW, 0 RED).
 
-### Entry Gate (verify before starting)
-
-- [x] CS-023 complete — Monitoring dashboard + alerts panel deployed
-- [x] 665+ tests passing
-- [x] alert_rules and alert_history tables created
-
-### What To Build
-
-1. **AD-FIX-13**: Error replay integration — PostHog session replay links from error dashboard
-2. **AD-FIX-14**: Edge Function health dashboard — invocations, errors, latency p50/p95/p99 for all EFs
-3. **AD-FIX-15**: Database activity panel — connections, slow queries, table sizes via pg_stat
-
-### Exit Gate
-
-- Error replay links functional in monitoring dashboard
-- EF health metrics rendering live data
-- Database activity panel operational
+Next steps:
+1. Deploy admin-analytics Edge Function: `supabase functions deploy admin-analytics --no-verify-jwt`
+2. Run migration: `20260307_cs024_admin_analytics.sql`
+3. Set PostHog env var: `POSTHOG_PERSONAL_API_KEY` on Supabase project
+4. Add Audit Remediation as Phase 0 in product roadmap (per Session 5 standing instruction)
+5. Proceed to Phase 1: Feature Development
 
 ---
 
@@ -88,7 +71,7 @@ None.
 | Dashboard | `dashboard@1.0.0-bundle` | CS-016 |
 | Extension | `extension@0.8.0-architecture` | CS-019 |
 | Landing Page | `index@0.6.0-architecture` | CS-018 |
-| Admin | `admin@1.0.0-monitoring` | CS-023 |
+| Admin | `admin@1.1.0-analytics` | CS-024 |
 | Load Tests | `loadtest@1.0.0` | CS-020 |
 | CI/CD | `cicd@1.0.0` | CS-020 |
 | Quality Gates | `qualitygates@1.0.0` | CS-021 |
@@ -98,7 +81,7 @@ None.
 
 ---
 
-## Completed Sessions (23 of 24)
+## Completed Sessions (24 of 24)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
@@ -125,14 +108,13 @@ None.
 | CS-021 | 2026-03-06 | FIX-22 (Quality Gates + E2E) | qualitygates@1.0.0 |
 | CS-022 | 2026-03-07 | FIX-23 (72-hour dry run + Go/No-Go) | dryrun@1.0.0 |
 | CS-023 | 2026-03-07 | AD-FIX-11, AD-FIX-12 (monitoring + alerts) | admin@1.0.0-monitoring |
+| CS-024 | 2026-03-07 | AD-FIX-13, AD-FIX-14, AD-FIX-15 (error replay + EF health + DB activity) | admin@1.1.0-analytics |
 
 ---
 
-## Remaining Sessions (1 of 24)
+## Remaining Sessions (0 of 24)
 
-| Session | Fix Items | Phase | Notes |
-|---------|-----------|-------|-------|
-| CS-024 | AD-FIX-13, AD-FIX-14, AD-FIX-15 | Post-Launch: Admin Monitoring |  |
+All remediation sessions complete.
 
 ---
 

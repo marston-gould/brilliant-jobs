@@ -3065,10 +3065,10 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.163 | Feed Health — Supabase views | 2h | 1h | ✅ | CS-023: Feed freshness via ats_jobs.last_seen + open job count in monitoring dashboard. |
 | 0.164 | Feed Health — admin UI | 2h | 1h | ✅ | CS-012: Full feed-health panel. CS-023: Feed summary card in monitoring dashboard. |
 | 0.165 | Error Dashboard — PostHog API | 2h | 1h | ✅ | CS-023: Health-check EF integration in monitoring dashboard. Error aggregation via health endpoint. |
-| 0.166 | Error Dashboard — admin UI + replay | 2h | — | 🔲 | CS-023: Framework in place. Replay integration deferred to CS-024. |
+| 0.166 | Error Dashboard — admin UI + replay | 2h | 2h | ✅ | CS-024 (AD-FIX-13): Error Replay admin subpage. PostHog Events API proxy via admin-analytics EF. query_error + $exception events with session replay deep links. Time range filter (1h–7d). Summary cards (totals, replay coverage, unique labels). Auto-refresh 120s. |
 | 0.167 | Alerting pipeline — PostHog + routing | 2h | 2h | ✅ | CS-023: alert_rules + alert_history tables. CRUD UI. Ack/resolve workflow. PostHog + email channel config. 6 default rules seeded. |
-| 0.168 | Edge Function Health — proxy + instrumentation | 3h | — | 🔲 | Pattern 2. 88 EFs: invocations, errors, latency p50/p95/p99. |
-| 0.169 | Database Activity — pg_stat + UI | 3h | — | 🔲 | Connections, slow queries, table sizes. |
+| 0.168 | Edge Function Health — proxy + instrumentation | 3h | 3h | ✅ | CS-024 (AD-FIX-14): EF Health admin subpage. admin-analytics EF queries health_check_log for subsystem metrics — invocations, success %, latency p50/p95/p99. Last health check detail with per-subsystem status cards. Deployed functions list (35 EFs). Color-coded thresholds. Auto-refresh 120s. |
+| 0.169 | Database Activity — pg_stat + UI | 3h | 3h | ✅ | CS-024 (AD-FIX-15): DB Activity admin subpage. 4 SQL SECURITY DEFINER functions: admin_db_connections() (pg_stat_activity by state), admin_db_table_sizes() (top 50 by size with row estimates + index sizes), admin_db_slow_queries() (pg_stat_statements top 25 by mean exec time, graceful fallback if extension disabled), admin_db_size() (total size + connection counts vs max). Visual connection state bars. Size bar charts. Color-coded latency thresholds. Auto-refresh 120s. |
 | 0.170 | Cost Monitoring — Anthropic proxy + cache | 3h | — | 🔲 | Pattern 2. Daily/weekly/monthly. Per-function. |
 | 0.171 | Cost Monitoring — UI + alerts + kill switches | 3h | 1h | ✅ | CS-019: Budget alerts per vendor in admin cost dashboard. Progress bars, edit form, chart budget line. vendor_cost_budgets table. |
 | 0.172 | PII inventory + data map | 2h | 2h | ✅ | CS-019: docs/PII_INVENTORY.md. All tables mapped by sensitivity tier. Extension + third-party + Edge Function flows documented. |
@@ -3103,7 +3103,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | G2 | PostHog error tracking live (within 60s) | 3 | ✅ | CS-003: SDK deployed on all 4 surfaces with exception autocapture. CS-022: Verified in codebase — PostHog init on dashboard, admin, landing, extension. |
 | G3 | Service role key rotated, old invalidated | 3 | 🔲 |
 | G4 | Kill-switch operational | 3 | ✅ | CS-013: 3-layer kill-switch deployed. DB flag toggle verified, REST API returns directive, admin UI live. |
-| G5 | Critical-path tests pass | 3 | ✅ | CS-023: 665 tests across 9 test suites, all passing. Covers security, a11y, infrastructure, monitoring, quality gates, alerts. |
+| G5 | Critical-path tests pass | 3 | ✅ | CS-024: 701 tests across 10 test suites, all passing. Covers security, a11y, infrastructure, monitoring, analytics, quality gates, alerts. |
 | G6 | Connection pooler live (300+) | 3 | ✅ | CS-009: Supavisor enabled. CS-020: Load tested. CS-022: Verified safeQuery() + 30s timeout wired. |
 | G7 | Privacy policy + DPAs sent | 3 | ⚡ | CS-004: Privacy policy published. CS-019: Privacy policy updated with all 9 third-party vendors, DPA references, cookie consent. Extension manifest homepage_url + popup link added. PII inventory complete (docs/PII_INVENTORY.md). DPA initiation PENDING (legal review required for Anthropic, PostHog, Stripe, Resend, Vonage). |
 | G8 | 72-hour dry run clean | 3 | ✅ | CS-022: Monitoring infrastructure deployed (dry-run-monitor.mjs, dry-run.yml hourly cron). 11-point health check. Go/No-Go evaluation: CONDITIONAL-GO (10 GREEN, 5 YELLOW, 0 RED). |

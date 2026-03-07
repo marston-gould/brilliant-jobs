@@ -1,8 +1,8 @@
 /* ───────────────────────────────────────────────────────────
    admin.js — Admin Console with Sidebar Navigation (IA v2)
-   v7.20 — CS-023: monitoring dashboard, alerts panel
+   v7.21 — CS-024: error replay, EF health, DB activity panels
    4 sections: Operations, Growth, Audience, Business
-   30 sub-pages with lazy initialization
+   33 sub-pages with lazy initialization
    ─────────────────────────────────────────────────────────── */
 
 // ─── Admin access gate (dashboard nav-item visibility) ───
@@ -62,6 +62,9 @@ var ADMIN_SUBPAGE_MAP = {
   'cron':           { section: 'operations',  label: 'Cron Health',    init: function(){ loadCronPanel(); } },
   'monitoring':     { section: 'operations',  label: 'Monitoring',     init: function(){ loadMonitoringPanel(); } },
   'alerts':         { section: 'operations',  label: 'Alerts',         init: function(){ loadAlertsPanel(); } },
+  'error-replay':   { section: 'operations',  label: 'Error Replay',   init: function(){ loadErrorReplayPanel(); } },
+  'ef-health':      { section: 'operations',  label: 'EF Health',      init: function(){ loadEfHealthPanel(); } },
+  'db-activity':    { section: 'operations',  label: 'DB Activity',    init: function(){ loadDbActivityPanel(); } },
   'kill-switch':    { section: 'operations',  label: 'Kill Switch',    init: function(){ loadKillSwitchPanel(); } },
   // ── Growth ──
   'seo':            { section: 'growth',      label: 'SEO',            init: function(){ loadSeoTab(); } },
@@ -211,6 +214,9 @@ function navigateAdminSubpage(key) {
   if (typeof _cleanupKillSwitchPanel === 'function') _cleanupKillSwitchPanel();
   if (typeof _cleanupMonitoringPanel === 'function') _cleanupMonitoringPanel();
   if (typeof _cleanupAlertsPanel === 'function') _cleanupAlertsPanel();
+  if (typeof _cleanupErrorReplayPanel === 'function') _cleanupErrorReplayPanel();
+  if (typeof _cleanupEfHealthPanel === 'function') _cleanupEfHealthPanel();
+  if (typeof _cleanupDbActivityPanel === 'function') _cleanupDbActivityPanel();
 
   // Show correct panel, hide all others
   document.querySelectorAll('.admin-panel').forEach(function(p) {

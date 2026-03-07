@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.25"></script>
+  <script src="/js/version.js?v=v7.26"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2062,10 +2062,10 @@ const features = [
 { s: 'done', b: 'post-launch', n: '0.163 Feed Health — views', d: 'CS-023: Feed freshness via ats_jobs.last_seen + open job count in monitoring dashboard.', p: 76, e: '2h' },
 { s: 'done', b: 'post-launch', n: '0.164 Feed Health — admin UI', d: 'CS-012: Full feed-health panel. CS-023: Feed summary in monitoring dashboard.', p: 76, e: '2h' },
 { s: 'done', b: 'post-launch', n: '0.165 Error Dashboard — PostHog API', d: 'CS-023: Health-check EF integration in monitoring dashboard. Error aggregation via health endpoint.', p: 76, e: '2h' },
-{ s: 'todo', b: 'post-launch', n: '0.166 Error Dashboard — UI + replay', d: 'CS-023: Framework in place. Replay integration deferred to CS-024.', p: 76, e: '2h' },
+{ s: 'done', b: 'post-launch', n: '0.166 Error Dashboard — UI + replay', d: 'CS-024 (AD-FIX-13): Error Replay subpage. PostHog Events API proxy. query_error + $exception with session replay links. Time range filter. Auto-refresh.', p: 76, e: '2h' },
 { s: 'done', b: 'post-launch', n: '0.167 Alerting pipeline', d: 'CS-023: alert_rules + alert_history tables. CRUD UI. Ack/resolve. PostHog + email. 6 default rules.', p: 76, e: '2h' },
-{ s: 'todo', b: 'post-launch', n: '0.168 Edge Function Health', d: 'Pattern 2. 88 EFs: invocations, errors, latency.', p: 76, e: '3h' },
-{ s: 'todo', b: 'post-launch', n: '0.169 Database Activity', d: 'pg_stat connections, slow queries, table sizes.', p: 76, e: '3h' },
+{ s: 'done', b: 'post-launch', n: '0.168 Edge Function Health', d: 'CS-024 (AD-FIX-14): EF Health subpage. health_check_log subsystem metrics — invocations, success %, p50/p95/p99. 35 deployed EFs. Color-coded thresholds.', p: 76, e: '3h' },
+{ s: 'done', b: 'post-launch', n: '0.169 Database Activity', d: 'CS-024 (AD-FIX-15): DB Activity subpage. 4 SECURITY DEFINER SQL functions. pg_stat_activity connections, table sizes, slow queries, database size. Visual bars + color-coding.', p: 76, e: '3h' },
 { s: 'todo', b: 'post-launch', n: '0.170 Cost Monitoring — proxy', d: 'Pattern 2. Anthropic API. Daily/weekly/monthly.', p: 76, e: '3h' },
 { s: 'done', b: 'post-launch', n: '0.171 Cost Monitoring — UI + kills', d: 'CS-019: Budget alerts per vendor in admin cost dashboard. Progress bars, edit form, chart budget line.', p: 76, e: '3h' },
 { s: 'done', b: 'post-launch', n: '0.172 PII inventory + data map', d: 'CS-019: docs/PII_INVENTORY.md. All tables mapped by sensitivity.', p: 76, e: '2h' },
@@ -2083,7 +2083,7 @@ const features = [
 { s: 'done', b: 'pre-launch', n: '0.180 Staging + CI/CD automation', d: 'CS-020: ci.yml, deploy.yml enhanced, load-test.yml, staging docs.', p: 75, e: '3h' },
 { s: 'todo', b: 'pre-launch', n: '0.181 Extension E2E live ATS', d: '15 handlers validated. Snapshots.', p: 75, e: '2h' },
 { s: 'todo', b: 'pre-launch', n: '0.182 Kill-switch integration test', d: 'Bulk disable 15 min. Re-enable.', p: 75, e: '1h' },
-{ s: 'done', b: 'pre-launch', n: '0.183 72-hour dry run', d: 'CS-022: Monitoring deployed (dry-run-monitor.mjs, dry-run.yml hourly cron). Go/No-Go: CONDITIONAL-GO (10 GREEN, 5 YELLOW, 0 RED). CS-023: 665 tests.', p: 75, e: '72h' },
+{ s: 'done', b: 'pre-launch', n: '0.183 72-hour dry run', d: 'CS-022: Monitoring deployed (dry-run-monitor.mjs, dry-run.yml hourly cron). Go/No-Go: CONDITIONAL-GO (10 GREEN, 5 YELLOW, 0 RED). CS-024: 701 tests.', p: 75, e: '72h' },
 { s: 'todo', b: 'pre-launch', n: '0.184 Final CX validation', d: 'axe 0 critical. PostHog 100%. All targets.', p: 75, e: '2h' },
 
 
