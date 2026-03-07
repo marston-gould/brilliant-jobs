@@ -36,7 +36,7 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 **CS-P1-002** — CSP + Cookies + Admin Auth + Key Rotation (Phase A: Security)
 - Completed: 2026-03-07
-- Commit: (pending push)
+- Commit: 4611ee5
 - Tags: `p1-002@1.0.0-csp-cookies`
 - SE-005: All inline scripts externalized from dashboard.html (5 scripts) and admin.html (2 scripts) into 4 new external JS files. `unsafe-inline` removed from script-src in vercel.json and dashboard CSP meta tag. style-src retains `unsafe-inline` (practical necessity for 803 inline styles).
 - IX-SE-006: Secure flag added to all 3 cookie-setting files (referral-capture.js, cookie-consent.js, landing-app.js). All cookies now SameSite=Lax + Secure.
