@@ -16,19 +16,52 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const USER_TABLES = [
+  // Core identity
   { table: "profiles", fk: "id" },
+  // Network & contacts
   { table: "connections", fk: "user_id" },
+  { table: "recruiter_contacts", fk: "user_id" },
+  // Resumes & applications
   { table: "resumes", fk: "user_id" },
-  { table: "resume_filter_assignments", fk: "user_id" },
-  { table: "companies", fk: "user_id" },
-  { table: "company_collections", fk: "user_id" },
-  { table: "notification_preferences", fk: "user_id" },
-  { table: "notification_channels", fk: "user_id" },
-  { table: "notification_filter_overrides", fk: "user_id" },
+  { table: "resume_rewrites", fk: "user_id" },
+  { table: "application_profiles", fk: "user_id" },
+  { table: "pending_applications", fk: "user_id" },
+  { table: "mock_ats_submissions", fk: "user_id" },
+  // Pipeline & tracking
+  { table: "pipeline", fk: "user_id" },
+  { table: "user_pipeline", fk: "user_id" },
+  { table: "saved_filters", fk: "user_id" },
+  // Notifications
   { table: "notification_log", fk: "user_id" },
   { table: "notification_actions", fk: "user_id" },
-  { table: "usage_events", fk: "user_id" },
+  { table: "user_notification_preferences", fk: "user_id" },
+  { table: "user_notification_state", fk: "user_id" },
+  { table: "held_notifications", fk: "user_id" },
+  { table: "template_send_log", fk: "user_id" },
+  // Billing & subscriptions
   { table: "subscriptions", fk: "user_id" },
+  { table: "credit_transactions", fk: "user_id" },
+  // Referrals
+  { table: "referrals", fk: "referrer_id" },
+  { table: "referral_invites", fk: "user_id" },
+  { table: "referral_rewards", fk: "user_id" },
+  { table: "referral_badges", fk: "user_id" },
+  // Extension & telemetry
+  { table: "extension_heartbeats", fk: "user_id" },
+  { table: "extension_events", fk: "user_id" },
+  { table: "overlay_analytics", fk: "user_id" },
+  { table: "push_subscriptions", fk: "user_id" },
+  // Engagement & feedback
+  { table: "feedback", fk: "user_id" },
+  { table: "onboarding_milestones", fk: "user_id" },
+  { table: "ghost_alerts_sent", fk: "user_id" },
+  { table: "marketing_campaign_log", fk: "user_id" },
+  { table: "leaderboard_rewards", fk: "user_id" },
+  // Sessions & experiments
+  { table: "user_sessions", fk: "user_id" },
+  { table: "ab_assignments", fk: "user_id" },
+  // Audit trail (included in export but NOT deleted)
+  { table: "audit_log", fk: "user_id" },
 ];
 
 serve(async (req) => {
@@ -89,9 +122,29 @@ serve(async (req) => {
       exported_at: new Date().toISOString(),
       user_id: targetUserId,
       requested_by: user.id,
-      version: "1.0",
+      version: "2.0",
+      tables_exported: USER_TABLES.map((t) => t.table),
+      pii_inventory_version: "1.0",
     },
   };
+
+  // Include auth user metadata (email, phone, identities)
+  if (targetUserId === user.id) {
+    exportData["auth_user"] = {
+      id: user.id,
+      email: user.email,
+      phone: user.phone,
+      created_at: user.created_at,
+      updated_at: user.updated_at,
+      user_metadata: user.user_metadata,
+      identities: user.identities?.map((i: Record<string, unknown>) => ({
+        provider: i.provider,
+        identity_id: i.identity_id,
+        created_at: i.created_at,
+        updated_at: i.updated_at,
+      })),
+    };
+  }
 
   for (const { table, fk } of USER_TABLES) {
     try {

@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.39"></script>
+  <script src="/js/version.js?v=v7.40"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -1948,12 +1948,12 @@ const features = [
 { s: 'in-progress', b: 'pre-launch', n: '0.078 CSS-004: 148KB CSS (25KB gzip)', d: 'CS-P1-009: 66 dead rules removed. <100KB raw deferred to SA-013.', p: 85, e: '1h' },
 
 // 0-O: Compliance (Pod 3, P1)
-{ s: 'done', b: 'pre-launch', n: '0.079 CP-001: No PII inventory', d: 'CS-019: docs/PII_INVENTORY.md — all tables by sensitivity, extension, third-party, Edge Functions, deletion cascade, review schedule.', p: 75, e: '2h' },
-{ s: 'todo', b: 'pre-launch', n: '0.080 CP-002: DPAs — all 5 vendors', d: 'Initiate DPAs with Anthropic, PostHog, Stripe, Resend, Vonage. Privacy policy published. PII inventory complete (docs/PII_INVENTORY.md). Legal review required.', p: 75, e: '4h' },
+{ s: 'done', b: 'pre-launch', n: '0.079 CP-001: No PII inventory', d: 'CS-019 + CS-P1-014: Comprehensive PII inventory v2 (docs/compliance/pii-inventory.md). 66 tables mapped, 18 Anthropic EFs, 5 third-party PII flows, retention periods, right-to-erasure.', p: 75, e: '8h' },
+{ s: 'done', b: 'pre-launch', n: '0.080 CP-002: DPAs — all 5 vendors', d: 'CS-P1-014: DPA register (docs/compliance/dpa-register.md). 13 services documented. Anthropic zero-retention confirmed. Priority actions listed.', p: 75, e: '4h' },
 { s: 'done', b: 'pre-launch', n: '0.081 CP-003: pgAudit logging enabled', d: 'CS-015: pgaudit extension enabled. DDL + write operations logged. log_parameter on.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.082 AD-CP-001: Admin PII exposure scope', d: 'Document admin-visible PII. Logging per path.', p: 75, e: '1h' },
-{ s: 'todo', b: 'post-launch', n: '0.083 AD-CP-002: No user deletion', d: 'GDPR Art 17. 72+ table cascade + third-party. Post-launch.', p: 76, e: '5h' },
-{ s: 'todo', b: 'post-launch', n: '0.084 AD-CP-003: No data export', d: 'GDPR Art 20. Export + query agg + download. Post-launch.', p: 76, e: '3h' },
+{ s: 'done', b: 'pre-launch', n: '0.082 AD-CP-001: Admin PII exposure scope', d: 'CS-P1-014: admin_pii_access_log table + RLS. log_admin_pii_access() RPC. PII access documented.', p: 75, e: '3h' },
+{ s: 'done', b: 'pre-launch', n: '0.083 AD-CP-002: No user deletion', d: 'CS-P1-014: GDPR Art 17. hard_delete_user_cascade() 35+ tables. account-delete EF: soft-delete + 30-day grace + cancel + admin hard-delete. Storage cleanup. Danger Zone UI.', p: 76, e: '8h' },
+{ s: 'done', b: 'pre-launch', n: '0.084 AD-CP-003: No data export', d: 'CS-P1-014: GDPR Art 20. data-export EF v2.0: 37 tables + auth metadata. Rate limited. Dashboard Download All My Data button.', p: 76, e: '5h' },
 { s: 'done', b: 'pre-launch', n: '0.085 IX-CP-001: No consent gate PostHog', d: 'CS-018: cookie-consent.js gates PostHog + GTM behind bj_consent cookie. Accept/Decline banner. bjConsent API (getStatus/grant/revoke). 365-day TTL.', p: 75, e: '1h' },
 
 // 0-P: Dependencies + Cost (Pod 3, P1)

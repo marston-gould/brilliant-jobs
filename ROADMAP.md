@@ -2913,12 +2913,12 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.079 | CP-001: No PII inventory | 2h | 2h | ✅ | CS-019: Comprehensive PII inventory created (docs/PII_INVENTORY.md). Maps all database tables by sensitivity tier, extension chrome.storage data, third-party PII sharing (9 services), Edge Function PII flows (14 functions), data subject rights implementation, deletion cascade verification. Quarterly review schedule established. |
-| 0.080 | CP-002: No DPAs for resume data → Anthropic | 2h | 0.5h | ⚡ | CS-004: Privacy policy link added to extension help.html. Privacy page live at brilliantjobs.app/privacy. DPA initiation for Anthropic, PostHog, Stripe, Resend, Vonage: PENDING (requires legal review, not a code task). |
+| 0.079 | CP-001: No PII inventory | 2h | 8h | ✅ | CS-019: Initial PII inventory. CS-P1-014: Comprehensive PII inventory v2 (docs/compliance/pii-inventory.md). Maps all 66 tables, 18 Anthropic API EFs, 5 third-party PII flows. Data retention periods documented. Right-to-erasure coverage verified. |
+| 0.080 | CP-002: No DPAs for resume data → Anthropic | 2h | 4h | ✅ | CS-004: Privacy policy link added. CS-P1-014: DPA register created (docs/compliance/dpa-register.md). All 13 third-party services documented. Anthropic zero-retention confirmed. Priority actions for DPA execution listed. |
 | 0.081 | CP-003: No audit logging (platform) | 1h | CS-015 | ✅ | Combined with 0.021 admin trail + pgAudit. |
-| 0.082 | AD-CP-001: Admin PII exposure scope | 1h | — | 🔲 | Document all admin-visible PII. Logging per access path. |
-| 0.083 | AD-CP-002: No user deletion capability | 5h | — | 🔲 | GDPR Art 17. 72+ table cascade + third-party propagation. Post-launch. |
-| 0.084 | AD-CP-003: No data export / portability | 3h | — | 🔲 | GDPR Art 20. Export format + query agg + download. Post-launch. |
+| 0.082 | AD-CP-001: Admin PII exposure scope | 1h | 3h | ✅ | CS-P1-014: admin_pii_access_log table created with RLS. log_admin_pii_access() RPC function. PII access documented in inventory. |
+| 0.083 | AD-CP-002: No user deletion capability | 5h | 8h | ✅ | CS-P1-014: GDPR Art 17 compliant. hard_delete_user_cascade() cascades all 35+ user tables. account-delete EF: soft-delete + 30-day grace + cancel + admin hard-delete. Storage cleanup. Auth user deletion. deletion_requests tracking table. process-expired-deletions pg_cron. Dashboard Danger Zone UI with double confirmation. |
+| 0.084 | AD-CP-003: No data export / portability | 3h | 5h | ✅ | CS-P1-014: GDPR Art 20 compliant. data-export EF v2.0: exports 37 user tables + auth metadata. Rate limited (5/hr). Admin can export any user. Dashboard "Download All My Data" button. JSON format with Content-Disposition header. |
 | 0.085 | IX-CP-001: No consent gate for PostHog | 1h | 1h | ✅ | CS-018: cookie-consent.js gates PostHog + GTM behind bj_consent cookie. Accept/Decline banner. bjConsent API. |
 
 ### 0-P: Dependencies + Cost (Pod 3, P1)

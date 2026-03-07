@@ -37,6 +37,114 @@ $('#logout-btn').addEventListener('click', async () => {
   window.location.href = '/';
 });
 
+// ---- CS-P1-014: Privacy & Data Rights ----
+
+// Full GDPR data export (JSON via Edge Function)
+$('#st-full-export')?.addEventListener('click', async () => {
+  try {
+    var btn = $('#st-full-export');
+    btn.disabled = true;
+    btn.textContent = 'Preparing export…';
+    var { data: { session } } = await sb.auth.getSession();
+    if (!session) { showToast('Please log in to export data.', { type: 'error' }); return; }
+    var resp = await fetch(BJ_SUPABASE_URL + '/functions/v1/data-export', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    if (!resp.ok) { var err = await resp.json().catch(function() { return {}; }); throw new Error(err.error || 'Export failed'); }
+    var blob = await resp.blob();
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'brilliant-jobs-full-export-' + new Date().toISOString().slice(0, 10) + '.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast('Data export downloaded successfully.', { type: 'success' });
+  } catch (e) {
+    showToast('Export failed: ' + e.message, { type: 'error' });
+  } finally {
+    var btn2 = $('#st-full-export');
+    if (btn2) { btn2.disabled = false; btn2.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;vertical-align:-2px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download All My Data (JSON)'; }
+  }
+});
+
+// Account deletion — initiate
+$('#st-delete-account')?.addEventListener('click', async () => {
+  var confirmed = confirm(
+    'Are you sure you want to delete your account?\n\n' +
+    'This will schedule your account for permanent deletion after a 30-day grace period.\n' +
+    'During the grace period, you can log in and cancel the deletion.\n\n' +
+    'After the grace period, ALL your data will be permanently removed.'
+  );
+  if (!confirmed) return;
+  var doubleConfirm = prompt('Type DELETE to confirm account deletion:');
+  if (doubleConfirm !== 'DELETE') { showToast('Account deletion cancelled.', { type: 'info' }); return; }
+  try {
+    var { data: { session } } = await sb.auth.getSession();
+    if (!session) { showToast('Please log in.', { type: 'error' }); return; }
+    var resp = await fetch(BJ_SUPABASE_URL + '/functions/v1/account-delete', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    var result = await resp.json();
+    if (!resp.ok) throw new Error(result.error || 'Deletion request failed');
+    showToast('Account deletion scheduled. You have 30 days to cancel.', { type: 'success' });
+    _showDangerZonePending(result.grace_expires_at);
+  } catch (e) { showToast('Failed: ' + e.message, { type: 'error' }); }
+});
+
+// Account deletion — cancel
+$('#st-cancel-delete')?.addEventListener('click', async () => {
+  try {
+    var { data: { session } } = await sb.auth.getSession();
+    if (!session) { showToast('Please log in.', { type: 'error' }); return; }
+    var resp = await fetch(BJ_SUPABASE_URL + '/functions/v1/account-delete', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cancel: true })
+    });
+    var result = await resp.json();
+    if (!resp.ok) throw new Error(result.error || 'Cancellation failed');
+    showToast('Account deletion cancelled. Your account is fully restored.', { type: 'success' });
+    _showDangerZoneNormal();
+  } catch (e) { showToast('Failed: ' + e.message, { type: 'error' }); }
+});
+
+function _showDangerZonePending(graceExpiresAt) {
+  var normalEl = $('#danger-zone-normal');
+  var pendingEl = $('#danger-zone-pending');
+  var dateEl = $('#dz-delete-date');
+  if (normalEl) normalEl.style.display = 'none';
+  if (pendingEl) pendingEl.style.display = 'block';
+  if (dateEl && graceExpiresAt) dateEl.textContent = new Date(graceExpiresAt).toLocaleDateString();
+}
+
+function _showDangerZoneNormal() {
+  var normalEl = $('#danger-zone-normal');
+  var pendingEl = $('#danger-zone-pending');
+  if (normalEl) normalEl.style.display = 'block';
+  if (pendingEl) pendingEl.style.display = 'none';
+}
+
+// Check deletion status on load
+async function _checkDeletionStatus() {
+  try {
+    if (!currentUser) return;
+    var { data } = await safeQuery(function() {
+      return sb.from('profiles').select('deleted_at').eq('id', currentUser.id).single();
+    }, { label: 'settings:deletion-check', fallback: null });
+    if (data && data.deleted_at) {
+      var graceExpires = new Date(new Date(data.deleted_at).getTime() + 30 * 86400000).toISOString();
+      _showDangerZonePending(graceExpires);
+    }
+  } catch (_) { /* non-critical */ }
+}
+
+// Initialize on settings page load
+if (typeof window._bjSettingsInitQueue === 'undefined') window._bjSettingsInitQueue = [];
+window._bjSettingsInitQueue.push(_checkDeletionStatus);
+
 
 // ---- AI Scoring Preferences (v6.44 Session 4.1) ----
 var _userAiScoringPrefs = { mixed_content: false, ai_generated: false };

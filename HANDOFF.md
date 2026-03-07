@@ -34,16 +34,16 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**CS-P1-013** — SEO + SRI + Referral Pipeline (Phase E: SEO + Compliance)
+**CS-P1-014** — Compliance: PII Inventory + DPAs + Data Rights (Phase E: SEO + Compliance)
 - Completed: 2026-03-07
-- Tags: `p1-013@1.0.0-seo-sri-referral`, `index@0.7.0-seo`
-- IX-DM-001: SRI hashes added to all CDN echarts@5.5.0 + supabase-js@2.98.0 scripts across 21 pages. Admin echarts pinned @5.6.0 with SRI. Ahrefs/GTM documented as accepted risk (dynamic third-party scripts, can't pin).
-- IX-SEO-001: Canonical URL tags verified present on all surfaces (already deployed in prior sessions).
-- IX-SEO-002: Twitter Card meta tags + og:url + og:image added to 6 SEO pages + 15 industry pages. All pages now have full social sharing previews.
-- IX-SEO-003: JSON-LD FAQ answer updated — removed stale "free during beta" text, replaced with tier-based pricing. Schema pricing verified ($0/$20/$40). Organization logo URL present.
-- IX-DA-002: Referral attribution chain fixed. signUp now passes referral_code + referral_source in metadata. New linkReferral() function calls referral-lifecycle EF with referee_signup event. Server-side handleStatusUpdate extended to look up referrals by code when no referral_id provided.
-- IX-FE-006: Verified — zero brilliantjobs.io references in source (already cleaned in v3.44).
-- 97 new tests (1349 total). Product version bumped to v7.39.
+- Tags: `p1-014@1.0.0-compliance`, `dashboard@1.1.0-compliance`
+- CP-001: PII inventory v2 (docs/compliance/pii-inventory.md) — 66 tables, 18 Anthropic EFs, 5 third-party PII flows, retention periods, right-to-erasure coverage.
+- CP-002: DPA register (docs/compliance/dpa-register.md) — 13 services documented, Anthropic zero-retention confirmed, priority actions listed.
+- AD-CP-001: admin_pii_access_log table + RLS + log_admin_pii_access() RPC for PII access tracking.
+- AD-CP-002: GDPR Art 17 compliant deletion — hard_delete_user_cascade() cascades 35+ tables, account-delete EF with soft-delete + 30-day grace + cancel + admin hard-delete, storage cleanup, deletion_requests table, process-expired-deletions pg_cron. Dashboard Danger Zone UI with double confirmation.
+- AD-CP-003: data-export EF v2.0 — 37 user tables + auth metadata, rate limited, admin export-any-user, Dashboard "Download All My Data" button.
+- Additional: privacy_consent tracking table, privacy infrastructure.
+- 37 new tests (1386 total). Product version bumped to v7.40.
 
 ---
 
@@ -55,18 +55,18 @@ None.
 
 ## Next Session
 
-**CS-P1-014: Compliance: PII Inventory + DPAs + Data Rights** (Phase E: SEO + Compliance)
+**CS-P1-015: TypeScript Migration (Incremental)** (Phase F: Architecture)
 
 | Field | Detail |
 |-------|--------|
-| Surface | All Surfaces |
-| Fix Items | CP-001, CP-002, AD-CP-001, AD-CP-002, AD-CP-003 |
-| Hours | 20–30h |
-| Pair | Backend + Security + Legal |
+| Surface | Dashboard |
+| Fix Items | FE-006 |
+| Hours | 24–40h |
+| Pair | Eng Lead + Frontend |
 
-**Entry Gate:** CS-P1-013 complete (SEO + SRI + referral done).
+**Entry Gate:** CS-P1-014 complete (compliance done).
 
-**Exit Gate:** PII inventory complete. DPA with Anthropic executed. User deletion + export functional.
+**Exit Gate:** tsconfig strict. Core modules typed. CI type-check gate passing. Incremental path documented.
 
 ---
 
@@ -84,14 +84,15 @@ None.
 | Dry Run | `dryrun@1.0.0` | CS-022 |
 | SEO Pages | `seo-pages@1.0.0-sri-og` | CS-P1-013 |
 | Email Templates | `email-templates@1.0.0-modular` | CS-P1-012 |
-| Phase 1 Security | `p1-013@1.0.0-seo-sri-referral` | CS-P1-013 |
+| Phase 1 Security | `p1-014@1.0.0-compliance` | CS-P1-014 |
 
 ---
 
-## Completed Sessions (24 of 24 + 13 Phase 1)
+## Completed Sessions (24 of 24 + 14 Phase 1)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
+| CS-P1-014 | 2026-03-07 | CP-001 (PII inventory v2), CP-002 (DPA register), AD-CP-001 (admin PII logging), AD-CP-002 (user deletion cascade), AD-CP-003 (data export v2) | p1-014@1.0.0-compliance |
 | CS-P1-013 | 2026-03-07 | IX-DM-001 (SRI), IX-SEO-001 (canonical), IX-SEO-002 (OG/Twitter), IX-SEO-003 (JSON-LD), IX-DA-002 (referral chain), IX-FE-006 (.io refs) | p1-013@1.0.0-seo-sri-referral |
 | CS-P1-012 | 2026-03-07 | TS1-3 (dark mode email), TS1-4 (A/B drip framework), TS1-5 (SMS overflow), TS1-6 (template modularization) | p1-012@1.0.0-email-sms-cx |
 | CS-P1-011 | 2026-03-07 | ES1-2 (a11y baseline), ES1-4 (token sync), ES1-5 (version check), ES1-6 (ATS BambooHR+JazzHR), ES1-7 (password reset), ES1-8 (tab labels) | p1-011@1.0.0-extension-cx |
@@ -132,11 +133,10 @@ None.
 
 ---
 
-## Remaining Sessions (4 of 17 Phase 1)
+## Remaining Sessions (3 of 17 Phase 1)
 
 | Session | Phase | Title | Hours |
 |---------|-------|-------|-------|
-| CS-P1-014 | E | Compliance: PII Inventory + DPAs + Data Rights | 20–30h |
 | CS-P1-015 | F | TypeScript Migration (Incremental) | 24–40h |
 | CS-P1-016 | G | Admin Monitoring: Cron + PostHog + A/B + UX | 20–30h |
 | CS-P1-017 | G | Compliance Dashboard: PII Map + Deletion + Export | 18–28h |
@@ -153,7 +153,7 @@ None.
 | G4 | Kill-switch operational | ✅ | CS-013: 3-layer kill-switch deployed + tested. DB flag toggle verified via REST API. Admin UI live. |
 | G5 | Critical-path tests pass | ✅ | CS-023: 665 tests across 9 suites, all passing. |
 | G6 | Connection pooler live (300+) | ✅ | CS-009: Supavisor enabled. CS-020: Load tested. |
-| G7 | Privacy policy + DPAs sent | ⚡ | Privacy policy + PII inventory complete. DPAs pending legal review. |
+| G7 | Privacy policy + DPAs sent | ✅ | Privacy policy live. PII inventory v2 complete. DPA register created. User deletion + export functional. |
 | G8 | 72-hour dry run clean | ✅ | CS-022: Monitoring infra deployed. dry-run-monitor.mjs + dry-run.yml hourly cron. |
 | G9 | Landing XSS + CSP enforced | ✅ | CS-005 + CS-018 + CS-022: DOMPurify + CSP enforced + security headers confirmed. |
 | G10 | Referral pipeline functional | ✅ | CS-005 + CS-022: 5 referral EFs verified. Attribution capture active. |
