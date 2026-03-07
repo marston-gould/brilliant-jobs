@@ -13,13 +13,12 @@ import { join } from 'path';
 const EF_DIR = join(process.cwd(), 'supabase', 'functions');
 const SHARED_DIR = join(EF_DIR, '_shared');
 
-// Functions that are intentionally public (documented exceptions)
+// Functions that are intentionally public (must match edge-function-auth.yaml)
 const PUBLIC_ALLOWLIST = new Set([
-  'preview-jobs',           // Public API with rate limiting (CS-005)
-  'check-referral-activation', // Public referral check
-  'confirm-email',          // Email confirmation link handler
-  'stripe-webhook',         // Stripe webhook (validated via webhook secret)
-  'build-extension',        // Build artifact endpoint
+  'preview-jobs',              // Public API with rate limiting (CS-005)
+  'confirm-email',             // Email confirmation link handler
+  'validate-signup',           // Signup validation (rate limited CS-P1-001)
+  'health-check',              // Uptime monitoring endpoint
 ]);
 
 // Auth patterns we look for (any one is sufficient)

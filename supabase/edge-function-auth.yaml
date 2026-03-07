@@ -1,0 +1,595 @@
+# Edge Function Auth Classification Registry
+# ===========================================
+# Created: CS-P1-001 (Phase 1 Remediation — SE-004)
+# Owner: Security Engineer
+# Last audited: 2026-03-06
+#
+# RULES:
+#   1. Every Edge Function MUST be listed here
+#   2. CI validates that code matches classification (Gate 04)
+#   3. New EFs must be classified before merge (PR template enforces this)
+#   4. Reclassification requires Security Engineer approval + ADR
+#
+# CLASSIFICATIONS:
+#   admin-only      — Requires admin role via requireAdmin() middleware
+#   authenticated   — Requires valid user JWT via auth.getUser()
+#   cron-internal   — Called by pg_cron / internal service. No user JWT.
+#                     Uses SERVICE_ROLE_KEY. Not directly user-callable.
+#   webhook         — Called by external service (Stripe, Resend, Vonage).
+#                     Validated by signature/secret, not user JWT.
+#   public          — Intentionally unauthenticated. Must have rate limiting
+#                     and CORS restriction. Requires explicit ADR justification.
+
+functions:
+
+  # ─── ADMIN-ONLY (4) ────────────────────────────────────────────────
+  # These enforce requireAdmin() from _shared/admin-auth.ts
+  # Only users with profiles.role = 'admin' can call these
+
+  admin-analytics:
+    classification: admin-only
+    auth_middleware: requireAdmin
+    surfaces: [admin]
+    notes: "Dashboard analytics aggregation for admin panel"
+
+  approve-content:
+    classification: admin-only
+    auth_middleware: requireAdmin
+    surfaces: [admin]
+    notes: "Editorial content approval gate"
+
+  generate-editorial-content:
+    classification: admin-only
+    auth_middleware: requireAdmin
+    surfaces: [admin]
+    notes: "AI content generation — Anthropic API spend. Rate limited."
+
+  seo-sync:
+    classification: admin-only
+    auth_middleware: requireAdmin
+    surfaces: [admin]
+    notes: "SEO page generation and sync"
+
+  # ─── AUTHENTICATED (28) ────────────────────────────────────────────
+  # These extract JWT from Authorization header and call auth.getUser()
+  # User must be logged in. Actions scoped to authenticated user.
+
+  analyze-application-gap:
+    classification: authenticated
+    auth_pattern: auth.getUser
+    surfaces: [dashboard]
+    notes: "AI gap analysis for job applications"
+
+  analyze-hidden-job:
+    classification: authenticated
+    auth_pattern: auth.getUser
+    surfaces: [dashboard]
+    notes: "Hidden job market analysis"
+
+  answer-form-question:
+    classification: authenticated
+    auth_pattern: auth.getUser
+    surfaces: [extension]
+    notes: "AI form field answering for job applications"
+
+  build-extension:
+    classification: authenticated
+    auth_pattern: auth.getUser
+    surfaces: [admin]
+    notes: "Extension build trigger. Admin-facing but uses user JWT."
+
+  chat-job-search:
+    classification: authenticated
+    auth_pattern: auth.getUser
+    surfaces: [dashboard]
+    notes: "Conversational job search with AI"
+
+  confirm-pipeline-signal:
+    classification: authenticated
+    auth_pattern: auth.getUser
+    surfaces: [dashboard]
+    notes: "User confirms/dismisses pipeline signals"
+
+  create-checkout:
+    classification: authenticated
+    auth_pattern: auth.getUser
+    surfaces: [dashboard]
+    notes: "Stripe checkout session creation"
+
+  data-export:
+    classification: authenticated
+    auth_pattern: auth.getUser
+    surfaces: [dashboard, admin]
+    notes: "User data export (GDPR). Admin can export for any user."
+
+  extract-resume-profile:
+    classification: authenticated
+    auth_pattern: auth.getUser
+    surfaces: [dashboard]
+    notes: "Resume parsing and profile extraction"
+
+  filter-to-prompt:
+    classification: authenticated
+    auth_pattern: auth.getUser
+    surfaces: [dashboard]
+    notes: "Convert saved filters to natural language"
+
+  generate-cover-letter:
+    classification: authenticated
+    auth_pattern: auth.getUser
+    surfaces: [dashboard]
+    notes: "AI cover letter generation — Anthropic API spend"
+
+  generate-filter:
+    classification: authenticated
+    auth_pattern: auth.getUser
+    surfaces: [dashboard]
+    notes: "AI filter generation from natural language"
+
+  gmail-auth:
+    classification: authenticated
+    auth_pattern: auth.getUser
+    surfaces: [dashboard]
+    notes: "Gmail OAuth callback handler"
+
+  gmail-disconnect:
+    classification: authenticated
+    auth_pattern: auth.getUser
+    surfaces: [dashboard]
+    notes: "Gmail OAuth disconnect and token cleanup"
+
+  hire-fee:
+    classification: authenticated
+    auth_pattern: auth.getUser
+    surfaces: [dashboard]
+    notes: "Hiring fee calculation via Stripe"
+
+  manage-subscription:
+    classification: authenticated
+    auth_pattern: auth.getUser
+    surfaces: [dashboard]
+    notes: "Stripe subscription management portal"
+
+  match-score-overlay:
+    classification: authenticated
+    auth_pattern: auth.getUser
+    surfaces: [extension]
+    notes: "Job match scoring for extension overlay"
+
+  mock-ats-submit:
+    classification: authenticated
+    auth_pattern: auth.getUser
+    surfaces: [dashboard]
+    notes: "Test ATS submission in dev/staging"
+
+  pipeline-write:
+    classification: authenticated
+    auth_pattern: auth.getUser
+    surfaces: [dashboard]
+    notes: "Write job to user pipeline"
+
+  prompt-to-filter:
+    classification: authenticated
+    auth_pattern: auth.getUser
+    surfaces: [dashboard]
+    notes: "Convert natural language to filter JSON"
+
+  push-subscribe:
+    classification: authenticated
+    auth_pattern: auth.getUser
+    surfaces: [dashboard]
+    notes: "Web push notification subscription"
+
+  recruiter-lookup:
+    classification: authenticated
+    auth_pattern: auth.getUser
+    surfaces: [dashboard]
+    notes: "Recruiter contact lookup"
+
+  resend-confirmation:
+    classification: authenticated
+    auth_pattern: auth.getUser
+    surfaces: [dashboard]
+    notes: "Resend email confirmation"
+
+  rewrite-resume:
+    classification: authenticated
+    auth_pattern: auth.getUser
+    surfaces: [dashboard]
+    notes: "AI resume rewrite — Anthropic API spend"
+
+  rewrite-resume-analyze:
+    classification: authenticated
+    auth_pattern: auth.getUser
+    surfaces: [dashboard]
+    notes: "Resume analysis phase of rewrite flow"
+
+  rewrite-resume-execute:
+    classification: authenticated
+    auth_pattern: auth.getUser
+    surfaces: [dashboard]
+    notes: "Resume execution phase of rewrite flow"
+
+  score-resume:
+    classification: authenticated
+    auth_pattern: auth.getUser
+    surfaces: [dashboard]
+    notes: "AI resume scoring — Anthropic API spend"
+
+  submit-application:
+    classification: authenticated
+    auth_pattern: auth.getUser
+    surfaces: [dashboard, extension]
+    notes: "Submit job application to ATS"
+
+  # ─── CRON-INTERNAL (44) ────────────────────────────────────────────
+  # Called by pg_cron or internal orchestration. No user JWT expected.
+  # Uses SUPABASE_SERVICE_ROLE_KEY for data access.
+
+  account-delete:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Scheduled account deletion after grace period"
+
+  account-lifecycle:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "User lifecycle state machine (trial→active→churned)"
+
+  adoption-sequence:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Onboarding drip sequence"
+
+  apply-on-notification:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Auto-apply notification trigger"
+
+  archive-inactive:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Archive stale job listings"
+
+  auto-apply-trigger:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Automated application submission queue"
+
+  billing-notifications:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Payment reminders and billing alerts"
+
+  check-referral-activation:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Verify referral activation conditions"
+
+  cleanup-orphans:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Clean orphaned records across tables"
+
+  daily-digest:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Daily job digest email generation"
+
+  detect-editorial-insights:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "AI detection of newsworthy job market patterns"
+
+  discover-boards:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "ATS career page discovery"
+
+  distribute-leaderboard-rewards:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Referral leaderboard reward distribution"
+
+  enrich-fcd-batch:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Batch first-contact data enrichment"
+
+  enrich-jd-ai:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "AI job description enrichment"
+
+  enrich-job:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Job listing enrichment pipeline"
+
+  enrich-job-ondemand:
+    classification: cron-internal
+    trigger: internal
+    surfaces: [backend]
+    notes: "On-demand job enrichment (called by other EFs)"
+
+  escalation-checker:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Pipeline escalation condition checker"
+
+  extension-heartbeat:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Extension health monitoring heartbeat"
+
+  gmail-scan:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Scan connected Gmail for job-related emails"
+
+  interview-sequence:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Interview prep drip sequence"
+
+  job-intelligence:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Job market intelligence aggregation"
+
+  marketing-campaign:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Marketing email campaign execution"
+
+  monthly-report:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Monthly user activity report"
+
+  nps-pulse:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "NPS survey distribution"
+
+  onboarding-sequence:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "New user onboarding drip"
+
+  periodic-survey-pulse:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Periodic user satisfaction surveys"
+
+  process-referral-reward:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Process pending referral rewards via Stripe"
+
+  prompt-pipeline-updates:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Prompt users about pipeline status changes"
+
+  queue-worker:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Generic async job queue processor"
+
+  re-engagement:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Churned user re-engagement campaigns"
+
+  referral-clawback:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Referral reward clawback for fraudulent/cancelled"
+
+  referral-fraud-scan:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Referral fraud detection"
+
+  referral-lifecycle:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Referral state machine (pending→activated→rewarded)"
+
+  referral-reward-clawback:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Secondary clawback for Stripe refund scenarios"
+
+  refresh-city-stats:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "City-level job statistics refresh"
+
+  refresh-jobs:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Main ATS scraping pipeline — 50 boards/cycle"
+
+  refresh-orchestrator:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Orchestrates refresh-jobs across ATS boards"
+
+  refresh-usajobs:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "USAJobs API sync"
+
+  scan-pipeline-signals:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Detect pipeline progression signals"
+
+  score-ai-content:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "AI content quality scoring"
+
+  score-job-fraud:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Job listing fraud scoring"
+
+  score-sequence:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Sequence effectiveness scoring"
+
+  send-notification:
+    classification: cron-internal
+    trigger: internal
+    surfaces: [backend]
+    notes: "Notification dispatch (email/push/SMS). Called by other EFs."
+
+  trend-anomaly-detector:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Job market trend anomaly detection"
+
+  weekly-summary:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Weekly user activity summary email"
+
+  # ─── WEBHOOK (7) ───────────────────────────────────────────────────
+  # Called by external services. Validated by signature or shared secret.
+
+  auto-refill:
+    classification: webhook
+    provider: stripe
+    surfaces: [backend]
+    notes: "Stripe subscription auto-refill webhook"
+
+  community-feedback:
+    classification: webhook
+    provider: internal
+    surfaces: [backend]
+    notes: "Community feedback submission handler"
+
+  handle-notification-response:
+    classification: webhook
+    provider: vonage
+    surfaces: [backend]
+    notes: "Vonage SMS delivery receipt handler"
+
+  handle-sms-reply:
+    classification: webhook
+    provider: vonage
+    surfaces: [backend]
+    notes: "Vonage inbound SMS reply handler"
+
+  resend-webhook:
+    classification: webhook
+    provider: resend
+    surfaces: [backend]
+    notes: "Resend email event webhook (bounce, deliver, open)"
+
+  stripe-webhook:
+    classification: webhook
+    provider: stripe
+    surfaces: [backend]
+    notes: "Stripe event webhook (payment, subscription, invoice)"
+
+  vonage-webhook:
+    classification: webhook
+    provider: vonage
+    surfaces: [backend]
+    notes: "Vonage voice/messaging event webhook"
+
+  # ─── PUBLIC (6) ────────────────────────────────────────────────────
+  # Intentionally unauthenticated. Each MUST have rate limiting + CORS.
+  # Adding a public EF requires an ADR justification.
+
+  confirm-email:
+    classification: public
+    rate_limited: false  # TODO: add rate limiting in CS-P1-002
+    cors_restricted: false
+    surfaces: [landing]
+    notes: "Email confirmation link handler. User clicks link from email."
+    adr: "Public because email confirmation links cannot carry JWT"
+
+  health-check:
+    classification: public
+    rate_limited: false
+    cors_restricted: false
+    surfaces: [monitoring]
+    notes: "Uptime monitoring endpoint"
+    adr: "Public by design — monitoring services need unauthenticated access"
+
+  preview-jobs:
+    classification: public
+    rate_limited: true
+    cors_restricted: true
+    surfaces: [landing]
+    notes: "Landing page job preview. 2 queries/session, CORS locked to brilliantjobs.app"
+    adr: "Public because landing page visitors are not authenticated"
+
+  validate-signup:
+    classification: public
+    rate_limited: true
+    cors_restricted: true
+    surfaces: [landing]
+    notes: "LinkedIn profile validation during signup. 5 req/hr per IP. CORS locked to brilliantjobs.app"
+    adr: "Public because signup happens before authentication"
+
+  # Note: confirm-email and validate-signup CORS + rate limiting
+  # will be hardened in this session (CS-P1-001) and CS-P1-002
+
+# ─── SUMMARY ───────────────────────────────────────────────────────
+# admin-only:    4
+# authenticated: 28
+# cron-internal:  46
+# webhook:        7
+# public:         4
+# TOTAL:         89

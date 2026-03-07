@@ -6,9 +6,44 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { fetchWithRetry, TIMEOUT_CONFIGS } from '../_shared/resilience.ts'
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+const ALLOWED_ORIGINS = [
+  'https://brilliantjobs.app',
+  'https://www.brilliantjobs.app',
+];
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get('Origin') || '';
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'content-type, apikey',
+  };
+}
+
+// ─── RATE LIMITING ───
+// In-memory store (resets on cold start — acceptable for signup validation)
+const rateLimitMap = new Map<string, { count: number; windowStart: number }>();
+const RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 hour
+const RATE_LIMIT_MAX = 5; // 5 signup validations per IP per hour
+
+function cleanRateLimits() {
+  const now = Date.now();
+  for (const [k, v] of rateLimitMap) {
+    if (now - v.windowStart > RATE_LIMIT_WINDOW) rateLimitMap.delete(k);
+  }
+}
+
+function checkRateLimit(ip: string): boolean {
+  cleanRateLimits();
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW) {
+    rateLimitMap.set(ip, { count: 1, windowStart: now });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= RATE_LIMIT_MAX;
 }
 
 // ─── CONFIG ───
@@ -27,9 +62,29 @@ const TEST_PROFILES = [
 ]
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response(null, { status: 204, headers: corsHeaders })
+  }
+
+  // Only allow POST
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'method_not_allowed' }), {
+      status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  // Rate limit by IP
+  const clientIP = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || req.headers.get('cf-connecting-ip')
+    || 'unknown';
+  if (!checkRateLimit(clientIP)) {
+    return new Response(
+      JSON.stringify({ error: 'rate_limit_exceeded', retry_after: 3600 }),
+      { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '3600' } }
+    );
   }
 
   try {

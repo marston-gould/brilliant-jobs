@@ -104,12 +104,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
-      - name: Scan Edge Functions for auth
+      - run: npm ci
+
+      - name: Scan Edge Functions for auth patterns
         run: node scripts/gate-ef-auth-scan.mjs
 
+      - name: Validate EF auth classification registry
+        run: node scripts/validate-ef-auth.js
+
       - name: Gate 4 summary
-        run: echo "✅ Gate 4 All Edge Functions have auth" >> $GITHUB_STEP_SUMMARY
+        run: echo "✅ Gate 4 All Edge Functions classified + auth verified" >> $GITHUB_STEP_SUMMARY
 
   # ─── Gate 5: Secret Scan ───────────────────────────────────────────
   secret-scan:
