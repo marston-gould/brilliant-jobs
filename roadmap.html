@@ -1834,18 +1834,18 @@ const features = [
 // 0-A: Security — Dashboard + Platform (Pod 3, P0)
 { s: 'done', b: 'pre-launch', n: '0.001 SE-001: JWT auth on enrich-job', d: 'CS-002: JWT auth + CORS restriction added (2026-03-06). Unauthenticated → 401. CORS restricted to brilliantjobs.app. Service_role passthrough. Dashboard enrichJob() uses session token.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.002 SE-002: Service role key rotation', d: 'CS-001: git purge DONE. Downgraded to hygiene — only Marston + Claude accessed repo, no unauthorized exposure. Bundle with future multi-surface config session.', p: 75, e: '2h' },
-{ s: 'todo', b: 'pre-launch', n: '0.003 SE-003: Auth on generate-editorial-content', d: 'Zero JWT. Uncapped Anthropic spend. Add verifyAdminRole().', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.004 SE-004: Classify+gate 25 unauthenticated EFs', d: '25/88 EFs no JWT. Classify authenticated/admin/cron-internal. edge-function-auth.yaml.', p: 75, e: '3h' },
+{ s: 'done', b: 'pre-launch', n: '0.003 SE-003: Auth on generate-editorial-content', d: 'CS-001: Auth + admin role check (requireAdmin). G11: Shared middleware. Verified CS-P1-001.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.004 SE-004: Classify+gate 89 Edge Functions', d: 'CS-P1-001: All 89 EFs classified in edge-function-auth.yaml (4 admin, 28 auth, 46 cron, 7 webhook, 4 public). CI Gate 04 validates registry.', p: 75, e: '6h' },
 { s: 'todo', b: 'pre-launch', n: '0.005 SE-005: CSP unsafe-inline on dashboard', d: 'Tighten to nonce-based after module wrapper.', p: 75, e: '1h' },
 
 // 0-B: Security — Landing Page (Pod 3, P0)
 { s: 'done', b: 'pre-launch', n: '0.006 IX-SE-001: postMessage wildcard → restrict', d: 'CS-005: postMessage restricted to window.location.origin. Auth tokens no longer leaked to wildcard. X-Frame-Options DENY + frame-ancestors none confirmed.', p: 75, e: '15min' },
 { s: 'done', b: 'pre-launch', n: '0.007 IX-SE-004: DOMPurify on 3 innerHTML injections', d: 'CS-005: DOMPurify v3.2.4 self-hosted. Sanitizes preview titles, merch grid, merch-client content injection.', p: 75, e: '30min' },
-{ s: 'todo', b: 'pre-launch', n: '0.008 IX-SE-005: Tighten profiles RLS for anon', d: 'Anon key overexposes profile data. Restrict columns.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.008 IX-SE-005: Tighten profiles RLS for anon', d: 'CS-013: RLS enabled. Own-profile + admin-read policies only. No anon access. Verified CS-P1-001.', p: 75, e: '0h' },
 { s: 'todo', b: 'pre-launch', n: '0.009 IX-SE-006: Cookies without Secure/HttpOnly', d: 'CS-018: bj_consent cookie uses SameSite=Lax. Secure flag requires HTTPS enforcement pass.', p: 75, e: '30min' },
 { s: 'done', b: 'pre-launch', n: '0.010 IX-SE-007: CSP + security headers landing', d: 'CS-005 verified: Full header suite in vercel.json — CSP, HSTS, X-Frame-Options DENY, frame-ancestors none, Referrer-Policy, Permissions-Policy, X-Content-Type-Options. CSP report-only→enforce pass remains Phase 2.', p: 75, e: '—' },
 { s: 'todo', b: 'pre-launch', n: '0.011 IX-SE-008: Anon key exposed in source', d: 'Mitigated by RLS tightening. Document accepted risk.', p: 75, e: '30min' },
-{ s: 'todo', b: 'pre-launch', n: '0.012 IX-SE-003: validate-signup dead surface', d: 'Unused EF still deployed. Disable or delete.', p: 75, e: '30min' },
+{ s: 'done', b: 'pre-launch', n: '0.012 IX-SE-003: validate-signup hardening', d: 'CS-P1-001: NOT dead — active in signup flow. CORS tightened to brilliantjobs.app. Rate limited 5/hr/IP. Method restricted to POST.', p: 75, e: '2h' },
 
 // 0-C: Security — Extension (Pod 3, P0)
 { s: 'done', b: 'pre-launch', n: '0.013 EXT-SEC-001: Token encryption', d: 'CS-004: authSession added to AES-GCM encrypted storage. getAuth()/setAuth() helpers wired in background.js + popup.js.', p: 75, e: '1h' },
@@ -1899,7 +1899,7 @@ const features = [
 { s: 'done', b: 'pre-launch', n: 'AD-FIX-03: approve-content admin check + EF rate limiting', d: 'CS-006: approve-content checks profiles.role=admin. generate-editorial 10/hr, seo-sync 5/hr via check_ef_rate_limit(). ef_rate_limits table + auto-cleanup.', p: 75, e: '1h' },
 { s: 'done', b: 'pre-launch', n: '0.048 IX-FE-003: 7 empty + 5 console catches', d: 'CS-014: 12 catches wired to PostHog via bjError(). Zero empty catch blocks remaining.', p: 75, e: '1h' },
 { s: 'done', b: 'pre-launch', n: '0.049 IX-FE-004: Loading/error/retry 5 flows', d: 'CS-014: Loading/error/retry UI on stats fetch, preview search, merch load. Retry buttons with max 2 attempts.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.050 IX-BE-001: preview-jobs no auth/rate limit', d: 'Public EF no limiting. Add rate limit.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.050 IX-BE-001: preview-jobs auth+rate limit', d: 'CS-005: Rate limited (2/session), CORS locked to brilliantjobs.app, data obfuscated. Verified CS-P1-001.', p: 75, e: '0h' },
 { s: 'todo', b: 'pre-launch', n: '0.051 IX-BE-003: Supabase re-init per call', d: 'New client per function. Singleton.', p: 75, e: '30min' },
 { s: 'done', b: 'pre-launch', n: '0.052 IX-BE-004: Profile check stuck state', d: 'CS-014: profileCheckWithTimeout() with 10s AbortController + 1 retry. bjError logged.', p: 75, e: '1h' },
 

@@ -2768,7 +2768,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.001 | SE-001: JWT auth on enrich-job endpoint | 1h | 1h | ✅ | CS-002: JWT auth + CORS restriction added (2026-03-06). Unauthenticated → 401. CORS restricted to brilliantjobs.app. Service_role passthrough for cron. Dashboard enrichJob() now uses session token. |
 | 0.002 | SE-002: Service role key rotation + git history clean | 2h | 1h | ⚡ | CS-001: git-filter-repo purge DONE (5 secrets redacted, force-pushed 2026-03-05). Key rotation downgraded to hygiene — only Marston + Claude ever accessed repo, no unauthorized exposure. Bundle with future multi-surface config session (CS-005 or CS-006). |
 | 0.003 | SE-003: Auth on generate-editorial-content | 1h | 1h | ✅ | CS-001: Auth + admin role check added. Service_role passthrough for cron. Deployed 2026-03-05. |
-| 0.004 | SE-004: Classify + gate 25 unauthenticated Edge Functions | 3h | — | 🔲 | 25/88 EFs no JWT. Classify authenticated/admin/cron-internal. edge-function-auth.yaml registry. |
+| 0.004 | SE-004: Classify + gate 25 unauthenticated Edge Functions | 3h | 6h | ✅ | CS-P1-001: All 89 EFs classified in edge-function-auth.yaml (4 admin-only, 28 authenticated, 46 cron-internal, 7 webhook, 4 public). CI Gate 04 validates registry + code match. Deployed 2026-03-06. |
 | 0.005 | SE-005: CSP unsafe-inline on dashboard | 1h | — | 🔲 | Tighten to nonce-based after module wrapper (0.057). |
 
 ### 0-B: Security — Landing Page (Pod 3, P0)
@@ -2777,11 +2777,11 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 |---|------|------|--------|--------|-------|
 | 0.006 | IX-SE-001: postMessage wildcard origin → restrict | 30min | 15min | ✅ | CS-005: postMessage restricted to window.location.origin. Auth tokens no longer leaked to wildcard. X-Frame-Options: DENY + frame-ancestors 'none' already in vercel.json. Deployed 2026-03-06. |
 | 0.007 | IX-SE-004: DOMPurify on 3 innerHTML injections | 1h | 30min | ✅ | CS-005: DOMPurify v3.2.4 self-hosted at /js/vendor/purify.min.js. Sanitizes: preview job titles (index.html), merch insights grid (index.html), merch-client.js content injection. CSP compliant (script-src 'self'). Deployed 2026-03-06. |
-| 0.008 | IX-SE-005: Tighten profiles RLS for anon | 1h | — | 🔲 | Anon key overexposes profile data. Restrict columns. |
+| 0.008 | IX-SE-005: Tighten profiles RLS for anon | 1h | 0h | ✅ | CS-013: RLS enabled on profiles table. Only own-profile SELECT + admin read-all policies. No anon access. Verified CS-P1-001. |
 | 0.009 | IX-SE-006: Cookies without Secure/HttpOnly | 30min | — | ⚡ | CS-018: bj_consent cookie uses SameSite=Lax. Secure flag requires HTTPS enforcement pass (bundle with headers). |
 | 0.010 | IX-SE-007: CSP + security headers | 1h | — | ⚡ | CS-005 verified: X-Frame-Options DENY, CSP with frame-ancestors 'none', X-Content-Type-Options nosniff, HSTS, Referrer-Policy, Permissions-Policy all deployed in vercel.json. CSP includes script-src allowlist for PostHog, Ahrefs, CDNs. CSP report-only → enforce pass remains for Phase 2. |
 | 0.011 | IX-SE-008: Anon key exposed in source | 30min | — | 🔲 | Mitigated by RLS tightening (0.008). Document as accepted. |
-| 0.012 | IX-SE-003: validate-signup dead attack surface | 30min | — | 🔲 | Unused EF still deployed. Disable or delete. |
+| 0.012 | IX-SE-003: validate-signup hardening | 30min | 2h | ✅ | CS-P1-001: NOT dead — active in signup flow. CORS tightened to brilliantjobs.app (was *). Rate limiting added (5/hr/IP). Method restricted to POST. Deployed 2026-03-06. |
 
 ### 0-C: Security — Extension (Pod 3, P0)
 
@@ -2849,7 +2849,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.047 | IX-ES-002: Stale anon key referral-capture.js | 30min | 10min | ✅ | CS-005: Replaced stale anon key (iat:1738367665, Jan 2025) with current key (iat:1770569066, Feb 2026) in referral-capture.js. Key now matches index.html + merch-client.js. Referral attribution tracking restored. Also resolves IX-DA-002 (broken referral pipeline). Deployed 2026-03-06. |
 | 0.048 | IX-FE-003: 7 empty + 5 console-only catches | 1h | CS-014 | ✅ | 12 silenced errors on public landing. Wire to PostHog. |
 | 0.049 | IX-FE-004: Loading/error/retry states (5 flows) | 1h | CS-014 | ✅ | preview-jobs, profile check, merch, referral, auth — all missing feedback. |
-| 0.050 | IX-BE-001: preview-jobs no auth + no rate limit | 1h | — | 🔲 | Public EF, no rate limiting. Add rate limit + optional auth. |
+| 0.050 | IX-BE-001: preview-jobs no auth + no rate limit | 1h | 0h | ✅ | CS-005: Rate limited (2/session), CORS locked to brilliantjobs.app, data obfuscated. Verified CS-P1-001. |
 | 0.051 | IX-BE-003: Supabase client re-initialization | 30min | — | 🔲 | New client per call instead of singleton. |
 | 0.052 | IX-BE-004: Profile verification stuck state | 1h | CS-014 | ✅ | No timeout. Spinner forever. AbortController + 10s timeout + error state. |
 

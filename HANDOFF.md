@@ -34,13 +34,15 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**G11 + G12** — Post-Remediation Hardening (Admin Auth Middleware + Audit Trail Gate)
-- Completed: 2026-03-07
-- Commit: `ce06870`
-- Tags: `admin@1.2.0-hardening`
-- G11: Created `supabase/functions/_shared/admin-auth.ts` — shared `requireAdmin()` middleware with service_role bypass, 401/403 error handling, `authErrorResponse()` helper. Refactored 4 admin EFs to import it: admin-analytics, approve-content, generate-editorial-content, seo-sync. Removed all inline `verifyAdmin()` and duplicate auth blocks. 24 new tests (725 total).
-- G12: PostHog autocapture covers admin clicks + page views with distinct_id. `_logAdminAction()` covers high-value write operations (alert CRUD, kill-switch, rule changes, notification config, merch CRUD, Stripe overrides). Combination sufficient for launch.
-- Launch gates G11 + G12 upgraded from ⚡ to ✅. 14 GREEN, 1 YELLOW (G7-DPAs), 0 RED.
+**CS-P1-001** — Edge Function Auth + RLS Hardening (Phase A: Security)
+- Completed: 2026-03-06
+- Commit: `81da265`
+- Tags: `p1-001@1.0.0-auth-registry`
+- SE-004: Created edge-function-auth.yaml — all 89 EFs classified (4 admin-only, 28 authenticated, 46 cron-internal, 7 webhook, 4 public). CI Gate 04 enhanced with registry validation. gate-ef-auth-scan.mjs allowlist synced.
+- IX-SE-003: validate-signup hardened — CORS restricted to brilliantjobs.app, rate limited 5/hr/IP, method restricted to POST. Deployed to Supabase prod.
+- SE-003: Already resolved (requireAdmin via G11). IX-SE-005: Already resolved (profiles RLS via CS-013). IX-BE-001: Already resolved (preview-jobs via CS-005).
+- 18 new tests (743 total, 0 failures).
+- Pod 3 team expanded: +5 roles (Chief Architect, Lead Platform Engineer, System Architect—Scalability, Forward-Looking Developer(s), Evolvability Strategist).
 
 ---
 
@@ -52,17 +54,28 @@ None.
 
 ## Next Session
 
-**ALL 24 REMEDIATION SESSIONS COMPLETE + POST-REMEDIATION HARDENING DONE.**
+**CS-P1-002: CSP + Cookies + Admin Auth + Key Rotation** (Phase A: Security)
 
-No remaining sessions. The full audit remediation program (CS-001 through CS-024) has been executed across 5 phases over 13 weeks. All P0/P1 findings resolved. 725 tests passing. 14 launch gates GREEN, 1 YELLOW (G7-DPAs), 0 RED.
+| Field | Detail |
+|-------|--------|
+| Surface | Dashboard + Landing + Admin |
+| Fix Items | SE-005, IX-SE-006, IX-SE-008, AD-SE-001, AD-SE-003, SE-002 |
+| Hours | 14–20h |
+| Pair | Security + Frontend |
 
-Post-remediation hardening (G11 + G12) completed: shared admin-auth middleware deployed, audit trail gate closed.
+**Entry Gate:** CS-P1-001 complete. EF auth classification done.
 
-Next steps:
-1. Add Audit Remediation as Phase 0 in product roadmap (per Session 5 standing instruction)
-2. Resolve G7 (DPA legal review) 
-3. Rotate G3 (service role key) when ready
-4. Proceed to Phase 1: Feature Development
+**Fix Items:**
+- SE-005: CSP unsafe-inline on dashboard → nonce-based CSP (3h)
+- IX-SE-006: Cookies without Secure/HttpOnly flags (1h)
+- IX-SE-008: Anon key exposed in source — document accepted risk (1h)
+- AD-SE-001: Admin auth server-side — build admin-auth.ts middleware (4h) [VERIFY: may be done in G11]
+- AD-SE-003: Service role key in admin client code — remove client-side refs (1h)
+- SE-002: Service role key rotation — deferred from CS-002 (2h)
+
+**Exit Gate:** Dashboard CSP nonce-based. All cookies Secure/HttpOnly. Admin auth middleware deployed. Service role key rotated.
+
+**Notes:** Several items may already be resolved by prior remediation (G11 admin-auth, CS-013 security headers). Verify codebase state before developing — same pattern as CS-P1-001.
 
 ---
 
@@ -80,13 +93,15 @@ Next steps:
 | Dry Run | `dryrun@1.0.0` | CS-022 |
 | SEO Pages | (no remediation tag yet) | — |
 | Email Templates | `email-templates@0.1.0-utm` | CS-011 |
+| Phase 1 Security | `p1-001@1.0.0-auth-registry` | CS-P1-001 |
 
 ---
 
-## Completed Sessions (24 of 24)
+## Completed Sessions (24 of 24 + 1 Phase 1)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
+| CS-P1-001 | 2026-03-06 | SE-004, IX-SE-003 (SE-003/IX-SE-005/IX-BE-001 verified already done) | p1-001@1.0.0-auth-registry |
 | CS-001 | 2026-03-05 | AD-ES-004, AD-ES-005, AD-ES-006 | admin@0.1.0-security |
 | CS-002 | 2026-03-06 | SE-001 | dashboard@0.1.0-security |
 | CS-003 | 2026-03-06 | DO-001, CX-01, CX-02 | dashboard@0.2.0-posthog, extension@0.1.0-posthog, index@0.1.0-posthog, admin@0.2.0-posthog |
@@ -114,9 +129,26 @@ Next steps:
 
 ---
 
-## Remaining Sessions (0 of 24)
+## Remaining Sessions (16 of 17 Phase 1)
 
-All remediation sessions complete.
+| Session | Phase | Title | Hours |
+|---------|-------|-------|-------|
+| CS-P1-002 | A | CSP + Cookies + Admin Auth + Key Rotation | 14–20h |
+| CS-P1-003 | B | Dashboard Error Handling Completion | 14–20h |
+| CS-P1-004 | B | Backend Architecture + API Hardening | 18–26h |
+| CS-P1-005 | C | Observability Completion + Feature Flags | 16–24h |
+| CS-P1-006 | C | Data Pipeline + Cron Cleanup + Cost Visibility | 12–18h |
+| CS-P1-007 | D | PostHog Analytics + Attribution CX | 14–20h |
+| CS-P1-008 | D | Landing Page CX + Accessibility | 18–26h |
+| CS-P1-009 | D | Dashboard Dark Mode + Design System Foundation | 24–36h |
+| CS-P1-010 | D | Dashboard CX Polish | 16–24h |
+| CS-P1-011 | D | Extension CX Hardening | 12–18h |
+| CS-P1-012 | D | Email/SMS Templates + Transactional CX | 10–16h |
+| CS-P1-013 | E | SEO + SRI + Referral Pipeline | 12–18h |
+| CS-P1-014 | E | Compliance: PII Inventory + DPAs + Data Rights | 20–30h |
+| CS-P1-015 | F | TypeScript Migration (Incremental) | 24–40h |
+| CS-P1-016 | G | Admin Monitoring: Cron + PostHog + A/B + UX | 20–30h |
+| CS-P1-017 | G | Compliance Dashboard: PII Map + Deletion + Export | 18–28h |
 
 ---
 
