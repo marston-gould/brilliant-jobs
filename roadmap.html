@@ -2086,6 +2086,52 @@ const features = [
 { s: 'done', b: 'pre-launch', n: '0.183 72-hour dry run', d: 'CS-022: Monitoring deployed (dry-run-monitor.mjs, dry-run.yml hourly cron). Go/No-Go: CONDITIONAL-GO (10 GREEN, 5 YELLOW, 0 RED). CS-024: 701 tests.', p: 75, e: '72h' },
 { s: 'todo', b: 'pre-launch', n: '0.184 Final CX validation', d: 'axe 0 critical. PostHog 100%. All targets.', p: 75, e: '2h' },
 
+// ═══════════════════════════════════════════════════════════════
+// Phase S: Scaling Architecture (SA-001 → SA-029) — 29 Sessions, 6 Phases
+// Post-Phase 0 + concurrent with Phase 1 feature work on separate tracks
+// Source: Scaling_Architecture_Design_Plan v1.0 + Phase S6 Addendum
+// ═══════════════════════════════════════════════════════════════
+
+// Phase S1: Foundation (Weeks 1-4) — ADR-01, ADR-03, ADR-04 P1
+{ s: 'todo', b: 'post-launch', n: 'SA-001 Typesense deployment + config', d: 'Deploy Typesense instance. Configure collections for ats_jobs. Define schema with searchable/filterable/sortable fields. Seed initial data. Pair: Data Eng + DevOps. 12-16h.', p: 90, e: '16h' },
+{ s: 'todo', b: 'post-launch', n: 'SA-002 Supabase → Typesense sync queue', d: 'Build real-time sync pipeline: DB trigger on ats_jobs → queue table → sync Edge Function → Typesense upsert. Backfill existing records. Pair: Backend + Data Eng. 12-16h.', p: 90, e: '16h' },
+{ s: 'todo', b: 'post-launch', n: 'SA-003 Dashboard search swap to Typesense', d: 'Replace Supabase full-text search with Typesense on dashboard feed. Faceted filtering, typo tolerance, instant results. Verify <200ms p95. Pair: Frontend + Data Eng. 10-14h.', p: 90, e: '14h' },
+{ s: 'todo', b: 'post-launch', n: 'SA-004 API gateway scaffold + first 10 EFs', d: 'Build gateway Edge Function with middleware plugin architecture. Migrate first 10 high-traffic EFs. Unified auth, rate limiting, CDN cache headers. Pair: Backend + DevOps. 14-18h.', p: 90, e: '18h' },
+{ s: 'todo', b: 'post-launch', n: 'SA-005 Gateway migration — all 88 EFs', d: 'Migrate remaining 78 Edge Functions through gateway. Middleware plugins for logging, auth, rate limiting. Legacy direct-call removal. Pair: Backend + Eng Lead. 16-22h.', p: 90, e: '22h' },
+{ s: 'todo', b: 'post-launch', n: 'SA-006 TypeScript strict — core modules', d: 'Migrate core shared modules (globals.js, supabase client, utilities) to strict TypeScript. Establish tsconfig standards. Pair: Frontend + Eng Lead. 12-16h.', p: 90, e: '16h' },
+
+// Phase S2: Automation + Data (Weeks 3-8) — ADR-05, ADR-06
+{ s: 'todo', b: 'post-launch', n: 'SA-007 Common Crawl ingestion pipeline', d: 'Build ingestion pipeline for Common Crawl job postings. S3 → parse → normalize → deduplicate → insert. Target: 50K+ records per batch. Pair: Data Eng + Backend. 14-18h.', p: 91, e: '18h' },
+{ s: 'todo', b: 'post-launch', n: 'SA-008 Deduplication engine', d: 'Content-based dedup across ATS + Common Crawl sources. Fuzzy matching on title + company + location. 30-40% dedup rate target. Pair: Data Eng + Backend. 10-14h.', p: 91, e: '14h' },
+{ s: 'todo', b: 'post-launch', n: 'SA-009 Incremental materialized views', d: 'Replace full-table materialized view refreshes with delta-only incremental updates. Reduce refresh time from minutes to seconds. Pair: Data Eng + DevOps. 10-14h.', p: 91, e: '14h' },
+{ s: 'todo', b: 'post-launch', n: 'SA-010 CrewAI framework + Agent 1', d: 'Deploy CrewAI orchestration framework. Build first agent (Data Freshness Monitor) in observe mode. Gateway routing for agent API calls. Pair: Backend + DevOps. 14-18h.', p: 91, e: '18h' },
+{ s: 'todo', b: 'post-launch', n: 'SA-011 CrewAI Agents 2-3', d: 'Build Content Quality Agent + Pipeline Health Agent. Both in observe mode with kill switches. Pair: Backend + QA. 12-16h.', p: 91, e: '16h' },
+{ s: 'todo', b: 'post-launch', n: 'SA-012 CrewAI agent graduation', d: 'Graduate Agents 1-3 from observe to active mode based on accuracy metrics. Define graduation criteria and rollback triggers. Pair: Backend + Eng Lead. 10-14h.', p: 91, e: '14h' },
+
+// Phase S3: Frontend Modernization (Weeks 5-12) — ADR-02, ADR-04 P2-4, CSS/Design System
+{ s: 'todo', b: 'post-launch', n: 'SA-013 SPA scaffold + design system', d: 'Vite + React Router scaffold for dashboard/admin SPA. Design system: CSS custom properties, Tailwind config cleanup, component pattern library. Pair: Frontend + CSS Eng. 16-22h.', p: 92, e: '22h' },
+{ s: 'todo', b: 'post-launch', n: 'SA-014 Feed page SPA migration', d: 'Migrate job feed page to React + TypeScript with data provider abstraction. Dark mode complete. Pair: Frontend + CSS Eng. 16-22h.', p: 92, e: '22h' },
+{ s: 'todo', b: 'post-launch', n: 'SA-015 Pipeline + Keywords migration', d: 'Migrate Pipeline and Keywords pages to React + TypeScript. Data providers for all Supabase queries. Pair: Frontend + CSS Eng. 16-22h.', p: 92, e: '22h' },
+{ s: 'todo', b: 'post-launch', n: 'SA-016 Stats + Settings migration', d: 'Migrate Stats and Settings pages. Complete design token enforcement on migrated pages. Pair: Frontend + CSS Eng. 16-22h.', p: 92, e: '22h' },
+{ s: 'todo', b: 'post-launch', n: 'SA-017 Remaining pages + legacy removal', d: 'Migrate remaining dashboard + admin pages. Remove legacy HTML/JS. Zero inline styles on authenticated surfaces. Bundle <120KB. Pair: Frontend + CSS Eng. 20-28h.', p: 92, e: '28h' },
+
+// Phase S4: Scale Validation (Weeks 10-16) — ADR-04 P5-6, ADR-06
+{ s: 'todo', b: 'post-launch', n: 'SA-018 Read replica + query routing', d: 'Provision Supabase read replica. Route all SELECT queries to replica, writes to primary. Monitor replication lag. Pair: DevOps + Backend. 10-14h.', p: 93, e: '14h' },
+{ s: 'todo', b: 'post-launch', n: 'SA-019 Database partitioning', d: 'Partition ats_jobs by source (ats, common_crawl, amazon). Migrate existing data. Verify query plans use partition pruning. Pair: Data Eng + DevOps. 12-16h.', p: 93, e: '16h' },
+{ s: 'todo', b: 'post-launch', n: 'SA-020 CrewAI Agents 4-5', d: 'Build Cost Optimization Agent + User Behavior Agent. Observe mode with kill switches. Pair: Backend + Data Eng. 14-18h.', p: 93, e: '18h' },
+{ s: 'todo', b: 'post-launch', n: 'SA-021 CrewAI Agent 6 + graduation', d: 'Build SEO Content Agent. Graduate Agents 4-6 based on metrics. All 6 agents operational. Pair: Backend + Eng Lead. 12-16h.', p: 93, e: '16h' },
+{ s: 'todo', b: 'post-launch', n: 'SA-022 TypeScript — extension + EFs', d: 'Migrate all 43 extension files + 88 Edge Functions to strict TypeScript. Shared types package. Pair: Frontend + Backend. 16-22h.', p: 93, e: '22h' },
+{ s: 'todo', b: 'post-launch', n: 'SA-023 Load test 5,000 concurrent', d: 'k6 load test at 5,000 concurrent users. Zero 5xx errors, p95 search <500ms. If failed: remediation session created. Pair: DevOps + QA. 12-16h.', p: 93, e: '16h' },
+
+// Phase S5: Platform Evolution (Weeks 14-20) — Event Bus, Feature Flags, Fitness Functions
+{ s: 'todo', b: 'post-launch', n: 'SA-024 Event bus + webhook system', d: 'Platform event bus (platform_events table). Webhook delivery with HMAC signatures + retry. API consumer management. Pair: Backend + Lead Platform Eng. 16-22h.', p: 94, e: '22h' },
+{ s: 'todo', b: 'post-launch', n: 'SA-025 Feature flags + experimentation', d: 'Feature flag infrastructure: percentage rollouts, user segments, variant assignments. React SDK (useFeatureFlag). PostHog experiment tracking. Gateway middleware. Pair: Frontend + Backend. 14-20h.', p: 94, e: '20h' },
+{ s: 'todo', b: 'post-launch', n: 'SA-026 Fitness functions + evolvability', d: '8 architecture fitness functions in CI (18 total gates). Evolvability review template. Dependency management (Dependabot/Renovate). Tech debt register. Deprecation protocol. Pair: Eng Lead + Evolvability Strategist. 14-20h.', p: 94, e: '20h' },
+
+// Phase S6: Architecture Governance & Future-Proofing (Weeks 18-24) — Blueprint, Capacity, Prototyping
+{ s: 'todo', b: 'post-launch', n: 'SA-027 Architecture blueprint + hook/scar standards', d: 'Document all hook points and scar locations. Interface contracts, extension scenarios, activation prerequisites. Implementation standards + integration templates. Pair: Chief Architect + Lead Platform Eng. 14-20h.', p: 95, e: '20h' },
+{ s: 'todo', b: 'post-launch', n: 'SA-028 Capacity model + scaling triggers', d: 'Growth projections at 6/12/24 months across all dimensions. Auto-scaling thresholds. Cost model at each tier. Capacity dashboard. Pair: System Architect—Scalability + DevOps. 12-18h.', p: 95, e: '18h' },
+{ s: 'todo', b: 'post-launch', n: 'SA-029 Hook prototyping + evolvability baseline', d: '3-5 POC integrations against hook points. Tech debt register. Deprecation protocol. Dependency management policy. Final evolvability review. Phase S complete. Pair: Forward-Looking Dev + Evolvability Strategist. 14-20h.', p: 95, e: '20h' },
 
 ];
 
@@ -2284,6 +2330,12 @@ function render() {
     76: 'Phase 0b: Admin Monitoring Build',
     77: 'Phase 0c: Stabilization',
     78: 'Phase 0d: Quality Gates — Regression Prevention',
+    90: 'Phase S1: Scaling — Foundation (Typesense, Gateway, TypeScript)',
+    91: 'Phase S2: Scaling — Automation + Data (Common Crawl, CrewAI)',
+    92: 'Phase S3: Scaling — Frontend Modernization (SPA, Design System)',
+    93: 'Phase S4: Scaling — Scale Validation (Replicas, Partitioning, Load Test)',
+    94: 'Phase S5: Scaling — Platform Evolution (Event Bus, Flags, Fitness)',
+    95: 'Phase S6: Scaling — Architecture Governance (Blueprint, Capacity, Prototyping)',
   };
 
   function buildSection(items, cls, label, startCollapsed) {

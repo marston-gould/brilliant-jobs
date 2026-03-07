@@ -3126,3 +3126,138 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 ## Phase 1: Feature Development (Post-Launch)
 
 Features built on remediated, gated foundation: PostHog monitoring (errors, session replay, feature flags, LLM analytics) • Admin operational dashboards (cron, feeds, database, cost, errors, compliance) • Test coverage 80% floor • 10 quality gates in CI/CD • TypeScript strict • Design tokens enforced • WCAG 2.1 AA baseline • Audit trail • Kill-switch operational
+
+---
+
+## Phase S: Scaling Architecture (Post-Phase 0 + Concurrent with Phase 1)
+
+**Source:** Scaling_Architecture_Design_Plan v1.0 + Phase S6 Addendum
+**Sessions:** 29 (SA-001 → SA-029)
+**Phases:** 6 (S1–S6)
+**Estimated hours:** 414–562h chat time
+**Timeline:** 24 weeks
+**Owners:** TPM + Marston
+**Team:** Full Pod 3 (15 roles including Chief Architect, Lead Platform Engineer, System Architect—Scalability, Forward-Looking Developer(s), Evolvability Strategist)
+
+Phase S can overlap with Phase 1 feature work on separate tracks. Sessions within each sub-phase are sequential; cross-phase parallelism permitted where noted.
+
+### Phase S1: Foundation (Weeks 1–4) — ADR-01, ADR-03, ADR-04 P1
+
+| # | Item | Est. | Status | Notes |
+|---|------|------|--------|-------|
+| SA-001 | Typesense deployment + configuration | 12–16h | 🔲 | Deploy instance, configure collections, seed data. Pair: Data Eng + DevOps. |
+| SA-002 | Supabase → Typesense sync queue | 12–16h | 🔲 | Real-time sync pipeline. DB trigger → queue → sync EF → Typesense. Backfill existing. Pair: Backend + Data Eng. |
+| SA-003 | Dashboard search swap to Typesense | 10–14h | 🔲 | Replace Supabase FTS. Faceted filtering, typo tolerance. <200ms p95. Pair: Frontend + Data Eng. |
+| SA-004 | API gateway scaffold + first 10 EFs | 14–18h | 🔲 | Gateway EF with middleware plugin architecture. Unified auth, rate limiting, CDN cache. Pair: Backend + DevOps. |
+| SA-005 | Gateway migration — all 88 EFs | 16–22h | 🔲 | Remaining 78 EFs through gateway. Middleware plugins. Legacy removal. Pair: Backend + Eng Lead. |
+| SA-006 | TypeScript strict — core modules | 12–16h | 🔲 | Core shared modules to strict TS. tsconfig standards. Pair: Frontend + Eng Lead. |
+
+**Phase S1 total: 6 sessions | 76–102h | ADR-01 (Search), ADR-03 (Gateway), ADR-04 Phase 1 (TypeScript)**
+
+### Phase S2: Automation + Data (Weeks 3–8) — ADR-05, ADR-06
+
+| # | Item | Est. | Status | Notes |
+|---|------|------|--------|-------|
+| SA-007 | Common Crawl ingestion pipeline | 14–18h | 🔲 | S3 → parse → normalize → dedup → insert. 50K+ records/batch. Pair: Data Eng + Backend. |
+| SA-008 | Deduplication engine | 10–14h | 🔲 | Content-based dedup across ATS + Common Crawl. Fuzzy matching. 30–40% dedup rate. Pair: Data Eng + Backend. |
+| SA-009 | Incremental materialized views | 10–14h | 🔲 | Delta-only refreshes replace full-table. Minutes → seconds. Pair: Data Eng + DevOps. |
+| SA-010 | CrewAI framework + Agent 1 | 14–18h | 🔲 | Orchestration framework. Data Freshness Monitor in observe mode. Gateway routing. Pair: Backend + DevOps. |
+| SA-011 | CrewAI Agents 2–3 | 12–16h | 🔲 | Content Quality + Pipeline Health agents. Observe mode + kill switches. Pair: Backend + QA. |
+| SA-012 | CrewAI agent graduation | 10–14h | 🔲 | Graduate Agents 1–3 from observe to active. Accuracy metrics + rollback triggers. Pair: Backend + Eng Lead. |
+
+**Phase S2 total: 6 sessions | 70–94h | ADR-05 (CrewAI), ADR-06 (Data Pipeline)**
+
+### Phase S3: Frontend Modernization (Weeks 5–12) — ADR-02, ADR-04 P2–4, CSS/Design System
+
+| # | Item | Est. | Status | Notes |
+|---|------|------|--------|-------|
+| SA-013 | SPA scaffold + design system | 16–22h | 🔲 | Vite + React Router. CSS custom properties. Tailwind config cleanup. Component pattern library. Pair: Frontend + CSS Eng. |
+| SA-014 | Feed page SPA migration | 16–22h | 🔲 | Job feed to React + TypeScript. Data provider abstraction. Dark mode. Pair: Frontend + CSS Eng. |
+| SA-015 | Pipeline + Keywords migration | 16–22h | 🔲 | Pipeline/Keywords pages to React + TypeScript. Data providers. Pair: Frontend + CSS Eng. |
+| SA-016 | Stats + Settings migration | 16–22h | 🔲 | Stats/Settings pages. Design token enforcement. Pair: Frontend + CSS Eng. |
+| SA-017 | Remaining pages + legacy removal | 20–28h | 🔲 | All remaining dashboard + admin. Remove legacy HTML/JS. Zero inline styles. Bundle <120KB. Pair: Frontend + CSS Eng. |
+
+**Phase S3 total: 5 sessions | 84–116h | ADR-02 (SPA), ADR-04 P2–4 (TypeScript), CSS/Design System**
+
+### Phase S4: Scale Validation + Full Automation (Weeks 10–16) — ADR-04 P5–6, ADR-06
+
+| # | Item | Est. | Status | Notes |
+|---|------|------|--------|-------|
+| SA-018 | Read replica + query routing | 10–14h | 🔲 | Supabase read replica. Route SELECT → replica, writes → primary. Monitor lag. Pair: DevOps + Backend. |
+| SA-019 | Database partitioning | 12–16h | 🔲 | Partition ats_jobs by source (ats, common_crawl, amazon). Verify partition pruning. Pair: Data Eng + DevOps. |
+| SA-020 | CrewAI Agents 4–5 | 14–18h | 🔲 | Cost Optimization + User Behavior agents. Observe mode + kill switches. Pair: Backend + Data Eng. |
+| SA-021 | CrewAI Agent 6 + graduation | 12–16h | 🔲 | SEO Content Agent. Graduate Agents 4–6. All 6 operational. Pair: Backend + Eng Lead. |
+| SA-022 | TypeScript — extension + EFs | 16–22h | 🔲 | All 43 extension files + 88 EFs to strict TS. Shared types package. Pair: Frontend + Backend. |
+| SA-023 | Load test 5,000 concurrent | 12–16h | 🔲 | k6 at 5K concurrent. Zero 5xx, p95 search <500ms. Pass/fail gate. Pair: DevOps + QA. |
+
+**Phase S4 total: 6 sessions | 76–102h | ADR-04 P5–6 (TypeScript ext/EF), ADR-05 P2 (CrewAI 4–6), ADR-06 P2 (Replicas + Partitioning)**
+
+### Phase S5: Platform Evolution (Weeks 14–20) — Event Bus, Feature Flags, Fitness Functions
+
+| # | Item | Est. | Status | Notes |
+|---|------|------|--------|-------|
+| SA-024 | Event bus + webhook system | 16–22h | 🔲 | Platform event bus. HMAC-signed webhook delivery + retry. API consumer management. Pair: Backend + Lead Platform Eng + Forward-Looking Dev. |
+| SA-025 | Feature flags + experimentation | 14–20h | 🔲 | Percentage rollouts, user segments, variants. React SDK (useFeatureFlag). PostHog experiments. Gateway middleware. Pair: Frontend + Backend. |
+| SA-026 | Fitness functions + evolvability framework | 14–20h | 🔲 | 8 architecture fitness functions in CI (18 gates total). Evolvability review template. Dependabot/Renovate. Pair: Eng Lead + Evolvability Strategist + QA + DevOps. |
+
+**Phase S5 total: 3 sessions | 44–62h | Platform Evolution (Flexibility, Experimentation, Sustainable Design)**
+
+### Phase S6: Architecture Governance & Future-Proofing (Weeks 18–24) — Blueprint, Capacity, Prototyping
+
+| # | Item | Est. | Status | Notes |
+|---|------|------|--------|-------|
+| SA-027 | Architecture blueprint + hook/scar standards | 14–20h | 🔲 | Document all hook points + scar locations. Interface contracts, extension scenarios. Implementation standards + integration templates. Pair: Chief Architect + Lead Platform Eng + Eng Lead. |
+| SA-028 | Capacity model + scaling triggers | 12–18h | 🔲 | Growth projections 6/12/24 months. Auto-scaling thresholds. Cost model per tier. Capacity dashboard with alerts. Pair: System Architect—Scalability + DevOps + Data Eng. |
+| SA-029 | Hook prototyping + evolvability baseline | 14–20h | 🔲 | 3–5 POC integrations against hook points. Tech debt register. Deprecation protocol. Dependency management policy. Final evolvability review. Phase S complete. Pair: Forward-Looking Dev(s) + Evolvability Strategist + Chief Architect. |
+
+**Phase S6 total: 3 sessions | 40–58h | Architecture Governance (Blueprint, Capacity, Prototyping + Governance)**
+
+### Phase S Dependency Chain
+
+```
+S1: SA-001 → SA-002 → SA-003 | SA-004 → SA-005 | SA-006 (can overlap)
+S2: SA-007 → SA-008 → SA-009 | SA-010 → SA-011 → SA-012 (starts Week 3)
+S3: SA-013 → SA-014 → SA-015 → SA-016 → SA-017 (strictly sequential)
+S4: SA-018 → SA-019 | SA-020 → SA-021 | SA-022 → SA-023
+S5: SA-024 → SA-025 → SA-026 (strictly sequential)
+S6: SA-027 → SA-028 → SA-029 (strictly sequential)
+
+Critical cross-phase:
+  SA-005 (gateway) MUST precede SA-010 (CrewAI routes through gateway)
+  SA-006 (TS core) MUST precede SA-013 (SPA uses typed modules)
+  SA-002 (sync queue) MUST precede SA-007 (Common Crawl auto-syncs)
+  SA-005 (gateway middleware) MUST precede SA-024 (webhook is middleware)
+  SA-017 (SPA data providers) MUST precede SA-025 (flag SDK in React tree)
+  SA-023 (load test) MUST precede SA-028 (capacity model back-tests)
+  SA-026 (fitness functions) MUST precede SA-029 (prototypes pass 18 gates)
+  SA-027 (blueprint) MUST precede SA-029 (prototypes use documented hooks)
+```
+
+### Phase S Completion Criteria
+
+Phase S is complete when ALL of the following are true:
+
+- Typesense serving all dashboard search with <200ms p95 at 1M+ docs
+- API gateway routing all 88 EFs with middleware plugin architecture
+- Dashboard + admin migrated to Vite + React Router SPA with strict TypeScript
+- All 75 dashboard JS + 43 extension + 88 EF files migrated to strict TypeScript
+- Design system complete: tokens as CSS custom properties, Tailwind config clean, component library documented
+- Zero inline styles on authenticated surfaces (827+ eliminated)
+- Dark mode complete on every authenticated page
+- Tailwind CSS output <100KB after purge
+- All 6 CrewAI agents deployed with kill switches
+- Common Crawl pipeline processing 50K+ records/batch with 30–40% dedup
+- Incremental materialized views refreshing deltas only
+- Read replica operational routing all SELECT queries
+- Database partitioned by source
+- Load test passed at 5,000 concurrent with zero 5xx and p95 search <500ms
+- Event bus operational with standardized event taxonomy + webhook delivery
+- Feature flag infrastructure with rollouts, segments, variants, PostHog experiments
+- 8 architecture fitness functions enforced in CI (18 total gates)
+- Architecture blueprint documents all hook points + scar locations with contracts
+- Capacity model covering 6/12/24 month projections with scaling triggers deployed
+- 3–5 hook prototypes validated, all passing 18 CI gates
+- Tech debt register, deprecation protocol, dependency management policy operational
+- Final evolvability review completed with Phase S exit report
+
+**Phase S total: 29 sessions | 414–562h chat | 24 weeks | 6 ADRs + CSS/Design System + Platform Evolution + Architecture Governance**
