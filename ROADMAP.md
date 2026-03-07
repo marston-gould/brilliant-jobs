@@ -2850,7 +2850,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.048 | IX-FE-003: 7 empty + 5 console-only catches | 1h | CS-014 | ✅ | 12 silenced errors on public landing. Wire to PostHog. |
 | 0.049 | IX-FE-004: Loading/error/retry states (5 flows) | 1h | CS-014 | ✅ | preview-jobs, profile check, merch, referral, auth — all missing feedback. |
 | 0.050 | IX-BE-001: preview-jobs no auth + no rate limit | 1h | 0h | ✅ | CS-005: Rate limited (2/session), CORS locked to brilliantjobs.app, data obfuscated. Verified CS-P1-001. |
-| 0.051 | IX-BE-003: Supabase client re-initialization | 30min | — | 🔲 | New client per call instead of singleton. |
+| 0.051 | IX-BE-003: Supabase client re-initialization | 30min | CS-018/CS-P1-004 | ✅ | Singleton loadSupabase() in landing-app.js. Verified CS-P1-004. |
 | 0.052 | IX-BE-004: Profile verification stuck state | 1h | CS-014 | ✅ | No timeout. Spinner forever. AbortController + 10s timeout + error state. |
 
 ### 0-I: Error Handling — Admin (Pod 3, P1)
@@ -2866,11 +2866,11 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
 | 0.056 | FE-001: 818KB unsplit bundle → code split | 6h | CS-016 | ✅ | Route-based split. 153KB initial (was 491KB). 6 chunks with lazy loading. |
-| 0.057 | FE-005: Global scope pollution (30 JS via window) | 4h | — | 🔲 | Module wrapper per ADR-004. |
+| 0.057 | FE-005: Global scope pollution (30 JS via window) | 4h | CS-P1-004 | ✅ | BJ namespace registry (42 files). BJ.export() + _registry. Backward-compat window aliases for onclick handlers. Full module migration in Phase F. |
 | 0.058 | FE-006: No TypeScript | 4h | — | 🔲 | Incremental: new files .ts, tsconfig strict. |
-| 0.059 | BE-007: No API versioning | 1h | — | 🔲 | Design versioning approach for Edge Functions. |
+| 0.059 | BE-007: No API versioning | 1h | CS-P1-004 | ✅ | Date-based API versioning (2026-03-07). api-version.ts shared module. x-api-version header on 10 EFs (7 direct + 3 via middleware). |
 | 0.060 | IX-FE-002: Inline CSS/JS extraction landing | 2h | CS-018 | ✅ | CS-014: 98 inline styles extracted. CS-018: Full extraction — 625-line inline style block + all inline JS moved to external files. index.html 2260→791 lines. Zero inline executable scripts. |
-| 0.061 | IX-FE-005: No search debounce | 30min | — | 🔲 | Query per keystroke. Add 300ms debounce. |
+| 0.061 | IX-FE-005: No search debounce | 30min | CS-P1-004 | ✅ | Dashboard: 300ms debounce in job-feed.js. Landing: button-click + disable-during-request + server rate limiting. Verified CS-P1-004. |
 
 ### 0-K: Test Infrastructure (Pod 3, P0)
 
@@ -2948,8 +2948,8 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
 | 0.098 | DO-005: Staging environment + CI/CD | 3h | 3h | ✅ | CS-020: ci.yml + deploy.yml + load-test.yml. Staging branch + Vercel preview. |
-| 0.099 | FE-007: 3 sync scripts blocking render | 1h | CS-P1-003 | ✅ | All 5 sync scripts in dashboard.html now have defer. Execution order preserved. |
-| 0.100 | FE-008: No content hashing static assets | 1h | CS-P1-003 | ✅ | Immutable cache headers on /dist/, /js/, /styles.css. Content hash manifest in build.js. ?v= params handle busting. |
+| 0.099 | FE-007: 3 sync scripts blocking render | 1h | CS-P1-003/CS-P1-004 | ✅ | Dashboard: all 5 scripts defer (CS-P1-003). Landing: 8/9 scripts defer, landing-segment.js stays sync for FOUC prevention (CS-P1-004). |
+| 0.100 | FE-008: No content hashing static assets | 1h | CS-P1-003/CS-P1-004 | ✅ | Dashboard: immutable cache + manifest (CS-P1-003). Landing: all 9 scripts now have ?v= cache-busting, bump-version.sh maintains them (CS-P1-004). |
 
 ### 0-S: CX — PostHog Identity + Instrumentation (Pod 4, P1)
 

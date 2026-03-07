@@ -1900,7 +1900,7 @@ const features = [
 { s: 'done', b: 'pre-launch', n: '0.048 IX-FE-003: 7 empty + 5 console catches', d: 'CS-014: 12 catches wired to PostHog via bjError(). Zero empty catch blocks remaining.', p: 75, e: '1h' },
 { s: 'done', b: 'pre-launch', n: '0.049 IX-FE-004: Loading/error/retry 5 flows', d: 'CS-014: Loading/error/retry UI on stats fetch, preview search, merch load. Retry buttons with max 2 attempts.', p: 75, e: '1h' },
 { s: 'done', b: 'pre-launch', n: '0.050 IX-BE-001: preview-jobs auth+rate limit', d: 'CS-005: Rate limited (2/session), CORS locked to brilliantjobs.app, data obfuscated. Verified CS-P1-001.', p: 75, e: '0h' },
-{ s: 'todo', b: 'pre-launch', n: '0.051 IX-BE-003: Supabase re-init per call', d: 'New client per function. Singleton.', p: 75, e: '30min' },
+{ s: 'done', b: 'pre-launch', n: '0.051 IX-BE-003: Supabase re-init per call', d: 'CS-P1-004: Singleton loadSupabase() in landing-app.js. Verified.', p: 75, e: '30min' },
 { s: 'done', b: 'pre-launch', n: '0.052 IX-BE-004: Profile check stuck state', d: 'CS-014: profileCheckWithTimeout() with 10s AbortController + 1 retry. bjError logged.', p: 75, e: '1h' },
 
 // 0-I: Error Handling — Admin (Pod 3, P1)
@@ -1910,11 +1910,11 @@ const features = [
 
 // 0-J: Frontend + Performance (Pod 3, P0/P1)
 { s: 'done', b: 'pre-launch', n: '0.056 FE-001: 818KB bundle → code split', d: 'CS-016: Route-based split. 153KB initial (was 491KB). 6 chunks with lazy loading via bjEnsureTab.', p: 75, e: '6h' },
-{ s: 'todo', b: 'pre-launch', n: '0.057 FE-005: Global scope 30 JS via window', d: 'Module wrapper per ADR-004.', p: 75, e: '4h' },
+{ s: 'done', b: 'pre-launch', n: '0.057 FE-005: Global scope 30 JS via window', d: 'CS-P1-004: BJ namespace registry (42 files). BJ.export() + _registry. Backward-compat window aliases. Phase F full migration.', p: 75, e: '4h' },
 { s: 'todo', b: 'pre-launch', n: '0.058 FE-006: No TypeScript', d: 'New files .ts. tsconfig strict.', p: 75, e: '4h' },
-{ s: 'todo', b: 'pre-launch', n: '0.059 BE-007: No API versioning', d: 'Design versioning for Edge Functions.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.059 BE-007: No API versioning', d: 'CS-P1-004: Date-based (2026-03-07). api-version.ts module. x-api-version header on 10 EFs.', p: 75, e: '1h' },
 { s: 'done', b: 'pre-launch', n: '0.060 IX-FE-002: Inline CSS/JS extraction landing', d: 'CS-014: 98 inline styles extracted. CS-018: Full extraction — 625-line inline style block + all inline JS moved to external files. index.html 2260→791 lines (65% reduction). Zero inline executable scripts.', p: 75, e: '2h' },
-{ s: 'todo', b: 'pre-launch', n: '0.061 IX-FE-005: No search debounce', d: 'Query per keystroke. 300ms debounce.', p: 75, e: '30min' },
+{ s: 'done', b: 'pre-launch', n: '0.061 IX-FE-005: No search debounce', d: 'CS-P1-004: Dashboard 300ms debounce. Landing: button-click + rate limiting. Verified.', p: 75, e: '30min' },
 
 // 0-K: Tests (Pod 3, P0)
 { s: 'done', b: 'pre-launch', n: '0.062 QA-001: Critical-path smoke tests', d: 'CS-010+CS-021: 590 tests across 7 suites. Kill-switch integration, handler DOM snapshots, quality gates, security regressions, infrastructure.', p: 75, e: '6h' },
@@ -1974,8 +1974,8 @@ const features = [
 
 // 0-R: DevOps (Pod 3, P2)
 { s: 'done', b: 'pre-launch', n: '0.098 DO-005: Staging + CI/CD', d: 'CS-020: ci.yml + deploy.yml + load-test.yml. Staging branch + Vercel preview.', p: 75, e: '3h' },
-{ s: 'done', b: 'pre-launch', n: '0.099 FE-007: 3 sync scripts block render', d: 'CS-P1-003: All 5 sync scripts in dashboard.html now defer. Execution order preserved.', p: 75, e: '1h' },
-{ s: 'done', b: 'pre-launch', n: '0.100 FE-008: No content hashing', d: 'CS-P1-003: Immutable cache headers + content hash manifest. ?v= params bust cache.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.099 FE-007: 3 sync scripts block render', d: 'CS-P1-003 + CS-P1-004: Dashboard all defer. Landing 8/9 defer, segment.js stays sync for FOUC.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.100 FE-008: No content hashing', d: 'CS-P1-003 + CS-P1-004: Dashboard immutable cache + manifest. Landing all 9 scripts ?v= cache-busted.', p: 75, e: '1h' },
 
 // 0-S: CX PostHog Identity (Pod 4, P1)
 { s: 'todo', b: 'pre-launch', n: '0.101 DS1-4: PostHog identity resolution', d: 'posthog.identify() all surfaces. 0%→100%. HIGHEST-LEVERAGE. Unblocks 9.', p: 75, e: '1h' },

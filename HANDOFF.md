@@ -34,16 +34,18 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**CS-P1-003** — Dashboard Error Handling Completion (Phase B: Core)
+**CS-P1-004** — Backend Architecture + API Hardening (Phase B: Core)
 - Completed: 2026-03-07
-- Commit: (pending push)
-- Tags: `p1-003@1.0.0-error-handling`
-- FE-005: All 5 synchronous `<script>` tags in dashboard.html now have `defer` (supabase.min.js, pipeline-migration.js, notification-center.js, DOMPurify CDN, posthog-dashboard.js). Execution order preserved via DOM-order defer semantics.
-- FE-006: Cache-Control headers on /dist/, /js/, /styles.css changed from `max-age=0, must-revalidate` to `public, max-age=31536000, immutable`. build.js now generates content hash manifest (dist/manifest.json). ?v= query strings handle cache busting on version bump.
-- BE-003: Error checks added to 20+ unchecked Supabase `.from()` calls across applications.js, rewrite.js, job-feed.js, pipeline.js, notification-center.js, settings.js, keywords.js, referrals.js, stats.js, billing.js, app.js. All wired to `reportError()`.
-- BE-004: Fire-and-forget RPCs in app.js (heartbeats), keywords.js (4 signal RPCs), referrals.js (parallel RPCs), referral-outreach.js now have error handlers via `.then()` checks or `.catch(reportError)`.
-- 29 new tests (803 total, 0 failures).
-- Version bumped to v7.29.
+- Commit: 65e0a58, 3d2d8cd
+- Tags: `p1-004@1.0.0-api-hardening`
+- IX-BE-003: Verified resolved — singleton loadSupabase() in landing-app.js (done CS-018).
+- FE-005: BJ namespace registry created — window.BJ consolidates exports from 42 files. BJ.export() + _registry for tracking. Backward-compat window aliases kept for 133 HTML onclick handlers. Full module migration deferred to Phase F (TypeScript).
+- BE-007: API versioning implemented — date-based (2026-03-07), api-version.ts shared module, withVersionHeaders() + versionedJsonResponse() helpers. x-api-version header on 10 EFs (7 direct + 3 via withCorrelation middleware).
+- IX-FE-005: Verified resolved — dashboard has 300ms debounce in job-feed.js; landing uses button-click + disable-during-request + server rate limiting.
+- FE-007: Landing page scripts — 4 scripts (version.js, cookie-consent.js, purify.min.js, safe-read-ls.js) now deferred. landing-segment.js stays sync for FOUC prevention + active user redirect.
+- FE-008: Landing page cache-busting — all 9 scripts now have ?v= query strings. bump-version.sh will maintain them.
+- 45 new tests (848 total, 0 failures).
+- Version bumped to v7.30.
 
 ---
 
@@ -55,18 +57,18 @@ None.
 
 ## Next Session
 
-**CS-P1-004: Backend Architecture + API Hardening** (Phase B: Core)
+**CS-P1-005: Observability Completion + Feature Flags** (Phase C: Observability + Data)
 
 | Field | Detail |
 |-------|--------|
-| Surface | Dashboard + Landing |
-| Fix Items | IX-BE-003, FE-005, BE-007, IX-FE-005, FE-007, FE-008 |
-| Hours | 18–26h |
-| Pair | Backend + Frontend |
+| Surface | All Surfaces |
+| Fix Items | DO-001 (completion), DO-003, DO-004, AD-DO-001, AD-DO-002, AD-DO-003, AD-DO-004 |
+| Hours | 16–24h |
+| Pair | DevOps + Backend |
 
-**Entry Gate:** CS-P1-003 complete. Error handling comprehensive.
+**Entry Gate:** CS-P1-004 complete. PostHog deployed (CS-003).
 
-**Exit Gate:** Supabase singleton. Zero window.* functions. API versioned. Scripts async. Content hashed.
+**Exit Gate:** PostHog fully operational all surfaces. Feature flags operational. Structured logging. Alert thresholds configured.
 
 ---
 
@@ -84,14 +86,15 @@ None.
 | Dry Run | `dryrun@1.0.0` | CS-022 |
 | SEO Pages | (no remediation tag yet) | — |
 | Email Templates | `email-templates@0.1.0-utm` | CS-011 |
-| Phase 1 Security | `p1-003@1.0.0-error-handling` | CS-P1-003 |
+| Phase 1 Security | `p1-004@1.0.0-api-hardening` | CS-P1-004 |
 
 ---
 
-## Completed Sessions (24 of 24 + 3 Phase 1)
+## Completed Sessions (24 of 24 + 4 Phase 1)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
+| CS-P1-004 | 2026-03-07 | IX-BE-003 (verified), FE-005 (BJ namespace), BE-007 (API versioning), IX-FE-005 (verified), FE-007 (landing defer), FE-008 (landing cache-bust) | p1-004@1.0.0-api-hardening |
 | CS-P1-003 | 2026-03-07 | FE-005 (defer), FE-006 (immutable cache), BE-003 (error checks), BE-004 (fire-and-forget) | p1-003@1.0.0-error-handling |
 | CS-P1-002 | 2026-03-07 | SE-005, IX-SE-006, IX-SE-008 (AD-SE-001/AD-SE-003 verified done, SE-002 procedure scripted) | p1-002@1.0.0-csp-cookies |
 | CS-P1-001 | 2026-03-06 | SE-004, IX-SE-003 (SE-003/IX-SE-005/IX-BE-001 verified already done) | p1-001@1.0.0-auth-registry |
@@ -122,11 +125,10 @@ None.
 
 ---
 
-## Remaining Sessions (14 of 17 Phase 1)
+## Remaining Sessions (13 of 17 Phase 1)
 
 | Session | Phase | Title | Hours |
 |---------|-------|-------|-------|
-| CS-P1-004 | B | Backend Architecture + API Hardening | 18–26h |
 | CS-P1-005 | C | Observability Completion + Feature Flags | 16–24h |
 | CS-P1-006 | C | Data Pipeline + Cron Cleanup + Cost Visibility | 12–18h |
 | CS-P1-007 | D | PostHog Analytics + Attribution CX | 14–20h |
