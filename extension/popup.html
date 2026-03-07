@@ -197,19 +197,34 @@
     <div class="field">
       <label for="auth-password">Password</label>
       <div class="pw-wrap"><input type="password" id="auth-password" placeholder="Your password" autocomplete="current-password"><button type="button" class="pw-toggle" id="auth-pw-toggle" aria-label="Toggle password visibility">Show</button></div>
-      <div style="text-align: right; margin-top: 4px;"><a href="https://brilliantjobs.app" target="_blank" style="font-size: 11px; color: var(--accent); text-decoration: none;">Forgot password?</a></div>
+      <div style="text-align: right; margin-top: 4px;"><a href="#" id="auth-forgot-link" style="font-size: 11px; color: var(--accent); text-decoration: none;">Forgot password?</a></div>
     </div>
     <button class="btn btn-primary" id="auth-login-btn">Log In</button>
     <div class="auth-msg" id="auth-msg" aria-live="polite"></div>
     <p class="signup-link">No account? <a href="https://brilliantjobs.app#signup" target="_blank">Sign up at brilliantjobs.app</a></p>
   </div>
+  <!-- ES1-7: Password Reset Panel -->
+  <div id="auth-reset-panel" style="display: none; padding: 24px; text-align: center;">
+    <h2 style="font-size: 16px; margin-bottom: 6px;">Reset Password</h2>
+    <p style="font-size: 12px; color: var(--text-dim); margin-bottom: 16px;">Enter your email and we'll send a reset link.</p>
+    <div class="field"><label for="reset-email">Email</label><input type="email" id="reset-email" placeholder="you@email.com" autocomplete="email"></div>
+    <button class="btn btn-primary" id="reset-send-btn" style="margin-top: 8px;">Send Reset Link</button>
+    <div class="auth-msg" id="reset-msg" aria-live="polite" style="margin-top: 8px;"></div>
+    <p style="margin-top: 12px;"><a href="#" id="reset-back-link" style="font-size: 12px; color: var(--accent); text-decoration: none;">← Back to login</a></p>
+  </div>
   <div class="auth-user-bar" id="auth-user-bar"><span class="user-email" id="auth-user-email"></span><button class="logout-btn" id="auth-logout-btn" aria-label="Log out">Log Out</button></div>
   <main id="app-content" style="display: none;" role="main">
+    <!-- ES1-5: Version mismatch banner -->
+    <div id="version-mismatch-banner" style="display: none; background: var(--warm-dim); border-bottom: 1px solid var(--warm); padding: 8px 16px; font-size: 11px; color: #92400e; text-align: center;" role="alert">
+      <strong>Update available!</strong> A newer version of the extension is available.
+      <a href="https://brilliantjobs.app/extension" target="_blank" style="color: var(--accent); text-decoration: none; font-weight: 600; margin-left: 4px;">Update now →</a>
+      <button id="version-mismatch-dismiss" style="background: none; border: none; color: #92400e; cursor: pointer; font-size: 14px; margin-left: 8px; vertical-align: middle;" aria-label="Dismiss update notice">×</button>
+    </div>
     <div class="tabs" role="tablist" aria-label="Extension tools">
-      <div class="tab active" data-tab="harvest" role="tab" aria-selected="true" aria-controls="tab-harvest" tabindex="0" id="tab-btn-harvest">Harvest</div>
-      <div class="tab" data-tab="scan" role="tab" aria-selected="false" aria-controls="tab-scan" tabindex="-1" id="tab-btn-scan">Scan</div>
+      <div class="tab active" data-tab="harvest" role="tab" aria-selected="true" aria-controls="tab-harvest" tabindex="0" id="tab-btn-harvest">Contacts</div>
+      <div class="tab" data-tab="scan" role="tab" aria-selected="false" aria-controls="tab-scan" tabindex="-1" id="tab-btn-scan">Company Scan</div>
       <div class="tab" data-tab="jobs" role="tab" aria-selected="false" aria-controls="tab-jobs" tabindex="-1" id="tab-btn-jobs">Jobs</div>
-      <div class="tab" data-tab="data" role="tab" aria-selected="false" aria-controls="tab-data" tabindex="-1" id="tab-btn-data">Data</div>
+      <div class="tab" data-tab="data" role="tab" aria-selected="false" aria-controls="tab-data" tabindex="-1" id="tab-btn-data">Export</div>
     </div>
     <div class="scanner-indicator" id="scanner-indicator" role="status" aria-live="polite"><div class="scanner-dot idle" id="scanner-dot" aria-hidden="true"></div><span class="scanner-indicator-text" id="scanner-indicator-text">Scanner idle</span><span class="scanner-indicator-count" id="scanner-indicator-count"></span></div>
     <!-- Daily Limit Badge (Item #10) — shown for Starter tier only -->
@@ -221,23 +236,23 @@
     <div id="tab-harvest" class="tab-content active" role="tabpanel" aria-labelledby="tab-btn-harvest">
       <div class="stats"><div class="stat"><div class="stat-value" id="h-count">0</div><div class="stat-label">Connections Found</div></div><div class="stat"><div class="stat-value" id="h-companies">0</div><div class="stat-label">Parsed Companies</div></div></div>
       <div class="source-list"><div class="source-item"><span class="source-dot dot-active"></span><span>Connections</span><span class="source-badge badge-ready">Ready</span></div><div class="source-item disabled"><span class="source-dot dot-disabled"></span><span>Followers</span><span class="source-badge badge-soon">Coming Soon</span></div><div class="source-item disabled"><span class="source-dot dot-disabled"></span><span>Following</span><span class="source-badge badge-soon">Coming Soon</span></div></div>
-      <button class="btn btn-primary" id="h-start">Harvest Connections</button>
-      <div class="upgrade-msg" id="h-upgrade-msg">Harvesting requires a Pro plan. <a href="https://brilliantjobs.app/pricing.html" target="_blank">Upgrade →</a></div>
+      <button class="btn btn-primary" id="h-start">Find Connections</button>
+      <div class="upgrade-msg" id="h-upgrade-msg">Finding connections requires a Pro plan. <a href="https://brilliantjobs.app/pricing.html" target="_blank">Upgrade →</a></div>
       <button class="btn btn-danger hidden" id="h-stop">Stop</button>
-      <div class="status-bar hidden" id="h-last-harvest"><span class="label">Last Harvest: </span><span class="value" id="h-last-date">—</span></div>
+      <div class="status-bar hidden" id="h-last-harvest"><span class="label">Last Run: </span><span class="value" id="h-last-date">—</span></div>
     </div>
     <div id="tab-scan" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-scan">
       <div class="stats"><div class="stat"><div class="stat-value" id="s-visited">0</div><div class="stat-label">Visited</div></div><div class="stat"><div class="stat-value" id="s-queued">0</div><div class="stat-label">In Queue</div></div><div class="stat"><div class="stat-value" id="s-today">0</div><div class="stat-label">Today</div></div></div>
       <div class="estimate" id="s-estimate"><div class="estimate-title">Estimated Completion</div><div class="estimate-main" id="s-est-days">—</div><div class="estimate-detail" id="s-est-detail"></div></div>
       <div class="checkbox-row"><input type="checkbox" id="s-include-past" checked><label for="s-include-past">Include past companies</label></div>
-      <button class="btn btn-primary" id="s-start">Start Scanning</button>
+      <button class="btn btn-primary" id="s-start">Start Company Scan</button>
       <button class="btn btn-outline hidden" id="s-pause">Pause</button>
       <button class="btn btn-primary hidden" id="s-resume">Resume</button>
       <button class="btn btn-danger hidden" id="s-stop">Stop</button>
     </div>
     <div id="tab-jobs" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-jobs">
       <div class="stats"><div class="stat"><div class="stat-value" id="j-count">0</div><div class="stat-label">Jobs Found</div></div></div>
-      <button class="btn btn-primary" id="j-scrape">Scrape All Pages</button>
+      <button class="btn btn-primary" id="j-scrape">Collect Job Listings</button>
       <button class="btn btn-danger hidden" id="j-stop">Stop</button>
       <button class="btn btn-success hidden" id="j-download">Download TSV</button>
     </div>
@@ -246,7 +261,7 @@
       <div id="d-top-companies" style="margin: 10px 0;"><div class="section-label">Top Companies by Connections</div><div id="d-top-list" style="font-size: 12px;"></div></div>
       <button class="btn btn-success" id="d-export-connections">Export Connections TSV</button>
       <button class="btn btn-success" id="d-export-companies">Export Companies TSV</button>
-      <button class="btn btn-outline" id="d-refresh">Refresh Counts</button>
+      <button class="btn btn-outline" id="d-refresh">Refresh</button>
     </div>
     <div class="log-section" role="region" aria-label="Activity log"><div class="log-header"><span class="log-title" id="log-title">Activity</span><button class="log-clear" id="log-clear" aria-label="Clear activity log">Clear</button></div><div class="log" id="unified-log" aria-labelledby="log-title" role="log" aria-live="polite"></div></div>
   </main>

@@ -192,6 +192,12 @@
       .bj-overlay-error .bj-progress-bar {
         background: #d14;
       }
+      /* ES1-2: Focus-visible styles for keyboard navigation */
+      .bj-close:focus-visible {
+        outline: 2px solid #fff;
+        outline-offset: 2px;
+        border-radius: 6px;
+      }
     `;
     shadow.appendChild(style);
   }
@@ -207,27 +213,34 @@
 
     el = document.createElement('div');
     el.id = OVERLAY_ID;
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-label', 'Brilliant Jobs form fill progress');
     el.innerHTML = `
-      <div class="bj-overlay-header">
+      <div class="bj-overlay-header" role="banner">
         <span class="bj-title">
-          <span>⚡</span>
+          <span aria-hidden="true">⚡</span>
           <span class="bj-header-text">Brilliant Jobs — Filling</span>
         </span>
-        <button class="bj-close" title="Dismiss">×</button>
+        <button class="bj-close" title="Dismiss" aria-label="Dismiss fill overlay">×</button>
       </div>
       <div class="bj-overlay-body">
-        <div class="bj-progress-wrap"><div class="bj-progress-bar"></div></div>
-        <div class="bj-status-line">
-          <div class="bj-spinner"></div>
+        <div class="bj-progress-wrap" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Fill progress"><div class="bj-progress-bar"></div></div>
+        <div class="bj-status-line" role="status" aria-live="polite">
+          <div class="bj-spinner" aria-hidden="true"></div>
           <span class="bj-status-text">Detecting form fields…</span>
         </div>
-        <div class="bj-field-list"></div>
+        <div class="bj-field-list" role="log" aria-label="Field fill results" aria-live="polite"></div>
       </div>
     `;
     shadow.appendChild(el);
 
     // Close button
     el.querySelector('.bj-close').addEventListener('click', () => dismiss());
+
+    // ES1-2: Escape key to dismiss
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') dismiss();
+    });
 
     // Animate in
     requestAnimationFrame(() => {
@@ -264,8 +277,10 @@
 
       const bar = el.querySelector('.bj-progress-bar');
       const text = el.querySelector('.bj-status-text');
+      const wrap = el.querySelector('.bj-progress-wrap');
 
       if (bar) bar.style.width = `${Math.min(pct, 100)}%`;
+      if (wrap) wrap.setAttribute('aria-valuenow', String(Math.min(Math.round(pct), 100)));
       if (text) text.textContent = currentField
         ? `Filling: ${currentField} (${filled}/${total})`
         : `${filled} of ${total} fields filled`;

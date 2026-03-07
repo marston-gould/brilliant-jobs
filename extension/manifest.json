@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Brilliant Jobs",
-  "version": "2.20.0",
+  "version": "2.21.0",
   "description": "Discover jobs through your professional network",
   "homepage_url": "https://brilliantjobs.app/privacy",
   "permissions": [
@@ -16,6 +16,8 @@
   "host_permissions": [
     "https://www.linkedin.com/*",
     "https://qojhagupdnbtomfoxnsf.supabase.co/*",
+    "https://brilliantjobs.app/*",
+    "https://www.brilliantjobs.app/*",
     "https://boards.greenhouse.io/*",
     "https://boards.eu.greenhouse.io/*",
     "https://job-boards.greenhouse.io/*",
@@ -33,7 +35,9 @@
     "https://*.taleo.net/*",
     "https://jobs.smartrecruiters.com/*",
     "https://careers.smartrecruiters.com/*",
-    "https://*.avature.net/*"
+    "https://*.avature.net/*",
+    "https://*.bamboohr.com/*",
+    "https://*.applytojob.com/*"
   ],
   "optional_host_permissions": [
     "https://*/*"
@@ -79,10 +83,22 @@
         "https://*.taleo.net/*",
         "https://jobs.smartrecruiters.com/*",
         "https://careers.smartrecruiters.com/*",
-        "https://*.avature.net/*"
+        "https://*.avature.net/*",
+        "https://*.bamboohr.com/*",
+        "https://*.applytojob.com/*"
       ],
       "js": [
         "contentScript.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://brilliantjobs.app/*",
+        "https://www.brilliantjobs.app/*"
+      ],
+      "js": [
+        "token-sync.js"
       ],
       "run_at": "document_idle"
     }
@@ -130,7 +146,9 @@
         "https://*.taleo.net/*",
         "https://jobs.smartrecruiters.com/*",
         "https://careers.smartrecruiters.com/*",
-        "https://*.avature.net/*"
+        "https://*.avature.net/*",
+        "https://*.bamboohr.com/*",
+        "https://*.applytojob.com/*"
       ]
     }
   ],

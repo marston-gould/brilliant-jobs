@@ -33,13 +33,13 @@ describe('Selector Registry Structure (CS-017)', () => {
     expect(SELECTOR_REGISTRY.length).toBeGreaterThan(0);
   });
 
-  it('has exactly 15 entries (one per handler)', () => {
-    expect(SELECTOR_REGISTRY.length).toBe(15);
+  it('has exactly 17 entries (one per handler)', () => {
+    expect(SELECTOR_REGISTRY.length).toBe(17);
   });
 
-  it('getRegisteredHandlers returns all 15', () => {
+  it('getRegisteredHandlers returns all 17', () => {
     const handlers = getRegisteredHandlers();
-    expect(handlers.length).toBe(15);
+    expect(handlers.length).toBe(17);
   });
 });
 

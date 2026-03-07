@@ -371,6 +371,15 @@
         letter-spacing: 0.02em;
         flex-shrink: 0;
       }
+      /* ES1-2: Focus-visible styles for keyboard navigation */
+      #${TOOLBAR_ID} button:focus-visible {
+        outline: 2px solid #3b82f6;
+        outline-offset: 2px;
+        border-radius: 4px;
+      }
+      #${TOOLBAR_ID} .bj-tb-dismiss:focus-visible {
+        outline-offset: 0;
+      }
     `;
     shadow.appendChild(style);
   }
@@ -383,6 +392,8 @@
 
     el = document.createElement('div');
     el.id = TOOLBAR_ID;
+    el.setAttribute('role', 'toolbar');
+    el.setAttribute('aria-label', 'Brilliant Jobs job page toolbar');
     el.setAttribute('data-source-url', meta.url);
 
     const stage = pipelineEntry?.stage || null;
@@ -406,35 +417,35 @@
     const ctaBtnLabel = isSaved ? ('✓ ' + escHtml(stageLabel)) : 'Save Job';
 
     el.innerHTML = `
-      <span class="bj-tb-logo">BJ</span>
+      <span class="bj-tb-logo" aria-hidden="true">BJ</span>
       <div class="bj-tb-left">
         <div class="bj-tb-title">${escHtml(meta.title || 'Job Listing')}</div>
         ${meta.company ? `<div class="bj-tb-company">${escHtml(meta.company)}</div>` : ''}
       </div>
       <div class="bj-tb-right">
-        ${stageLabel ? `<span class="bj-tb-badge ${stageClass}">${escHtml(stageLabel)}</span>` : ''}
-        ${showFraud ? `<span class="bj-tb-fraud" title="Fraud risk: ${escHtml(fraudLabel || String(fraudScore))}">🛡 Fraud Risk</span>` : ''}
-        ${showAI ? `<span class="bj-tb-ai-content" title="AI-generated content detected (${escHtml(aiLabel || String(aiScore))})">⚠ AI Content</span>` : ''}
-        <span class="bj-tb-score bj-score-loading" id="bj-tb-score-badge">…</span>
+        ${stageLabel ? `<span class="bj-tb-badge ${stageClass}" role="status" aria-label="Pipeline stage: ${escHtml(stageLabel)}">${escHtml(stageLabel)}</span>` : ''}
+        ${showFraud ? `<span class="bj-tb-fraud" role="alert" title="Fraud risk: ${escHtml(fraudLabel || String(fraudScore))}" aria-label="Fraud risk detected: ${escHtml(fraudLabel || String(fraudScore))}">🛡 Fraud Risk</span>` : ''}
+        ${showAI ? `<span class="bj-tb-ai-content" role="status" title="AI-generated content detected (${escHtml(aiLabel || String(aiScore))})" aria-label="AI-generated content detected">⚠ AI Content</span>` : ''}
+        <span class="bj-tb-score bj-score-loading" id="bj-tb-score-badge" role="status" aria-label="Match score loading">…</span>
         <div class="bj-tb-cta-wrap" id="bj-tb-cta-wrap">
-          <button class="bj-tb-save-btn${isSaved ? ' bj-saved' : ''}${!isSaved ? ' bj-no-picker' : ''}" id="bj-tb-save-btn">${ctaBtnLabel}</button>
-          ${isSaved ? `<button class="bj-tb-picker-btn bj-saved-chevron" id="bj-tb-picker-btn" title="Change stage">▾</button>` : ''}
-          <div class="bj-tb-stage-dropdown" id="bj-tb-stage-dropdown">
-            <div class="bj-dropdown-label">Move to stage</div>
+          <button class="bj-tb-save-btn${isSaved ? ' bj-saved' : ''}${!isSaved ? ' bj-no-picker' : ''}" id="bj-tb-save-btn" aria-label="${isSaved ? 'Pipeline stage: ' + escHtml(stageLabel) + '. Click to change stage' : 'Save this job to your pipeline'}">${ctaBtnLabel}</button>
+          ${isSaved ? `<button class="bj-tb-picker-btn bj-saved-chevron" id="bj-tb-picker-btn" title="Change stage" aria-label="Change pipeline stage" aria-expanded="false" aria-haspopup="true">▾</button>` : ''}
+          <div class="bj-tb-stage-dropdown" id="bj-tb-stage-dropdown" role="menu" aria-label="Pipeline stage options">
+            <div class="bj-dropdown-label" aria-hidden="true">Move to stage</div>
             ${PICKER_STAGES.map(s => {
               const rank = STAGE_RANK[s] || 0;
               const currentRank = STAGE_RANK[stage] || 0;
               const isCurrent = s === stage;
               const isDisabled = rank < currentRank; // no backward movement
               return `<button class="bj-stage-option${isCurrent ? ' bj-current' : ''}${isDisabled ? ' bj-disabled' : ''}"
-                data-stage="${s}">
-                <span class="bj-tb-stage-dot bj-dot-${s}"></span>${escHtml(STAGE_LABELS[s])}
+                data-stage="${s}" role="menuitem" aria-disabled="${isDisabled || isCurrent}" ${isDisabled ? 'tabindex="-1"' : ''}>
+                <span class="bj-tb-stage-dot bj-dot-${s}" aria-hidden="true"></span>${escHtml(STAGE_LABELS[s])}
                 ${isCurrent ? ' ✓' : ''}
               </button>`;
             }).join('')}
           </div>
         </div>
-        <button class="bj-tb-dismiss" id="bj-tb-dismiss" title="Dismiss toolbar">×</button>
+        <button class="bj-tb-dismiss" id="bj-tb-dismiss" title="Dismiss toolbar" aria-label="Dismiss job toolbar">×</button>
       </div>
     `;
 
@@ -486,11 +497,29 @@
     getToolbarShadow().querySelector('#bj-tb-dismiss')?.addEventListener('click', () => {
       el.remove();
     });
+
+    // ES1-2: Escape key to dismiss toolbar or close dropdown
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      const dropdown = getToolbarShadow().querySelector('#bj-tb-stage-dropdown');
+      if (dropdown && dropdown.classList.contains('open')) {
+        dropdown.classList.remove('open');
+        const pickerBtn = getToolbarShadow().querySelector('#bj-tb-picker-btn');
+        if (pickerBtn) pickerBtn.setAttribute('aria-expanded', 'false');
+      } else if (el.parentNode) {
+        el.remove();
+      }
+    });
   }
 
   function toggleDropdown(dropdown) {
     if (!dropdown) return;
     dropdown.classList.toggle('open');
+    // ES1-2: Update aria-expanded on picker button
+    const pickerBtn = getToolbarShadow().querySelector('#bj-tb-picker-btn');
+    if (pickerBtn) {
+      pickerBtn.setAttribute('aria-expanded', dropdown.classList.contains('open') ? 'true' : 'false');
+    }
   }
 
   function escHtml(str) {

@@ -184,6 +184,9 @@ function showAuthGate() {
   $('#auth-gate').style.display = 'block';
   $('#app-content').style.display = 'none';
   $('#auth-user-bar').classList.remove('active');
+  // ES1-7: Also hide reset panel
+  const resetPanel = $('#auth-reset-panel');
+  if (resetPanel) resetPanel.style.display = 'none';
   // Always clear password
   $('#auth-password').value = '';
   // Pre-fill email from last known session or saved email
@@ -344,6 +347,68 @@ $('#auth-logout-btn').addEventListener('click', async () => {
 $('#auth-password').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') $('#auth-login-btn').click();
 });
+
+// ============================================================
+// ES1-7: Password Reset Flow
+// ============================================================
+
+$('#auth-forgot-link').addEventListener('click', (e) => {
+  e.preventDefault();
+  // Pre-fill reset email from login email field
+  const email = $('#auth-email').value.trim();
+  if (email) $('#reset-email').value = email;
+  $('#auth-gate').style.display = 'none';
+  $('#auth-reset-panel').style.display = 'block';
+  $('#reset-msg').textContent = '';
+  $('#reset-email').focus();
+});
+
+$('#reset-back-link').addEventListener('click', (e) => {
+  e.preventDefault();
+  $('#auth-reset-panel').style.display = 'none';
+  $('#auth-gate').style.display = 'block';
+});
+
+$('#reset-send-btn').addEventListener('click', async () => {
+  const email = $('#reset-email').value.trim();
+  if (!email) {
+    showResetMsg('Please enter your email address.', 'error');
+    return;
+  }
+
+  $('#reset-send-btn').disabled = true;
+  $('#reset-send-btn').textContent = 'Sending...';
+
+  try {
+    const res = await fetchWithRetry(`${SUPABASE_URL}/auth/v1/recover`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+      body: JSON.stringify({
+        email,
+        gotrue_meta_security: { captcha_token: '' }
+      })
+    }, { timeout: 10000, retries: 1 });
+
+    // Supabase returns 200 regardless of whether email exists (prevents enumeration)
+    showResetMsg('If an account exists for that email, a reset link has been sent. Check your inbox.', 'success');
+    phCapture('password_reset_requested', { email_provided: true });
+  } catch (e) {
+    showResetMsg('Something went wrong. Please try again.', 'error');
+  }
+
+  $('#reset-send-btn').disabled = false;
+  $('#reset-send-btn').textContent = 'Send Reset Link';
+});
+
+$('#reset-email').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') $('#reset-send-btn').click();
+});
+
+function showResetMsg(text, type) {
+  const el = $('#reset-msg');
+  el.textContent = text;
+  el.className = `auth-msg ${type}`;
+}
 
 // ============================================================
 // APP INIT (called after auth check passes)

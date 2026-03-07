@@ -2967,7 +2967,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
 | 0.107 | DS1-2: Dashboard accessibility Phase 1 | 3h | — | 🔲 | Scored 1.0/5.0. ARIA tablist/tab/tabpanel, focus mgmt, :focus-visible. axe-core 0 critical. |
-| 0.108 | ES1-2: Extension accessibility 1.0 | 2h | — | 🔲 | Scored 1.0/5.0. ARIA popup, keyboard nav, focus, screen reader. |
+| 0.108 | ES1-2: Extension accessibility 1.0 | 2h | CS-P1-011 | ✅ | Scored 1.0/5.0. ARIA popup, keyboard nav, focus, screen reader. |
 | 0.109 | LS1-1: Landing accessibility (19 btns, 6 inputs, 0 ARIA) | 2h | — | 🔲 | Scored 2.0/5.0. Zero ARIA. Roles, labels, states needed. |
 | 0.110 | LS1-4: 3 H1 tags in DOM | 30min | CS-P1-008 | ✅ | display:none→conditional render. SEO + a11y. Upgraded P2→P1. |
 | 0.111 | IX-A11Y-001: Zero ARIA landing page | 2h | — | 🔲 | Combined with LS1-1 (0.109). |
@@ -3012,11 +3012,11 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
 | 0.132 | ES1-3: No Shadow DOM isolation | 3h | CS-014 | ✅ | inject-overlay.js + toolbar-overlay.js refactored to attachShadow. Host CSS fully isolated. |
-| 0.133 | ES1-4: Token divergence from dashboard | 1h | — | 🔲 | Extension popup uses different CSS tokens. Align. |
-| 0.134 | ES1-5: Version mismatch display | 1h | — | 🔲 | Popup version ≠ manifest version. |
-| 0.135 | ES1-6: Incomplete ATS coverage | 2h | — | 🔲 | Toolbar missing on some of 12 platforms. Test + fix. |
-| 0.136 | ES1-7: Password reset dead end | 30min | — | 🔲 | No completion state in popup. |
-| 0.137 | ES1-8: Technical tab labels | 30min | — | 🔲 | Developer terms → user-friendly. |
+| 0.133 | ES1-4: Token divergence from dashboard | 1h | CS-P1-011 | ✅ | Extension popup uses different CSS tokens. Align. |
+| 0.134 | ES1-5: Version mismatch display | 1h | CS-P1-011 | ✅ | Popup version ≠ manifest version. |
+| 0.135 | ES1-6: Incomplete ATS coverage | 2h | CS-P1-011 | ✅ | Toolbar missing on some of 12 platforms. Test + fix. |
+| 0.136 | ES1-7: Password reset dead end | 30min | CS-P1-011 | ✅ | No completion state in popup. |
+| 0.137 | ES1-8: Technical tab labels | 30min | CS-P1-011 | ✅ | Developer terms → user-friendly. |
 
 ### 0-Y: CX — Landing Page (Pod 4, P2/P3)
 

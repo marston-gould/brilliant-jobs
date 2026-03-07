@@ -34,22 +34,16 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**CS-P1-010** — Dashboard CX Polish (Phase D: CX + Analytics)
+**CS-P1-011** — Extension CX Hardening (Phase D: CX + Analytics)
 - Completed: 2026-03-07
-- Tags: `p1-010@1.0.0-cx-polish`
-- DS1A-16: Resume #f59e0b → var(--warm) + _cssColor() for ECharts.
-- DS1A-18: Snooze duplicate class attrs fixed, inline styles → passive-snooze-* CSS classes.
-- DS1A-14: Tuning page dark mode overrides (card shadow, badge, level checkbox).
-- DS1A-19: Subscription page HSL → CSS variables for dark mode compatibility.
-- DS1A-15: Pipeline added to nav sidebar with icon, duplicate class attrs fixed.
-- DS1A-20: Admin survey gated to _isAdmin, Feature Requests default tab.
-- DS1A-21: Referral !important overrides eliminated, #f59e0b → var(--warm).
-- DS1A-17: PostHog notification events (ncWirePreferenceEvents, notification_email_toggled, notification_frequency_changed).
-- DS1-8: Gmail connect button in onboarding Step 2 with live status.
-- DS1A-13: Extension sideload guided walkthrough with progressive steps + PostHog tracking.
-- DS1-11: Unified Setup Progress bar, updateSetupProgress() checks real connection state.
-- Also: posthog-insights registered in admin subpage map, evaluate-alerts added to EF auth registry.
-- 16 new tests (1145 total). Version v7.36.
+- Tags: `p1-011@1.0.0-extension-cx`, `extension@2.21.0`
+- ES1-8: Tab labels changed from jargon (Harvest/Scan/Data) to user-friendly (Contacts/Company Scan/Export). Button labels updated throughout.
+- ES1-7: Password reset dead end fixed. Inline reset panel with Supabase /recover API, PostHog tracking, pre-filled email.
+- ES1-2: A11y baseline for overlay + toolbar. role=dialog/toolbar, aria-labels, aria-expanded, progressbar ARIA, focus-visible styles, Escape key dismiss, role=menu/menuitem on stage picker.
+- ES1-5: Version mismatch check. Queries app_config for expected version, shows update banner with dismiss. Semver comparison.
+- ES1-4: Token divergence sync. New token-sync.js content script on brilliantjobs.app. Dashboard→extension sync via localStorage observation. Extension→dashboard sync via background.js tab messaging. dashboardTokenSync handler in background.js.
+- ES1-6: ATS coverage expanded from 15→17. BambooHR and JazzHR handlers with generic fallback. Selector registry, manifest, and web_accessible_resources updated.
+- 52 new tests (1221 total). Version v7.38, extension v2.21.0.
 
 ---
 
@@ -61,18 +55,18 @@ None.
 
 ## Next Session
 
-**CS-P1-011: Extension CX Hardening** (Phase D: CX + Analytics)
+**CS-P1-012: Email/SMS Templates + Transactional CX** (Phase D: CX + Analytics)
 
 | Field | Detail |
 |-------|--------|
-| Surface | Extension |
-| Fix Items | ES1-2, ES1-3, ES1-4, ES1-5, ES1-6, ES1-7, ES1-8, ES1-9, ES1-10 |
-| Hours | 12–18h |
-| Pair | Frontend + Security |
+| Surface | Email + SMS |
+| Fix Items | TS1-3, TS1-4, TS1-5, TS1-6 |
+| Hours | 10–16h |
+| Pair | Frontend + Backend |
 
-**Entry Gate:** CS-P1-010 complete (dashboard CX polish done).
+**Entry Gate:** CS-P1-011 complete (extension CX hardening done).
 
-**Exit Gate:** Extension UI polished, dark mode compatible, all extension CX findings resolved.
+**Exit Gate:** Email templates dark-mode compatible. A/B test framework deployed. SMS overflow fixed. Email template modularized.
 
 ---
 
@@ -81,7 +75,7 @@ None.
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
 | Dashboard | `dashboard@1.0.0-bundle` | CS-016 |
-| Extension | `extension@0.8.0-architecture` | CS-019 |
+| Extension | `extension@2.21.0-cx-hardening` | CS-P1-011 |
 | Landing Page | `index@0.6.0-architecture` | CS-018 |
 | Admin | `admin@1.2.0-hardening` | G11+G12 |
 | Load Tests | `loadtest@1.0.0` | CS-020 |
@@ -90,14 +84,15 @@ None.
 | Dry Run | `dryrun@1.0.0` | CS-022 |
 | SEO Pages | (no remediation tag yet) | — |
 | Email Templates | `email-templates@0.1.0-utm` | CS-011 |
-| Phase 1 Security | `p1-010@1.0.0-cx-polish` | CS-P1-010 |
+| Phase 1 Security | `p1-011@1.0.0-extension-cx` | CS-P1-011 |
 
 ---
 
-## Completed Sessions (24 of 24 + 10 Phase 1)
+## Completed Sessions (24 of 24 + 11 Phase 1)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
+| CS-P1-011 | 2026-03-07 | ES1-2 (a11y baseline), ES1-4 (token sync), ES1-5 (version check), ES1-6 (ATS BambooHR+JazzHR), ES1-7 (password reset), ES1-8 (tab labels) | p1-011@1.0.0-extension-cx |
 | CS-P1-010 | 2026-03-07 | DS1-8 (Gmail onboarding), DS1-11 (unified setup), DS1A-13 (extension walkthrough), DS1A-14 (tuning dark), DS1A-15 (pipeline nav), DS1A-16 (resume color), DS1A-17 (notif events), DS1A-18 (snooze dedup), DS1A-19 (sub dark), DS1A-20 (admin survey gate), DS1A-21 (referral !important) | p1-010@1.0.0-cx-polish |
 | CS-P1-009 | 2026-03-07 | CSS-002 (dark mode), CSS-003 (safelist), CSS-004 (purge), DS1-3 (inline styles), DS1-5 (14-page dark), DS1-7 (pipeline dark), DS1-10 (ADR) | p1-009@1.0.0-dark-mode |
 | CS-P1-008 | 2026-03-07 | LS1-10 (JSON-LD sync), LS1-4 (single H1), LS1-8 (localStorage safety), IX-A11Y-003 (form labels), LS1-7 (breakpoints), LS1-11 (carousel fallback), LS1-2/5/9 (verified) | p1-008@1.0.0-landing-cx |
@@ -135,11 +130,10 @@ None.
 
 ---
 
-## Remaining Sessions (7 of 17 Phase 1)
+## Remaining Sessions (6 of 17 Phase 1)
 
 | Session | Phase | Title | Hours |
 |---------|-------|-------|-------|
-| CS-P1-011 | D | Extension CX Hardening | 12–18h |
 | CS-P1-012 | D | Email/SMS Templates + Transactional CX | 10–16h |
 | CS-P1-013 | E | SEO + SRI + Referral Pipeline | 12–18h |
 | CS-P1-014 | E | Compliance: PII Inventory + DPAs + Data Rights | 20–30h |

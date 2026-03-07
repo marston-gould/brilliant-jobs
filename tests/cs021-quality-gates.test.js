@@ -84,8 +84,8 @@ describe('Extension handler DOM snapshots', () => {
   const HANDLERS_DIR = join(ROOT, 'extension/handlers');
   const handlers = readdirSync(HANDLERS_DIR).filter(f => f.endsWith('.js'));
 
-  it('has exactly 15 handlers', () => {
-    expect(handlers.length).toBe(15);
+  it('has exactly 17 handlers', () => {
+    expect(handlers.length).toBe(17);
   });
 
   const expectedHandlers = [

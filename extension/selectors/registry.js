@@ -786,7 +786,90 @@ export const SELECTOR_REGISTRY = [
   },
 
   // ═══════════════════════════════════════════════════════════
-  // 15. Generic (fallback handler)
+  // 15. BambooHR (ES1-6: ATS coverage expansion)
+  // ═══════════════════════════════════════════════════════════
+  {
+    handler: 'bamboohr',
+    urlPattern: /bamboohr\.com/,
+    authRequired: false,
+    selectors: {
+      formContainer: {
+        description: 'BambooHR application form',
+        critical: true,
+        selectors: [
+          '.BambooHR-ATS-board__apply-form',
+          '.ApplicationForm',
+          '[data-testid="application-form"]',
+          'form[id*="application"]',
+        ],
+      },
+      textInput: {
+        description: 'Standard text inputs',
+        critical: true,
+        selectors: [
+          'input[type="text"]',
+          'input[type="email"]',
+          'input[type="tel"]',
+          'input[type="url"]',
+        ],
+      },
+      fileUpload: {
+        description: 'Resume upload',
+        critical: true,
+        selectors: [
+          'input[type="file"][name*="resume" i]',
+          'input[type="file"][accept*="pdf"]',
+          'input[type="file"]',
+        ],
+      },
+    },
+    sampleUrls: ['https://company.bamboohr.com/careers/123'],
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // 16. JazzHR (ES1-6: ATS coverage expansion)
+  // ═══════════════════════════════════════════════════════════
+  {
+    handler: 'jazzhr',
+    urlPattern: /\.applytojob\.com|jazz\.co/,
+    authRequired: false,
+    selectors: {
+      formContainer: {
+        description: 'JazzHR application form',
+        critical: true,
+        selectors: [
+          '#applicant_form',
+          '.jazzhr-application',
+          'form[action*="jazz"]',
+          'form.application-form',
+        ],
+      },
+      textInput: {
+        description: 'Standard text inputs',
+        critical: true,
+        selectors: [
+          'input[type="text"]',
+          'input[type="email"]',
+          'input[type="tel"]',
+          '#applicant_first_name',
+          '#applicant_last_name',
+        ],
+      },
+      fileUpload: {
+        description: 'Resume upload',
+        critical: true,
+        selectors: [
+          'input[type="file"][name*="resume" i]',
+          'input[type="file"][id*="resume"]',
+          'input[type="file"]',
+        ],
+      },
+    },
+    sampleUrls: ['https://company.applytojob.com/apply/abc123/'],
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // 17. Generic (fallback handler)
   // ═══════════════════════════════════════════════════════════
   {
     handler: 'generic',

@@ -438,6 +438,29 @@ async function ensureLoopRunning(context = 'unknown') {
 
 
 
+// ============================================================
+// ES1-4: Token sync — push extension token to dashboard tabs
+// ============================================================
+async function syncTokenToDashboard(authSession) {
+  try {
+    const tabs = await chrome.tabs.query({ url: ['https://brilliantjobs.app/*', 'https://www.brilliantjobs.app/*'] });
+    for (const tab of tabs) {
+      chrome.tabs.sendMessage(tab.id, {
+        type: 'extensionTokenSync',
+        payload: {
+          access_token: authSession.access_token,
+          refresh_token: authSession.refresh_token,
+          expires_at: authSession.expires_at,
+          user_id: authSession.user_id,
+          email: authSession.email
+        }
+      }).catch(() => {}); // Tab may not have content script loaded
+    }
+  } catch {
+    // Non-critical — dashboard tabs may not be open
+  }
+}
+
 function notify(title, message) {
   try {
     chrome.notifications.create({
@@ -1212,8 +1235,32 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         supabase.setAuthToken(authSession.access_token);
         lastRefreshAttempt = 0; // Reset cooldown
         await ensureLoopRunning('tokenUpdated');
+        // ES1-4: Push updated token to any open dashboard tabs
+        syncTokenToDashboard(authSession);
       }
     });
+    sendResponse({ ok: true });
+    return;
+  }
+  // ES1-4: Dashboard→Extension token sync
+  if (msg.type === 'dashboardTokenSync' && msg.payload) {
+    (async () => {
+      try {
+        const { access_token, refresh_token, expires_at, user_id, email } = msg.payload;
+        if (!access_token || !user_id) return;
+        const sessionObj = { access_token, refresh_token, expires_at, user_id, email };
+        if (typeof BJ_CRYPTO !== 'undefined') {
+          await BJ_CRYPTO.secureSet('authSession', sessionObj);
+        } else {
+          await chrome.storage.local.set({ authSession: sessionObj });
+        }
+        supabase.setAuthToken(access_token);
+        lastRefreshAttempt = 0;
+        console.log('[BJ] Token synced from dashboard');
+      } catch (e) {
+        console.warn('[BJ] Dashboard token sync failed:', e.message);
+      }
+    })();
     sendResponse({ ok: true });
     return;
   }

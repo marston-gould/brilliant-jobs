@@ -30,6 +30,8 @@ const ALL_HANDLERS = [
   'handlers/taleo.js',
   'handlers/smartrecruiters.js',
   'handlers/avature.js',
+  'handlers/bamboohr.js',
+  'handlers/jazzhr.js',
 ];
 
 describe('Extension handler files', () => {

@@ -4,10 +4,10 @@
 (function() {
   // Override addLog to route all per-tab logs to unified log
   const sourceMap = {
-    'h-log': 'harvest',
-    's-log': 'scan',
+    'h-log': 'contacts',
+    's-log': 'company-scan',
     'j-log': 'jobs',
-    'd-log': 'data'
+    'd-log': 'export'
   };
 
   window.addLog = function(logId, msg, type) {
@@ -130,6 +130,62 @@
     } catch (e) {
       var verLabel = document.getElementById('ver-label');
       if (verLabel) verLabel.textContent = 'v?.?';
+    }
+  })();
+
+  // ============================================================
+  // ES1-5: Version Mismatch Check
+  // ============================================================
+  // Queries app_config for the latest expected extension version.
+  // Shows a banner if the installed version is behind.
+  (async function checkExtensionVersion() {
+    try {
+      const localRes = await fetch(chrome.runtime.getURL('version.json'));
+      const localVer = (await localRes.json()).version; // e.g. "2.20.0"
+
+      const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+      const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
+
+      const res = await fetch(
+        `${SB_URL}/rest/v1/app_config?select=value&key=eq.extension_latest_version`,
+        { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
+      );
+      if (!res.ok) return;
+
+      const rows = await res.json();
+      if (!rows || rows.length === 0) return;
+
+      const expectedVer = rows[0].value; // e.g. "2.21.0"
+
+      // Compare semver: split and compare numerically
+      function compareSemver(a, b) {
+        const pa = a.split('.').map(Number);
+        const pb = b.split('.').map(Number);
+        for (let i = 0; i < 3; i++) {
+          if ((pa[i] || 0) < (pb[i] || 0)) return -1;
+          if ((pa[i] || 0) > (pb[i] || 0)) return 1;
+        }
+        return 0;
+      }
+
+      if (compareSemver(localVer, expectedVer) < 0) {
+        // Installed version is behind — show banner
+        const banner = document.getElementById('version-mismatch-banner');
+        if (banner) {
+          banner.style.display = 'block';
+          // Dismiss handler
+          var dismissBtn = document.getElementById('version-mismatch-dismiss');
+          if (dismissBtn) {
+            dismissBtn.addEventListener('click', function() {
+              banner.style.display = 'none';
+              // Don't show again this session
+              try { sessionStorage.setItem('bj-version-dismissed', '1'); } catch {}
+            });
+          }
+        }
+      }
+    } catch {
+      // Version check is non-critical — silently fail
     }
   })();
 })();
