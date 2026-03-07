@@ -575,6 +575,12 @@ functions:
     notes: "Landing page job preview. 2 queries/session, CORS locked to brilliantjobs.app"
     adr: "Public because landing page visitors are not authenticated"
 
+  evaluate-alerts:
+    classification: cron-internal
+    trigger: pg_cron
+    surfaces: [backend]
+    notes: "Scheduled evaluation of alert rules against live metrics. Checks cron health, surface latency, error rates, feed freshness. Fires alerts to alert_history."
+
   validate-signup:
     classification: public
     rate_limited: true
@@ -589,7 +595,7 @@ functions:
 # ─── SUMMARY ───────────────────────────────────────────────────────
 # admin-only:    4
 # authenticated: 28
-# cron-internal:  46
+# cron-internal:  47
 # webhook:        7
 # public:         4
-# TOTAL:         89
+# TOTAL:         90

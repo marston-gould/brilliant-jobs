@@ -108,10 +108,10 @@
     container.innerHTML = `
       <!-- Hero Banner — spec 3.1: .referral-hero following .feed-hero/.setup-hero pattern -->
       <div class="referral-hero">
-        <div style="font-size:18px;font-weight:800;margin-bottom:4px;">
-          Share the signal. <span style="color:#f59e0b;">Earn together.</span>
+        <div class="referral-hero-title">
+          Share the signal. <span style="color:var(--warm);">Earn together.</span>
         </div>
-        <div style="font-size:12px;color:rgba(255,255,255,0.8);line-height:1.6;max-width:480px;">
+        <div class="referral-hero-sub">
           For each friend who signs up and runs their first search: you get 7 days of Pro + 25 AI credits. They get the same.
         </div>
         <div class="hero-stats">
@@ -152,7 +152,7 @@
           <span style="font-size:13px;font-weight:600;">Clearance \u2014 Max Tier Reached</span>
         </div>
         <div class="progress-bar-bg" style="height:6px;">
-          <div class="progress-bar-fill" style="width:100%;background:linear-gradient(90deg,#f59e0b,#f97316);"></div>
+          <div class="progress-bar-fill" style="width:100%;background:var(--warm);"></div>
         </div>
       </div>
       `}
@@ -340,13 +340,13 @@ Or use my code: ${referralStats.referral_code}`);
   // ---- Reward tier definitions (spec 3.5) ----
   const REWARD_TIERS = {
     weekly: [
-      { rank: '#1', credits: 50, proDays: 14, color: '#f59e0b', gold: true },
+      { rank: '#1', credits: 50, proDays: 14, color: 'var(--warm)', gold: true },
       { rank: '#2–3', credits: 25, proDays: 7, color: '#3b82f6', gold: false },
       { rank: '#4–10', credits: 10, proDays: 0, color: '#8b5cf6', gold: false },
       { rank: 'Top 10%', credits: 5, proDays: 0, color: '#64748b', gold: false },
     ],
     monthly: [
-      { rank: '#1', credits: 100, proDays: 30, color: '#f59e0b', gold: true },
+      { rank: '#1', credits: 100, proDays: 30, color: 'var(--warm)', gold: true },
       { rank: '#2–3', credits: 50, proDays: 14, color: '#3b82f6', gold: false },
       { rank: '#4–10', credits: 25, proDays: 7, color: '#8b5cf6', gold: false },
       { rank: 'Top 25%', credits: 10, proDays: 0, color: '#64748b', gold: false },
@@ -358,7 +358,7 @@ Or use my code: ${referralStats.referral_code}`);
     if (!grid) return;
     const tiers = REWARD_TIERS[period] || REWARD_TIERS.weekly;
     grid.innerHTML = tiers.map(t => `
-      <div style="text-align:center;padding:12px 8px;border:1px solid var(--border);border-radius:10px;background:var(--bg-card);position:relative;${t.gold ? 'border-top:3px solid #f59e0b;' : ''}">
+      <div style="text-align:center;padding:12px 8px;border:1px solid var(--border);border-radius:10px;background:var(--bg-card);position:relative;${t.gold ? 'border-top:3px solid var(--warm);' : ''}">
         <div style="font-family:var(--mono);font-size:14px;font-weight:700;color:${t.color};margin-bottom:4px;">${t.rank}</div>
         <div style="font-family:var(--mono);font-size:20px;font-weight:800;color:var(--text);line-height:1;">${t.credits}</div>
         <div style="font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">credits</div>
@@ -473,12 +473,12 @@ Or use my code: ${referralStats.referral_code}`);
               const tier = r.tier || 0;
               // Phase 4C: Flair based on tier
               const flairIcon = tier >= 1 ? BADGE_LABELS[ALL_BADGES[Math.min(tier - 1, 4)]]?.icon || '' : '';
-              const nameStyle = tier >= 5 ? 'color:#f59e0b;font-weight:700;' : tier >= 3 ? 'color:var(--accent);font-weight:600;' : '';
-              const nameIcon = tier >= 1 ? `<span style="display:inline-flex;vertical-align:middle;margin-inline-end:4px;width:16px;height:16px;${tier >= 5 ? 'color:#f59e0b;' : tier >= 3 ? 'color:var(--accent);' : 'color:var(--text-faint);'}">${flairIcon.replace(/width="26"/g, 'width="14"').replace(/height="26"/g, 'height="14"')}</span>` : '';
-              const topBadge = tier >= 5 ? ' <span style="font-size:9px;padding:1px 6px;border-radius:4px;background:rgba(245,158,11,0.12);color:#f59e0b;font-weight:700;letter-spacing:.3px;vertical-align:middle;">TOP REFERRER</span>' : '';
+              const nameStyle = tier >= 5 ? 'color:var(--warm);font-weight:700;' : tier >= 3 ? 'color:var(--accent);font-weight:600;' : '';
+              const nameIcon = tier >= 1 ? `<span style="display:inline-flex;vertical-align:middle;margin-inline-end:4px;width:16px;height:16px;${tier >= 5 ? 'color:var(--warm);' : tier >= 3 ? 'color:var(--accent);' : 'color:var(--text-faint);'}">${flairIcon.replace(/width="26"/g, 'width="14"').replace(/height="26"/g, 'height="14"')}</span>` : '';
+              const topBadge = tier >= 5 ? ' <span style="font-size:9px;padding:1px 6px;border-radius:4px;background:var(--warm-dim);color:var(--warm);font-weight:700;letter-spacing:.3px;vertical-align:middle;">TOP REFERRER</span>' : '';
               return `
                 <tr style="${isMe ? 'background:rgba(59,130,246,0.06);' : ''}">
-                  <td style="font-family:var(--mono);font-weight:700;${r.rank === 1 ? 'color:#f59e0b;' : ''}">${r.rank}</td>
+                  <td style="font-family:var(--mono);font-weight:700;${r.rank === 1 ? 'color:var(--warm);' : ''}">${r.rank}</td>
                   <td style="${nameStyle}">${nameIcon}${r.display_name || 'Anonymous'}${isMe ? ' <span style="font-size:10px;color:var(--accent);font-weight:600;">(you)</span>' : ''}${topBadge}</td>
                   <td style="font-family:var(--mono);">${r.referral_count}</td>
                   <td style="font-family:var(--mono);font-size:12px;color:var(--text-dim);">${earning}</td>
@@ -572,8 +572,8 @@ Or use my code: ${referralStats.referral_code}`);
   // ---- Status badge colors ----
   const STATUS_COLORS = {
     sent: '#3b82f6',
-    pending: '#f59e0b',
-    accepted: '#22c55e',
+    pending: 'var(--warm)',
+    accepted: 'var(--green)',
     declined: '#64748b'
   };
 
@@ -627,7 +627,7 @@ Or use my code: ${referralStats.referral_code}`);
     const rate = data.acceptance_rate != null ? Math.round(data.acceptance_rate) : 0;
     const stats = [
       { label: 'Outreach Sent', val: totalSent, mono: true },
-      { label: 'Acceptance Rate', val: `${rate}%`, mono: true, color: '#22c55e' },
+      { label: 'Acceptance Rate', val: `${rate}%`, mono: true, color: 'var(--green)' },
       { label: 'Applied w/ Referral', val: data.applied_with_referral || 0, mono: true, color: '#3b82f6' },
       { label: 'Applied Cold', val: data.applied_cold || 0, mono: true, color: '#64748b' }
     ];

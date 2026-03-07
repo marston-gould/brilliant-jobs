@@ -76,10 +76,10 @@ describe('SE-004: Edge Function Auth Registry', () => {
     }
     expect(counts['admin-only']).toBe(4);
     expect(counts['authenticated']).toBe(28);
-    expect(counts['cron-internal']).toBe(46);
+    expect(counts['cron-internal']).toBe(47);
     expect(counts['webhook']).toBe(7);
     expect(counts['public']).toBe(4);
-    expect(Object.values(counts).reduce((a, b) => a + b, 0)).toBe(89);
+    expect(Object.values(counts).reduce((a, b) => a + b, 0)).toBe(90);
   });
 });
 

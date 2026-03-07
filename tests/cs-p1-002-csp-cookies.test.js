@@ -243,13 +243,13 @@ describe('SE-002: Key rotation procedure', () => {
 // ── SE-005 Deferred: Inline handler count (regression gate) ──
 
 describe('SE-005 deferred: inline handler inventory', () => {
-  it('dashboard.html inline handler count is documented (126 at CS-P1-009)', () => {
+  it('dashboard.html inline handler count is documented (132 at CS-P1-010)', () => {
     const dashboardHtml = fs.readFileSync(path.join(ROOT, 'dashboard.html'), 'utf-8');
     const handlers = dashboardHtml.match(/\bon(?:click|change|submit|load|error|keydown|keyup|focus|blur|mousedown|mouseover|input)\s*=/gi) || [];
-    // CS-P1-009: +4 handlers for theme toggle (nav + 3 settings buttons)
+    // CS-P1-010: +6 handlers for guided install walkthrough (4 steps) + onboarding CTA + Gmail connect
     // This number should only go DOWN as handlers are extracted.
     // When it reaches 0, SE-005 CSP enforcement can be activated.
-    expect(handlers.length).toBeLessThanOrEqual(126);
+    expect(handlers.length).toBeLessThanOrEqual(132);
   });
 
   it('admin.html inline handler count is documented (21 at CS-P1-002)', () => {

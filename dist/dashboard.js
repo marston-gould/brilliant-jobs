@@ -2060,9 +2060,13 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   // Referral attribution — check if new user came via referral link (Phase 4 v5.10)
   try { await processReferralAttribution(currentUser); } catch(e) { reportError('app', e); console.warn('[Referral] Attribution check skipped:', e.message); }
   // Show admin nav immediately — profile already fetched, no extra round trip
-  if (profile && profile.role === 'admin') {
+  window._isAdmin = !!(profile && profile.role === 'admin');
+  if (window._isAdmin) {
     var navAdmin = document.getElementById('nav-admin');
     if (navAdmin) { navAdmin.style.display = ''; console.log('[Admin] \u2713 Nav shown'); }
+    // Show survey analytics tab (admin-only) in Feedback page
+    var surveyTab = document.getElementById('fb-tab-surveys');
+    if (surveyTab) surveyTab.style.display = '';
   }
   // Re-apply active page (tab restore ran while #app was hidden)
   const activeTab = localStorage.getItem('bj_active_tab');
@@ -2078,16 +2082,16 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   if (navPlanEl && profile) {
     if (profile.role === 'admin') {
       navPlanEl.textContent = 'ADMIN';
-      navPlanEl.style.color = '#f59e0b';
+      navPlanEl.style.color = 'var(--warm)';
       navPlanEl.style.fontWeight = '700';
       navPlanEl.style.letterSpacing = '1px';
     } else if ((profile.plan || 'free') === 'pro') {
       navPlanEl.textContent = 'Pro Plan';
-      navPlanEl.style.color = '#3b82f6';
+      navPlanEl.style.color = 'var(--accent)';
       navPlanEl.style.fontWeight = '600';
     } else if ((profile.plan || 'free') === 'enterprise') {
       navPlanEl.textContent = 'Enterprise';
-      navPlanEl.style.color = '#8b5cf6';
+      navPlanEl.style.color = 'var(--purple)';
       navPlanEl.style.fontWeight = '600';
     } else {
       navPlanEl.textContent = 'Free Plan';
@@ -2707,9 +2711,38 @@ $('#download-btn').addEventListener('click', async () => {
     $('#instance-card').style.display = 'block';
     $('#ext-instance-id').textContent = instanceId;
     $('#ext-built-at').textContent = new Date().toLocaleDateString();
+    // DS1A-13: Show guided install walkthrough after download
+    var installGuide = document.getElementById('ext-install-guide');
+    if (installGuide) { installGuide.style.display = ''; installGuide.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    if (window.posthog) posthog.capture('extension_downloaded');
   } catch (e) { status.textContent = 'Error: ' + e.message; }
   btn.disabled = false; btn.textContent = 'Download Extension';
 });
+
+// DS1A-13: Guided install step tracking
+window.markExtStep = function(step) {
+  var el = document.getElementById('ext-step-' + step);
+  if (el) {
+    el.classList.remove('u-dim-25');
+    el.querySelector('.step-num-circle').style.background = 'var(--green)';
+    el.querySelector('.step-num-circle').style.color = '#fff';
+    var btn = el.querySelector('.btn');
+    if (btn) { btn.textContent = '✓ Done'; btn.disabled = true; btn.style.opacity = '0.5'; }
+  }
+  // Unlock next step
+  var next = document.getElementById('ext-step-' + (step + 1));
+  if (next) { next.classList.remove('u-dim-25'); next.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+  if (window.posthog) posthog.capture('extension_install_step', { step: step, step_name: ['unzip', 'open_extensions', 'load_unpacked', 'pin_and_open'][step - 1] });
+  if (step === 4) {
+    if (window.posthog) posthog.capture('extension_install_complete');
+    var guide = document.getElementById('ext-install-guide');
+    if (guide) {
+      guide.style.borderLeftColor = 'var(--green)';
+      var title = guide.querySelector('.card-title');
+      if (title) title.textContent = '✓ Installation Complete';
+    }
+  }
+};
 
 // Update download button — triggers same download flow as main button
 var extUpdateDlBtn = $('#ext-update-dl-btn');
@@ -2768,6 +2801,13 @@ function updateGmailUI(connected, email) {
     gmailChip.textContent = connected ? 'On' : 'Off';
     gmailChip.className = 'hero-stat-val ' + (connected ? 'hs-green' : 'hs-dim');
     if (!connected) gmailChip.style.fontSize = '12px';
+  }
+  // Onboarding card (DS1-8)
+  const gsGmailStatus = document.getElementById('gs-gmail-status');
+  if (gsGmailStatus) {
+    gsGmailStatus.innerHTML = connected
+      ? '<span style="font-size:11px;color:var(--green);font-weight:600;">✓ Connected</span>'
+      : '<button class="btn btn-sm btn-primary" onclick="connectGmail()" style="font-size:11px;padding:4px 12px;">Connect Gmail</button>';
   }
 }
 
@@ -3029,7 +3069,39 @@ function applyProgressiveNav(step) {
     const prompt = document.getElementById('onboard-resume-first');
     if (prompt) prompt.style.display = 'none';
   }
+  
+  // DS1-11: Update unified setup progress bar
+  updateSetupProgress();
 })();
+
+function updateSetupProgress() {
+  var completed = 0;
+  var total = 4;
+  // Resume
+  var hasResume = (typeof resumes !== 'undefined' && resumes && resumes.length > 0);
+  var dotResume = document.getElementById('gs-dot-resume');
+  if (dotResume) dotResume.className = 'setup-status-dot' + (hasResume ? ' connected' : '');
+  if (hasResume) completed++;
+  // Extension
+  var extConnected = document.querySelector('.ext-dot.on') || document.querySelector('.ext-status-dot.connected');
+  var dotExt = document.getElementById('gs-dot-ext');
+  if (dotExt) dotExt.className = 'setup-status-dot' + (extConnected ? ' connected' : '');
+  if (extConnected) completed++;
+  // Gmail
+  var gmailConn = document.querySelector('#gmail-dot.connected') || document.querySelector('#status-gmail.connected');
+  var dotGmail = document.getElementById('gs-dot-gmail');
+  if (dotGmail) dotGmail.className = 'setup-status-dot' + (gmailConn ? ' connected' : '');
+  if (gmailConn) completed++;
+  // Filters
+  var hasFilters = (typeof savedFilters !== 'undefined' && savedFilters && savedFilters.length > 0);
+  var dotFilters = document.getElementById('gs-dot-filters');
+  if (dotFilters) dotFilters.className = 'setup-status-dot' + (hasFilters ? ' connected' : '');
+  if (hasFilters) completed++;
+  // Percentage
+  var pct = Math.round((completed / total) * 100);
+  var pctEl = document.getElementById('gs-progress-pct');
+  if (pctEl) { pctEl.textContent = pct + '%'; pctEl.style.color = pct === 100 ? 'var(--green)' : 'var(--accent)'; }
+}
 
 
 
@@ -23087,6 +23159,9 @@ window.restoreArchiveResume = async function(resumeId) {
 
 var _metricsCharts = {};
 
+/** Resolve a CSS custom property to its computed value (for ECharts which needs raw colors) */
+function _cssColor(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
 // Tab switching for Stats page
 window.switchStatsTab = function(tab) {
   const marketContent = $('#stats-tab-content-market');
@@ -23312,7 +23387,7 @@ function renderLevelFitChart(scores) {
       type: 'bar',
       data: chartData.map(d => ({
         value: d.avg,
-        itemStyle: { color: d.avg >= 70 ? '#22c55e' : d.avg >= 50 ? '#f59e0b' : '#ef4444', borderRadius: [0, 4, 4, 0] }
+        itemStyle: { color: d.avg >= 70 ? _cssColor('--green') : d.avg >= 50 ? _cssColor('--warm') : _cssColor('--red'), borderRadius: [0, 4, 4, 0] }
       })),
       barWidth: 20,
       label: { show: true, position: 'right', color: '#94a3b8', fontSize: 10, formatter: '{c}%' }
@@ -23364,10 +23439,10 @@ function renderPipelineFunnel(usage) {
       }},
       itemStyle: { borderWidth: 0 },
       data: [
-        { value: funnelData[0].value, name: 'Applied', itemStyle: { color: '#3b82f6' } },
+        { value: funnelData[0].value, name: 'Applied', itemStyle: { color: _cssColor('--accent') } },
         { value: funnelData[1].value, name: 'Screened', itemStyle: { color: '#06b6d4' } },
-        { value: funnelData[2].value, name: 'Interview', itemStyle: { color: '#22c55e' } },
-        { value: funnelData[3].value, name: 'Offer', itemStyle: { color: '#f59e0b' } }
+        { value: funnelData[2].value, name: 'Interview', itemStyle: { color: _cssColor('--green') } },
+        { value: funnelData[3].value, name: 'Offer', itemStyle: { color: _cssColor('--warm') } }
       ]
     }]
   });
@@ -26464,10 +26539,10 @@ function updateApplySettingsVisibility(mode) {
     container.innerHTML = `
       <!-- Hero Banner — spec 3.1: .referral-hero following .feed-hero/.setup-hero pattern -->
       <div class="referral-hero">
-        <div style="font-size:18px;font-weight:800;margin-bottom:4px;">
-          Share the signal. <span style="color:#f59e0b;">Earn together.</span>
+        <div class="referral-hero-title">
+          Share the signal. <span style="color:var(--warm);">Earn together.</span>
         </div>
-        <div style="font-size:12px;color:rgba(255,255,255,0.8);line-height:1.6;max-width:480px;">
+        <div class="referral-hero-sub">
           For each friend who signs up and runs their first search: you get 7 days of Pro + 25 AI credits. They get the same.
         </div>
         <div class="hero-stats">
@@ -26508,7 +26583,7 @@ function updateApplySettingsVisibility(mode) {
           <span style="font-size:13px;font-weight:600;">Clearance \u2014 Max Tier Reached</span>
         </div>
         <div class="progress-bar-bg" style="height:6px;">
-          <div class="progress-bar-fill" style="width:100%;background:linear-gradient(90deg,#f59e0b,#f97316);"></div>
+          <div class="progress-bar-fill" style="width:100%;background:var(--warm);"></div>
         </div>
       </div>
       `}
@@ -26696,13 +26771,13 @@ Or use my code: ${referralStats.referral_code}`);
   // ---- Reward tier definitions (spec 3.5) ----
   const REWARD_TIERS = {
     weekly: [
-      { rank: '#1', credits: 50, proDays: 14, color: '#f59e0b', gold: true },
+      { rank: '#1', credits: 50, proDays: 14, color: 'var(--warm)', gold: true },
       { rank: '#2–3', credits: 25, proDays: 7, color: '#3b82f6', gold: false },
       { rank: '#4–10', credits: 10, proDays: 0, color: '#8b5cf6', gold: false },
       { rank: 'Top 10%', credits: 5, proDays: 0, color: '#64748b', gold: false },
     ],
     monthly: [
-      { rank: '#1', credits: 100, proDays: 30, color: '#f59e0b', gold: true },
+      { rank: '#1', credits: 100, proDays: 30, color: 'var(--warm)', gold: true },
       { rank: '#2–3', credits: 50, proDays: 14, color: '#3b82f6', gold: false },
       { rank: '#4–10', credits: 25, proDays: 7, color: '#8b5cf6', gold: false },
       { rank: 'Top 25%', credits: 10, proDays: 0, color: '#64748b', gold: false },
@@ -26714,7 +26789,7 @@ Or use my code: ${referralStats.referral_code}`);
     if (!grid) return;
     const tiers = REWARD_TIERS[period] || REWARD_TIERS.weekly;
     grid.innerHTML = tiers.map(t => `
-      <div style="text-align:center;padding:12px 8px;border:1px solid var(--border);border-radius:10px;background:var(--bg-card);position:relative;${t.gold ? 'border-top:3px solid #f59e0b;' : ''}">
+      <div style="text-align:center;padding:12px 8px;border:1px solid var(--border);border-radius:10px;background:var(--bg-card);position:relative;${t.gold ? 'border-top:3px solid var(--warm);' : ''}">
         <div style="font-family:var(--mono);font-size:14px;font-weight:700;color:${t.color};margin-bottom:4px;">${t.rank}</div>
         <div style="font-family:var(--mono);font-size:20px;font-weight:800;color:var(--text);line-height:1;">${t.credits}</div>
         <div style="font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">credits</div>
@@ -26829,12 +26904,12 @@ Or use my code: ${referralStats.referral_code}`);
               const tier = r.tier || 0;
               // Phase 4C: Flair based on tier
               const flairIcon = tier >= 1 ? BADGE_LABELS[ALL_BADGES[Math.min(tier - 1, 4)]]?.icon || '' : '';
-              const nameStyle = tier >= 5 ? 'color:#f59e0b;font-weight:700;' : tier >= 3 ? 'color:var(--accent);font-weight:600;' : '';
-              const nameIcon = tier >= 1 ? `<span style="display:inline-flex;vertical-align:middle;margin-inline-end:4px;width:16px;height:16px;${tier >= 5 ? 'color:#f59e0b;' : tier >= 3 ? 'color:var(--accent);' : 'color:var(--text-faint);'}">${flairIcon.replace(/width="26"/g, 'width="14"').replace(/height="26"/g, 'height="14"')}</span>` : '';
-              const topBadge = tier >= 5 ? ' <span style="font-size:9px;padding:1px 6px;border-radius:4px;background:rgba(245,158,11,0.12);color:#f59e0b;font-weight:700;letter-spacing:.3px;vertical-align:middle;">TOP REFERRER</span>' : '';
+              const nameStyle = tier >= 5 ? 'color:var(--warm);font-weight:700;' : tier >= 3 ? 'color:var(--accent);font-weight:600;' : '';
+              const nameIcon = tier >= 1 ? `<span style="display:inline-flex;vertical-align:middle;margin-inline-end:4px;width:16px;height:16px;${tier >= 5 ? 'color:var(--warm);' : tier >= 3 ? 'color:var(--accent);' : 'color:var(--text-faint);'}">${flairIcon.replace(/width="26"/g, 'width="14"').replace(/height="26"/g, 'height="14"')}</span>` : '';
+              const topBadge = tier >= 5 ? ' <span style="font-size:9px;padding:1px 6px;border-radius:4px;background:var(--warm-dim);color:var(--warm);font-weight:700;letter-spacing:.3px;vertical-align:middle;">TOP REFERRER</span>' : '';
               return `
                 <tr style="${isMe ? 'background:rgba(59,130,246,0.06);' : ''}">
-                  <td style="font-family:var(--mono);font-weight:700;${r.rank === 1 ? 'color:#f59e0b;' : ''}">${r.rank}</td>
+                  <td style="font-family:var(--mono);font-weight:700;${r.rank === 1 ? 'color:var(--warm);' : ''}">${r.rank}</td>
                   <td style="${nameStyle}">${nameIcon}${r.display_name || 'Anonymous'}${isMe ? ' <span style="font-size:10px;color:var(--accent);font-weight:600;">(you)</span>' : ''}${topBadge}</td>
                   <td style="font-family:var(--mono);">${r.referral_count}</td>
                   <td style="font-family:var(--mono);font-size:12px;color:var(--text-dim);">${earning}</td>
@@ -26928,8 +27003,8 @@ Or use my code: ${referralStats.referral_code}`);
   // ---- Status badge colors ----
   const STATUS_COLORS = {
     sent: '#3b82f6',
-    pending: '#f59e0b',
-    accepted: '#22c55e',
+    pending: 'var(--warm)',
+    accepted: 'var(--green)',
     declined: '#64748b'
   };
 
@@ -26983,7 +27058,7 @@ Or use my code: ${referralStats.referral_code}`);
     const rate = data.acceptance_rate != null ? Math.round(data.acceptance_rate) : 0;
     const stats = [
       { label: 'Outreach Sent', val: totalSent, mono: true },
-      { label: 'Acceptance Rate', val: `${rate}%`, mono: true, color: '#22c55e' },
+      { label: 'Acceptance Rate', val: `${rate}%`, mono: true, color: 'var(--green)' },
       { label: 'Applied w/ Referral', val: data.applied_with_referral || 0, mono: true, color: '#3b82f6' },
       { label: 'Applied Cold', val: data.applied_cold || 0, mono: true, color: '#64748b' }
     ];

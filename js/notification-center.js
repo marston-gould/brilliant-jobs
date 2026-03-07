@@ -313,7 +313,7 @@ async function ncSyncFromUI() {
 // ═══════════════════════════════════════════════════════════
 function ncShowToast(msg, type) {
   var toast = document.createElement('div');
-  var colors = { success: '#22c55e', error: '#ef4444', info: '#3b82f6' };
+  var colors = { success: 'var(--green)', error: 'var(--red)', info: 'var(--accent)' };
   toast.style.cssText = 'position:fixed;top:20px;right:20px;background:var(--bg-card);border:1px solid ' + (colors[type] || colors.info) + ';color:var(--text);padding:14px 20px;border-radius:10px;font-size:13px;z-index:10000;max-width:400px;box-shadow:0 8px 24px rgba(0,0,0,0.3);';
   toast.textContent = msg;
   document.body.appendChild(toast);
@@ -470,6 +470,7 @@ async function initNotificationCenter() {
     ncRenderSmsToggles();
     ncEnforceLockIcons();
     ncCheckOptInModal();
+    ncWirePreferenceEvents();
 
     // Show email confirmation banner on standalone page if not verified
     if (ncState && !ncState.email_verified) {
@@ -500,6 +501,47 @@ async function initNotificationCenter() {
     }
   }, 1500);
   console.log('[NC] Notification Center initialized (Session 2+, v6.51)');
+}
+
+// ═══════════════════════════════════════════════════════════
+// DS1A-17: NOTIFICATION PREFERENCE EVENT TRACKING
+// Fires PostHog events for all 75+ notification preference inputs
+// ═══════════════════════════════════════════════════════════
+function ncWirePreferenceEvents() {
+  var wired = 0;
+  // Wire email toggles
+  document.querySelectorAll('tr[data-notif] .nch-email').forEach(function(toggle) {
+    if (toggle._ncEvented) return;
+    toggle._ncEvented = true;
+    toggle.addEventListener('change', function() {
+      var type = this.closest('tr')?.dataset?.notif || 'unknown';
+      if (window.posthog) posthog.capture('notification_email_toggled', {
+        notification_type: type, enabled: this.checked, channel: 'email'
+      });
+      ncSyncFromUI();
+    });
+    wired++;
+  });
+  // Wire SMS toggles (supplement existing wiring with PostHog event)
+  document.querySelectorAll('tr[data-notif] .nch-sms').forEach(function(toggle) {
+    if (toggle._ncEvented) return;
+    toggle._ncEvented = true;
+    wired++;
+  });
+  // Wire frequency selects
+  document.querySelectorAll('tr[data-notif] .nch-freq').forEach(function(select) {
+    if (select._ncEvented) return;
+    select._ncEvented = true;
+    select.addEventListener('change', function() {
+      var type = this.closest('tr')?.dataset?.notif || 'unknown';
+      if (window.posthog) posthog.capture('notification_frequency_changed', {
+        notification_type: type, frequency: this.value, channel: 'email'
+      });
+      ncSyncFromUI();
+    });
+    wired++;
+  });
+  console.log('[NC] Wired PostHog events to ' + wired + ' notification preference inputs');
 }
 
 // Hook into save buttons on both Applications panel and standalone Notification Center

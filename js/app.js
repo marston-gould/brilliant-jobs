@@ -62,9 +62,13 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   // Referral attribution — check if new user came via referral link (Phase 4 v5.10)
   try { await processReferralAttribution(currentUser); } catch(e) { reportError('app', e); console.warn('[Referral] Attribution check skipped:', e.message); }
   // Show admin nav immediately — profile already fetched, no extra round trip
-  if (profile && profile.role === 'admin') {
+  window._isAdmin = !!(profile && profile.role === 'admin');
+  if (window._isAdmin) {
     var navAdmin = document.getElementById('nav-admin');
     if (navAdmin) { navAdmin.style.display = ''; console.log('[Admin] \u2713 Nav shown'); }
+    // Show survey analytics tab (admin-only) in Feedback page
+    var surveyTab = document.getElementById('fb-tab-surveys');
+    if (surveyTab) surveyTab.style.display = '';
   }
   // Re-apply active page (tab restore ran while #app was hidden)
   const activeTab = localStorage.getItem('bj_active_tab');
@@ -80,16 +84,16 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   if (navPlanEl && profile) {
     if (profile.role === 'admin') {
       navPlanEl.textContent = 'ADMIN';
-      navPlanEl.style.color = '#f59e0b';
+      navPlanEl.style.color = 'var(--warm)';
       navPlanEl.style.fontWeight = '700';
       navPlanEl.style.letterSpacing = '1px';
     } else if ((profile.plan || 'free') === 'pro') {
       navPlanEl.textContent = 'Pro Plan';
-      navPlanEl.style.color = '#3b82f6';
+      navPlanEl.style.color = 'var(--accent)';
       navPlanEl.style.fontWeight = '600';
     } else if ((profile.plan || 'free') === 'enterprise') {
       navPlanEl.textContent = 'Enterprise';
-      navPlanEl.style.color = '#8b5cf6';
+      navPlanEl.style.color = 'var(--purple)';
       navPlanEl.style.fontWeight = '600';
     } else {
       navPlanEl.textContent = 'Free Plan';
@@ -709,9 +713,38 @@ $('#download-btn').addEventListener('click', async () => {
     $('#instance-card').style.display = 'block';
     $('#ext-instance-id').textContent = instanceId;
     $('#ext-built-at').textContent = new Date().toLocaleDateString();
+    // DS1A-13: Show guided install walkthrough after download
+    var installGuide = document.getElementById('ext-install-guide');
+    if (installGuide) { installGuide.style.display = ''; installGuide.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    if (window.posthog) posthog.capture('extension_downloaded');
   } catch (e) { status.textContent = 'Error: ' + e.message; }
   btn.disabled = false; btn.textContent = 'Download Extension';
 });
+
+// DS1A-13: Guided install step tracking
+window.markExtStep = function(step) {
+  var el = document.getElementById('ext-step-' + step);
+  if (el) {
+    el.classList.remove('u-dim-25');
+    el.querySelector('.step-num-circle').style.background = 'var(--green)';
+    el.querySelector('.step-num-circle').style.color = '#fff';
+    var btn = el.querySelector('.btn');
+    if (btn) { btn.textContent = '✓ Done'; btn.disabled = true; btn.style.opacity = '0.5'; }
+  }
+  // Unlock next step
+  var next = document.getElementById('ext-step-' + (step + 1));
+  if (next) { next.classList.remove('u-dim-25'); next.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+  if (window.posthog) posthog.capture('extension_install_step', { step: step, step_name: ['unzip', 'open_extensions', 'load_unpacked', 'pin_and_open'][step - 1] });
+  if (step === 4) {
+    if (window.posthog) posthog.capture('extension_install_complete');
+    var guide = document.getElementById('ext-install-guide');
+    if (guide) {
+      guide.style.borderLeftColor = 'var(--green)';
+      var title = guide.querySelector('.card-title');
+      if (title) title.textContent = '✓ Installation Complete';
+    }
+  }
+};
 
 // Update download button — triggers same download flow as main button
 var extUpdateDlBtn = $('#ext-update-dl-btn');
@@ -770,6 +803,13 @@ function updateGmailUI(connected, email) {
     gmailChip.textContent = connected ? 'On' : 'Off';
     gmailChip.className = 'hero-stat-val ' + (connected ? 'hs-green' : 'hs-dim');
     if (!connected) gmailChip.style.fontSize = '12px';
+  }
+  // Onboarding card (DS1-8)
+  const gsGmailStatus = document.getElementById('gs-gmail-status');
+  if (gsGmailStatus) {
+    gsGmailStatus.innerHTML = connected
+      ? '<span style="font-size:11px;color:var(--green);font-weight:600;">✓ Connected</span>'
+      : '<button class="btn btn-sm btn-primary" onclick="connectGmail()" style="font-size:11px;padding:4px 12px;">Connect Gmail</button>';
   }
 }
 
@@ -1031,7 +1071,39 @@ function applyProgressiveNav(step) {
     const prompt = document.getElementById('onboard-resume-first');
     if (prompt) prompt.style.display = 'none';
   }
+  
+  // DS1-11: Update unified setup progress bar
+  updateSetupProgress();
 })();
+
+function updateSetupProgress() {
+  var completed = 0;
+  var total = 4;
+  // Resume
+  var hasResume = (typeof resumes !== 'undefined' && resumes && resumes.length > 0);
+  var dotResume = document.getElementById('gs-dot-resume');
+  if (dotResume) dotResume.className = 'setup-status-dot' + (hasResume ? ' connected' : '');
+  if (hasResume) completed++;
+  // Extension
+  var extConnected = document.querySelector('.ext-dot.on') || document.querySelector('.ext-status-dot.connected');
+  var dotExt = document.getElementById('gs-dot-ext');
+  if (dotExt) dotExt.className = 'setup-status-dot' + (extConnected ? ' connected' : '');
+  if (extConnected) completed++;
+  // Gmail
+  var gmailConn = document.querySelector('#gmail-dot.connected') || document.querySelector('#status-gmail.connected');
+  var dotGmail = document.getElementById('gs-dot-gmail');
+  if (dotGmail) dotGmail.className = 'setup-status-dot' + (gmailConn ? ' connected' : '');
+  if (gmailConn) completed++;
+  // Filters
+  var hasFilters = (typeof savedFilters !== 'undefined' && savedFilters && savedFilters.length > 0);
+  var dotFilters = document.getElementById('gs-dot-filters');
+  if (dotFilters) dotFilters.className = 'setup-status-dot' + (hasFilters ? ' connected' : '');
+  if (hasFilters) completed++;
+  // Percentage
+  var pct = Math.round((completed / total) * 100);
+  var pctEl = document.getElementById('gs-progress-pct');
+  if (pctEl) { pctEl.textContent = pct + '%'; pctEl.style.color = pct === 100 ? 'var(--green)' : 'var(--accent)'; }
+}
 
 
 

@@ -3,6 +3,9 @@
 
 var _metricsCharts = {};
 
+/** Resolve a CSS custom property to its computed value (for ECharts which needs raw colors) */
+function _cssColor(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
 // Tab switching for Stats page
 window.switchStatsTab = function(tab) {
   const marketContent = $('#stats-tab-content-market');
@@ -228,7 +231,7 @@ function renderLevelFitChart(scores) {
       type: 'bar',
       data: chartData.map(d => ({
         value: d.avg,
-        itemStyle: { color: d.avg >= 70 ? '#22c55e' : d.avg >= 50 ? '#f59e0b' : '#ef4444', borderRadius: [0, 4, 4, 0] }
+        itemStyle: { color: d.avg >= 70 ? _cssColor('--green') : d.avg >= 50 ? _cssColor('--warm') : _cssColor('--red'), borderRadius: [0, 4, 4, 0] }
       })),
       barWidth: 20,
       label: { show: true, position: 'right', color: '#94a3b8', fontSize: 10, formatter: '{c}%' }
@@ -280,10 +283,10 @@ function renderPipelineFunnel(usage) {
       }},
       itemStyle: { borderWidth: 0 },
       data: [
-        { value: funnelData[0].value, name: 'Applied', itemStyle: { color: '#3b82f6' } },
+        { value: funnelData[0].value, name: 'Applied', itemStyle: { color: _cssColor('--accent') } },
         { value: funnelData[1].value, name: 'Screened', itemStyle: { color: '#06b6d4' } },
-        { value: funnelData[2].value, name: 'Interview', itemStyle: { color: '#22c55e' } },
-        { value: funnelData[3].value, name: 'Offer', itemStyle: { color: '#f59e0b' } }
+        { value: funnelData[2].value, name: 'Interview', itemStyle: { color: _cssColor('--green') } },
+        { value: funnelData[3].value, name: 'Offer', itemStyle: { color: _cssColor('--warm') } }
       ]
     }]
   });

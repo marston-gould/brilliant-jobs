@@ -120,7 +120,7 @@
     <p>Loading...</p>
   </div>
 
-  <div class="app" id="app" class="u-hidden">
+  <div class="app u-hidden" id="app">
 
     <nav class="nav" aria-label="Sidebar navigation">
       <div class="nav-brand" id="nav-brand">
@@ -157,7 +157,7 @@
         <div class="nav-item" data-page="jobs">
           <div class="nav-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg></div>
           <span>Jobs Feed</span>
-          <div class="nav-badge" id="nav-jobs-count" class="u-hidden">0</div>
+          <div class="nav-badge u-hidden" id="nav-jobs-count">0</div>
           <div class="ext-status-dot" id="sf-status-dot" title="Create your first saved search" aria-label="No saved searches" role="status"></div>
         </div>
         <div class="nav-item" data-page="tuning" style="padding-left:28px;font-size:12px;">
@@ -168,15 +168,19 @@
         <div class="nav-item" data-page="resumes">
           <div class="nav-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
           <span>Resumes</span>
-          <div class="nav-badge" id="nav-resume-count" class="u-hidden">0</div>
+          <div class="nav-badge u-hidden" id="nav-resume-count">0</div>
           <div class="ext-status-dot" id="resume-status-dot" title="Upload a resume to get started" aria-label="No resumes uploaded" role="status"></div>
         </div>
 
         <div class="nav-section-label">Tracking</div>
+        <div class="nav-item" data-page="pipeline">
+          <div class="nav-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg></div>
+          <span>Pipeline</span>
+        </div>
         <div class="nav-item" data-page="applications">
           <div class="nav-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
           <span>My Applications</span>
-          <div class="nav-badge" id="nav-app-count" class="u-hidden">0</div>
+          <div class="nav-badge u-hidden" id="nav-app-count">0</div>
           <div class="ext-status-dot" id="app-status-dot" title="Application status" aria-label="Application status" role="status"></div>
         </div>
         <div class="nav-item" data-page="notifications">
@@ -202,7 +206,7 @@
         <div class="nav-item" data-page="referrals">
           <div class="nav-icon"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v-2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg></div>
           <span>Referrals</span>
-          <div class="nav-badge" id="nav-ref-count" class="u-hidden">0</div>
+          <div class="nav-badge u-hidden" id="nav-ref-count">0</div>
         </div>
 
         <div class="nav-section-label">Account</div>
@@ -358,6 +362,18 @@
         </div>
         <div class="page-body" style="max-width:760px;">
 
+          <!-- DS1-11: Unified setup progress bar — ties Getting Started to Setup page -->
+          <div id="gs-progress-bar" class="card gs-progress-bar">
+            <div style="font-size:13px;font-weight:600;color:var(--text);">Setup Progress</div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;">
+              <div class="setup-status-item"><span class="setup-status-dot" id="gs-dot-resume"></span> <span class="u-meta">Resume</span></div>
+              <div class="setup-status-item"><span class="setup-status-dot" id="gs-dot-ext"></span> <span class="u-meta">Extension</span></div>
+              <div class="setup-status-item"><span class="setup-status-dot" id="gs-dot-gmail"></span> <span class="u-meta">Gmail</span></div>
+              <div class="setup-status-item"><span class="setup-status-dot" id="gs-dot-filters"></span> <span class="u-meta">Filters</span></div>
+            </div>
+            <div id="gs-progress-pct" style="margin-left:auto;font-family:var(--mono);font-size:14px;font-weight:700;color:var(--accent);">0%</div>
+          </div>
+
           <!-- Resume-first onboarding prompt -->
           <div id="onboard-resume-first" class="gs-resume-drop" role="button" tabindex="0" aria-label="Upload your resume to auto-build your first search" onclick="document.getElementById('resume-input-gs').click()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('resume-input-gs').click()}">
             <div class="gs-resume-drop-icon">
@@ -453,12 +469,15 @@
               Authorize read-only access so Brilliant Jobs can help track your application pipeline &mdash; detecting responses, scheduling interviews, and flagging companies that go silent.
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:16px;">
-              <div class="gs-connect-card">
+              <div class="gs-connect-card" id="gs-gmail-card">
                 <div style="width:36px;height:36px;border-radius:10px;background:hsla(4,80%,56%,0.08);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
                   <svg width="18" height="14" viewBox="0 0 24 18" fill="none"><path d="M1.5 4.5L12 10.5L22.5 4.5V15.75C22.5 16.575 21.825 17.25 21 17.25H3C2.175 17.25 1.5 16.575 1.5 15.75V4.5Z" fill="#EA4335" opacity="0.8"/><path d="M22.5 2.25C22.5 1.425 21.825 0.75 21 0.75H3C2.175 0.75 1.5 1.425 1.5 2.25L12 8.25L22.5 2.25Z" fill="#EA4335"/></svg>
                 </div>
                 <div class="u-label-bold">Gmail</div>
                 <div class="u-meta-dim-lh">Detects confirmations, rejections, and interview requests</div>
+                <div id="gs-gmail-status" style="margin-top:8px;">
+                  <button class="btn btn-sm btn-primary" onclick="connectGmail()" style="font-size:11px;padding:4px 12px;">Connect Gmail</button>
+                </div>
               </div>
               <div class="gs-connect-card">
                 <div style="width:36px;height:36px;border-radius:10px;background:hsla(217,80%,56%,0.08);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
@@ -478,6 +497,9 @@
             <div class="gs-tip">
               <span class="gs-tip-label">Why?</span>
               <span>Gmail and Calendar are the backbone of your application pipeline &mdash; they detect confirmations, rejections, interview invites, and ghosting patterns so your dashboard stays current without you updating it manually.</span>
+            </div>
+            <div class="u-mt-12" style="text-align:center;">
+              <button class="btn btn-primary btn-sm" onclick="document.querySelector('[data-page=setup]').click()" style="font-size:12px;">Open Setup &rarr; Connect Your Accounts</button>
             </div>
           </div>
 
@@ -640,20 +662,20 @@
                   <div class="download-status" id="download-status"></div>
                 </div>
                 <!-- Extension update notification (hidden by default) -->
-                <div id="ext-update-banner" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:8px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);">
-                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-                    <div style="width:8px;height:8px;border-radius:50%;background:#f59e0b;flex-shrink:0;"></div>
-                    <div style="font-size:13px;font-weight:600;color:#f59e0b;">Update available</div>
+                <div id="ext-update-banner" class="ext-update-banner">
+                  <div class="u-flex-gap-8" style="margin-bottom:6px;">
+                    <div class="admin-health-dot amber"></div>
+                    <div style="font-size:13px;font-weight:600;color:var(--warm);">Update available</div>
                   </div>
-                  <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">
+                  <div class="u-meta-dim-lh u-mb-12">
                     Your extension is <strong id="ext-installed-ver">—</strong> — latest is <strong id="ext-required-ver">—</strong>.
                     Download the new version to get the latest features and fixes.
                   </div>
-                  <button class="btn btn-sm" id="ext-update-dl-btn" style="background:#f59e0b;color:#000;font-weight:600;border:none;font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">
+                  <button class="btn btn-sm ext-update-dl-btn" id="ext-update-dl-btn">
                     Download v<span id="ext-update-ver-label">—</span>
                   </button>
                 </div>
-                <div class="card" id="instance-card" style="display:none;margin-top:12px;">
+                <div class="card u-mt-12" id="instance-card" style="display:none;">
                   <div class="card-title">Your Extension Instance</div>
                   <div class="card-sub">Unique parameters for this build</div>
                   <div class="instance-info">
@@ -661,15 +683,45 @@
                     <div>Built: <span id="ext-built-at">—</span></div>
                   </div>
                 </div>
-                <details style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">
-                  <summary style="font-size:12px;font-weight:600;color:var(--text-dim);cursor:pointer;padding:4px 0;">Installation guide</summary>
-                  <div class="install-steps u-mt-12">
-                    <div class="install-step"><div class="step-num-circle">1</div><div class="step-content"><h4>Unzip the download</h4><p>Extract to a permanent folder. Don't delete it — Chrome needs it.</p></div></div>
-                    <div class="install-step"><div class="step-num-circle">2</div><div class="step-content"><h4>Open Chrome Extensions</h4><p>Go to <code>chrome://extensions</code> and turn on <strong>Developer mode</strong>.</p></div></div>
-                    <div class="install-step"><div class="step-num-circle">3</div><div class="step-content"><h4>Load the extension</h4><p>Click <strong>Load unpacked</strong> and select the unzipped folder.</p></div></div>
-                    <div class="install-step"><div class="step-num-circle">4</div><div class="step-content"><h4>Pin and open</h4><p>Click the puzzle icon in Chrome's toolbar and pin the extension.</p></div></div>
+                <!-- DS1A-13: Guided installation walkthrough (always visible after download) -->
+                <div id="ext-install-guide" class="card ext-install-guide">
+                  <div class="card-title" style="margin-bottom:2px;">Installation Guide</div>
+                  <div class="card-sub">Follow these 4 steps to get the extension running</div>
+                  <div class="install-steps">
+                    <div class="install-step" id="ext-step-1" data-step="1">
+                      <div class="step-num-circle">1</div>
+                      <div class="step-content">
+                        <h4>Unzip the download</h4>
+                        <p>Extract the .zip to a <strong>permanent folder</strong> (like <code>~/Extensions/brilliant-jobs</code>). Don&rsquo;t delete it — Chrome needs the folder to keep working.</p>
+                        <button class="btn btn-sm btn-secondary u-mt-8" onclick="markExtStep(1)" style="font-size:11px;padding:3px 10px;">Done &rarr;</button>
+                      </div>
+                    </div>
+                    <div class="install-step" id="ext-step-2" data-step="2" class="u-dim-25">
+                      <div class="step-num-circle">2</div>
+                      <div class="step-content">
+                        <h4>Open Chrome Extensions</h4>
+                        <p>Go to <code>chrome://extensions</code> in your address bar and turn on <strong>Developer mode</strong> (top right toggle).</p>
+                        <button class="btn btn-sm btn-secondary u-mt-8" onclick="markExtStep(2)" style="font-size:11px;padding:3px 10px;">Done &rarr;</button>
+                      </div>
+                    </div>
+                    <div class="install-step" id="ext-step-3" data-step="3" class="u-dim-25">
+                      <div class="step-num-circle">3</div>
+                      <div class="step-content">
+                        <h4>Load the extension</h4>
+                        <p>Click <strong>Load unpacked</strong> and select the unzipped folder you created in step 1.</p>
+                        <button class="btn btn-sm btn-secondary u-mt-8" onclick="markExtStep(3)" style="font-size:11px;padding:3px 10px;">Done &rarr;</button>
+                      </div>
+                    </div>
+                    <div class="install-step" id="ext-step-4" data-step="4" class="u-dim-25">
+                      <div class="step-num-circle">4</div>
+                      <div class="step-content">
+                        <h4>Pin and open</h4>
+                        <p>Click the <strong>puzzle icon</strong> in Chrome's toolbar and <strong>pin</strong> the Brilliant Jobs extension. Then click it to open.</p>
+                        <button class="btn btn-sm btn-primary u-mt-8" onclick="markExtStep(4)" style="font-size:11px;padding:3px 10px;">All done!</button>
+                      </div>
+                    </div>
                   </div>
-                </details>
+                </div>
               </div>
             </div>
 
@@ -1211,7 +1263,7 @@
               </label>
               <label class="u-label-sm">global location exclusions</label>
               <div class="query-builder" id="tuning-location-exclude" style="margin-top:6px;min-height:40px;position:relative;">
-                <input type="text" class="qb-input" id="tuning-loc-excl-input" placeholder="add locations to always exclude… e.g. india, philippines" autocomplete="off" class="u-pr-70">
+                <input type="text" class="qb-input u-pr-70" id="tuning-loc-excl-input" placeholder="add locations to always exclude… e.g. india, philippines" autocomplete="off">
                 <div id="tuning-location-dropdown" class="company-dropdown u-mh-240"></div>
                 <span class="browse-companies-btn" id="browse-tuning-loc-btn" title="Browse locations">Browse</span>
               </div>
@@ -1231,7 +1283,7 @@
             <div class="tuning-card-sub">Jobs from these companies will be hidden from all filters</div>
             <div class="tuning-card-body">
               <div class="query-builder" id="tuning-company-exclude" style="min-height:40px;position:relative;">
-                <input type="text" class="qb-input" id="tuning-co-excl-input" placeholder="add companies to always exclude… e.g. staffing corp, recruiting agency" autocomplete="off" class="u-pr-70">
+                <input type="text" class="qb-input u-pr-70" id="tuning-co-excl-input" placeholder="add companies to always exclude… e.g. staffing corp, recruiting agency" autocomplete="off">
                 <div id="tuning-company-dropdown" class="company-dropdown u-mh-240"></div>
                 <span class="browse-companies-btn" id="browse-tuning-co-btn" title="Browse companies">Browse</span>
               </div>
@@ -1323,7 +1375,7 @@
       </div>
 
       <!-- ============ PIPELINE ============ -->
-      <div class="page" id="page-pipeline" class="u-hidden">
+      <div class="page" id="page-pipeline">
         <div class="page-header">
           <h2>Pipeline</h2>
           <p>Track your applications from saved through offer <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('pipeline')">How this works →</a></p>
@@ -1331,8 +1383,8 @@
         <div class="page-body">
           <!-- S10: Pipeline view toggle -->
           <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;">
-            <button class="btn btn-secondary btn-sm stats-tab-toggle active" id="pl-view-btn-legacy" onclick="switchPipelineView('legacy')" class="u-btn-pill">Legacy Pipeline</button>
-            <button class="btn btn-secondary btn-sm stats-tab-toggle" id="pl-view-btn-overlay" onclick="switchPipelineView('overlay')" class="u-btn-pill">Overlay Pipeline</button>
+            <button class="btn btn-secondary btn-sm stats-tab-toggle active u-btn-pill" id="pl-view-btn-legacy" onclick="switchPipelineView('legacy')">Legacy Pipeline</button>
+            <button class="btn btn-secondary btn-sm stats-tab-toggle u-btn-pill" id="pl-view-btn-overlay" onclick="switchPipelineView('overlay')">Overlay Pipeline</button>
           </div>
           <!-- Legacy view (user_pipeline table) -->
           <div id="pl-view-legacy">
@@ -1369,8 +1421,8 @@
               </select>
             </div>
             <div style="display:flex;gap:8px;margin-block-start:10px;justify-content:flex-end;">
-              <button class="btn btn-secondary btn-sm" onclick="hideManualPipelineAdd()" class="u-fs-11">Cancel</button>
-              <button class="btn btn-primary btn-sm" onclick="saveManualPipelineEntry()" class="u-fs-11">Add to Pipeline</button>
+              <button class="btn btn-secondary btn-sm u-fs-11" onclick="hideManualPipelineAdd()">Cancel</button>
+              <button class="btn btn-primary btn-sm u-fs-11" onclick="saveManualPipelineEntry()">Add to Pipeline</button>
             </div>
           </div>
 
@@ -2884,7 +2936,7 @@
             <div class="card-title u-flex-between">
               <span>Job Search Mode</span>
               <span id="passive-mode-badge" class="passive-mode-badge active" style="font-size:11px;font-weight:600;padding:2px 10px;border-radius:20px;background:var(--green);color:#fff;letter-spacing:.5px;">Active</span>
-              <span id="passive-snooze-badge" style="display:none;font-size:11px;font-weight:600;padding:2px 10px;border-radius:20px;background:var(--warm);color:#fff;letter-spacing:.5px;margin-left:6px;"></span>
+              <span id="passive-snooze-badge" class="passive-snooze-badge"></span>
             </div>
             <div class="card-sub">Active mode shows all matching jobs. Passive mode only alerts you on exceptional matches — no daily digests, no noise.</div>
             <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);">
@@ -2974,17 +3026,17 @@
               <div style="margin-top:18px;border-top:1px solid var(--border);padding-top:16px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
                   <div style="font-size:12px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;">Snooze Alerts</div>
-                  <button id="passive-snooze-resume-btn" style="display:none;font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;">Resume now</button>
+                  <button id="passive-snooze-resume-btn" class="passive-snooze-resume-btn">Resume now</button>
                 </div>
                 <div style="font-size:13px;color:var(--text-faint);margin-bottom:10px;">Pause all passive alerts temporarily without turning off passive mode.</div>
-                <button id="passive-snooze-btn" style="font-size:12px;font-weight:600;padding:6px 14px;border-radius:6px;background:var(--bg-input);color:var(--text);border:1px solid var(--border);cursor:pointer;">Pause passive alerts&hellip;</button>
-                <div id="passive-snooze-panel" style="display:none;margin-top:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:12px;">
+                <button id="passive-snooze-btn" class="passive-snooze-btn">Pause passive alerts&hellip;</button>
+                <div id="passive-snooze-panel" class="passive-snooze-panel">
                   <div style="font-size:12px;color:var(--text-dim);font-weight:600;margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px;">Pause for how long?</div>
                   <div style="display:flex;flex-direction:column;gap:6px;">
-                    <button class="passive-snooze-duration-btn" data-duration="1w" class="u-dropdown-btn">1 week</button>
-                    <button class="passive-snooze-duration-btn" data-duration="2w" class="u-dropdown-btn">2 weeks</button>
-                    <button class="passive-snooze-duration-btn" data-duration="1m" class="u-dropdown-btn">1 month</button>
-                    <button class="passive-snooze-duration-btn" data-duration="indef" class="u-dropdown-btn">Indefinitely</button>
+                    <button class="passive-snooze-duration-btn u-dropdown-btn" data-duration="1w">1 week</button>
+                    <button class="passive-snooze-duration-btn u-dropdown-btn" data-duration="2w">2 weeks</button>
+                    <button class="passive-snooze-duration-btn u-dropdown-btn" data-duration="1m">1 month</button>
+                    <button class="passive-snooze-duration-btn u-dropdown-btn" data-duration="indef">Indefinitely</button>
                   </div>
                 </div>
               </div>
@@ -3196,8 +3248,8 @@
         </div>
         <div class="page-body">
         <div style="display:flex;gap:8px;margin-bottom:20px">
-          <button class="admin-tab active" id="fb-tab-surveys" onclick="switchFeedbackTab('surveys')">Surveys</button>
-          <button class="admin-tab" id="fb-tab-features" onclick="switchFeedbackTab('features')">Feature Requests</button>
+          <button class="admin-tab" id="fb-tab-surveys" onclick="switchFeedbackTab('surveys')" style="display:none;">Surveys</button>
+          <button class="admin-tab active" id="fb-tab-features" onclick="switchFeedbackTab('features')">Feature Requests</button>
           <button class="admin-tab" id="fb-tab-bugs" onclick="switchFeedbackTab('bugs')">Bug Reports</button>
           <a href="https://brilliant-jobs.canny.io/changelog" target="_blank" rel="noopener" style="margin-left:auto;font-size:13px;color:var(--accent);text-decoration:none;display:flex;align-items:center;gap:4px;">
             Changelog <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
@@ -3205,7 +3257,7 @@
         </div>
 
         <!-- Surveys Panel (moved from Admin) -->
-        <div class="feedback-panel active" id="fb-panel-surveys">
+        <div class="feedback-panel" id="fb-panel-surveys">
           <div style="display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap" id="fb-survey-period-toggle">
             <button class="admin-period-btn active" data-fb-survey-days="30">30d</button>
             <button class="admin-period-btn" data-fb-survey-days="90">90d</button>
@@ -3248,7 +3300,7 @@
         </div>
 
         <!-- Feature Requests Panel (Canny) -->
-        <div class="feedback-panel" id="fb-panel-features" class="u-hidden">
+        <div class="feedback-panel active" id="fb-panel-features">
           <div id="canny-widget-container-features" style="min-height:400px;">
             <div data-canny id="canny-embed"></div>
           </div>

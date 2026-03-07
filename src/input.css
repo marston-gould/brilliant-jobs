@@ -937,8 +937,8 @@
       .resume-hero > div:last-child { font-size: 12px !important; line-height: 1.5 !important; }
       .feed-hero { padding: 20px 18px; margin-bottom: 14px; }
       .referral-hero { padding: 20px 18px; margin-bottom: 14px; }
-      .referral-hero > div:first-child { font-size: 16px !important; }
-      .referral-hero > div:nth-child(2) { font-size: 12px !important; line-height: 1.5 !important; }
+      .referral-hero-title { font-size: 16px; }
+      .referral-hero-sub { font-size: 12px; line-height: 1.5; }
       .app-hero, .ghost-hero { padding: 20px 18px; margin-bottom: 14px; }
       .app-hero > div:first-child, .ghost-hero > div:first-child { font-size: 16px !important; }
       .hero-stats { gap: 6px; }
@@ -1649,6 +1649,8 @@
                   radial-gradient(ellipse 50% 50% at 90% 0%, hsla(258,90%,66%,0.1), transparent);
     }
     .referral-hero > * { position: relative; }
+    .referral-hero-title { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+    .referral-hero-sub { font-size: 12px; color: rgba(255,255,255,0.8); line-height: 1.6; max-width: 480px; }
 
     /* Hero stat chips (shared by feed-hero + resume-hero) */
     .hero-stats {
@@ -1667,8 +1669,8 @@
       font-size: 9px; color: rgba(255,255,255,0.55); text-transform: uppercase;
       letter-spacing: 0.3px; line-height: 1; white-space: nowrap; margin-top: 4px;
     }
-    .hero-stat-val.hs-accent { color: #f59e0b; }
-    .hero-stat-val.hs-green { color: #22c55e; }
+    .hero-stat-val.hs-accent { color: var(--warm); }
+    .hero-stat-val.hs-green { color: var(--green); }
     .hero-stat-val.hs-dim { color: rgba(255,255,255,0.45); }
 
     /* Intelligence / Merch slot */
@@ -1917,7 +1919,7 @@
     /* ── Pipeline Signal Dots (5-color) ── */
     .pl-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
     .pl-dot-green { background: var(--green); }
-    .pl-dot-yellow { background: #f59e0b; }
+    .pl-dot-yellow { background: var(--warm); }
     .pl-dot-red { background: var(--red); }
     .pl-dot-gray { background: var(--text-faint); opacity: 0.5; }
     .pl-dot-blue { background: var(--accent); cursor: pointer; animation: pl-pulse 1.5s ease-in-out infinite; }
@@ -1948,6 +1950,22 @@
     .pl-sig-dismiss { color: var(--text-faint); }
     .pl-sig-dismiss:hover { color: var(--red); border-color: var(--red); }
     .pl-sig-snooze { color: var(--text-dim); }
+
+    /* Passive snooze UI */
+    .passive-snooze-badge { display:none; font-size:11px; font-weight:600; padding:2px 10px; border-radius:20px; background:var(--warm); color:#fff; letter-spacing:.5px; margin-left:6px; }
+    .passive-snooze-resume-btn { display:none; font-size:11px; font-weight:600; padding:3px 10px; border-radius:6px; background:var(--accent); color:#fff; border:none; cursor:pointer; }
+    .passive-snooze-resume-btn:hover { filter: brightness(1.1); }
+    .passive-snooze-btn { font-size:12px; font-weight:600; padding:6px 14px; border-radius:6px; background:var(--bg-input); color:var(--text); border:1px solid var(--border); cursor:pointer; font-family:var(--sans); }
+    .passive-snooze-btn:hover { background:var(--bg-hover); border-color:var(--border-hover); }
+    .passive-snooze-panel { display:none; margin-top:10px; background:var(--bg-input); border:1px solid var(--border); border-radius:8px; padding:12px; }
+    .passive-snooze-duration-btn { transition: all .15s; }
+    .passive-snooze-duration-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+    /* Extension update banner */
+    .ext-update-banner { display:none; margin-bottom:12px; padding:10px 14px; border-radius:8px; background:var(--warm-dim); border:1px solid hsla(var(--warm-hsl),0.3); }
+    .ext-update-dl-btn { background:var(--warm); color:#000; font-weight:600; border:none; }
+    .ext-install-guide { display:none; margin-top:12px; border-left:3px solid var(--accent); }
+    .gs-progress-bar { padding:14px 20px; margin-bottom:20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
     .pl-sig-correct { color: var(--accent); border-color: var(--accent); }
 
     /* ── Per-entry action menu ── */
@@ -2470,18 +2488,18 @@
     .credit-icon { flex-shrink: 0; color: var(--text-faint); }
     .credit-balance-count { font-family: var(--mono); font-weight: 700; font-size: 14px; }
     .credit-balance-label { font-size: 10px; color: var(--text-faint); }
-    .credit-green { color: hsl(142, 60%, 40%); }
-    .credit-amber { color: hsl(38, 90%, 45%); }
-    .credit-red { color: hsl(0, 70%, 50%); }
+    .credit-green { color: var(--green); }
+    .credit-amber { color: var(--warm); }
+    .credit-red { color: var(--red); }
 
     /* ─── Subscription Page: Low Credit Alert ─── */
     .sub-alert {
       display: flex; align-items: center; gap: 12px;
       padding: 12px 16px; margin-block-end: 20px;
-      background: hsl(38, 92%, 96%); border: 1px solid hsl(38, 80%, 80%);
+      background: var(--warm-dim); border: 1px solid hsla(var(--warm-hsl), 0.3);
       border-radius: 10px; animation: fadeIn 0.3s ease;
     }
-    .sub-alert-critical { background: hsl(0, 85%, 96%); border-color: hsl(0, 70%, 80%); }
+    .sub-alert-critical { background: var(--red-dim); border-color: hsla(var(--red-hsl), 0.3); }
     .sub-alert-icon { font-size: 20px; flex-shrink: 0; }
     .sub-alert-text { flex: 1; font-size: 13px; color: var(--text); line-height: 1.5; }
     .sub-alert-text strong { font-weight: 700; }
@@ -2546,7 +2564,7 @@
       font-size: 12px; color: var(--text-dim); text-align: start;
     }
     .sub-tier-features li { padding: 3px 0; padding-inline-start: 16px; position: relative; }
-    .sub-tier-features li::before { content: '✓'; position: absolute; inset-inline-start: 0; color: hsl(142, 60%, 40%); font-weight: 700; }
+    .sub-tier-features li::before { content: '✓'; position: absolute; inset-inline-start: 0; color: var(--green); font-weight: 700; }
 
     /* ─── Subscription Page: Credit Packs ─── */
     .sub-packs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
@@ -2572,8 +2590,8 @@
     .sub-refill-level label { cursor: pointer; font-size: 13px; }
     .sub-refill-level strong { font-size: 16px; }
     .sub-refill-discount {
-      font-size: 10px; font-weight: 700; color: hsl(142, 60%, 40%);
-      background: hsl(142, 50%, 94%); padding: 1px 6px; border-radius: 4px;
+      font-size: 10px; font-weight: 700; color: var(--green);
+      background: var(--green-dim); padding: 1px 6px; border-radius: 4px;
       margin-inline-start: 6px;
     }
     .sub-refill-detail { font-size: 11px; color: var(--text-faint); margin-block-start: 4px; }
@@ -2582,8 +2600,8 @@
     .sub-upgrade-banner {
       display: flex; align-items: center; gap: 16px;
       padding: 16px 20px; margin-block-start: 20px;
-      background: linear-gradient(135deg, hsl(217, 100%, 96%), hsl(217, 80%, 92%));
-      border: 1px solid hsl(217, 60%, 85%);
+      background: linear-gradient(135deg, hsla(var(--accent-hsl), 0.08), hsla(var(--accent-hsl), 0.15));
+      border: 1px solid hsla(var(--accent-hsl), 0.2);
       border-radius: 12px;
     }
     .sub-upgrade-text { flex: 1; }
@@ -3282,6 +3300,27 @@
     [data-theme="dark"] ::-webkit-scrollbar-track { background: var(--bg-main); }
     [data-theme="dark"] ::-webkit-scrollbar-thumb { background: hsl(225, 12%, 28%); }
     [data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: hsl(225, 12%, 35%); }
+
+    /* Tuning page dark mode */
+    [data-theme="dark"] .level-table input {
+      background: var(--bg-input);
+      color: var(--text);
+      border-color: transparent;
+    }
+    [data-theme="dark"] .level-table input:focus {
+      border-color: var(--accent);
+      background: var(--bg-card);
+    }
+    [data-theme="dark"] .level-table td { border-color: var(--border); }
+    [data-theme="dark"] .tuning-card { box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+    [data-theme="dark"] .tuning-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.25); }
+    [data-theme="dark"] .tuning-card-badge { background: hsla(var(--accent-hsl),0.15); }
+    @media (prefers-color-scheme: dark) {
+      [data-theme="auto"] .level-table input { background: var(--bg-input); color: var(--text); border-color: transparent; }
+      [data-theme="auto"] .level-table input:focus { border-color: var(--accent); background: var(--bg-card); }
+      [data-theme="auto"] .level-table td { border-color: var(--border); }
+      [data-theme="auto"] .tuning-card { box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+    }
 
     /* ── THEME TOGGLE ──────────────────────────────────────── */
     .theme-toggle {

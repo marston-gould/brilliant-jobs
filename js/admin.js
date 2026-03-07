@@ -65,6 +65,7 @@ var ADMIN_SUBPAGE_MAP = {
   'error-replay':   { section: 'operations',  label: 'Error Replay',   init: function(){ loadErrorReplayPanel(); } },
   'ef-health':      { section: 'operations',  label: 'EF Health',      init: function(){ loadEfHealthPanel(); } },
   'db-activity':    { section: 'operations',  label: 'DB Activity',    init: function(){ loadDbActivityPanel(); } },
+  'posthog-insights':{ section: 'operations',  label: 'PostHog Insights',init: function(){ loadPostHogInsightsPanel(); } },
   'kill-switch':    { section: 'operations',  label: 'Kill Switch',    init: function(){ loadKillSwitchPanel(); } },
   // ── Growth ──
   'seo':            { section: 'growth',      label: 'SEO',            init: function(){ loadSeoTab(); } },
