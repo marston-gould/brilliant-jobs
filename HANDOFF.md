@@ -36,7 +36,7 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 **CS-023** — Admin Monitoring Dashboards Part 1 (AD-FIX-11, AD-FIX-12)
 - Completed: 2026-03-07
-- Commit: (pending push)
+- Commit: `087436e`
 - Tags: `admin@1.0.0-monitoring`
 - Fix items resolved: AD-FIX-11 (monitoring dashboard), AD-FIX-12 (operational alerts)
 - Notes: New "Monitoring" subpage — aggregated health dashboard (health-check EF, cron summary, feed freshness, surface latency, recent alerts, summary cards, status banner). New "Alerts" subpage — alert rules CRUD, alert history with ack/resolve workflow, rule creation modal, PostHog + email notification routing, 6 default rules seeded. Migration: health_check_log, alert_rules, alert_history tables + v_monitoring_summary view. 36 new tests (665 total). Audit trail wired for all alert actions. Both panels auto-refresh with cleanup.
