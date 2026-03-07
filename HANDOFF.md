@@ -34,16 +34,15 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**CS-P1-011** — Extension CX Hardening (Phase D: CX + Analytics)
+**CS-P1-012** — Email/SMS Templates + Transactional CX (Phase D: CX + Analytics)
 - Completed: 2026-03-07
-- Tags: `p1-011@1.0.0-extension-cx`, `extension@2.21.0`
-- ES1-8: Tab labels changed from jargon (Harvest/Scan/Data) to user-friendly (Contacts/Company Scan/Export). Button labels updated throughout.
-- ES1-7: Password reset dead end fixed. Inline reset panel with Supabase /recover API, PostHog tracking, pre-filled email.
-- ES1-2: A11y baseline for overlay + toolbar. role=dialog/toolbar, aria-labels, aria-expanded, progressbar ARIA, focus-visible styles, Escape key dismiss, role=menu/menuitem on stage picker.
-- ES1-5: Version mismatch check. Queries app_config for expected version, shows update banner with dismiss. Semver comparison.
-- ES1-4: Token divergence sync. New token-sync.js content script on brilliantjobs.app. Dashboard→extension sync via localStorage observation. Extension→dashboard sync via background.js tab messaging. dashboardTokenSync handler in background.js.
-- ES1-6: ATS coverage expanded from 15→17. BambooHR and JazzHR handlers with generic fallback. Selector registry, manifest, and web_accessible_resources updated.
-- 52 new tests (1221 total). Version v7.38, extension v2.21.0.
+- Tags: `p1-012@1.0.0-email-sms-cx`, `email-templates@1.0.0-modular`
+- TS1-3: Dark mode added to whiteBaseLayout — @media (prefers-color-scheme: dark) block with full element overrides. color-scheme + supported-color-schemes meta tags added to both layouts. 49 white-theme templates now dual-mode.
+- TS1-4: A/B drip framework — ab_experiments, ab_assignments, ab_results tables with RLS. assignVariant() with weighted random + sticky assignment. resolveTemplate() wired with userId param. A/B tracking in notification_log payload. ab_assignments.email_sent marked on success. Hourly aggregation cron. 3 draft experiments seeded (onboarding_welcome, re_engagement_14d, re_engagement_30d).
+- TS1-5: SMS overflow — safeSms() utility enforcing 160-char single-segment limit with truncation + link fallback. Applied to all 4 SMS template functions. sendSMS() safety net guard added. creditAlertSms compact phrasing with plan truncation.
+- TS1-6: 188KB email-templates.ts split into 8 focused modules (email-base, email-core, email-credits, email-onboarding, email-analytics, email-referral, email-billing, email-engagement). Barrel re-export preserves all 16 existing edge function imports. Largest module: 45.9KB (exit gate: <60KB). 
+- Updated cs-p1-007 tests for modular file reads.
+- 31 new tests (1252 total). No product version bump (server-side only).
 
 ---
 
@@ -55,18 +54,18 @@ None.
 
 ## Next Session
 
-**CS-P1-012: Email/SMS Templates + Transactional CX** (Phase D: CX + Analytics)
+**CS-P1-013: SEO + SRI + Referral Pipeline** (Phase E: SEO + Compliance)
 
 | Field | Detail |
 |-------|--------|
-| Surface | Email + SMS |
-| Fix Items | TS1-3, TS1-4, TS1-5, TS1-6 |
-| Hours | 10–16h |
-| Pair | Frontend + Backend |
+| Surface | Landing Page + SEO Pages |
+| Fix Items | IX-DM-001, IX-SEO-001, IX-SEO-002, IX-SEO-003, IX-DA-002, IX-FE-006 |
+| Hours | 12–18h |
+| Pair | Frontend + Data |
 
-**Entry Gate:** CS-P1-011 complete (extension CX hardening done).
+**Entry Gate:** CS-P1-012 complete (email/SMS templates done).
 
-**Exit Gate:** Email templates dark-mode compatible. A/B test framework deployed. SMS overflow fixed. Email template modularized.
+**Exit Gate:** CDN scripts have SRI hashes. Canonical URL tag present. OG/Twitter cards deployed. JSON-LD accurate. Referral attribution chain intact through auth redirect. All .io references replaced with .app.
 
 ---
 
@@ -83,15 +82,16 @@ None.
 | Quality Gates | `qualitygates@1.0.0` | CS-021 |
 | Dry Run | `dryrun@1.0.0` | CS-022 |
 | SEO Pages | (no remediation tag yet) | — |
-| Email Templates | `email-templates@0.1.0-utm` | CS-011 |
-| Phase 1 Security | `p1-011@1.0.0-extension-cx` | CS-P1-011 |
+| Email Templates | `email-templates@1.0.0-modular` | CS-P1-012 |
+| Phase 1 Security | `p1-012@1.0.0-email-sms-cx` | CS-P1-012 |
 
 ---
 
-## Completed Sessions (24 of 24 + 11 Phase 1)
+## Completed Sessions (24 of 24 + 12 Phase 1)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
+| CS-P1-012 | 2026-03-07 | TS1-3 (dark mode email), TS1-4 (A/B drip framework), TS1-5 (SMS overflow), TS1-6 (template modularization) | p1-012@1.0.0-email-sms-cx |
 | CS-P1-011 | 2026-03-07 | ES1-2 (a11y baseline), ES1-4 (token sync), ES1-5 (version check), ES1-6 (ATS BambooHR+JazzHR), ES1-7 (password reset), ES1-8 (tab labels) | p1-011@1.0.0-extension-cx |
 | CS-P1-010 | 2026-03-07 | DS1-8 (Gmail onboarding), DS1-11 (unified setup), DS1A-13 (extension walkthrough), DS1A-14 (tuning dark), DS1A-15 (pipeline nav), DS1A-16 (resume color), DS1A-17 (notif events), DS1A-18 (snooze dedup), DS1A-19 (sub dark), DS1A-20 (admin survey gate), DS1A-21 (referral !important) | p1-010@1.0.0-cx-polish |
 | CS-P1-009 | 2026-03-07 | CSS-002 (dark mode), CSS-003 (safelist), CSS-004 (purge), DS1-3 (inline styles), DS1-5 (14-page dark), DS1-7 (pipeline dark), DS1-10 (ADR) | p1-009@1.0.0-dark-mode |
@@ -130,11 +130,10 @@ None.
 
 ---
 
-## Remaining Sessions (6 of 17 Phase 1)
+## Remaining Sessions (5 of 17 Phase 1)
 
 | Session | Phase | Title | Hours |
 |---------|-------|-------|-------|
-| CS-P1-012 | D | Email/SMS Templates + Transactional CX | 10–16h |
 | CS-P1-013 | E | SEO + SRI + Referral Pipeline | 12–18h |
 | CS-P1-014 | E | Compliance: PII Inventory + DPAs + Data Rights | 20–30h |
 | CS-P1-015 | F | TypeScript Migration (Incremental) | 24–40h |

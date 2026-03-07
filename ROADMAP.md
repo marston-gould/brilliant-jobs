@@ -3035,10 +3035,10 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.146 | TS1-3: Dark-first email rendering | 2h | — | 🔲 | Templates not optimized for dark mode clients. |
-| 0.147 | TS1-4: No A/B testing drip emails | 2h | — | 🔲 | PostHog experiments. Depends on TS1-1. |
-| 0.148 | TS1-5: Credit alert SMS overflow | 30min | — | 🔲 | Truncates on some carriers. Shorten. |
-| 0.149 | TS1-6: 181KB monolithic email template | 3h | — | 🔲 | Split into composable modules. Backlog. |
+| 0.146 | TS1-3: Dark-first email rendering | 2h | CS-P1-012 | ✅ | whiteBaseLayout now includes @media (prefers-color-scheme: dark). Both layouts have color-scheme meta. |
+| 0.147 | TS1-4: No A/B testing drip emails | 2h | CS-P1-012 | ✅ | A/B framework: ab_experiments + ab_assignments + ab_results tables, assignVariant(), resolveTemplate wired, PostHog tracking. 3 draft experiments seeded. |
+| 0.148 | TS1-5: Credit alert SMS overflow | 30min | CS-P1-012 | ✅ | safeSms() enforces 160-char limit. Applied to all templates + sendSMS safety net. creditAlertSms compact phrasing. |
+| 0.149 | TS1-6: 181KB monolithic email template | 3h | CS-P1-012 | ✅ | Split into 8 modules (largest 45.9KB). Barrel re-export preserves all existing imports. |
 
 ### 0-AA: Quality Gates — Regression Prevention (Phase 0d, parallel)
 
