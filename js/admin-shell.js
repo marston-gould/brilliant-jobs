@@ -34,6 +34,8 @@
 
     var user = authRes.data.user;
     window.currentUser = user;
+    // G11: also update the let binding in globals.js scope (let !== window property)
+    currentUser = user;
 
     // 2. Check admin role
     var profileRes = await sb.from('profiles')
