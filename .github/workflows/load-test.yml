@@ -1,5 +1,6 @@
 # Brilliant Jobs — Load Test Pipeline
 # CS-020 FIX-20: Runs k6 load tests against production or staging
+# SA-023b: Added scale-5k-suite and scale5k profile for 5,000 concurrent test
 # Manual trigger only (workflow_dispatch) — never run automatically
 
 name: Load Test
@@ -14,6 +15,7 @@ on:
         options:
           - smoke
           - ramp
+          - scale5k
           - spike
         default: smoke
       target:
@@ -26,6 +28,7 @@ on:
           - extension-heartbeat
           - admin-concurrent
           - full-suite
+          - scale-5k-suite
         default: preview-jobs
       environment:
         description: 'Target environment'
@@ -40,7 +43,7 @@ jobs:
   load-test:
     name: k6 Load Test (${{ inputs.target }} / ${{ inputs.profile }})
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60  # SA-023b: 5K test needs ~30 min (24 min ramp + buffer)
 
     steps:
       - uses: actions/checkout@v4
@@ -60,10 +63,11 @@ jobs:
         run: |
           if [ "${{ inputs.environment }}" = "production" ]; then
             echo "SUPABASE_URL=https://qojhagupdnbtomfoxnsf.supabase.co" >> $GITHUB_OUTPUT
+            echo "GATEWAY_URL=https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/api-gateway" >> $GITHUB_OUTPUT
             echo "LANDING_URL=https://brilliantjobs.app" >> $GITHUB_OUTPUT
           else
-            # Staging uses same Supabase (until separate staging project created)
             echo "SUPABASE_URL=https://qojhagupdnbtomfoxnsf.supabase.co" >> $GITHUB_OUTPUT
+            echo "GATEWAY_URL=https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/api-gateway" >> $GITHUB_OUTPUT
             echo "LANDING_URL=https://brilliantjobs.app" >> $GITHUB_OUTPUT
           fi
 
@@ -72,6 +76,7 @@ jobs:
           k6 run \
             --env PROFILE=${{ inputs.profile }} \
             --env SUPABASE_URL=${{ steps.env.outputs.SUPABASE_URL }} \
+            --env GATEWAY_URL=${{ steps.env.outputs.GATEWAY_URL }} \
             --env LANDING_URL=${{ steps.env.outputs.LANDING_URL }} \
             --env K6_TEST_EMAIL=${{ secrets.K6_TEST_EMAIL }} \
             --env K6_TEST_PASSWORD=${{ secrets.K6_TEST_PASSWORD }} \

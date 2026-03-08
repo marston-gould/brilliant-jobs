@@ -4,6 +4,7 @@
 export const CONFIG = {
   // Base URLs
   SUPABASE_URL: __ENV.SUPABASE_URL || 'https://qojhagupdnbtomfoxnsf.supabase.co',
+  GATEWAY_URL: __ENV.GATEWAY_URL || 'https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/api-gateway',
   SUPABASE_ANON_KEY: __ENV.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg',
   LANDING_URL: __ENV.LANDING_URL || 'https://brilliantjobs.app',
   ADMIN_URL: __ENV.ADMIN_URL || 'https://brilliantjobs.app/admin',
@@ -32,6 +33,17 @@ export const CONFIG = {
         { duration: '3m', target: 1200 },
         { duration: '5m', target: 1200 },  // sustained peak
         { duration: '2m', target: 0 },      // cool-down
+      ],
+    },
+    // Scale-5k: SA-023b — 5,000 concurrent, 10min sustained peak
+    scale5k: {
+      stages: [
+        { duration: '2m', target: 500 },    // warm-up
+        { duration: '3m', target: 1500 },
+        { duration: '3m', target: 3000 },
+        { duration: '3m', target: 5000 },   // ramp to target
+        { duration: '10m', target: 5000 },  // sustained peak (10 min)
+        { duration: '3m', target: 0 },      // cool-down
       ],
     },
     // Spike: sudden burst to test kill-switch / rate limits

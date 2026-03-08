@@ -52,6 +52,22 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**SA-023b** — Load Test 5,000 Concurrent (Phase S4 — Gap Fill)
+- Completed: 2026-03-08
+- Git tag: `loadtest@5k-v1.0.0`
+- No product version bump (test infrastructure only, no JS/CSS/HTML user-facing changes)
+- ROADMAP.md updated: SA-023b row → ✅ with completion notes
+- roadmap.html updated: SA-023b entry → `s: 'done'`, p: 100
+- **Created:**
+  - `load-tests/scale-5k-suite.js` — 4-scenario k6 test: search (2000 VUs), dashboard (1500), extension (1000), admin (500). All traffic routed through API gateway (SA-005). 7 exit gates: search p95 < 500ms, dashboard p95 < 1500ms, heartbeat p95 < 1000ms, admin p95 < 2000ms, gateway p95 < 2000ms, zero 5xx, error rate < 0.1%. Tracks read-replica routing (SA-018 X-Gateway-Db-Mode header). Tests partitioned ats_jobs queries (SA-019). Tests capacity-model endpoint (SA-028). 10-minute sustained peak. JSON results output with pass/fail verdict.
+  - `tests/sa-023b-load-test-5k.test.js` — 47 validation tests (10 sections: suite file, exit gates, gateway routing, scaling infrastructure, config, workflow, README, summary report, existing tests preserved, file inventory)
+- **Modified:**
+  - `load-tests/config.js` — Added `scale5k` profile (ramp to 5000 VUs over 11min + 10min sustained), GATEWAY_URL constant
+  - `load-tests/README.md` — SA-023b documentation: 5K test structure, exit gates, run command, gateway routing explanation
+  - `.github/workflows/load-test.yml` — Added scale5k profile + scale-5k-suite target. GATEWAY_URL env var. Timeout increased to 60min.
+- **Tests:** 47 SA-023b validation tests (all passing)
+- **Note:** This session was originally scheduled as part of Phase S4 but was dropped during renumbering when SA-023 was reassigned to Architecture Governance Review. Identified and executed as gap fill after SA-029 completion.
+
 **SA-029** — Hook Prototyping + Evolvability Baseline (Phase S6 — FINAL)
 - Completed: 2026-03-08
 - Git tag: `docs@evolvability-baseline-v1.0.0`
@@ -413,10 +429,10 @@ None.
 
 ## Next Session
 
-**Phase S is COMPLETE.** All 29 sessions (SA-001 through SA-029) across 6 phases are done.
+**Phase S is COMPLETE.** All 29 sessions (SA-001 through SA-029) plus SA-023b are done.
 
 Next work streams (pending Marston direction):
-- Phase 0a–0b audit remediation sessions (if any remain)
+- **Run the 5K load test against production** — `k6 run load-tests/scale-5k-suite.js` (test infra is built, needs actual execution against live environment with test user credentials)
 - S-01 activation (TD-001): EF auth trust migration — first post-launch SA session
 - S-10 DataProvider migration (TD-004): Post-launch SPA consolidation
 - Agent graduation: First CrewAI agent graduation (Marston approval required)

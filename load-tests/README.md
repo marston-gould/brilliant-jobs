@@ -1,6 +1,7 @@
 # Load Tests — Brilliant Jobs
 
 CS-020 FIX-20: Load testing infrastructure for all 4 surfaces.
+SA-023b: 5,000 concurrent scale test added.
 
 ## Prerequisites
 
@@ -28,6 +29,7 @@ sudo apt-get update && sudo apt-get install k6
 | `extension-heartbeat.js` | Extension | 240 | p95 < 1.5s, err < 0.1% |
 | `admin-concurrent.js` | Admin | 60 | p95 < 3s, err < 1% |
 | `full-suite.js` | All | 1,200 | All above + combined |
+| **`scale-5k-suite.js`** | **All (via gateway)** | **5,000** | **Search p95 < 500ms, zero 5xx, err < 0.1%** |
 
 ## Running Tests
 
@@ -62,6 +64,21 @@ K6_ADMIN_EMAIL=admin@brilliantjobs.app K6_ADMIN_PASSWORD=... \
 K6_TEST_EMAIL=test@brilliantjobs.app K6_TEST_PASSWORD=... \
   k6 run load-tests/full-suite.js
 ```
+
+### SA-023b — 5,000 concurrent scale test
+
+```bash
+K6_TEST_EMAIL=test@brilliantjobs.app K6_TEST_PASSWORD=... \
+  k6 run load-tests/scale-5k-suite.js
+```
+
+This test routes all traffic through the API gateway (SA-005 architecture) and validates:
+- Read replica routing under load (SA-018 x-gateway-db-mode headers)
+- Partitioned ats_jobs queries under load (SA-019)
+- Capacity model endpoint under load (SA-028)
+- Search p95 < 500ms at 5,000 concurrent users
+
+Duration: ~24 minutes (2min warm-up → 9min ramp → 10min sustained peak → 3min cool-down).
 
 ### Spike test (rate limit / kill-switch validation)
 
@@ -98,12 +115,22 @@ VALUES (
 Results are written to `load-tests/results/` as JSON (gitignored). Each run
 produces a summary in stdout with pass/fail against exit gates.
 
-## Exit Gates (from HANDOFF.md)
+## Exit Gates
 
-All must be green before CS-022 Go/No-Go:
+### CS-020 (1,200 VUs)
 
 - [ ] No P0-class failures under load
 - [ ] p95 response < 2s (all surfaces)
 - [ ] Error rate < 0.1%
 - [ ] Extension heartbeat stable under load
 - [ ] Landing preview-jobs rate limit holds
+
+### SA-023b (5,000 VUs — stricter gates)
+
+- [ ] Zero 5xx errors (hard gate)
+- [ ] Search p95 < 500ms (preview-jobs + chat-job-search)
+- [ ] Dashboard API p95 < 1500ms
+- [ ] Heartbeat p95 < 1000ms
+- [ ] Admin p95 < 2000ms
+- [ ] Gateway p95 < 2000ms (overall)
+- [ ] Error rate < 0.1%
