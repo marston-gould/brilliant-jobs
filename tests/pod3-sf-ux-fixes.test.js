@@ -140,7 +140,41 @@ describe('Issue 3: Search includes pill values', () => {
 // ─── Version ───
 describe('Version', () => {
   const versionJs = fs.readFileSync(path.join(root, 'js/version.js'), 'utf-8');
-  test('Product version bumped to v7.82', () => {
-    expect(versionJs).toMatch(/v7\.82/);
+  test('Product version bumped to v7.83', () => {
+    expect(versionJs).toMatch(/v7\.83/);
+  });
+});
+
+// ─── readinessCache fix ───
+describe('readinessCache declared in globals (shell chunk)', () => {
+  const globalsTs = fs.readFileSync(path.join(root, 'js/globals.ts'), 'utf-8');
+  const keywordsJs = fs.readFileSync(path.join(root, 'js/keywords.js'), 'utf-8');
+  const shellMin = fs.readFileSync(path.join(root, 'dist/dashboard-shell.min.js'), 'utf-8');
+
+  test('readinessCache declared in globals.ts', () => {
+    expect(globalsTs).toMatch(/var readinessCache\s*=\s*safeReadLS\('bj_readiness'/);
+  });
+
+  test('readinessCache present in shell chunk (loads before deferred)', () => {
+    expect(shellMin).toMatch(/readinessCache/);
+  });
+
+  test('keywords.js does NOT redeclare with var', () => {
+    // Should assign, not declare
+    expect(keywordsJs).not.toMatch(/^var readinessCache/m);
+    // But should still refresh value
+    expect(keywordsJs).toMatch(/readinessCache\s*=\s*safeReadLS/);
+  });
+});
+
+// ─── Roadmap relabel ───
+describe('Chat UX relabel', () => {
+  const roadmapHtml = fs.readFileSync(path.join(root, 'roadmap.html'), 'utf-8');
+
+  test('Chat UX iteration bucket changed to post-launch', () => {
+    const chatLine = roadmapHtml.split('\n').find(l => l.includes('Chat UX iteration'));
+    expect(chatLine).toBeTruthy();
+    expect(chatLine).toMatch(/b:\s*'post-launch'/);
+    expect(chatLine).not.toMatch(/b:\s*'needs-data'/);
   });
 });

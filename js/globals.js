@@ -526,6 +526,7 @@ var MAX_FEED_ROWS = 500;
 var _feedLoadMoreOffset = 0;
 var _feedTotalCount = 0;
 var resumes = safeReadLS("bj_resumes", []);
+var readinessCache = safeReadLS("bj_readiness", null);
 var filterColors = ["#6366f1", "#f59e0b", "#ec4899", "#22c55e", "#8b5cf6", "#ef4444", "#06b6d4", "#f97316", "#14b8a6", "#a855f7"];
 async function enrichJob(jobId, data) {
   try {

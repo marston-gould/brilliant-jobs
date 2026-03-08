@@ -52,15 +52,28 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**POD3-SF** — Saved Filters UX Fixes
+**POD3-SF** — Saved Filters UX Fixes + Resume Tab Fix
 - Completed: 2026-03-08
-- Product version bumped: `v7.80` → `v7.82` (JS changes — location.js, query-builder.js; all HTML surfaces cache-busted)
+- Product version bumped: `v7.80` → `v7.83` (JS changes — globals.ts, keywords.js, location.js, query-builder.js; all HTML surfaces cache-busted)
 - ROADMAP.md updated: POD3-SF → ✅
 - roadmap.html updated: POD3-SF → `s: 'done'`, p: 100
-- **3 issues resolved:**
+- **4 issues resolved:**
   - (1) Removed 1D/7D/30D column headers and per-row counts/trend badges from saved filters list in renderSavedFilters()
   - (2) commitSaveFilter bug: `renderSavedFilters()` was rebuilding the entire DOM, destroying all checkbox states. After save, every checkbox was unchecked → `getCheckedSavedFilters()` returned [] → blank feed. Also no `invalidateCache()` was being called, so cached results could mask changes. Fix: capture checked indices before renderSavedFilters, restore after, call `invalidateCache()`, use `searchJobs(0)` for immediate re-search. Also uses `_editingFilterIdx` as primary filter lookup (name match fallback).
   - (3) Saved filter search now checks all pill arrays (whatPills, wherePills, whenPills, whoPills, payPills, whatNotPills, whereNotPills, whoNotPills, skillsPills, levelPills, jdPills, deptPills) for substring matches in addition to filter names.
+  - (4) **Resume tab crash fix:** `readinessCache` was declared in `keywords.js` (keywords chunk) but referenced by `resumes.js` (deferred chunk). For the Resumes tab, lazy-loader loads `['deferred', 'keywords']` — deferred runs first, hits `readinessCache` before keywords has loaded → `ReferenceError: readinessCache is not defined` → entire resume page blank. Fix: moved `var readinessCache = safeReadLS('bj_readiness', null)` to `globals.ts` (shell chunk, loads before all lazy chunks). Changed `keywords.js` from `var readinessCache` to plain assignment.
+  - **Roadmap:** Chat UX Iteration re-labeled from `needs-data` to `post-launch`.
+- **Created:**
+  - `tests/pod3-sf-ux-fixes.test.js` — 26 validation tests (6 sections)
+- **Modified:**
+  - `js/globals.ts` — readinessCache declaration added to shell chunk
+  - `js/keywords.js` — readinessCache `var` → assignment (no re-declare)
+  - `js/location.js` — renderSavedFilters: removed 1D/7D/30D; search expanded to pill values; commitSaveFilter: checkbox preservation + invalidateCache + searchJobs(0)
+  - `js/query-builder.js` — renderAllPills: reverted auto-save; debouncedSearchJobs() unconditional
+  - `roadmap.html` — Chat UX Iteration: needs-data → post-launch
+  - `ROADMAP.md` — POD3-SF → ✅
+  - `roadmap.html` — POD3-SF → done/100
+- **Tests:** 26 POD3-SF validation tests (all passing)
 - **Created:**
   - `tests/pod3-sf-ux-fixes.test.js` — 21 validation tests (4 sections)
 - **Modified:**
@@ -843,7 +856,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.82`** | **POD3-SF — Saved Filters UX Fixes** |
+| **Product (BJ_VERSION)** | **`v7.83`** | **POD3-SF — Saved Filters UX + Resume Tab Fix** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

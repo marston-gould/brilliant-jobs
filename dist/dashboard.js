@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v7.82';
+var BJ_VERSION = 'v7.83';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -725,6 +725,11 @@ var _feedTotalCount = 0; // A14: total matching rows (from count: 'exact')
 
 // Resume state (populated fully in resumes.js)
 var resumes = safeReadLS('bj_resumes', []);
+
+// POD3-SF: readinessCache must be in globals (shell chunk) because resumes.js (deferred chunk)
+// references it at load time. Previously it was only in keywords.js (keywords chunk) which
+// loads AFTER deferred for the Resumes tab → ReferenceError.
+var readinessCache = safeReadLS('bj_readiness', null);
 
 // Shared filter color palette (10 colors for numbered filter badges)
 var filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
@@ -6510,7 +6515,8 @@ function extractNgrams(jobs, maxPerGroup = 40) {
 // for each assigned filter. Runs at the resume level, not the feed.
 
 var jobMatchScores = {}; // greenhouse_id → score (0-100)
-var readinessCache = safeReadLS('bj_readiness', null);
+// readinessCache declared in globals.ts (shell chunk) — just refresh from LS in case it changed
+readinessCache = safeReadLS('bj_readiness', null);
 var filterCorpusCache = {}; // filterName → { skills: [[term,count],...], bigrams: [...] }
 var readinessRunning = false;
 

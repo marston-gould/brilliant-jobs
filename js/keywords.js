@@ -157,7 +157,8 @@ function extractNgrams(jobs, maxPerGroup = 40) {
 // for each assigned filter. Runs at the resume level, not the feed.
 
 var jobMatchScores = {}; // greenhouse_id → score (0-100)
-var readinessCache = safeReadLS('bj_readiness', null);
+// readinessCache declared in globals.ts (shell chunk) — just refresh from LS in case it changed
+readinessCache = safeReadLS('bj_readiness', null);
 var filterCorpusCache = {}; // filterName → { skills: [[term,count],...], bigrams: [...] }
 var readinessRunning = false;
 
