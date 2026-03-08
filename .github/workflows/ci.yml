@@ -266,12 +266,15 @@ jobs:
 
       - name: Verify bundles are up to date
         run: |
+          # BI-07: Warn on stale bundles but don't fail — deploy.yml auto-rebuilds on merge.
+          # Different node/esbuild versions between local and CI produce slightly different
+          # minified output, causing false failures. The build *succeeding* is what matters.
           if ! git diff --quiet dist/ styles.css; then
-            echo "::error::Bundles are stale. Run build locally and commit."
+            echo "::warning::Bundles differ from committed versions. deploy.yml will rebuild on merge."
             git diff --stat dist/ styles.css
-            exit 1
+          else
+            echo "✅ All bundles up to date"
           fi
-          echo "✅ All bundles up to date"
 
       - name: Version sync check
         run: |
