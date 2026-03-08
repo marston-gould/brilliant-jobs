@@ -5,7 +5,6 @@
 // Matches legacy pagination behavior (50 per page, 500 cap).
 // ============================================================
 
-import React from 'react';
 import { Button } from '@components';
 
 interface PaginationControlsProps {

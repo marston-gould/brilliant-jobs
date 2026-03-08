@@ -2,7 +2,6 @@
 // TuningPage — Main Tuning Page Container (SA-017)
 // ============================================================
 
-import React from 'react';
 import { TuningHero, FilterCard } from './components';
 import { useTuning } from './hooks/useTuning';
 import { Button } from '@app/components';

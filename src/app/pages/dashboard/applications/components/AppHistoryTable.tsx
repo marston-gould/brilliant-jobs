@@ -2,7 +2,6 @@
 // AppHistoryTable — Application history table (SA-016)
 // ============================================================
 
-import React from 'react';
 import { Button, Badge } from '@app/components';
 import type { AppEntry, AppMode, AppStatus } from '../hooks/useApplications';
 

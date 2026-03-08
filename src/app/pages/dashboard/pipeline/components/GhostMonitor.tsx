@@ -2,7 +2,6 @@
 // GhostMonitor — Ghost Detection Sub-tab (SA-015)
 // ============================================================
 
-import React from 'react';
 import { Badge, Button, Card } from '@app/components';
 import type { GhostEntry } from '../hooks/usePipeline';
 
@@ -82,7 +81,7 @@ function GhostRow({ entry, onArchive }: GhostRowProps) {
   const appliedStr = entry.applied_at
     ? new Date(entry.applied_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     : '—';
-  const listing = LISTING_LABELS[entry.listing_status] || LISTING_LABELS.unknown;
+  const listing = LISTING_LABELS[entry.listing_status] ?? LISTING_LABELS['unknown']!;
 
   return (
     <tr className="border-b border-border/50 hover:bg-bg-hover/50 transition-colors">

@@ -1,4 +1,4 @@
 export { AppShell } from './AppShell';
 export { AdminGuard } from './AdminGuard';
 export { AuthGuard } from './AuthGuard';
-export { LegacyPageWrapper } from './LegacyPageWrapper';
+// BI-07: LegacyPageWrapper removed in SA-017 (all pages migrated to React)

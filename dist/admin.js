@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v7.73';
+var BJ_VERSION = 'v7.79';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -1285,7 +1285,7 @@ async function safeRpc(fnName: string, params?: Record<string, unknown>, opts?: 
    admin.js — Admin Console with Sidebar Navigation (IA v2)
    v7.43 — CS-P1-017: Compliance dashboard (PII map, deletion, export)
    5 sections: Operations, Growth, Audience, Business, Compliance
-   36 sub-pages with lazy initialization
+   37 sub-pages with lazy initialization
    ─────────────────────────────────────────────────────────── */
 
 // ─── Admin access gate (dashboard nav-item visibility) ───
@@ -1354,6 +1354,11 @@ var ADMIN_SUBPAGE_MAP = {
   'ab-tests':        { section: 'operations',  label: 'A/B Tests',       init: function(){ loadAbTestsPanel(); } },
   'kill-switch':    { section: 'operations',  label: 'Kill Switch',    init: function(){ loadKillSwitchPanel(); } },
   'crewai':         { section: 'operations',  label: 'CrewAI Agents',  init: function(){ loadCrewAIPanel(); } },
+  'build-analytics':{ section: 'operations',  label: 'Build Analytics', init: function(){ loadBuildAnalyticsPanel(); } },
+  'deploy-visibility':{ section: 'operations',  label: 'Deploy Visibility', init: function(){ loadDeployVisibilityPanel(); } },
+  'deploy-alerting': { section: 'operations',  label: 'Deploy Alerting',   init: function(){ loadDeployAlertingPanel(); } },
+  'command-center':  { section: 'operations',  label: 'Command Center',    init: function(){ loadCommandCenterPanel(); } },
+  'deploy-reports':  { section: 'operations',  label: 'DORA Reports',      init: function(){ loadDeployReportsPanel(); } },
   // ── Growth ──
   'seo':            { section: 'growth',      label: 'SEO',            init: function(){ loadSeoTab(); } },
   'content':        { section: 'growth',      label: 'Content',        init: function(){ loadContentTab(); } },

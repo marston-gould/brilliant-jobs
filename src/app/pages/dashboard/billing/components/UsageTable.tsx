@@ -2,7 +2,6 @@
 // UsageTable — Credit usage history table (SA-017)
 // ============================================================
 
-import React from 'react';
 import { Badge } from '@app/components';
 import type { UsageEntry } from '../hooks/useBilling';
 

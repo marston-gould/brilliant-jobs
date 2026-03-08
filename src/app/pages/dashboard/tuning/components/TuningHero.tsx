@@ -2,7 +2,6 @@
 // TuningHero — Stats banner for Tuning page (SA-017)
 // ============================================================
 
-import React from 'react';
 import { Card } from '@app/components';
 
 interface TuningHeroProps {

@@ -2,12 +2,11 @@
 // OverviewPage — Main Admin Overview Page Container (SA-017)
 // ============================================================
 
-import React from 'react';
 import { OverviewHero } from './components';
 import { useOverview } from './hooks/useOverview';
 
 export function OverviewPage() {
-  const [state, actions] = useOverview();
+  const [state, _actions] = useOverview();
 
   if (state.loading) {
     return (

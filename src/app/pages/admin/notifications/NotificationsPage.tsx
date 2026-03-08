@@ -2,12 +2,11 @@
 // NotificationsPage — Main Admin Notifications Page Container (SA-017)
 // ============================================================
 
-import React from 'react';
 import { NotificationsHero } from './components';
 import { useNotifications } from './hooks/useNotifications';
 
 export function NotificationsPage() {
-  const [state, actions] = useNotifications();
+  const [state, _actions] = useNotifications();
 
   if (state.loading) {
     return (

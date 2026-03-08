@@ -2,12 +2,11 @@
 // KillswitchPage — Main Admin Kill Switch Page Container (SA-017)
 // ============================================================
 
-import React from 'react';
 import { KillswitchHero } from './components';
 import { useKillswitch } from './hooks/useKillswitch';
 
 export function KillswitchPage() {
-  const [state, actions] = useKillswitch();
+  const [state, _actions] = useKillswitch();
 
   if (state.loading) {
     return (

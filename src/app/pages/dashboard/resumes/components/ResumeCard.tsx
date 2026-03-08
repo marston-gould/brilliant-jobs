@@ -6,7 +6,7 @@
 // Zero inline styles. Design tokens via Tailwind.
 // ============================================================
 
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Button, Badge } from '@app/components';
 import type { Resume, SavedFilter, ReadinessScore, PipelineMeta } from '../hooks/useResumes';
 

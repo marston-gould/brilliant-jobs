@@ -2,12 +2,11 @@
 // SeoPage — Main Admin SEO Page Container (SA-017)
 // ============================================================
 
-import React from 'react';
 import { SeoHero } from './components';
 import { useSeo } from './hooks/useSeo';
 
 export function SeoPage() {
-  const [state, actions] = useSeo();
+  const [state, _actions] = useSeo();
 
   if (state.loading) {
     return (

@@ -2,7 +2,6 @@
 // ResumesHero — Stats banner for Resumes page (SA-016)
 // ============================================================
 
-import React from 'react';
 import { Card } from '@app/components';
 import type { Resume, ReadinessScore, PipelineMeta } from '../hooks/useResumes';
 

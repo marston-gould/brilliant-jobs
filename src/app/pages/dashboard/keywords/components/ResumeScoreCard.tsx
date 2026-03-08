@@ -2,7 +2,6 @@
 // ResumeScoreCard — Per-Resume Readiness Card (SA-015)
 // ============================================================
 
-import React from 'react';
 import { Card } from '@app/components';
 import type { ResumeScore } from '../hooks/useKeywords';
 import { FilterBreakdown } from './FilterBreakdown';
@@ -55,7 +54,7 @@ export function ResumeScoreCard({ resumeIndex, data, onScoreClick }: ResumeScore
             <FilterBreakdown
               key={fname}
               filterName={fname}
-              score={data.filters[fname]}
+              score={data.filters[fname]!}
             />
           ))}
         </div>

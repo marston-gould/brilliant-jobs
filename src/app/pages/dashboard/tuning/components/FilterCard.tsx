@@ -2,7 +2,6 @@
 // FilterCard — Expandable filter tuning card (SA-017)
 // ============================================================
 
-import React from 'react';
 import { Card, Badge, Button } from '@app/components';
 import type { TuningFilter } from '../hooks/useTuning';
 

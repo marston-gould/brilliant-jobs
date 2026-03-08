@@ -12,7 +12,7 @@
 // Zero inline styles. Design tokens via Tailwind.
 // ============================================================
 
-import React, { useCallback } from 'react';
+import { useCallback } from 'react';
 import { Button } from '@app/components';
 import {
   PipelineHero,

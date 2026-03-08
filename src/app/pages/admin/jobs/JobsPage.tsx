@@ -2,12 +2,11 @@
 // JobsPage — Main Admin Jobs Page Container (SA-017)
 // ============================================================
 
-import React from 'react';
 import { JobsHero } from './components';
 import { useJobs } from './hooks/useJobs';
 
 export function JobsPage() {
-  const [state, actions] = useJobs();
+  const [state, _actions] = useJobs();
 
   if (state.loading) {
     return (

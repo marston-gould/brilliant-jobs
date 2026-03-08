@@ -32,6 +32,7 @@ const AUTH_PATTERNS = [
   /apikey/i,
   /verifyAuth/i,
   /requireAuth/i,
+  /requireAdmin/i,              // BI-07: admin-only EFs use requireAdmin() from admin-auth.ts
   /authMiddleware/i,
   /validateToken/i,
   /stripe.*webhook.*secret/i,

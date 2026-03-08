@@ -3,7 +3,7 @@
 // ============================================================
 
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { Badge, Button } from '@app/components';
+import { Badge } from '@app/components';
 import type { PipelineItem, PipelineStage, StaleDotColor } from '../hooks/usePipeline';
 import {
   PL_STAGES,

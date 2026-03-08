@@ -592,10 +592,100 @@ functions:
   # Note: confirm-email and validate-signup CORS + rate limiting
   # will be hardened in this session (CS-P1-001) and CS-P1-002
 
+# ─── BI-07: PREVIOUSLY UNCLASSIFIED (22 EFs added 2026-03-08) ──────
+
+  admin-cron-management:
+    classification: admin-only
+    notes: "SA-028: Cron schedule management. requireAdmin enforced."
+
+  api-gateway:
+    classification: cron-internal
+    notes: "SA-004/SA-005: Central gateway router. Self-authenticates via SERVICE_ROLE. Enforces auth for proxied EFs via authMiddleware pipeline."
+
+  capacity-model:
+    classification: cron-internal
+    notes: "SA-028: Capacity forecasting and scaling triggers. Uses SERVICE_ROLE_KEY. Gateway-mediated for admin reads."
+
+  cost-monitor:
+    classification: cron-internal
+    notes: "REM-003: AI cost monitoring. Uses SERVICE_ROLE_KEY. Gateway-mediated for admin reads."
+
+  crewai-agent-digest:
+    classification: cron-internal
+    notes: "SA-012: Daily agent digest email. Triggered by pg_cron (8am ET)."
+
+  crewai-content-qa:
+    classification: cron-internal
+    notes: "SA-010: Content QA agent (observe mode). Triggered by pg_cron every 6h."
+
+  crewai-cost-guardian:
+    classification: cron-internal
+    notes: "SA-020: Cost guardian agent (observe mode). Triggered by pg_cron hourly."
+
+  crewai-data-freshness:
+    classification: cron-internal
+    notes: "SA-011: Data freshness agent (observe mode). Triggered by pg_cron every 6h."
+
+  crewai-graduation:
+    classification: admin-only
+    notes: "SA-012: Agent graduation workflow. requireAdmin for evaluate/graduate/rollback."
+
+  crewai-orchestrator:
+    classification: admin-only
+    notes: "SA-010: CrewAI orchestrator. requireAdmin for dispatch. Also called by gateway."
+
+  crewai-pipeline-health:
+    classification: cron-internal
+    notes: "SA-011: Pipeline health agent (observe mode). Triggered by pg_cron every 30min."
+
+  crewai-referral-pipeline:
+    classification: cron-internal
+    notes: "SA-021: Referral pipeline agent (observe mode). Triggered by pg_cron every 30min."
+
+  crewai-user-support:
+    classification: cron-internal
+    notes: "SA-020: User support triage agent (observe mode). Triggered by pg_cron every 15min."
+
+  dedup-promote:
+    classification: admin-only
+    notes: "SA-008: Dedup engine + enrichment queue. requireAdmin enforced."
+
+  deploy-tracker:
+    classification: cron-internal
+    notes: "BI-01: Deployment tracking. Uses SERVICE_ROLE_KEY. Gateway-mediated for admin reads."
+
+  event-bus:
+    classification: admin-only
+    notes: "SA-024: Event bus. requireAuth for publish, requireAdmin for subscribe/manage."
+
+  feature-flags:
+    classification: admin-only
+    notes: "SA-025: Feature flags. evaluate/evaluate_all use getReadClient (no user auth — intentional for client-side flag reads). create/update/list require requireAdmin. Classified admin-only because write operations are gated."
+
+  ingest-common-crawl:
+    classification: admin-only
+    notes: "SA-007: Common Crawl ingestion worker. requireAdmin enforced."
+
+  refresh-materialized-views:
+    classification: admin-only
+    notes: "SA-009: MV refresh orchestrator. requireAdmin enforced. Also triggered by pg_cron."
+
+  replica-health:
+    classification: cron-internal
+    notes: "SA-018: Read replica health. Uses SERVICE_ROLE_KEY. Public GET for health summary, admin config/reset via gateway."
+
+  typesense-search:
+    classification: cron-internal
+    notes: "SA-002 (deferred): Typesense search with Postgres FTS fallback. Uses SERVICE_ROLE_KEY."
+
+  typesense-seed:
+    classification: cron-internal
+    notes: "SA-001 (deferred): Typesense seed worker. Uses SERVICE_ROLE_KEY."
+
 # ─── SUMMARY ───────────────────────────────────────────────────────
-# admin-only:    4
+# admin-only:    12
 # authenticated: 28
-# cron-internal:  47
+# cron-internal:  61
 # webhook:        7
 # public:         4
-# TOTAL:         90
+# TOTAL:         112

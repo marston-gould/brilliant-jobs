@@ -330,6 +330,7 @@ type ChunkName = 'shell' | 'feed' | 'keywords' | 'pipeline' | 'tuning' | 'deferr
 
 type TabName =
   | 'brilliant'
+  | 'jobs'
   | 'resumes'
   | 'pipeline'
   | 'tuning'

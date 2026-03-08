@@ -5,7 +5,7 @@
 // loading skeleton, empty state, and JobRow children.
 // ============================================================
 
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { JobRow } from './JobRow';
 import { PaginationControls } from './PaginationControls';
 import type { FeedJob, FeedSearchState, TrustLabel, AiLabel } from '../hooks/useFeedSearch';

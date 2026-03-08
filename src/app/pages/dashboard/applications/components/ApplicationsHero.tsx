@@ -2,7 +2,6 @@
 // ApplicationsHero — Stats banner for Applications page (SA-016)
 // ============================================================
 
-import React from 'react';
 import { Card } from '@app/components';
 import type { AppEntry } from '../hooks/useApplications';
 

@@ -136,7 +136,7 @@ export function useResumes(): [ResumesState, ReturnType<typeof buildActions>] {
   const loadData = useCallback(() => {
     try {
       const win = window as Record<string, unknown>;
-      const BJ = (win.BJ || {}) as Record<string, unknown>;
+      const _BJ = (win.BJ || {}) as Record<string, unknown>;
 
       // Read resumes from global
       const allResumes = (win.resumes || []) as Resume[];

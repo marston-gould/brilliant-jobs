@@ -8,7 +8,7 @@
 // Bridge: reads from legacy window.savedFilters during migration.
 // ============================================================
 
-import React, { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 
 interface SavedSearchItem {
   id: string;
@@ -46,7 +46,7 @@ export function SavedSearches({
     return items.filter(i => i.name.toLowerCase().includes(q));
   }, [items, searchQuery]);
 
-  const toggleDeleteSelect = useCallback((id: string) => {
+  const _toggleDeleteSelect = useCallback((id: string) => {
     setSelectedForDelete(prev => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);

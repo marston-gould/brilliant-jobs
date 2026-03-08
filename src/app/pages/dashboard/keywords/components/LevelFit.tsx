@@ -2,7 +2,6 @@
 // LevelFit — Level Fit Analysis (SA-015)
 // ============================================================
 
-import React from 'react';
 import { Card } from '@app/components';
 import type { LevelScore } from '../hooks/useKeywords';
 

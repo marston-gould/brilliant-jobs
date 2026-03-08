@@ -2,7 +2,6 @@
 // ReferralsPage — Main Referrals Page Container (SA-017)
 // ============================================================
 
-import React from 'react';
 import { ReferralsHero, SharePanel, Leaderboard } from './components';
 import { useReferrals } from './hooks/useReferrals';
 

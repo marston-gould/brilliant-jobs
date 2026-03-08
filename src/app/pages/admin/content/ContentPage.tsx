@@ -2,12 +2,11 @@
 // ContentPage — Main Admin Content Page Container (SA-017)
 // ============================================================
 
-import React from 'react';
 import { ContentHero } from './components';
 import { useContent } from './hooks/useContent';
 
 export function ContentPage() {
-  const [state, actions] = useContent();
+  const [state, _actions] = useContent();
 
   if (state.loading) {
     return (

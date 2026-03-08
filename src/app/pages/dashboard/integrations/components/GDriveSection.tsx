@@ -2,7 +2,6 @@
 // GDriveSection — Google Drive integration panel (SA-017)
 // ============================================================
 
-import React from 'react';
 import { Button, Card, Badge } from '@app/components';
 import type { GDriveFile } from '../hooks/useIntegrations';
 

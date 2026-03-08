@@ -26,7 +26,7 @@ export function ResumeUpload({ onUpload }: ResumeUploadProps) {
     if (!files || files.length === 0) return;
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      if (ACCEPTED_TYPES.includes(file.type) || /\.(pdf|docx?|txt)$/i.test(file.name)) {
+      if (file && (ACCEPTED_TYPES.includes(file.type) || /\.(pdf|docx?|txt)$/i.test(file.name))) {
         onUpload(file);
       }
     }

@@ -6,7 +6,6 @@
 // React manages the filter pills, stat cards, and layout.
 // ============================================================
 
-import React from 'react';
 import { StatsHero, ChartContainer } from './components';
 import { useStats } from './hooks/useStats';
 

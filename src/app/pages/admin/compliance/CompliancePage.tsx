@@ -2,12 +2,11 @@
 // CompliancePage — Main Admin Compliance Page Container (SA-017)
 // ============================================================
 
-import React from 'react';
 import { ComplianceHero } from './components';
 import { useCompliance } from './hooks/useCompliance';
 
 export function CompliancePage() {
-  const [state, actions] = useCompliance();
+  const [state, _actions] = useCompliance();
 
   if (state.loading) {
     return (

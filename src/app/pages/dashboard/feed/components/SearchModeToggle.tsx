@@ -2,7 +2,6 @@
 // SearchModeToggle — Filters/Chat Mode Switcher (SA-014)
 // ============================================================
 
-import React from 'react';
 
 interface SearchModeToggleProps {
   mode: 'filters' | 'chat';

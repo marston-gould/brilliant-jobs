@@ -4,7 +4,7 @@
 
 import React from 'react';
 
-type BadgeVariant = 'default' | 'success' | 'warning' | 'error' | 'info' | 'purple';
+type BadgeVariant = 'default' | 'secondary' | 'success' | 'warning' | 'error' | 'info' | 'purple';
 type BadgeSize = 'sm' | 'md';
 
 interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
@@ -15,6 +15,7 @@ interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
 
 const variantClasses: Record<BadgeVariant, string> = {
   default: 'bg-bg-input text-text-dim border-border',
+  secondary: 'bg-bg-card text-text-muted border-border/50',
   success: 'bg-green-dim text-green border-green/20',
   warning: 'bg-warm-dim text-warm border-warm/20',
   error: 'bg-red-dim text-red border-red/20',

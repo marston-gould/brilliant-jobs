@@ -2,12 +2,11 @@
 // AgentsPage — Main Admin Agents Page Container (SA-017)
 // ============================================================
 
-import React from 'react';
 import { AgentsHero } from './components';
 import { useAgents } from './hooks/useAgents';
 
 export function AgentsPage() {
-  const [state, actions] = useAgents();
+  const [state, _actions] = useAgents();
 
   if (state.loading) {
     return (

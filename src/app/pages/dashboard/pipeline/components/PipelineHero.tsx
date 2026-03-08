@@ -2,7 +2,6 @@
 // PipelineHero — Pipeline Stats Banner (SA-015)
 // ============================================================
 
-import React from 'react';
 import { Card } from '@app/components';
 import type { PipelineStats } from '../hooks/usePipeline';
 

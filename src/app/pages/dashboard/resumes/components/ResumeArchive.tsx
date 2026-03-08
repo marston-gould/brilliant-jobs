@@ -2,7 +2,7 @@
 // ResumeArchive — Archived resumes section (SA-016)
 // ============================================================
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Button, Badge } from '@app/components';
 import type { Resume, PipelineMeta } from '../hooks/useResumes';
 

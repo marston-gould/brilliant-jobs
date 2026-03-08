@@ -4,7 +4,7 @@
 // Legacy stats.js renders ECharts into these containers.
 // This component provides the mount points and handles resize.
 
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Card } from '@app/components';
 
 interface ChartContainerProps {

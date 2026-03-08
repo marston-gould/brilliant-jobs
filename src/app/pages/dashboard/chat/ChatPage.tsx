@@ -2,7 +2,6 @@
 // ChatPage — Main Chat Page Container (SA-017)
 // ============================================================
 
-import React from 'react';
 import { ChatMessages, ChatInput } from './components';
 import { useChat } from './hooks/useChat';
 import { Button } from '@app/components';

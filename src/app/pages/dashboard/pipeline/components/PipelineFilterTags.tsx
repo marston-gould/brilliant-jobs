@@ -2,7 +2,7 @@
 // PipelineFilterTags — Filter Tag Bar (SA-015)
 // ============================================================
 
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 const FILTER_COLORS = [
   '#3b82f6', '#8b5cf6', '#ec4899', '#f97316',

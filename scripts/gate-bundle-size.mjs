@@ -14,7 +14,7 @@ const ROOT = process.cwd();
 // Dashboard JS is large due to inline vendor code (echarts, etc.) — tracked for split.
 const LIMITS = [
   { name: 'Dashboard JS', file: 'dist/dashboard.min.js', maxKB: 1000 },
-  { name: 'Admin JS', file: 'dist/admin.min.js', maxKB: 550 },
+  { name: 'Admin JS', file: 'dist/admin.min.js', maxKB: 650 }, // BI-07: raised from 550 — SA-010/SA-012 CrewAI admin panels
   { name: 'CSS Bundle', file: 'styles.css', maxKB: 200 },
   { name: 'Landing Page', file: 'index.html', maxKB: 150 },
   { name: 'Dashboard HTML', file: 'dashboard.html', maxKB: 350 },

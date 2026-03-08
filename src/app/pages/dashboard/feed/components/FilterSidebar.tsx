@@ -5,7 +5,7 @@
 // These are client-side post-filters applied after DB query.
 // ============================================================
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import type { TrustLabel, AiLabel } from '../hooks/useFeedSearch';
 
 // ── Shared dropdown hook ──────────────────────────────────
@@ -44,7 +44,7 @@ const TRUST_OPTIONS: Array<{ value: TrustLabel; icon: string; label: string; col
 
 export function TrustFilter({ active, onChange }: TrustFilterProps) {
   const { open, setOpen, ref } = useDropdown();
-  const allChecked = active.size === TRUST_OPTIONS.length;
+  const _allChecked = active.size === TRUST_OPTIONS.length;
   const filterCount = TRUST_OPTIONS.length - active.size;
 
   const toggle = useCallback((value: TrustLabel) => {

@@ -2,7 +2,6 @@
 // KeywordTag — Keyword Pill (SA-015)
 // ============================================================
 
-import React from 'react';
 import type { KeywordTerm } from '../hooks/useKeywords';
 
 interface KeywordTagProps {

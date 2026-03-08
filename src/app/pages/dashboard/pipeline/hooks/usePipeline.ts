@@ -346,7 +346,7 @@ export function usePipeline(): [PipelineState, PipelineActions] {
       allJobData.forEach((j: PipelineJobData) => { jobMap[j.greenhouse_id] = j; });
 
       // Group by stage
-      const now = Date.now();
+      const _now = Date.now();
       const stageMap: Record<string, PipelineItem[]> = {};
       PL_STAGES.forEach(s => { stageMap[s] = []; });
 
@@ -400,9 +400,9 @@ export function usePipeline(): [PipelineState, PipelineActions] {
         return {
           stage,
           items,
-          medianMatch: scores.length > 0 ? scores[Math.floor(scores.length / 2)] : null,
-          minMatch: scores.length > 0 ? scores[0] : null,
-          maxMatch: scores.length > 0 ? scores[scores.length - 1] : null,
+          medianMatch: scores.length > 0 ? scores[Math.floor(scores.length / 2)]! : null,
+          minMatch: scores.length > 0 ? scores[0]! : null,
+          maxMatch: scores.length > 0 ? scores[scores.length - 1]! : null,
           pendingSignalCount: items.filter(i => i.signal).length,
         };
       });
