@@ -4401,16 +4401,15 @@ async function updateJobStatsFromFilters(filters) {
         }
       }
 
-      // Company count — always derived from the user's active filtered result set
-      // (mv_landing_stats.total_companies is a global total, not filter-aware)
+      // Company count — derived from same filters as visible results (including WHEN)
+      // v7.68: Was stripping whenPills which caused mismatch between stat card and table
       let companyCountVal = 0;
       try {
         const firstLocIds = effectiveFilters[0]._statsLocationIds || null;
-        const sfNoWhenFirst = Object.assign({}, effectiveFilters[0], { whenPills: [] });
         let cq2 = sb.from('ats_jobs').select('company_slug');
-        cq2 = buildFilterQuery(sfNoWhenFirst, cq2, firstLocIds);
+        cq2 = buildFilterQuery(effectiveFilters[0], cq2, firstLocIds);
         cq2 = excludeHidden(cq2);
-        cq2 = cq2.not('company_slug', 'is', null).limit(500);
+        cq2 = cq2.not('company_slug', 'is', null).limit(2000);
         const { data: coRows } = await cq2;
         const uniqueCos = new Set();
         if (coRows) coRows.forEach(r => { if (r.company_slug) uniqueCos.add(r.company_slug); });
@@ -5443,12 +5442,16 @@ function renderJobRows(jobs, total, page, filtersToRun) {
   // A14 Pagination: Showing X of Y + Load More (capped at 500)
   const showing = Math.min(jobs.length + page * JOBS_PER_PAGE, total);
   const capped = Math.min(total, MAX_FEED_ROWS);
+  // v7.68: Always show Load More if we got a full page — count may be wrong or stale
+  const gotFullPage = jobs.length >= JOBS_PER_PAGE;
+  const moreAvailable = showing < capped || gotFullPage;
+  const reachedCap = (page + 1) * JOBS_PER_PAGE >= MAX_FEED_ROWS;
   html += `<tr><td colspan="9" style="text-align:center;padding:16px;">
     <div style="display:flex;flex-direction:column;justify-content:center;align-items:center;gap:8px;">
-      <span style="font-size:12px;color:var(--text-faint);">Showing ${showing.toLocaleString()} of ${total.toLocaleString()} jobs${total > MAX_FEED_ROWS ? ' (limited to ' + MAX_FEED_ROWS.toLocaleString() + ')' : ''}</span>
+      <span style="font-size:12px;color:var(--text-faint);">Showing ${showing.toLocaleString()} of ${total > showing ? total.toLocaleString() : showing.toLocaleString()} jobs${total > MAX_FEED_ROWS ? ' (limited to ' + MAX_FEED_ROWS.toLocaleString() + ')' : ''}</span>
       <div style="display:flex;gap:8px;align-items:center;">
         ${page > 0 ? '<button class="btn btn-sm btn-secondary" onclick="searchJobs(0)">↑ Back to top</button>' : ''}
-        ${showing < capped ? '<button class="btn btn-sm btn-primary" onclick="searchJobs(' + (page + 1) + ')" style="font-weight:600;">Load more jobs</button>' : ''}
+        ${moreAvailable && !reachedCap ? '<button class="btn btn-sm btn-primary" onclick="searchJobs(' + (page + 1) + ')" style="font-weight:600;">Load more jobs</button>' : ''}
       </div>
     </div>
   </td></tr>`;
