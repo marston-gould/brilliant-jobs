@@ -877,6 +877,28 @@ function initGlobalErrorHandlers() {
     console.error("[BJ] Unhandled promise rejection:", msg);
   });
 }
+var _errorBatch = [];
+var _errorFlushTimer = null;
+var _ERROR_BATCH_MAX = 10;
+var _ERROR_FLUSH_MS = 5e3;
+var _errorDedup = {};
+var _ERROR_DEDUP_WINDOW_MS = 6e4;
+function _errorFingerprint(label, msg) {
+  return (label + ":" + (msg || "").slice(0, 60)).replace(/\s+/g, " ");
+}
+function _flushErrorBatch() {
+  if (_errorBatch.length === 0) return;
+  var batch = _errorBatch.splice(0, _ERROR_BATCH_MAX);
+  _errorFlushTimer = null;
+  try {
+    sb.from("client_errors").insert(batch).then(function(result) {
+      if (result.error) {
+        console.warn("[BJ] Error batch insert failed:", result.error.message);
+      }
+    });
+  } catch (_) {
+  }
+}
 function reportError(label, error, extra) {
   var msg = error && error.message ? error.message : String(error);
   console.warn("[BJ] " + label + " failed:", msg);
@@ -893,6 +915,43 @@ function reportError(label, error, extra) {
     }
   } catch (_) {
   }
+  try {
+    var fp = _errorFingerprint(label, msg);
+    var now = Date.now();
+    if (_errorDedup[fp] && now - _errorDedup[fp] < _ERROR_DEDUP_WINDOW_MS) return;
+    _errorDedup[fp] = now;
+    if (Object.keys(_errorDedup).length > 50) {
+      for (var k in _errorDedup) {
+        if (now - _errorDedup[k] > _ERROR_DEDUP_WINDOW_MS) delete _errorDedup[k];
+      }
+    }
+    var severity = label.includes("fatal") ? "fatal" : label.includes("silent") || label.includes("ignore") ? "warning" : "error";
+    _errorBatch.push({
+      user_id: typeof currentUser !== "undefined" && currentUser ? currentUser.id : null,
+      surface: "dashboard",
+      label,
+      message: msg.slice(0, 2e3),
+      stack: error && error.stack ? error.stack.slice(0, 4e3) : null,
+      url: window.location.href,
+      page: (typeof localStorage !== "undefined" ? localStorage.getItem("bj_active_tab") : null) || "unknown",
+      version: typeof BJ_VERSION !== "undefined" ? BJ_VERSION : "unknown",
+      user_agent: navigator.userAgent.slice(0, 500),
+      metadata: extra || {},
+      severity,
+      fingerprint: fp
+    });
+    if (_errorBatch.length >= _ERROR_BATCH_MAX) {
+      _flushErrorBatch();
+    } else if (!_errorFlushTimer) {
+      _errorFlushTimer = setTimeout(_flushErrorBatch, _ERROR_FLUSH_MS);
+    }
+  } catch (_) {
+  }
+}
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeunload", function() {
+    if (_errorBatch.length > 0) _flushErrorBatch();
+  });
 }
 async function safeQuery(queryFn, opts) {
   var label = opts && opts.label || "query";

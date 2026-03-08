@@ -668,8 +668,29 @@ var tuningTitleExclPills = tuningSettings.titleExcludes || [];
 var tuningCoExclPills = tuningSettings.companyExcludes || [];
 var tuningIndExclPills = tuningSettings.industryExcludes || [];
 var levelHierarchy = tuningSettings.levelHierarchy || [];
-// Stub — overridden by tuning.js with full implementation
-// getJobLevel — provided by tuning.js (do not stub here, var assignment kills function declaration hoisting)
+// FIX: getJobLevel must be in the shell chunk because the feed chunk calls it during renderJobRows()
+// before the tuning chunk lazy-loads. tuning.js re-declares this (identical) — last-load wins, no conflict.
+function getJobLevel(title, hierarchy) {
+  const levels = hierarchy || levelHierarchy;
+  if (!title || levels.length === 0) return null;
+  const t = ' ' + title.toLowerCase() + ' ';
+  const entries = [];
+  levels.forEach((lvl, rank) => {
+    (lvl.keywords || '').split(',').forEach(kw => {
+      const k = kw.trim().toLowerCase();
+      if (k) entries.push({ keyword: k, rank, label: lvl.label, color: lvl.color || '#94a3b8' });
+    });
+  });
+  entries.sort((a, b) => b.keyword.length - a.keyword.length);
+  for (const e of entries) {
+    const escaped = e.keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`(?:^|[\\s,\\-\\/\\(])${escaped}(?:[\\s,\\-\\/\\)]|$)`, 'i');
+    if (re.test(t)) {
+      return { rank: e.rank, label: e.label, color: e.color };
+    }
+  }
+  return null;
+}
 
 // Pill arrays (used by query-builder.js, location.js, browsers.js)
 var whatPills = [];
@@ -1131,22 +1152,95 @@ function initGlobalErrorHandlers(): void {
 }
 
 /** Safe Supabase query wrapper — handles offline, retries, fallback */
-// ── Error reporting helper ──
+// ── DO-001: Error reporting + persistent monitoring ──
+var _errorBatch: Array<Record<string, unknown>> = [];
+var _errorFlushTimer: ReturnType<typeof setTimeout> | null = null;
+var _ERROR_BATCH_MAX = 10;
+var _ERROR_FLUSH_MS = 5000;
+var _errorDedup: Record<string, number> = {};
+var _ERROR_DEDUP_WINDOW_MS = 60000; // suppress same fingerprint for 60s
+
+function _errorFingerprint(label: string, msg: string): string {
+  // Simple hash: first 8 chars of label + first 60 chars of message
+  return (label + ':' + (msg || '').slice(0, 60)).replace(/\s+/g, ' ');
+}
+
+function _flushErrorBatch(): void {
+  if (_errorBatch.length === 0) return;
+  var batch = _errorBatch.splice(0, _ERROR_BATCH_MAX);
+  _errorFlushTimer = null;
+  try {
+    // Fire-and-forget insert — never block the app
+    sb.from('client_errors').insert(batch).then(function(result: { error?: { message?: string } }) {
+      if (result.error) {
+        console.warn('[BJ] Error batch insert failed:', result.error.message);
+      }
+    });
+  } catch (_) { /* never let monitoring break the app */ }
+}
+
 function reportError(label: string, error: unknown, extra?: Record<string, unknown>): void {
-  var msg = error && error.message ? error.message : String(error);
+  var msg = error && (error as Error).message ? (error as Error).message : String(error);
   console.warn('[BJ] ' + label + ' failed:', msg);
+
+  // PostHog (existing analytics)
   try {
     if (window.posthog) {
       posthog.capture('query_error', {
         label: label,
         error_message: msg,
-        error_stack: error && error.stack ? error.stack.slice(0, 500) : undefined,
+        error_stack: error && (error as Error).stack ? (error as Error).stack!.slice(0, 500) : undefined,
         page: window.location.pathname,
         timestamp: new Date().toISOString(),
         ...(extra || {})
       });
     }
   } catch (_) { /* never let reporting break the app */ }
+
+  // Persistent error logging (DO-001)
+  try {
+    var fp = _errorFingerprint(label, msg);
+    var now = Date.now();
+    // Dedup: skip if we logged the same fingerprint in the last 60s
+    if (_errorDedup[fp] && (now - _errorDedup[fp]) < _ERROR_DEDUP_WINDOW_MS) return;
+    _errorDedup[fp] = now;
+    // Clean old dedup entries every ~50 errors
+    if (Object.keys(_errorDedup).length > 50) {
+      for (var k in _errorDedup) {
+        if (now - _errorDedup[k] > _ERROR_DEDUP_WINDOW_MS) delete _errorDedup[k];
+      }
+    }
+
+    var severity = label.includes('fatal') ? 'fatal' : label.includes('silent') || label.includes('ignore') ? 'warning' : 'error';
+    _errorBatch.push({
+      user_id: (typeof currentUser !== 'undefined' && currentUser) ? currentUser.id : null,
+      surface: 'dashboard',
+      label: label,
+      message: msg.slice(0, 2000),
+      stack: error && (error as Error).stack ? (error as Error).stack!.slice(0, 4000) : null,
+      url: window.location.href,
+      page: (typeof localStorage !== 'undefined' ? localStorage.getItem('bj_active_tab') : null) || 'unknown',
+      version: typeof BJ_VERSION !== 'undefined' ? BJ_VERSION : 'unknown',
+      user_agent: navigator.userAgent.slice(0, 500),
+      metadata: extra || {},
+      severity: severity,
+      fingerprint: fp
+    });
+
+    // Flush when batch is full or schedule a delayed flush
+    if (_errorBatch.length >= _ERROR_BATCH_MAX) {
+      _flushErrorBatch();
+    } else if (!_errorFlushTimer) {
+      _errorFlushTimer = setTimeout(_flushErrorBatch, _ERROR_FLUSH_MS);
+    }
+  } catch (_) { /* never let monitoring break the app */ }
+}
+
+// Flush errors on page unload
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', function() {
+    if (_errorBatch.length > 0) _flushErrorBatch();
+  });
 }
 
 async function safeQuery(queryFn: () => Promise<unknown>, opts?: SafeQueryOptions): Promise<unknown> {
