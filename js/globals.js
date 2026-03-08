@@ -477,6 +477,27 @@ var tuningTitleExclPills = tuningSettings.titleExcludes || [];
 var tuningCoExclPills = tuningSettings.companyExcludes || [];
 var tuningIndExclPills = tuningSettings.industryExcludes || [];
 var levelHierarchy = tuningSettings.levelHierarchy || [];
+function getJobLevel(title, hierarchy) {
+  const levels = hierarchy || levelHierarchy;
+  if (!title || levels.length === 0) return null;
+  const t = " " + title.toLowerCase() + " ";
+  const entries = [];
+  levels.forEach((lvl, rank) => {
+    (lvl.keywords || "").split(",").forEach((kw) => {
+      const k = kw.trim().toLowerCase();
+      if (k) entries.push({ keyword: k, rank, label: lvl.label, color: lvl.color || "#94a3b8" });
+    });
+  });
+  entries.sort((a, b) => b.keyword.length - a.keyword.length);
+  for (const e of entries) {
+    const escaped = e.keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`(?:^|[\\s,\\-\\/\\(])${escaped}(?:[\\s,\\-\\/\\)]|$)`, "i");
+    if (re.test(t)) {
+      return { rank: e.rank, label: e.label, color: e.color };
+    }
+  }
+  return null;
+}
 var whatPills = [];
 var wherePills = [];
 var whenPills = [];
