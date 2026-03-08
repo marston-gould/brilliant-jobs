@@ -2,7 +2,7 @@
    admin.js — Admin Console with Sidebar Navigation (IA v2)
    v7.43 — CS-P1-017: Compliance dashboard (PII map, deletion, export)
    5 sections: Operations, Growth, Audience, Business, Compliance
-   36 sub-pages with lazy initialization
+   37 sub-pages with lazy initialization
    ─────────────────────────────────────────────────────────── */
 
 // ─── Admin access gate (dashboard nav-item visibility) ───
@@ -71,6 +71,7 @@ var ADMIN_SUBPAGE_MAP = {
   'ab-tests':        { section: 'operations',  label: 'A/B Tests',       init: function(){ loadAbTestsPanel(); } },
   'kill-switch':    { section: 'operations',  label: 'Kill Switch',    init: function(){ loadKillSwitchPanel(); } },
   'crewai':         { section: 'operations',  label: 'CrewAI Agents',  init: function(){ loadCrewAIPanel(); } },
+  'build-analytics':{ section: 'operations',  label: 'Build Analytics', init: function(){ loadBuildAnalyticsPanel(); } },
   // ── Growth ──
   'seo':            { section: 'growth',      label: 'SEO',            init: function(){ loadSeoTab(); } },
   'content':        { section: 'growth',      label: 'Content',        init: function(){ loadContentTab(); } },

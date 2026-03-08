@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.73"></script>
+  <script src="/js/version.js?v=v7.74"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2147,6 +2147,7 @@ const features = [
 
 // Build Instrumentation (BI-01+)
 { s: 'done', b: 'post-launch', n: 'BI-01 Build Instrumentation & Deployment Visibility', d: 'v6.34 migration: deploy_events, build_events, deploy_health_log tables. Views: v_deploy_dashboard, v_surface_deploy_health. Functions: fn_deploy_summary, fn_record_deploy, fn_complete_deploy. deploy-tracker EF (6 actions). Admin dashboard: summary cards, 30d sparkline, surface health, timeline. Gateway route #110. 54 tests. v7.73.', p: 100, e: '3h' },
+{ s: 'done', b: 'post-launch', n: 'BI-02 CI Pipeline Analytics & Bundle Size Tracking', d: 'v6.35 migration: ci_workflow_runs, bundle_size_history tables. Views: v_build_step_performance (p95), v_bundle_size_trends (delta), v_ci_workflow_health. Function: fn_build_analytics. deploy-tracker EF extended (4 new actions: build-analytics, record-ci-run, complete-ci-run, record-bundle-size). Admin dashboard: build step perf, CI health, bundle sizes with sparklines, CI runs timeline. ADMIN_SUBPAGE_MAP #37. 81 tests. v7.74.', p: 100, e: '3h' },
 
 ];
 

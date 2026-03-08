@@ -1,7 +1,7 @@
 /**
- * BI-01: Deploy Tracker Edge Function
+ * BI-01 + BI-02: Deploy Tracker & Build Analytics Edge Function
  *
- * Actions:
+ * BI-01 Actions:
  *   POST { action: "summary", days: 30 }      → Deploy summary with daily counts, surface health, recent deploys
  *   POST { action: "list", limit: 25 }         → Recent deploy events with build steps
  *   POST { action: "record", surface, ... }    → Record a new deploy event (CI webhook)
@@ -9,12 +9,18 @@
  *   POST { action: "record-build-step", ... }  → Record a build step within a deploy
  *   POST { action: "health", deploy_id, ... }  → Record a health check result
  *
- * Auth:
- *   - "summary" and "list" require admin role
- *   - "record", "complete", "record-build-step", "health" require service role OR valid deploy API key
+ * BI-02 Actions:
+ *   POST { action: "build-analytics", days: 30 }       → Build step performance, CI health, bundle sizes
+ *   POST { action: "record-ci-run", workflow_name, ... }→ Record a GitHub Actions workflow run
+ *   POST { action: "complete-ci-run", run_id, ... }     → Complete a CI workflow run
+ *   POST { action: "record-bundle-size", surface, ... } → Record bundle size measurement
  *
- * Phase: BI-01 — Build Instrumentation & Deployment Visibility
- * Pair: DevOps + Lead Platform Engineer
+ * Auth:
+ *   - "summary", "list", "build-analytics" require admin role
+ *   - Write actions require service role OR valid deploy API key
+ *
+ * Phase: BI-01 + BI-02 — Build Instrumentation & Deployment Visibility
+ * Pair: DevOps + Lead Platform Engineer | Chief Architect reviewer
  */
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
@@ -57,7 +63,7 @@ serve(async (req: Request) => {
 
   try {
     // ── Admin-only actions ─────────────────────────────────────────────
-    if (action === "summary" || action === "list") {
+    if (action === "summary" || action === "list" || action === "build-analytics") {
       const userRole = req.headers.get("x-gateway-user-role") || "";
       if (userRole !== "admin") {
         return json({ error: "Admin access required" }, 403);
@@ -65,7 +71,7 @@ serve(async (req: Request) => {
     }
 
     // ── CI/webhook actions — require service role or deploy key ───────
-    if (["record", "complete", "record-build-step", "health"].includes(action)) {
+    if (["record", "complete", "record-build-step", "health", "record-ci-run", "complete-ci-run", "record-bundle-size"].includes(action)) {
       const authHeader = req.headers.get("authorization") || "";
       const deployKey = req.headers.get("x-deploy-key") || "";
       const gatewayRole = req.headers.get("x-gateway-user-role") || "";
@@ -208,6 +214,112 @@ serve(async (req: Request) => {
         return json({ error: "Failed to record health check" }, 500);
       }
       return json({ ok: true, health_check_id: data?.id });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // BI-02 ACTION: build-analytics — combined build, CI, and bundle stats
+    // ═══════════════════════════════════════════════════════════════════
+    if (action === "build-analytics") {
+      const days = Number(body.days) || 30;
+      const { data, error } = await sb.rpc("fn_build_analytics", { p_days: days });
+      if (error) {
+        logger.warn("[deploy-tracker] fn_build_analytics failed:", error.message);
+        return json({ error: "Failed to fetch build analytics" }, 500);
+      }
+      return json({ ok: true, analytics: data });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // BI-02 ACTION: record-ci-run — start tracking a CI workflow run
+    // ═══════════════════════════════════════════════════════════════════
+    if (action === "record-ci-run") {
+      if (!body.workflow_name) return json({ error: "workflow_name required" }, 400);
+
+      const { data, error } = await sb.from("ci_workflow_runs").insert({
+        workflow_name: body.workflow_name,
+        run_id: body.run_id || null,
+        run_number: body.run_number || null,
+        status: body.status || "pending",
+        conclusion: body.conclusion || null,
+        trigger_event: body.trigger_event || "push",
+        git_sha: body.git_sha || null,
+        git_branch: body.git_branch || "main",
+        actor: body.actor || null,
+        runner_os: body.runner_os || "ubuntu-latest",
+        duration_ms: Number(body.duration_ms) || null,
+        total_jobs: Number(body.total_jobs) || 0,
+        failed_jobs: Number(body.failed_jobs) || 0,
+        deploy_id: body.deploy_id || null,
+        metadata: body.metadata || {},
+        completed_at: body.conclusion ? new Date().toISOString() : null,
+      }).select("id").single();
+
+      if (error) {
+        logger.warn("[deploy-tracker] record-ci-run failed:", error.message);
+        return json({ error: "Failed to record CI run" }, 500);
+      }
+      return json({ ok: true, ci_run_id: data?.id });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // BI-02 ACTION: complete-ci-run — update a CI workflow run status
+    // ═══════════════════════════════════════════════════════════════════
+    if (action === "complete-ci-run") {
+      if (!body.ci_run_id && !body.run_id) return json({ error: "ci_run_id or run_id required" }, 400);
+
+      let query;
+      if (body.ci_run_id) {
+        query = sb.from("ci_workflow_runs").update({
+          status: "completed",
+          conclusion: body.conclusion || "success",
+          duration_ms: Number(body.duration_ms) || null,
+          total_jobs: body.total_jobs != null ? Number(body.total_jobs) : undefined,
+          failed_jobs: body.failed_jobs != null ? Number(body.failed_jobs) : undefined,
+          completed_at: new Date().toISOString(),
+        }).eq("id", body.ci_run_id);
+      } else {
+        query = sb.from("ci_workflow_runs").update({
+          status: "completed",
+          conclusion: body.conclusion || "success",
+          duration_ms: Number(body.duration_ms) || null,
+          total_jobs: body.total_jobs != null ? Number(body.total_jobs) : undefined,
+          failed_jobs: body.failed_jobs != null ? Number(body.failed_jobs) : undefined,
+          completed_at: new Date().toISOString(),
+        }).eq("run_id", body.run_id);
+      }
+
+      const { error } = await query;
+      if (error) {
+        logger.warn("[deploy-tracker] complete-ci-run failed:", error.message);
+        return json({ error: "Failed to complete CI run" }, 500);
+      }
+      return json({ ok: true });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // BI-02 ACTION: record-bundle-size — log a bundle size measurement
+    // ═══════════════════════════════════════════════════════════════════
+    if (action === "record-bundle-size") {
+      if (!body.surface) return json({ error: "surface required" }, 400);
+      if (!body.bundle_name) return json({ error: "bundle_name required" }, 400);
+      if (!body.size_bytes) return json({ error: "size_bytes required" }, 400);
+
+      const { data, error } = await sb.from("bundle_size_history").insert({
+        surface: body.surface,
+        bundle_name: body.bundle_name,
+        size_bytes: Number(body.size_bytes),
+        gzip_bytes: body.gzip_bytes ? Number(body.gzip_bytes) : null,
+        product_version: body.product_version || null,
+        git_sha: body.git_sha || null,
+        deploy_id: body.deploy_id || null,
+        metadata: body.metadata || {},
+      }).select("id").single();
+
+      if (error) {
+        logger.warn("[deploy-tracker] record-bundle-size failed:", error.message);
+        return json({ error: "Failed to record bundle size" }, 500);
+      }
+      return json({ ok: true, bundle_record_id: data?.id });
     }
 
     return json({ error: `Unknown action: ${action}` }, 400);

@@ -79,3 +79,4 @@
 | Session | Primary Pair | Pod 4 Reviewer |
 |---------|-------------|----------------|
 | BI-01 | DevOps + Lead Platform Engineer | Chief Architect |
+| BI-02 | DevOps + Lead Platform Engineer | Chief Architect + System Architect—Scalability |

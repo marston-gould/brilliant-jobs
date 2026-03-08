@@ -52,14 +52,29 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**BI-01** — Build Instrumentation & Deployment Visibility System
+**BI-02** — CI Pipeline Analytics & Bundle Size Tracking
 - Completed: 2026-03-08
-- Git tag: `infra@deploy-tracker-v1.0.0`
-- Product version bumped: `v7.72` → `v7.73` (JS/HTML changes — admin-deploy-tracker.js, admin.html container + script tag; all HTML surfaces cache-busted)
-- ROADMAP.md updated: BI-01 → ✅ with completion notes
-- roadmap.html updated: BI-01 → `s: 'done'`, p: 100
-- **Migration (v6.34):** `deploy_events` (9 surface types, 5 status types, 5 trigger types), `build_events` (per-step tracking with FK to deploy), `deploy_health_log` (post-deploy health checks). 6 indexes. RLS on all 3 tables (admin read, service write). Views: `v_deploy_dashboard` (recent deploys with build step counts), `v_surface_deploy_health` (per-surface 30d stats). Functions: `fn_deploy_summary` (full admin dashboard data), `fn_record_deploy` (CI webhook entry), `fn_complete_deploy` (status update). Weekly cleanup cron (90d retention).
-- **Edge Function:** `deploy-tracker/index.ts` — 6 actions: summary (admin dashboard), list (recent deploys), record (CI webhook), complete (status update), record-build-step (build step tracking), health (post-deploy health check). Auth: admin for reads, deploy key or service role for writes.
+- Git tag: `infra@build-analytics-v1.0.0`
+- Product version bumped: `v7.73` → `v7.74` (JS/HTML changes — admin-build-analytics.js, admin.js subpage #37, admin.html container + script tag; all HTML surfaces cache-busted)
+- ROADMAP.md updated: BI-02 → ✅ with completion notes
+- roadmap.html updated: BI-02 → `s: 'done'`, p: 100
+- **Migration (v6.35):** `ci_workflow_runs` (workflow tracking with GH Actions run_id, conclusion, deploy_id FK), `bundle_size_history` (per-surface per-bundle size tracking with gzip and deploy_id FK). 7 indexes. RLS on both tables (admin read, service write). Views: `v_build_step_performance` (avg/p95 duration + failure rate per step), `v_bundle_size_trends` (delta tracking with row numbers), `v_ci_workflow_health` (per-workflow 30d stats). Function: `fn_build_analytics` (combined build, CI, and bundle analytics). Weekly cleanup cron (90d retention, offset from BI-01).
+- **Edge Function:** `deploy-tracker/index.ts` extended with 4 new BI-02 actions: build-analytics (admin dashboard data), record-ci-run (CI webhook), complete-ci-run (status update by UUID or run_id), record-bundle-size (bundle measurement). Total: 10 actions (6 BI-01 + 4 BI-02). No new gateway route — extends existing deploy-tracker route.
+- **Admin Panel:** `admin-build-analytics.js` — 5 summary cards (build steps, CI runs, CI success rate, avg build duration, bundle regressions), build step performance table (9 columns: step, runs, failed, fail %, avg, p95, min, max, last run), CI workflow health table (8 columns with success rate + p95), bundle sizes table (8 columns with delta + trend sparklines), recent CI runs timeline (8 columns). 2min auto-refresh polling.
+- **Admin Nav:** `ADMIN_SUBPAGE_MAP` entry #37 in operations section. `loadBuildAnalyticsPanel()` global function.
+- **Team:** BI-02 pairing added to pod-team-manifest.md (DevOps + Lead Platform Eng, Chief Architect + System Architect—Scalability reviewers).
+- **Created:**
+  - `supabase/migrations/v6.35-build-analytics.sql` — Full migration
+  - `js/admin-build-analytics.js` — Build analytics admin dashboard
+  - `tests/bi-002-build-analytics.test.js` — 81 validation tests
+- **Modified:**
+  - `supabase/functions/deploy-tracker/index.ts` — 4 new BI-02 actions (10 total)
+  - `js/admin.js` — ADMIN_SUBPAGE_MAP #37 (build-analytics in operations)
+  - `admin.html` — build-analytics container + script tag
+  - `docs/scaling/pod-team-manifest.md` — BI-02 pairing assignment
+  - `ROADMAP.md` — BI-02 → ✅
+  - `roadmap.html` — BI-02 → done/100
+- **Tests:** 81 BI-02 validation tests (all passing)
 - **Gateway:** Route #110 (deploy-tracker). Total: 110 routes.
 - **Admin Panel:** `admin-deploy-tracker.js` — 6 summary cards (total, success rate, today, this week, failed, avg duration), 30d deploy frequency sparkline (SVG polyline, 3 lines: total/success/failed), per-surface health table (9 columns), recent deploys timeline (7 columns with error expansion rows). 2min auto-refresh polling.
 - **Team:** BI-01 pairing added to pod-team-manifest.md (DevOps + Lead Platform Eng, Chief Architect reviewer).
@@ -757,7 +772,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.73`** | **BI-01 — Build Instrumentation & Deployment Visibility** |
+| **Product (BJ_VERSION)** | **`v7.74`** | **BI-02 — CI Pipeline Analytics & Bundle Size Tracking** |
 | Dashboard | `dashboard@3.0.0-all-pages` | SA-017 |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
@@ -768,6 +783,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 | **API Gateway** | `infra@gateway-v1.0.0` | BI-01 (110 routes) |
 | **Capacity Model** | **`infra@capacity-model-v1.0.0`** | **SA-028** |
 | **Deploy Tracker** | **`infra@deploy-tracker-v1.0.0`** | **BI-01** |
+| **Build Analytics** | **`infra@build-analytics-v1.0.0`** | **BI-02** |
 | **Partitioning** | **`infra@partitioning-v1.0.0`** | **SA-019** |
 | **Read Replica** | **`infra@read-replica-v1.0.0`** | **SA-018** |
 | **Common Crawl** | **`infra@common-crawl-v0.1.0`** | **SA-007** |
@@ -785,6 +801,8 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 ---
 
 ## Completed Sessions (24 of 24 + 17 Phase 1 + 16 Scaling + FIX-11 + PRE-LAUNCH)
+
+| BI-02 | 2026-03-08 | CI pipeline analytics + bundle size tracking. v6.35 migration (ci_workflow_runs, bundle_size_history, 3 views, fn_build_analytics). deploy-tracker EF: 4 new actions (build-analytics, record-ci-run, complete-ci-run, record-bundle-size). admin-build-analytics.js (5 cards, build step perf, CI health, bundle sizes with sparklines, CI runs timeline). ADMIN_SUBPAGE_MAP #37. 81 tests. v7.74. | infra@build-analytics-v1.0.0 |
 
 | PRE-LAUNCH | 2026-03-08 | 0.181 Extension E2E (17 handlers, routing, permissions, snapshots), 0.182 Kill-switch (3-layer verified, DB flag, admin UI), 0.184 Final CX (PostHog 4 surfaces, ARIA, CSP, a11y). 34 validation tests. Phase 0-DD COMPLETE. | pre-launch@1.0.0-validation |
 
