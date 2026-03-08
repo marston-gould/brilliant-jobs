@@ -301,3 +301,95 @@ supabase/functions/api-gateway/index.ts                — 10 → 93 routes in r
 supabase/functions/_shared/gateway-middleware.ts        — API key auth + expanded cache TTL
 docs/scaling/adr-03-gateway.md                         — this document (SA-005 section)
 ```
+
+---
+
+## SA-024: Event Bus + Webhook Delivery System
+
+**Date:** 2026-03-07 | **Phase:** S5 | **Status:** IMPLEMENTED
+
+### Decision
+
+Implement a platform event bus as an append-only event log (`platform_events`) with HMAC-signed webhook delivery to registered consumers (`webhook_subscriptions`). The gateway becomes the primary event emitter via H-01 middleware; any Edge Function can also publish events directly via `fn_publish_event()` (H-02).
+
+### Hook & Scar Points Activated
+
+**H-01 (activated):** Gateway post-response middleware slot. `eventBusMiddleware()` inserted as the last middleware in the pipeline. Fires events after 2xx responses on mapped routes — fire-and-forget, never blocks the response.
+
+**H-02 (activated):** `fn_publish_event(event_type, source, payload, metadata, idempotency_key)` is callable from any Edge Function. Returns `event_id` or existing `event_id` on dedup hit.
+
+**S-03 (activated):** `GatewayContext.eventBus` field now wired to the live middleware. Previously typed, now implemented.
+
+**S-04 (standing scar):** `webhook_subscriptions.event_filters JSONB` — content-based filtering (e.g. filter to events where `payload->>'source' = 'common_crawl'`). Column exists, filtering logic not yet implemented.
+
+**S-05 (standing scar):** `platform_events.routing_key` — topic-based fan-out for high-volume event streams. Column not yet added; fn_queue_webhook_deliveries has a comment placeholder. Add when event volume justifies it.
+
+### Event Taxonomy
+
+```
+job.*           job.published, job.enriched, job.dedup_complete, job.batch_ingested
+user.*          user.signup, user.tier_changed, user.deleted
+pipeline.*      pipeline.stage_changed, pipeline.ghost_detected, pipeline.signal_confirmed
+agent.*         agent.action_taken, agent.graduated, agent.alert_fired
+billing.*       billing.subscription_changed, billing.checkout_initiated, billing.credit_added
+referral.*      referral.converted, referral.fraud_flagged
+system.*        system.health_check, system.error_spike
+content.*       content.approved
+notification.*  notification.sent
+```
+
+### Webhook Delivery: Signature Verification
+
+Consumers verify delivery authenticity by checking `X-BJ-Signature-256`:
+
+```javascript
+const payload = await req.text();
+const expectedSig = 'sha256=' + hmacSha256(webhookSecret, payload);
+const actualSig = req.headers.get('X-BJ-Signature-256');
+if (!timingSafeEqual(expectedSig, actualSig)) throw new Error('Invalid signature');
+```
+
+Headers sent with every delivery:
+- `X-BJ-Signature-256: sha256=<hex>` — HMAC-SHA256 of the raw body
+- `X-BJ-Delivery-ID: del_xxx` — idempotency key for the delivery attempt
+- `X-BJ-Event-ID: evt_xxx` — the original event (stable across retries)
+- `X-BJ-Event-Type: job.published` — event type for router dispatch
+- `X-BJ-Timestamp: 1234567890` — Unix timestamp for replay prevention
+
+### Retry Schedule
+
+| Attempt | Delay | Cumulative |
+|---------|-------|------------|
+| 1       | immediate | 0s |
+| 2       | 1 min | 1m |
+| 3       | 5 min | 6m |
+| 4       | 30 min | 36m |
+| 5       | 2 hours | 2h 36m |
+| 6       | 8 hours | 10h 36m → abandoned |
+
+Subscriptions with 50+ consecutive failures are auto-disabled.
+
+### Alternatives Considered
+
+**In-memory event emitter:** Rejected — no persistence across EF instances; events lost on cold start or crash. Platform events must survive failures.
+
+**Supabase Realtime channels:** Considered for internal EF-to-EF pub/sub. Rejected for external webhooks — not suited for guaranteed delivery with retry. May be used for internal observer pattern in a future session.
+
+**Dedicated message broker (Redis Streams, Kafka):** Overkill at current scale. Postgres-backed queue handles thousands of events/day with no additional infrastructure. Revisit when event throughput exceeds 100k/day.
+
+### Files Created (SA-024)
+
+```
+supabase/migrations/v6.31-event-bus-webhooks.sql      — platform_events + webhook_subscriptions + delivery_log + functions + cron
+supabase/functions/event-bus/index.ts                  — EF: publish/subscribe/unsubscribe/process_queue/status/retry/summary
+supabase/functions/_shared/event-bus-middleware.ts     — H-01 gateway middleware (post-response event dispatch)
+tests/sa-024-event-bus.test.js                         — 77 validation tests
+```
+
+### Files Modified (SA-024)
+
+```
+supabase/functions/api-gateway/index.ts               — Route #107 (event-bus) + eventBusMiddleware in pipeline
+supabase/migrations/v6.31-event-bus-webhooks.sql      — api_consumers: +webhook_url, +webhook_events, +webhook_enabled
+docs/scaling/adr-03-gateway.md                        — this document (SA-024 section)
+```

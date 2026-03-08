@@ -3197,7 +3197,7 @@ Phase S can overlap with Phase 1 feature work on separate tracks. Sessions withi
 
 | # | Item | Est. | Status | Notes |
 |---|------|------|--------|-------|
-| SA-024 | Event bus + webhook system | 16–22h | 🔲 | Platform event bus. HMAC-signed webhook delivery + retry. API consumer management. Pair: Backend + Lead Platform Eng + Forward-Looking Dev. |
+| SA-024 | Event bus + webhook system | 16–22h | ✅ | v6.31 migration: platform_events (append-only), webhook_subscriptions, webhook_delivery_log, api_consumers upgrade. fn_publish_event + fn_queue_webhook_deliveries + fn_webhook_delivery_summary + fn_mark_subscription_failure. v_event_bus_dashboard. 2 pg_cron (every-minute delivery, daily cleanup). event-bus EF (8 actions). event-bus-middleware.ts H-01 activation. S-03 scar activated. Gateway route #107. ADR-03 SA-024 section. 79 tests. v7.55 → v7.56. Pair: Backend + Lead Platform Eng + Forward-Looking Dev. |
 | SA-025 | Feature flags + experimentation | 14–20h | 🔲 | Percentage rollouts, user segments, variants. React SDK (useFeatureFlag). PostHog experiments. Gateway middleware. Pair: Frontend + Backend. |
 | SA-026 | Fitness functions + evolvability framework | 14–20h | 🔲 | 8 architecture fitness functions in CI (18 gates total). Evolvability review template. Dependabot/Renovate. Pair: Eng Lead + Evolvability Strategist + QA + DevOps. |
 

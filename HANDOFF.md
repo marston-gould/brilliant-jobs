@@ -52,19 +52,25 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**SA-023** — Architecture Governance Review (Phase S4 → S5 Gate)
+**SA-024** — Event Bus + Webhook System (Phase S5)
 - Completed: 2026-03-07
-- Git tag: `governance@1.0.0-s4-review`
-- No product version bump (no JS/CSS/HTML changes)
-- ROADMAP.md updated: SA-023 row → ✅ with completion notes; SA-023b added for load test (renumbered)
-- roadmap.html updated: SA-023 entry → `s: 'done'`, p: 100; SA-023b added
+- Git tag: `infra@event-bus-v1.0.0`
+- Product version bumped: `v7.55` → `v7.56`
+- ROADMAP.md updated: SA-024 row → ✅ with completion notes
+- roadmap.html updated: SA-024 entry → `s: 'done'`, p: 100
+- **Pod 4 note:** All 5 Pod 4 roles confirmed in `docs/scaling/pod-team-manifest.md` — no update needed
 - **Created:**
-  - `docs/scaling/sa-023-architecture-governance-review.md` — Full governance review: 15-hook audit, 15-scar audit, 12-item tech debt register, 18-gate fitness function roadmap, deprecation protocol, S4→S5 readiness checklist, evolvability score 4.25/5
-  - `docs/scaling/deprecation-log.md` — Formal deprecation registry; DEP-001 (direct EF paths), RET-001 (LegacyPageWrapper)
-- **Deleted:** `src/app/shell/LegacyPageWrapper.tsx` — all 22 routes migrated as of SA-017; bridge shim retired (TD-03 resolved)
-- **Pod 4 notes confirmed:** 5 Pod 4 roles (Chief Architect, Lead Platform Eng, System Architect—Scalability, Forward-Looking Dev(s), Evolvability Strategist) were already present in `docs/scaling/pod-team-manifest.md` from SA-006 — no update needed
-- **S4 → S5 gate: CLEARED**
-- Phase S5 STARTING
+  - `supabase/migrations/v6.31-event-bus-webhooks.sql` — platform_events (append-only, no-update/no-delete rules), webhook_subscriptions (event_filters scar S-04), webhook_delivery_log (5-state machine: pending/delivered/failed/retrying/abandoned), api_consumers upgrade (+webhook_url, +webhook_events, +webhook_enabled), fn_publish_event, fn_queue_webhook_deliveries, fn_webhook_delivery_summary, fn_mark_subscription_failure, v_event_bus_dashboard, 2 pg_cron (every-minute delivery queue + daily cleanup)
+  - `supabase/functions/event-bus/index.ts` — 8 actions: publish, subscribe, unsubscribe, list, status, retry, process_queue, summary. HMAC-SHA256 signing (X-BJ-Signature-256 header). Retry: 1m/5m/30m/2h/8h → abandoned (5 attempts max). Auto-disable at 50 consecutive failures. AbortSignal.timeout(10s) per call.
+  - `supabase/functions/_shared/event-bus-middleware.ts` — H-01 activation. 11 routes mapped to event types. Fire-and-forget (never blocks response). Error swallowed to caller.
+  - `tests/sa-024-event-bus.test.js` — 79 validation tests (all passing)
+- **Modified:**
+  - `supabase/functions/api-gateway/index.ts` — Route #107 (event-bus) + eventBusMiddleware() in pipeline. S-03 activated.
+  - `docs/scaling/adr-03-gateway.md` — SA-024 section: H-01/H-02/S-03 activation, S-04/S-05 standing scars, event taxonomy, HMAC verification example, retry schedule, alternatives rejected
+- **Hook/Scar activations:** H-01 (gateway post-response dispatch), H-02 (fn_publish_event), S-03 (GatewayContext.eventBus)
+- **Standing scars:** S-04 (event_filters content-based filter), S-05 (routing_key fan-out)
+- Phase S5 CONTINUING
+
 - Completed: 2026-03-07
 - Git tag: `extension@3.0.0-typescript`
 - Product version bumped: `v7.54` → `v7.55`
@@ -371,12 +377,12 @@ None.
 
 ## Next Session
 
-**SA-024** — Event Bus + Webhook System (Phase S5)
-- Entry gate: SA-023 ✅ (Architecture Governance Review complete; S4→S5 gate cleared)
-- Pair: Backend Eng + Lead Platform Engineer + Forward-Looking Dev(s)
-- Reviewer: Chief Architect
-- Estimated: 16–22h
-- Build: Platform event bus. HMAC-signed webhook delivery + retry queue. API consumer management upgrade. Gateway middleware for event dispatch (slots into H-01). Webhook delivery registered as `api_consumers` entry. Enforce gateway-only (TD-01 resolution begins here). ADR-03 gateway extension section. S-03 (GatewayContext type) activation candidate.
+**SA-025** — Feature Flags + Experimentation (Phase S5)
+- Entry gate: SA-024 ✅ (Event bus operational; gateway route #107 live)
+- Pair: Frontend + Backend + Forward-Looking Dev(s)
+- Reviewer: Lead Platform Engineer
+- Estimated: 14–20h
+- Build: Percentage rollouts, user segments, variant testing. React SDK hook (useFeatureFlag). PostHog experiment integration. Gateway middleware for flag evaluation. Flag evaluation registered in api_consumers. useFeatureFlag reads from window.BJ bridge during migration. ADR to document decision.
 
 ---
 
@@ -408,13 +414,14 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.55`** | **SA-022** |
+| **Product (BJ_VERSION)** | **`v7.56`** | **SA-024** |
 | Dashboard | `dashboard@3.0.0-all-pages` | SA-017 |
 | Extension | `extension@2.22.0-error-handling` | FIX-11 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
 | **Admin** | **`admin@1.9.0-referral-pipeline-agent`** | **SA-021** |
 | **SPA Scaffold** | **`spa@1.0.0-scaffold`** | **SA-013** |
-| **API Gateway** | `infra@gateway-v1.0.0` | SA-018 (103 routes) |
+| **Event Bus** | **`infra@event-bus-v1.0.0`** | **SA-024** |
+| **API Gateway** | `infra@gateway-v1.0.0` | SA-024 (107 routes) |
 | **Partitioning** | **`infra@partitioning-v1.0.0`** | **SA-019** |
 | **Read Replica** | **`infra@read-replica-v1.0.0`** | **SA-018** |
 | **Common Crawl** | **`infra@common-crawl-v0.1.0`** | **SA-007** |
@@ -432,6 +439,8 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 ---
 
 ## Completed Sessions (24 of 24 + 17 Phase 1 + 15 Scaling + FIX-11)
+
+| SA-024 | 2026-03-07 | Event bus: v6.31 migration (platform_events append-only, webhook_subscriptions, webhook_delivery_log, api_consumers upgrade). fn_publish_event + fn_queue_webhook_deliveries + fn_webhook_delivery_summary + fn_mark_subscription_failure. v_event_bus_dashboard. 2 pg_cron. event-bus EF (8 actions). event-bus-middleware H-01 activation. S-03 activated. Gateway route #107. ADR-03 extended. 79 tests. v7.56. | infra@event-bus-v1.0.0 |
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|

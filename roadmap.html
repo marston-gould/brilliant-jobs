@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.55"></script>
+  <script src="/js/version.js?v=v7.56"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2125,7 +2125,7 @@ const features = [
 { s: 'todo', b: 'post-launch', n: 'SA-023b Load test 5,000 concurrent', d: 'k6 load test at 5,000 concurrent users. Zero 5xx errors, p95 search <500ms. If failed: remediation session created. Pair: DevOps + QA. 12-16h.', p: 93, e: '16h' },
 
 // Phase S5: Platform Evolution (Weeks 14-20) — Event Bus, Feature Flags, Fitness Functions
-{ s: 'todo', b: 'post-launch', n: 'SA-024 Event bus + webhook system', d: 'Platform event bus (platform_events table). Webhook delivery with HMAC signatures + retry. API consumer management. Pair: Backend + Lead Platform Eng. 16-22h.', p: 94, e: '22h' },
+{ s: 'done', b: 'post-launch', n: 'SA-024 Event bus + webhook system', d: 'v6.31: platform_events (append-only), webhook_subscriptions, webhook_delivery_log, api_consumers upgrade. fn_publish_event + queue + delivery summary. v_event_bus_dashboard. 2 pg_cron. event-bus EF (8 actions: publish/subscribe/unsubscribe/list/status/retry/process_queue/summary). HMAC-SHA256 signing. Retry: 1m/5m/30m/2h/8h. H-01+H-02+S-03 activated. Gateway route #107. ADR-03 extended. 79 tests. v7.56.', p: 100, e: '22h' },
 { s: 'todo', b: 'post-launch', n: 'SA-025 Feature flags + experimentation', d: 'Feature flag infrastructure: percentage rollouts, user segments, variant assignments. React SDK (useFeatureFlag). PostHog experiment tracking. Gateway middleware. Pair: Frontend + Backend. 14-20h.', p: 94, e: '20h' },
 { s: 'todo', b: 'post-launch', n: 'SA-026 Fitness functions + evolvability', d: '8 architecture fitness functions in CI (18 total gates). Evolvability review template. Dependency management (Dependabot/Renovate). Tech debt register. Deprecation protocol. Pair: Eng Lead + Evolvability Strategist. 14-20h.', p: 94, e: '20h' },
 

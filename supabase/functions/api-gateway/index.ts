@@ -39,6 +39,7 @@ import {
 } from "../_shared/gateway-middleware.ts";
 import { API_VERSION } from "../_shared/api-version.ts";
 import { readReplicaRoutingMiddleware } from "../_shared/read-replica-middleware.ts";
+import { eventBusMiddleware } from "../_shared/event-bus-middleware.ts";
 
 // ─── Route Registry ───────────────────────────────────────────────────────────
 //
@@ -200,8 +201,11 @@ const ROUTE_REGISTRY: Record<string, string> = {
   // ── Read Replica Health (SA-018) ──────────────────────────────────────────
   "replica-health":           "replica-health",           // SA-018: Replica lag monitoring + health
 
+  // ── Event Bus + Webhook Delivery (SA-024) ─────────────────────────────────
+  "event-bus":                "event-bus",                // SA-024: Platform event bus, webhook delivery, subscriptions
+
   // ═══════════════════════════════════════════════════════════════════════════
-  // TOTAL: 106 routes (93 SA-005 + 1 SA-007 + 1 SA-008 + 1 SA-009 + 2 SA-010 + 2 SA-011 + 2 SA-012 + 1 SA-018 + 2 SA-020 + 1 SA-021). Direct paths deprecated.
+  // TOTAL: 107 routes (93 SA-005 + 1 SA-007 + 1 SA-008 + 1 SA-009 + 2 SA-010 + 2 SA-011 + 2 SA-012 + 1 SA-018 + 2 SA-020 + 1 SA-021 + 1 SA-024). Direct paths deprecated.
   // HOOK: Future EFs register here. Future: load from DB table for
   //       runtime updates without redeploy (api_consumers integration).
   // ═══════════════════════════════════════════════════════════════════════════
@@ -221,6 +225,7 @@ const pipeline = createMiddlewarePipeline([
   readReplicaRoutingMiddleware,  // SA-018: Annotates read/write + logs routing stats
   rateLimiterMiddleware,
   responseCacheMiddleware,
+  eventBusMiddleware(),          // SA-024: H-01 — post-response event dispatch (fire-and-forget)
   // ← future middleware registered here
 ]);
 
