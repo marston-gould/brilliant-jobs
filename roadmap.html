@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.56"></script>
+  <script src="/js/version.js?v=v7.57"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2126,7 +2126,7 @@ const features = [
 
 // Phase S5: Platform Evolution (Weeks 14-20) — Event Bus, Feature Flags, Fitness Functions
 { s: 'done', b: 'post-launch', n: 'SA-024 Event bus + webhook system', d: 'v6.31: platform_events (append-only), webhook_subscriptions, webhook_delivery_log, api_consumers upgrade. fn_publish_event + queue + delivery summary. v_event_bus_dashboard. 2 pg_cron. event-bus EF (8 actions: publish/subscribe/unsubscribe/list/status/retry/process_queue/summary). HMAC-SHA256 signing. Retry: 1m/5m/30m/2h/8h. H-01+H-02+S-03 activated. Gateway route #107. ADR-03 extended. 79 tests. v7.56.', p: 100, e: '22h' },
-{ s: 'todo', b: 'post-launch', n: 'SA-025 Feature flags + experimentation', d: 'Feature flag infrastructure: percentage rollouts, user segments, variant assignments. React SDK (useFeatureFlag). PostHog experiment tracking. Gateway middleware. Pair: Frontend + Backend. 14-20h.', p: 94, e: '20h' },
+{ s: 'done', b: 'post-launch', n: 'SA-025 Feature flags + experimentation', d: 'v6.32 migration (feature_flags/user_segments/flag_assignments/flag_evaluation_log). fn_evaluate_flag (deterministic bucket, sticky variants, overrides). fn_evaluate_all_flags. feature-flags EF (8 actions). feature-flag-middleware H-03. useFeatureFlag + FeatureFlagProvider (PostHog integration). 5 seed flags. 6 scars (S-06–S-11). ADR-08. Route #108. 106 tests. v7.57.', p: 100, e: '20h' },
 { s: 'todo', b: 'post-launch', n: 'SA-026 Fitness functions + evolvability', d: '8 architecture fitness functions in CI (18 total gates). Evolvability review template. Dependency management (Dependabot/Renovate). Tech debt register. Deprecation protocol. Pair: Eng Lead + Evolvability Strategist. 14-20h.', p: 94, e: '20h' },
 
 // Phase S6: Architecture Governance & Future-Proofing (Weeks 18-24) — Blueprint, Capacity, Prototyping

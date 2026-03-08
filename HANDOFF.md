@@ -52,13 +52,27 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**SA-024** — Event Bus + Webhook System (Phase S5)
+**SA-025** — Feature Flags + Experimentation (Phase S5)
 - Completed: 2026-03-07
-- Git tag: `infra@event-bus-v1.0.0`
-- Product version bumped: `v7.55` → `v7.56`
-- ROADMAP.md updated: SA-024 row → ✅ with completion notes
-- roadmap.html updated: SA-024 entry → `s: 'done'`, p: 100
-- **Pod 4 note:** All 5 Pod 4 roles confirmed in `docs/scaling/pod-team-manifest.md` — no update needed
+- Git tag: `infra@feature-flags-v1.0.0`
+- Product version bumped: `v7.56` → `v7.57`
+- ROADMAP.md updated: SA-025 row → ✅ with completion notes
+- roadmap.html updated: SA-025 entry → `s: 'done'`, p: 100
+- **Created:**
+  - `supabase/migrations/v6.32-feature-flags.sql` — feature_flags (key/type/status/rollout_percentage/variants/targeting_rules), user_segments (5 seeded), flag_assignments (sticky bucket 0–99, overrides, expires_at scar), flag_evaluation_log (posthog_synced scar). fn_evaluate_flag (7-step eval: not_found/inactive/override/bucket/boolean/percentage/variant). fn_evaluate_all_flags (batch bootstrap). fn_flag_summary. v_flag_dashboard. 4 RLS policies. 5 seed flags (draft). agent_action_log migration event.
+  - `supabase/functions/feature-flags/index.ts` — 8 actions: evaluate, evaluate_all, create, update, list, status, segments, override. Variant weight validation (sum=100). Key format validation. Fire-and-forget eval logging. getReadClient (read replica aware). eval_ms timing.
+  - `supabase/functions/_shared/feature-flag-middleware.ts` — H-03 activation. FLAG_AWARE_ROUTES set (6 routes). btoa/atob base64 header encoding. parseFlagHeader() helper for EF consumers. S-06 scar (expand routes). S-07 scar (PostHog Remote Flags swap).
+  - `src/app/hooks/useFeatureFlag.ts` — useFeatureFlag(key, default). useFeatureFlagVariant(key). useAllFeatureFlags(). Safe outside provider.
+  - `src/app/providers/FeatureFlagProvider.tsx` — FeatureFlagContext. fn_evaluate_all_flags bootstrap. 60s poll. PostHog $feature_flag_called on enable. S-07 scar. window.BJ bridge pattern. refresh() on context.
+  - `docs/scaling/adr-08-feature-flags.md` — ADR-08 IMPLEMENTED. Architecture, evaluation algorithm, PostHog/LaunchDarkly alternatives rejected, 6 scars (S-06–S-11), consequences.
+  - `tests/sa-025-feature-flags.test.js` — 106 validation tests (all passing)
+- **Modified:**
+  - `supabase/functions/api-gateway/index.ts` — Route #108 (feature-flags) + featureFlagMiddleware() in pipeline. H-03 activated. Total: 108 routes.
+- **Hook/Scar activations:** H-03 (gateway feature flag injection)
+- **Standing scars:** S-06 (expand FLAG_AWARE_ROUTES), S-07 (PostHog Remote Flags), S-08 (posthog eval log sync), S-09 (expires_at time-bounded experiments), S-10 (targeting_rules engine), S-11 (metadata bucket)
+- **Phase S5 COMPLETE** (SA-022 ✅ TypeScript, SA-023 ✅ Full audit, SA-024 ✅ Event Bus, SA-025 ✅ Feature Flags)
+
+
 - **Created:**
   - `supabase/migrations/v6.31-event-bus-webhooks.sql` — platform_events (append-only, no-update/no-delete rules), webhook_subscriptions (event_filters scar S-04), webhook_delivery_log (5-state machine: pending/delivered/failed/retrying/abandoned), api_consumers upgrade (+webhook_url, +webhook_events, +webhook_enabled), fn_publish_event, fn_queue_webhook_deliveries, fn_webhook_delivery_summary, fn_mark_subscription_failure, v_event_bus_dashboard, 2 pg_cron (every-minute delivery queue + daily cleanup)
   - `supabase/functions/event-bus/index.ts` — 8 actions: publish, subscribe, unsubscribe, list, status, retry, process_queue, summary. HMAC-SHA256 signing (X-BJ-Signature-256 header). Retry: 1m/5m/30m/2h/8h → abandoned (5 attempts max). Auto-disable at 50 consecutive failures. AbortSignal.timeout(10s) per call.
@@ -377,12 +391,12 @@ None.
 
 ## Next Session
 
-**SA-025** — Feature Flags + Experimentation (Phase S5)
-- Entry gate: SA-024 ✅ (Event bus operational; gateway route #107 live)
-- Pair: Frontend + Backend + Forward-Looking Dev(s)
-- Reviewer: Lead Platform Engineer
+**SA-026** — Fitness Functions + Evolvability Framework (Phase S6)
+- Entry gate: SA-025 ✅ (Feature flags live; gateway route #108 active)
+- Pair: Eng Lead + Evolvability Strategist + QA + DevOps
+- Reviewer: Chief Architect (full sign-off required for Phase S6 start)
 - Estimated: 14–20h
-- Build: Percentage rollouts, user segments, variant testing. React SDK hook (useFeatureFlag). PostHog experiment integration. Gateway middleware for flag evaluation. Flag evaluation registered in api_consumers. useFeatureFlag reads from window.BJ bridge during migration. ADR to document decision.
+- Build: 8 architecture fitness functions in CI (18 total gates). Evolvability review template. Dependabot/Renovate dependency automation. Formal evolvability review: hook/scar utilization across S1–S5, technical debt register, architectural drift audit. Phase S6 kickoff.
 
 ---
 
@@ -414,14 +428,15 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.56`** | **SA-024** |
+| **Product (BJ_VERSION)** | **`v7.57`** | **SA-025** |
 | Dashboard | `dashboard@3.0.0-all-pages` | SA-017 |
 | Extension | `extension@2.22.0-error-handling` | FIX-11 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
 | **Admin** | **`admin@1.9.0-referral-pipeline-agent`** | **SA-021** |
 | **SPA Scaffold** | **`spa@1.0.0-scaffold`** | **SA-013** |
+| **Feature Flags** | **`infra@feature-flags-v1.0.0`** | **SA-025** |
 | **Event Bus** | **`infra@event-bus-v1.0.0`** | **SA-024** |
-| **API Gateway** | `infra@gateway-v1.0.0` | SA-024 (107 routes) |
+| **API Gateway** | `infra@gateway-v1.0.0` | SA-025 (108 routes) |
 | **Partitioning** | **`infra@partitioning-v1.0.0`** | **SA-019** |
 | **Read Replica** | **`infra@read-replica-v1.0.0`** | **SA-018** |
 | **Common Crawl** | **`infra@common-crawl-v0.1.0`** | **SA-007** |
@@ -440,6 +455,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 ## Completed Sessions (24 of 24 + 17 Phase 1 + 15 Scaling + FIX-11)
 
+| SA-025 | 2026-03-07 | Feature flags: v6.32 migration (feature_flags/user_segments/flag_assignments/flag_evaluation_log). fn_evaluate_flag (deterministic bucket, sticky variants, overrides). fn_evaluate_all_flags (batch). fn_flag_summary. v_flag_dashboard. 4 RLS policies. 5 seed flags (draft). feature-flags EF (8 actions). feature-flag-middleware H-03 activation. FLAG_AWARE_ROUTES S-06 scar. useFeatureFlag + useFeatureFlagVariant hooks. FeatureFlagProvider (60s poll, PostHog). parseFlagHeader. 6 scars (S-06–S-11). ADR-08. Gateway route #108. 106 tests. v7.57. Phase S5 COMPLETE. | infra@feature-flags-v1.0.0 |
 | SA-024 | 2026-03-07 | Event bus: v6.31 migration (platform_events append-only, webhook_subscriptions, webhook_delivery_log, api_consumers upgrade). fn_publish_event + fn_queue_webhook_deliveries + fn_webhook_delivery_summary + fn_mark_subscription_failure. v_event_bus_dashboard. 2 pg_cron. event-bus EF (8 actions). event-bus-middleware H-01 activation. S-03 activated. Gateway route #107. ADR-03 extended. 79 tests. v7.56. | infra@event-bus-v1.0.0 |
 
 | Session | Date | Fix Items | Tag(s) |

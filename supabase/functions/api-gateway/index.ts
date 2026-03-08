@@ -40,6 +40,7 @@ import {
 import { API_VERSION } from "../_shared/api-version.ts";
 import { readReplicaRoutingMiddleware } from "../_shared/read-replica-middleware.ts";
 import { eventBusMiddleware } from "../_shared/event-bus-middleware.ts";
+import { featureFlagMiddleware } from "../_shared/feature-flag-middleware.ts";
 
 // ─── Route Registry ───────────────────────────────────────────────────────────
 //
@@ -204,8 +205,11 @@ const ROUTE_REGISTRY: Record<string, string> = {
   // ── Event Bus + Webhook Delivery (SA-024) ─────────────────────────────────
   "event-bus":                "event-bus",                // SA-024: Platform event bus, webhook delivery, subscriptions
 
+  // ── Feature Flags + Experimentation (SA-025) ──────────────────────────────
+  "feature-flags":            "feature-flags",            // SA-025: evaluate/create/update/list/segments/override
+
   // ═══════════════════════════════════════════════════════════════════════════
-  // TOTAL: 107 routes (93 SA-005 + 1 SA-007 + 1 SA-008 + 1 SA-009 + 2 SA-010 + 2 SA-011 + 2 SA-012 + 1 SA-018 + 2 SA-020 + 1 SA-021 + 1 SA-024). Direct paths deprecated.
+  // TOTAL: 108 routes (93 SA-005 + 1 SA-007 + 1 SA-008 + 1 SA-009 + 2 SA-010 + 2 SA-011 + 2 SA-012 + 1 SA-018 + 2 SA-020 + 1 SA-021 + 1 SA-024). Direct paths deprecated.
   // HOOK: Future EFs register here. Future: load from DB table for
   //       runtime updates without redeploy (api_consumers integration).
   // ═══════════════════════════════════════════════════════════════════════════
@@ -226,6 +230,7 @@ const pipeline = createMiddlewarePipeline([
   rateLimiterMiddleware,
   responseCacheMiddleware,
   eventBusMiddleware(),          // SA-024: H-01 — post-response event dispatch (fire-and-forget)
+  featureFlagMiddleware(),       // SA-025: H-03 — flag evaluation injection for flag-aware routes
   // ← future middleware registered here
 ]);
 
