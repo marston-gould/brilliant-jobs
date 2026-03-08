@@ -25,9 +25,14 @@ function renderResumes() {
   const archivedResumes = resumes.filter(r => r.archived);
 
   // If no active resumes in localStorage but user is authenticated, attempt cloud recovery
-  if (activeResumes.length === 0 && !renderResumes._syncAttempted && typeof sb !== 'undefined' && typeof currentUser !== 'undefined' && currentUser) {
-    renderResumes._syncAttempted = true;
+  // Uses a 30s cooldown instead of a one-shot flag so recovery retries on tab revisit after failure
+  var _syncCooldownMs = 30000;
+  var _canSync = !renderResumes._syncLastAttempt || (Date.now() - renderResumes._syncLastAttempt > _syncCooldownMs);
+  if (activeResumes.length === 0 && _canSync && typeof sb !== 'undefined' && typeof currentUser !== 'undefined' && currentUser) {
+    renderResumes._syncLastAttempt = Date.now();
     console.log('[resume-render] No active resumes — triggering cloud recovery');
+    // Show loading indicator while recovery is in-flight
+    if (grid) grid.innerHTML = '<div class="empty-state" style="padding:32px 20px;"><div class="inline-block w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" style="border:2px solid var(--accent);border-top-color:transparent;width:24px;height:24px;border-radius:50%;animation:spin .8s linear infinite;display:inline-block;"></div><p style="font-size:12px;color:var(--text-faint);margin-top:8px;">Recovering resumes…</p></div>';
     (async function() {
       try {
         var userId = currentUser.id;
@@ -37,6 +42,8 @@ function renderResumes() {
           .eq('is_active', true);
         if (error || !archiveRows || archiveRows.length === 0) {
           console.log('[resume-render] No active resumes in archive either:', error?.message || 'none found');
+          renderResumes._syncLastAttempt = 0; // Allow immediate retry on next tab visit
+          renderResumes(); // Re-render to clear loading state
           return;
         }
         console.log('[resume-render] Found', archiveRows.length, 'active resumes in archive — syncing');
@@ -67,11 +74,15 @@ function renderResumes() {
         });
         if (dirty) {
           saveResumes();
-          renderResumes();
         }
-      } catch(e) { reportError('resumes', e); console.warn('[resume-render] Cloud recovery failed:', e);
+        renderResumes();
+      } catch(e) {
+        reportError('resumes', e); console.warn('[resume-render] Cloud recovery failed:', e);
+        renderResumes._syncLastAttempt = 0; // Allow retry on next visit
+        renderResumes(); // Re-render to clear loading state
       }
     })();
+    return; // Don't render empty state while recovery is in-flight
   }
 
   countEl.textContent = activeResumes.length;

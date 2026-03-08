@@ -10,14 +10,14 @@ window.switchResumeTab = function(tab) {
   if (!activeContent || !archiveContent) return;
 
   if (tab === 'archive') {
-    activeContent.style.display = 'none';
-    archiveContent.style.display = '';
+    activeContent.classList.add('u-hidden');
+    archiveContent.classList.remove('u-hidden');
     activeBtn.classList.remove('active');
     archiveBtn.classList.add('active');
     loadResumeArchive();
   } else {
-    activeContent.style.display = '';
-    archiveContent.style.display = 'none';
+    activeContent.classList.remove('u-hidden');
+    archiveContent.classList.add('u-hidden');
     activeBtn.classList.add('active');
     archiveBtn.classList.remove('active');
   }

@@ -952,6 +952,10 @@ function reportError(label, error, extra) {
 if (typeof window !== "undefined") {
   window.addEventListener("beforeunload", function() {
     if (_errorBatch.length > 0) _flushErrorBatch();
+    if (_udPendingKeys.size > 0 && typeof _flushUserData === "function") _flushUserData();
+  });
+  document.addEventListener("visibilitychange", function() {
+    if (document.hidden && _udPendingKeys.size > 0 && typeof _flushUserData === "function") _flushUserData();
   });
 }
 async function safeQuery(queryFn, opts) {
