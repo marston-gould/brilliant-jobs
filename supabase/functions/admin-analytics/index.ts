@@ -300,6 +300,157 @@ async function getDbActivity() {
 }
 
 // ═══════════════════════════════════════════════════════════
+// POST-REM: Chat Analytics — PostHog event aggregation
+// ═══════════════════════════════════════════════════════════
+
+const CHAT_EVENTS = [
+  'chat_mode_toggled', 'chat_message_sent', 'chat_filters_extracted',
+  'chat_filters_applied', 'chat_to_filter_sync', 'chat_prompt_auto_generated',
+  'chat_prompt_modified', 'chat_prompt_saved', 'chat_prompt_loaded',
+  'chat_prompt_deleted', 'chat_prompt_resume_assigned', 'chat_edge_function_latency',
+  'chat_rate_limited', 'chat_onboarding_tooltip_shown',
+  'chat_onboarding_tooltip_dismissed', 'chat_prompt_scrapped'
+];
+
+async function getChatAnalytics() {
+  if (!POSTHOG_PERSONAL_API_KEY) {
+    return { error: 'PostHog API key not configured' };
+  }
+
+  const now = new Date();
+  const oneDayAgo = new Date(now.getTime() - 24 * 3600000).toISOString();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 3600000).toISOString();
+
+  // Fetch events from PostHog for all 16 chat events (last 7d)
+  const eventVolumes: Record<string, { day: number; week: number; trend: string }> = {};
+  const allEvents: Array<{ event: string; timestamp: string; properties: Record<string, unknown> }> = [];
+
+  // Batch query — PostHog Events API with each event type
+  for (const evt of CHAT_EVENTS) {
+    try {
+      const url = new URL(`${POSTHOG_HOST}/api/projects/${POSTHOG_PROJECT_ID}/events`);
+      url.searchParams.set('event', evt);
+      url.searchParams.set('after', sevenDaysAgo);
+      url.searchParams.set('limit', '500');
+      url.searchParams.set('orderBy', '-timestamp');
+
+      const res = await fetch(url.toString(), {
+        headers: { Authorization: `Bearer ${POSTHOG_PERSONAL_API_KEY}` }
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const results = data.results || [];
+        const dayCount = results.filter((r: { timestamp: string }) => r.timestamp >= oneDayAgo).length;
+        const weekCount = results.length;
+        // Simple trend: compare first half to second half of week
+        const midpoint = new Date(now.getTime() - 3.5 * 24 * 3600000).toISOString();
+        const firstHalf = results.filter((r: { timestamp: string }) => r.timestamp < midpoint).length;
+        const secondHalf = results.filter((r: { timestamp: string }) => r.timestamp >= midpoint).length;
+        const trend = secondHalf > firstHalf * 1.2 ? 'up' : secondHalf < firstHalf * 0.8 ? 'down' : 'flat';
+
+        eventVolumes[evt] = { day: dayCount, week: weekCount, trend };
+        results.forEach((r: { event: string; timestamp: string; properties: Record<string, unknown> }) => allEvents.push(r));
+      } else {
+        eventVolumes[evt] = { day: 0, week: 0, trend: 'flat' };
+      }
+    } catch {
+      eventVolumes[evt] = { day: 0, week: 0, trend: 'flat' };
+    }
+  }
+
+  // ─── Summary cards (24h counts) ───
+  const toggles_24h = eventVolumes['chat_mode_toggled']?.day || 0;
+  const messages_24h = eventVolumes['chat_message_sent']?.day || 0;
+  const filters_applied_24h = eventVolumes['chat_filters_applied']?.day || 0;
+  const rate_limited_24h = eventVolumes['chat_rate_limited']?.day || 0;
+  const prompts_saved_24h = eventVolumes['chat_prompt_saved']?.day || 0;
+  const tooltip_shown_24h = eventVolumes['chat_onboarding_tooltip_shown']?.day || 0;
+
+  // ─── Funnel: toggle → message → filters (7d) ───
+  const funnel_toggle = eventVolumes['chat_mode_toggled']?.week || 0;
+  const funnel_message = eventVolumes['chat_message_sent']?.week || 0;
+  const funnel_filters = eventVolumes['chat_filters_applied']?.week || 0;
+
+  // ─── Saved prompt adoption (7d) ───
+  const prompt_saved_total = eventVolumes['chat_prompt_saved']?.week || 0;
+  const prompt_loaded_total = eventVolumes['chat_prompt_loaded']?.week || 0;
+  const prompt_resume_assigned_total = eventVolumes['chat_prompt_resume_assigned']?.week || 0;
+
+  // ─── Tooltip conversion ───
+  const tooltip_shown_total = eventVolumes['chat_onboarding_tooltip_shown']?.week || 0;
+  const tooltipDismissed = allEvents.filter(e => e.event === 'chat_onboarding_tooltip_dismissed');
+  const tooltip_dismissed_button = tooltipDismissed.filter(e => e.properties?.method === 'button').length;
+  const tooltip_dismissed_toggle = tooltipDismissed.filter(e => e.properties?.method !== 'button').length;
+
+  // ─── Rate limits by tier ───
+  const rateLimitEvents = allEvents.filter(e => e.event === 'chat_rate_limited');
+  const rate_limits_by_tier: Record<string, { count: number; primary_type: string }> = {};
+  for (const tier of ['free', 'starter', 'pro', 'admin']) {
+    const tierEvents = rateLimitEvents.filter(e => e.properties?.tier === tier);
+    const types = tierEvents.map(e => String(e.properties?.limit_type || 'daily'));
+    const typeCount: Record<string, number> = {};
+    types.forEach(t => { typeCount[t] = (typeCount[t] || 0) + 1; });
+    const primaryType = Object.entries(typeCount).sort((a, b) => b[1] - a[1])[0]?.[0] || 'daily';
+    rate_limits_by_tier[tier] = { count: tierEvents.length, primary_type: primaryType };
+  }
+
+  // ─── Latency percentiles ───
+  const latencyEvents = allEvents
+    .filter(e => e.event === 'chat_edge_function_latency' && typeof e.properties?.latency_ms === 'number')
+    .map(e => e.properties.latency_ms as number)
+    .sort((a, b) => a - b);
+
+  const latency = {
+    p50: latencyEvents.length > 0 ? latencyEvents[Math.floor(latencyEvents.length * 0.5)] : null,
+    p95: latencyEvents.length > 0 ? latencyEvents[Math.floor(latencyEvents.length * 0.95)] : null,
+    p99: latencyEvents.length > 0 ? latencyEvents[Math.floor(latencyEvents.length * 0.99)] : null,
+    total_samples: latencyEvents.length
+  };
+
+  // ─── Latency trend (daily buckets) ───
+  const latencyTrend: Array<{ ts: string; p50: number; p95: number; p99: number }> = [];
+  const latencyByDay: Record<string, number[]> = {};
+  allEvents
+    .filter(e => e.event === 'chat_edge_function_latency' && typeof e.properties?.latency_ms === 'number')
+    .forEach(e => {
+      const day = e.timestamp.slice(0, 10);
+      if (!latencyByDay[day]) latencyByDay[day] = [];
+      latencyByDay[day].push(e.properties.latency_ms as number);
+    });
+  Object.keys(latencyByDay).sort().forEach(day => {
+    const vals = latencyByDay[day].sort((a, b) => a - b);
+    latencyTrend.push({
+      ts: day,
+      p50: vals[Math.floor(vals.length * 0.5)] || 0,
+      p95: vals[Math.floor(vals.length * 0.95)] || 0,
+      p99: vals[Math.floor(vals.length * 0.99)] || 0
+    });
+  });
+
+  // ─── Cache stats (from chat_edge_function_latency properties if available) ───
+  const cacheEvents = allEvents.filter(
+    e => e.event === 'chat_edge_function_latency' && e.timestamp >= oneDayAgo
+  );
+  const cacheHits = cacheEvents.filter(e => e.properties?.cache_hit === true).length;
+  const cacheMisses = cacheEvents.filter(e => e.properties?.cache_hit !== true).length;
+  const cacheHitRate = cacheEvents.length > 0 ? ((cacheHits / cacheEvents.length) * 100).toFixed(1) : '0.0';
+  // Estimated savings: ~$0.0005 per Haiku call avoided
+  const estimatedSavings = (cacheHits * 0.0005).toFixed(2);
+
+  return {
+    toggles_24h, messages_24h, filters_applied_24h, rate_limited_24h,
+    prompts_saved_24h, tooltip_shown_24h,
+    funnel_toggle, funnel_message, funnel_filters,
+    prompt_saved_total, prompt_loaded_total, prompt_resume_assigned_total,
+    tooltip_shown_total, tooltip_dismissed_button, tooltip_dismissed_toggle,
+    rate_limits_by_tier, latency, latency_trend: latencyTrend,
+    event_volumes: eventVolumes,
+    cache: { hit_rate: cacheHitRate, hits: cacheHits, misses: cacheMisses, estimated_savings: estimatedSavings }
+  };
+}
+
+// ═══════════════════════════════════════════════════════════
 // Router
 // ═══════════════════════════════════════════════════════════
 
@@ -348,9 +499,15 @@ serve(async (req) => {
         return jsonResponse({ key: POSTHOG_PERSONAL_API_KEY });
       }
 
+      case "chat_analytics": {
+        // POST-REM: Chat mode PostHog dashboard data
+        const data = await getChatAnalytics();
+        return jsonResponse(data);
+      }
+
       default:
         return errorResponse(
-          "Unknown action. Use: posthog-errors, ef-health, db-activity, get_posthog_key",
+          "Unknown action. Use: posthog-errors, ef-health, db-activity, get_posthog_key, chat_analytics",
           400
         );
     }

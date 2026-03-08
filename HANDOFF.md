@@ -52,6 +52,49 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**PR-001 + PR-002** — PostHog Chat Mode Dashboard + Edge Function Cost Monitoring + Response Cache
+- Completed: 2026-03-08
+- Git tag: `admin@2.0.0-chat-analytics`
+- Product version bumped: `v7.66` → `v7.67` (JS/HTML changes — admin-chat-analytics.js, chat.js cache_hit, admin.html container)
+- ROADMAP.md updated: PR-001, PR-002 → ✅ with completion notes
+- roadmap.html updated: PR-001, PR-002 → `s: 'done'`, p: 100
+- **PR-001 (PostHog Chat Mode Dashboard):**
+  - admin-chat-analytics.js created — full PostHog dashboard for all 16 chat events
+  - 6 summary cards: toggles, messages, filters applied, rate limited, prompts saved, tooltip shown (24h)
+  - Core funnel: toggle → message → filters applied (7d, bar chart with conversion %)
+  - Saved prompt adoption funnel: saved → loaded → resume assigned (7d)
+  - Tooltip conversion: shown → dismissed by button vs toggle, with conversion rate
+  - Rate limit frequency by tier: free/starter/pro/admin breakdown with primary limit type (7d)
+  - Latency percentile display: p50, p95, p99 with color-coded thresholds
+  - Latency sparkline SVG: daily buckets, 3 polylines (p50/p95/p99), 2000ms target line
+  - p95 > 2000ms alert banner
+  - Event volume table: all 16 events with 24h/7d counts and trend indicators
+  - Cache performance panel: hit rate, hits, misses, estimated savings
+  - admin-analytics EF: new `chat_analytics` action — queries PostHog Events API for all 16 events, computes percentiles, trends, funnels, tooltip conversion
+  - admin.html: container + script tag added
+  - 2min auto-refresh polling with lifecycle management
+- **PR-002 (Edge Function Cost Monitoring + Response Cache):**
+  - In-memory response cache added to chat-job-search EF
+  - Cache key: djb2 hash of normalized last 3 user messages
+  - TTL: 5 minutes, max 200 entries with LRU eviction
+  - Cache hit: returns cached response + filters without calling Anthropic API
+  - Still logs chat_usage on cache hit (user consumed a message slot)
+  - cache_hit: true property in response JSON
+  - chat.js: supplementary PostHog latency event with cache_hit: true on cache hits
+  - Estimated savings: ~$0.0005 per cached Haiku call avoided
+- **Pod 3 Team:** 15 roles (10 Pod 3 + 5 Pod 4) — no changes needed, all hook-and-scar roles present since SA-006.
+- **Created:**
+  - `js/admin-chat-analytics.js` — Chat analytics admin dashboard
+  - `tests/post-rem-chat-analytics.test.js` — 48 validation tests (7 sections)
+- **Modified:**
+  - `supabase/functions/admin-analytics/index.ts` — chat_analytics action added (~140 lines)
+  - `supabase/functions/chat-job-search/index.ts` — response cache (~45 lines: constants, _cacheKey, _getCached, _setCache, lookup before API call, cache set after extraction)
+  - `js/chat.js` — cache_hit PostHog tracking after response parse
+  - `admin.html` — chat-analytics container + script tag
+  - `ROADMAP.md` — PR-001, PR-002 → ✅
+  - `roadmap.html` — PR-001, PR-002 → done/100
+- **Tests:** 48 validation tests (all passing)
+
 **PRE-LAUNCH** — Extension E2E + Kill-Switch + Final CX Validation (0.181, 0.182, 0.184)
 - Completed: 2026-03-08
 - Git tag: `pre-launch@1.0.0-validation`
@@ -627,6 +670,7 @@ None.
 **Phase REM is COMPLETE.** All 5 sessions (REM-001 through REM-005) are done.
 
 Next work streams (pending Marston direction):
+- PR-001 ✅ and PR-002 ✅ completed 2026-03-08
 - **Run the 5K load test against production** — `k6 run load-tests/scale-5k-suite.js` (test infra is built, needs actual execution against live environment with test user credentials)
 - S-01 activation (TD-001): EF auth trust migration — first post-launch SA session
 - S-10 DataProvider migration (TD-004): Post-launch SPA consolidation
@@ -663,7 +707,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.66`** | **PRE-LAUNCH** |
+| **Product (BJ_VERSION)** | **`v7.67`** | **PR-001/PR-002** |
 | Dashboard | `dashboard@3.0.0-all-pages` | SA-017 |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

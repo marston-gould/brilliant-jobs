@@ -33,6 +33,45 @@ const VALID_FILTER_KEYS = new Set([
   'salary_min', 'salary_max', 'additional_context'
 ]);
 
+// ─── Response cache for repeated filter extraction patterns ───
+// POST-REM: Cache identical conversation → filter extractions to reduce Anthropic API costs.
+// Key: SHA-like hash of normalized last 3 user messages. TTL: 5 minutes. Max: 200 entries.
+const FILTER_CACHE_TTL_MS = 5 * 60 * 1000; // 5 min
+const FILTER_CACHE_MAX_SIZE = 200;
+const _filterCache = new Map<string, { response: string; filters: Record<string, unknown>; ts: number }>();
+
+function _cacheKey(messages: Array<{ role: string; content: string }>): string {
+  // Use last 3 user messages as cache key — captures conversation context
+  const userMsgs = messages.filter(m => m.role === 'user').slice(-3);
+  const normalized = userMsgs.map(m => m.content.toLowerCase().trim().replace(/\s+/g, ' ')).join('|');
+  // Simple hash (djb2)
+  let hash = 5381;
+  for (let i = 0; i < normalized.length; i++) {
+    hash = ((hash << 5) + hash) + normalized.charCodeAt(i);
+    hash = hash & hash; // Convert to 32bit
+  }
+  return 'fc_' + Math.abs(hash).toString(36);
+}
+
+function _getCached(key: string): { response: string; filters: Record<string, unknown> } | null {
+  const entry = _filterCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.ts > FILTER_CACHE_TTL_MS) {
+    _filterCache.delete(key);
+    return null;
+  }
+  return { response: entry.response, filters: entry.filters };
+}
+
+function _setCache(key: string, response: string, filters: Record<string, unknown>) {
+  // Evict oldest if at capacity
+  if (_filterCache.size >= FILTER_CACHE_MAX_SIZE) {
+    const oldest = _filterCache.keys().next().value;
+    if (oldest) _filterCache.delete(oldest);
+  }
+  _filterCache.set(key, { response, filters, ts: Date.now() });
+}
+
 // ─── System prompt for job-search-only behavior ───
 const SYSTEM_PROMPT = `You are Brilliant Jobs Assistant (BJ), a focused job search helper embedded in the Brilliant Jobs platform.
 
@@ -191,6 +230,26 @@ serve(async (req: Request) => {
       content: typeof m.content === 'string' ? m.content.slice(0, 2000) : '',
     }));
 
+    // ─── POST-REM: Check response cache for repeated filter extraction patterns ───
+    const cKey = _cacheKey(trimmed);
+    const cached = _getCached(cKey);
+    if (cached) {
+      // Cache hit — return cached response without calling Anthropic
+      // Still log usage (user consumed a message slot)
+      await sb.from('chat_usage').insert({ user_id: user.id });
+      return new Response(JSON.stringify({
+        response: cached.response,
+        filters: cached.filters,
+        usage: {
+          hourly: { used: (hourlyCount ?? 0) + 1, limit: limits.hourly },
+          daily: { used: (dailyCount ?? 0) + 1, limit: limits.daily },
+        },
+        cache_hit: true,
+      }), {
+        status: 200, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+      });
+    }
+
     // ─── Call Claude Haiku ───
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -227,6 +286,11 @@ serve(async (req: Request) => {
 
     // ─── Extract and validate filters ───
     const { clean: responseText, filters } = extractFilters(rawText);
+
+    // ─── POST-REM: Cache response for repeated filter extraction patterns ───
+    if (filters && Object.keys(filters).length > 0) {
+      _setCache(cKey, responseText, filters);
+    }
 
     // ─── Log usage ───
     await sb.from('chat_usage').insert({ user_id: user.id });

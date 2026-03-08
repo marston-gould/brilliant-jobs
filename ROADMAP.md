@@ -3303,3 +3303,12 @@ Phase S is complete when ALL of the following are true:
 | REM-005 | LS1-6 (Ahrefs audit), SE-005 (CSP strict dashboard) | 3.5h | ✅ | Ahrefs removed (redundant with PostHog+GSC). SPA `/app/*` CSP enforced — no `unsafe-inline`, SHA-256 hash for theme script. 22 validation tests. v7.63. |
 
 **Phase REM total: 5 sessions | 19.5h | 13 items from P75 + P76**
+
+---
+
+## Post-Remediation Fixes
+
+| ID | Item | Hours | Status | Notes |
+|----|------|-------|--------|-------|
+| PR-001 | PostHog chat mode dashboard — all 16 chat events (13 original + 3 Session 11). Funnels: toggle → message → filters applied, saved prompt adoption, rate limit frequency by tier. Latency percentile charts (p50, p95, p99). Tooltip conversion: shown → dismissed by method. | 2h | ✅ | admin-chat-analytics.js created (16 events, 3 funnels, latency sparkline with 2000ms target, tooltip conversion, rate limits by tier, cache performance). admin-analytics EF extended with chat_analytics action (PostHog Events API aggregation). admin.html wired. 48 validation tests. v7.67. 2026-03-08. |
+| PR-002 | Edge Function cost monitoring — Monitor Anthropic API costs via chat_edge_function_latency volume. PostHog alerts for p95 > 2000ms. Response caching for repeated filter extraction patterns. | 2h | ✅ | In-memory response cache added to chat-job-search EF: djb2 hash of last 3 user messages, 5min TTL, 200-entry LRU. Cache hit returns cached filters without Anthropic API call (saves ~$0.0005/hit). cache_hit property tracked in PostHog latency events. p95 > 2000ms alert in admin dashboard. 48 validation tests. v7.67. 2026-03-08. |

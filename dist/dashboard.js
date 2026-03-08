@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v7.66';
+var BJ_VERSION = 'v7.67';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -24565,6 +24565,11 @@ async function sendChatMessage() {
     }
 
     var data = await resp.json();
+
+    // POST-REM: Track cache hit in PostHog latency event (supplements initial latency capture)
+    if (data.cache_hit && window.posthog) {
+      try { posthog.capture('chat_edge_function_latency', { latency_ms: _chatLatencyMs, cache_hit: true, tier: getUserTier() }); } catch(e) { reportError('chat:chat', e); }
+    }
 
     // Extract response text and filters
     var assistantText = data.response || data.text || '';

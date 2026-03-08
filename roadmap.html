@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.66"></script>
+  <script src="/js/version.js?v=v7.67"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2140,6 +2140,10 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'REM-003 EF Hardening + Cost Monitoring', d: '23 empty catch blocks fixed in 16 EF files with structured logging. Cost monitoring: migration (3 views + fn_ai_cost_summary), cost-monitor EF (5 actions), admin dashboard, gateway route #110.', p: 100, e: '5h' },
 { s: 'done', b: 'post-launch', n: 'REM-004 Extension QA + Manifest', d: 'EXT-CWS-001: All 7 permissions justified. BambooHR+JazzHR routing wired. safeFill export fixed. EXT-QA: 257 validation tests (17 handlers, selectors, routing, manifest mapping). Permissions audit doc.', p: 100, e: '3h' },
 { s: 'done', b: 'post-launch', n: 'REM-005 Analytics + CSP Strict', d: 'LS1-6: Ahrefs removed (redundant with PostHog+GSC). SE-005: SPA /app/* CSP enforced — no unsafe-inline, SHA-256 hash for theme script. 22 validation tests. v7.63.', p: 100, e: '3.5h' },
+
+// Post-Remediation Fixes (PR-001 → PR-002)
+{ s: 'done', b: 'post-launch', n: 'PR-001 PostHog Chat Mode Dashboard', d: 'admin-chat-analytics.js: all 16 chat events (13 original + 3 Session 11). Funnels: toggle→message→filters, saved prompt adoption, rate limit by tier. Latency percentiles (p50/p95/p99) with sparkline + 2000ms target. Tooltip conversion: shown→dismissed by method. Cache performance panel. admin-analytics EF chat_analytics action. 48 tests. v7.67.', p: 100, e: '2h' },
+{ s: 'done', b: 'post-launch', n: 'PR-002 Edge Function Cost Monitoring + Cache', d: 'In-memory response cache in chat-job-search EF: djb2 hash of last 3 user messages, 5min TTL, 200-entry LRU. Cache hit skips Anthropic API call (~$0.0005 saved/hit). cache_hit tracked in PostHog latency events. p95 > 2000ms alert in admin dashboard. 48 tests. v7.67.', p: 100, e: '2h' },
 
 ];
 
