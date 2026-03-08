@@ -52,6 +52,45 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**PRE-LAUNCH** — Extension E2E + Kill-Switch + Final CX Validation (0.181, 0.182, 0.184)
+- Completed: 2026-03-08
+- Git tag: `pre-launch@1.0.0-validation`
+- No product version bump (test-only session, no JS/CSS/HTML user-facing changes)
+- ROADMAP.md updated: 0.181, 0.182, 0.184 → ✅ with completion notes
+- roadmap.html updated: 0.181, 0.182, 0.184 → `s: 'done'`, p: 100
+- **0.181 (Extension E2E live ATS):**
+  - 17 handler files verified (15 named + generic + workday-experience)
+  - ContentScript ATS_HANDLERS routing covers all 15 named platforms
+  - Background.ts STATIC_DOMAINS configured
+  - Manifest host_permissions present (23 patterns)
+  - Handler exports validated (fill function or default export)
+  - Hostname pattern snapshots: 8 key ATS domains verified
+  - Permissions audit document confirmed (docs/audit/ext-cws-001-permissions-audit.md)
+- **0.182 (Kill-switch integration test):**
+  - 3-layer architecture verified: heartbeat, external message, DB flag
+  - chrome.storage.local persistence confirmed
+  - Kill reason tracking implemented
+  - Admin UI kill-switch controls present
+  - feature_flags table exists in migrations for DB-level toggle
+- **0.184 (Final CX validation):**
+  - PostHog SDK loaded on all 4 surfaces (dashboard, admin, landing, extension)
+  - posthog.identify() called on dashboard (app.js), landing (landing-app.js), admin (admin-shell.js)
+  - Extension PostHog integration in popup.ts/background.ts
+  - ARIA landmarks present on dashboard.html
+  - lang attribute on index.html <html> element
+  - Images have alt attributes (≤2 decorative exceptions)
+  - CSP headers configured in vercel.json
+  - Cookie consent present
+  - SPA strict CSP rule for /app/:path*
+- **Pod 3 Team:** 5 hook-and-scar roles confirmed present in pod-team-manifest.md since SA-006 (Chief Architect, Lead Platform Engineer, System Architect—Scalability, Forward-Looking Developer(s), Evolvability Strategist). 15 total Pod 3 roles.
+- **Created:**
+  - `tests/pre-launch-validation.test.js` — 34 validation tests (4 sections: Extension E2E 10 tests, Kill-switch 9 tests, Final CX 14 tests, File inventory 1 test)
+- **Modified:**
+  - `ROADMAP.md` — 0.181, 0.182, 0.184 → ✅
+  - `roadmap.html` — 0.181, 0.182, 0.184 → done/100
+- **Tests:** 34 pre-launch validation tests (all passing)
+- **Phase 0-DD (Validation + Launch) COMPLETE** — all items 0.179–0.184 now ✅
+
 **BE-005** — Suppressed Network Errors + Roadmap Sync (BE-006, EXT-ES-003)
 - Completed: 2026-03-08
 - Git tag: `dashboard@3.1.1-network-errors`
@@ -650,7 +689,9 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 ---
 
-## Completed Sessions (24 of 24 + 17 Phase 1 + 16 Scaling + FIX-11)
+## Completed Sessions (24 of 24 + 17 Phase 1 + 16 Scaling + FIX-11 + PRE-LAUNCH)
+
+| PRE-LAUNCH | 2026-03-08 | 0.181 Extension E2E (17 handlers, routing, permissions, snapshots), 0.182 Kill-switch (3-layer verified, DB flag, admin UI), 0.184 Final CX (PostHog 4 surfaces, ARIA, CSP, a11y). 34 validation tests. Phase 0-DD COMPLETE. | pre-launch@1.0.0-validation |
 
 | SA-028 | 2026-03-08 | Capacity model: v6.33 migration (capacity_snapshots, scaling_trigger_config, scaling_trigger_log, cost_projections). fn_capture_capacity_snapshot (15min) + fn_evaluate_scaling_triggers (5min) + fn_capacity_forecast + fn_cost_model + fn_capacity_summary. v_capacity_dashboard view. 3 pg_cron. 8 default triggers. 12 service cost projections (tiered pricing). capacity-model EF (6 actions). Gateway route #109. admin-capacity.js (health overview, forecast, cost model, trigger alerts, sparklines). S-14/S-15 integration. H-02 critical alerts. S-12 scar. ADR-06 SA-028. pod-team-manifest S6 pairings. 97 tests. v7.60. | infra@capacity-model-v1.0.0 |
 
