@@ -178,13 +178,14 @@ const ROUTE_REGISTRY: Record<string, string> = {
 
   // ── Common Crawl Pipeline (SA-007) ────────────────────────────────────
   "ingest-common-crawl":      "ingest-common-crawl",      // SA-007: CC ingestion worker
+  "dedup-promote":            "dedup-promote",            // SA-008: Dedup engine + enrichment queue
 
   // ── Search Infrastructure (deferred SA-001—003, routed for completeness) ─
   "typesense-search":         "typesense-search",         // SA-005 (deferred)
   "typesense-seed":           "typesense-seed",           // SA-005 (deferred)
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // TOTAL: 94 routes (93 SA-005 + 1 SA-007). Direct paths deprecated.
+  // TOTAL: 95 routes (93 SA-005 + 1 SA-007 + 1 SA-008). Direct paths deprecated.
   // HOOK: Future EFs register here. Future: load from DB table for
   //       runtime updates without redeploy (api_consumers integration).
   // ═══════════════════════════════════════════════════════════════════════════

@@ -52,6 +52,21 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**SA-008** — Deduplication Engine + Enrichment Queue Integration (Phase S2)
+- Completed: 2026-03-07
+- Git tag: `infra@dedup-v1.0.0`
+- No product version bump (infrastructure only, no JS/CSS/HTML changes)
+- ROADMAP.md updated: SA-008 row → ✅ with completion notes
+- roadmap.html updated: SA-008 entry → `s: 'done'`, p: 100
+- Created: v6.22-dedup-enrichment-queue.sql migration, dedup-promote EF, adr-07-dedup.md
+- Modified: api-gateway/index.ts (94 → 95 routes)
+- Database: enrichment_queue + dedup_log tables, dedup_summary + enrichment_queue_summary views, 6 functions (cc_find_exact_duplicates, cc_find_fuzzy_duplicates, cc_promote_to_ats_jobs, cc_run_dedup_batch, eq_next_batch, eq_complete)
+- Indexes: GIN trigram indexes on ats_jobs.title, ats_jobs.company_name, cc_staging_jobs.title
+- EF deployed: dedup-promote (3 actions: dedup, enrich, status)
+- Gateway: Route #95 (dedup-promote)
+- Dedup strategy: Tier 1 URL-hash exact match → Tier 2 pg_trgm fuzzy (title 50%, company 30%, location 20%, threshold 0.7)
+- Enrichment: 100 Anthropic calls/hour CC budget, exponential backoff, SKIP LOCKED concurrency
+
 **SA-007** — Common Crawl Ingestion Worker + Staging Table (Phase S2)
 - Completed: 2026-03-07
 - Git tag: `infra@common-crawl-v0.1.0`
@@ -97,11 +112,11 @@ None.
 
 ## Next Session
 
-**SA-008** — Deduplication Engine + Enrichment Queue Integration (Phase S2)
-- Entry gate: SA-007 complete ✅. Staging table operational with test records. Batch tracking functional. pg_trgm extension available in Supabase.
-- Pair: Data Eng + Backend
-- Estimated: 12–16h
-- Build: Enable pg_trgm extension. Hash-based exact match on URL (fast path). Fuzzy match on title + company + location using pg_trgm similarity (threshold 0.7). Promote surviving records from cc_staging_jobs → ats_jobs. Connect to enrichment queue. Rate-limit enrichment at 100 Anthropic API calls/hour for CC records.
+**SA-009** — Incremental Materialized Views (Phase S2)
+- Entry gate: SA-008 complete ✅. Dedup pipeline operational. enrichment_queue functional. pg_trgm indexes in place.
+- Pair: Data Eng + DevOps
+- Estimated: 10–14h
+- Build: Delta-only MV refreshes replacing full-table rebuilds. Minutes → seconds refresh times. Incremental change tracking on ats_jobs. Performance benchmarks before/after.
 
 **OR SA-010** — CrewAI Agent Framework + Content QA Agent (Phase S2, parallel track)
 - Entry gate: SA-005 complete ✅ (gateway operational).
@@ -146,6 +161,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 | Admin | `admin@1.4.0-compliance` | CS-P1-017 |
 | **API Gateway** | **`infra@gateway-v1.0.0`** | **SA-005** |
 | **Common Crawl** | **`infra@common-crawl-v0.1.0`** | **SA-007** |
+| **Dedup Engine** | **`infra@dedup-v1.0.0`** | **SA-008** |
 | Load Tests | `loadtest@1.0.0` | CS-020 |
 | CI/CD | `cicd@1.0.0` | CS-020 |
 | Quality Gates | `qualitygates@1.0.0` | CS-021 |
@@ -156,10 +172,11 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 ---
 
-## Completed Sessions (24 of 24 + 17 Phase 1)
+## Completed Sessions (24 of 24 + 17 Phase 1 + 5 Scaling + FIX-11)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
+| SA-008 | 2026-03-07 | Dedup engine: enrichment_queue + dedup_log + 6 functions + 2 views + GIN trgm indexes + dedup-promote EF + gateway route #95 + ADR-07 | infra@dedup-v1.0.0 |
 | SA-007 | 2026-03-07 | CC ingestion: 3 tables + batch view + 2 functions + EF + gateway route #94 + ADR-06 + Athena discovery + live web fetch + 3-tier parser | infra@common-crawl-v0.1.0 |
 | SA-006 | 2026-03-07 | ALREADY SATISFIED by CS-P1-015 (tsconfig strict, 7 core .ts modules, shared types, CI gate, ADR-04). No new code needed. | (see p1-015@1.0.0-typescript) |
 | SA-005 | 2026-03-07 | All 93 EFs routed + api_consumers table + API key auth + deprecation logging + ADR-03 complete | infra@gateway-v1.0.0 |
