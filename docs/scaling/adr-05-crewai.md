@@ -245,3 +245,61 @@ View combining config + 24h stats + last action for admin panel rendering.
 | SCAR | `canny_sync_log.category` | Enum-like text; ready for new categories as product grows |
 | SCAR | `canny_sync_log.agent_suggested_response` | Draft field exists now; delivery mechanism (Canny API) added when agent graduates to suggest mode |
 | SCAR | `vendor_cost_budgets` table | Budget ceilings in place before any real spend occurs; thresholds tunable without code changes |
+
+---
+
+## SA-021: Referral Pipeline Agent (Agent 6)
+
+**Status:** IMPLEMENTED — 2026-03-07
+**Session:** SA-021
+**Trust Level:** observe
+
+### Decision
+
+Build a dedicated CrewAI agent to monitor the referral pipeline for fraud patterns, reward eligibility mismatches, and attribution gaps. The existing `referral-fraud-scan` EF performs real-time fraud scoring per-referral; this agent takes an aggregate observational view across the full pipeline — it never writes to user data and never modifies referral records.
+
+### Rationale
+
+The referral program is a growth-critical surface. Three failure modes are not caught by existing point-in-time fraud scans:
+1. **Aggregate fraud patterns** — burst activity from a single referrer across a window
+2. **Reward eligibility drift** — rewards issued before fraud was detected, now orphaned
+3. **Attribution gaps** — invite-to-referral chain breaks causing lost attribution
+
+An observe-mode agent provides continuous visibility into these patterns without any auto-remediation risk.
+
+### Architecture
+
+**Checks performed:**
+1. **Fraud Pattern Monitor** — scans `referrals` for high fraud scores (≥ 0.7), elevated scores (≥ 0.4), burst referral volume (>15/referrer/24h). No AI cost — pure data comparison.
+2. **Reward Eligibility Audit** — scans `referral_rewards` for expiring unclaimed rewards (within 7 days), expired backlogs (>50), and eligibility mismatches (active rewards on referrers with only rejected referrals).
+3. **Attribution Validation** — scans `referral_invites` for orphaned invites (>48h, no corresponding `referrals` row), conversion velocity (0 conversions in 48h signals pipeline stall).
+
+**Database additions:**
+- `fn_referral_pipeline_summary()` — JSONB health snapshot with fraud/rewards/attribution subsections; stable contract for admin panel reads
+- `agent_config` row: `id = 'referral-pipeline'`, trust_level = 'observe', schedule_cron = '*/30 * * * *'
+- `api_consumers` row: `crewai-referral-pipeline`, rate_limit = 30/min
+- pg_cron: every 30 minutes via `crewai-referral-pipeline-check`
+- Gateway route #106 (crewai-referral-pipeline)
+
+**Observe mode guarantees:**
+- `executed: false` on all `agent_action_log` entries — always
+- No writes to `referrals`, `referral_rewards`, or `profiles` tables
+- All findings are logged as recommendations only; Marston must take explicit action
+
+### Hook & Scar Points (SA-021)
+
+| Type | What | Purpose |
+|------|------|---------
+| HOOK | `checkFraudPatterns()` — burst detection block | When trust_level = 'auto': inject auto-ban logic for referrers with score ≥ 0.9 + ≥ 3 confirmed signals |
+| HOOK | `checkRewardEligibility()` — mismatch block | When trust_level = 'auto': auto-expire mismatched rewards via `referral-lifecycle` EF `reward_applied` event |
+| HOOK | `fn_referral_pipeline_summary()` | CrewAI orchestrator can call this for cross-agent correlated reports |
+| SCAR | `agent_config.config.thresholds` | All thresholds (fraud_score_warn, burst_max_referrals, etc.) tunable without code deploy |
+| SCAR | `check-referral-activation` EF | Attribution velocity drop (0 conversions / 48h) signals this EF may need attention |
+
+### Graduation Path (Observe → Auto)
+
+The referral pipeline agent will remain in observe mode for launch. Graduation criteria (from `fn_evaluate_agent_graduation()`):
+- 14 days of operation with < 5% false positive rate
+- 200+ action log entries
+- At least 3 confirmed fraud detections validated by Marston
+- Explicit Marston approval via admin panel graduation button

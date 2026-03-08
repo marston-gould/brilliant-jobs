@@ -476,3 +476,47 @@ async function refreshUserSupport() {
     if (typeof reportError === 'function') reportError('admin-crewai', 'refreshUserSupport', e);
   }
 }
+
+// ─── SA-021: Referral Pipeline Agent Panel ───
+async function refreshReferralPipeline() {
+  const el = document.getElementById('crewai-referral-pipeline-status');
+  if (!el) return;
+  el.innerHTML = '<p class="u-text-muted">Loading referral pipeline status…</p>';
+  try {
+    const resp = await callAgentGateway('crewai-referral-pipeline', 'status');
+    if (!resp || !resp.summary) { el.innerHTML = '<p class="u-text-muted">No data available.</p>'; return; }
+    const s = resp.summary;
+    const f = s.fraud || {};
+    const r = s.rewards || {};
+    const a = s.attribution || {};
+
+    const fraudColor = (f.high_fraud_score || 0) > 0 ? '#dc3545' : (f.medium_fraud_score || 0) > 5 ? '#fd7e14' : '#28a745';
+    const rewardColor = (r.expiring_7d || 0) > 20 ? '#fd7e14' : '#28a745';
+    const attribColor = parseFloat(a.conversion_rate_pct || 100) < 20 ? '#fd7e14' : '#28a745';
+
+    el.innerHTML =
+      '<p style="font-weight:600; margin:0 0 6px;">Fraud Monitor</p>' +
+      '<div class="agent-stat-row">' +
+        '<div class="stat-chip"><span class="stat-num" style="color:' + fraudColor + ';">' + (f.high_fraud_score || 0) + '</span><span class="stat-label">Critical Fraud</span></div>' +
+        '<div class="stat-chip"><span class="stat-num">' + (f.medium_fraud_score || 0) + '</span><span class="stat-label">Elevated</span></div>' +
+        '<div class="stat-chip"><span class="stat-num">' + (f.rejected || 0) + '</span><span class="stat-label">Rejected</span></div>' +
+        '<div class="stat-chip"><span class="stat-num">' + (f.total_referrals || 0) + '</span><span class="stat-label">Total</span></div>' +
+      '</div>' +
+      '<p style="font-weight:600; margin:8px 0 6px;">Rewards</p>' +
+      '<div class="agent-stat-row">' +
+        '<div class="stat-chip"><span class="stat-num" style="color:' + rewardColor + ';">' + (r.expiring_7d || 0) + '</span><span class="stat-label">Expiring 7d</span></div>' +
+        '<div class="stat-chip"><span class="stat-num">' + (r.unclaimed || 0) + '</span><span class="stat-label">Unclaimed</span></div>' +
+        '<div class="stat-chip"><span class="stat-num">' + (r.claimed || 0) + '</span><span class="stat-label">Claimed</span></div>' +
+        '<div class="stat-chip"><span class="stat-num">$' + (r.total_value_usd || 0) + '</span><span class="stat-label">Total Value</span></div>' +
+      '</div>' +
+      '<p style="font-weight:600; margin:8px 0 6px;">Attribution</p>' +
+      '<div class="agent-stat-row">' +
+        '<div class="stat-chip"><span class="stat-num" style="color:' + attribColor + ';">' + (a.conversion_rate_pct || 0) + '%</span><span class="stat-label">Conv. Rate</span></div>' +
+        '<div class="stat-chip"><span class="stat-num">' + (a.total_invites || 0) + '</span><span class="stat-label">Invites</span></div>' +
+        '<div class="stat-chip"><span class="stat-num">' + (a.orphaned_invites || 0) + '</span><span class="stat-label">Orphaned</span></div>' +
+      '</div>';
+  } catch (e) {
+    el.innerHTML = '<p class="u-text-muted">Error loading referral pipeline status.</p>';
+    if (typeof reportError === 'function') reportError('admin-crewai', 'refreshReferralPipeline', e);
+  }
+}
