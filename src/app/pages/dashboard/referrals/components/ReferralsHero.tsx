@@ -1,4 +1,3 @@
-import React from 'react';
 import { Card } from '@app/components';
 import type { ReferralStats } from '../hooks/useReferrals';
 

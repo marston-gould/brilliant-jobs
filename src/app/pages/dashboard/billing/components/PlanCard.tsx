@@ -2,7 +2,6 @@
 // PlanCard — Current plan display + upgrade (SA-017)
 // ============================================================
 
-import React from 'react';
 import { Card, Button, Badge } from '@app/components';
 
 interface PlanCardProps {

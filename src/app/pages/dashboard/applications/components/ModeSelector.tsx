@@ -4,7 +4,6 @@
 // Three modes: Manual, Auto, Notify
 // ============================================================
 
-import React from 'react';
 import type { AppMode } from '../hooks/useApplications';
 
 interface ModeSelectorProps {

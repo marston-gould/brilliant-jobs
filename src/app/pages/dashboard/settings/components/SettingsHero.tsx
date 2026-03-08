@@ -2,7 +2,6 @@
 // SettingsHero — Stats banner for Settings page (SA-017)
 // ============================================================
 
-import React from 'react';
 import { Card } from '@app/components';
 
 interface SettingsHeroProps {

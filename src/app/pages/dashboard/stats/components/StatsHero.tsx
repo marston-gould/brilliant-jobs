@@ -2,7 +2,6 @@
 // StatsHero — Filter pills + stat cards for Stats page (SA-017)
 // ============================================================
 
-import React from 'react';
 import { Card } from '@app/components';
 import type { StatCard, FilterPill } from '../hooks/useStats';
 

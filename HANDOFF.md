@@ -52,6 +52,17 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**BI-07** — CI Pipeline Enforcement & Gate Remediation
+- Completed: 2026-03-08
+- Git tag: `infra@ci-enforcement-v1.0.0`
+- Product version bumped: `v7.78` → `v7.79`
+- ROADMAP.md updated: BI-07 → ✅
+- roadmap.html updated: BI-07 → `s: 'done'`, p: 100
+- **Branch Protection:** Enabled on main. Required status checks only, no required reviewers.
+- **Gate fixes:** PostHog false positive (external scripts), 22 EFs classified (112 total), requireAdmin scan pattern, TypeScript 137→0 errors, Badge secondary variant, LegacyPageWrapper removed, TabName updated, inline style ratchet 590, admin bundle 650KB limit.
+- **PR Workflow:** scripts/pr-push.sh for solo-operator branch protection.
+- **Tests:** 52 BI-07 validation tests.
+
 **BI-06** — Deployment Performance Reports & DORA Metrics
 - Completed: 2026-03-08
 - Git tag: `infra@deploy-reports-v1.0.0`
@@ -781,7 +792,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.78`** | **BI-06 — Deployment Performance Reports & DORA Metrics** |
+| **Product (BJ_VERSION)** | **`v7.79`** | **BI-07 — CI Pipeline Enforcement & Gate Remediation** |
 | Dashboard | `dashboard@3.0.0-all-pages` | SA-017 |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

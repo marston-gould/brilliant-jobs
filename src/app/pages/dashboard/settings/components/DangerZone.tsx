@@ -2,7 +2,6 @@
 // DangerZone — Account deletion section (SA-017)
 // ============================================================
 
-import React from 'react';
 import { Card, Button } from '@app/components';
 import type { DangerZoneState } from '../hooks/useSettings';
 

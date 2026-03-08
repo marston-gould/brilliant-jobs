@@ -2,7 +2,7 @@
 // FilterBreakdown — Per-filter Keyword Analysis (SA-015)
 // ============================================================
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { FilterScore } from '../hooks/useKeywords';
 import { KeywordTag } from './KeywordTag';
 

@@ -11,7 +11,7 @@
 // Zero inline styles. Design tokens via Tailwind.
 // ============================================================
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { BillingHero, PlanCard, UsageTable } from './components';
 import { useBilling } from './hooks/useBilling';
 

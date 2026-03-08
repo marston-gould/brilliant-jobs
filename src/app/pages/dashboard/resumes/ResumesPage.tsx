@@ -13,7 +13,7 @@
 // Zero inline styles. Design tokens via Tailwind.
 // ============================================================
 
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import {
   ResumesHero,
   ResumeCard,
@@ -128,7 +128,7 @@ export function ResumesPage() {
         <FilterSection
           key={g.filter.name}
           filterName={g.filter.name}
-          filterColor={g.color}
+          filterColor={g.color ?? '#888'}
           resumes={g.resumes}
           allResumes={state.resumes}
           readinessCache={state.readinessCache}

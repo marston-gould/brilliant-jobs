@@ -11,7 +11,6 @@
 // Zero inline styles. Design tokens via Tailwind.
 // ============================================================
 
-import React from 'react';
 import { IntegrationsHero, GDriveSection, IntegrationCard } from './components';
 import { useIntegrations } from './hooks/useIntegrations';
 

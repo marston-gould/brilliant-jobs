@@ -347,9 +347,14 @@ test('DPA register document exists', () => {
 // ─── VERSION & BUILD ───
 console.log('── Version & Build ──');
 
-test('Version bumped to v7.43', () => {
+test('Version bumped beyond v7.43', () => {
   const version = readFile('js/version.ts');
-  assert.ok(version.includes("v7.43"), 'Version not bumped to v7.43');
+  // BI-07: Check version >= 7.43, not exact match (was stale since CS-P1-017)
+  const match = version.match(/v(\d+)\.(\d+)/);
+  assert.ok(match, 'Version pattern not found');
+  const major = parseInt(match[1]);
+  const minor = parseInt(match[2]);
+  assert.ok(major > 7 || (major === 7 && minor >= 43), `Version ${match[0]} is below v7.43`);
 });
 
 test('Admin bundle rebuilt with compliance module', () => {

@@ -9,7 +9,7 @@
 // Design tokens only — zero inline styles.
 // ============================================================
 
-import React, { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Badge, Button } from '@components';
 import type { FeedJob, TrustLabel, AiLabel } from '../hooks/useFeedSearch';
 

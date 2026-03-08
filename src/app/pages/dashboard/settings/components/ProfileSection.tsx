@@ -2,7 +2,6 @@
 // ProfileSection — User profile display (SA-017)
 // ============================================================
 
-import React from 'react';
 import { Card } from '@app/components';
 import type { ProfileData } from '../hooks/useSettings';
 

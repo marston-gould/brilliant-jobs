@@ -190,8 +190,8 @@ function parseWhenValue(raw: string): Date | null {
   if (v === 'today') return new Date(now.setHours(0, 0, 0, 0));
   const match = v.match(/^(\d+)\s*(d|day|days|w|week|weeks|m|month|months)$/);
   if (!match) return null;
-  const n = parseInt(match[1], 10);
-  const unit = match[2][0];
+  const n = parseInt(match[1]!, 10);
+  const unit = match[2]![0];
   const d = new Date();
   if (unit === 'd') d.setDate(d.getDate() - n);
   else if (unit === 'w') d.setDate(d.getDate() - n * 7);
@@ -427,7 +427,7 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
 
       if (checkedFilters.length === 1) {
         // Single filter path
-        const sf = checkedFilters[0];
+        const sf = checkedFilters[0]!;
         let query = sb.from('ats_jobs').select('*', { count: 'planned' });
         query = buildFilterQuery(sf, query, sf._locationIds || null, tuning);
 
@@ -482,10 +482,10 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
         if (controller.signal.aborted) return;
 
         for (let i = 0; i < results.length; i++) {
-          const r = results[i];
+          const r = results[i]!;
           if (r.error) throw new ProviderError(r.error.message, 'SEARCH_FAILED', undefined, r.error);
           totalCount += r.count || 0;
-          const fm = { num: checkedFilters[i]._filterNum || '', color: checkedFilters[i]._filterColor || '' };
+          const fm = { num: checkedFilters[i]!._filterNum || '', color: checkedFilters[i]!._filterColor || '' };
           for (const job of (r.data || [])) {
             const existing = jobFilterMap.get(job.greenhouse_id);
             if (existing) {

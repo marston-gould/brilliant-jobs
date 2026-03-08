@@ -2,8 +2,7 @@
 // BillingHero — Stats banner for Billing page (SA-017)
 // ============================================================
 
-import React from 'react';
-import { Card, Badge } from '@app/components';
+import { Card } from '@app/components';
 
 interface BillingHeroProps {
   creditBalance: number;

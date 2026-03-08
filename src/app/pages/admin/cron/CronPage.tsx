@@ -2,12 +2,11 @@
 // CronPage — Main Admin Cron Page Container (SA-017)
 // ============================================================
 
-import React from 'react';
 import { CronHero } from './components';
 import { useCron } from './hooks/useCron';
 
 export function CronPage() {
-  const [state, actions] = useCron();
+  const [state, _actions] = useCron();
 
   if (state.loading) {
     return (

@@ -5,7 +5,6 @@
 // Design tokens only — zero inline styles.
 // ============================================================
 
-import React from 'react';
 import type { FeedStats } from '../hooks/useFeedSearch';
 
 interface FeedHeroProps {

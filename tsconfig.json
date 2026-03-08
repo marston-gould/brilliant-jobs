@@ -11,8 +11,11 @@
     "alwaysStrict": true,
 
     // === Additional Safety ===
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    // BI-07: noUnusedLocals/Parameters disabled at tsc level.
+    // Unused variables are caught by ESLint (no-unused-vars) which provides
+    // better control over allowances. These are code hygiene, not type safety.
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,

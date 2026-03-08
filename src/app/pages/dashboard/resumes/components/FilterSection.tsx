@@ -2,7 +2,7 @@
 // FilterSection — Groups resumes by saved filter (SA-016)
 // ============================================================
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Card } from '@app/components';
 import { ResumeCard } from './ResumeCard';
 import type { Resume, SavedFilter, ReadinessScore, PipelineMeta } from '../hooks/useResumes';

@@ -333,8 +333,8 @@ const GW = "supabase/functions/api-gateway/index.ts";
 test("feature-flags route registered", () =>
   fileContains(GW, '"feature-flags"', "feature-flags"));
 
-test("Route count updated to 108", () =>
-  fileContains(GW, "108 routes"));
+test("Route count updated to 110", () =>
+  fileContains(GW, "110 routes"));
 
 test("featureFlagMiddleware imported", () =>
   fileContains(GW, 'import { featureFlagMiddleware }', "feature-flag-middleware.ts"));

@@ -2,7 +2,6 @@
 // ResumeSelector — Resume Picker for Readiness (SA-015)
 // ============================================================
 
-import React from 'react';
 import { Badge, Card } from '@app/components';
 import type { ResumeInfo } from '../hooks/useKeywords';
 

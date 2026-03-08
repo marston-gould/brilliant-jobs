@@ -2,7 +2,6 @@
 // SignalCard — Inline Signal Confirmation UI (SA-015)
 // ============================================================
 
-import React from 'react';
 import { Button } from '@app/components';
 import type { PipelineSignal, PipelineStage } from '../hooks/usePipeline';
 import { PL_STAGE_LABELS, relativeTime } from '../hooks/usePipeline';

@@ -10,7 +10,7 @@
 // Zero inline styles. Design tokens via Tailwind.
 // ============================================================
 
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Button, Card } from '@app/components';
 import { ResumeSelector, ResumeScoreCard } from './components';
 import { useKeywords } from './hooks/useKeywords';

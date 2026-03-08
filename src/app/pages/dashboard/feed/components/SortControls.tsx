@@ -5,7 +5,7 @@
 // pill UX: click to add, click arrow to toggle dir, × to remove.
 // ============================================================
 
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { SortEntry } from '../hooks/useFeedSearch';
 
 interface SortControlsProps {
@@ -40,6 +40,7 @@ export function SortControls({ sortStack, onToggle, onRemove }: SortControlsProp
       document.addEventListener('mousedown', handleClick);
       return () => document.removeEventListener('mousedown', handleClick);
     }
+    return undefined;
   }, [showDropdown]);
 
   const activeFields = new Set(sortStack.map(s => s.field));

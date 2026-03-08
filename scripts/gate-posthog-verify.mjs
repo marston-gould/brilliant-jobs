@@ -17,7 +17,7 @@ const SURFACES = [
   { name: 'Roadmap', file: 'roadmap.html' },
 ];
 
-// PostHog patterns we look for
+// PostHog patterns we look for (inline OR external script references)
 const POSTHOG_PATTERNS = [
   /posthog\.init\(/,
   /posthog\.capture\(/,
@@ -25,6 +25,8 @@ const POSTHOG_PATTERNS = [
   /ph_project_api_key/,
   /initPostHog/,
   /window\.posthog/,
+  /src="[^"]*posthog[^"]*\.js/,       // BI-07: external posthog script tags (CSP-compliant pattern)
+  /src='[^']*posthog[^']*\.js/,       // BI-07: single-quote variant
 ];
 
 let failures = 0;

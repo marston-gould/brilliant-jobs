@@ -2,7 +2,6 @@
 // SettingsPage — Main Settings Page Container (SA-017)
 // ============================================================
 
-import React from 'react';
 import { SettingsHero, ProfileSection, DangerZone } from './components';
 import { useSettings } from './hooks/useSettings';
 import { Button } from '@app/components';

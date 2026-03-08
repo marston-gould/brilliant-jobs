@@ -5,7 +5,6 @@
 // Includes the "Generate filters from resume" CTA.
 // ============================================================
 
-import React from 'react';
 import { Button, Input } from '@components';
 
 interface SearchBarProps {

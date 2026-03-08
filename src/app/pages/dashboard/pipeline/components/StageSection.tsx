@@ -2,7 +2,6 @@
 // StageSection — Collapsible Pipeline Stage (SA-015)
 // ============================================================
 
-import React from 'react';
 import { Badge, Card } from '@app/components';
 import type { PipelineStage, StageData } from '../hooks/usePipeline';
 import { PL_STAGE_LABELS, PL_STAGE_COLORS } from '../hooks/usePipeline';

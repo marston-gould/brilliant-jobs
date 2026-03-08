@@ -2,12 +2,11 @@
 // MonitoringPage — Main Admin Monitoring Page Container (SA-017)
 // ============================================================
 
-import React from 'react';
 import { MonitoringHero } from './components';
 import { useMonitoring } from './hooks/useMonitoring';
 
 export function MonitoringPage() {
-  const [state, actions] = useMonitoring();
+  const [state, _actions] = useMonitoring();
 
   if (state.loading) {
     return (
