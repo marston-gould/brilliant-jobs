@@ -52,7 +52,37 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**SA-015** — Pipeline + Keywords Migration (React + TypeScript + Design System) (Phase S3)
+**SA-016** — Resumes + Applications Migration (React + TypeScript + Design System) (Phase S3)
+- Completed: 2026-03-07
+- Git tag: `dashboard@2.3.0-resumes-applications`
+- Product version bumped: `v7.51` → `v7.52`
+- ROADMAP.md updated: SA-016 row → ✅ with completion notes
+- roadmap.html updated: SA-016 entry → `s: 'done'`, p: 100
+- **Resumes Page Created:** `src/app/pages/dashboard/resumes/` directory:
+  - `ResumesPage.tsx` (main container orchestrating all resume components)
+  - `components/ResumesHero.tsx` (stats banner: Active Resumes, Avg Readiness, Total Applied, Response Rate)
+  - `components/ResumeCard.tsx` (resume row: icon, name, badges [Drive/Premium/AI], score, filter dots, actions, expandable AI analysis panel with filter pills, level selector, rewrite promo)
+  - `components/FilterSection.tsx` (collapsible section grouping resumes by saved filter with color indicators)
+  - `components/ResumeArchive.tsx` (expandable archive table with restore/delete actions)
+  - `components/ResumeUpload.tsx` (drag-and-drop upload area, accepts PDF/DOCX/DOC/TXT)
+  - `components/index.ts` (barrel export)
+  - `hooks/useResumes.ts` (bridge to legacy resumes.js: loads resumes/filters/colors/readiness from window.*, delegates to window.toggleResumeFilter/archiveResume/downloadResume/rescoreResumeAI/launchRewriteInterview etc., 3s poll refresh)
+  - `index.ts` (page barrel export)
+- **Applications Page Created:** `src/app/pages/dashboard/applications/` directory:
+  - `ApplicationsPage.tsx` (main container with queue/history tab switching)
+  - `components/ApplicationsHero.tsx` (stats banner: Queued, Pending, Submitted, Failed)
+  - `components/ModeSelector.tsx` (manual/auto/notify mode selector with descriptions)
+  - `components/AppQueueTable.tsx` (queue table with add manual, process queue, remove actions)
+  - `components/AppHistoryTable.tsx` (history table with clear action, 7-column audit trail)
+  - `components/index.ts` (barrel export)
+  - `hooks/useApplications.ts` (bridge to legacy applications.js: loads queue/history/mode from window.*/localStorage, add/remove/process/clear actions, 3s poll refresh)
+  - `index.ts` (page barrel export)
+- **Modified:** `src/app/routes.tsx` (LegacyResumes/LegacyApplications → lazy-loaded ResumesPageRoute/ApplicationsPageRoute with Suspense)
+- **Bridge pattern:** useResumes reads from window.resumes, window.savedFilters, window.readinessCache, delegates to window.toggleResumeFilter, window.archiveResume, window.downloadResume, window.handleRescore, window.launchRewriteInterview, etc. useApplications reads from window.appQueue, window.appHistory, localStorage bj_app_mode, delegates to window.removeFromQueue. Components do NOT access window.* directly — all data flows through hooks.
+- **Design compliance:** Zero static inline styles. Dynamic filter colors via style={{ backgroundColor/borderColor/color }} only. All other colors via CSS custom properties. Dark mode automatic. Design system primitives (Button, Badge, Card, Select) used throughout.
+- **Bundle:** ResumesPage chunk 20.28KB (6.10KB gzip), ApplicationsPage chunk 12.17KB (3.31KB gzip) — both well under 50KB target
+- **Tests:** 93 SA-016 validation tests (dirs, files, exports, design tokens, hardcoded colors, bridge pattern, a11y, loading/error states, build output, design system usage, attribution)
+- Phase S3 CONTINUING
 - Completed: 2026-03-07
 - Git tag: `dashboard@2.2.0-pipeline-keywords`
 - Product version bumped: `v7.50` → `v7.51`
@@ -229,14 +259,14 @@ None.
 
 ## Next Session
 
-**SA-016** — Resumes + Applications Migration (React + TypeScript + Design System) (Phase S3)
-- Entry gate: SA-015 ✅ (Pipeline + Keywords migrated, bridge pattern proven for complex stateful pages)
+**SA-017** — Remaining Pages + Legacy Removal (React + TypeScript + Design System) (Phase S3)
+- Entry gate: SA-016 ✅ (Resumes + Applications migrated, bridge pattern proven for queue/history workflows)
 - Pair: Frontend + CSS/Tailwind Eng
 - Reviewer: Lead Platform Eng + Chief Architect
-- Estimated: 16–22h
-- Build: Migrate Resumes and Applications pages as React + TypeScript component trees. All components use design tokens via Tailwind. Zero inline styles. Dark mode complete. Data through providers only. Functional parity with legacy Resumes and Applications tabs.
+- Estimated: 20–28h
+- Build: Migrate all remaining dashboard pages (Stats, Tuning, Billing, Settings, Integrations, Chat, Referrals) + admin pages as React + TypeScript component trees. Remove legacy HTML/JS once all pages migrated. Zero inline styles. Bundle < 120KB gzip total.
 
-**Phase S3 is in progress.** SA-013 ✅, SA-014 ✅, SA-015 ✅, SA-016 next.
+**Phase S3 is in progress.** SA-013 ✅, SA-014 ✅, SA-015 ✅, SA-016 ✅, SA-017 next.
 
 ---
 
@@ -268,8 +298,8 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.51`** | **SA-015** |
-| Dashboard | **`dashboard@2.2.0-pipeline-keywords`** | **SA-015** |
+| **Product (BJ_VERSION)** | **`v7.52`** | **SA-016** |
+| Dashboard | **`dashboard@2.3.0-resumes-applications`** | **SA-016** |
 | Extension | `extension@2.22.0-error-handling` | FIX-11 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
 | Admin | `admin@1.7.0-graduation` | SA-012 |
@@ -289,10 +319,11 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 ---
 
-## Completed Sessions (24 of 24 + 17 Phase 1 + 11 Scaling + FIX-11)
+## Completed Sessions (24 of 24 + 17 Phase 1 + 12 Scaling + FIX-11)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
+| SA-016 | 2026-03-07 | Resumes + Applications migration: Resumes — 5 components (ResumesPage/ResumesHero/ResumeCard/FilterSection/ResumeArchive/ResumeUpload). useResumes hook (bridge to legacy, filter grouping, AI scoring, archive, performance stats). Applications — 4 components (ApplicationsPage/ApplicationsHero/ModeSelector/AppQueueTable/AppHistoryTable). useApplications hook (queue/history/mode). Bridge pattern. Design tokens only. Lazy-loaded. ResumesPage 6.10KB gzip, ApplicationsPage 3.31KB gzip. 93 tests. v7.52. | dashboard@2.3.0-resumes-applications |
 | SA-015 | 2026-03-07 | Pipeline + Keywords migration: Pipeline — 7 components (PipelinePage/PipelineHero/PipelineFilterTags/StageSection/PipelineRow/SignalCard/GhostMonitor). usePipeline hook (9-stage tracker, ghost monitor, signals, stale dots, filter tags). Keywords — 6 components (KeywordsPage/ResumeSelector/ResumeScoreCard/FilterBreakdown/KeywordTag/LevelFit). useKeywords hook (readiness analysis, resume scoring). Bridge pattern. Design tokens only. Lazy-loaded. Pipeline 7.65KB gzip, Keywords 3.76KB gzip. 70 tests. v7.51. | dashboard@2.2.0-pipeline-keywords |
 | SA-014 | 2026-03-07 | Feed page migration: 11 React components (FeedPage/FeedHero/SearchModeToggle/FilterBuilder/FilterSidebar/SavedSearches/SortControls/SearchBar/JobTable/JobRow/PaginationControls). useFeedSearch hook (multi-filter merge/dedup/sort/paginate/abort). Bridge pattern via window.BJ. Design tokens only. Lazy-loaded with Suspense. FeedPage chunk 11KB gzip. 39 tests. v7.50. | dashboard@2.1.0-feed-page |
 | SA-013 | 2026-03-07 | SPA scaffold: React 18 + React Router 6 + Vite React plugin. Design system primitives (Button/Card/Badge/Input/Select/Modal). Data provider interfaces (Search/Job/User/Pipeline) + Supabase impls + React context. AppShell unified nav + AuthGuard + AdminGuard + LegacyPageWrapper. 12 dashboard + 10 admin routes. ADR-02 + pattern library. 60 validation tests. v7.49. Phase S3 STARTED. | dashboard@2.0.0-spa-scaffold, spa@1.0.0-scaffold |

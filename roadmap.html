@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.51"></script>
+  <script src="/js/version.js?v=v7.52"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2112,7 +2112,7 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'SA-013 SPA scaffold + design system', d: 'React 18 + React Router 6 + Vite React plugin. Design system: Button/Card/Badge/Input/Select/Modal. Data providers: 4 interfaces + Supabase impls. AppShell + Auth/Admin guards + LegacyPageWrapper. 12 dashboard + 10 admin routes. ADR-02 + pattern library. ~74KB gzip SPA. v7.49. 2026-03-07.', p: 100, e: '22h' },
 { s: 'done', b: 'post-launch', n: 'SA-014 Feed page SPA migration', d: 'Feed page migrated to React + TypeScript. 11 components, useFeedSearch hook, design tokens, dark mode, lazy-loaded. FeedPage chunk 11KB gzip. 39 tests. v7.50.', p: 100, e: '22h' },
 { s: 'done', b: 'post-launch', n: 'SA-015 Pipeline + Keywords migration', d: 'Pipeline: 7 components + usePipeline hook (9-stage tracker, ghost monitor, signals, filter tags). Keywords: 6 components + useKeywords hook (readiness analysis, keyword tags, level fit). Bridge pattern. Design tokens. Pipeline 7.65KB gzip, Keywords 3.76KB gzip. 70 tests. v7.51.', p: 100, e: '22h' },
-{ s: 'todo', b: 'post-launch', n: 'SA-016 Stats + Settings migration', d: 'Migrate Stats and Settings pages. Complete design token enforcement on migrated pages. Pair: Frontend + CSS Eng. 16-22h.', p: 92, e: '22h' },
+{ s: 'done', b: 'post-launch', n: 'SA-016 Resumes + Applications migration', d: 'Resumes: 5 components (ResumesPage/ResumesHero/ResumeCard/FilterSection/ResumeArchive/ResumeUpload) + useResumes hook. Applications: 4 components (ApplicationsPage/ApplicationsHero/ModeSelector/AppQueueTable/AppHistoryTable) + useApplications hook. Bridge pattern. Design tokens only. Lazy-loaded. ResumesPage 6.10KB gzip, ApplicationsPage 3.31KB gzip. 93 tests. v7.52. 2026-03-07.', p: 100, e: '22h' },
 { s: 'todo', b: 'post-launch', n: 'SA-017 Remaining pages + legacy removal', d: 'Migrate remaining dashboard + admin pages. Remove legacy HTML/JS. Zero inline styles on authenticated surfaces. Bundle <120KB. Pair: Frontend + CSS Eng. 20-28h.', p: 92, e: '28h' },
 
 // Phase S4: Scale Validation (Weeks 10-16) — ADR-04 P5-6, ADR-06

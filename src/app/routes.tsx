@@ -21,11 +21,13 @@ import { AdminGuard } from '@shell/AdminGuard';
 import { LegacyPageWrapper } from '@shell/LegacyPageWrapper';
 
 // ── Migrated page components ──────────────────────────────
-// SA-014: FeedPage, SA-015: PipelinePage + KeywordsPage
+// SA-014: FeedPage, SA-015: PipelinePage + KeywordsPage, SA-016: ResumesPage + ApplicationsPage
 import { lazy, Suspense } from 'react';
 const FeedPage = lazy(() => import('@app/pages/dashboard/feed/FeedPage'));
 const PipelinePage = lazy(() => import('@app/pages/dashboard/pipeline/PipelinePage'));
 const KeywordsPage = lazy(() => import('@app/pages/dashboard/keywords/KeywordsPage'));
+const ResumesPage = lazy(() => import('@app/pages/dashboard/resumes/ResumesPage'));
+const ApplicationsPage = lazy(() => import('@app/pages/dashboard/applications/ApplicationsPage'));
 
 function FeedPageRoute() {
   return (
@@ -51,10 +53,24 @@ function KeywordsPageRoute() {
   );
 }
 
+function ResumesPageRoute() {
+  return (
+    <Suspense fallback={<div className="p-6 text-text-faint text-sm">Loading resumes…</div>}>
+      <ResumesPage />
+    </Suspense>
+  );
+}
+
+function ApplicationsPageRoute() {
+  return (
+    <Suspense fallback={<div className="p-6 text-text-faint text-sm">Loading applications…</div>}>
+      <ApplicationsPage />
+    </Suspense>
+  );
+}
+
 // ── Dashboard Legacy Routes ───────────────────────────────
 
-function LegacyResumes() { return <LegacyPageWrapper tabId="resumes" surface="dashboard" />; }
-function LegacyApplications() { return <LegacyPageWrapper tabId="applications" surface="dashboard" />; }
 function LegacyStats() { return <LegacyPageWrapper tabId="stats" surface="dashboard" />; }
 function LegacyTuning() { return <LegacyPageWrapper tabId="tuning" surface="dashboard" />; }
 function LegacyBilling() { return <LegacyPageWrapper tabId="billing" surface="dashboard" />; }
@@ -91,8 +107,8 @@ export const routes: RouteObject[] = [
           { path: 'feed', element: <FeedPageRoute /> },
           { path: 'pipeline', element: <PipelinePageRoute /> },
           { path: 'keywords', element: <KeywordsPageRoute /> },
-          { path: 'resumes', element: <LegacyResumes /> },
-          { path: 'applications', element: <LegacyApplications /> },
+          { path: 'resumes', element: <ResumesPageRoute /> },
+          { path: 'applications', element: <ApplicationsPageRoute /> },
           { path: 'stats', element: <LegacyStats /> },
           { path: 'tuning', element: <LegacyTuning /> },
           { path: 'billing', element: <LegacyBilling /> },
