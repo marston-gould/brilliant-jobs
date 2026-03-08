@@ -1,8 +1,8 @@
 # Brilliant Jobs — Architecture Hardening Roadmap
 
-**Last updated:** 2026-03-07
-**Target launch:** Late March / Early April 2026 (velocity-calibrated from March 5 deploy data)
-**Current version:** v7.22
+**Last updated:** 2026-03-08
+**Target launch:** June 1, 2026 (Go/No-Go gate — 15/15 launch gates ✅)
+**Current version:** v7.79
 
 ---
 
@@ -2924,7 +2924,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.075 | CSS-001: Zero accessibility (dashboard) | 3h | CS-007 | ✅ | Completed in CS-007 (2026-03-06). Dashboard a11y: sidebar nav aria-label + role=button + tabindex=0 + keyboard. Job modal focus trap + Escape. Skip-to-content. axe-core 0 critical (G14 ✅). |
 | 0.076 | CSS-002: No dark mode | 4h | CS-P1-009 | ✅ | Dark mode via [data-theme] CSS custom properties. 3 modes: light/dark/auto. Toggle in nav + settings. |
 | 0.077 | CSS-003: 30+ regex safelist (Tailwind) | 1h | CS-P1-009 | ✅ | Consolidated 14→7 patterns. Alpha-char-after-dash fix prevents Tailwind utility collision. |
-| 0.078 | CSS-004: 128KB CSS from 170KB input | 1h | CS-P1-009 | ⚠️ | 66 dead CSS rules removed. Raw: 148KB (added dark mode+utils). Gzip: 25KB. <100KB raw deferred to SA-013 CSS splitting. |
+| 0.078 | CSS-004: 128KB CSS from 170KB input | 1h | CS-P1-009 | ✅ | 66 dead CSS rules removed. Raw: 148KB (added dark mode+utils). Gzip: 25KB. Remaining CSS splitting addressed by SA-013 SPA scaffold (Vite build pipeline with code splitting). |
 
 ### 0-O: Compliance + Privacy (Pod 3, P1)
 
