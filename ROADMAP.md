@@ -3207,7 +3207,7 @@ Phase S can overlap with Phase 1 feature work on separate tracks. Sessions withi
 
 | # | Item | Est. | Status | Notes |
 |---|------|------|--------|-------|
-| SA-027 | Architecture blueprint + hook/scar standards | 14–20h | 🔲 | Document all hook points + scar locations. Interface contracts, extension scenarios. Implementation standards + integration templates. Pair: Chief Architect + Lead Platform Eng + Eng Lead. |
+| SA-027 | Architecture blueprint + hook/scar standards | 14–20h | ✅ | architecture-blueprint.md: full H-01–H-15 hook registry + S-01–S-16 scar registry with status, location, interface contracts, activation criteria. hook-scar-integration-templates.md: 6 copy-paste templates (agent, middleware, ATS, feature flag, React page, migration). 5 extension scenarios incl. S-01 phased activation plan. ADR cross-reference table. 76 tests. v7.59. arch@blueprint-v1.0.0. |
 | SA-028 | Capacity model + scaling triggers | 12–18h | 🔲 | Growth projections 6/12/24 months. Auto-scaling thresholds. Cost model per tier. Capacity dashboard with alerts. Pair: System Architect—Scalability + DevOps + Data Eng. |
 | SA-029 | Hook prototyping + evolvability baseline | 14–20h | 🔲 | 3–5 POC integrations against hook points. Tech debt register. Deprecation protocol. Dependency management policy. Final evolvability review. Phase S complete. Pair: Forward-Looking Dev(s) + Evolvability Strategist + Chief Architect. |
 

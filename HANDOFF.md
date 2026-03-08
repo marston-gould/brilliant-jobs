@@ -52,17 +52,17 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**SA-025** — Feature Flags + Experimentation (Phase S5)
-- Completed: 2026-03-07
-- Git tag: `infra@feature-flags-v1.0.0`
-- Product version bumped: `v7.56` → `v7.57`
-- ROADMAP.md updated: SA-025 row → ✅ with completion notes
-- roadmap.html updated: SA-025 entry → `s: 'done'`, p: 100
+**SA-027** — Architecture Blueprint + Hook/Scar Standards (Phase S6)
+- Completed: 2026-03-08
+- Git tag: `arch@blueprint-v1.0.0`
+- Product version bumped: `v7.58` → `v7.59`
+- ROADMAP.md updated: SA-027 row → ✅ with completion notes
+- roadmap.html updated: SA-027 entry → `s: 'done'`, p: 100
 - **Created:**
-  - `supabase/migrations/v6.32-feature-flags.sql` — feature_flags (key/type/status/rollout_percentage/variants/targeting_rules), user_segments (5 seeded), flag_assignments (sticky bucket 0–99, overrides, expires_at scar), flag_evaluation_log (posthog_synced scar). fn_evaluate_flag (7-step eval: not_found/inactive/override/bucket/boolean/percentage/variant). fn_evaluate_all_flags (batch bootstrap). fn_flag_summary. v_flag_dashboard. 4 RLS policies. 5 seed flags (draft). agent_action_log migration event.
-  - `supabase/functions/feature-flags/index.ts` — 8 actions: evaluate, evaluate_all, create, update, list, status, segments, override. Variant weight validation (sum=100). Key format validation. Fire-and-forget eval logging. getReadClient (read replica aware). eval_ms timing.
-  - `supabase/functions/_shared/feature-flag-middleware.ts` — H-03 activation. FLAG_AWARE_ROUTES set (6 routes). btoa/atob base64 header encoding. parseFlagHeader() helper for EF consumers. S-06 scar (expand routes). S-07 scar (PostHog Remote Flags swap).
-  - `src/app/hooks/useFeatureFlag.ts` — useFeatureFlag(key, default). useFeatureFlagVariant(key). useAllFeatureFlags(). Safe outside provider.
+  - `docs/scaling/architecture-blueprint.md` — H-01–H-15 hook registry + S-01–S-16 scar registry. 5 interface contracts. 5 extension scenarios (incl. S-01 phased activation plan). Naming conventions, FF maintenance procedure, architectural boundaries. ADR cross-reference table.
+  - `docs/scaling/hook-scar-integration-templates.md` — 6 copy-paste templates: new agent, middleware, ATS, feature flag, React page, DB migration. PR checklist.
+  - `tests/sa-027-architecture-blueprint.test.js` — 76 tests (8 sections).
+- **Note:** SA-026 session close also completed in this session (v7.58, infra@fitness-functions-v1.0.0).
   - `src/app/providers/FeatureFlagProvider.tsx` — FeatureFlagContext. fn_evaluate_all_flags bootstrap. 60s poll. PostHog $feature_flag_called on enable. S-07 scar. window.BJ bridge pattern. refresh() on context.
   - `docs/scaling/adr-08-feature-flags.md` — ADR-08 IMPLEMENTED. Architecture, evaluation algorithm, PostHog/LaunchDarkly alternatives rejected, 6 scars (S-06–S-11), consequences.
   - `tests/sa-025-feature-flags.test.js` — 106 validation tests (all passing)
@@ -391,12 +391,12 @@ None.
 
 ## Next Session
 
-**SA-026** — Fitness Functions + Evolvability Framework (Phase S6)
-- Entry gate: SA-025 ✅ (Feature flags live; gateway route #108 active)
-- Pair: Eng Lead + Evolvability Strategist + QA + DevOps
-- Reviewer: Chief Architect (full sign-off required for Phase S6 start)
-- Estimated: 14–20h
-- Build: 8 architecture fitness functions in CI (18 total gates). Evolvability review template. Dependabot/Renovate dependency automation. Formal evolvability review: hook/scar utilization across S1–S5, technical debt register, architectural drift audit. Phase S6 kickoff.
+**SA-028** — Capacity Model + Scaling Triggers (Phase S6)
+- Entry gate: SA-027 ✅ (Architecture blueprint complete; all 18 CI gates green)
+- Pair: System Architect—Scalability + DevOps + Data Eng
+- Reviewer: Chief Architect
+- Estimated: 12–18h
+- Build: Growth projections (6/12/24 months). Auto-scaling thresholds. Cost model per tier. Capacity dashboard with alerts. Queries v_partition_stats (S-14) and replica_routing_stats (S-15). Back-tests against SA-023 load test data.
 
 ---
 
@@ -428,7 +428,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.57`** | **SA-025** |
+| **Product (BJ_VERSION)** | **`v7.59`** | **SA-027** |
 | Dashboard | `dashboard@3.0.0-all-pages` | SA-017 |
 | Extension | `extension@2.22.0-error-handling` | FIX-11 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
