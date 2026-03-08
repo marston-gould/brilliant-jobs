@@ -82,3 +82,4 @@
 | BI-02 | DevOps + Lead Platform Engineer | Chief Architect + System Architect—Scalability |
 | BI-03 | DevOps + Lead Platform Engineer | Chief Architect + System Architect—Scalability |
 | BI-04 | DevOps + Lead Platform Engineer | Chief Architect + Evolvability Strategist |
+| BI-05 | DevOps + Lead Platform Engineer | Chief Architect + Evolvability Strategist |

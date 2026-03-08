@@ -74,6 +74,7 @@ var ADMIN_SUBPAGE_MAP = {
   'build-analytics':{ section: 'operations',  label: 'Build Analytics', init: function(){ loadBuildAnalyticsPanel(); } },
   'deploy-visibility':{ section: 'operations',  label: 'Deploy Visibility', init: function(){ loadDeployVisibilityPanel(); } },
   'deploy-alerting': { section: 'operations',  label: 'Deploy Alerting',   init: function(){ loadDeployAlertingPanel(); } },
+  'command-center':  { section: 'operations',  label: 'Command Center',    init: function(){ loadCommandCenterPanel(); } },
   // ── Growth ──
   'seo':            { section: 'growth',      label: 'SEO',            init: function(){ loadSeoTab(); } },
   'content':        { section: 'growth',      label: 'Content',        init: function(){ loadContentTab(); } },

@@ -1,5 +1,5 @@
 /**
- * BI-01 + BI-02 + BI-03 + BI-04: Deploy Tracker, Build Analytics, Deployment Visibility & Alerting Edge Function
+ * BI-01 + BI-02 + BI-03 + BI-04 + BI-05: Deploy Tracker, Build Analytics, Deployment Visibility, Alerting & Command Center Edge Function
  *
  * BI-01 Actions:
  *   POST { action: "summary", days: 30 }      → Deploy summary with daily counts, surface health, recent deploys
@@ -27,13 +27,20 @@
  *   POST { action: "acknowledge-alert", alert_id, resolve? }     → Acknowledge or resolve an alert
  *   POST { action: "manage-alert-rules", sub_action: "list"|"toggle"|"update"|"evaluate" } → Alert rule management
  *
+ * BI-05 Actions:
+ *   POST { action: "command-center" }                              → Unified command center data (summary, rollbacks, approvals, activity)
+ *   POST { action: "initiate-rollback", surface, reason, ... }    → Initiate a rollback event with H-02 notification
+ *   POST { action: "rollback-history", limit? }                   → Rollback timeline with deploy context
+ *   POST { action: "manage-approvals", sub_action: "list"|"approve"|"reject" } → Deploy approval workflow
+ *
  * Auth:
  *   - Admin-only: summary, list, build-analytics, deployment-visibility, release-history,
- *     deploy-health-score, deploy-alerts, acknowledge-alert, manage-alert-rules
+ *     deploy-health-score, deploy-alerts, acknowledge-alert, manage-alert-rules,
+ *     command-center, initiate-rollback, rollback-history, manage-approvals
  *   - Write actions require service role OR valid deploy API key
  *
- * Phase: BI-01 + BI-02 + BI-03 + BI-04 — Build Instrumentation & Deployment Visibility
- * Pair: DevOps + Lead Platform Engineer | Chief Architect + System Architect—Scalability reviewers
+ * Phase: BI-01 + BI-02 + BI-03 + BI-04 + BI-05 — Build Instrumentation & Deployment Visibility
+ * Pair: DevOps + Lead Platform Engineer | Chief Architect + Evolvability Strategist reviewers
  */
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
@@ -76,7 +83,7 @@ serve(async (req: Request) => {
 
   try {
     // ── Admin-only actions ─────────────────────────────────────────────
-    if (action === "summary" || action === "list" || action === "build-analytics" || action === "deployment-visibility" || action === "release-history" || action === "deploy-health-score" || action === "deploy-alerts" || action === "acknowledge-alert" || action === "manage-alert-rules") {
+    if (action === "summary" || action === "list" || action === "build-analytics" || action === "deployment-visibility" || action === "release-history" || action === "deploy-health-score" || action === "deploy-alerts" || action === "acknowledge-alert" || action === "manage-alert-rules" || action === "command-center" || action === "initiate-rollback" || action === "rollback-history" || action === "manage-approvals") {
       const userRole = req.headers.get("x-gateway-user-role") || "";
       if (userRole !== "admin") {
         return json({ error: "Admin access required" }, 403);
@@ -582,6 +589,143 @@ serve(async (req: Request) => {
           return json({ error: "Failed to evaluate alerts" }, 500);
         }
         return json(data || {});
+      }
+
+      return json({ error: `Unknown sub_action: ${subAction}` }, 400);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // BI-05: COMMAND CENTER — unified dashboard data
+    // ═══════════════════════════════════════════════════════════════════
+    if (action === "command-center") {
+      const { data, error } = await sb.rpc("fn_command_center_data");
+      if (error) {
+        logger.warn("[deploy-tracker] fn_command_center_data failed:", error.message);
+        return json({ error: "Failed to fetch command center data" }, 500);
+      }
+      return json({ ok: true, ...(typeof data === "string" ? JSON.parse(data) : data) });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // BI-05: INITIATE ROLLBACK — create rollback event + H-02
+    // ═══════════════════════════════════════════════════════════════════
+    if (action === "initiate-rollback") {
+      const surface = body.surface as string;
+      if (!surface) return json({ error: "surface is required" }, 400);
+
+      const { data, error } = await sb.rpc("fn_initiate_rollback", {
+        p_surface: surface,
+        p_deploy_id: (body.deploy_id as string) || null,
+        p_rollback_to_sha: (body.rollback_to_sha as string) || null,
+        p_rollback_to_tag: (body.rollback_to_tag as string) || null,
+        p_reason: (body.reason as string) || "",
+        p_initiated_by: (body.initiated_by as string) || "admin",
+      });
+      if (error) {
+        logger.warn("[deploy-tracker] fn_initiate_rollback failed:", error.message);
+        return json({ error: "Failed to initiate rollback" }, 500);
+      }
+      const result = typeof data === "string" ? JSON.parse(data) : data;
+      if (result?.error) return json({ error: result.error }, 400);
+      return json(result);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // BI-05: ROLLBACK HISTORY — timeline with deploy context
+    // ═══════════════════════════════════════════════════════════════════
+    if (action === "rollback-history") {
+      const limit = Math.min(Number(body.limit) || 20, 100);
+      const surfaceFilter = body.surface as string;
+
+      let query = sb
+        .from("v_rollback_history")
+        .select("*")
+        .order("started_at", { ascending: false })
+        .limit(limit);
+
+      if (surfaceFilter) {
+        query = query.eq("surface", surfaceFilter);
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        logger.warn("[deploy-tracker] rollback-history query failed:", error.message);
+        return json({ error: "Failed to fetch rollback history" }, 500);
+      }
+      return json({ ok: true, rollbacks: data || [] });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // BI-05: MANAGE APPROVALS — list, approve, reject
+    // ═══════════════════════════════════════════════════════════════════
+    if (action === "manage-approvals") {
+      const subAction = (body.sub_action as string) || "list";
+
+      // List pending approvals
+      if (subAction === "list") {
+        const statusFilter = (body.status as string) || "pending";
+        const limit = Math.min(Number(body.limit) || 20, 100);
+
+        const { data, error } = await sb
+          .from("deploy_approvals")
+          .select("*, deploy_events(git_sha, git_tag, surface, status)")
+          .eq("status", statusFilter)
+          .order("requested_at", { ascending: false })
+          .limit(limit);
+
+        if (error) {
+          logger.warn("[deploy-tracker] manage-approvals list failed:", error.message);
+          return json({ error: "Failed to fetch approvals" }, 500);
+        }
+        return json({ ok: true, approvals: data || [] });
+      }
+
+      // Approve a deployment
+      if (subAction === "approve") {
+        const approvalId = body.approval_id as string;
+        if (!approvalId) return json({ error: "approval_id is required" }, 400);
+
+        const { data, error } = await sb
+          .from("deploy_approvals")
+          .update({
+            status: "approved",
+            approved_by: (body.approved_by as string) || "admin",
+            resolved_at: new Date().toISOString(),
+          })
+          .eq("id", approvalId)
+          .eq("status", "pending")
+          .select("id, surface, status")
+          .single();
+
+        if (error) {
+          logger.warn("[deploy-tracker] manage-approvals approve failed:", error.message);
+          return json({ error: "Failed to approve deployment" }, 500);
+        }
+        return json({ ok: true, approval: data });
+      }
+
+      // Reject a deployment
+      if (subAction === "reject") {
+        const approvalId = body.approval_id as string;
+        if (!approvalId) return json({ error: "approval_id is required" }, 400);
+
+        const { data, error } = await sb
+          .from("deploy_approvals")
+          .update({
+            status: "rejected",
+            reject_reason: (body.reason as string) || "",
+            resolved_at: new Date().toISOString(),
+          })
+          .eq("id", approvalId)
+          .eq("status", "pending")
+          .select("id, surface, status")
+          .single();
+
+        if (error) {
+          logger.warn("[deploy-tracker] manage-approvals reject failed:", error.message);
+          return json({ error: "Failed to reject deployment" }, 500);
+        }
+        return json({ ok: true, approval: data });
       }
 
       return json({ error: `Unknown sub_action: ${subAction}` }, 400);

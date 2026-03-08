@@ -52,29 +52,29 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**BI-04** — Deployment Alerting & Health Scoring
+**BI-05** — Deployment Command Center & Rollback Management
 - Completed: 2026-03-08
-- Git tag: `infra@deploy-alerting-v1.0.0`
-- Product version bumped: `v7.75` → `v7.76` (JS/HTML changes — admin-deploy-alerting.js, admin.js ADMIN_SUBPAGE_MAP entry, admin.html container + script tag; all HTML surfaces cache-busted)
-- ROADMAP.md updated: BI-04 → ✅ with completion notes
-- roadmap.html updated: BI-04 → `s: 'done'`, p: 100
-- **Migration (v6.37):** `deploy_alert_rules` (configurable thresholds with rule_type CHECK: deploy_failure_rate/bundle_size_regression/environment_drift/ci_failure_streak/deploy_duration_spike/health_score_threshold/custom, severity, cooldown_minutes, last_fired_at, surfaces array, S-12 scar metadata JSONB), `deploy_alert_history` (acknowledgment workflow: active/acknowledged/resolved/expired, fired_at, acknowledged_at/by, resolved_at/by, resolve_notes). 6 indexes. RLS on both tables (admin read, service write). View: `v_active_alerts` (unresolved alerts with rule context, critical-first ordering). Functions: `fn_deployment_health_score` (composite 0-100 score: deploy success 30%, CI health 25%, drift 20%, bundle 15%, duration 10%, letter grade A-F, critical alert penalty), `fn_evaluate_deploy_alerts` (checks all enabled rules, respects cooldown, fires alerts, H-02 event bus for critical via fn_publish_event). 6 seed rules: Deploy Failure Rate >20%, Environment Drift Detected, Bundle Size Regression >10%, CI Failure Streak ≥3, Deploy Duration Spike >50%, Health Score Below 50. 2 pg_cron (every 15min evaluate, daily cleanup >90d).
-- **Edge Function:** `deploy-tracker/index.ts` extended with 4 new BI-04 actions: deploy-health-score (fn_deployment_health_score RPC), deploy-alerts (v_active_alerts query with severity counts), acknowledge-alert (ack or resolve with notes), manage-alert-rules (list/toggle/update/evaluate sub-actions). Total: 18 actions (6 BI-01 + 4 BI-02 + 4 BI-03 + 4 BI-04). No new gateway route — extends existing deploy-tracker route.
-- **Admin Panel:** `admin-deploy-alerting.js` — Health score gauge (0-100 with letter grade and color coding), 5-dimension breakdown cards (deploy success, CI health, environment drift, bundle health, deploy duration with weights and progress bars), active alerts table (severity badges, ack/resolve buttons, age display), alert rules configuration table (enable/disable toggles, threshold display, cooldown, last fired). Evaluate Now button for on-demand checks. 2min auto-refresh polling.
-- **Admin Nav:** `ADMIN_SUBPAGE_MAP` entry in operations section. `loadDeployAlertingPanel()` global function.
-- **Team:** BI-04 pairing added to pod-team-manifest.md (DevOps + Lead Platform Eng, Chief Architect + Evolvability Strategist reviewers).
+- Git tag: `infra@deploy-command-center-v1.0.0`
+- Product version bumped: `v7.76` → `v7.77` (JS/HTML changes — admin-deploy-command-center.js, admin.js ADMIN_SUBPAGE_MAP entry, admin.html container + script tag; all HTML surfaces cache-busted)
+- ROADMAP.md updated: BI-05 → ✅ with completion notes
+- roadmap.html updated: BI-05 → `s: 'done'`, p: 100
+- **Migration (v6.38):** `rollback_events` (status tracking: initiated/in_progress/completed/failed/cancelled, deploy_id FK to deploy_events, rollback_to_sha/tag, duration_ms computed column, S-12 scar_meta JSONB), `deploy_approvals` (approval workflow: pending/approved/rejected/expired/auto_approved, 24h default expiry, request/reject reasons, S-12 scar_meta JSONB). 7 indexes. RLS on both tables (admin read, service write). Views: `v_command_center_summary` (unified status aggregating health score, active alerts by severity, drift count, 24h deploy stats, pending approvals, 7d rollback stats), `v_rollback_history` (rollback timeline with deploy_events JOIN for original SHA/tag context). Functions: `fn_command_center_data` (single-call JSONB aggregation of summary + recent rollbacks + pending approvals + unified activity stream from deploys/alerts/rollbacks), `fn_initiate_rollback` (creates rollback event, validates surface, H-02 event bus publish for rollback.initiated with non-fatal error handling). 2 pg_cron (hourly approval expiry, weekly rollback cleanup >90d).
+- **Edge Function:** `deploy-tracker/index.ts` extended with 4 new BI-05 actions: command-center (fn_command_center_data RPC), initiate-rollback (fn_initiate_rollback RPC with surface validation), rollback-history (v_rollback_history query with optional surface filter), manage-approvals (list/approve/reject sub-actions on deploy_approvals). Total: 22 actions (6 BI-01 + 4 BI-02 + 4 BI-03 + 4 BI-04 + 4 BI-05). No new gateway route — extends existing deploy-tracker route.
+- **Admin Panel:** `admin-deploy-command-center.js` — Unified status bar with 6 cards (health score gauge with grade color, active alerts with critical count, environment drift ratio, 24h deploys with success rate, pending approvals, 7d rollbacks), quick action buttons (initiate rollback with surface/reason/tag prompts, evaluate alerts, refresh), deploy approval queue table (surface badge, requestor, reason, age, approve/reject buttons), rollback history table (7 columns: surface, status, reason, target SHA/tag, initiator, duration, started), unified activity stream (7d cross-BI timeline with event type icons and colored status badges). 2min auto-refresh polling.
+- **Admin Nav:** `ADMIN_SUBPAGE_MAP` entry in operations section. `loadCommandCenterPanel()` global function.
+- **Team:** BI-05 pairing added to pod-team-manifest.md (DevOps + Lead Platform Eng, Chief Architect + Evolvability Strategist reviewers).
 - **Created:**
-  - `supabase/migrations/v6.37-deploy-alerting.sql` — Full migration
-  - `js/admin-deploy-alerting.js` — Deploy alerting admin dashboard
-  - `tests/bi-004-deploy-alerting.test.js` — 72 validation tests
+  - `supabase/migrations/v6.38-deploy-command-center.sql` — Full migration
+  - `js/admin-deploy-command-center.js` — Command center admin dashboard
+  - `tests/bi-005-deploy-command-center.test.js` — 81 validation tests
 - **Modified:**
-  - `supabase/functions/deploy-tracker/index.ts` — 4 new BI-04 actions (18 total)
-  - `js/admin.js` — ADMIN_SUBPAGE_MAP (deploy-alerting in operations)
-  - `admin.html` — deploy-alerting container + script tag
-  - `docs/scaling/pod-team-manifest.md` — BI-04 pairing assignment
-  - `ROADMAP.md` — BI-04 → ✅
-  - `roadmap.html` — BI-04 → done/100
-- **Tests:** 72 BI-04 validation tests (all passing)
+  - `supabase/functions/deploy-tracker/index.ts` — 4 new BI-05 actions (22 total)
+  - `js/admin.js` — ADMIN_SUBPAGE_MAP (command-center in operations)
+  - `admin.html` — command-center container + script tag
+  - `docs/scaling/pod-team-manifest.md` — BI-05 pairing assignment
+  - `ROADMAP.md` — BI-05 → ✅
+  - `roadmap.html` — BI-05 → done/100
+- **Tests:** 81 BI-05 validation tests (all passing)
 
 **BI-03** — Deployment Visibility System — Environment Status & Release Tracking
 - Completed: 2026-03-08
@@ -781,7 +781,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.76`** | **BI-04 — Deployment Alerting & Health Scoring** |
+| **Product (BJ_VERSION)** | **`v7.77`** | **BI-05 — Deployment Command Center & Rollback Management** |
 | Dashboard | `dashboard@3.0.0-all-pages` | SA-017 |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
@@ -794,6 +794,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 | **Deploy Tracker** | **`infra@deploy-tracker-v1.0.0`** | **BI-01** |
 | **Build Analytics** | **`infra@build-analytics-v1.0.0`** | **BI-02** |
 | **Deploy Alerting** | **`infra@deploy-alerting-v1.0.0`** | **BI-04** |
+| **Deploy Command Center** | **`infra@deploy-command-center-v1.0.0`** | **BI-05** |
 | **Partitioning** | **`infra@partitioning-v1.0.0`** | **SA-019** |
 | **Read Replica** | **`infra@read-replica-v1.0.0`** | **SA-018** |
 | **Common Crawl** | **`infra@common-crawl-v0.1.0`** | **SA-007** |
@@ -815,6 +816,8 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 | BI-02 | 2026-03-08 | CI pipeline analytics + bundle size tracking. v6.35 migration (ci_workflow_runs, bundle_size_history, 3 views, fn_build_analytics). deploy-tracker EF: 4 new actions (build-analytics, record-ci-run, complete-ci-run, record-bundle-size). admin-build-analytics.js (5 cards, build step perf, CI health, bundle sizes with sparklines, CI runs timeline). ADMIN_SUBPAGE_MAP #37. 81 tests. v7.74. | infra@build-analytics-v1.0.0 |
 
 | BI-04 | 2026-03-08 | Deployment alerting & health scoring. v6.37 migration (deploy_alert_rules, deploy_alert_history, v_active_alerts, fn_deployment_health_score, fn_evaluate_deploy_alerts). deploy-tracker EF: 4 new actions (deploy-health-score, deploy-alerts, acknowledge-alert, manage-alert-rules; 18 total). admin-deploy-alerting.js (health gauge, 5 dimensions, alerts table, rules config). 6 seed rules. 2 pg_cron. H-02 event bus for critical. ADMIN_SUBPAGE_MAP. 72 tests. v7.76. | infra@deploy-alerting-v1.0.0 |
+
+| BI-05 | 2026-03-08 | Deployment command center & rollback management. v6.38 migration (rollback_events, deploy_approvals, v_command_center_summary, v_rollback_history, fn_command_center_data, fn_initiate_rollback). deploy-tracker EF: 4 new actions (command-center, initiate-rollback, rollback-history, manage-approvals; 22 total). admin-deploy-command-center.js (unified status bar with 6 cards, quick actions, approval queue, rollback history, unified activity stream). 2 pg_cron (hourly expiry, weekly cleanup). H-02 event bus for rollback notifications. ADMIN_SUBPAGE_MAP. 81 tests. v7.77. | infra@deploy-command-center-v1.0.0 |
 
 | BI-03 | 2026-03-08 | Deployment visibility system. v6.36 migration (environment_versions, release_notes, v_environment_drift, v_release_timeline, v_deploy_cadence, fn_deployment_visibility, fn_update_environment_version trigger). deploy-tracker EF: 4 new actions (deployment-visibility, update-environment, release-history, record-release; 14 total). admin-deploy-visibility.js (4 summary cards, env version matrix with drift badges, deploy cadence table, release timeline with type badges). ADMIN_SUBPAGE_MAP. 108 tests. v7.75. | infra@deploy-visibility-v1.0.0 |
 
