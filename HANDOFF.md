@@ -54,12 +54,12 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 **POD3-SF** — Saved Filters UX Fixes
 - Completed: 2026-03-08
-- Product version bumped: `v7.80` → `v7.81` (JS changes — location.js, query-builder.js; all HTML surfaces cache-busted)
+- Product version bumped: `v7.80` → `v7.82` (JS changes — location.js, query-builder.js; all HTML surfaces cache-busted)
 - ROADMAP.md updated: POD3-SF → ✅
 - roadmap.html updated: POD3-SF → `s: 'done'`, p: 100
 - **3 issues resolved:**
   - (1) Removed 1D/7D/30D column headers and per-row counts/trend badges from saved filters list in renderSavedFilters()
-  - (2) Pill changes auto-save: when `_editingFilterIdx` is set, renderAllPills() writes current pills back to `savedFilters[idx]` and persists via saveUserData(). `debouncedSearchJobs()` called unconditionally (not gated on `allPills() > 0`). Clear All button clears `_editingFilterIdx` to prevent accidental overwrites. Auto-save does NOT call renderSavedFilters() to preserve checkbox state.
+  - (2) commitSaveFilter bug: `renderSavedFilters()` was rebuilding the entire DOM, destroying all checkbox states. After save, every checkbox was unchecked → `getCheckedSavedFilters()` returned [] → blank feed. Also no `invalidateCache()` was being called, so cached results could mask changes. Fix: capture checked indices before renderSavedFilters, restore after, call `invalidateCache()`, use `searchJobs(0)` for immediate re-search. Also uses `_editingFilterIdx` as primary filter lookup (name match fallback).
   - (3) Saved filter search now checks all pill arrays (whatPills, wherePills, whenPills, whoPills, payPills, whatNotPills, whereNotPills, whoNotPills, skillsPills, levelPills, jdPills, deptPills) for substring matches in addition to filter names.
 - **Created:**
   - `tests/pod3-sf-ux-fixes.test.js` — 21 validation tests (4 sections)
@@ -843,7 +843,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.81`** | **POD3-SF — Saved Filters UX Fixes** |
+| **Product (BJ_VERSION)** | **`v7.82`** | **POD3-SF — Saved Filters UX Fixes** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

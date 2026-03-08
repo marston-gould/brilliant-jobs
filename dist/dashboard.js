@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v7.81';
+var BJ_VERSION = 'v7.82';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -6344,34 +6344,6 @@ function renderAllPills() {
   if (count > 0) { badge.textContent = count + ' filter' + (count > 1 ? 's' : ''); badge.style.display = ''; }
   else { badge.style.display = 'none'; }
 
-  // POD3-GS: Auto-save pill changes back to the saved filter being edited
-  if (window._editingFilterIdx != null && savedFilters[window._editingFilterIdx]) {
-    var sf = savedFilters[window._editingFilterIdx];
-    sf.whatPills = JSON.parse(JSON.stringify(whatPills));
-    sf.wherePills = JSON.parse(JSON.stringify(wherePills));
-    sf.whenPills = JSON.parse(JSON.stringify(whenPills));
-    sf.whoPills = JSON.parse(JSON.stringify(whoPills));
-    sf.payPills = JSON.parse(JSON.stringify(payPills));
-    sf.whatNotPills = JSON.parse(JSON.stringify(whatNotPills));
-    sf.whereNotPills = JSON.parse(JSON.stringify(whereNotPills));
-    sf.whoNotPills = JSON.parse(JSON.stringify(whoNotPills));
-    sf.skillsPills = JSON.parse(JSON.stringify(skillsPills));
-    sf.levelPills = JSON.parse(JSON.stringify(levelPills));
-    sf.jdPills = JSON.parse(JSON.stringify(jdPills));
-    sf.deptPills = JSON.parse(JSON.stringify(deptPills));
-    var noSalaryCb = document.getElementById('save-filter-include-no-salary');
-    if (noSalaryCb) sf.includeNoSalary = noSalaryCb.checked;
-    var remoteCb = document.getElementById('save-filter-include-remote');
-    if (remoteCb) sf.includeRemote = remoteCb.checked;
-    saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
-    // Update mini-pills in the saved filter row without full re-render (preserves checkbox state)
-    var sfRow = document.querySelector('.sf-item[data-idx="' + window._editingFilterIdx + '"]');
-    if (sfRow) {
-      var oldPills = sfRow.querySelector('.sf-item-pills');
-      if (oldPills) oldPills.remove();
-    }
-  }
-
   // Trigger job search when filters change
   debouncedSearchJobs();
 }
@@ -12316,7 +12288,17 @@ async function commitSaveFilter() {
     useCount: 1
   };
   // Preserve existing per-filter level hierarchy if updating, otherwise inherit global default
-  const existingIdx = savedFilters.findIndex(f => f.name.toLowerCase() === name.toLowerCase());
+  // POD3-SF: Use _editingFilterIdx as primary lookup (more reliable), fall back to name match
+  var existingIdx = window._editingFilterIdx != null ? window._editingFilterIdx : -1;
+  // Verify the idx points to a filter with the same name (or close match)
+  if (existingIdx >= 0 && savedFilters[existingIdx] && savedFilters[existingIdx].name.toLowerCase() !== name.toLowerCase()) {
+    // Name changed — user is creating a new filter from an edited one, not updating the original
+    existingIdx = -1;
+  }
+  // Fallback: search by name if _editingFilterIdx wasn't set (e.g. user typed a name directly)
+  if (existingIdx < 0) {
+    existingIdx = savedFilters.findIndex(f => f.name.toLowerCase() === name.toLowerCase());
+  }
   if (existingIdx >= 0 && savedFilters[existingIdx].levelHierarchy) {
     filterData.levelHierarchy = savedFilters[existingIdx].levelHierarchy;
   }
@@ -12340,14 +12322,37 @@ async function commitSaveFilter() {
   }
   saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
   clearEntitlementCache('filters');
+  invalidateCache(); // POD3-SF: bust query cache so re-search uses updated filter data
   // Only clear the name if it was a new filter
   if (existingIdx < 0) {
     $('#save-filter-name').value = '';
   }
+
+  // POD3-SF: Preserve checkbox state across renderSavedFilters.
+  // renderSavedFilters rebuilds the DOM, which destroys all checkbox states.
+  // Without this, the feed goes blank after every save because no filters are checked.
+  var checkedIdxs = [...$$('.sf-item-check:checked')].map(cb => parseInt(cb.dataset.idx));
+  // If we just saved an existing filter, make sure it's in the checked set
+  if (existingIdx >= 0 && !checkedIdxs.includes(existingIdx)) {
+    checkedIdxs.push(existingIdx);
+  }
+
   window._editingFilterIdx = null;
   renderSavedFilters();
-  // Re-run search with updated filters
-  debouncedSearchJobs();
+
+  // Restore checkbox state after DOM rebuild
+  checkedIdxs.forEach(function(idx) {
+    var cb = document.querySelector('.sf-item-check[data-idx="' + idx + '"]');
+    if (cb) {
+      cb.checked = true;
+      // Fire change event so any listeners (like sf-active-count) update
+      cb.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  });
+  updateSfActiveCount();
+
+  // Re-run search with updated filters (force immediate, not debounced)
+  searchJobs(0);
 }
 
 $('#save-filter-go').addEventListener('click', commitSaveFilter);

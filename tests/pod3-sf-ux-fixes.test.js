@@ -48,56 +48,58 @@ describe('Issue 1: 1D/7D/30D columns removed', () => {
   });
 });
 
-// ─── Issue 2: Pill changes auto-save ───
-describe('Issue 2: Pill changes auto-save to saved filter', () => {
-  test('renderAllPills checks _editingFilterIdx', () => {
-    expect(queryBuilderJs).toMatch(/_editingFilterIdx/);
+// ─── Issue 2: Saving an edited filter updates the feed and persists ───
+describe('Issue 2: commitSaveFilter preserves state and re-runs search', () => {
+  test('commitSaveFilter calls invalidateCache()', () => {
+    expect(locationJs).toMatch(/function commitSaveFilter[\s\S]*?invalidateCache\(\)/);
   });
 
-  test('Auto-save writes all pill arrays to saved filter', () => {
-    expect(queryBuilderJs).toMatch(/sf\.whatPills\s*=\s*JSON\.parse/);
-    expect(queryBuilderJs).toMatch(/sf\.wherePills\s*=\s*JSON\.parse/);
-    expect(queryBuilderJs).toMatch(/sf\.payPills\s*=\s*JSON\.parse/);
-    expect(queryBuilderJs).toMatch(/sf\.whoPills\s*=\s*JSON\.parse/);
-    expect(queryBuilderJs).toMatch(/sf\.whenPills\s*=\s*JSON\.parse/);
-    expect(queryBuilderJs).toMatch(/sf\.whatNotPills\s*=\s*JSON\.parse/);
-    expect(queryBuilderJs).toMatch(/sf\.skillsPills\s*=\s*JSON\.parse/);
-    expect(queryBuilderJs).toMatch(/sf\.levelPills\s*=\s*JSON\.parse/);
-    expect(queryBuilderJs).toMatch(/sf\.jdPills\s*=\s*JSON\.parse/);
-    expect(queryBuilderJs).toMatch(/sf\.deptPills\s*=\s*JSON\.parse/);
+  test('Checkbox state is captured BEFORE renderSavedFilters', () => {
+    const start = locationJs.indexOf('function commitSaveFilter');
+    const saveBlock = locationJs.slice(start, start + 5500);
+    const checkedCapture = saveBlock.indexOf('checkedIdxs');
+    const renderCall = saveBlock.indexOf('renderSavedFilters()');
+    expect(checkedCapture).toBeGreaterThan(0);
+    expect(renderCall).toBeGreaterThan(0);
+    expect(checkedCapture).toBeLessThan(renderCall);
   });
 
-  test('Auto-save persists to localStorage via saveUserData', () => {
-    expect(queryBuilderJs).toMatch(/saveUserData\('bj_saved_filters'/);
+  test('Checkbox state is restored AFTER renderSavedFilters', () => {
+    const start = locationJs.indexOf('function commitSaveFilter');
+    const saveBlock = locationJs.slice(start, start + 5500);
+    const renderCall = saveBlock.indexOf('renderSavedFilters()');
+    const restoreCheckbox = saveBlock.indexOf('cb.checked = true', renderCall);
+    expect(restoreCheckbox).toBeGreaterThan(renderCall);
   });
 
-  test('Auto-save updates includeNoSalary checkbox', () => {
-    expect(queryBuilderJs).toMatch(/sf\.includeNoSalary/);
+  test('Uses searchJobs(0) for immediate re-search (not debounced)', () => {
+    const start = locationJs.indexOf('function commitSaveFilter');
+    const saveBlock = locationJs.slice(start, start + 5500);
+    expect(saveBlock).toMatch(/searchJobs\(0\)/);
   });
 
-  test('Auto-save updates includeRemote checkbox', () => {
-    expect(queryBuilderJs).toMatch(/sf\.includeRemote/);
+  test('Uses _editingFilterIdx as primary lookup for existing filter', () => {
+    expect(locationJs).toMatch(/window\._editingFilterIdx\s*!=\s*null\s*\?\s*window\._editingFilterIdx/);
   });
 
-  test('debouncedSearchJobs called unconditionally (not gated on allPills > 0)', () => {
-    // The old code had: if (allPills() > 0) debouncedSearchJobs();
-    // The new code should call debouncedSearchJobs() unconditionally
+  test('Falls back to name matching if _editingFilterIdx not set', () => {
+    expect(locationJs).toMatch(/existingIdx\s*<\s*0[\s\S]*?savedFilters\.findIndex/);
+  });
+
+  test('Auto-save block is NOT in renderAllPills (reverted)', () => {
+    expect(queryBuilderJs).not.toMatch(/Auto-save pill changes back to the saved filter/);
+  });
+
+  test('debouncedSearchJobs still called unconditionally in renderAllPills', () => {
     const lines = queryBuilderJs.split('\n');
     const searchLine = lines.find(l => l.trim() === 'debouncedSearchJobs();');
     expect(searchLine).toBeTruthy();
   });
 
-  test('Clear All clears _editingFilterIdx to prevent accidental overwrites', () => {
-    expect(locationJs).toMatch(/clear-filters-btn[\s\S]*?_editingFilterIdx\s*=\s*null/);
-  });
-
-  test('Auto-save does NOT call renderSavedFilters (preserves checkbox state)', () => {
-    // Check that the auto-save block doesn't call renderSavedFilters
-    const autoSaveBlock = queryBuilderJs.slice(
-      queryBuilderJs.indexOf('POD3-GS: Auto-save pill changes'),
-      queryBuilderJs.indexOf('Trigger job search when filters change')
-    );
-    expect(autoSaveBlock).not.toMatch(/renderSavedFilters\(\)/);
+  test('updateSfActiveCount called after restoring checkboxes', () => {
+    const start = locationJs.indexOf('function commitSaveFilter');
+    const saveBlock = locationJs.slice(start, start + 5500);
+    expect(saveBlock).toMatch(/updateSfActiveCount\(\)/);
   });
 });
 
@@ -138,7 +140,7 @@ describe('Issue 3: Search includes pill values', () => {
 // ─── Version ───
 describe('Version', () => {
   const versionJs = fs.readFileSync(path.join(root, 'js/version.js'), 'utf-8');
-  test('Product version bumped to v7.81', () => {
-    expect(versionJs).toMatch(/v7\.81/);
+  test('Product version bumped to v7.82', () => {
+    expect(versionJs).toMatch(/v7\.82/);
   });
 });

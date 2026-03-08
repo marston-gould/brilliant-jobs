@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.81"></script>
+  <script src="/js/version.js?v=v7.82"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2154,7 +2154,7 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'BI-06 Deployment Performance Reports & DORA Metrics', d: 'v6.39 migration: dora_metrics_snapshots (periodic DORA: deploy_frequency, lead_time, mttr, change_failure_rate with elite/high/medium/low classification, UNIQUE period_type+period_start, S-12 scar_meta), deployment_reports (weekly/monthly/on_demand summaries, deploy stats, alerts, drift, DORA snapshot FK, S-12 scar_meta). Views: v_dora_metrics_current (latest per period with previous-period deltas), v_deployment_performance_trends (90d daily with 7d/30d moving averages). Functions: fn_calculate_dora_metrics (compute from all BI tables, upsert, H-02 event), fn_generate_deployment_report (aggregate all BI data, H-02 event). 8 indexes. 4 pg_cron (daily DORA, weekly report, monthly report, yearly cleanup). deploy-tracker EF extended (4 new actions: dora-metrics, performance-trends, deployment-reports, generate-report; 26 total). Admin dashboard: DORA classification banner, 4 metric cards with deltas, trend sparklines, report generation, report history. 98 tests. v7.78.', p: 100, e: '3h' },
 { s: 'done', b: 'post-launch', n: 'BI-07 CI Pipeline Enforcement & Gate Remediation', d: 'Branch protection on main (required status checks, no reviewers). Gate fixes: PostHog external script detection, 22 EFs added to auth registry, requireAdmin scanner pattern, TypeScript 137→0 errors, Badge secondary variant, LegacyPageWrapper removed, TabName updated, inline style ratchet 590, admin bundle limit 650KB. PR workflow helper. 52 tests. v7.79.', p: 100, e: '8h' },
 { s: 'done', b: 'post-launch', n: 'POD3-GS Get Started + Setup Page Consolidation', d: '9 BUG fixes: progress bar removed, Get Started display-only cards, live Supabase stats, shared connectionState, unified integration card pattern, hero width consistency, button sizing standardized. Calendar connect/disconnect added. 61 tests. v7.80.', p: 100, e: '6h' },
-{ s: 'done', b: 'post-launch', n: 'POD3-SF Saved Filters UX Fixes', d: '3 fixes: 1D/7D/30D columns removed, pill changes auto-save to saved filter and re-run query, search includes pill values not just filter names. 21 tests. v7.81.', p: 100, e: '3h' },
+{ s: 'done', b: 'post-launch', n: 'POD3-SF Saved Filters UX Fixes', d: '3 fixes: 1D/7D/30D columns removed, commitSaveFilter preserves checkbox state + invalidateCache + immediate re-search, search includes pill values not just filter names. 22 tests. v7.82.', p: 100, e: '3h' },
 
 ];
 

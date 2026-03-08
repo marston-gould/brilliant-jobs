@@ -735,7 +735,17 @@ async function commitSaveFilter() {
     useCount: 1
   };
   // Preserve existing per-filter level hierarchy if updating, otherwise inherit global default
-  const existingIdx = savedFilters.findIndex(f => f.name.toLowerCase() === name.toLowerCase());
+  // POD3-SF: Use _editingFilterIdx as primary lookup (more reliable), fall back to name match
+  var existingIdx = window._editingFilterIdx != null ? window._editingFilterIdx : -1;
+  // Verify the idx points to a filter with the same name (or close match)
+  if (existingIdx >= 0 && savedFilters[existingIdx] && savedFilters[existingIdx].name.toLowerCase() !== name.toLowerCase()) {
+    // Name changed — user is creating a new filter from an edited one, not updating the original
+    existingIdx = -1;
+  }
+  // Fallback: search by name if _editingFilterIdx wasn't set (e.g. user typed a name directly)
+  if (existingIdx < 0) {
+    existingIdx = savedFilters.findIndex(f => f.name.toLowerCase() === name.toLowerCase());
+  }
   if (existingIdx >= 0 && savedFilters[existingIdx].levelHierarchy) {
     filterData.levelHierarchy = savedFilters[existingIdx].levelHierarchy;
   }
@@ -759,14 +769,37 @@ async function commitSaveFilter() {
   }
   saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
   clearEntitlementCache('filters');
+  invalidateCache(); // POD3-SF: bust query cache so re-search uses updated filter data
   // Only clear the name if it was a new filter
   if (existingIdx < 0) {
     $('#save-filter-name').value = '';
   }
+
+  // POD3-SF: Preserve checkbox state across renderSavedFilters.
+  // renderSavedFilters rebuilds the DOM, which destroys all checkbox states.
+  // Without this, the feed goes blank after every save because no filters are checked.
+  var checkedIdxs = [...$$('.sf-item-check:checked')].map(cb => parseInt(cb.dataset.idx));
+  // If we just saved an existing filter, make sure it's in the checked set
+  if (existingIdx >= 0 && !checkedIdxs.includes(existingIdx)) {
+    checkedIdxs.push(existingIdx);
+  }
+
   window._editingFilterIdx = null;
   renderSavedFilters();
-  // Re-run search with updated filters
-  debouncedSearchJobs();
+
+  // Restore checkbox state after DOM rebuild
+  checkedIdxs.forEach(function(idx) {
+    var cb = document.querySelector('.sf-item-check[data-idx="' + idx + '"]');
+    if (cb) {
+      cb.checked = true;
+      // Fire change event so any listeners (like sf-active-count) update
+      cb.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  });
+  updateSfActiveCount();
+
+  // Re-run search with updated filters (force immediate, not debounced)
+  searchJobs(0);
 }
 
 $('#save-filter-go').addEventListener('click', commitSaveFilter);
