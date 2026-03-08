@@ -756,6 +756,9 @@ Next work streams (pending Marston direction):
 - PR-001 ✅, PR-002 ✅, PR-003 ✅ completed 2026-03-08
 - **Phase 69 Card 5 (Vonage 10DLC brand registration) ✅** — Brand verified (Sole Proprietor, OTP-confirmed 2026-03-08). Cloudflare email routing active: admin@brilliantjobs.app → brilliantjobsapp@gmail.com.
 - **Phase 69.5: Vonage 10DLC campaign design + setup** — 7 cards: SMS use case taxonomy, campaign description + samples, privacy policy page, terms page, opt-in CTAs, campaign submission, external vetting. Requires Marston to define SMS use cases first.
+- **BI-07 follow-up: ESLint enforcement** — Remove `|| true` from ci.yml line 56 after triaging 2,106 errors (config vs real bugs). Makes Gate 1 fully blocking.
+- **BI-07 follow-up: SA-022 stale test cleanup** — Update 167 assertions across 36 test files (`.js` → `.ts` paths, stale version/count checks). Removes `continue-on-error` from Gate 3.
+- **BI-07 follow-up: Extension build script** — Fix `build-extension.js` for SA-022 `.ts` exports. Removes warning from Gate 9.
 - **Run the 5K load test against production** — `k6 run load-tests/scale-5k-suite.js` (test infra is built, needs actual execution against live environment with test user credentials)
 - S-01 activation (TD-001): EF auth trust migration — first post-launch SA session
 - S-10 DataProvider migration (TD-004): Post-launch SPA consolidation
@@ -952,6 +955,9 @@ All 5 REM sessions (REM-001 through REM-005) completed 2026-03-08.
 | CP-002 DPA initiation | CS-004 | Legal review required (not a code task) | Pre-launch legal workstream |
 | QA-001 (full) | CS-010 | ✅ CS-021: 590 tests. Kill-switch, DOM snapshots, quality gates, security regressions. | DONE |
 | CSP report-only → enforce | CS-005 | ✅ CS-018: Landing page CSP enforced (no unsafe-inline). Dashboard/admin still report-only. | DONE (landing) |
+| ESLint `\|\| true` removal | BI-07 | 2,106 ESLint errors silenced on line 56 of ci.yml. Triage needed: build.js `console` no-undef is config (add node env), api/content.js + api/economic.js `no-redeclare` are real variable shadowing bugs. Once triaged and fixed, remove `\|\| true` to make Gate 1 blocking. | Next CI hardening session |
+| SA-022 stale test assertions | BI-07 | 167 test failures across 36 files — all check for `.js` handler/file paths that SA-022 renamed to `.ts`. Gate 3 test step has `continue-on-error: true` as stopgap. Needs bulk find/replace `.js` → `.ts` in test assertions + version/count updates. | Next test cleanup session |
+| Extension build script | BI-07 | `build-extension.js` fails on `export` keyword from SA-022 TypeScript migration. esbuild config needs `format: 'esm'` or the concatenation approach needs rework. Gate 9 extension build step is a warning, not a blocker. | Next extension session |
 
 ---
 
