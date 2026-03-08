@@ -52,6 +52,22 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**SA-021** — Referral Pipeline Agent (Phase S4)
+- Completed: 2026-03-07
+- Git tag: `admin@1.9.0-referral-pipeline-agent`
+- No product version bump (infrastructure/backend only, no JS/CSS/HTML user-facing changes)
+- ROADMAP.md updated: SA-021 row → ✅ with completion notes
+- roadmap.html updated: SA-021 entry → `s: 'done'`, p: 100
+- **Created:**
+  - `supabase/migrations/v6.30-crewai-referral-pipeline.sql` — fn_referral_pipeline_summary() JSONB snapshot (fraud/rewards/attribution subsections), agent_config row (referral-pipeline, observe, */30 cron), api_consumers + agent_credentials, pg_cron schedule (every 30min), agent_action_log migration event
+  - `supabase/functions/crewai-referral-pipeline/index.ts` — 3 checks: Fraud Pattern Monitor (high scores ≥ 0.7, burst detection >15/referrer/24h), Reward Eligibility Audit (expiring 7d, expired backlog, eligibility mismatch), Attribution Validation (orphaned invites, conversion velocity). executed: false always. Zero AI cost.
+- **Modified:**
+  - `supabase/functions/api-gateway/index.ts` — Route #106 (crewai-referral-pipeline). Total: 106 routes.
+  - `js/admin-crewai.js` — refreshReferralPipeline() (fraud/rewards/attribution stats panel)
+  - `docs/scaling/adr-05-crewai.md` — SA-021 section: IMPLEMENTED. Architecture, observe mode guarantees, hook/scar points, graduation path.
+- **Tests:** 41 SA-021 validation tests (migration structure, EF actions, observe mode, gateway route, admin UI, ADR docs)
+- Phase S4 CONTINUING
+
 **SA-020** — Cost Guardian Agent + User Support Agent (Phase S4)
 - Completed: 2026-03-07
 - Git tag: `admin@1.8.0-crewai-agents-4-5`
@@ -323,14 +339,14 @@ None.
 
 ## Next Session
 
-**SA-021** — Referral Pipeline Agent (Phase S4)
-- Entry gate: SA-020 ✅ (Agents 4 + 5 operational)
-- Pair: Backend + Eng Lead
-- Reviewer: Forward-Looking Dev
-- Estimated: 12–16h
-- Build: Referral Pipeline Agent (Agent 6) — fraud detection, reward eligibility checks, referral attribution validation. Monitors referral_events + referral_rewards tables. Observe mode.
+**SA-022** — TypeScript: Extension + Edge Functions (Phase S4)
+- Entry gate: SA-021 ✅ (Referral Pipeline Agent operational)
+- Pair: Frontend + Backend
+- Reviewer: Chief Architect (type system review)
+- Estimated: 16–22h
+- Build: Migrate all 43 extension files + 88 EFs to strict TypeScript. Shared types package. Zero `any` in new files. CI gate enforced.
 
-**Phase S4 continuing.** SA-021 next.
+**Phase S4 continuing.** SA-022 next.
 
 ---
 
@@ -366,7 +382,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 | Dashboard | `dashboard@3.0.0-all-pages` | SA-017 |
 | Extension | `extension@2.22.0-error-handling` | FIX-11 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
-| **Admin** | **`admin@1.8.0-crewai-agents-4-5`** | **SA-020** |
+| **Admin** | **`admin@1.9.0-referral-pipeline-agent`** | **SA-021** |
 | **SPA Scaffold** | **`spa@1.0.0-scaffold`** | **SA-013** |
 | **API Gateway** | `infra@gateway-v1.0.0` | SA-018 (103 routes) |
 | **Partitioning** | **`infra@partitioning-v1.0.0`** | **SA-019** |
