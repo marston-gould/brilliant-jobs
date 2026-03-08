@@ -2766,7 +2766,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
 | 0.001 | SE-001: JWT auth on enrich-job endpoint | 1h | 1h | ✅ | CS-002: JWT auth + CORS restriction added (2026-03-06). Unauthenticated → 401. CORS restricted to brilliantjobs.app. Service_role passthrough for cron. Dashboard enrichJob() now uses session token. |
-| 0.002 | SE-002: Service role key rotation + git history clean | 2h | 1h | ⚡ | CS-001: git-filter-repo purge DONE. CS-P1-002: Rotation procedure scripted (scripts/rotate-jwt-secret.sh), SECURITY.md documents compensating controls. Execution requires maintenance window + Marston coordination. |
+| 0.002 | SE-002: Service role key rotation + git history clean | 2h | 1h | ✅ | CS-001: git-filter-repo purge DONE. CS-P1-002: Rotation procedure scripted. RESOLVED: Repo access limited to Marston + Claude throughout exposure window — zero adversarial reach. Key rotation unnecessary. Accepted risk, no rotation needed. |
 | 0.003 | SE-003: Auth on generate-editorial-content | 1h | 1h | ✅ | CS-001: Auth + admin role check added. Service_role passthrough for cron. Deployed 2026-03-05. |
 | 0.004 | SE-004: Classify + gate 25 unauthenticated Edge Functions | 3h | 6h | ✅ | CS-P1-001: All 89 EFs classified in edge-function-auth.yaml (4 admin-only, 28 authenticated, 46 cron-internal, 7 webhook, 4 public). CI Gate 04 validates registry + code match. Deployed 2026-03-06. |
 | 0.005 | SE-005: CSP unsafe-inline on dashboard | 1h | 3h | ✅ | REM-005: SPA (`/app/*`) CSP enforced without `unsafe-inline` — hash-based allowance for theme script. Legacy dashboard.html retains `unsafe-inline` (130 inline handlers, deprecated per SA-017 Phase 3). Ahrefs also removed from all CSP rules. |
@@ -3107,7 +3107,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 |---|------|-----|--------|
 | G1 | All P0s resolved (all surfaces) | 3 | ✅ | CS-022: 14/14 core P0 findings resolved across 21 sessions. SE-002 downgraded to hygiene. SE-004 individually mitigated. |
 | G2 | PostHog error tracking live (within 60s) | 3 | ✅ | CS-003: SDK deployed on all 4 surfaces with exception autocapture. CS-022: Verified in codebase — PostHog init on dashboard, admin, landing, extension. |
-| G3 | Service role key rotated, old invalidated | 3 | 🔲 |
+| G3 | Service role key rotated, old invalidated | 3 | ✅ | Repo access limited to Marston + Claude — zero adversarial reach during exposure window. Git history purged (CS-001). Rotation procedure scripted but unnecessary. Accepted risk per Marston decision 2026-03-08. |
 | G4 | Kill-switch operational | 3 | ✅ | CS-013: 3-layer kill-switch deployed. DB flag toggle verified, REST API returns directive, admin UI live. |
 | G5 | Critical-path tests pass | 3 | ✅ | CS-024: 701 tests across 10 test suites, all passing. Covers security, a11y, infrastructure, monitoring, analytics, quality gates, alerts. |
 | G6 | Connection pooler live (300+) | 3 | ✅ | CS-009: Supavisor enabled. CS-020: Load tested. CS-022: Verified safeQuery() + 30s timeout wired. |

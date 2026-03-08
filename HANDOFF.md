@@ -784,7 +784,7 @@ All 5 REM sessions (REM-001 through REM-005) completed 2026-03-08.
 |---|------|--------|-------|
 | G1 | All P0s resolved | ✅ | CS-022: 14/14 core P0 findings resolved. SE-002 hygiene, SE-004 individually mitigated. |
 | G2 | PostHog error tracking live | ✅ | CS-003 + CS-022: SDK on all 4 surfaces, exception autocapture. |
-| G3 | Service role key rotated | ⚡ | Accepted risk. Repo access limited to Marston + Claude. git-filter-repo purge done. |
+| G3 | Service role key rotated | ✅ | RESOLVED: Repo access limited to Marston + Claude throughout exposure window — zero adversarial reach. Git history purged (CS-001). Rotation unnecessary per Marston decision 2026-03-08. |
 | G4 | Kill-switch operational | ✅ | CS-013: 3-layer kill-switch deployed + tested. DB flag toggle verified via REST API. Admin UI live. |
 | G5 | Critical-path tests pass | ✅ | CS-023: 665 tests across 9 suites, all passing. |
 | G6 | Connection pooler live (300+) | ✅ | CS-009: Supavisor enabled. CS-020: Load tested. |
@@ -804,7 +804,7 @@ All 5 REM sessions (REM-001 through REM-005) completed 2026-03-08.
 
 | Item | Original Session | Reason | Target |
 |------|-----------------|--------|--------|
-| SE-002 key rotation | CS-002/CS-P1-002 | Procedure scripted (scripts/rotate-jwt-secret.sh), SECURITY.md documents compensating controls | Requires maintenance window + Marston coordination |
+| SE-002 key rotation | CS-002/CS-P1-002 | RESOLVED: Zero adversarial reach (repo access = Marston + Claude only). Git purge done. Rotation unnecessary. | Closed 2026-03-08 per Marston decision |
 | CP-002 DPA initiation | CS-004 | Legal review required (not a code task) | Pre-launch legal workstream |
 | QA-001 (full) | CS-010 | ✅ CS-021: 590 tests. Kill-switch, DOM snapshots, quality gates, security regressions. | DONE |
 | CSP report-only → enforce | CS-005 | ✅ CS-018: Landing page CSP enforced (no unsafe-inline). Dashboard/admin still report-only. | DONE (landing) |

@@ -1833,7 +1833,7 @@ const features = [
 
 // 0-A: Security — Dashboard + Platform (Pod 3, P0)
 { s: 'done', b: 'pre-launch', n: '0.001 SE-001: JWT auth on enrich-job', d: 'CS-002: JWT auth + CORS restriction added (2026-03-06). Unauthenticated → 401. CORS restricted to brilliantjobs.app. Service_role passthrough. Dashboard enrichJob() uses session token.', p: 100, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.002 SE-002: Service role key rotation', d: 'CS-001: git purge DONE. CS-P1-002: Rotation procedure scripted (scripts/rotate-jwt-secret.sh), SECURITY.md documents compensating controls. Execution requires maintenance window.', p: 75, e: '2h' },
+{ s: 'done', b: 'pre-launch', n: '0.002 SE-002: Service role key rotation', d: 'RESOLVED: Repo access limited to Marston + Claude — zero adversarial reach. Git purge done. Rotation unnecessary. Accepted risk.', p: 100, e: '2h' },
 { s: 'done', b: 'pre-launch', n: '0.003 SE-003: Auth on generate-editorial-content', d: 'CS-001: Auth + admin role check (requireAdmin). G11: Shared middleware. Verified CS-P1-001.', p: 100, e: '1h' },
 { s: 'done', b: 'pre-launch', n: '0.004 SE-004: Classify+gate 89 Edge Functions', d: 'CS-P1-001: All 89 EFs classified in edge-function-auth.yaml (4 admin, 28 auth, 46 cron, 7 webhook, 4 public). CI Gate 04 validates registry.', p: 100, e: '6h' },
 { s: 'done', b: 'pre-launch', n: '0.005 SE-005: CSP unsafe-inline on dashboard', d: 'REM-005: SPA /app/* CSP enforced without unsafe-inline — SHA-256 hash for theme script. Legacy dashboard.html retains unsafe-inline (130 inline handlers, deprecated per SA-017 Phase 3).', p: 100, e: '3h' },
