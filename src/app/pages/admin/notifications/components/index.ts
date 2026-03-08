@@ -1,0 +1,1 @@
+export { NotificationsHero } from './NotificationsHero';

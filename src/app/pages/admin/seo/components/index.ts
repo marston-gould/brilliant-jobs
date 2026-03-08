@@ -1,0 +1,1 @@
+export { SeoHero } from './SeoHero';

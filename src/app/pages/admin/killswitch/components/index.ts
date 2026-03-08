@@ -1,0 +1,1 @@
+export { KillswitchHero } from './KillswitchHero';

@@ -1,0 +1,1 @@
+export { SeoPage } from './SeoPage';

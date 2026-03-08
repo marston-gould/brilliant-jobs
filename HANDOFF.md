@@ -52,7 +52,26 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**SA-016** — Resumes + Applications Migration (React + TypeScript + Design System) (Phase S3)
+**SA-017** — Remaining Pages + Legacy Removal (React + TypeScript + Design System) (Phase S3)
+- Completed: 2026-03-07
+- Git tag: `dashboard@3.0.0-all-pages`
+- Product version bumped: `v7.52` → `v7.53`
+- ROADMAP.md updated: SA-017 row → ✅ with completion notes
+- roadmap.html updated: SA-017 entry → `s: 'done'`, p: 100
+- **17 pages migrated (75 files created):**
+  - Dashboard (7): stats, tuning, billing, settings, integrations, chat, referrals
+  - Admin (10): overview, jobs, cron, content, seo, notifications, agents, monitoring, killswitch, compliance
+- **Each page follows established pattern:**
+  - `PageName.tsx` (main container with loading/error states)
+  - `components/` (hero + content components, barrel export)
+  - `hooks/usePageName.ts` (bridge hook: window.* globals, 3s poll, cleanup)
+  - `index.ts` (page barrel export)
+- **routes.tsx fully updated:** All 22 routes lazy-loaded. LegacyPageWrapper no longer imported or referenced. Unified `Loader` component for Suspense fallbacks.
+- **Bridge pattern:** All hooks read from window.* globals and delegate actions to window.* functions. Components do NOT access window.* directly — all data flows through hooks.
+- **Design compliance:** Zero static inline styles. Dynamic styles only where data-driven (filter colors, chart heights, animation delays). All colors via CSS custom properties. Dark mode automatic. Design system primitives (Button, Badge, Card, Select) used throughout.
+- **Bundle sizes:** StatsPage 1.9KB, ChatPage 1.8KB, SettingsPage 1.9KB, ReferralsPage 1.9KB, TuningPage 2.1KB, BillingPage 2.3KB, IntegrationsPage 2.4KB, admin-pages 3.5KB (all gzip). Initial SPA payload unchanged at ~75KB gzip.
+- **Tests:** 254 SA-017 validation tests (dirs, files, exports, design tokens, bridge pattern, component isolation, loading/error states, routes, build output, design system usage, attribution)
+- **Phase S3 COMPLETE** (SA-013 ✅, SA-014 ✅, SA-015 ✅, SA-016 ✅, SA-017 ✅)
 - Completed: 2026-03-07
 - Git tag: `dashboard@2.3.0-resumes-applications`
 - Product version bumped: `v7.51` → `v7.52`
@@ -259,14 +278,14 @@ None.
 
 ## Next Session
 
-**SA-017** — Remaining Pages + Legacy Removal (React + TypeScript + Design System) (Phase S3)
-- Entry gate: SA-016 ✅ (Resumes + Applications migrated, bridge pattern proven for queue/history workflows)
-- Pair: Frontend + CSS/Tailwind Eng
-- Reviewer: Lead Platform Eng + Chief Architect
-- Estimated: 20–28h
-- Build: Migrate all remaining dashboard pages (Stats, Tuning, Billing, Settings, Integrations, Chat, Referrals) + admin pages as React + TypeScript component trees. Remove legacy HTML/JS once all pages migrated. Zero inline styles. Bundle < 120KB gzip total.
+**SA-018** — Read Replica + Query Routing (Phase S4)
+- Entry gate: SA-017 ✅ (All pages migrated, Phase S3 complete)
+- Pair: DevOps + Backend Eng
+- Reviewer: System Architect—Scalability
+- Estimated: 10–14h
+- Build: Supabase read replica. Route SELECT queries → replica, writes → primary. Monitor replication lag. Load test read replica under concurrent load.
 
-**Phase S3 is in progress.** SA-013 ✅, SA-014 ✅, SA-015 ✅, SA-016 ✅, SA-017 next.
+**Phase S4 is starting.** SA-018 next.
 
 ---
 
@@ -298,8 +317,8 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.52`** | **SA-016** |
-| Dashboard | **`dashboard@2.3.0-resumes-applications`** | **SA-016** |
+| **Product (BJ_VERSION)** | **`v7.53`** | **SA-017** |
+| Dashboard | **`dashboard@3.0.0-all-pages`** | **SA-017** |
 | Extension | `extension@2.22.0-error-handling` | FIX-11 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
 | Admin | `admin@1.7.0-graduation` | SA-012 |
@@ -319,10 +338,11 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 ---
 
-## Completed Sessions (24 of 24 + 17 Phase 1 + 12 Scaling + FIX-11)
+## Completed Sessions (24 of 24 + 17 Phase 1 + 13 Scaling + FIX-11)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
+| SA-017 | 2026-03-07 | Remaining pages + legacy removal: 17 pages migrated (7 dashboard + 10 admin). 75 files. Bridge hooks to legacy. Zero inline styles. 254 tests. routes.tsx all 22 routes lazy-loaded. LegacyPageWrapper retired. Phase S3 COMPLETE. v7.53. | dashboard@3.0.0-all-pages |
 | SA-016 | 2026-03-07 | Resumes + Applications migration: Resumes — 5 components (ResumesPage/ResumesHero/ResumeCard/FilterSection/ResumeArchive/ResumeUpload). useResumes hook (bridge to legacy, filter grouping, AI scoring, archive, performance stats). Applications — 4 components (ApplicationsPage/ApplicationsHero/ModeSelector/AppQueueTable/AppHistoryTable). useApplications hook (queue/history/mode). Bridge pattern. Design tokens only. Lazy-loaded. ResumesPage 6.10KB gzip, ApplicationsPage 3.31KB gzip. 93 tests. v7.52. | dashboard@2.3.0-resumes-applications |
 | SA-015 | 2026-03-07 | Pipeline + Keywords migration: Pipeline — 7 components (PipelinePage/PipelineHero/PipelineFilterTags/StageSection/PipelineRow/SignalCard/GhostMonitor). usePipeline hook (9-stage tracker, ghost monitor, signals, stale dots, filter tags). Keywords — 6 components (KeywordsPage/ResumeSelector/ResumeScoreCard/FilterBreakdown/KeywordTag/LevelFit). useKeywords hook (readiness analysis, resume scoring). Bridge pattern. Design tokens only. Lazy-loaded. Pipeline 7.65KB gzip, Keywords 3.76KB gzip. 70 tests. v7.51. | dashboard@2.2.0-pipeline-keywords |
 | SA-014 | 2026-03-07 | Feed page migration: 11 React components (FeedPage/FeedHero/SearchModeToggle/FilterBuilder/FilterSidebar/SavedSearches/SortControls/SearchBar/JobTable/JobRow/PaginationControls). useFeedSearch hook (multi-filter merge/dedup/sort/paginate/abort). Bridge pattern via window.BJ. Design tokens only. Lazy-loaded with Suspense. FeedPage chunk 11KB gzip. 39 tests. v7.50. | dashboard@2.1.0-feed-page |

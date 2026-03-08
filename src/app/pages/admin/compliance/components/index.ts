@@ -1,0 +1,1 @@
+export { ComplianceHero } from './ComplianceHero';
