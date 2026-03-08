@@ -31,7 +31,7 @@ import { warnIfDirectAccess } from "../_shared/gateway-deprecation.ts";
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const SB_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-serve(withCorrelation("refresh-materialized-views", async (req: Request, logger: any) => {
+serve(withCorrelation("refresh-materialized-views", async (req: Request, logger: Logger) => {
   warnIfDirectAccess(req, "refresh-materialized-views", logger);
 
   try {
@@ -138,7 +138,7 @@ serve(withCorrelation("refresh-materialized-views", async (req: Request, logger:
 
 // ─── Status Handler ──────────────────────────────────────────────────────────
 
-async function handleStatus(sb: any, logger: any) {
+async function handleStatus(sb: SupabaseClient, logger: Logger) {
   try {
     // Last 10 refresh logs
     const { data: logs, error: logErr } = await sb

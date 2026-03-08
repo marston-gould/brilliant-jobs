@@ -56,7 +56,7 @@ Rules for filters:
 - not_pills: exclusions mentioned by user (e.g. ["crypto", "blockchain"])
 - type_pills: employment type from ["Full-time", "Part-time", "Contract", "Internship"]
 - salary_min/salary_max: annual integers in USD, or null if not mentioned
-- additional_context: any nuanced preferences that don't fit above fields
+- additional_context: Record<string, unknown> nuanced preferences that don't fit above fields
 - NEVER invent or assume values not explicitly stated by the user
 - Accumulate across the conversation — each message builds on previous filters
 - Normalize locations to "City, ST" format for US locations`;

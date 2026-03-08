@@ -106,7 +106,7 @@ serve(async (req) => {
       )
     }
 
-    const updateData: Record<string, any> = {}
+    const updateData: Record<string, unknown> = {}
 
     if (content && typeof content === 'string') {
       updateData.content = content.substring(0, 50000)

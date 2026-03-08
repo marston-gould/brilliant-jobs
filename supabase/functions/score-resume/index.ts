@@ -102,7 +102,7 @@ async function callAnthropic(
 }
 
 // ─── AI usage logging (fire-and-forget) ───
-async function logUsage(sb: any, userId: string, model: string, usage: { input_tokens: number; output_tokens: number } | undefined, durationMs: number) {
+async function logUsage(sb: SupabaseClient, userId: string, model: string, usage: { input_tokens: number; output_tokens: number } | undefined, durationMs: number) {
   if (!usage) return;
   try {
     const inputCostPer1k = model.includes('haiku') ? 0.00025 : model.includes('opus') ? 0.015 : 0.003;
@@ -123,7 +123,7 @@ async function logUsage(sb: any, userId: string, model: string, usage: { input_t
 }
 
 // ─── JSON parser with retry ───
-function parseJSON(text: string): any {
+function parseJSON(text: string): unknown {
   const cleaned = text.replace(/```json|```/g, '').trim();
   return JSON.parse(cleaned);
 }
@@ -333,7 +333,7 @@ const GOLD_STANDARDS: Record<string, string> = {
   })
 };
 
-function selectGoldStandard(industryClassification: any): { industry: string; standard: string | null } {
+function selectGoldStandard(industryClassification: Record<string, unknown>): { industry: string; standard: string | null } {
   if (!industryClassification?.primary_industry) return { industry: 'general', standard: null };
 
   const industry = industryClassification.primary_industry.toLowerCase();
@@ -385,8 +385,8 @@ Only generate questions for gaps where the candidate MIGHT have relevant experie
 
 No markdown, no code fences, no preamble. JSON only.`;
 
-async function runGapInterview(gapAnalysis: any[], resumeProfile: any): Promise<any> {
-  const input = `<gap_analysis>\n${JSON.stringify(gapAnalysis)}\n</gap_analysis>\n\n<candidate_profile_summary>\nIndustries: ${(resumeProfile?.raw_stats?.industries || []).join(', ')}\nYears experience: ${resumeProfile?.raw_stats?.total_years_experience || 'unknown'}\nSkills: ${(resumeProfile?.skills_inventory || []).slice(0, 20).map((s: any) => s.skill).join(', ')}\n</candidate_profile_summary>\n\nGenerate targeted questions for each gap. Return ONLY JSON.`;
+async function runGapInterview(gapAnalysis: unknown[], resumeProfile: unknown): Promise<unknown> {
+  const input = `<gap_analysis>\n${JSON.stringify(gapAnalysis)}\n</gap_analysis>\n\n<candidate_profile_summary>\nIndustries: ${(resumeProfile?.raw_stats?.industries || []).join(', ')}\nYears experience: ${resumeProfile?.raw_stats?.total_years_experience || 'unknown'}\nSkills: ${(resumeProfile?.skills_inventory || []).slice(0, 20).map((s: Record<string, unknown>) => s.skill).join(', ')}\n</candidate_profile_summary>\n\nGenerate targeted questions for each gap. Return ONLY JSON.`;
 
   const result = await callAnthropic(HAIKU_MODEL, AGENT_GAP_INTERVIEWER, input, 2000, 0);
 
@@ -403,7 +403,7 @@ async function runGapInterview(gapAnalysis: any[], resumeProfile: any): Promise<
   }
 }
 
-async function runPremiumPipeline(resumeText: string, jdBlock: string, filterName: string, jdCount: number): Promise<any> {
+async function runPremiumPipeline(resumeText: string, jdBlock: string, filterName: string, jdCount: number): Promise<unknown> {
   const startTime = Date.now();
 
   // ─── PASS 1: Parallel extraction (Haiku) ───
@@ -423,8 +423,8 @@ async function runPremiumPipeline(resumeText: string, jdBlock: string, filterNam
     return { fallback: true, reason: 'extraction_failed' };
   }
 
-  let resumeProfile: any;
-  let jdProfile: any;
+  let resumeProfile: unknown;
+  let jdProfile: unknown;
   try {
     resumeProfile = parseJSON(resumeResult.text);
     jdProfile = parseJSON(jdResult.text);
@@ -446,7 +446,7 @@ async function runPremiumPipeline(resumeText: string, jdBlock: string, filterNam
 
   const analysisResult = await callAnthropic(SONNET_MODEL, matchAnalystPrompt, analysisInput, 3000, 0);
 
-  let analysis: any;
+  let analysis: unknown;
   if (!analysisResult.ok) {
     console.error('[score-resume:premium] Pass 2 failed:', analysisResult.error);
     // Return partial result — Pass 1 data only
@@ -488,7 +488,7 @@ async function runPremiumPipeline(resumeText: string, jdBlock: string, filterNam
 
   const coachingResult = await callAnthropic(SONNET_MODEL, AGENT_CAREER_COACH, coachingInput, 3000, 0.2);
 
-  let coaching: any = null;
+  let coaching: unknown = null;
   if (coachingResult.ok) {
     try {
       coaching = parseJSON(coachingResult.text);
@@ -702,7 +702,7 @@ Assess. Return ONLY JSON.`;
     }
 
     // Fetch JD content
-    let jds: any[] = [];
+    let jds: unknown[] = [];
     if (mode === 'corpus' && job_ids?.length > 0) {
       const limit = Math.min(max_jds || 20, 30);
       const { data } = await sb.from('ats_jobs')
@@ -723,11 +723,11 @@ Assess. Return ONLY JSON.`;
     }
 
     // Build JD block (shared by both tiers)
-    const jdBlock = jds.map((j: any, i: number) =>
+    const jdBlock = jds.map((j: Record<string, unknown>, i: number) =>
       `<jd index="${i + 1}" title="${j.title}" company="${j.company_name || 'Unknown'}" location="${j.location || 'Unspecified'}" salary_min="${j.salary_min || ''}" salary_max="${j.salary_max || ''}">\n${stripHtml(j.content).slice(0, 3000)}\n</jd>`
     ).join('\n\n');
 
-    let result: any;
+    let result: unknown;
 
     // ─── PREMIUM TIER ───
     if (tier === 'premium') {

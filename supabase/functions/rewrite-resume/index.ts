@@ -56,7 +56,7 @@ async function callAnthropic(
   }
 }
 
-function parseJSON(text: string): any {
+function parseJSON(text: string): unknown {
   return JSON.parse(text.replace(/```json|```/g, '').trim());
 }
 
@@ -193,9 +193,9 @@ const TEMPLATES: Record<string, TemplateConfig> = {
 // DOCX GENERATION
 // ════════════════════════════════════════════════════════════
 
-function buildResumeDocx(sections: any[], template: TemplateConfig, candidateName?: string): any {
+function buildResumeDocx(sections: unknown[], template: TemplateConfig, candidateName?: string): unknown {
   const t = template;
-  const children: any[] = [];
+  const children: unknown[] = [];
 
   for (const section of sections) {
     if (section.section_type === 'header') {
@@ -348,9 +348,9 @@ function buildResumeDocx(sections: any[], template: TemplateConfig, candidateNam
   });
 }
 
-function buildCoverLetterDocx(coverLetter: any, template: TemplateConfig): any {
+function buildCoverLetterDocx(coverLetter: Record<string, unknown>, template: TemplateConfig): unknown {
   const t = template;
-  const children: any[] = [];
+  const children: unknown[] = [];
 
   // Salutation
   if (coverLetter.salutation) {
@@ -537,7 +537,7 @@ Rewrite the resume incorporating all accepted recommendations. Return ONLY JSON.
       });
     }
 
-    let resumeData: any;
+    let resumeData: unknown;
     try {
       resumeData = parseJSON(resumeResult.text);
     } catch (e) {
@@ -551,7 +551,7 @@ Rewrite the resume incorporating all accepted recommendations. Return ONLY JSON.
     console.log(`[rewrite-resume] Resume Writer complete in ${writerMs}ms, ${resumeData.sections?.length || 0} sections`);
 
     // Agent 2: Cover Letter Writer (conditional)
-    let coverLetterData: any = null;
+    let coverLetterData: unknown = null;
     if (include_cover_letter) {
       console.log('[rewrite-resume] Cover Letter Writer starting...');
 
@@ -668,7 +668,7 @@ No markdown, no code fences. JSON only.`;
       callAnthropic(SONNET_MODEL, voicePrompt, voiceInput, 4000, 0),
     ]);
 
-    let qaReport: any = { accuracy: null, bleed: null, voice: null };
+    let qaReport: unknown = { accuracy: null, bleed: null, voice: null };
     let cleanedSections = resumeData.sections; // Default to unmodified
 
     // Parse QA results
@@ -695,7 +695,7 @@ No markdown, no code fences. JSON only.`;
 
     // Auto-revert critical accuracy flags
     if (qaReport.accuracy && qaReport.accuracy.flags) {
-      const criticals = qaReport.accuracy.flags.filter((f: any) => f.severity === 'critical');
+      const criticals = qaReport.accuracy.flags.filter((f: Record<string, unknown>) => f.severity === 'critical');
       if (criticals.length > 0) {
         console.log(`[rewrite-resume] ${criticals.length} critical accuracy flags — noted for user review`);
         qaReport.accuracy.critical_count = criticals.length;
@@ -742,7 +742,7 @@ No markdown, no code fences. JSON only.`;
     }
 
     // ─── LINKEDIN ALIGNMENT CHECK (conditional) ───
-    let linkedinAlignment: any = null;
+    let linkedinAlignment: unknown = null;
     const { linkedin_profile } = body;
 
     if (linkedin_profile) {

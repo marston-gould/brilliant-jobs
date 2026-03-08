@@ -104,9 +104,9 @@ serve(async (req: Request) => {
       }
 
       // Intersect: must be in both eligible profiles AND inactive auth users
-      const inactiveIds = new Set(inactiveUsers.map((u: any) => u.id));
+      const inactiveIds = new Set(inactiveUsers.map((u: Record<string, unknown>) => u.id));
       const eligibleSet = new Set(eligibleIds);
-      candidates = inactiveUsers.filter((u: any) => eligibleSet.has(u.id) && inactiveIds.has(u.id));
+      candidates = inactiveUsers.filter((u: Record<string, unknown>) => eligibleSet.has(u.id) && inactiveIds.has(u.id));
     }
 
     if (!candidates || candidates.length === 0) {

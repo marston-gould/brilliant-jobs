@@ -360,7 +360,7 @@ Deno.serve(async (req) => {
       jobsToScore = (data || []) as JobRow[];
     } else if (job_ids && Array.isArray(job_ids)) {
       // Normal mode: score specific jobs by ID
-      const ids = job_ids.map((j: any) => (typeof j === "string" ? j : j.job_id)).slice(0, 100);
+      const ids = job_ids.map((j: Record<string, unknown>) => (typeof j === "string" ? j : j.job_id)).slice(0, 100);
 
       const { data, error } = await supabase
         .from("ats_jobs")

@@ -21,7 +21,7 @@ const CORS = {
 async function callSendNotification(params: {
   user_id: string;
   notification_type: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
 }) {
   try {
     const res = await fetch(`${SB_URL}/functions/v1/send-notification`, {
@@ -45,7 +45,7 @@ async function callSendNotification(params: {
 // Only for subscriptions with cancel_at_period_end = true
 // (i.e., user has cancelled but still has access until period end)
 // ═══════════════════════════════════════════════════════════
-async function checkSubscriptionExpiring(sb: any, logger: any) {
+async function checkSubscriptionExpiring(sb: SupabaseClient, logger: Logger) {
   const now = new Date();
 
   // 7-day window: period_end between 6.5 and 7.5 days from now

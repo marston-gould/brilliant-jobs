@@ -20,7 +20,7 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Authorization, Content-Type, apikey',
 };
 
-const json = (body: any, status = 200) =>
+const json = (body: Record<string, unknown>, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
     headers: { ...CORS, 'Content-Type': 'application/json' },
@@ -59,7 +59,7 @@ async function callAnthropic(
   }
 }
 
-function parseJSON(text: string): any {
+function parseJSON(text: string): unknown {
   return JSON.parse(text.replace(/```json|```/g, '').trim());
 }
 
@@ -258,7 +258,7 @@ Rewrite the resume to better match this specific job description. Return ONLY JS
       return json({ error: 'Rewriter failed', detail: rewriteResult.error }, 502);
     }
 
-    let rewriteData: any;
+    let rewriteData: unknown;
     try {
       rewriteData = parseJSON(rewriteResult.text);
     } catch (e) {
@@ -268,7 +268,7 @@ Rewrite the resume to better match this specific job description. Return ONLY JS
     }
 
     const rewriteMs = Date.now() - startTime;
-    const changedCount = (rewriteData.sections || []).filter((s: any) => s.changed).length;
+    const changedCount = (rewriteData.sections || []).filter((s: Record<string, unknown>) => s.changed).length;
     console.log(`[execute] Rewrite complete in ${rewriteMs}ms — ${changedCount}/${rewriteData.sections?.length || 0} sections changed`);
 
     // ─── Update status ───
@@ -295,7 +295,7 @@ Verify the rewrite is truthful, ATS-friendly, and improves the match. Return ONL
 
     const qcResult = await callAnthropic(HAIKU, QUALITY_CHECKER_SYSTEM, qcInput, 2000, 0);
 
-    let qualityCheck: any = {
+    let qualityCheck: unknown = {
       truthfulness_score: 0,
       truthfulness_pass: false,
       overall_pass: false,

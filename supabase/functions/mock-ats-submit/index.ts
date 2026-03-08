@@ -81,7 +81,7 @@ const REQUIRED_FIELDS = [
 const VALID_ATS = ["greenhouse", "lever", "ashby", "workable", "recruitee", "usajobs"];
 const VALID_VERSIONS = ["original", "rewritten"];
 
-function validateRequest(body: any): { valid: boolean; error?: string } {
+function validateRequest(body: Record<string, unknown>): { valid: boolean; error?: string } {
   for (const field of REQUIRED_FIELDS) {
     if (!body[field]) return { valid: false, error: `Missing required field: ${field}` };
   }

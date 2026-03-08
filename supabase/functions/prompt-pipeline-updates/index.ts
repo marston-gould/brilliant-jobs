@@ -66,7 +66,7 @@ serve(async (req: Request) => {
       .select("*")
       .in("user_id", userIds);
 
-    const settingsMap: Record<string, any> = {};
+    const settingsMap: Record<string, unknown> = {};
     (settingsRows || []).forEach(s => { settingsMap[s.user_id] = s; });
 
     const now = Date.now();

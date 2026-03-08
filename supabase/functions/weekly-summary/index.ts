@@ -67,7 +67,7 @@ async function getUserTier(userId: string): Promise<string> {
 }
 
 /** Get user's saved filters */
-async function getUserFilters(userId: string): Promise<Array<{ name: string; config: any }>> {
+async function getUserFilters(userId: string): Promise<Array<{ name: string; config: Record<string, unknown> }>> {
   const { data } = await sb
     .from("saved_filters")
     .select("name, config")
@@ -172,7 +172,7 @@ serve(async (req: Request) => {
       .order("score", { ascending: false })
       .limit(3);
 
-    const stories = (topStories || []).map((s: any) => ({
+    const stories = (topStories || []).map((s: Record<string, unknown>) => ({
       headline: s.headline,
       lede: s.lede,
       category: s.category,
@@ -439,8 +439,8 @@ serve(async (req: Request) => {
 
             // Compute median salary from this week's jobs
             const salaries = (thisWeekJobs || [])
-              .filter((j: any) => j.salary_min && j.salary_min > 0)
-              .map((j: any) => j.salary_max ? (j.salary_min + j.salary_max) / 2 : j.salary_min)
+              .filter((j: Record<string, unknown>) => j.salary_min && j.salary_min > 0)
+              .map((j: Record<string, unknown>) => j.salary_max ? (j.salary_min + j.salary_max) / 2 : j.salary_min)
               .sort((a: number, b: number) => a - b);
 
             const median = salaries.length > 0
@@ -490,8 +490,8 @@ serve(async (req: Request) => {
           .rpc("get_pipeline_ghost_status", { p_user_id: userId });
 
         const ghostedApps = (ghostEntries || [])
-          .filter((e: any) => e.ghost_status === "ghosted" || e.ghost_status === "likely_ghosted")
-          .map((e: any) => ({
+          .filter((e: Record<string, unknown>) => e.ghost_status === "ghosted" || e.ghost_status === "likely_ghosted")
+          .map((e: Record<string, unknown>) => ({
             company: e.company_name || e.company_slug || "Unknown",
             role: e.job_title || "Unknown Role",
             appliedDate: e.applied_at
@@ -500,7 +500,7 @@ serve(async (req: Request) => {
             daysWaiting: e.days_since_applied || 0,
             expectedDays: e.avg_response_days || 8,
           }))
-          .sort((a: any, b: any) => b.daysWaiting - a.daysWaiting)
+          .sort((a: Record<string, unknown>, b: Record<string, unknown>) => b.daysWaiting - a.daysWaiting)
           .slice(0, 10); // Top 10 worst
 
         // Count resolved this week (ghosted apps that got a response)

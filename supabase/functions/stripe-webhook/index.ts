@@ -19,7 +19,7 @@ const STRIPE_WEBHOOK_SECRET = Deno.env.get('STRIPE_WEBHOOK_SECRET')!;
 async function callSendNotification(params: {
   user_id: string;
   notification_type: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
 }) {
   try {
     const res = await fetch(`${SB_URL}/functions/v1/send-notification`, {
@@ -86,7 +86,7 @@ async function stripeGet(endpoint: string) {
 
 // ─── Event Handlers ───
 
-async function handleSubscriptionCreated(sb: any, event: any, logger: any) {
+async function handleSubscriptionCreated(sb: SupabaseClient, event: unknown, logger: Logger) {
   const sub = event.data.object;
   const customerId = sub.customer;
   const tier = sub.metadata?.tier || 'free';
@@ -145,7 +145,7 @@ async function handleSubscriptionCreated(sb: any, event: any, logger: any) {
   logger.info('Subscription created + notification sent', { userId, tier, credits, subscriptionId: sub.id });
 }
 
-async function handleSubscriptionUpdated(sb: any, event: any, logger: any) {
+async function handleSubscriptionUpdated(sb: SupabaseClient, event: unknown, logger: Logger) {
   const sub = event.data.object;
   const customerId = sub.customer;
   const tier = sub.metadata?.tier || 'free';
@@ -222,7 +222,7 @@ async function handleSubscriptionUpdated(sb: any, event: any, logger: any) {
   logger.info('Subscription updated', { userId: existing.user_id, tier, status: sub.status });
 }
 
-async function handleSubscriptionDeleted(sb: any, event: any, logger: any) {
+async function handleSubscriptionDeleted(sb: SupabaseClient, event: unknown, logger: Logger) {
   const sub = event.data.object;
   const customerId = sub.customer;
 
@@ -255,7 +255,7 @@ async function handleSubscriptionDeleted(sb: any, event: any, logger: any) {
   logger.info('Subscription canceled', { customerId, subscriptionId: sub.id });
 }
 
-async function handleInvoicePaymentSucceeded(sb: any, event: any, logger: any) {
+async function handleInvoicePaymentSucceeded(sb: SupabaseClient, event: unknown, logger: Logger) {
   const invoice = event.data.object;
   const customerId = invoice.customer;
   const subscriptionId = invoice.subscription;
@@ -380,7 +380,7 @@ async function handleInvoicePaymentSucceeded(sb: any, event: any, logger: any) {
   logger.info('Renewal credits granted + notifications sent', { userId: existing.user_id, credits, invoiceId: invoice.id });
 }
 
-async function handleInvoicePaymentFailed(sb: any, event: any, logger: any) {
+async function handleInvoicePaymentFailed(sb: SupabaseClient, event: unknown, logger: Logger) {
   const invoice = event.data.object;
   const customerId = invoice.customer;
 
@@ -440,7 +440,7 @@ async function handleInvoicePaymentFailed(sb: any, event: any, logger: any) {
   });
 }
 
-async function handlePaymentIntentSucceeded(sb: any, event: any, logger: any) {
+async function handlePaymentIntentSucceeded(sb: SupabaseClient, event: unknown, logger: Logger) {
   const pi = event.data.object;
   const customerId = pi.customer;
   const type = pi.metadata?.type;
@@ -555,7 +555,7 @@ async function handlePaymentIntentSucceeded(sb: any, event: any, logger: any) {
   }
 }
 
-async function handleSetupIntentSucceeded(sb: any, event: any, logger: any) {
+async function handleSetupIntentSucceeded(sb: SupabaseClient, event: unknown, logger: Logger) {
   const si = event.data.object;
   const customerId = si.customer;
   const paymentMethod = si.payment_method;
@@ -580,7 +580,7 @@ async function handleSetupIntentSucceeded(sb: any, event: any, logger: any) {
 }
 
 // ─── Charge refunded handler (NEW v6.18) ───
-async function handleChargeRefunded(sb: any, event: any, logger: any) {
+async function handleChargeRefunded(sb: SupabaseClient, event: unknown, logger: Logger) {
   const charge = event.data.object;
   const customerId = charge.customer;
   const refundAmount = charge.amount_refunded;
@@ -618,7 +618,7 @@ async function handleChargeRefunded(sb: any, event: any, logger: any) {
 
 // ─── Payment recovered handler (NEW v6.18) ───
 // Fires when a past_due subscription gets a successful payment
-async function handlePaymentRecovered(sb: any, userId: string, tier: string, amount: number, logger: any) {
+async function handlePaymentRecovered(sb: SupabaseClient, userId: string, tier: string, amount: number, logger: Logger) {
   await sb
     .from('user_subscriptions')
     .update({ status: 'active' })
@@ -639,13 +639,13 @@ async function handlePaymentRecovered(sb: any, userId: string, tier: string, amo
 
 // ─── Credit helper ───
 async function grantCredits(
-  sb: any,
+  sb: SupabaseClient,
   userId: string,
   amount: number,
   type: string,
   description: string,
   stripePaymentIntentId: string | null,
-  logger: any
+  logger: Logger
 ) {
   // Get current balance
   const { data: ledger } = await sb

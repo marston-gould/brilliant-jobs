@@ -53,7 +53,7 @@ serve(async (req: Request) => {
     if (action === "confirm") {
       // Move pipeline entry to proposed stage
       if (signal.proposed_stage && signal.pipeline_entry_id) {
-        const updateData: Record<string, any> = {
+        const updateData: Record<string, unknown> = {
           stage: signal.proposed_stage,
           stage_changed_at: now,
         };
@@ -75,7 +75,7 @@ serve(async (req: Request) => {
     } else if (action === "correct") {
       // User chose a different stage than proposed
       if (corrected_stage && signal.pipeline_entry_id) {
-        const updateData: Record<string, any> = {
+        const updateData: Record<string, unknown> = {
           stage: corrected_stage,
           stage_changed_at: now,
         };
@@ -130,7 +130,7 @@ serve(async (req: Request) => {
 // ── Cross-user learning ─────────────────────────────────────────
 // When a user confirms or dismisses a signal, update the signal_patterns
 // table so that future detection for ALL users improves.
-async function updatePatternConfidence(signal: any, confirmed: boolean) {
+async function updatePatternConfidence(signal: unknown, confirmed: boolean) {
   if (!signal.evidence_metadata) return;
   const meta = signal.evidence_metadata;
 

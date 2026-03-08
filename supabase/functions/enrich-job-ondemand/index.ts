@@ -134,8 +134,8 @@ serve(async (req) => {
     const clean = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
     const parsed = JSON.parse(clean)
 
-    const skills = Array.isArray(parsed.skills) ? parsed.skills.filter((s: any) => typeof s === 'string').map((s: string) => s.toLowerCase()).slice(0, 15) : []
-    const requirements = Array.isArray(parsed.requirements) ? parsed.requirements.filter((r: any) => typeof r === 'string').slice(0, 8) : []
+    const skills = Array.isArray(parsed.skills) ? parsed.skills.filter((s: Record<string, unknown>) => typeof s === 'string').map((s: string) => s.toLowerCase()).slice(0, 15) : []
+    const requirements = Array.isArray(parsed.requirements) ? parsed.requirements.filter((r: Record<string, unknown>) => typeof r === 'string').slice(0, 8) : []
     const validEdu = ['high_school', 'associates', 'bachelors', 'masters', 'phd', 'professional']
     const validSen = ['intern', 'entry', 'junior', 'mid', 'senior', 'lead', 'principal', 'director', 'vp', 'executive']
     const validAiLabel = ['human', 'mixed', 'ai_generated']

@@ -51,7 +51,7 @@ serve((req) => withCorrelation(req, async (req, correlationId) => {
 
   const logger = createLogger("evaluate-alerts");
   const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-  const results: { rule: string; fired: boolean; value: any; threshold: any }[] = [];
+  const results: { rule: string; fired: boolean; value: unknown; threshold: unknown }[] = [];
 
   try {
     // 1. Load active alert rules
@@ -154,15 +154,15 @@ async function _collectMetrics(
   try {
     const { data: cronRows } = await sb.from('v_cron_health').select('*');
     if (cronRows) {
-      const failed = cronRows.filter((r: any) => r.status === 'red');
-      const stale = cronRows.filter((r: any) => r.status === 'amber');
+      const failed = cronRows.filter((r: Record<string, unknown>) => r.status === 'red');
+      const stale = cronRows.filter((r: Record<string, unknown>) => r.status === 'amber');
       metrics['cron_failed_count'] = failed.length;
       metrics['cron_stale_count'] = stale.length;
       metrics['cron_total'] = cronRows.length;
       if (failed.length > 0) {
         (metrics['cron_failed_count'] as any) = {
           value: failed.length,
-          details: failed.map((r: any) => r.jobname || r.name).join(', ')
+          details: failed.map((r: Record<string, unknown>) => r.jobname || r.name).join(', ')
         };
       }
     }
@@ -267,7 +267,7 @@ function _evaluateCondition(
 // ── Send alert email via Resend ──
 async function _sendAlertEmail(
   rule: AlertRule,
-  value: any,
+  value: unknown,
   details: string
 ): Promise<void> {
   try {

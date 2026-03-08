@@ -46,7 +46,7 @@ async function sendNotification(payload: Record<string, unknown>): Promise<void>
 
 /** Count jobs matching a filter config within a date range */
 async function countFilterJobs(
-  config: any,
+  config: unknown,
   afterIso: string,
   beforeIso: string
 ): Promise<number> {

@@ -72,7 +72,7 @@ const REQUIRED_FIELDS = [
 const VALID_ATS = ["greenhouse", "lever", "ashby", "workable", "recruitee", "usajobs"];
 const VALID_VERSIONS = ["original", "rewritten"];
 
-function validateRequest(body: any): { valid: boolean; error?: string } {
+function validateRequest(body: Record<string, unknown>): { valid: boolean; error?: string } {
   for (const field of REQUIRED_FIELDS) {
     if (!body[field]) return { valid: false, error: `Missing required field: ${field}` };
   }
@@ -158,7 +158,7 @@ async function submitToRecruitee(
     });
 
     const respText = await resp.text();
-    let respData: any = {};
+    let respData: unknown = {};
     try { respData = JSON.parse(respText); } catch { /* not JSON */ }
 
     if (resp.ok) {
@@ -288,7 +288,7 @@ async function submitToGreenhouse(
     });
 
     const respText = await resp.text();
-    let respData: any = {};
+    let respData: unknown = {};
     try { respData = JSON.parse(respText); } catch { /* not JSON */ }
 
     if (resp.ok) {
@@ -309,7 +309,7 @@ async function submitToGreenhouse(
       const detail = typeof errors === "string"
         ? errors
         : Array.isArray(errors)
-          ? errors.map((e: any) => typeof e === "string" ? e : e.message || JSON.stringify(e)).join("; ")
+          ? errors.map((e: Record<string, unknown>) => typeof e === "string" ? e : e.message || JSON.stringify(e)).join("; ")
           : JSON.stringify(errors || "Unknown validation error");
       return {
         status: "rejected",

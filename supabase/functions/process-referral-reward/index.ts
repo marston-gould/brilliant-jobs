@@ -35,7 +35,7 @@ async function stripeGet(endpoint: string) {
 
 // ─── Grant credits to credit_ledger ───
 async function grantCredits(
-  sb: any,
+  sb: SupabaseClient,
   userId: string,
   amount: number,
   description: string
@@ -66,7 +66,7 @@ async function grantCredits(
 
 // ─── Extend Stripe subscription (Pro time reward) ───
 async function extendStripeSubscription(
-  sb: any,
+  sb: SupabaseClient,
   userId: string,
   days: number
 ) {
@@ -188,7 +188,7 @@ serve(async (req: Request) => {
 
     // 3. Grant credits via credit_ledger (for both parties)
     const rewardsGranted = result.rewards_granted || [];
-    const stripeResults: any[] = [];
+    const stripeResults: unknown[] = [];
 
     for (const reward of rewardsGranted) {
       if (reward.type === 'credits' && reward.amount > 0) {

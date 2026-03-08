@@ -149,7 +149,7 @@ Analyze why this job was a poor match for this person and suggest specific negat
     const data = await anthropicRes.json();
     const text = data.content?.[0]?.text || '';
 
-    let result: any;
+    let result: unknown;
     try {
       result = JSON.parse(text.replace(/```json|```/g, '').trim());
     } catch {

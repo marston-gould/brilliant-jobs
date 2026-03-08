@@ -26,7 +26,7 @@ interface CampaignEvent {
   type: 'admin_campaign' | 'usage_limit_hit' | 'credit_event' | 'cron_roi_summary'
       | 'cron_credit_comparison' | 'credit_burn_check' | 'price_lock_sequence';
   user_id?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 serve(async (req: Request) => {
@@ -68,7 +68,7 @@ serve(async (req: Request) => {
       default:
         return json({ error: `Unknown event type: ${event.type}` }, 400);
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[marketing-campaign] Error:', err.message);
     return json({ error: err.message }, 500);
   }
@@ -78,7 +78,7 @@ serve(async (req: Request) => {
 // HANDLERS
 // ═══════════════════════════════════════════════
 
-async function handleAdminCampaign(sb: any, event: CampaignEvent) {
+async function handleAdminCampaign(sb: SupabaseClient, event: CampaignEvent) {
   const { metadata } = event;
   if (!metadata?.campaign_type) return json({ error: 'campaign_type required' }, 400);
 
@@ -148,7 +148,7 @@ async function handleAdminCampaign(sb: any, event: CampaignEvent) {
   return json({ sent, suppressed, total_eligible: (users || []).length });
 }
 
-async function handleUsageLimitHit(sb: any, event: CampaignEvent) {
+async function handleUsageLimitHit(sb: SupabaseClient, event: CampaignEvent) {
   const { user_id, metadata } = event;
   if (!user_id) return json({ error: 'user_id required' }, 400);
 
@@ -180,7 +180,7 @@ async function handleUsageLimitHit(sb: any, event: CampaignEvent) {
   return json({ sent: true, type: 'usage_upgrade_prompt' });
 }
 
-async function handleCreditEvent(sb: any, event: CampaignEvent) {
+async function handleCreditEvent(sb: SupabaseClient, event: CampaignEvent) {
   const { user_id, metadata } = event;
   if (!user_id) return json({ error: 'user_id required' }, 400);
 
@@ -204,7 +204,7 @@ async function handleCreditEvent(sb: any, event: CampaignEvent) {
   return json({ sent: true, type: creditEventType });
 }
 
-async function handleCreditBurnCheck(sb: any) {
+async function handleCreditBurnCheck(sb: SupabaseClient) {
   // Find users whose credit burn rate projects exhaustion before next billing cycle
   const { data: users } = await sb.rpc('get_credit_burn_rate_alerts');
   let sent = 0;
@@ -229,7 +229,7 @@ async function handleCreditBurnCheck(sb: any) {
   return json({ sent });
 }
 
-async function handleRoiSummary(sb: any) {
+async function handleRoiSummary(sb: SupabaseClient) {
   // Monthly ROI summary for free/starter users with 60+ day accounts
   const cutoff = new Date(Date.now() - 60 * 86400_000);
   const { data: users } = await sb
@@ -270,7 +270,7 @@ async function handleRoiSummary(sb: any) {
   return json({ sent });
 }
 
-async function handleCreditCostComparison(sb: any) {
+async function handleCreditCostComparison(sb: SupabaseClient) {
   // Monthly for free/starter users where credit spend > next tier cost
   const { data: users } = await sb.rpc('get_credit_cost_comparison_eligible');
   let sent = 0;
@@ -297,7 +297,7 @@ async function handleCreditCostComparison(sb: any) {
   return json({ sent });
 }
 
-async function handlePriceLockSequence(sb: any, event: CampaignEvent) {
+async function handlePriceLockSequence(sb: SupabaseClient, event: CampaignEvent) {
   const { metadata } = event;
   if (!metadata?.price_increase_date) return json({ error: 'price_increase_date required' }, 400);
 
@@ -347,10 +347,10 @@ async function handlePriceLockSequence(sb: any, event: CampaignEvent) {
 // ═══════════════════════════════════════════════
 
 async function fireNotification(
-  sb: any,
+  sb: SupabaseClient,
   userId: string,
   notificationType: string,
-  metadata: Record<string, any>
+  metadata: Record<string, unknown>
 ) {
   const res = await fetch(`${SB_URL}/functions/v1/send-notification`, {
     method: 'POST',
@@ -370,7 +370,7 @@ async function fireNotification(
   }
 }
 
-async function checkMarketingOptIn(sb: any, userId: string): Promise<boolean> {
+async function checkMarketingOptIn(sb: SupabaseClient, userId: string): Promise<boolean> {
   const { data } = await sb
     .from('notification_preferences')
     .select('marketing_opt_in')
@@ -381,7 +381,7 @@ async function checkMarketingOptIn(sb: any, userId: string): Promise<boolean> {
 }
 
 async function hasRecentNotification(
-  sb: any,
+  sb: SupabaseClient,
   userId: string,
   notificationType: string,
   withinDays: number
@@ -397,7 +397,7 @@ async function hasRecentNotification(
   return (count || 0) > 0;
 }
 
-function json(data: any, status = 200) {
+function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: { ...CORS, 'Content-Type': 'application/json' },

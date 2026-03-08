@@ -65,7 +65,7 @@ function stripHtml(html: string): string {
 
 // ─── Main Handler ────────────────────────────────────────────────────────────
 
-serve(withCorrelation("dedup-promote", async (req: Request, logger: any) => {
+serve(withCorrelation("dedup-promote", async (req: Request, logger: Logger) => {
   warnIfDirectAccess(req, "dedup-promote", logger);
 
   if (req.method === "OPTIONS") {
@@ -293,10 +293,10 @@ serve(withCorrelation("dedup-promote", async (req: Request, logger: any) => {
         const { data: stagingStats } = await supabase
           .from("cc_staging_jobs")
           .select("ingestion_status")
-          .then((r: any) => {
+          .then((r: { data: unknown; error: unknown }) => {
             if (!r.data) return { data: null };
             const counts: Record<string, number> = {};
-            r.data.forEach((row: any) => {
+            r.data.forEach((row: Record<string, unknown>) => {
               counts[row.ingestion_status] = (counts[row.ingestion_status] || 0) + 1;
             });
             return { data: counts };
@@ -306,10 +306,10 @@ serve(withCorrelation("dedup-promote", async (req: Request, logger: any) => {
         const { data: eqStats } = await supabase
           .from("enrichment_queue")
           .select("status, ats_source")
-          .then((r: any) => {
+          .then((r: { data: unknown; error: unknown }) => {
             if (!r.data) return { data: null };
             const counts: Record<string, number> = {};
-            r.data.forEach((row: any) => {
+            r.data.forEach((row: Record<string, unknown>) => {
               const key = `${row.ats_source}:${row.status}`;
               counts[key] = (counts[key] || 0) + 1;
             });
@@ -321,10 +321,10 @@ serve(withCorrelation("dedup-promote", async (req: Request, logger: any) => {
           .from("dedup_log")
           .select("decision")
           .gte("created_at", new Date(Date.now() - 86400_000).toISOString())
-          .then((r: any) => {
+          .then((r: { data: unknown; error: unknown }) => {
             if (!r.data) return { data: null };
             const counts: Record<string, number> = {};
-            r.data.forEach((row: any) => {
+            r.data.forEach((row: Record<string, unknown>) => {
               counts[row.decision] = (counts[row.decision] || 0) + 1;
             });
             return { data: counts };

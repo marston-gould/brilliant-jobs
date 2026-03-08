@@ -115,7 +115,7 @@ async function callAnthropic(
 
 // ─── JSON parser ───
 
-function parseJSON(text: string): any {
+function parseJSON(text: string): unknown {
   const cleaned = text.replace(/```json|```/g, '').trim();
   return JSON.parse(cleaned);
 }
@@ -358,8 +358,8 @@ serve(async (req) => {
 
       // Convert fetched jobs to BatchItems
       items = jobsToScore
-        .filter((j: any) => j.content && j.content.length >= MIN_TEXT_LENGTH)
-        .map((j: any) => ({
+        .filter((j: Record<string, unknown>) => j.content && j.content.length >= MIN_TEXT_LENGTH)
+        .map((j: Record<string, unknown>) => ({
           content_type: 'jd',
           content_id: j.greenhouse_id,
           ats_source: j.ats_source || null,

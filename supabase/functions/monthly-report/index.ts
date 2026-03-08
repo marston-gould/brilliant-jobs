@@ -273,8 +273,8 @@ serve(async (req: Request) => {
           .limit(5);
 
         const topResponders = (responders || [])
-          .filter((r: any) => r.company_name)
-          .map((r: any) => ({
+          .filter((r: Record<string, unknown>) => r.company_name)
+          .map((r: Record<string, unknown>) => ({
             company: r.company_name,
             days: Math.round(
               (new Date(r.created_at).getTime() - thisMonthStart.getTime()) / (1000 * 3600 * 24)
@@ -560,23 +560,23 @@ serve(async (req: Request) => {
           // Send one summary per batch
           for (const [batchId, batchRewrites] of Object.entries(batches)) {
             const improved = batchRewrites.filter(
-              (r: any) => r.rewritten_score > r.original_score
+              (r: Record<string, unknown>) => (r as Record<string, unknown>).rewritten_score > r.original_score
             );
             const totalCredits = batchRewrites.reduce(
-              (sum: number, r: any) => sum + (r.credits_used || 0),
+              (sum: number, r: unknown) => sum + (r.credits_used || 0),
               0
             );
             const avgImprovement = improved.length > 0
               ? Math.round(
                   improved.reduce(
-                    (sum: number, r: any) =>
+                    (sum: number, r: unknown) =>
                       sum + (r.rewritten_score - r.original_score),
                     0
                   ) / improved.length
                 )
               : 0;
 
-            const resumes = batchRewrites.slice(0, 10).map((r: any) => ({
+            const resumes = batchRewrites.slice(0, 10).map((r: Record<string, unknown>) => ({
               name: r.resume_name || `Resume ${r.id.slice(0, 6)}`,
               before: String(r.original_score || 0),
               after: String(r.rewritten_score || 0),

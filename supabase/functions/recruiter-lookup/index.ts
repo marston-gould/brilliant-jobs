@@ -125,7 +125,7 @@ serve(async (req: Request) => {
     });
   }
 
-  let hunterResults: any[] = [];
+  let hunterResults: unknown[] = [];
   try {
     const hunterUrl = `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(domain)}&api_key=${HUNTER_API_KEY}&limit=20&type=personal`;
     const hunterRes = await fetch(hunterUrl, { signal: AbortSignal.timeout(10000) });
@@ -156,7 +156,7 @@ serve(async (req: Request) => {
   }
 
   // Filter for recruiting-related titles
-  const recruiters = hunterResults.filter((e: any) =>
+  const recruiters = hunterResults.filter((e: Record<string, unknown>) =>
     isRecruiterTitle(e.position || '') || isRecruiterTitle(e.department || '')
   );
 
@@ -164,8 +164,8 @@ serve(async (req: Request) => {
   const toInsert = recruiters.length > 0
     ? recruiters.slice(0, 5)
     : hunterResults
-        .filter((e: any) => e.confidence >= 70)
-        .sort((a: any, b: any) => b.confidence - a.confidence)
+        .filter((e: Record<string, unknown>) => e.confidence >= 70)
+        .sort((a: Record<string, unknown>, b: Record<string, unknown>) => b.confidence - a.confidence)
         .slice(0, 3);
 
   if (toInsert.length === 0) {
@@ -179,7 +179,7 @@ serve(async (req: Request) => {
   }
 
   // Insert into recruiter_contacts
-  const rows = toInsert.map((e: any) => ({
+  const rows = toInsert.map((e: Record<string, unknown>) => ({
     user_id: user.id,
     company_id: company_id || null,
     company_name: company_name || domain,

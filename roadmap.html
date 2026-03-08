@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.54"></script>
+  <script src="/js/version.js?v=v7.55"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2120,7 +2120,7 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'SA-019 Database partitioning', d: 'Partition ats_jobs by source (ats, common_crawl, amazon). v6.28 migration: LIST partitioning on ats_source, 4 partitions (ats/cc/amazon/default), 18 indexes, per-partition VACUUM cron, v_partition_stats view, fn_partition_health(). 53 tests. DONE 2026-03-07.', p: 100, e: '16h' },
 { s: 'done', b: 'post-launch', n: 'SA-020 CrewAI Agents 4-5', d: 'Cost Guardian (Agent 4) + User Support (Agent 5). vendor_cost_budgets + canny_sync_log. fn_cost_guardian_summary + fn_user_support_summary. Hourly cost checks + 15min Canny sync. 63 tests. v7.54.', p: 100, e: '18h' },
 { s: 'done', b: 'post-launch', n: 'SA-021 Referral Pipeline Agent', d: 'Referral Pipeline Agent (Agent 6): fraud monitoring, reward eligibility audit, attribution validation. Observe mode. 3 checks/30min. v6.30 migration, crewai-referral-pipeline EF, gateway #106, admin panel, ADR-05. 41/41 tests. 2026-03-07.', p: 100, e: '16h' },
-{ s: 'todo', b: 'post-launch', n: 'SA-022 TypeScript — extension + EFs', d: 'Migrate all 43 extension files + 88 Edge Functions to strict TypeScript. Shared types package. Pair: Frontend + Backend. 16-22h.', p: 93, e: '22h' },
+{ s: 'done', b: 'post-launch', n: 'SA-022 TypeScript — extension + EFs', d: '54 extension JS→TS. extension/tsconfig.json. extension/types/index.d.ts (19 types). _shared/types.ts (35+ types). 0 any in all EFs (201 removed). CI gate. ADR-04. 76 tests. v7.55.', p: 100, e: '22h' },
 { s: 'todo', b: 'post-launch', n: 'SA-023 Load test 5,000 concurrent', d: 'k6 load test at 5,000 concurrent users. Zero 5xx errors, p95 search <500ms. If failed: remediation session created. Pair: DevOps + QA. 12-16h.', p: 93, e: '16h' },
 
 // Phase S5: Platform Evolution (Weeks 14-20) — Event Bus, Feature Flags, Fitness Functions

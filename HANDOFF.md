@@ -52,7 +52,27 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**SA-021** — Referral Pipeline Agent (Phase S4)
+**SA-022** — TypeScript: Extension + Edge Functions (Phase S4)
+- Completed: 2026-03-07
+- Git tag: `extension@3.0.0-typescript`
+- Product version bumped: `v7.54` → `v7.55`
+- ROADMAP.md updated: SA-022 row → ✅ with completion notes
+- roadmap.html updated: SA-022 entry → `s: 'done'`, p: 100
+- **Created:**
+  - `extension/tsconfig.json` — strict TypeScript config for extension (ES2020, noImplicitAny, strict)
+  - `extension/types/index.d.ts` — 19 type declarations: Chrome API namespaces, BJ globals, JobData, ApplicationData, AtsHandler interface, FieldType, FillResult, FetchOptions, KillSwitchState, HeartbeatPayload, TierGateResult, TokenSyncPayload, ExtensionMessage, MessageHandler, AIAnswerRequest, AIAnswerResult, FillMetrics, SelectorRegistry, InterceptorMessage, PopupState
+  - `supabase/functions/_shared/types.ts` — 8-section shared type package: DB rows (7 types), API shapes, job pipeline types, CrewAI agent types, notification/email types, scoring/resume types, referral/billing types, utility primitives + helper functions (getErrorMessage, isRecord, parseJson)
+  - `docs/scaling/adr-04-typescript.md` — ADR-04 IMPLEMENTED: migration strategy, alternatives rejected, Hook & Scar points, consequences
+  - `tests/sa-022-typescript.test.js` — 76 validation tests
+- **Converted:** 54 extension source files `.js` → `.ts` (all of `extension/*.js`, `extension/utils/*.js`, `extension/handlers/*.js`, `extension/fields/*.js`, `extension/selectors/*.js`)
+- **Modified:**
+  - `extension/build-extension.js` — v3: updated to reference `.ts` source files; esbuild handles TS natively
+  - `supabase/functions/**/index.ts` — 201 `: any` annotations eliminated across 46 files (replaced with `Record<string, unknown>`, `unknown`, `Logger`, `SupabaseClient`, specific domain types)
+  - `.github/workflows/ci.yml` — Gate 1+7 expanded: SA-022 Extension `.js` ban + SA-022 EF no-any gate on PR-changed files
+- **Tests:** 76 SA-022 validation tests (all passing)
+- Phase S4 CONTINUING
+
+
 - Completed: 2026-03-07
 - Git tag: `admin@1.9.0-referral-pipeline-agent`
 - No product version bump (infrastructure/backend only, no JS/CSS/HTML user-facing changes)
@@ -339,14 +359,12 @@ None.
 
 ## Next Session
 
-**SA-022** — TypeScript: Extension + Edge Functions (Phase S4)
-- Entry gate: SA-021 ✅ (Referral Pipeline Agent operational)
-- Pair: Frontend + Backend
-- Reviewer: Chief Architect (type system review)
-- Estimated: 16–22h
-- Build: Migrate all 43 extension files + 88 EFs to strict TypeScript. Shared types package. Zero `any` in new files. CI gate enforced.
-
-**Phase S4 continuing.** SA-022 next.
+**SA-023** — Architecture Governance Review (Phase S6)
+- Entry gate: SA-022 ✅ (TypeScript migration complete)
+- Pair: Full Pod 3
+- Reviewer: Full Pod 4 (Chief Architect + Evolvability Strategist)
+- Estimated: 8–12h
+- Build: End-to-end evolvability review. Hook/scar utilization audit across all 5 phases. Technical debt register. Architecture fitness function run. Deprecation protocol. Phase S4→S5 transition readiness assessment.
 
 ---
 
@@ -378,7 +396,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.54`** | **SA-020** |
+| **Product (BJ_VERSION)** | **`v7.55`** | **SA-022** |
 | Dashboard | `dashboard@3.0.0-all-pages` | SA-017 |
 | Extension | `extension@2.22.0-error-handling` | FIX-11 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

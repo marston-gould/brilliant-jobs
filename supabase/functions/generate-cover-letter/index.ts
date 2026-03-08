@@ -227,7 +227,7 @@ serve(async (req: Request) => {
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
     });
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[generate-cover-letter] Error:', err.message);
     return new Response(JSON.stringify({ error: err.message || 'Internal error' }), {
       status: 500,

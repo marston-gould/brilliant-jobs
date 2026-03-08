@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * Extension Build Script v2 — Fingerprint-Randomized Builds
+ * Extension Build Script v3 — Fingerprint-Randomized Builds (TypeScript)
  * 
  * Every invocation produces a unique build:
- *   1. Randomized JS filenames (content.js → c8f2a1.js)
+ *   1. Randomized JS filenames (content.ts → c8f2a1.js)
  *   2. Randomized manifest metadata (name, short_name, description)
  *   3. Randomized internal message channel names (cross-file consistent)
  *   4. Dead code injection (random no-op functions + variables)
@@ -19,6 +19,7 @@
  * Output: extension/dist/{build-id}/  (one folder per unique build)
  */
 
+// SA-022: TypeScript source files — esbuild handles .ts natively (no separate compile step).
 import { buildSync } from 'esbuild';
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync, readdirSync, unlinkSync } from 'fs';
 import { join, dirname } from 'path';
@@ -34,25 +35,25 @@ const DIST_ROOT = join(__dirname, 'dist');
 
 // JS files to process (minify + randomize)
 const JS_FILES = [
-  'background.js',
-  'content.js',
-  'contentScript.js',
-  'human-sim.js',
-  'interceptor.js',
-  'interceptor-bridge.js',
-  'popup.js',
-  'popup-bridge.js',
-  'popup-post.js',
-  'supabase.js',
+  'background.ts',
+  'content.ts',
+  'contentScript.ts',
+  'human-sim.ts',
+  'interceptor.ts',
+  'interceptor-bridge.ts',
+  'popup.ts',
+  'popup-bridge.ts',
+  'popup-post.ts',
+  'supabase.ts',
 ];
 
 // Subdirectory JS files (discovered at runtime)
 const HANDLER_FILES = existsSync(join(__dirname, 'handlers'))
-  ? readdirSync(join(__dirname, 'handlers')).filter(f => f.endsWith('.js')) : [];
+  ? readdirSync(join(__dirname, 'handlers')).filter(f => f.endsWith('.ts')) : [];
 const UTILS_FILES = existsSync(join(__dirname, 'utils'))
-  ? readdirSync(join(__dirname, 'utils')).filter(f => f.endsWith('.js')) : [];
+  ? readdirSync(join(__dirname, 'utils')).filter(f => f.endsWith('.ts')) : [];
 const FIELDS_FILES = existsSync(join(__dirname, 'fields'))
-  ? readdirSync(join(__dirname, 'fields')).filter(f => f.endsWith('.js')) : [];
+  ? readdirSync(join(__dirname, 'fields')).filter(f => f.endsWith('.ts')) : [];
 
 // Static files to copy as-is
 const STATIC_FILES = [
@@ -179,7 +180,7 @@ function processJsFile(srcPath, outPath, channelMap) {
   let source = readFileSync(srcPath, 'utf-8');
   source = transformSource(source, channelMap);
 
-  const tmpPath = outPath + '.tmp.js';
+  const tmpPath = outPath + '.tmp.ts';
   writeFileSync(tmpPath, source);
 
   try {
@@ -213,7 +214,7 @@ function buildManifest(buildDir, filenameMap) {
 
   // Update service worker reference
   if (manifest.background?.service_worker) {
-    manifest.background.service_worker = filenameMap['background.js'];
+    manifest.background.service_worker = filenameMap['background.ts'];
   }
 
   // Update content_scripts JS references

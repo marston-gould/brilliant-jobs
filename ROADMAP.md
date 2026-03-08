@@ -3187,7 +3187,7 @@ Phase S can overlap with Phase 1 feature work on separate tracks. Sessions withi
 | SA-019 | Database partitioning | 12–16h | ✅ | Partition ats_jobs by source (ats, common_crawl, amazon). v6.28 migration: LIST partitioning on ats_source, 4 partitions, 18 indexes, per-partition VACUUM cron, v_partition_stats view, fn_partition_health(). 53 tests. DONE 2026-03-07. |
 | SA-020 | CrewAI Agents 4–5 | 14–18h | ✅ | Cost Guardian (Agent 4) + User Support (Agent 5). vendor_cost_budgets + canny_sync_log tables. fn_cost_guardian_summary + fn_user_support_summary. hourly cost checks + 15min Canny sync. 63 tests. v7.54. |
 | SA-021 | CrewAI Agent 6 + graduation | 12–16h | ✅ | Referral Pipeline Agent (Agent 6): fraud monitoring, reward eligibility audit, attribution validation. Observe mode. 3 checks / 30min. v6.30 migration, crewai-referral-pipeline EF, gateway route #106, admin panel. ADR-05 SA-021 docs. 41/41 tests. 2026-03-07. |
-| SA-022 | TypeScript — extension + EFs | 16–22h | 🔲 | All 43 extension files + 88 EFs to strict TS. Shared types package. Pair: Frontend + Backend. |
+| SA-022 | TypeScript — extension + EFs | 16–22h | ✅ | 54 extension JS→TS. `extension/tsconfig.json`. `extension/types/index.d.ts` (19 types). `_shared/types.ts` (8 sections, 35+ types). 0 `: any` in all EFs (201 removed). CI gate: no `.js` in extension + no-any in PRs. ADR-04. 76 tests. v7.55. |
 | SA-023 | Load test 5,000 concurrent | 12–16h | 🔲 | k6 at 5K concurrent. Zero 5xx, p95 search <500ms. Pass/fail gate. Pair: DevOps + QA. |
 
 **Phase S4 total: 6 sessions | 76–102h | ADR-04 P5–6 (TypeScript ext/EF), ADR-05 P2 (CrewAI 4–6), ADR-06 P2 (Replicas + Partitioning)**

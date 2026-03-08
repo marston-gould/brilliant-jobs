@@ -127,7 +127,7 @@ serve(async (req) => {
       )
     }
 
-    const result: Record<string, any> = {
+    const result: Record<string, unknown> = {
       checks: {},
       approved: false,
       reason: '',
@@ -397,7 +397,7 @@ interface BlocklistResult {
 }
 
 async function checkCompetitorBlocklist(
-  supabase: any,
+  supabase: unknown,
   employers: string[]
 ): Promise<BlocklistResult> {
   if (employers.length === 0) {
@@ -573,7 +573,7 @@ async function verifyProfileViaSERP(
     const task = data?.tasks?.[0]
     const taskResult = task?.result?.[0]
     const items = taskResult?.items || []
-    const organicItems = items.filter((i: any) => i.type === 'organic')
+    const organicItems = items.filter((i: Record<string, unknown>) => i.type === 'organic')
 
     const normalizedSignupUrl = normalizeLinkedInUrl(linkedinUrl)
 
@@ -650,12 +650,12 @@ function extractLinkedInSlug(url: string): string | null {
 // ─── HELPERS ───
 
 async function updateProfile(
-  supabase: any,
+  supabase: unknown,
   profileId: string,
   approved: boolean,
-  validationResult: Record<string, any>
+  validationResult: Record<string, unknown>
 ) {
-  const update: Record<string, any> = {
+  const update: Record<string, unknown> = {
     validation_result: validationResult,
     approved: approved,
   }
@@ -668,7 +668,7 @@ async function updateProfile(
     .eq('id', profileId)
 }
 
-function respond(result: Record<string, any>) {
+function respond(result: Record<string, unknown>) {
   return new Response(
     JSON.stringify(result),
     { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

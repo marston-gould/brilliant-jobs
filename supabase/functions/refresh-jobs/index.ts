@@ -90,9 +90,10 @@ async function fetchBoard(url: string): Promise<Response> {
 }
 
 // --- Greenhouse ---
-function parseGreenhouseJobs(data: any, slug: string, companyName: string): ParsedJob[] {
-  if (!data?.jobs || !Array.isArray(data.jobs)) return [];
-  return data.jobs.map((j: any) => {
+function parseGreenhouseJobs(data: Record<string, unknown>, slug: string, companyName: string): ParsedJob[] {
+  const jobs = data?.jobs;
+  if (!jobs || !Array.isArray(jobs)) return [];
+  return (jobs as Record<string, unknown>[]).map((j) => {
     const loc = j.location?.name || null;
     const dept = j.departments?.[0]?.name || null;
     const isRemote = !!(loc && /remote/i.test(loc));
@@ -120,9 +121,9 @@ function parseGreenhouseJobs(data: any, slug: string, companyName: string): Pars
 }
 
 // --- Lever ---
-function parseLeverJobs(data: any, slug: string, companyName: string): ParsedJob[] {
+function parseLeverJobs(data: Record<string, unknown>, slug: string, companyName: string): ParsedJob[] {
   if (!Array.isArray(data)) return [];
-  return data.map((j: any) => {
+  return data.map((j: Record<string, unknown>) => {
     const loc = j.categories?.location || null;
     const dept = j.categories?.team || j.categories?.department || null;
     const isRemote = !!(loc && /remote/i.test(loc)) ||
@@ -169,9 +170,9 @@ function parseLeverJobs(data: any, slug: string, companyName: string): ParsedJob
 }
 
 // --- Ashby ---
-function parseAshbyJobs(data: any, slug: string, companyName: string): ParsedJob[] {
+function parseAshbyJobs(data: Record<string, unknown>, slug: string, companyName: string): ParsedJob[] {
   if (!data?.jobs || !Array.isArray(data.jobs)) return [];
-  return data.jobs.map((j: any) => {
+  return (data.jobs as Record<string, unknown>[]).map((j) => {
     const loc = j.location || j.locationName || null;
     const dept = j.departmentName || j.department || null;
     const isRemote = j.isRemote === true || !!(loc && /remote/i.test(loc));
@@ -199,9 +200,9 @@ function parseAshbyJobs(data: any, slug: string, companyName: string): ParsedJob
 }
 
 // --- Workable ---
-function parseWorkableJobs(data: any, slug: string, companyName: string): ParsedJob[] {
+function parseWorkableJobs(data: Record<string, unknown>, slug: string, companyName: string): ParsedJob[] {
   if (!data?.jobs || !Array.isArray(data.jobs)) return [];
-  return data.jobs.map((j: any) => {
+  return (data.jobs as Record<string, unknown>[]).map((j) => {
     const parts = [j.city, j.state, j.country].filter(Boolean);
     const loc = parts.length ? parts.join(", ") : null;
     const dept = j.department || null;
@@ -230,9 +231,9 @@ function parseWorkableJobs(data: any, slug: string, companyName: string): Parsed
 }
 
 // --- Recruitee ---
-function parseRecruiteeJobs(data: any, slug: string, companyName: string): ParsedJob[] {
+function parseRecruiteeJobs(data: Record<string, unknown>, slug: string, companyName: string): ParsedJob[] {
   if (!data?.offers || !Array.isArray(data.offers)) return [];
-  return data.offers.map((j: any) => {
+  return (data.offers as Record<string, unknown>[]).map((j) => {
     const loc = j.location || j.city || null;
     const dept = j.department || null;
     const isRemote = j.remote === true || !!(loc && /remote/i.test(loc));
@@ -374,7 +375,7 @@ async function storeGreenhouseToken(slug: string, token: string, source: string)
 
 const ATS_CONFIG: Record<string, {
   url: (slug: string) => string;
-  parse: (data: any, slug: string, name: string) => ParsedJob[];
+  parse: (data: Record<string, unknown>, slug: string, name: string) => ParsedJob[];
 }> = {
   greenhouse: {
     url: (slug) => `https://boards-api.greenhouse.io/v1/boards/${slug}/jobs`,
@@ -426,7 +427,7 @@ async function scrapeBoard(board: Board): Promise<{
     const data = await resp.json();
     const jobs = config.parse(data, board.slug, board.name || board.slug);
     return { slug: board.slug, source: board.source, jobs, httpStatus: 200 };
-  } catch (e: any) {
+  } catch (e: unknown) {
     const msg = e.name === "AbortError" ? "timeout" : (e.message || "unknown").slice(0, 80);
     return { slug: board.slug, source: board.source, jobs: [], error: msg, httpStatus: 0 };
   }
@@ -509,8 +510,8 @@ async function markClosedJobs(
 
   const liveSet = new Set(liveJobIds);
   const toClose = openJobs
-    .filter((j: any) => !liveSet.has(j.greenhouse_id))
-    .map((j: any) => j.greenhouse_id);
+    .filter((j: ParsedJob) => !liveSet.has(j.greenhouse_id))
+    .map((j: ParsedJob) => j.greenhouse_id);
 
   if (!toClose.length) return 0;
 
@@ -541,7 +542,7 @@ async function updateCompany(
   httpStatus: number, companyName?: string
 ) {
   const now = new Date().toISOString();
-  const update: any = {
+  const update: Partial<JobRow> = {
     job_count: jobCount,
     last_checked: now,
     last_http_status: httpStatus,

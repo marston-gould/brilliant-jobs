@@ -103,7 +103,7 @@ async function verifyWebhookSignature(
 }
 
 // Handle a single Resend event
-async function processEvent(event: any): Promise<{ processed: boolean; reason?: string }> {
+async function processEvent(event: Record<string, unknown>): Promise<{ processed: boolean; reason?: string }> {
   const eventType = event.type;
   const data = event.data;
   const messageId = data?.email_id;
@@ -137,7 +137,7 @@ async function processEvent(event: any): Promise<{ processed: boolean; reason?: 
 
   // Build update payload
   const now = new Date().toISOString();
-  const update: Record<string, any> = { status: newStatus };
+  const update: Record<string, unknown> = { status: newStatus };
 
   switch (eventType) {
     case "email.delivered":
@@ -180,7 +180,7 @@ async function processEvent(event: any): Promise<{ processed: boolean; reason?: 
 }
 
 // Handle bounce/complaint → suppression list
-async function handleSuppression(data: any, eventType: string, messageId: string) {
+async function handleSuppression(data: unknown, eventType: string, messageId: string) {
   // Get the recipient email from the event data
   const email = data?.to?.[0] || data?.email || data?.created_by;
   if (!email) {
@@ -316,7 +316,7 @@ serve(async (req: Request) => {
 
     // Resend can send single events or batches
     const events = Array.isArray(body) ? body : [body];
-    const results: any[] = [];
+    const results: unknown[] = [];
 
     for (const event of events) {
       const result = await processEvent(event);

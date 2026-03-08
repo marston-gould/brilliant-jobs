@@ -26,7 +26,7 @@ interface ReferralEvent {
   user_id?: string;
   referral_id?: string;
   referee_id?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // ── Milestone thresholds ──
@@ -79,7 +79,7 @@ serve(async (req: Request) => {
       default:
         return json({ error: `Unknown event type: ${event.type}` }, 400);
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[referral-lifecycle] Error:', err.message);
     return json({ error: err.message }, 500);
   }
@@ -89,7 +89,7 @@ serve(async (req: Request) => {
 // HANDLERS
 // ═══════════════════════════════════════════════
 
-async function handleInviteSent(sb: any, event: ReferralEvent) {
+async function handleInviteSent(sb: SupabaseClient, event: ReferralEvent) {
   const { user_id, referral_id } = event;
   if (!user_id || !referral_id) return json({ error: 'user_id and referral_id required' }, 400);
 
@@ -102,7 +102,7 @@ async function handleInviteSent(sb: any, event: ReferralEvent) {
   return json({ sent: true, type: 'referral_sent_confirmation' });
 }
 
-async function handleStatusUpdate(sb: any, event: ReferralEvent) {
+async function handleStatusUpdate(sb: SupabaseClient, event: ReferralEvent) {
   const { type } = event;
   let { referral_id } = event;
 
@@ -209,7 +209,7 @@ async function handleStatusUpdate(sb: any, event: ReferralEvent) {
   return json({ sent: true, type: 'referral_status_update', new_status: newStatus });
 }
 
-async function handleNudgeCheck(sb: any) {
+async function handleNudgeCheck(sb: SupabaseClient) {
   const now = new Date();
   let nudged = 0;
 
@@ -273,7 +273,7 @@ async function handleNudgeCheck(sb: any) {
   return json({ nudged });
 }
 
-async function handleExpiringCheck(sb: any) {
+async function handleExpiringCheck(sb: SupabaseClient) {
   const now = new Date();
   let notified = 0;
 
@@ -317,7 +317,7 @@ async function handleExpiringCheck(sb: any) {
   return json({ notified });
 }
 
-async function handlePeriodicSummary(sb: any) {
+async function handlePeriodicSummary(sb: SupabaseClient) {
   // Find all users with any referral activity
   const { data: referrers } = await sb
     .from('referrals')
@@ -325,7 +325,7 @@ async function handlePeriodicSummary(sb: any) {
     .not('referrer_id', 'is', null);
 
   // Deduplicate
-  const uniqueReferrers = [...new Set((referrers || []).map((r: any) => r.referrer_id))];
+  const uniqueReferrers = [...new Set((referrers || []).map((r: Record<string, unknown>) => r.referrer_id))];
   let sent = 0;
 
   for (const userId of uniqueReferrers) {
@@ -351,7 +351,7 @@ async function handlePeriodicSummary(sb: any) {
   return json({ sent });
 }
 
-async function handleMilestoneCheck(sb: any, event: ReferralEvent) {
+async function handleMilestoneCheck(sb: SupabaseClient, event: ReferralEvent) {
   const userId = event.user_id;
   if (!userId) return json({ error: 'user_id required' }, 400);
 
@@ -396,7 +396,7 @@ async function handleMilestoneCheck(sb: any, event: ReferralEvent) {
   return json({ checked: true, activated: activatedCount });
 }
 
-async function handleRewardApplied(sb: any, event: ReferralEvent) {
+async function handleRewardApplied(sb: SupabaseClient, event: ReferralEvent) {
   const { user_id } = event;
   if (!user_id) return json({ error: 'user_id required' }, 400);
 
@@ -412,10 +412,10 @@ async function handleRewardApplied(sb: any, event: ReferralEvent) {
 // ═══════════════════════════════════════════════
 
 async function fireNotification(
-  sb: any,
+  sb: SupabaseClient,
   recipientIdOrEmail: string,
   notificationType: string,
-  metadata: Record<string, any>
+  metadata: Record<string, unknown>
 ) {
   // Call the central send-notification Edge Function
   const res = await fetch(`${SB_URL}/functions/v1/send-notification`, {
@@ -437,7 +437,7 @@ async function fireNotification(
 }
 
 async function checkNotificationPrefs(
-  sb: any,
+  sb: SupabaseClient,
   userId: string,
   notificationType: string
 ): Promise<boolean> {
@@ -452,7 +452,7 @@ async function checkNotificationPrefs(
   return data?.email_enabled !== false;
 }
 
-function json(data: any, status = 200) {
+function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: { ...CORS, 'Content-Type': 'application/json' },

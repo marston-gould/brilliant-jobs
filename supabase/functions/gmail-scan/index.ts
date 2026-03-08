@@ -81,7 +81,7 @@ function guessDomain(slug: string, domain: string | null): string | null {
 async function scanUserEmails(
   userId: string, accessToken: string,
   entries: Array<{ id: string; company_slug: string; company_domain: string | null; applied_at: string }>,
-  logger: any,
+  logger: Logger,
 ): Promise<{ scanned: number; signals: number }> {
   let signals = 0;
 
@@ -129,7 +129,7 @@ async function scanUserEmails(
       );
       const msgData = await msgRes.json();
 
-      const subjectHeader = (msgData.payload?.headers || []).find((h: any) => h.name.toLowerCase() === "subject");
+      const subjectHeader = (msgData.payload?.headers || []).find((h: Record<string, unknown>) => (h as Record<string, unknown>).name.toLowerCase() === "subject");
       const subject = subjectHeader?.value || "";
       const snippet = (msgData.snippet || "").slice(0, 200);
       const classification = classifyEmail(subject, snippet);
@@ -150,7 +150,7 @@ async function scanUserEmails(
 
 // ── Pipeline signal creation from email signals (Phase B) ──
 // Instead of auto-advancing, create pipeline_signals for user confirmation
-async function createPipelineSignals(userId: string, logger: any): Promise<number> {
+async function createPipelineSignals(userId: string, logger: Logger): Promise<number> {
   let signalsCreated = 0;
   const stageOrder = ["saved", "applied", "posting_closed", "responded", "interview", "offer", "hired", "rejected", "archived"];
 

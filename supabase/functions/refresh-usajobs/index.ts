@@ -43,7 +43,7 @@ function mapPayGrade(low: string | undefined, high: string | undefined): string 
   return `GS-${low}`;
 }
 
-function buildDescriptionHtml(details: any, quals: string | null): string {
+function buildDescriptionHtml(details: unknown, quals: string | null): string {
   let html = "";
   if (details?.JobSummary) {
     html += `<h3>Summary</h3><p>${details.JobSummary}</p>`;
@@ -74,7 +74,7 @@ function parseCityName(cityName: string | undefined): string | null {
 
 // ── Map a single USAJOBS result to ats_jobs row ─────────────────
 
-function mapToAtsJob(item: any) {
+function mapToAtsJob(item: unknown) {
   const d = item.MatchedObjectDescriptor;
   const loc = d.PositionLocation?.[0];
   const pay = d.PositionRemuneration?.[0];
@@ -157,11 +157,11 @@ serve(async (_req) => {
       const items = results.SearchResultItems || [];
       if (items.length === 0) break;
 
-      const jobs = items.map((item: any) => mapToAtsJob(item));
+      const jobs = items.map((item: Record<string, unknown>) => mapToAtsJob(item));
       totalFetched += jobs.length;
 
       // Track all seen IDs for close detection
-      jobs.forEach((j: any) => seenIds.push(j.greenhouse_id));
+      jobs.forEach((j: Record<string, unknown>) => (seenIds as Record<string, unknown>).push(j.greenhouse_id));
 
       // Upsert in batches
       for (let i = 0; i < jobs.length; i += BATCH_SIZE) {
@@ -200,8 +200,8 @@ serve(async (_req) => {
       if (!fetchErr && openJobs) {
         const seenSet = new Set(seenIds);
         const toClose = openJobs
-          .filter((j: any) => !seenSet.has(j.greenhouse_id))
-          .map((j: any) => j.greenhouse_id);
+          .filter((j: Record<string, unknown>) => !seenSet.has(j.greenhouse_id))
+          .map((j: Record<string, unknown>) => j.greenhouse_id);
 
         if (toClose.length > 0) {
           // Close in batches

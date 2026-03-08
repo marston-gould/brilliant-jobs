@@ -61,12 +61,12 @@ Deno.serve(async (_req) => {
       errors: errors.slice(0, 10),
       elapsed: Date.now() - start,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return jsonResp({ error: err.message || String(err) }, 500);
   }
 });
 
-function jsonResp(body: any, status = 200) {
+function jsonResp(body: unknown, status = 200) {
   return new Response(JSON.stringify(body, null, 2), {
     status,
     headers: { "Content-Type": "application/json" },

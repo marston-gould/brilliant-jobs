@@ -67,6 +67,49 @@ jobs:
           fi
           echo "✅ No direct edits to generated .js files"
 
+      - name: SA-022 Extension TypeScript gate — no .js source files
+        run: |
+          # SA-022: Extension is now fully TypeScript. .js source files are banned.
+          # Only dist/ outputs and build-extension.js (the Node build script) are exempt.
+          VIOLATIONS=$(find extension/ -name "*.js" \
+            ! -path "extension/dist/*" \
+            ! -path "extension/examples/*" \
+            ! -name "build-extension.js" \
+            2>/dev/null || true)
+          if [ -n "$VIOLATIONS" ]; then
+            echo "::error::Raw .js source files found in extension/. All source must be .ts:"
+            echo "$VIOLATIONS"
+            echo "Rename to .ts and add type annotations."
+            exit 1
+          fi
+          echo "✅ SA-022: Extension TypeScript gate passed — no raw .js source files"
+
+      - name: SA-022 EF TypeScript no-any gate
+        run: |
+          # SA-022: Zero `: any` allowed in new EF files committed to this PR.
+          # Checks only files changed in this PR, not the full repo (legacy allowance).
+          CHANGED_EF_FILES=$(git diff --name-only HEAD~1 2>/dev/null \
+            | grep "supabase/functions/.*\.ts$" \
+            | grep -v "_shared/types.ts" \
+            || true)
+          VIOLATIONS=""
+          for f in $CHANGED_EF_FILES; do
+            if [ -f "$f" ]; then
+              # Exclude comment lines (// ...) and catch (e: any) which is a TS pattern
+              ANY_COUNT=$(grep -n ": any\b" "$f" | grep -v "^\s*//" | grep -v "catch.*any" | wc -l | tr -d ' ')
+              if [ "$ANY_COUNT" -gt "0" ]; then
+                VIOLATIONS="$VIOLATIONS\n  $f ($ANY_COUNT occurrences)"
+              fi
+            fi
+          done
+          if [ -n "$VIOLATIONS" ]; then
+            echo "::error::`: any` type annotations found in new EF TypeScript files:"
+            printf "$VIOLATIONS\n"
+            echo "Replace with specific types from supabase/functions/_shared/types.ts"
+            exit 1
+          fi
+          echo "✅ SA-022: EF no-any gate passed"
+
       - name: Gate 1+7 summary
         run: echo "✅ Gate 1+7 ESLint + TypeScript checks complete" >> $GITHUB_STEP_SUMMARY
 

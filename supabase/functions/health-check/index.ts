@@ -136,7 +136,7 @@ serve(async (req) => {
 
     if (error) throw error;
     const total = data?.length || 0;
-    const failed = data?.filter((n: any) => n.status === "failed").length || 0;
+    const failed = data?.filter((n: Record<string, unknown>) => n.status === "failed").length || 0;
     health.checks.notifications = {
       status: failed > total * 0.2 ? "fail" : "pass",
       latencyMs: ms,

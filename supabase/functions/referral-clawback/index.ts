@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
     const { user_id, reward_id, referral_id, reason, mode } = body;
     // mode: 'single_reward' | 'all_user_rewards' | 'referral_chain'
 
-    const results: any[] = [];
+    const results: unknown[] = [];
 
     // Collect reward IDs to clawback
     let rewardIds: string[] = [];
@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
         .select('id')
         .eq('user_id', user_id)
         .is('clawed_back_at', null);
-      rewardIds = (userRewards || []).map((r: any) => r.id);
+      rewardIds = (userRewards || []).map((r: Record<string, unknown>) => r.id);
     } else if (mode === 'referral_chain' && referral_id) {
       // Clawback rewards tied to a specific referral
       const { data: ref } = await sb
@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
           .select('id')
           .or(`referral_id.eq.${referral_id}`)
           .is('clawed_back_at', null);
-        rewardIds = (chainRewards || []).map((r: any) => r.id);
+        rewardIds = (chainRewards || []).map((r: Record<string, unknown>) => r.id);
         // Also reject the referral itself
         await sb.from('referrals').update({
           status: 'clawed_back',
@@ -186,7 +186,7 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[referral-clawback] Error:', err);
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,

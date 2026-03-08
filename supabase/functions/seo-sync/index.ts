@@ -118,7 +118,7 @@ async function syncGsc(daysBack = 7): Promise<{ byDate: number; byQuery: number;
     const r2 = await fetch(gscUrl, { method: 'POST', headers: hdrs,
       body: JSON.stringify({ startDate: ds, endDate: ds, dimensions: ['query'], rowLimit: 5000 }) });
     const d2 = await r2.json();
-    const qRows = (d2.rows || []).map((r: any) => ({
+    const qRows = (d2.rows || []).map((r: Record<string, unknown>) => ({
       date: ds, url: '*', query: r.keys[0],
       clicks: r.clicks||0, impressions: r.impressions||0, ctr: r.ctr||0, position: r.position||0,
     }));
@@ -132,7 +132,7 @@ async function syncGsc(daysBack = 7): Promise<{ byDate: number; byQuery: number;
     const r3 = await fetch(gscUrl, { method: 'POST', headers: hdrs,
       body: JSON.stringify({ startDate: ds, endDate: ds, dimensions: ['page'], rowLimit: 5000 }) });
     const d3 = await r3.json();
-    const pRows = (d3.rows || []).map((r: any) => ({
+    const pRows = (d3.rows || []).map((r: Record<string, unknown>) => ({
       date: ds, url: r.keys[0], clicks: r.clicks||0, impressions: r.impressions||0,
       avg_position: r.position ? Math.round(r.position*10)/10 : 0,
       top_queries: [],
@@ -146,7 +146,7 @@ async function syncGsc(daysBack = 7): Promise<{ byDate: number; byQuery: number;
     const r4 = await fetch(gscUrl, { method: 'POST', headers: hdrs,
       body: JSON.stringify({ startDate: ds, endDate: ds, dimensions: ['page','query'], rowLimit: 5000 }) });
     const d4 = await r4.json();
-    const qpRows = (d4.rows || []).map((r: any) => ({
+    const qpRows = (d4.rows || []).map((r: Record<string, unknown>) => ({
       date: ds, url: r.keys[0], query: r.keys[1] || null,
       clicks: r.clicks||0, impressions: r.impressions||0, ctr: r.ctr||0, position: r.position||0,
     }));
@@ -215,8 +215,8 @@ async function syncPsi(targetUrl?: string): Promise<{ pages: number }> {
           tti: a['interactive']?.numericValue,
         };
         const issues = Object.values(a)
-          .filter((x:any)=>x.score!==null&&x.score<0.5&&x.scoreDisplayMode!=='informative')
-          .map((x:any)=>({ id:x.id, title:x.title, score:x.score })).slice(0,15);
+          .filter((x: unknown)=>x.score!==null&&x.score<0.5&&x.scoreDisplayMode!=='informative')
+          .map((x: unknown)=>({ id:x.id, title:x.title, score:x.score })).slice(0,15);
         await sb.from('seo_tech_audits').upsert({
           date: today, url, source: `psi_${strat}`, score: perf, metrics, issues,
         }, { onConflict: 'date,url,source' });
@@ -321,8 +321,8 @@ async function syncDfs(): Promise<{ tasks: number }> {
           scripts_count: resources.scripts_count || 0,
           stylesheets_count: resources.stylesheets_count || 0,
           // Checks summary
-          checks_passed: Object.values(checks).filter((v: any) => v === true).length,
-          checks_failed: Object.values(checks).filter((v: any) => v === false).length,
+          checks_passed: Object.values(checks).filter((v: Record<string, unknown>) => v === true).length,
+          checks_failed: Object.values(checks).filter((v: Record<string, unknown>) => v === false).length,
           checks_total: Object.keys(checks).length,
         },
         issues: issues.slice(0, 20),
@@ -408,9 +408,9 @@ async function syncYellowLab(): Promise<{ pages: number }> {
 
       if (result) {
         const globalScore = result.globalScore || 0;
-        const categories: Record<string, any> = {};
+        const categories: Record<string, unknown> = {};
         if (result.categories) {
-          for (const [k, v] of Object.entries(result.categories as Record<string, any>)) {
+          for (const [k, v] of Object.entries(result.categories as Record<string, unknown>)) {
             categories[k] = { score: v.categoryScore, label: v.label };
           }
         }
@@ -453,12 +453,12 @@ async function syncCrux(): Promise<{ origins: number }> {
       const rec = d.record;
       if (!rec?.metrics) continue;
 
-      const metrics: Record<string, any> = {};
+      const metrics: Record<string, unknown> = {};
       // Extract each metric with its histogram (good/needs-improvement/poor distributions)
-      for (const [key, val] of Object.entries(rec.metrics as Record<string, any>)) {
+      for (const [key, val] of Object.entries(rec.metrics as Record<string, unknown>)) {
         metrics[key] = {
           p75: val.percentiles?.p75,
-          histogram: val.histogram?.map((h: any) => ({
+          histogram: val.histogram?.map((h: Record<string, unknown>) => ({
             start: h.start, end: h.end, density: h.density,
           })),
         };
@@ -486,11 +486,11 @@ async function syncCrux(): Promise<{ origins: number }> {
           const pd = await pr.json();
           if (pd.error || !pd.record?.metrics) continue;
 
-          const pageMetrics: Record<string, any> = {};
-          for (const [key, val] of Object.entries(pd.record.metrics as Record<string, any>)) {
+          const pageMetrics: Record<string, unknown> = {};
+          for (const [key, val] of Object.entries(pd.record.metrics as Record<string, unknown>)) {
             pageMetrics[key] = {
               p75: val.percentiles?.p75,
-              histogram: val.histogram?.map((h: any) => ({
+              histogram: val.histogram?.map((h: Record<string, unknown>) => ({
                 start: h.start, end: h.end, density: h.density,
               })),
             };
@@ -513,7 +513,7 @@ async function syncKnowledgeGraph(): Promise<{ pages: number }> {
 
   // Search for entities related to our brand and key topics
   const queries = ['Brilliant Jobs', 'brilliantjobs.app', 'job search platform'];
-  const allEntities: any[] = [];
+  const allEntities: unknown[] = [];
 
   for (const q of queries) {
     try {
@@ -669,7 +669,7 @@ serve(async (req) => {
       if (body.tasks) tasks = Array.isArray(body.tasks) ? body.tasks : [body.tasks];
       if (body.target_url) targetUrl = body.target_url;
     }
-    const res: Record<string, any> = {};
+    const res: Record<string, unknown> = {};
     const all = tasks.includes('all');
 
     // No-auth tools first (API key only)

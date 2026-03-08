@@ -192,7 +192,7 @@ serve(async (req: Request) => {
 
         for (const event of events) {
           const title = event.summary || "";
-          const attendees = (event.attendees || []).map((a: any) => a.email?.toLowerCase() || "");
+          const attendees = (event.attendees || []).map((a: Record<string, unknown>) => a.email?.toLowerCase() || "");
 
           // Try to match this event to a pipeline company
           let matchedEntryId: string | null = null;

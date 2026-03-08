@@ -43,7 +43,7 @@ interface CommunityEvent {
   type: 'canny_webhook' | 'monthly_update' | 'grant_bounty';
   // canny_webhook fields
   webhook_event?: string;
-  canny_data?: Record<string, any>;
+  canny_data?: Record<string, unknown>;
   // grant_bounty fields
   user_id?: string;
   canny_post_id?: string;
@@ -54,7 +54,7 @@ interface CommunityEvent {
   features_shipped?: Array<{ title: string; description: string }>;
   bugs_fixed?: number;
   coming_next?: Array<{ title: string; eta: string }>;
-  platform_stats?: Record<string, any>;
+  platform_stats?: Record<string, unknown>;
 }
 
 serve(async (req: Request) => {
@@ -86,7 +86,7 @@ serve(async (req: Request) => {
 // ═══════════════════════════════════════════════════════════
 // 1. CANNY WEBHOOK HANDLER
 // ═══════════════════════════════════════════════════════════
-async function handleCannyWebhook(sb: any, event: CommunityEvent) {
+async function handleCannyWebhook(sb: SupabaseClient, event: CommunityEvent) {
   const webhookEvent = event.webhook_event || '';
   const data = event.canny_data || {};
 
@@ -115,7 +115,7 @@ async function handleCannyWebhook(sb: any, event: CommunityEvent) {
   }
 
   // Build notification payload based on type
-  const payload: Record<string, any> = {
+  const payload: Record<string, unknown> = {
     firstName: profile.first_name || 'there',
     cannyUrl: data.url || data.post?.url || '',
   };
@@ -177,7 +177,7 @@ async function handleCannyWebhook(sb: any, event: CommunityEvent) {
 // ═══════════════════════════════════════════════════════════
 // 2. MONTHLY PRODUCT UPDATE (cron: 1st of month)
 // ═══════════════════════════════════════════════════════════
-async function handleMonthlyUpdate(sb: any, event: CommunityEvent) {
+async function handleMonthlyUpdate(sb: SupabaseClient, event: CommunityEvent) {
   // Get all users with marketing opt-in (monthly_product_update is marketing classification)
   const { data: users, error } = await sb
     .from('profiles')
@@ -225,7 +225,7 @@ async function handleMonthlyUpdate(sb: any, event: CommunityEvent) {
 // ═══════════════════════════════════════════════════════════
 // 3. BUG BOUNTY GRANT (admin action)
 // ═══════════════════════════════════════════════════════════
-async function handleGrantBounty(sb: any, event: CommunityEvent) {
+async function handleGrantBounty(sb: SupabaseClient, event: CommunityEvent) {
   const { user_id, severity, canny_post_id, bug_title, admin_id } = event;
   if (!user_id || !severity) {
     return json({ error: 'user_id and severity required' }, 400);
@@ -236,7 +236,7 @@ async function handleGrantBounty(sb: any, event: CommunityEvent) {
 
 // ── Shared: auto-grant bounty with dedup ──
 async function autoGrantBounty(
-  sb: any, userId: string, severity: string,
+  sb: SupabaseClient, userId: string, severity: string,
   cannyPostId: string, bugTitle: string, adminId?: string
 ) {
   const tier = BOUNTY_TIERS[severity] || BOUNTY_TIERS.minor;
@@ -256,7 +256,7 @@ async function autoGrantBounty(
   }
 
   // Insert entitlement grant
-  const grantData: Record<string, any> = {
+  const grantData: Record<string, unknown> = {
     user_id: userId,
     grant_type: 'bug_bounty',
     source_type: 'bug_report',
@@ -293,7 +293,7 @@ async function autoGrantBounty(
 }
 
 // ── Apply entitlement: credit balance + trial extension ──
-async function applyEntitlement(sb: any, userId: string, grantId: string, tier: any) {
+async function applyEntitlement(sb: SupabaseClient, userId: string, grantId: string, tier: unknown) {
   // Add credits to user balance
   if (tier.credits > 0) {
     const { data: profile } = await sb
@@ -326,10 +326,10 @@ async function applyEntitlement(sb: any, userId: string, grantId: string, tier: 
 // ═══════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════
-async function callSendNotification(sb: any, params: {
+async function callSendNotification(sb: SupabaseClient, params: {
   user_id: string;
   notification_type: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
 }) {
   try {
     const res = await fetch(`${SB_URL}/functions/v1/send-notification`, {
@@ -347,7 +347,7 @@ async function callSendNotification(sb: any, params: {
   }
 }
 
-function json(data: any, status = 200) {
+function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: { ...CORS, 'Content-Type': 'application/json' },

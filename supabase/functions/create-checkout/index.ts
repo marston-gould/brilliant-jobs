@@ -66,10 +66,10 @@ async function stripeGet(endpoint: string) {
 
 // ─── Get or create Stripe customer ───
 async function getOrCreateStripeCustomer(
-  sb: any,
+  sb: SupabaseClient,
   userId: string,
   email: string,
-  logger: any
+  logger: Logger
 ): Promise<string> {
   // Check if user already has a stripe customer
   const { data: sub } = await sb

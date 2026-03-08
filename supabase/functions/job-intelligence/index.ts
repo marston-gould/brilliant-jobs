@@ -99,7 +99,7 @@ serve(async (req: Request) => {
 
         // Filter to only ghosted/likely_ghosted entries
         const alertCandidates = (ghostEntries || []).filter(
-          (e: any) => e.ghost_status === "ghosted" || e.ghost_status === "likely_ghosted"
+          (e: Record<string, unknown>) => (e as Record<string, unknown>).ghost_status === "ghosted" || e.ghost_status === "likely_ghosted"
         );
 
         for (const g of alertCandidates) {

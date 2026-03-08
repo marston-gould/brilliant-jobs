@@ -70,7 +70,7 @@ async function getPosthogErrors(hours = 24, limit = 50) {
   }
 
   const data = await res.json();
-  const events = (data.results || []).map((evt: any) => ({
+  const events = (data.results || []).map((evt: Record<string, unknown>) => ({
     id: evt.id,
     timestamp: evt.timestamp,
     label: evt.properties?.label || "unknown",
@@ -115,7 +115,7 @@ async function getPosthogExceptions(hours = 24, limit = 50) {
   }
 
   const data = await res.json();
-  const events = (data.results || []).map((evt: any) => ({
+  const events = (data.results || []).map((evt: Record<string, unknown>) => ({
     id: evt.id,
     timestamp: evt.timestamp,
     type: evt.properties?.$exception_type || "Error",
@@ -242,11 +242,11 @@ async function getEfHealth() {
   // Overall stats
   const totalChecks = recentChecks?.length || 0;
   const healthyChecks =
-    recentChecks?.filter((r: any) => r.overall === "healthy").length || 0;
+    recentChecks?.filter((r: Record<string, unknown>) => r.overall === "healthy").length || 0;
   const degradedChecks =
-    recentChecks?.filter((r: any) => r.overall === "degraded").length || 0;
+    recentChecks?.filter((r: Record<string, unknown>) => r.overall === "degraded").length || 0;
   const unhealthyChecks =
-    recentChecks?.filter((r: any) => r.overall === "unhealthy").length || 0;
+    recentChecks?.filter((r: Record<string, unknown>) => r.overall === "unhealthy").length || 0;
 
   return {
     functions: EDGE_FUNCTIONS,

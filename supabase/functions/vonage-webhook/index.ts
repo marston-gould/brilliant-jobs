@@ -157,7 +157,7 @@ serve(async (req: Request) => {
 });
 
 async function processDeliveryReceipt(
-  logEntry: any,
+  logEntry: unknown,
   dlr: VonageDLR,
   status: string,
   errCode: string,
@@ -172,7 +172,7 @@ async function processDeliveryReceipt(
   }
 
   // 2. Update notification_log with delivery status
-  const update: Record<string, any> = {
+  const update: Record<string, unknown> = {
     status: newStatus,
     sms_delivered_at: TERMINAL_SUCCESS.has(status) ? now : null,
     sms_failed_at: TERMINAL_FAILURE.has(status) ? now : null,
@@ -193,7 +193,7 @@ async function processDeliveryReceipt(
 }
 
 async function handleSmsFailure(
-  logEntry: any,
+  logEntry: unknown,
   dlr: VonageDLR,
   status: string,
   errCode: string,

@@ -34,7 +34,7 @@ const MATCH_EXPIRES_HOURS = 72;
 const log = createLogger("auto-apply-trigger");
 
 // ─── Lightweight keyword matcher (server-side equivalent of buildFilterQuery) ───
-function matchesFilter(job: any, filterData: any): boolean {
+function matchesFilter(job: unknown, filterData: unknown): boolean {
   const title = (job.title || "").toLowerCase();
   const location = (job.location || "").toLowerCase();
   const company = (job.company_name || "").toLowerCase();
@@ -42,7 +42,7 @@ function matchesFilter(job: any, filterData: any): boolean {
   // WHAT pills — at least one keyword must match title
   const whatPills = filterData.whatPills || filterData.pills || [];
   if (whatPills.length > 0) {
-    const anyMatch = whatPills.some((pill: any) =>
+    const anyMatch = whatPills.some((pill: unknown) =>
       (pill.values || []).some((v: string) => title.includes(v.toLowerCase().trim()))
     );
     if (!anyMatch) return false;
@@ -65,7 +65,7 @@ function matchesFilter(job: any, filterData: any): boolean {
     if (includeRemote && isRemote) {
       // Remote jobs match any location filter if includeRemote is on
     } else {
-      const locMatch = wherePills.some((pill: any) =>
+      const locMatch = wherePills.some((pill: unknown) =>
         (pill.values || []).some((v: string) => location.includes(v.toLowerCase().trim()))
       );
       if (!locMatch && !(includeRemote && isRemote)) return false;
@@ -83,7 +83,7 @@ function matchesFilter(job: any, filterData: any): boolean {
   // WHO pills — company name matching
   const whoPills = filterData.whoPills || [];
   if (whoPills.length > 0) {
-    const whoMatch = whoPills.some((pill: any) =>
+    const whoMatch = whoPills.some((pill: unknown) =>
       (pill.values || []).some((v: string) => company.includes(v.toLowerCase().trim()))
     );
     if (!whoMatch) return false;
@@ -104,7 +104,7 @@ function matchesFilter(job: any, filterData: any): boolean {
     if (!job.salary_min && !job.salary_max && !includeNoSalary) return false;
     // If job has salary, check against pay pills
     if (job.salary_max) {
-      const anyPayMatch = payPills.some((pill: any) => {
+      const anyPayMatch = payPills.some((pill: unknown) => {
         for (const v of pill.values || []) {
           const num = parseInt(v.replace(/[^0-9]/g, ""), 10);
           if (!isNaN(num) && job.salary_max >= num) return true;
@@ -205,7 +205,7 @@ Deno.serve(async (req) => {
     const { data: eligibleUsers, error: userErr } = await sb.rpc("get_auto_apply_eligible_users");
 
     // If RPC doesn't exist yet, fallback to direct query
-    let users: any[] = [];
+    let users: unknown[] = [];
     if (userErr || !eligibleUsers) {
       log.info("RPC not available, using direct query");
       // Get users on plans with auto_apply = true
@@ -221,7 +221,7 @@ Deno.serve(async (req) => {
         });
       }
 
-      const planIds = proPlans.map((p: any) => p.id);
+      const planIds = proPlans.map((p: Record<string, unknown>) => p.id);
 
       // Get subscriptions on those plans
       const { data: subs } = await sb
@@ -237,7 +237,7 @@ Deno.serve(async (req) => {
         });
       }
 
-      const userIds = subs.map((s: any) => s.user_id);
+      const userIds = subs.map((s: Record<string, unknown>) => s.user_id);
 
       // Get their filters + default resume
       for (const userId of userIds) {
@@ -287,7 +287,7 @@ Deno.serve(async (req) => {
         }
 
         // Match new jobs against all user filters
-        const matchedJobs: any[] = [];
+        const matchedJobs: unknown[] = [];
         const seenJobIds = new Set<string>();
 
         for (const filter of user.filters) {
@@ -307,15 +307,15 @@ Deno.serve(async (req) => {
         const toScore = matchedJobs.slice(0, MAX_MATCHES_PER_USER);
 
         // Check for existing pending_applications to avoid duplicates
-        const jobIds = toScore.map((j: any) => j.greenhouse_id);
+        const jobIds = toScore.map((j: Record<string, unknown>) => j.greenhouse_id);
         const { data: existing } = await sb
           .from("pending_applications")
           .select("job_id")
           .eq("user_id", user.user_id)
           .in("job_id", jobIds);
 
-        const existingIds = new Set((existing || []).map((e: any) => e.job_id));
-        const newMatches = toScore.filter((j: any) => !existingIds.has(j.greenhouse_id));
+        const existingIds = new Set((existing || []).map((e: Record<string, unknown>) => e.job_id));
+        const newMatches = toScore.filter((j: Record<string, unknown>) => !existingIds.has(j.greenhouse_id));
 
         if (newMatches.length === 0) continue;
 

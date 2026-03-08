@@ -19,7 +19,7 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Authorization, Content-Type, apikey',
 };
 
-const json = (body: any, status = 200) =>
+const json = (body: Record<string, unknown>, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
     headers: { ...CORS, 'Content-Type': 'application/json' },
@@ -58,7 +58,7 @@ async function callAnthropic(
   }
 }
 
-function parseJSON(text: string): any {
+function parseJSON(text: string): unknown {
   return JSON.parse(text.replace(/```json|```/g, '').trim());
 }
 
@@ -212,7 +212,7 @@ Analyze the gaps between this resume and this specific job description. Return O
       return json({ error: 'Gap analysis failed', detail: gapResult.error }, 502);
     }
 
-    let gapAnalysis: any;
+    let gapAnalysis: unknown;
     try {
       gapAnalysis = parseJSON(gapResult.text);
     } catch (e) {
@@ -225,7 +225,7 @@ Analyze the gaps between this resume and this specific job description. Return O
     console.log(`[analyze] Gap analysis complete in ${gapMs}ms — ${gapAnalysis.matched_skills?.length || 0} matched, ${gapAnalysis.needs_input?.length || 0} need input, ${gapAnalysis.rewritable_gaps?.length || 0} rewritable`);
 
     // ─── Agent 2: Question Generator (skip if no input needed) ───
-    let questions: any[] = [];
+    let questions: unknown[] = [];
     const needsInput = gapAnalysis.needs_input || [];
 
     if (needsInput.length > 0) {
