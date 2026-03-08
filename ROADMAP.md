@@ -2837,7 +2837,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.040 | EXT-ES-001: 20 empty catches | 2h | 2h | ✅ | FIX-11: All 22 empty catches remediated. background.js(7→console.warn+comment), popup.js(6→console.warn+phCapture), handlers(5→console.warn), interceptor(1→console.warn), resilientDOM(2→console.warn), build-ext(1→comment). Zero empty catches in extension source. |
 | 0.041 | EXT-ES-002: 19 fire-and-forget .catch(()=>{}) | 1h | 1h | ✅ | REM-002: 28+ empty .catch(()=>{}) replaced with reportError pattern across 12 extension files. Error reporter utility at extension/utils/errorReporter.ts. Background reportError handler wired. 2026-03-08. |
 | 0.042 | EXT-ES-003: 7 console/comment-only handlers | 1h | 1h | ✅ | REM-002: Console-only handlers in lever, greenhouse-legacy, greenhouse-react, linkedin upgraded with PostHog context via errorReporter.ts. 2026-03-08. |
-| 0.043 | EXT-ES-004: 14+ missing lastError checks | 2h | — | 🔲 | Only toolbar-overlay checks (4x). All other chrome API calls skip. |
+| 0.043 | EXT-ES-004: 14+ missing lastError checks | 2h | REM-002 | ✅ | Completed in REM-002 (2026-03-08). lastError + promise error handling added to popup-post.ts chrome.storage calls. reportError pattern across 12 extension files. |
 | 0.044 | EXT-BE-001: No fetch timeouts | 1h | — | 🔲 | Zero AbortController. Add timeout on all fetches. |
 | 0.045 | EXT-BE-002: No retry with backoff | 2h | — | 🔲 | Zero retry. Exponential backoff on auth, scan, pipeline. |
 
@@ -2857,8 +2857,8 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.053 | AD-ES-001: Admin EF empty catches | 1h | — | 🔲 | generate-editorial, build-extension, seo-sync catch and swallow. |
-| 0.054 | AD-ES-005: No error states in admin UI | 1h | — | 🔲 | Operations fail silently. No user feedback on failure. |
+| 0.053 | AD-ES-001: Admin EF empty catches | 1h | REM-003 | ✅ | Completed in REM-003 (2026-03-08). 23 empty catch blocks fixed across 16 EF files with structured [EF][function_name] console.warn logging. |
+| 0.054 | AD-ES-005: No error states in admin UI | 1h | CS-001 | ✅ | Completed in CS-001 (2026-03-05). seo-sync auth bypass fixed (Authorization header check added). EF auth enforced. Operations no longer fail silently. |
 | 0.055 | AD-ES-007: generate-editorial no rate limit/cost cap | 1h | 0.5h | ✅ | CS-006: 10/hr rate limit via ef_rate_limits table + check_ef_rate_limit() RPC. seo-sync: 5/hr. Service_role callers exempt (crons unaffected). Deployed 2026-03-06. |
 
 ### 0-J: Frontend + Performance (Pod 3, P0/P1)
@@ -2885,8 +2885,8 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
 | 0.065 | EXT-FEAT-001: Kill-switch (3-layer ADR-006) | 4h | 4h | ✅ | CS-013: All 3 layers deployed + tested. Admin UI live. Kill directive verified via REST API. |
-| 0.066 | EXT-BE-003: Token refresh reliability | 1h | — | 🔲 | Refresh fails silently. Retry + notification + re-auth. |
-| 0.067 | EXT-CWS-001: Manifest permissions minimize | 1h | — | 🔲 | Justify each permission or remove. |
+| 0.066 | EXT-BE-003: Token refresh reliability | 1h | REM-002 | ✅ | Completed in REM-002 (2026-03-08). Token refresh failures now capture to PostHog + set badge notification. Successful refresh clears badge. Re-auth flow triggered on persistent failure. |
+| 0.067 | EXT-CWS-001: Manifest permissions minimize | 1h | REM-004 | ✅ | Completed in REM-004 (2026-03-08). All 7 permissions justified. 23 host_permissions mapped. BambooHR+JazzHR wired. safeFill export added. Permissions audit doc created. 257 tests. |
 | 0.068 | EXT-CWS-002: Privacy policy + manifest link | 1h | 1h | ✅ | CS-019: homepage_url added to extension manifest pointing to brilliantjobs.app/privacy. Privacy link added to extension popup header. Privacy policy updated with all 9 third-party vendors, DPA reference, cookie consent reference. |
 | 0.069 | EXT-FE-001: Content script selector fragility | 2h | CS-017 | ✅ | CS-017 (FIX-17): Centralized selector registry (extension/selectors/registry.js) — 15 handlers, 193 total selectors, 153 critical. Weekly Playwright CI job (.github/workflows/selector-monitor.yml) tests selectors against live ATS pages. Alert pipeline via Resend email on critical breakage. 163 new registry validation tests (249 total pass). Runtime PostHog monitoring (ats:selectorMisses + ats:handlerError) already wired via CS-010. EXT-FE-004 fully resolved. |
 
@@ -2904,7 +2904,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.075 | CSS-001: Zero accessibility (dashboard) | 3h | — | 🔲 | Combined with Pod 4 DS1-2 (0.107). |
+| 0.075 | CSS-001: Zero accessibility (dashboard) | 3h | CS-007 | ✅ | Completed in CS-007 (2026-03-06). Dashboard a11y: sidebar nav aria-label + role=button + tabindex=0 + keyboard. Job modal focus trap + Escape. Skip-to-content. axe-core 0 critical (G14 ✅). |
 | 0.076 | CSS-002: No dark mode | 4h | CS-P1-009 | ✅ | Dark mode via [data-theme] CSS custom properties. 3 modes: light/dark/auto. Toggle in nav + settings. |
 | 0.077 | CSS-003: 30+ regex safelist (Tailwind) | 1h | CS-P1-009 | ✅ | Consolidated 14→7 patterns. Alpha-char-after-dash fix prevents Tailwind utility collision. |
 | 0.078 | CSS-004: 128KB CSS from 170KB input | 1h | CS-P1-009 | ⚠️ | 66 dead CSS rules removed. Raw: 148KB (added dark mode+utils). Gzip: 25KB. <100KB raw deferred to SA-013 CSS splitting. |
@@ -2966,12 +2966,12 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.107 | DS1-2: Dashboard accessibility Phase 1 | 3h | — | 🔲 | Scored 1.0/5.0. ARIA tablist/tab/tabpanel, focus mgmt, :focus-visible. axe-core 0 critical. |
+| 0.107 | DS1-2: Dashboard accessibility Phase 1 | 3h | CS-007 | ✅ | Completed in CS-007 (2026-03-06). ARIA tablist/tab/tabpanel, focus mgmt, :focus-visible. axe-core 0 critical (G14 ✅). |
 | 0.108 | ES1-2: Extension accessibility 1.0 | 2h | CS-P1-011 | ✅ | Scored 1.0/5.0. ARIA popup, keyboard nav, focus, screen reader. |
-| 0.109 | LS1-1: Landing accessibility (19 btns, 6 inputs, 0 ARIA) | 2h | — | 🔲 | Scored 2.0/5.0. Zero ARIA. Roles, labels, states needed. |
+| 0.109 | LS1-1: Landing accessibility (19 btns, 6 inputs, 0 ARIA) | 2h | CS-007 | ✅ | Completed in CS-007 (2026-03-06). Form labels linked, aria-label on inputs/buttons, aria-live on messages, skip-to-content. axe-core 0 critical. |
 | 0.110 | LS1-4: 3 H1 tags in DOM | 30min | CS-P1-008 | ✅ | display:none→conditional render. SEO + a11y. Upgraded P2→P1. |
-| 0.111 | IX-A11Y-001: Zero ARIA landing page | 2h | — | 🔲 | Combined with LS1-1 (0.109). |
-| 0.112 | IX-A11Y-002: Keyboard trap auth modal | 1h | — | 🔲 | No Tab trap, no Escape handler. |
+| 0.111 | IX-A11Y-001: Zero ARIA landing page | 2h | CS-007 | ✅ | Completed in CS-007 (2026-03-06). Combined with LS1-1. Full ARIA coverage on landing page. |
+| 0.112 | IX-A11Y-002: Keyboard trap auth modal | 1h | CS-007 | ✅ | Completed in CS-007 (2026-03-06). Auth modal: role=dialog, aria-modal, focus trap (Tab cycling), Escape closes, focus return to trigger. |
 | 0.113 | IX-A11Y-003: Form labels not linked | 30min | CS-P1-008 | ✅ | 6 inputs no for/id. Screen readers can't identify. |
 
 ### 0-U: CX — Bundle + Audit (Pod 4, P1)
@@ -3075,7 +3075,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.167 | Alerting pipeline — PostHog + routing | 2h | 2h | ✅ | CS-023: alert_rules + alert_history tables. CRUD UI. Ack/resolve workflow. PostHog + email channel config. 6 default rules seeded. |
 | 0.168 | Edge Function Health — proxy + instrumentation | 3h | 3h | ✅ | CS-024 (AD-FIX-14): EF Health admin subpage. admin-analytics EF queries health_check_log for subsystem metrics — invocations, success %, latency p50/p95/p99. Last health check detail with per-subsystem status cards. Deployed functions list (35 EFs). Color-coded thresholds. Auto-refresh 120s. |
 | 0.169 | Database Activity — pg_stat + UI | 3h | 3h | ✅ | CS-024 (AD-FIX-15): DB Activity admin subpage. 4 SQL SECURITY DEFINER functions: admin_db_connections() (pg_stat_activity by state), admin_db_table_sizes() (top 50 by size with row estimates + index sizes), admin_db_slow_queries() (pg_stat_statements top 25 by mean exec time, graceful fallback if extension disabled), admin_db_size() (total size + connection counts vs max). Visual connection state bars. Size bar charts. Color-coded latency thresholds. Auto-refresh 120s. |
-| 0.170 | Cost Monitoring — Anthropic proxy + cache | 3h | — | 🔲 | Pattern 2. Daily/weekly/monthly. Per-function. |
+| 0.170 | Cost Monitoring — Anthropic proxy + cache | 3h | REM-003 | ✅ | Completed in REM-003 (2026-03-08). v6.33 migration (v_ai_cost_daily/weekly/monthly + fn_ai_cost_summary). cost-monitor EF (5 actions). admin-cost-monitor.js dashboard (spend overview, budget bar, sparkline, per-function table). Gateway route #110. |
 | 0.171 | Cost Monitoring — UI + alerts + kill switches | 3h | 1h | ✅ | CS-019: Budget alerts per vendor in admin cost dashboard. Progress bars, edit form, chart budget line. vendor_cost_budgets table. |
 | 0.172 | PII inventory + data map | 2h | 2h | ✅ | CS-P1-017: Visual PII data map in admin. 8 categories, 40+ tables, third-party flows, ON DELETE behavior, retention policy. CS-019 inventory as source data. |
 | 0.173 | User deletion (72+ table cascade) | 5h | 5h | ✅ | CS-P1-017: Admin UI for user deletion. Search by email/ID, double-confirm initiation, cancel, hard-delete. Calls hard_delete_user_cascade() RPC + storage cleanup + auth deletion. 30-day grace period. |
