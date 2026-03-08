@@ -3188,9 +3188,10 @@ Phase S can overlap with Phase 1 feature work on separate tracks. Sessions withi
 | SA-020 | CrewAI Agents 4–5 | 14–18h | ✅ | Cost Guardian (Agent 4) + User Support (Agent 5). vendor_cost_budgets + canny_sync_log tables. fn_cost_guardian_summary + fn_user_support_summary. hourly cost checks + 15min Canny sync. 63 tests. v7.54. |
 | SA-021 | CrewAI Agent 6 + graduation | 12–16h | ✅ | Referral Pipeline Agent (Agent 6): fraud monitoring, reward eligibility audit, attribution validation. Observe mode. 3 checks / 30min. v6.30 migration, crewai-referral-pipeline EF, gateway route #106, admin panel. ADR-05 SA-021 docs. 41/41 tests. 2026-03-07. |
 | SA-022 | TypeScript — extension + EFs | 16–22h | ✅ | 54 extension JS→TS. `extension/tsconfig.json`. `extension/types/index.d.ts` (19 types). `_shared/types.ts` (8 sections, 35+ types). 0 `: any` in all EFs (201 removed). CI gate: no `.js` in extension + no-any in PRs. ADR-04. 76 tests. v7.55. |
-| SA-023 | Load test 5,000 concurrent | 12–16h | 🔲 | k6 at 5K concurrent. Zero 5xx, p95 search <500ms. Pass/fail gate. Pair: DevOps + QA. |
+| SA-023 | Architecture Governance Review | 8–12h | ✅ | S4→S5 transition gate. Hook/scar utilization audit (15 hooks, 15 scars). Technical debt register (12 items). Architecture fitness functions (8 active → 18 target). Deprecation protocol. Evolvability score: 4.25/5. LegacyPageWrapper retired. deprecation-log.md created. governance@1.0.0-s4-review. 2026-03-07. |
+| SA-023b | Load test 5,000 concurrent | 12–16h | 🔲 | k6 at 5K concurrent. Zero 5xx, p95 search <500ms. Pass/fail gate. Pair: DevOps + QA. Note: originally numbered SA-023; renumbered at governance review insertion. |
 
-**Phase S4 total: 6 sessions | 76–102h | ADR-04 P5–6 (TypeScript ext/EF), ADR-05 P2 (CrewAI 4–6), ADR-06 P2 (Replicas + Partitioning)**
+**Phase S4 total: 7 sessions | 84–114h | ADR-04 P5–6 (TypeScript ext/EF), ADR-05 P2 (CrewAI 4–6), ADR-06 P2 (Replicas + Partitioning), SA-023 Governance Gate**
 
 ### Phase S5: Platform Evolution (Weeks 14–20) — Event Bus, Feature Flags, Fitness Functions
 

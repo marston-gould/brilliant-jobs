@@ -52,7 +52,19 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**SA-022** — TypeScript: Extension + Edge Functions (Phase S4)
+**SA-023** — Architecture Governance Review (Phase S4 → S5 Gate)
+- Completed: 2026-03-07
+- Git tag: `governance@1.0.0-s4-review`
+- No product version bump (no JS/CSS/HTML changes)
+- ROADMAP.md updated: SA-023 row → ✅ with completion notes; SA-023b added for load test (renumbered)
+- roadmap.html updated: SA-023 entry → `s: 'done'`, p: 100; SA-023b added
+- **Created:**
+  - `docs/scaling/sa-023-architecture-governance-review.md` — Full governance review: 15-hook audit, 15-scar audit, 12-item tech debt register, 18-gate fitness function roadmap, deprecation protocol, S4→S5 readiness checklist, evolvability score 4.25/5
+  - `docs/scaling/deprecation-log.md` — Formal deprecation registry; DEP-001 (direct EF paths), RET-001 (LegacyPageWrapper)
+- **Deleted:** `src/app/shell/LegacyPageWrapper.tsx` — all 22 routes migrated as of SA-017; bridge shim retired (TD-03 resolved)
+- **Pod 4 notes confirmed:** 5 Pod 4 roles (Chief Architect, Lead Platform Eng, System Architect—Scalability, Forward-Looking Dev(s), Evolvability Strategist) were already present in `docs/scaling/pod-team-manifest.md` from SA-006 — no update needed
+- **S4 → S5 gate: CLEARED**
+- Phase S5 STARTING
 - Completed: 2026-03-07
 - Git tag: `extension@3.0.0-typescript`
 - Product version bumped: `v7.54` → `v7.55`
@@ -359,12 +371,12 @@ None.
 
 ## Next Session
 
-**SA-023** — Architecture Governance Review (Phase S6)
-- Entry gate: SA-022 ✅ (TypeScript migration complete)
-- Pair: Full Pod 3
-- Reviewer: Full Pod 4 (Chief Architect + Evolvability Strategist)
-- Estimated: 8–12h
-- Build: End-to-end evolvability review. Hook/scar utilization audit across all 5 phases. Technical debt register. Architecture fitness function run. Deprecation protocol. Phase S4→S5 transition readiness assessment.
+**SA-024** — Event Bus + Webhook System (Phase S5)
+- Entry gate: SA-023 ✅ (Architecture Governance Review complete; S4→S5 gate cleared)
+- Pair: Backend Eng + Lead Platform Engineer + Forward-Looking Dev(s)
+- Reviewer: Chief Architect
+- Estimated: 16–22h
+- Build: Platform event bus. HMAC-signed webhook delivery + retry queue. API consumer management upgrade. Gateway middleware for event dispatch (slots into H-01). Webhook delivery registered as `api_consumers` entry. Enforce gateway-only (TD-01 resolution begins here). ADR-03 gateway extension section. S-03 (GatewayContext type) activation candidate.
 
 ---
 
