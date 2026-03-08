@@ -52,6 +52,33 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**FA-010** — PostHog Feed Instrumentation — Baseline Before Fixes
+- Completed: 2026-03-08
+- Product version bumped: `v7.83` → `v7.84` (JS changes — job-feed.js PostHog instrumentation; all HTML surfaces cache-busted)
+- ROADMAP.md updated: FA-010 → ✅, Feed Accuracy Sprint section added with FA-001 through FA-009
+- roadmap.html updated: FA-010 → `s: 'done'`, p: 100
+- **4 PostHog events instrumented in searchJobs():**
+  - `feed_search_completed` — 21 properties: total_count, page_jobs_count, page_number, filters_active_count, filter_names, us_only, include_remote, include_no_salary, trust_filter_active, ai_filter_active, what/where/when/who/pay_pills_count, client_side_filtered_out, search_mode, latency_ms, is_zero_results, null_loc_country_count, content_match_count
+  - `feed_zero_results` — distinct alert-trigger event when totalCount === 0
+  - `feed_page_turn` — pagination tracking (page_number, direction, total_count, latency_ms)
+  - `feed_search_error` — catch block error tracking (error_message, filters_active_count)
+- **Baseline metrics tracked:**
+  - US-Only leakage: `null_loc_country_count` (jobs where loc_country IS NULL in US-Only searches)
+  - Content match baseline: `content_match_count` (jobs matching content but not title — will be 0 pre-FA-001, should spike after)
+  - Client-side filter impact: `client_side_filtered_out` (trust/AI post-filter reduction count)
+  - Search latency: `latency_ms` (end-to-end searchJobs timing)
+  - Search mode: builder / saved_filter / prompt / saved_filter+prompt
+- **48-hour soak required** before Phase 1 (FA-001) can begin
+- **Created:**
+  - `tests/fa-010-feed-instrumentation.test.js` — 61 validation tests (12 sections)
+  - `docs/feed-accuracy/fa-010-posthog-dashboard-spec.md` — PostHog dashboard specification (6 panels + cohort definition)
+- **Modified:**
+  - `js/job-feed.js` — FA-010 instrumentation block in searchJobs() (~100 lines: 4 events + property computation + safety guards)
+  - `dist/dashboard.min.js` — rebuilt (feed chunk includes instrumentation)
+  - `ROADMAP.md` — FA-010 → ✅, Feed Accuracy Sprint section added
+  - `roadmap.html` — FA-010 → done/100
+- **Tests:** 61 FA-010 validation tests (all passing)
+
 **POD3-SF** — Saved Filters UX Fixes + Resume Tab Fix
 - Completed: 2026-03-08
 - Product version bumped: `v7.80` → `v7.83` (JS changes — globals.ts, keywords.js, location.js, query-builder.js; all HTML surfaces cache-busted)
@@ -810,10 +837,19 @@ None.
 
 ## Next Session
 
+**Feed Accuracy Sprint is ACTIVE.** FA-010 (Phase 0: Instrumentation) is complete. 48-hour soak period before Phase 1.
+
+**FA-001: Expand What Pills to Content Search (Positive AND Negative)** — 10-14h
+- **Entry gate:** FA-010 PostHog baseline has 48+ hours of data. `feed_search_completed` events flowing. `content_match_count` baseline = 0 confirmed.
+- **Fix:** Extend What pills (positive) AND What NOT pills (negative) to include `content_tsv` alongside title `ilike`. Ship as atomic change — never positive without negative. Use GIN index (`idx_ats_jobs_content_tsv`), NOT `ilike` on raw content.
+- **Files:** `js/job-feed.js` (buildFilterQuery ~lines 240-330), `js/globals.ts` (if any shared helpers needed)
+- **Exit gate:** "kubernetes" returns ~4,663 results (not 137). All 7 benchmark terms show content-level counts. NOT pills exclude from content AND title. Performance < 500ms p95. `content_match_count` in PostHog shows step-change from 0 to >0. Feature flag `feed_content_search` controls toggle.
+- **Test plan:** 7 benchmark terms before/after. 3 compound NOT scenarios. EXPLAIN ANALYZE shows GIN index scan (no seq scan). PostHog metrics compared to FA-010 baseline.
+
 **Phase S is COMPLETE.** All 29 sessions (SA-001 through SA-029) plus SA-023b are done.
 **Phase REM is COMPLETE.** All 5 sessions (REM-001 through REM-005) are done.
 
-Next work streams (pending Marston direction):
+Other pending work streams:
 - PR-001 ✅, PR-002 ✅, PR-003 ✅ completed 2026-03-08
 - **Phase 69 Card 5 (Vonage 10DLC brand registration) ✅** — Brand verified (Sole Proprietor, OTP-confirmed 2026-03-08). Cloudflare email routing active: admin@brilliantjobs.app → brilliantjobsapp@gmail.com.
 - **Phase 69.5: Vonage 10DLC campaign design + setup** — 7 cards: SMS use case taxonomy, campaign description + samples, privacy policy page, terms page, opt-in CTAs, campaign submission, external vetting. Requires Marston to define SMS use cases first.
@@ -856,7 +892,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.83`** | **POD3-SF — Saved Filters UX + Resume Tab Fix** |
+| **Product (BJ_VERSION)** | **`v7.84`** | **FA-010 — PostHog Feed Instrumentation** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

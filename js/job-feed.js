@@ -741,6 +741,9 @@ async function searchJobs(page = 0) {
   </tr>`).join('');
 
   try {
+    // FA-010: Capture search start time for latency measurement
+    var _searchStartMs = Date.now();
+
     // Build list of filters to run
     let filtersToRun = [];
     if (checked.length > 0 || checkedPrompts.length > 0) {
@@ -1073,9 +1076,121 @@ async function searchJobs(page = 0) {
       trackSearchForSurvey(filterLabel, totalCount);
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    // FA-010: PostHog Feed Instrumentation — Baseline Before Fixes
+    // Ships BEFORE accuracy/pagination fixes to capture pre-sprint metrics.
+    // Every subsequent FA session measures impact against this baseline.
+    // ═══════════════════════════════════════════════════════════════════
+    if (typeof posthog !== 'undefined') {
+      var _faLatencyMs = Date.now() - _searchStartMs;
+
+      // Determine search mode
+      var _faSearchMode = 'builder';
+      if (checked.length > 0 && checkedPrompts.length > 0) _faSearchMode = 'saved_filter+prompt';
+      else if (checkedPrompts.length > 0) _faSearchMode = 'prompt';
+      else if (checked.length > 0) _faSearchMode = 'saved_filter';
+
+      // Count client-side filtered out jobs (trust + AI post-filters)
+      var _faPreFilterCount = allJobs.length;
+      var _faClientSideFilteredOut = _faPreFilterCount - currentJobs.length;
+
+      // Collect pill counts from the primary filter
+      var _faPrimaryFilter = filtersToRun[0] || {};
+      var _faFilterNames = filtersToRun.map(function(f) { return f.name || 'builder'; });
+      var _faWhatCount = (_faPrimaryFilter.whatPills || _faPrimaryFilter.pills || []).length;
+      var _faWhereCount = (_faPrimaryFilter.wherePills || []).length;
+      var _faWhenCount = (_faPrimaryFilter.whenPills || []).length;
+      var _faWhoCount = (_faPrimaryFilter.whoPills || []).length;
+      var _faPayCount = (_faPrimaryFilter.payPills || []).length;
+      var _faTuning = safeReadLS('bj_tuning', {});
+
+      // US-Only leakage: count returned jobs where loc_country IS NULL
+      var _faNullLocCountry = 0;
+      for (var _fi = 0; _fi < currentJobs.length; _fi++) {
+        if (!currentJobs[_fi].loc_country) _faNullLocCountry++;
+      }
+
+      // Content match tracking: count jobs where title does NOT contain
+      // any What pill keyword but the job was still returned (content match).
+      // Pre-FA-001 this will be 0 (title-only search). After FA-001 it should spike.
+      var _faContentMatchCount = 0;
+      var _faWhatTerms = (_faPrimaryFilter.whatPills || _faPrimaryFilter.pills || []).flatMap(function(p) { return p.values || []; });
+      if (_faWhatTerms.length > 0) {
+        for (var _fj = 0; _fj < currentJobs.length; _fj++) {
+          var _fjTitle = (currentJobs[_fj].title || '').toLowerCase();
+          var _fjTitleMatch = false;
+          for (var _fk = 0; _fk < _faWhatTerms.length; _fk++) {
+            if (_fjTitle.indexOf(_faWhatTerms[_fk].toLowerCase()) !== -1) { _fjTitleMatch = true; break; }
+          }
+          if (!_fjTitleMatch) _faContentMatchCount++;
+        }
+      }
+
+      // Core event: feed_search_completed
+      posthog.capture('feed_search_completed', {
+        total_count: totalCount,
+        page_jobs_count: currentJobs.length,
+        page_number: page,
+        filters_active_count: filtersToRun.length,
+        filter_names: _faFilterNames,
+        us_only: !!_faTuning.usOnly,
+        include_remote: !!_faPrimaryFilter.includeRemote,
+        include_no_salary: !!_faPrimaryFilter.includeNoSalary,
+        trust_filter_active: typeof isTrustFilterActive === 'function' && isTrustFilterActive(),
+        ai_filter_active: typeof isAiFilterActive === 'function' && isAiFilterActive(),
+        what_pills_count: _faWhatCount,
+        where_pills_count: _faWhereCount,
+        when_pills_count: _faWhenCount,
+        who_pills_count: _faWhoCount,
+        pay_pills_count: _faPayCount,
+        client_side_filtered_out: _faClientSideFilteredOut,
+        search_mode: _faSearchMode,
+        latency_ms: _faLatencyMs,
+        is_zero_results: totalCount === 0,
+        null_loc_country_count: _faNullLocCountry,
+        content_match_count: _faContentMatchCount
+      });
+
+      // Distinct zero-results event (alert trigger)
+      if (totalCount === 0) {
+        posthog.capture('feed_zero_results', {
+          filters_active_count: filtersToRun.length,
+          filter_names: _faFilterNames,
+          search_mode: _faSearchMode,
+          us_only: !!_faTuning.usOnly,
+          include_remote: !!_faPrimaryFilter.includeRemote,
+          what_pills_count: _faWhatCount,
+          where_pills_count: _faWhereCount,
+          when_pills_count: _faWhenCount,
+          who_pills_count: _faWhoCount,
+          pay_pills_count: _faPayCount
+        });
+      }
+
+      // Page turn event (page > 0 means user clicked Load More or Back to Top)
+      if (page > 0) {
+        posthog.capture('feed_page_turn', {
+          page_number: page,
+          direction: 'next',
+          total_count: totalCount,
+          latency_ms: _faLatencyMs
+        });
+      }
+    }
+    // ═══════════════════════════════════════════════════════════════════
+
   } catch (e) {
     reportError('job_feed', e);
     console.error('Search error:', e);
+
+    // FA-010: Track search errors
+    if (typeof posthog !== 'undefined') {
+      posthog.capture('feed_search_error', {
+        error_message: e.message || String(e),
+        filters_active_count: filtersToRun ? filtersToRun.length : 0
+      });
+    }
+
     if (typeof toastError === 'function') toastError('Job search failed. Please try again.');
     tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--red);padding:32px 12px;">
       <div style="font-size:13px;">Search failed: ${escapeHtml(e.message)}</div>
