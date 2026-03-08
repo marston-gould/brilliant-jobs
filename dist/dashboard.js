@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v7.67';
+var BJ_VERSION = 'v7.68';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -2063,7 +2063,7 @@ window.requiredTierFor = requiredTier;
 
 // === js/app.js ===
 // [BJ] Dashboard v7.22 loaded
-console.log('[BJ] Dashboard v7.22 loaded');
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded');
 // BJ_VERSION is defined in js/version.js (single source of truth)
 // version.js auto-populates #nav-version and .bj-version elements
 
