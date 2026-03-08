@@ -83,7 +83,7 @@ serve(async (req: Request) => {
 
   try {
     // ── Admin-only actions ─────────────────────────────────────────────
-    if (action === "summary" || action === "list" || action === "build-analytics" || action === "deployment-visibility" || action === "release-history" || action === "deploy-health-score" || action === "deploy-alerts" || action === "acknowledge-alert" || action === "manage-alert-rules" || action === "command-center" || action === "initiate-rollback" || action === "rollback-history" || action === "manage-approvals") {
+    if (action === "summary" || action === "list" || action === "build-analytics" || action === "deployment-visibility" || action === "release-history" || action === "deploy-health-score" || action === "deploy-alerts" || action === "acknowledge-alert" || action === "manage-alert-rules" || action === "command-center" || action === "initiate-rollback" || action === "rollback-history" || action === "manage-approvals" || action === "dora-metrics" || action === "deployment-reports" || action === "generate-report" || action === "performance-trends") {
       const userRole = req.headers.get("x-gateway-user-role") || "";
       if (userRole !== "admin") {
         return json({ error: "Admin access required" }, 403);
@@ -729,6 +729,110 @@ serve(async (req: Request) => {
       }
 
       return json({ error: `Unknown sub_action: ${subAction}` }, 400);
+    }
+
+    // ── BI-06: DORA Metrics ───────────────────────────────────────────
+
+    if (action === "dora-metrics") {
+      const periodType = body.period_type || "daily";
+      const periodStart = body.period_start;
+      const periodEnd = body.period_end;
+
+      if (periodStart && periodEnd) {
+        // Calculate fresh DORA metrics for specified period
+        const { data, error } = await supabase.rpc("fn_calculate_dora_metrics", {
+          p_period_type: periodType,
+          p_period_start: periodStart,
+          p_period_end: periodEnd,
+        });
+        if (error) {
+          logger.warn("[deploy-tracker] dora-metrics calculation failed:", error.message);
+          return json({ error: "DORA metrics calculation failed" }, 500);
+        }
+        return json({ ok: true, metrics: data });
+      }
+
+      // Return current DORA metrics from view
+      const { data, error } = await supabase
+        .from("v_dora_metrics_current")
+        .select("*");
+
+      if (error) {
+        logger.warn("[deploy-tracker] dora-metrics query failed:", error.message);
+        return json({ error: "Failed to fetch DORA metrics" }, 500);
+      }
+      return json({ ok: true, metrics: data || [] });
+    }
+
+    // ── BI-06: Performance Trends ─────────────────────────────────────
+
+    if (action === "performance-trends") {
+      const limit = Math.min(body.limit || 30, 90);
+
+      const { data, error } = await supabase
+        .from("v_deployment_performance_trends")
+        .select("*")
+        .limit(limit);
+
+      if (error) {
+        logger.warn("[deploy-tracker] performance-trends query failed:", error.message);
+        return json({ error: "Failed to fetch performance trends" }, 500);
+      }
+      return json({ ok: true, trends: data || [] });
+    }
+
+    // ── BI-06: Deployment Reports ─────────────────────────────────────
+
+    if (action === "deployment-reports") {
+      const reportType = body.report_type;
+      const limit = Math.min(body.limit || 20, 50);
+
+      let query = supabase
+        .from("deployment_reports")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(limit);
+
+      if (reportType) {
+        query = query.eq("report_type", reportType);
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        logger.warn("[deploy-tracker] deployment-reports query failed:", error.message);
+        return json({ error: "Failed to fetch deployment reports" }, 500);
+      }
+      return json({ ok: true, reports: data || [] });
+    }
+
+    // ── BI-06: Generate Report ────────────────────────────────────────
+
+    if (action === "generate-report") {
+      const reportType = body.report_type || "on_demand";
+      const periodStart = body.period_start || null;
+      const periodEnd = body.period_end || null;
+
+      // First calculate DORA metrics for the period
+      const doraType = reportType === "on_demand" ? "weekly" : reportType;
+      await supabase.rpc("fn_calculate_dora_metrics", {
+        p_period_type: doraType,
+        p_period_start: periodStart || (new Date(Date.now() - 7 * 86400000)).toISOString().split("T")[0],
+        p_period_end: periodEnd || new Date().toISOString().split("T")[0],
+      });
+
+      // Then generate report
+      const { data, error } = await supabase.rpc("fn_generate_deployment_report", {
+        p_report_type: reportType,
+        p_period_start: periodStart,
+        p_period_end: periodEnd,
+        p_generated_by: "admin",
+      });
+
+      if (error) {
+        logger.warn("[deploy-tracker] generate-report failed:", error.message);
+        return json({ error: "Report generation failed" }, 500);
+      }
+      return json({ ok: true, report: data });
     }
 
     return json({ error: `Unknown action: ${action}` }, 400);

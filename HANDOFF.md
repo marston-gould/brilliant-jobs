@@ -52,29 +52,29 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**BI-05** — Deployment Command Center & Rollback Management
+**BI-06** — Deployment Performance Reports & DORA Metrics
 - Completed: 2026-03-08
-- Git tag: `infra@deploy-command-center-v1.0.0`
-- Product version bumped: `v7.76` → `v7.77` (JS/HTML changes — admin-deploy-command-center.js, admin.js ADMIN_SUBPAGE_MAP entry, admin.html container + script tag; all HTML surfaces cache-busted)
-- ROADMAP.md updated: BI-05 → ✅ with completion notes
-- roadmap.html updated: BI-05 → `s: 'done'`, p: 100
-- **Migration (v6.38):** `rollback_events` (status tracking: initiated/in_progress/completed/failed/cancelled, deploy_id FK to deploy_events, rollback_to_sha/tag, duration_ms computed column, S-12 scar_meta JSONB), `deploy_approvals` (approval workflow: pending/approved/rejected/expired/auto_approved, 24h default expiry, request/reject reasons, S-12 scar_meta JSONB). 7 indexes. RLS on both tables (admin read, service write). Views: `v_command_center_summary` (unified status aggregating health score, active alerts by severity, drift count, 24h deploy stats, pending approvals, 7d rollback stats), `v_rollback_history` (rollback timeline with deploy_events JOIN for original SHA/tag context). Functions: `fn_command_center_data` (single-call JSONB aggregation of summary + recent rollbacks + pending approvals + unified activity stream from deploys/alerts/rollbacks), `fn_initiate_rollback` (creates rollback event, validates surface, H-02 event bus publish for rollback.initiated with non-fatal error handling). 2 pg_cron (hourly approval expiry, weekly rollback cleanup >90d).
-- **Edge Function:** `deploy-tracker/index.ts` extended with 4 new BI-05 actions: command-center (fn_command_center_data RPC), initiate-rollback (fn_initiate_rollback RPC with surface validation), rollback-history (v_rollback_history query with optional surface filter), manage-approvals (list/approve/reject sub-actions on deploy_approvals). Total: 22 actions (6 BI-01 + 4 BI-02 + 4 BI-03 + 4 BI-04 + 4 BI-05). No new gateway route — extends existing deploy-tracker route.
-- **Admin Panel:** `admin-deploy-command-center.js` — Unified status bar with 6 cards (health score gauge with grade color, active alerts with critical count, environment drift ratio, 24h deploys with success rate, pending approvals, 7d rollbacks), quick action buttons (initiate rollback with surface/reason/tag prompts, evaluate alerts, refresh), deploy approval queue table (surface badge, requestor, reason, age, approve/reject buttons), rollback history table (7 columns: surface, status, reason, target SHA/tag, initiator, duration, started), unified activity stream (7d cross-BI timeline with event type icons and colored status badges). 2min auto-refresh polling.
-- **Admin Nav:** `ADMIN_SUBPAGE_MAP` entry in operations section. `loadCommandCenterPanel()` global function.
-- **Team:** BI-05 pairing added to pod-team-manifest.md (DevOps + Lead Platform Eng, Chief Architect + Evolvability Strategist reviewers).
+- Git tag: `infra@deploy-reports-v1.0.0`
+- Product version bumped: `v7.77` → `v7.78` (JS/HTML changes — admin-deploy-reports.js, admin.js ADMIN_SUBPAGE_MAP entry, admin.html container + script tag; all HTML surfaces cache-busted)
+- ROADMAP.md updated: BI-06 → ✅ with completion notes
+- roadmap.html updated: BI-06 → `s: 'done'`, p: 100
+- **Migration (v6.39):** `dora_metrics_snapshots` (periodic DORA metric calculations: deploy_frequency, lead_time_minutes, mttr_minutes, change_failure_rate with elite/high/medium/low classification per metric + overall, UNIQUE on period_type+period_start, S-12 scar_meta JSONB), `deployment_reports` (generated period reports: weekly/monthly/on_demand, deploy/rollback/alert stats, drift check, DORA snapshot FK, draft/published/archived status, S-12 scar_meta JSONB). 8 indexes. RLS on both tables (admin read, service write). Views: `v_dora_metrics_current` (latest per period type with previous-period comparison: frequency_change_pct, lead_time_change_pct, mttr_change_pct, cfr_change_pct), `v_deployment_performance_trends` (90-day daily data with 7d/30d moving averages for all 4 DORA metrics). Functions: `fn_calculate_dora_metrics` (computes DORA from deploy_events + rollback_events + deploy_alert_history + deploy_health_log, upserts snapshot, H-02 event bus `dora.metrics.calculated` with non-fatal error handling), `fn_generate_deployment_report` (aggregates all BI data + v_environment_drift + DORA snapshot, H-02 event bus `deployment.report.generated` with non-fatal error handling). 4 pg_cron (daily DORA calc at 00:15, weekly DORA+report Mon 00:30, monthly DORA+report 1st 01:00, weekly cleanup >365d).
+- **Edge Function:** `deploy-tracker/index.ts` extended with 4 new BI-06 actions: dora-metrics (fn_calculate_dora_metrics RPC or v_dora_metrics_current query), performance-trends (v_deployment_performance_trends query with limit), deployment-reports (deployment_reports table query with type filter), generate-report (fn_calculate_dora_metrics then fn_generate_deployment_report RPCs). Total: 26 actions (6 BI-01 + 4 BI-02 + 4 BI-03 + 4 BI-04 + 4 BI-05 + 4 BI-06). No new gateway route — extends existing deploy-tracker route.
+- **Admin Panel:** `admin-deploy-reports.js` — Overall DORA classification banner (class color + previous-period comparison), 4 DORA metric cards (deploy frequency per day, lead time in minutes, MTTR in minutes, change failure rate %) each with elite/high/medium/low badge and period-over-period delta percentage, 30d performance trend sparklines with 7d/30d moving averages for all 4 metrics, report generation buttons (weekly/monthly/on-demand), report history table (8 columns: title, type badge, period, deploys, rollbacks, alerts, DORA class, generated time). 2min auto-refresh polling.
+- **Admin Nav:** `ADMIN_SUBPAGE_MAP` entry in operations section. `loadDeployReportsPanel()` global function.
+- **Team:** BI-06 pairing added to pod-team-manifest.md (DevOps + Lead Platform Eng, Chief Architect + Evolvability Strategist + System Architect—Scalability reviewers).
 - **Created:**
-  - `supabase/migrations/v6.38-deploy-command-center.sql` — Full migration
-  - `js/admin-deploy-command-center.js` — Command center admin dashboard
-  - `tests/bi-005-deploy-command-center.test.js` — 81 validation tests
+  - `supabase/migrations/v6.39-deploy-reports.sql` — Full migration
+  - `js/admin-deploy-reports.js` — DORA reports admin dashboard
+  - `tests/bi-006-deploy-reports.test.js` — 98 validation tests
 - **Modified:**
-  - `supabase/functions/deploy-tracker/index.ts` — 4 new BI-05 actions (22 total)
-  - `js/admin.js` — ADMIN_SUBPAGE_MAP (command-center in operations)
-  - `admin.html` — command-center container + script tag
-  - `docs/scaling/pod-team-manifest.md` — BI-05 pairing assignment
-  - `ROADMAP.md` — BI-05 → ✅
-  - `roadmap.html` — BI-05 → done/100
-- **Tests:** 81 BI-05 validation tests (all passing)
+  - `supabase/functions/deploy-tracker/index.ts` — 4 new BI-06 actions (26 total)
+  - `js/admin.js` — ADMIN_SUBPAGE_MAP (deploy-reports in operations)
+  - `admin.html` — deploy-reports container + script tag
+  - `docs/scaling/pod-team-manifest.md` — BI-06 pairing assignment
+  - `ROADMAP.md` — BI-06 → ✅
+  - `roadmap.html` — BI-06 → done/100
+- **Tests:** 98 BI-06 validation tests (all passing)
 
 **BI-03** — Deployment Visibility System — Environment Status & Release Tracking
 - Completed: 2026-03-08
@@ -781,7 +781,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.77`** | **BI-05 — Deployment Command Center & Rollback Management** |
+| **Product (BJ_VERSION)** | **`v7.78`** | **BI-06 — Deployment Performance Reports & DORA Metrics** |
 | Dashboard | `dashboard@3.0.0-all-pages` | SA-017 |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
@@ -795,6 +795,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 | **Build Analytics** | **`infra@build-analytics-v1.0.0`** | **BI-02** |
 | **Deploy Alerting** | **`infra@deploy-alerting-v1.0.0`** | **BI-04** |
 | **Deploy Command Center** | **`infra@deploy-command-center-v1.0.0`** | **BI-05** |
+| **Deploy Reports** | **`infra@deploy-reports-v1.0.0`** | **BI-06** |
 | **Partitioning** | **`infra@partitioning-v1.0.0`** | **SA-019** |
 | **Read Replica** | **`infra@read-replica-v1.0.0`** | **SA-018** |
 | **Common Crawl** | **`infra@common-crawl-v0.1.0`** | **SA-007** |
@@ -818,6 +819,8 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 | BI-04 | 2026-03-08 | Deployment alerting & health scoring. v6.37 migration (deploy_alert_rules, deploy_alert_history, v_active_alerts, fn_deployment_health_score, fn_evaluate_deploy_alerts). deploy-tracker EF: 4 new actions (deploy-health-score, deploy-alerts, acknowledge-alert, manage-alert-rules; 18 total). admin-deploy-alerting.js (health gauge, 5 dimensions, alerts table, rules config). 6 seed rules. 2 pg_cron. H-02 event bus for critical. ADMIN_SUBPAGE_MAP. 72 tests. v7.76. | infra@deploy-alerting-v1.0.0 |
 
 | BI-05 | 2026-03-08 | Deployment command center & rollback management. v6.38 migration (rollback_events, deploy_approvals, v_command_center_summary, v_rollback_history, fn_command_center_data, fn_initiate_rollback). deploy-tracker EF: 4 new actions (command-center, initiate-rollback, rollback-history, manage-approvals; 22 total). admin-deploy-command-center.js (unified status bar with 6 cards, quick actions, approval queue, rollback history, unified activity stream). 2 pg_cron (hourly expiry, weekly cleanup). H-02 event bus for rollback notifications. ADMIN_SUBPAGE_MAP. 81 tests. v7.77. | infra@deploy-command-center-v1.0.0 |
+
+| BI-06 | 2026-03-08 | Deployment performance reports & DORA metrics. v6.39 migration (dora_metrics_snapshots, deployment_reports, v_dora_metrics_current, v_deployment_performance_trends, fn_calculate_dora_metrics, fn_generate_deployment_report). deploy-tracker EF: 4 new actions (dora-metrics, performance-trends, deployment-reports, generate-report; 26 total). admin-deploy-reports.js (DORA classification banner, 4 metric cards with elite/high/medium/low + deltas, 30d trend sparklines, report generation, report history table). 4 pg_cron (daily/weekly/monthly DORA + yearly cleanup). H-02 event bus for metrics + reports. ADMIN_SUBPAGE_MAP. 98 tests. v7.78. | infra@deploy-reports-v1.0.0 |
 
 | BI-03 | 2026-03-08 | Deployment visibility system. v6.36 migration (environment_versions, release_notes, v_environment_drift, v_release_timeline, v_deploy_cadence, fn_deployment_visibility, fn_update_environment_version trigger). deploy-tracker EF: 4 new actions (deployment-visibility, update-environment, release-history, record-release; 14 total). admin-deploy-visibility.js (4 summary cards, env version matrix with drift badges, deploy cadence table, release timeline with type badges). ADMIN_SUBPAGE_MAP. 108 tests. v7.75. | infra@deploy-visibility-v1.0.0 |
 
