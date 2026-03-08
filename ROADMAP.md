@@ -2535,7 +2535,7 @@ Key deliverables: send-notification v4 with full classification + suppression, a
 
 | # | Card | Status | Blocked By |
 |---|------|--------|------------|
-| 5 | Vonage 10DLC registration | ⏳ In Process | Submitted 2026-03-01, pending Vonage approval (1–4 week window) |
+| 5 | Vonage 10DLC registration | ✅ | Brand verified (Sole Proprietor, OTP-confirmed 2026-03-08). Campaign registration pending — see Phase 69.5. |
 
 ### Version Surfaces (v6.25)
 
@@ -2545,6 +2545,23 @@ Key deliverables: send-notification v4 with full classification + suppression, a
 | dashboard.html | v6.25 |
 | index.html | v6.25 |
 | CHANGELOG.md | v6.25 |
+
+---
+
+## Phase 69.5: Vonage 10DLC Campaign Design + Setup — Pre-Launch
+
+**Pod:** Pod 2 (Architecture)
+**Prereqs:** Phase 69 Card 5 (brand verified ✅)
+
+| # | Card | Status | Notes |
+|---|------|--------|-------|
+| 1 | Define SMS use cases + message taxonomy | ⏳ | Job alerts, application status updates, OTP codes, re-engagement. Map each to 10DLC campaign use case. |
+| 2 | Draft campaign description + sample messages | ⏳ | 40+ char description, 2+ sample messages per use case, STOP/HELP keyword responses. |
+| 3 | Privacy policy page on brilliantjobs.app | ⏳ | Must be live on brand domain. Cover SMS data collection, opt-in/opt-out, message frequency. |
+| 4 | Terms of service page on brilliantjobs.app | ⏳ | Must be live on brand domain. Include SMS terms per CTIA guidelines. |
+| 5 | Opt-in CTA implementation | ⏳ | Compliant call-to-action with legal verbiage on all SMS enrollment surfaces (signup, filters, settings). |
+| 6 | Submit campaign registration via Vonage dashboard | ⏳ | Attach privacy policy, terms, CTAs, sample messages. Campaign review takes 1–5 business days. |
+| 7 | External vetting (standard, $40) | ⏳ | Optional but recommended — increases carrier throughput limits for launch scale. |
 
 ---
 

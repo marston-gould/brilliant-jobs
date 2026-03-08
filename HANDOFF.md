@@ -671,6 +671,8 @@ None.
 
 Next work streams (pending Marston direction):
 - PR-001 ✅ and PR-002 ✅ completed 2026-03-08
+- **Phase 69 Card 5 (Vonage 10DLC brand registration) ✅** — Brand verified (Sole Proprietor, OTP-confirmed 2026-03-08). Cloudflare email routing active: admin@brilliantjobs.app → brilliantjobsapp@gmail.com.
+- **Phase 69.5: Vonage 10DLC campaign design + setup** — 7 cards: SMS use case taxonomy, campaign description + samples, privacy policy page, terms page, opt-in CTAs, campaign submission, external vetting. Requires Marston to define SMS use cases first.
 - **Run the 5K load test against production** — `k6 run load-tests/scale-5k-suite.js` (test infra is built, needs actual execution against live environment with test user credentials)
 - S-01 activation (TD-001): EF auth trust migration — first post-launch SA session
 - S-10 DataProvider migration (TD-004): Post-launch SPA consolidation
