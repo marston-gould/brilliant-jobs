@@ -182,7 +182,7 @@ const ROUTE_REGISTRY: Record<string, string> = {
   // ── Common Crawl Pipeline (SA-007) ────────────────────────────────────
   "ingest-common-crawl":      "ingest-common-crawl",      // SA-007: CC ingestion worker
   "dedup-promote":            "dedup-promote",            // SA-008: Dedup engine + enrichment queue
-  "refresh-mv-incremental":     "refresh-mv-incremental",     // SA-009: Incremental MV refresh + staleness
+  "refresh-mv-incremental":     "refresh-materialized-views",  // SA-009: Incremental MV refresh + staleness
 
   // ── CrewAI Agent Framework (SA-010, SA-011) ─────────────────────────────
   "crewai-orchestrator":        "crewai-orchestrator",        // SA-010: Agent lifecycle management

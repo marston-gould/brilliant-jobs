@@ -1,0 +1,49 @@
+version: 2
+
+updates:
+  # ── npm packages (dashboard, extension, scripts) ─────────────────────────
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "automated"
+    commit-message:
+      prefix: "deps(npm)"
+    # Group patch updates to reduce PR noise
+    groups:
+      patch-updates:
+        update-types:
+          - "patch"
+      dev-dependencies:
+        dependency-type: "development"
+    ignore:
+      # Supabase client — pin to tested version; upgrade manually with full test
+      - dependency-name: "@supabase/supabase-js"
+        update-types: ["version-update:semver-major"]
+      # React — major version is an intentional architecture decision (ADR-02)
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+
+  # ── GitHub Actions ────────────────────────────────────────────────────────
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "github-actions"
+      - "automated"
+    commit-message:
+      prefix: "deps(actions)"

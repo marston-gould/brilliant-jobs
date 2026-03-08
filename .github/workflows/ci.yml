@@ -1,8 +1,9 @@
-# Brilliant Jobs — CI: 10 Quality Gates
+# Brilliant Jobs — CI: 18 Quality Gates (10 original + 8 Architecture Fitness Functions)
 # CS-021 FIX-22: Full quality gate enforcement
+# SA-026: Architecture Fitness Functions added (Phase S6)
 # Runs on all PRs to main/staging, and pushes to main/staging
 #
-# Gates:
+# Quality Gates (1–10):
 #   1. No Silent Failures (ESLint)
 #   2. Monitoring Verification (PostHog check)
 #   3. Test Coverage + Bundle Size
@@ -13,6 +14,16 @@
 #   8. Design System Linter (inline style check)
 #   9. Deployment Pipeline (build + version + bundles)
 #  10. Compliance Checklist (PR template enforced)
+#
+# Architecture Fitness Functions (FF-01–FF-08):
+#  FF-01. Hook Integrity (all H-XX hooks present at expected locations)
+#  FF-02. Scar Point Integrity (all S-XX scars not accidentally removed)
+#  FF-03. Migration Sequence (v6.XX series ordered, no duplicates, count regression guard)
+#  FF-04. EF Route Registry (all EFs routed; no dangling routes)
+#  FF-05. CrewAI Observe Guard (no agents escaping observe mode without graduation)
+#  FF-06. ADR Compliance Snapshot (key architectural decisions not silently reversed)
+#  FF-07. Test Non-Regression (test count only grows, never shrinks)
+#  FF-08. Architecture Boundaries (bridge pattern, no BJ globals in components)
 
 name: CI
 
@@ -316,10 +327,49 @@ jobs:
       - name: Gate 10 summary
         run: echo "✅ Gate 10 Compliance checks passed" >> $GITHUB_STEP_SUMMARY
 
+  # ─── Architecture Fitness Functions: FF-01 through FF-08 (SA-026) ─────────
+  fitness-functions:
+    name: "FF-01–08: Architecture Fitness Functions"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+
+      - name: FF-01 Hook Integrity
+        run: node scripts/ff-01-hook-integrity.mjs
+
+      - name: FF-02 Scar Point Integrity
+        run: node scripts/ff-02-scar-integrity.mjs
+
+      - name: FF-03 Migration Sequence
+        run: node scripts/ff-03-migration-sequence.mjs
+
+      - name: FF-04 EF Route Registry
+        run: node scripts/ff-04-ef-route-registry.mjs
+
+      - name: FF-05 CrewAI Observe Guard
+        run: node scripts/ff-05-crewai-observe-guard.mjs
+
+      - name: FF-06 ADR Compliance
+        run: node scripts/ff-06-adr-compliance.mjs
+
+      - name: FF-07 Test Non-Regression
+        run: node scripts/ff-07-test-non-regression.mjs
+
+      - name: FF-08 Architecture Boundaries
+        run: node scripts/ff-08-architecture-boundaries.mjs
+
+      - name: Fitness Functions Summary
+        run: echo "✅ All 8 architecture fitness functions passed" >> $GITHUB_STEP_SUMMARY
+
   # ─── Summary Gate: All must pass ───────────────────────────────────
   all-gates:
     name: "All Quality Gates"
-    needs: [lint, monitoring, test, ef-auth, secret-scan, design-check, build, compliance]
+    needs: [lint, monitoring, test, ef-auth, secret-scan, design-check, build, compliance, fitness-functions]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -332,7 +382,8 @@ jobs:
           needs.secret-scan.result != 'success' ||
           needs.design-check.result != 'success' ||
           needs.build.result != 'success' ||
-          needs.compliance.result != 'success'
+          needs.compliance.result != 'success' ||
+          needs.fitness-functions.result != 'success'
         run: |
           echo "❌ One or more quality gates failed" >> $GITHUB_STEP_SUMMARY
           exit 1
@@ -346,5 +397,6 @@ jobs:
           needs.secret-scan.result == 'success' &&
           needs.design-check.result == 'success' &&
           needs.build.result == 'success' &&
-          needs.compliance.result == 'success'
-        run: echo "✅ All 10 quality gates passed" >> $GITHUB_STEP_SUMMARY
+          needs.compliance.result == 'success' &&
+          needs.fitness-functions.result == 'success'
+        run: echo "✅ All 18 quality gates passed (10 quality gates + 8 fitness functions)" >> $GITHUB_STEP_SUMMARY
