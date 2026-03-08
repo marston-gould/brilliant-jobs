@@ -898,10 +898,10 @@ function renderSavedFilters() {
   const query = ($('#sf-search')?.value || '').toLowerCase();
 
   if (savedFilters.length === 0) {
-    section.style.display = 'none';
+    section.classList.add('u-hidden');
     return;
   }
-  section.style.display = '';
+  section.classList.remove('u-hidden');
 
   // Sort by last used (most recent first)
   const sorted = [...savedFilters]
