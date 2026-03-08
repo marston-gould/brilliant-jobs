@@ -181,16 +181,18 @@ const ROUTE_REGISTRY: Record<string, string> = {
   "dedup-promote":            "dedup-promote",            // SA-008: Dedup engine + enrichment queue
   "refresh-mv-incremental":     "refresh-mv-incremental",     // SA-009: Incremental MV refresh + staleness
 
-  // ── CrewAI Agent Framework (SA-010) ─────────────────────────────────────
+  // ── CrewAI Agent Framework (SA-010, SA-011) ─────────────────────────────
   "crewai-orchestrator":        "crewai-orchestrator",        // SA-010: Agent lifecycle management
   "crewai-content-qa":          "crewai-content-qa",          // SA-010: Content QA Agent (Agent 1)
+  "crewai-pipeline-health":     "crewai-pipeline-health",     // SA-011: Pipeline Health Agent (Agent 2)
+  "crewai-data-freshness":      "crewai-data-freshness",      // SA-011: Data Freshness Agent (Agent 3)
 
   // ── Search Infrastructure (deferred SA-001—003, routed for completeness) ─
   "typesense-search":         "typesense-search",         // SA-005 (deferred)
   "typesense-seed":           "typesense-seed",           // SA-005 (deferred)
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // TOTAL: 98 routes (93 SA-005 + 1 SA-007 + 1 SA-008 + 1 SA-009 + 2 SA-010). Direct paths deprecated.
+  // TOTAL: 100 routes (93 SA-005 + 1 SA-007 + 1 SA-008 + 1 SA-009 + 2 SA-010 + 2 SA-011). Direct paths deprecated.
   // HOOK: Future EFs register here. Future: load from DB table for
   //       runtime updates without redeploy (api_consumers integration).
   // ═══════════════════════════════════════════════════════════════════════════

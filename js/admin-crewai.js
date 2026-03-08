@@ -159,8 +159,8 @@ async function runCrewAIAgent(agentId) {
     btn.disabled = true;
     btn.textContent = '⏳ Running…';
 
-    var resp = await sb.functions.invoke('crewai-content-qa', {
-      body: { triggered_by: 'admin_manual', agent_id: agentId },
+    var resp = await sb.functions.invoke('crewai-orchestrator', {
+      body: { action: 'run', agent: agentId, triggered_by: 'admin_manual' },
     });
 
     if (typeof _logAdminAction === 'function') {

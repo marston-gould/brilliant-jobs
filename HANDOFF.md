@@ -52,19 +52,22 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**SA-010** — CrewAI Framework + Content QA Agent (Phase S2)
+**SA-011** — Pipeline Health Agent + Data Freshness Agent (Phase S2)
 - Completed: 2026-03-07
-- Git tag: `admin@X.Y.Z-crewai-foundation`
-- Product version bumped: `v7.45` → `v7.46`
-- ROADMAP.md updated: SA-010 row → ✅ with completion notes
-- roadmap.html updated: SA-010 entry → `s: 'done'`, p: 100
-- Created: v6.24-crewai-agent-framework.sql migration, crewai-orchestrator EF, crewai-content-qa EF, admin-crewai.js, adr-05-crewai.md
-- Modified: api-gateway/index.ts (96 → 98 routes), admin.html (CrewAI panel + CSS), admin.js (CrewAI tab registration)
-- Database: agent_config + agent_action_log + agent_credentials tables, v_agent_dashboard view, fn_agent_config_updated_at trigger
-- EFs deployed: crewai-orchestrator (status, run, toggle, history, override), crewai-content-qa (observe mode)
-- Gateway: Routes #97 (crewai-orchestrator), #98 (crewai-content-qa)
-- Agent 1 (Content QA): Evaluates editorial content via Claude Sonnet — factual accuracy, brand voice, data completeness, length compliance, actionability. Observe mode only (executed = false always). Admin panel shows kill switch + action log.
-- Admin panel: CrewAI Agents tab under Operations. Agent cards with status dots, 24h metrics, kill switch toggle, manual run. Action log table with agent filter.
+- Git tag: `admin@1.6.0-crewai-agents-2-3`
+- Product version bumped: `v7.46` → `v7.47`
+- ROADMAP.md updated: SA-011 row → ✅ with completion notes
+- roadmap.html updated: SA-011 entry → `s: 'done'`, p: 100
+- Created: v6.25-crewai-agents-2-3.sql migration, crewai-pipeline-health EF, crewai-data-freshness EF
+- Modified: crewai-orchestrator/index.ts (body param fallback + agentEfMap expansion), api-gateway/index.ts (98 → 100 routes), admin-crewai.js (fixed hardcoded EF → orchestrator dispatch), adr-05-crewai.md (SA-011 docs)
+- Database: agent_config rows for pipeline-health + data-freshness, api_consumers entries, agent_credentials links, 2 pg_cron schedules
+- EFs deployed: crewai-pipeline-health (cron/queue/batch/dedup checks), crewai-data-freshness (MV staleness/sync lag/ingestion/completeness/dedup effectiveness)
+- Gateway: Routes #99 (crewai-pipeline-health), #100 (crewai-data-freshness)
+- Agent 2 (Pipeline Health): 4 checks — cron execution, queue depth, batch stalls, dedup activity. Every 30min via pg_cron. Zero AI cost.
+- Agent 3 (Data Freshness): 5 checks — MV staleness, sync lag, ingestion progress, data completeness, dedup effectiveness. Every 6hr via pg_cron. Zero AI cost.
+- Both agents in observe mode (executed = false always). Admin panel shows them via v_agent_dashboard (dynamic, no UI code changes needed).
+- Bug fix: admin-crewai.js runCrewAIAgent() was hardcoded to invoke crewai-content-qa instead of using orchestrator dispatch. Fixed to use crewai-orchestrator with body params.
+- Bug fix: crewai-orchestrator updated to accept action/agent from POST body (sb.functions.invoke compatibility) in addition to query params (gateway calls).
 
 **SA-008** — Deduplication Engine + Enrichment Queue Integration (Phase S2)
 - Completed: 2026-03-07
@@ -126,11 +129,11 @@ None.
 
 ## Next Session
 
-**SA-011** — Pipeline Health Agent + Data Freshness Agent (Phase S2)
-- Entry gate: SA-010 complete ✅. CrewAI framework operational. Agent infrastructure tables deployed. Content QA Agent running in observe mode.
-- Pair: Backend + Data Eng
-- Estimated: 12–16h
-- Build: Pipeline Health Agent (Agent 2) — monitors cron execution, detects failures, logs recommended actions, daily summary email. Data Freshness Agent (Agent 3) — monitors MV staleness, sync lag, ingestion progress, weekly freshness report. Both in observe mode with kill switches.
+**SA-012** — Agent Graduation Framework + Daily Digest (Phase S2)
+- Entry gate: SA-011 complete ✅. All 3 agents running in observe mode. Agent infrastructure tables deployed. Pipeline Health + Data Freshness agents logging findings.
+- Pair: Backend + Eng Lead
+- Estimated: 10–14h
+- Build: Graduation logic (observe → suggest → auto_with_approval promotion rules), daily agent digest email via send-notification, agent override tracking metrics, graduation criteria evaluation function.
 
 **OR SA-013** — SPA Scaffold + Vite + React Router (Phase S3, if S2 automation deferred)
 - Entry gate: SA-006 complete ✅ (TypeScript core in place).
@@ -167,16 +170,16 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.46`** | **SA-010** |
+| **Product (BJ_VERSION)** | **`v7.47`** | **SA-011** |
 | Dashboard | `dashboard@1.2.0-typescript` | CS-P1-015 |
 | Extension | `extension@2.22.0-error-handling` | FIX-11 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
-| Admin | `admin@1.5.0-crewai-foundation` | SA-010 |
-| **API Gateway** | **`infra@gateway-v1.0.0`** | **SA-005** |
+| Admin | `admin@1.6.0-crewai-agents-2-3` | SA-011 |
+| **API Gateway** | **`infra@gateway-v1.0.0`** | **SA-011** (100 routes) |
 | **Common Crawl** | **`infra@common-crawl-v0.1.0`** | **SA-007** |
 | **Dedup Engine** | **`infra@dedup-v1.0.0`** | **SA-008** |
 | **Incremental MVs** | **`infra@incremental-mv-v1.0.0`** | **SA-009** |
-| **CrewAI Framework** | **`admin@1.5.0-crewai-foundation`** | **SA-010** |
+| **CrewAI Framework** | **`admin@1.6.0-crewai-agents-2-3`** | **SA-011** (3 agents) |
 | Load Tests | `loadtest@1.0.0` | CS-020 |
 | CI/CD | `cicd@1.0.0` | CS-020 |
 | Quality Gates | `qualitygates@1.0.0` | CS-021 |
@@ -187,10 +190,11 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 ---
 
-## Completed Sessions (24 of 24 + 17 Phase 1 + 7 Scaling + FIX-11)
+## Completed Sessions (24 of 24 + 17 Phase 1 + 8 Scaling + FIX-11)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
+| SA-011 | 2026-03-07 | Pipeline Health Agent (Agent 2) + Data Freshness Agent (Agent 3): v6.25 migration, crewai-pipeline-health EF (4 checks: cron/queue/batch/dedup), crewai-data-freshness EF (5 checks: MV staleness/sync lag/ingestion/completeness/dedup effectiveness), orchestrator body param fallback, gateway routes #99-100, admin-crewai.js dispatch fix, 2 pg_cron schedules, ADR-05 SA-011 docs | admin@1.6.0-crewai-agents-2-3 |
 | SA-010 | 2026-03-07 | CrewAI framework: agent_config + agent_action_log + agent_credentials + v_agent_dashboard + fn_agent_config_updated_at trigger + crewai-orchestrator EF + crewai-content-qa EF + admin-crewai.js + gateway routes #97-98 + ADR-05 + Content QA Agent (observe mode) + admin panel kill switch | admin@1.5.0-crewai-foundation |
 | SA-009 | 2026-03-07 | Incremental MVs: ats_jobs_change_log + mv_job_feed_counts + mv_source_breakdown + mv_landing_stats + mv_refresh_log + trigger + 6 functions + refresh-materialized-views EF + gateway route #96 + 2 cron jobs + ADR-08 | infra@incremental-mv-v1.0.0 |
 | SA-008 | 2026-03-07 | Dedup engine: enrichment_queue + dedup_log + 6 functions + 2 views + GIN trgm indexes + dedup-promote EF + gateway route #95 + ADR-07 | infra@dedup-v1.0.0 |

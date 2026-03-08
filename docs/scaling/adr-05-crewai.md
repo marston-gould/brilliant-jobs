@@ -1,6 +1,6 @@
 # ADR-05: CrewAI Agent Architecture
 
-> Status: IN PROGRESS (SA-010 complete, SA-011–SA-012 pending)
+> Status: IN PROGRESS (SA-010 + SA-011 complete, SA-012 pending)
 > Date: 2026-03-07
 > Decision Makers: Chief Architect, Forward-Looking Dev, Marston (final approval)
 
@@ -91,12 +91,48 @@ View combining config + 24h stats + last action for admin panel rendering.
 | SCAR | `schedule_cron` on agent_config | Future scheduled agents |
 | SCAR | pg_cron HOOK comment in migration | Future cron registration point |
 
-## Future Agents (SA-011, SA-012, SA-020, SA-021)
+## Future Agents (SA-012, SA-020, SA-021)
 
 | Agent | Type | Target SA |
 |-------|------|-----------|
-| Pipeline Health | Monitors cron execution, detects failures | SA-011 |
-| Data Freshness | Monitors MV staleness, sync lag | SA-011 |
 | Cost Guardian | Budget tracking, throttle at limits | SA-020 |
 | User Support | Tier 1 triage via Canny | SA-020 |
 | Referral Pipeline | Fraud detection, reward eligibility | SA-021 |
+
+## SA-011: Pipeline Health Agent (Agent 2) + Data Freshness Agent (Agent 3) — DONE 2026-03-07
+
+### Pipeline Health Agent (Agent 2)
+
+**What it does:** Monitors cron execution health (pg_cron job_run_details), enrichment queue depth, Common Crawl batch stalls, and dedup activity. Runs every 30 minutes via pg_cron.
+
+**Checks performed:**
+1. **Cron Execution** — Queries `cron.job_run_details` for failure rates in configurable lookback window. Alerts if any job exceeds 5% failure rate.
+2. **Queue Depth** — Monitors `enrichment_queue` pending count. Warn at 500, critical at 2000.
+3. **Batch Stalls** — Detects `cc_batch_tracking` entries stuck in running/fetching/parsing for >60min.
+4. **Dedup Health** — Checks `dedup_log` for recent activity. Warns if no dedup runs detected.
+
+**Observe mode:** Logs all findings with severity (ok/warn/critical) and recommendations to `agent_action_log`. Zero remediation actions. No AI calls (pure data monitoring, zero Anthropic API cost).
+
+**Files created:**
+- `supabase/migrations/v6.25-crewai-agents-2-3.sql`
+- `supabase/functions/crewai-pipeline-health/index.ts`
+- Gateway route #99 (crewai-pipeline-health)
+
+### Data Freshness Agent (Agent 3)
+
+**What it does:** Monitors materialized view staleness, source-to-MV sync lag, ingestion pipeline progress, data completeness (null rates), and dedup effectiveness. Runs every 6 hours via pg_cron.
+
+**Checks performed:**
+1. **MV Staleness** — Queries `mv_refresh_log` for time since last successful refresh. Warn at 60min, critical at 6hr.
+2. **Sync Lag** — Compares `ats_jobs` max updated_at against last MV refresh timestamp. Cross-references `ats_jobs_change_log` pending count.
+3. **Ingestion Progress** — Analyzes `cc_batch_tracking` completion rates and failure rates by status.
+4. **Data Completeness** — Measures null rates across critical columns (title, company_name, location, url, source) in `ats_jobs`. Warn at 10%, critical at 25%.
+5. **Dedup Effectiveness** — Trend analysis of `dedup_log` over configurable lookback (default 7 days).
+
+**Observe mode:** Same as Pipeline Health — logs findings, zero actions, zero AI cost.
+
+**Files created:**
+- `supabase/functions/crewai-data-freshness/index.ts`
+- Gateway route #100 (crewai-data-freshness)
+
+**Shared migration:** Both agents seeded in `v6.25-crewai-agents-2-3.sql` with agent_config, api_consumers, agent_credentials, and pg_cron schedules.

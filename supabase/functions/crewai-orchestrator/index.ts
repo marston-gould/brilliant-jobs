@@ -42,8 +42,18 @@ Deno.serve(async (req) => {
 
   const logger = createLogger('crewai-orchestrator', crypto.randomUUID());
   const url = new URL(req.url);
-  const action = url.searchParams.get('action') || 'status';
-  const agentId = url.searchParams.get('agent');
+
+  // Support both query params (gateway calls) and body params (sb.functions.invoke)
+  let bodyParams: Record<string, string> = {};
+  if (req.method === 'POST') {
+    try {
+      const cloned = req.clone();
+      bodyParams = await cloned.json();
+    } catch { /* not JSON, that's fine */ }
+  }
+
+  const action = url.searchParams.get('action') || bodyParams.action || 'status';
+  const agentId = url.searchParams.get('agent') || bodyParams.agent || null;
 
   try {
     // ── Status: all agents ──
@@ -80,9 +90,12 @@ Deno.serve(async (req) => {
       // Dispatch to agent-specific EF via gateway
       const agentEfMap: Record<string, string> = {
         'content-qa': 'crewai-content-qa',
+        'pipeline-health': 'crewai-pipeline-health',   // SA-011: Agent 2
+        'data-freshness': 'crewai-data-freshness',     // SA-011: Agent 3
         // Future agents register here:
-        // 'pipeline-health': 'crewai-pipeline-health',
-        // 'data-freshness': 'crewai-data-freshness',
+        // 'cost-guardian': 'crewai-cost-guardian',       // SA-020
+        // 'user-support': 'crewai-user-support',         // SA-020
+        // 'referral-pipeline': 'crewai-referral-pipeline', // SA-021
       };
 
       const targetEf = agentEfMap[agentId];

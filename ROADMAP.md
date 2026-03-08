@@ -3162,7 +3162,7 @@ Phase S can overlap with Phase 1 feature work on separate tracks. Sessions withi
 | SA-008 | Deduplication engine | 10–14h | ✅ | Two-tier dedup: URL-hash exact match + pg_trgm fuzzy match (title 50%, company 30%, location 20%, threshold 0.7). enrichment_queue with 100/hr CC rate limit + exponential backoff. dedup_log audit trail. 6 SQL functions + 2 views. dedup-promote EF (3 actions: dedup/enrich/status). Gateway route #95. ADR-07 dedup strategy. Done 2026-03-07. |
 | SA-009 | Incremental materialized views | 10–14h | ✅ | Delta-only refreshes via change log. 3 MV tables (mv_job_feed_counts, mv_source_breakdown, mv_landing_stats) + change tracking trigger + incremental refresh functions + 3-min cron + weekly full consistency. ADR-08. Gateway route #96. 2026-03-07. |
 | SA-010 | CrewAI framework + Agent 1 | 14–18h | ✅ | Agent framework: agent_config + agent_action_log + agent_credentials + v_agent_dashboard. Content QA Agent (observe mode). crewai-orchestrator + crewai-content-qa EFs. Admin panel CrewAI tab with kill switches. Gateway routes #97-98. ADR-05. 2026-03-07. |
-| SA-011 | CrewAI Agents 2–3 | 12–16h | 🔲 | Content Quality + Pipeline Health agents. Observe mode + kill switches. Pair: Backend + QA. |
+| SA-011 | CrewAI Agents 2–3 | 12–16h | ✅ | Pipeline Health Agent (Agent 2) + Data Freshness Agent (Agent 3). Both observe mode, kill switches, pg_cron scheduled. Gateway routes #99-100. ADR-05 updated. Fixed orchestrator dispatch bug in admin-crewai.js. v7.47. |
 | SA-012 | CrewAI agent graduation | 10–14h | 🔲 | Graduate Agents 1–3 from observe to active. Accuracy metrics + rollback triggers. Pair: Backend + Eng Lead. |
 
 **Phase S2 total: 6 sessions | 70–94h | ADR-05 (CrewAI), ADR-06 (Data Pipeline)**
