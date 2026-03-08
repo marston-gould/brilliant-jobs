@@ -20,8 +20,22 @@ describe('CS-P1-015: TypeScript Migration (Incremental)', () => {
   describe('Infrastructure', () => {
     it('tsconfig.json exists with strict mode', () => {
       // tsconfig.json has comments — strip them for JSON.parse
+      // Must respect string literals containing /* and // patterns (e.g., glob paths)
       const raw = readFileSync('tsconfig.json', 'utf-8');
-      const stripped = raw.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+      const stripped = raw.replace(/^(\s*)"((?:[^"\\]|\\.)*)"\s*:\s*(.*)$/gm, (m) => m)  // preserve full lines with strings
+        .split('\n')
+        .map(line => {
+          // Only strip // comments that aren't inside a string value
+          let inString = false;
+          let i = 0;
+          while (i < line.length) {
+            if (line[i] === '"' && (i === 0 || line[i-1] !== '\\')) inString = !inString;
+            if (!inString && line[i] === '/' && line[i+1] === '/') return line.substring(0, i);
+            i++;
+          }
+          return line;
+        })
+        .join('\n');
       const config = JSON.parse(stripped);
       expect(config.compilerOptions.strict).toBe(true);
       expect(config.compilerOptions.noImplicitAny).toBe(true);

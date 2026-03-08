@@ -52,6 +52,29 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**SA-013** — SPA Scaffold + Vite + React Router + Design System Foundation (Phase S3)
+- Completed: 2026-03-07
+- Git tag: `dashboard@2.0.0-spa-scaffold`
+- Product version bumped: `v7.48` → `v7.49`
+- ROADMAP.md updated: SA-013 row → ✅ with completion notes
+- roadmap.html updated: SA-013 entry → `s: 'done'`, p: 100
+- **Packages installed:** react@18, react-dom@18, react-router-dom@6, @vitejs/plugin-react, @types/react@18, @types/react-dom@18
+- **Config changes:** tsconfig.json (JSX support, path aliases, SPA includes), vite.config.js (React plugin, code splitting, path aliases), tailwind.config.js (SPA content sources), vercel.json (/app/* rewrite), package.json (dev:spa + build:spa scripts)
+- **Created:** src/app/ directory structure:
+  - `main.tsx` (React entry point), `index.html` (SPA host), `routes.tsx` (12 dashboard + 10 admin routes)
+  - `shell/AppShell.tsx` (unified sidebar nav), `shell/AuthGuard.tsx`, `shell/AdminGuard.tsx` (role-based), `shell/LegacyPageWrapper.tsx` (dual-mode bridge)
+  - `components/Button.tsx`, `Card.tsx`, `Badge.tsx`, `Input.tsx`, `Select.tsx`, `Modal.tsx` (design system primitives)
+  - `providers/types.ts` (SearchProvider, JobProvider, UserProvider, PipelineProvider interfaces + domain types)
+  - `providers/supabase.ts` (Supabase implementations bridging window.BJ)
+  - `providers/DataProvider.tsx` (React context + useProviders/useSearch/useJobs/useUser/usePipeline hooks)
+  - `design-tokens/tokens.ts` (spacing, type scale, shadows, radii, transitions, z-index, color tokens)
+- **Documentation:** `docs/scaling/adr-02-spa.md` (ADR-02: full decision record), `docs/scaling/component-pattern-library.md` (migration rules)
+- **Tests:** 60 SA-013 validation tests (dirs, files, components, providers, routes, builds, docs)
+- **Test fix:** cs-p1-015 JSONC stripping (glob `/*` in path aliases was eaten by block comment regex)
+- **Test fix:** cs021 admin bundle limit bumped 550→650KB (SA-010/12 CrewAI growth)
+- **Build output:** SPA initial payload ~74KB gzip (well under 160KB target). Legacy build.js + build-admin.js preserved and functional.
+- Phase S3 STARTED
+
 **SA-012** — Agent Graduation Framework + Daily Digest (Phase S2)
 - Completed: 2026-03-07
 - Git tag: `admin@1.7.0-graduation`
@@ -148,14 +171,14 @@ None.
 
 ## Next Session
 
-**SA-013** — SPA Scaffold + Vite + React Router (Phase S3: Frontend Modernization)
-- Entry gate: SA-006 ✅ (TypeScript core in place), SA-012 ✅ (Phase S2 complete).
+**SA-014** — Feed Page Migration (React + TypeScript + Design System) (Phase S3)
+- Entry gate: SA-013 ✅ (SPA scaffold in place, design system components, data providers).
 - Pair: Frontend + CSS/Tailwind Eng
 - Reviewer: Lead Platform Eng + Chief Architect
-- Estimated: 16–22h
-- Build: Vite + React Router scaffold, CSS custom properties, Tailwind config cleanup, component pattern library, design system foundation. First SPA pages migrate in SA-014.
+- Estimated: 20–26h
+- Build: Migrate Feed page (highest traffic) as React + TypeScript component tree: FeedPage, JobCard, SearchBar, FilterSidebar, PaginationControls, SortControls. All components use design tokens via Tailwind. Zero inline styles. Dark mode complete. Data through providers only. Functional parity with legacy Feed tab.
 
-**Phase S2 is now complete.** Phase S3 (Frontend Modernization) begins with SA-013.
+**Phase S3 is in progress.** SA-013 ✅, SA-014 next.
 
 ---
 
@@ -187,12 +210,13 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.48`** | **SA-012** |
-| Dashboard | `dashboard@1.2.0-typescript` | CS-P1-015 |
+| **Product (BJ_VERSION)** | **`v7.49`** | **SA-013** |
+| Dashboard | **`dashboard@2.0.0-spa-scaffold`** | **SA-013** |
 | Extension | `extension@2.22.0-error-handling` | FIX-11 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
-| Admin | **`admin@1.7.0-graduation`** | **SA-012** |
-| **API Gateway** | **`infra@gateway-v1.0.0`** | **SA-012** (102 routes) |
+| Admin | `admin@1.7.0-graduation` | SA-012 |
+| **SPA Scaffold** | **`spa@1.0.0-scaffold`** | **SA-013** |
+| **API Gateway** | `infra@gateway-v1.0.0` | SA-012 (102 routes) |
 | **Common Crawl** | **`infra@common-crawl-v0.1.0`** | **SA-007** |
 | **Dedup Engine** | **`infra@dedup-v1.0.0`** | **SA-008** |
 | **Incremental MVs** | **`infra@incremental-mv-v1.0.0`** | **SA-009** |
@@ -207,10 +231,11 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 ---
 
-## Completed Sessions (24 of 24 + 17 Phase 1 + 9 Scaling + FIX-11)
+## Completed Sessions (24 of 24 + 17 Phase 1 + 10 Scaling + FIX-11)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
+| SA-013 | 2026-03-07 | SPA scaffold: React 18 + React Router 6 + Vite React plugin. Design system primitives (Button/Card/Badge/Input/Select/Modal). Data provider interfaces (Search/Job/User/Pipeline) + Supabase impls + React context. AppShell unified nav + AuthGuard + AdminGuard + LegacyPageWrapper. 12 dashboard + 10 admin routes. ADR-02 + pattern library. 60 validation tests. v7.49. Phase S3 STARTED. | dashboard@2.0.0-spa-scaffold, spa@1.0.0-scaffold |
 | SA-012 | 2026-03-07 | Graduation framework: agent_graduation_log table, fn_evaluate_agent_graduation() function (configurable criteria), crewai-graduation EF (evaluate/graduate/rollback/history/criteria), crewai-agent-digest EF (daily email), admin-crewai.js graduation UI + graduate/rollback buttons + send digest now, v6.26 migration, gateway routes #101-102, ADR-05 SA-012 docs. Phase S2 COMPLETE. | admin@1.7.0-graduation |
 | SA-011 | 2026-03-07 | Pipeline Health Agent (Agent 2) + Data Freshness Agent (Agent 3): v6.25 migration, crewai-pipeline-health EF (4 checks: cron/queue/batch/dedup), crewai-data-freshness EF (5 checks: MV staleness/sync lag/ingestion/completeness/dedup effectiveness), orchestrator body param fallback, gateway routes #99-100, admin-crewai.js dispatch fix, 2 pg_cron schedules, ADR-05 SA-011 docs | admin@1.6.0-crewai-agents-2-3 |
 | SA-010 | 2026-03-07 | CrewAI framework: agent_config + agent_action_log + agent_credentials + v_agent_dashboard + fn_agent_config_updated_at trigger + crewai-orchestrator EF + crewai-content-qa EF + admin-crewai.js + gateway routes #97-98 + ADR-05 + Content QA Agent (observe mode) + admin panel kill switch | admin@1.5.0-crewai-foundation |

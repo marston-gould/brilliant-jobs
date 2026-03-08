@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<!-- Brilliant Jobs SPA Shell (SA-013) -->
+<html lang="en">
+<head>
+  <!-- Theme flash prevention -->
+  <script>try{var t=localStorage.getItem('bj-theme');document.documentElement.setAttribute('data-theme',t||'auto')}catch(e){document.documentElement.setAttribute('data-theme','auto')}</script>
+  <meta charset="utf-8">
+  <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
+  <link rel="apple-touch-icon" sizes="300x300" href="/img/logo-300.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="Your command center. Better data, better jobs, less nonsense.">
+  <title>Brilliant Jobs — Dashboard</title>
+
+  <!-- Legacy scripts: must load before React to populate window.BJ -->
+  <script src="/js/vendor/supabase.min.js"></script>
+  <script src="/js/version.js" defer></script>
+  <script src="/js/globals.js" defer></script>
+  <script src="/js/theme.js" defer></script>
+  <script src="/js/fingerprint.js" defer></script>
+  <script src="/js/tier-gating.js" defer></script>
+
+  <!-- Shared stylesheet (design tokens + Tailwind utilities) -->
+  <link rel="preload" href="/assets/outfit-latin-var-DqqFFacx.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/assets/jetbrains-mono-latin-var-C18OjFjb.woff2" as="font" type="font/woff2" crossorigin>
+
+  <!-- React SPA bundle (Vite injects this in production build) -->
+  <script type="module" crossorigin src="/assets/app-CdqUT6ta.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/react-vendor-Bwyn4z03.js">
+  <link rel="modulepreload" crossorigin href="/assets/react-dom-ByFevVmV.js">
+  <link rel="modulepreload" crossorigin href="/assets/router-BY5plA-7.js">
+  <link rel="modulepreload" crossorigin href="/assets/providers-CjE6QnUt.js">
+  <link rel="stylesheet" crossorigin href="/assets/app-DiAInSN-.css">
+</head>
+<body class="bg-bg-main text-text">
+  <!-- SPA mount point -->
+  <div id="spa-root"></div>
+
+  <!--
+    SA-013: During dual-mode migration, the legacy DOM elements from
+    dashboard.html are NOT present here. LegacyPageWrapper activates
+    legacy tabs via window.BJ.showTab(), which requires the legacy
+    page containers to exist.
+
+    PHASE 1 (SA-013): SPA shell renders nav + routing only.
+    Legacy pages still use dashboard.html and admin.html directly.
+
+    PHASE 2 (SA-014+): As pages are migrated to React, they render
+    directly inside the SPA. No legacy DOM needed for migrated pages.
+
+    PHASE 3 (SA-017): All pages migrated. Legacy HTML files deprecated.
+    This becomes the only entry point for authenticated surfaces.
+  -->
+</body>
+</html>

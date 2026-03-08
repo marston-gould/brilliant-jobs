@@ -26,6 +26,9 @@
     "allowJs": true,
     "checkJs": false,
 
+    // === JSX (SA-013: React SPA) ===
+    "jsx": "react-jsx",
+
     // === Output ===
     "noEmit": true,
     "skipLibCheck": true,
@@ -33,13 +36,27 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
 
+    // === Path Aliases (SA-013: SPA imports) ===
+    "baseUrl": ".",
+    "paths": {
+      "@app/*": ["src/app/*"],
+      "@components": ["src/app/components/index.ts"],
+      "@components/*": ["src/app/components/*"],
+      "@providers": ["src/app/providers/index.ts"],
+      "@providers/*": ["src/app/providers/*"],
+      "@shell": ["src/app/shell/index.ts"],
+      "@shell/*": ["src/app/shell/*"]
+    },
+
     // === Type Roots ===
     "typeRoots": ["./node_modules/@types", "./js/types"],
     "lib": ["ES2020", "DOM", "DOM.Iterable"]
   },
   "include": [
     "js/**/*.ts",
-    "js/types/**/*.d.ts"
+    "js/types/**/*.d.ts",
+    "src/app/**/*.ts",
+    "src/app/**/*.tsx"
   ],
   "exclude": [
     "node_modules",

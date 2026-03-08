@@ -8,6 +8,8 @@
     "bundle": "npm run bundle:js && npm run bundle:css",
     "css:watch": "npx tailwindcss -i src/input.css -o styles.css --watch",
     "dev": "npx vite",
+    "dev:spa": "npx vite --open /src/app/index.html",
+    "build:spa": "npx vite build",
     "test": "vitest run",
     "test:watch": "vitest",
     "selector:check": "node scripts/selector-health-check.mjs",
@@ -25,6 +27,9 @@
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@types/node": "^25.3.5",
+    "@types/react": "^18.3.28",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^5.1.4",
     "axe-core": "^4.11.1",
     "esbuild": "^0.25.12",
     "eslint": "^9.39.4",
@@ -39,6 +44,9 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
-    "acorn": "^8.16.0"
+    "acorn": "^8.16.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.30.3"
   }
 }

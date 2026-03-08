@@ -3171,7 +3171,7 @@ Phase S can overlap with Phase 1 feature work on separate tracks. Sessions withi
 
 | # | Item | Est. | Status | Notes |
 |---|------|------|--------|-------|
-| SA-013 | SPA scaffold + design system | 16–22h | 🔲 | Vite + React Router. CSS custom properties. Tailwind config cleanup. Component pattern library. Pair: Frontend + CSS Eng. |
+| SA-013 | SPA scaffold + design system | 16–22h | ✅ | Vite + React Router scaffold. React 18 + React Router 6. Design system: Button/Card/Badge/Input/Select/Modal primitives. Data providers: SearchProvider/JobProvider/UserProvider/PipelineProvider interfaces + Supabase impls. AppShell + AuthGuard + AdminGuard + LegacyPageWrapper. 12 dashboard + 10 admin routes. ADR-02 + component pattern library. SPA build: ~74KB gzip initial. v7.49. 2026-03-07. |
 | SA-014 | Feed page SPA migration | 16–22h | 🔲 | Job feed to React + TypeScript. Data provider abstraction. Dark mode. Pair: Frontend + CSS Eng. |
 | SA-015 | Pipeline + Keywords migration | 16–22h | 🔲 | Pipeline/Keywords pages to React + TypeScript. Data providers. Pair: Frontend + CSS Eng. |
 | SA-016 | Stats + Settings migration | 16–22h | 🔲 | Stats/Settings pages. Design token enforcement. Pair: Frontend + CSS Eng. |

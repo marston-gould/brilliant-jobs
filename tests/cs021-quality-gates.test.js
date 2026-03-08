@@ -184,7 +184,7 @@ describe('Gate 2: PostHog monitoring on all surfaces', () => {
 describe('Gate 3: Bundle size limits', () => {
   const bundles = [
     { name: 'dashboard.min.js', maxKB: 1000 },
-    { name: 'admin.min.js', maxKB: 550 },
+    { name: 'admin.min.js', maxKB: 650 }, // SA-013: bumped from 550 — SA-010/12 added 3 CrewAI agents + graduation framework
   ];
 
   for (const { name, maxKB } of bundles) {

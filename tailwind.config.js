@@ -22,7 +22,11 @@ module.exports = {
   ],
   content: [
     './dashboard.html',
+    './admin.html',
     './js/**/*.js',
+    './js/**/*.ts',
+    './src/app/**/*.tsx',
+    './src/app/**/*.ts',
     './app.js',
   ],
   theme: {

@@ -92,6 +92,10 @@
   ],
   "rewrites": [
     {
+      "source": "/app/:path*",
+      "destination": "/src/app/index.html"
+    },
+    {
       "source": "/blog/feed.xml",
       "destination": "/api/content?mode=rss"
     },
