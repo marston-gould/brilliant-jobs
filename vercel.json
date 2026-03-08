@@ -54,6 +54,7 @@
       ]
     },
     {
+      "source": "/fonts/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
