@@ -709,6 +709,10 @@ var _feedTotalCount = 0; // A14: total matching rows (from count: 'exact')
 // Resume state (populated fully in resumes.js)
 var resumes = safeReadLS('bj_resumes', []);
 
+// Connection state — initialized here (shell) because app.js sets .ext and .gmail
+// before integrations.js (deferred) loads. integrations.js will overwrite if needed.
+window._connectionState = window._connectionState || { ext: false, gmail: false, gcal: false, gdrive: false };
+
 // POD3-SF: readinessCache must be in globals (shell chunk) because resumes.js (deferred chunk)
 // references it at load time. Previously it was only in keywords.js (keywords chunk) which
 // loads AFTER deferred for the Resumes tab → ReferenceError.

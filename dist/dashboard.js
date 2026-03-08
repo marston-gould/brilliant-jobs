@@ -726,6 +726,10 @@ var _feedTotalCount = 0; // A14: total matching rows (from count: 'exact')
 // Resume state (populated fully in resumes.js)
 var resumes = safeReadLS('bj_resumes', []);
 
+// Connection state — initialized here (shell) because app.js sets .ext and .gmail
+// before integrations.js (deferred) loads. integrations.js will overwrite if needed.
+window._connectionState = window._connectionState || { ext: false, gmail: false, gcal: false, gdrive: false };
+
 // POD3-SF: readinessCache must be in globals (shell chunk) because resumes.js (deferred chunk)
 // references it at load time. Previously it was only in keywords.js (keywords chunk) which
 // loads AFTER deferred for the Resumes tab → ReferenceError.
@@ -16644,7 +16648,7 @@ function renderResumes() {
       : '<span style="font-size:11px;color:var(--text-faint);font-style:italic;">Save a filter first to assign</span>';
 
     // Performance stats
-    const meta = getPipelineMeta();
+    const meta = (typeof getPipelineMeta === 'function' ? getPipelineMeta() : {});
     const jobsApplied = Object.values(meta).filter(m => m.resumeUsed === r.name && m.stage !== 'saved').length;
     const responded = Object.values(meta).filter(m => m.resumeUsed === r.name && ['responded','interview','offer'].includes(m.stage)).length;
     const responseRate = jobsApplied > 0 ? Math.round((responded / jobsApplied) * 100) : 0;
@@ -16789,7 +16793,7 @@ function renderResumeArchive(archivedResumes) {
 
   listEl.innerHTML = archivedResumes.map(r => {
     const i = resumes.indexOf(r);
-    const meta = getPipelineMeta();
+    const meta = (typeof getPipelineMeta === 'function' ? getPipelineMeta() : {});
     const jobsApplied = Object.values(meta).filter(m => m.resumeUsed === r.name).length;
     const responded = Object.values(meta).filter(m => m.resumeUsed === r.name && ['responded','interview','offer'].includes(m.stage)).length;
     const rate = jobsApplied > 0 ? Math.round((responded / jobsApplied) * 100) + '%' : '—';
@@ -16844,7 +16848,7 @@ function updateResumeNavDot() {
 function updatePipelineNavDot() {
   const dot = $('#pipeline-status-dot');
   if (!dot) return;
-  const meta = getPipelineMeta();
+  const meta = (typeof getPipelineMeta === 'function' ? getPipelineMeta() : {});
   const entries = Object.values(meta);
   if (entries.length === 0) {
     dot.className = 'ext-status-dot';
@@ -21488,14 +21492,14 @@ function refreshStatsCharts() {
 // js/billing.js — Subscription page, credit balance, pricing, checkout flows
 // v3.72: Full subscription tab + credit merchandising
 
-const SUPABASE_FUNCTIONS_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1';
+var SUPABASE_FUNCTIONS_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1';
 
 // ─── State ───
-let _creditBalance = 0;
-let _userPricing = null;
-let _userSubscription = null;
-let _creditHistory = [];
-let _isAdmin = false;
+var _creditBalance = 0;
+var _userPricing = null;
+var _userSubscription = null;
+var _creditHistory = [];
+var _isAdmin = false;
 
 // ─── Credit Balance + Pricing Loaders ───
 async function loadCreditBalance() {

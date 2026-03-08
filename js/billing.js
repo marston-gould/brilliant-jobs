@@ -1,14 +1,14 @@
 // js/billing.js — Subscription page, credit balance, pricing, checkout flows
 // v3.72: Full subscription tab + credit merchandising
 
-const SUPABASE_FUNCTIONS_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1';
+var SUPABASE_FUNCTIONS_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1';
 
 // ─── State ───
-let _creditBalance = 0;
-let _userPricing = null;
-let _userSubscription = null;
-let _creditHistory = [];
-let _isAdmin = false;
+var _creditBalance = 0;
+var _userPricing = null;
+var _userSubscription = null;
+var _creditHistory = [];
+var _isAdmin = false;
 
 // ─── Credit Balance + Pricing Loaders ───
 async function loadCreditBalance() {

@@ -252,7 +252,7 @@ function renderResumes() {
       : '<span style="font-size:11px;color:var(--text-faint);font-style:italic;">Save a filter first to assign</span>';
 
     // Performance stats
-    const meta = getPipelineMeta();
+    const meta = (typeof getPipelineMeta === 'function' ? getPipelineMeta() : {});
     const jobsApplied = Object.values(meta).filter(m => m.resumeUsed === r.name && m.stage !== 'saved').length;
     const responded = Object.values(meta).filter(m => m.resumeUsed === r.name && ['responded','interview','offer'].includes(m.stage)).length;
     const responseRate = jobsApplied > 0 ? Math.round((responded / jobsApplied) * 100) : 0;
@@ -397,7 +397,7 @@ function renderResumeArchive(archivedResumes) {
 
   listEl.innerHTML = archivedResumes.map(r => {
     const i = resumes.indexOf(r);
-    const meta = getPipelineMeta();
+    const meta = (typeof getPipelineMeta === 'function' ? getPipelineMeta() : {});
     const jobsApplied = Object.values(meta).filter(m => m.resumeUsed === r.name).length;
     const responded = Object.values(meta).filter(m => m.resumeUsed === r.name && ['responded','interview','offer'].includes(m.stage)).length;
     const rate = jobsApplied > 0 ? Math.round((responded / jobsApplied) * 100) + '%' : '—';
@@ -452,7 +452,7 @@ function updateResumeNavDot() {
 function updatePipelineNavDot() {
   const dot = $('#pipeline-status-dot');
   if (!dot) return;
-  const meta = getPipelineMeta();
+  const meta = (typeof getPipelineMeta === 'function' ? getPipelineMeta() : {});
   const entries = Object.values(meta);
   if (entries.length === 0) {
     dot.className = 'ext-status-dot';

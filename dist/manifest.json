@@ -1,8 +1,8 @@
 {
   "shell": {
     "file": "dashboard-shell.min.js",
-    "hash": "db9bf99e",
-    "size": 85635
+    "hash": "3e3e0a73",
+    "size": 85724
   },
   "feed": {
     "file": "dashboard-feed.min.js",
@@ -26,18 +26,18 @@
   },
   "deferred": {
     "file": "dashboard-deferred.min.js",
-    "hash": "ae355e99",
-    "size": 361763
+    "hash": "5148be97",
+    "size": 361871
   },
   "full": {
     "file": "dashboard.min.js",
-    "hash": "830b53c6",
-    "size": 884030
+    "hash": "010e91b9",
+    "size": 884227
   },
   "styles": {
     "file": "styles.css",
     "hash": "564c5982",
     "size": 128113
   },
-  "_buildHash": "de7221ac"
+  "_buildHash": "ce7e137a"
 }
