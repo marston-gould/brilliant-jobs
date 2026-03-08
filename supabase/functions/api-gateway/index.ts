@@ -186,13 +186,15 @@ const ROUTE_REGISTRY: Record<string, string> = {
   "crewai-content-qa":          "crewai-content-qa",          // SA-010: Content QA Agent (Agent 1)
   "crewai-pipeline-health":     "crewai-pipeline-health",     // SA-011: Pipeline Health Agent (Agent 2)
   "crewai-data-freshness":      "crewai-data-freshness",      // SA-011: Data Freshness Agent (Agent 3)
+  "crewai-graduation":         "crewai-graduation",         // SA-012: Agent Graduation Framework
+  "crewai-agent-digest":       "crewai-agent-digest",       // SA-012: Daily Agent Digest Email
 
   // ── Search Infrastructure (deferred SA-001—003, routed for completeness) ─
   "typesense-search":         "typesense-search",         // SA-005 (deferred)
   "typesense-seed":           "typesense-seed",           // SA-005 (deferred)
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // TOTAL: 100 routes (93 SA-005 + 1 SA-007 + 1 SA-008 + 1 SA-009 + 2 SA-010 + 2 SA-011). Direct paths deprecated.
+  // TOTAL: 102 routes (93 SA-005 + 1 SA-007 + 1 SA-008 + 1 SA-009 + 2 SA-010 + 2 SA-011 + 2 SA-012). Direct paths deprecated.
   // HOOK: Future EFs register here. Future: load from DB table for
   //       runtime updates without redeploy (api_consumers integration).
   // ═══════════════════════════════════════════════════════════════════════════

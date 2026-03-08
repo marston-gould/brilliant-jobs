@@ -1,6 +1,6 @@
 # ADR-05: CrewAI Agent Architecture
 
-> Status: IN PROGRESS (SA-010 + SA-011 complete, SA-012 pending)
+> Status: IN PROGRESS (SA-010 + SA-011 + SA-012 complete, SA-020/SA-021 pending)
 > Date: 2026-03-07
 > Decision Makers: Chief Architect, Forward-Looking Dev, Marston (final approval)
 
@@ -136,3 +136,63 @@ View combining config + 24h stats + last action for admin panel rendering.
 - Gateway route #100 (crewai-data-freshness)
 
 **Shared migration:** Both agents seeded in `v6.25-crewai-agents-2-3.sql` with agent_config, api_consumers, agent_credentials, and pg_cron schedules.
+
+## SA-012: Agent Graduation Framework + Daily Digest — DONE 2026-03-07
+
+### Graduation Framework
+
+**What it does:** Provides a structured, metric-driven process for promoting agents through trust levels (observe → suggest → auto_with_approval → autonomous). Graduation is NEVER automatic — agents become eligible based on metrics, but Marston must explicitly approve.
+
+**Graduation Criteria (per-agent, configurable):**
+
+| Transition | Min Days | Min Actions | Max FP Rate | Max Error Rate | Max Override Rate |
+|-----------|----------|-------------|-------------|----------------|-------------------|
+| observe → suggest | 14 | 50 | 5% | 2% | — |
+| suggest → auto_with_approval | 28 | 200 | — | 1% | 10% |
+| auto_with_approval → autonomous | — | — | — | — | Explicit Marston approval only |
+
+**Force-graduate:** Available for Marston override when criteria aren't met but business need exists. Logged as `manual_graduation_forced`.
+
+**Rollback:** Can target a specific level (e.g., auto → observe) or default to one level down. Emergency rollback available without admin auth for orchestrator use on repeated failures.
+
+**Database changes:**
+- `agent_graduation_log` table — every trust level transition with metrics snapshot
+- `graduated_at` + `graduation_criteria` columns on `agent_config`
+- `fn_evaluate_agent_graduation()` — SQL function evaluating readiness per configurable criteria
+- `v_agent_graduation_readiness` — view wrapping the evaluation function
+- `v_agent_dashboard` — updated to include graduation columns
+- `fn_agent_daily_digest()` — structured JSON aggregation for email
+
+**Files created:**
+- `supabase/migrations/v6.26-agent-graduation.sql`
+- `supabase/functions/crewai-graduation/index.ts`
+- `supabase/functions/crewai-agent-digest/index.ts`
+- Gateway routes #101 (crewai-graduation), #102 (crewai-agent-digest)
+
+**Admin panel updates:**
+- Graduation Readiness table showing each agent's metrics vs. criteria
+- ⬆ Graduate and ⬇ Rollback buttons on each agent card
+- Send Digest Now button for on-demand email
+- Graduated timestamp on agent cards
+
+### Daily Digest Email
+
+**What it does:** Sends a daily summary email at 8am ET with:
+- Agent performance (24h actions, confidence, errors, overrides, critical findings)
+- Graduation readiness assessment for all agents
+- Graduation events in the last 24h
+- Alert banner for critical findings
+
+**Recipients:** All users with `admin` role in profiles table. Falls back to ALERT_EMAIL (marston@brilliantjobs.app) via Resend if no admin users found.
+
+**Scheduling:** pg_cron daily at 12:00 UTC (8am ET). Also callable on-demand from admin panel.
+
+### Hook & Scar Points (SA-012 additions)
+
+| Type | What | Purpose |
+|------|------|---------|
+| HOOK | `graduation_criteria` JSONB on agent_config | Per-agent criteria customization without code change |
+| HOOK | `fn_evaluate_agent_graduation()` | Extensible evaluation logic |
+| SCAR | `agent_graduation_log.reason` | Extensible reason types for future automation |
+| SCAR | `agent_graduation_log.evaluation` JSONB | Metrics snapshot — format evolves with new agents |
+| SCAR | Digest recipient logic | Currently admin-role based — ready for team/role expansion |

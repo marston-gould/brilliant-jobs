@@ -52,6 +52,25 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**SA-012** — Agent Graduation Framework + Daily Digest (Phase S2)
+- Completed: 2026-03-07
+- Git tag: `admin@1.7.0-graduation`
+- Product version bumped: `v7.47` → `v7.48`
+- ROADMAP.md updated: SA-012 row → ✅ with completion notes
+- roadmap.html updated: SA-012 entry → `s: 'done'`, p: 100
+- Created: v6.26-agent-graduation.sql migration, crewai-graduation EF, crewai-agent-digest EF
+- Modified: api-gateway/index.ts (100 → 102 routes), admin-crewai.js (graduation UI + graduate/rollback buttons + digest now), adr-05-crewai.md (SA-012 docs)
+- Database: agent_graduation_log table, graduated_at + graduation_criteria columns on agent_config, fn_evaluate_agent_graduation() function, v_agent_graduation_readiness view, fn_agent_daily_digest() function, v_agent_dashboard updated with graduation columns, system pseudo-agent row, agent_type CHECK expanded
+- EFs deployed: crewai-graduation (evaluate/graduate/rollback/history/criteria), crewai-agent-digest (daily email + on-demand)
+- Gateway: Routes #101 (crewai-graduation), #102 (crewai-agent-digest)
+- Graduation criteria: observe→suggest (14d, 50 actions, <5% FP, <2% errors), suggest→auto (28d, 200 actions, <10% override, <1% errors), auto→autonomous (explicit Marston approval only)
+- Graduation is NEVER automatic — agents become eligible, Marston must explicitly approve via admin panel
+- Force-graduate available with ?force=true for Marston override
+- Rollback supports targeting specific level (e.g., auto→observe) or default one-level-down
+- Daily digest: 8am ET email with agent performance, graduation readiness, graduation events, critical alert banner
+- Admin panel: Graduation Readiness table, ⬆ Graduate / ⬇ Rollback buttons on cards, Send Digest Now button
+- Phase S2 COMPLETE (SA-007 ✅, SA-008 ✅, SA-009 ✅, SA-010 ✅, SA-011 ✅, SA-012 ✅)
+
 **SA-011** — Pipeline Health Agent + Data Freshness Agent (Phase S2)
 - Completed: 2026-03-07
 - Git tag: `admin@1.6.0-crewai-agents-2-3`
@@ -129,16 +148,14 @@ None.
 
 ## Next Session
 
-**SA-012** — Agent Graduation Framework + Daily Digest (Phase S2)
-- Entry gate: SA-011 complete ✅. All 3 agents running in observe mode. Agent infrastructure tables deployed. Pipeline Health + Data Freshness agents logging findings.
-- Pair: Backend + Eng Lead
-- Estimated: 10–14h
-- Build: Graduation logic (observe → suggest → auto_with_approval promotion rules), daily agent digest email via send-notification, agent override tracking metrics, graduation criteria evaluation function.
-
-**OR SA-013** — SPA Scaffold + Vite + React Router (Phase S3, if S2 automation deferred)
-- Entry gate: SA-006 complete ✅ (TypeScript core in place).
+**SA-013** — SPA Scaffold + Vite + React Router (Phase S3: Frontend Modernization)
+- Entry gate: SA-006 ✅ (TypeScript core in place), SA-012 ✅ (Phase S2 complete).
 - Pair: Frontend + CSS/Tailwind Eng
-- Estimated: 18–24h
+- Reviewer: Lead Platform Eng + Chief Architect
+- Estimated: 16–22h
+- Build: Vite + React Router scaffold, CSS custom properties, Tailwind config cleanup, component pattern library, design system foundation. First SPA pages migrate in SA-014.
+
+**Phase S2 is now complete.** Phase S3 (Frontend Modernization) begins with SA-013.
 
 ---
 
@@ -170,16 +187,16 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.47`** | **SA-011** |
+| **Product (BJ_VERSION)** | **`v7.48`** | **SA-012** |
 | Dashboard | `dashboard@1.2.0-typescript` | CS-P1-015 |
 | Extension | `extension@2.22.0-error-handling` | FIX-11 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
-| Admin | `admin@1.6.0-crewai-agents-2-3` | SA-011 |
-| **API Gateway** | **`infra@gateway-v1.0.0`** | **SA-011** (100 routes) |
+| Admin | **`admin@1.7.0-graduation`** | **SA-012** |
+| **API Gateway** | **`infra@gateway-v1.0.0`** | **SA-012** (102 routes) |
 | **Common Crawl** | **`infra@common-crawl-v0.1.0`** | **SA-007** |
 | **Dedup Engine** | **`infra@dedup-v1.0.0`** | **SA-008** |
 | **Incremental MVs** | **`infra@incremental-mv-v1.0.0`** | **SA-009** |
-| **CrewAI Framework** | **`admin@1.6.0-crewai-agents-2-3`** | **SA-011** (3 agents) |
+| **CrewAI Framework** | **`admin@1.7.0-graduation`** | **SA-012** (3 agents + graduation + digest) |
 | Load Tests | `loadtest@1.0.0` | CS-020 |
 | CI/CD | `cicd@1.0.0` | CS-020 |
 | Quality Gates | `qualitygates@1.0.0` | CS-021 |
@@ -190,10 +207,11 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 ---
 
-## Completed Sessions (24 of 24 + 17 Phase 1 + 8 Scaling + FIX-11)
+## Completed Sessions (24 of 24 + 17 Phase 1 + 9 Scaling + FIX-11)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
+| SA-012 | 2026-03-07 | Graduation framework: agent_graduation_log table, fn_evaluate_agent_graduation() function (configurable criteria), crewai-graduation EF (evaluate/graduate/rollback/history/criteria), crewai-agent-digest EF (daily email), admin-crewai.js graduation UI + graduate/rollback buttons + send digest now, v6.26 migration, gateway routes #101-102, ADR-05 SA-012 docs. Phase S2 COMPLETE. | admin@1.7.0-graduation |
 | SA-011 | 2026-03-07 | Pipeline Health Agent (Agent 2) + Data Freshness Agent (Agent 3): v6.25 migration, crewai-pipeline-health EF (4 checks: cron/queue/batch/dedup), crewai-data-freshness EF (5 checks: MV staleness/sync lag/ingestion/completeness/dedup effectiveness), orchestrator body param fallback, gateway routes #99-100, admin-crewai.js dispatch fix, 2 pg_cron schedules, ADR-05 SA-011 docs | admin@1.6.0-crewai-agents-2-3 |
 | SA-010 | 2026-03-07 | CrewAI framework: agent_config + agent_action_log + agent_credentials + v_agent_dashboard + fn_agent_config_updated_at trigger + crewai-orchestrator EF + crewai-content-qa EF + admin-crewai.js + gateway routes #97-98 + ADR-05 + Content QA Agent (observe mode) + admin panel kill switch | admin@1.5.0-crewai-foundation |
 | SA-009 | 2026-03-07 | Incremental MVs: ats_jobs_change_log + mv_job_feed_counts + mv_source_breakdown + mv_landing_stats + mv_refresh_log + trigger + 6 functions + refresh-materialized-views EF + gateway route #96 + 2 cron jobs + ADR-08 | infra@incremental-mv-v1.0.0 |

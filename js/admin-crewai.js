@@ -21,6 +21,14 @@ function loadCrewAIPanel() {
     '</div>',
     '<div class="admin-block" style="margin-top:24px">',
     '  <div class="admin-block-header">',
+    '    <h2 class="admin-block-title">Graduation Readiness</h2>',
+    '    <button class="btn btn-sm u-btn-pill" onclick="refreshGraduationReadiness()">Evaluate</button>',
+    '  </div>',
+    '  <p class="admin-block-subtitle">Readiness assessment for agent trust level promotions.</p>',
+    '  <div id="crewai-graduation-grid" class="admin-loading">Loading graduation data…</div>',
+    '</div>',
+    '<div class="admin-block" style="margin-top:24px">',
+    '  <div class="admin-block-header">',
     '    <h2 class="admin-block-title">Recent Agent Actions</h2>',
     '    <select id="crewai-agent-filter" onchange="refreshCrewAIActions()" class="admin-select">',
     '      <option value="">All Agents</option>',
@@ -32,6 +40,7 @@ function loadCrewAIPanel() {
 
   refreshCrewAIAgents();
   refreshCrewAIActions();
+  refreshGraduationReadiness();
 
   // Auto-refresh every 30 seconds
   if (_crewaiRefreshInterval) clearInterval(_crewaiRefreshInterval);
@@ -115,10 +124,15 @@ function renderAgentCard(agent) {
     '  </div>',
     errText,
     '  <div class="crewai-card-footer">',
-    '    <span class="text-faint" style="font-size:11px">Last run: ' + lastRun + '</span>',
-    '    <div class="crewai-card-actions">',
+    '    <div style="display:flex;justify-content:space-between;align-items:center;width:100%;flex-wrap:wrap;gap:4px">',
+    '      <span class="text-faint" style="font-size:11px">Last run: ' + lastRun + '</span>',
+    agent.graduated_at ? '      <span class="text-faint" style="font-size:11px">Graduated: ' + new Date(agent.graduated_at).toLocaleDateString() + '</span>' : '',
+    '    </div>',
+    '    <div class="crewai-card-actions" style="margin-top:8px">',
     '      <button class="btn btn-sm u-btn-pill" onclick="toggleCrewAIAgent(\'' + agent.id + '\')">' + (agent.enabled ? '⏸ Disable' : '▶ Enable') + '</button>',
     '      <button class="btn btn-sm u-btn-pill" onclick="runCrewAIAgent(\'' + agent.id + '\')">▶ Run Now</button>',
+    agent.trust_level !== 'autonomous' ? '      <button class="btn btn-sm u-btn-pill" style="background:var(--accent);color:white" onclick="graduateAgent(\'' + agent.id + '\')">⬆ Graduate</button>' : '',
+    agent.trust_level !== 'observe' ? '      <button class="btn btn-sm u-btn-pill" style="background:hsl(0,60%,50%);color:white" onclick="rollbackAgent(\'' + agent.id + '\')">⬇ Rollback</button>' : '',
     '    </div>',
     '  </div>',
     '</div>',
@@ -239,5 +253,147 @@ async function refreshCrewAIActions() {
   } catch (e) {
     el.innerHTML = '<p class="text-danger">Error loading actions: ' + (e.message || e) + '</p>';
     if (typeof reportError === 'function') reportError('admin-crewai', 'refreshCrewAIActions', e);
+  }
+}
+
+// ─── SA-012: Graduation Readiness ───
+async function refreshGraduationReadiness() {
+  var el = document.getElementById('crewai-graduation-grid');
+  if (!el) return;
+
+  try {
+    var resp = await sb.functions.invoke('crewai-orchestrator', {
+      body: { action: 'run', agent: 'graduation-eval' },
+    });
+    // Fallback: call graduation EF directly
+    var evalResp = await sb.rpc('fn_evaluate_agent_graduation', { p_agent_id: null });
+    if (evalResp.error) throw evalResp.error;
+    var evals = evalResp.data || [];
+
+    if (evals.length === 0) {
+      el.innerHTML = '<p class="text-faint">No agents to evaluate.</p>';
+      return;
+    }
+
+    var rows = evals.map(function(e) {
+      var icon = e.eligible ? '✅' : '⏳';
+      var blockerHtml = (e.blockers || []).length > 0
+        ? '<ul style="margin:2px 0;padding-left:16px;font-size:11px;color:var(--text-faint)">' +
+          e.blockers.map(function(b) { return '<li>' + b + '</li>'; }).join('') +
+          '</ul>'
+        : '<span style="color:var(--green);font-size:11px">All criteria met</span>';
+
+      return '<tr>' +
+        '<td style="padding:8px 12px">' + icon + ' <strong>' + e.display_name + '</strong></td>' +
+        '<td style="padding:8px 12px">' + e.current_level + ' → ' + (e.next_level || '—') + '</td>' +
+        '<td style="padding:8px 12px">' + e.days_in_level + 'd</td>' +
+        '<td style="padding:8px 12px">' + e.total_actions + '</td>' +
+        '<td style="padding:8px 12px">' +
+          (e.false_positive_rate > 0 ? (e.false_positive_rate * 100).toFixed(1) + '%' : '0%') +
+        '</td>' +
+        '<td style="padding:8px 12px">' + blockerHtml + '</td>' +
+        '</tr>';
+    }).join('');
+
+    el.innerHTML = '<table class="admin-table">' +
+      '<thead><tr><th>Agent</th><th>Transition</th><th>Days</th><th>Actions</th><th>FP Rate</th><th>Status</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table>' +
+      '<div style="margin-top:12px;text-align:right">' +
+      '  <button class="btn btn-sm u-btn-pill" onclick="sendDigestNow()" style="margin-right:8px">📧 Send Digest Now</button>' +
+      '</div>';
+
+  } catch (e) {
+    el.innerHTML = '<p class="text-danger">Error loading graduation data: ' + (e.message || e) + '</p>';
+    if (typeof reportError === 'function') reportError('admin-crewai', 'refreshGraduationReadiness', e);
+  }
+}
+
+// ─── SA-012: Graduate Agent ───
+async function graduateAgent(agentId) {
+  if (!confirm('Graduate ' + agentId + ' to next trust level? This enables new capabilities.')) return;
+
+  try {
+    var resp = await sb.functions.invoke('crewai-graduation', {
+      body: { action: 'graduate', agent: agentId },
+    });
+
+    var result = resp.data;
+    if (result && !result.ok && result.blockers) {
+      var msg = 'Agent does not meet graduation criteria:\n\n' +
+        result.blockers.join('\n') +
+        '\n\nForce graduate anyway?';
+      if (confirm(msg)) {
+        resp = await sb.functions.invoke('crewai-graduation', {
+          body: { action: 'graduate', agent: agentId, force: 'true' },
+        });
+        result = resp.data;
+      } else {
+        return;
+      }
+    }
+
+    if (typeof _logAdminAction === 'function') {
+      _logAdminAction('crewai_graduate', { agent: agentId, result: result });
+    }
+
+    alert(result?.message || 'Agent graduated successfully');
+    refreshCrewAIAgents();
+    refreshGraduationReadiness();
+  } catch (e) {
+    alert('Error graduating agent: ' + (e.message || e));
+    if (typeof reportError === 'function') reportError('admin-crewai', 'graduateAgent', e);
+  }
+}
+
+// ─── SA-012: Rollback Agent ───
+async function rollbackAgent(agentId) {
+  var targetLevel = prompt('Rollback ' + agentId + ' to which level? (observe, suggest, auto_with_approval)\nLeave blank for one level down:');
+  if (targetLevel === null) return; // user cancelled
+
+  var reason = prompt('Reason for rollback (optional):') || 'manual_rollback';
+
+  try {
+    var body = { action: 'rollback', agent: agentId, reason: reason };
+    if (targetLevel && targetLevel.trim()) body.to = targetLevel.trim();
+
+    var resp = await sb.functions.invoke('crewai-graduation', { body: body });
+    var result = resp.data;
+
+    if (typeof _logAdminAction === 'function') {
+      _logAdminAction('crewai_rollback', { agent: agentId, result: result });
+    }
+
+    alert(result?.message || 'Agent rolled back successfully');
+    refreshCrewAIAgents();
+    refreshGraduationReadiness();
+  } catch (e) {
+    alert('Error rolling back agent: ' + (e.message || e));
+    if (typeof reportError === 'function') reportError('admin-crewai', 'rollbackAgent', e);
+  }
+}
+
+// ─── SA-012: Send Digest Now ───
+async function sendDigestNow() {
+  try {
+    var btn = event.target;
+    btn.disabled = true;
+    btn.textContent = '⏳ Sending…';
+
+    await sb.functions.invoke('crewai-agent-digest', { body: {} });
+
+    if (typeof _logAdminAction === 'function') {
+      _logAdminAction('crewai_digest_manual', {});
+    }
+
+    btn.textContent = '✓ Sent';
+    setTimeout(function() {
+      btn.disabled = false;
+      btn.textContent = '📧 Send Digest Now';
+    }, 3000);
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = '📧 Send Digest Now';
+    alert('Error sending digest: ' + (e.message || e));
+    if (typeof reportError === 'function') reportError('admin-crewai', 'sendDigestNow', e);
   }
 }

@@ -3163,7 +3163,7 @@ Phase S can overlap with Phase 1 feature work on separate tracks. Sessions withi
 | SA-009 | Incremental materialized views | 10–14h | ✅ | Delta-only refreshes via change log. 3 MV tables (mv_job_feed_counts, mv_source_breakdown, mv_landing_stats) + change tracking trigger + incremental refresh functions + 3-min cron + weekly full consistency. ADR-08. Gateway route #96. 2026-03-07. |
 | SA-010 | CrewAI framework + Agent 1 | 14–18h | ✅ | Agent framework: agent_config + agent_action_log + agent_credentials + v_agent_dashboard. Content QA Agent (observe mode). crewai-orchestrator + crewai-content-qa EFs. Admin panel CrewAI tab with kill switches. Gateway routes #97-98. ADR-05. 2026-03-07. |
 | SA-011 | CrewAI Agents 2–3 | 12–16h | ✅ | Pipeline Health Agent (Agent 2) + Data Freshness Agent (Agent 3). Both observe mode, kill switches, pg_cron scheduled. Gateway routes #99-100. ADR-05 updated. Fixed orchestrator dispatch bug in admin-crewai.js. v7.47. |
-| SA-012 | CrewAI agent graduation | 10–14h | 🔲 | Graduate Agents 1–3 from observe to active. Accuracy metrics + rollback triggers. Pair: Backend + Eng Lead. |
+| SA-012 | CrewAI agent graduation | 10–14h | ✅ | Graduation framework: agent_graduation_log table, fn_evaluate_agent_graduation() SQL function with configurable per-agent criteria (days/actions/FP rate/error rate/override rate), graduate + rollback EF, daily digest email EF, admin panel graduation readiness UI + graduate/rollback buttons + send digest now. Gateway routes #101–102. ADR-05 SA-012 docs. v7.48. Pair: Backend + Eng Lead. |
 
 **Phase S2 total: 6 sessions | 70–94h | ADR-05 (CrewAI), ADR-06 (Data Pipeline)**
 
