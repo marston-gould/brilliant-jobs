@@ -1,6 +1,6 @@
 # ADR-05: CrewAI Agent Architecture
 
-> Status: IN PROGRESS (SA-010 + SA-011 + SA-012 complete, SA-020/SA-021 pending)
+> Status: IN PROGRESS (SA-010 + SA-011 + SA-012 + SA-020 complete, SA-021 pending)
 > Date: 2026-03-07
 > Decision Makers: Chief Architect, Forward-Looking Dev, Marston (final approval)
 
@@ -196,3 +196,52 @@ View combining config + 24h stats + last action for admin panel rendering.
 | SCAR | `agent_graduation_log.reason` | Extensible reason types for future automation |
 | SCAR | `agent_graduation_log.evaluation` JSONB | Metrics snapshot — format evolves with new agents |
 | SCAR | Digest recipient logic | Currently admin-role based — ready for team/role expansion |
+
+## SA-020: Cost Guardian Agent (Agent 4) + User Support Agent (Agent 5) — DONE 2026-03-07
+
+### Cost Guardian Agent (Agent 4)
+
+**What it does:** Monitors spend across all vendor services (Anthropic, Supabase, Vercel, Resend, PostHog, Cloudflare, GitHub, Canny) against monthly budgets. Compares `vendor_cost_log` actuals against `vendor_cost_budgets` thresholds. Runs hourly.
+
+**Checks performed:**
+1. **Budget Status** — Per-vendor spend vs warn/throttle/hard-stop thresholds via `fn_cost_guardian_summary()`
+2. **Spend Velocity** — Month-to-date run rate projection; alerts if full-month projection exceeds 85%/100% of total budget
+3. **Anthropic Token Rate** — Proxy cost tracking via `agent_action_log` AI call counts; estimates daily spend vs. daily budget slice
+
+**Database additions:**
+- `vendor_cost_budgets` table — 8 vendors seeded with conservative defaults; stores warn_pct/throttle_pct/hard_stop_pct per vendor
+- `fn_cost_guardian_summary()` — SQL function returning full budget vs. actual comparison as JSONB for admin panel and orchestrator
+- Gateway routes #104 (crewai-cost-guardian)
+- pg_cron: hourly (on the hour)
+
+**Observe mode:** Logs all findings with severity (ok/warn/critical) to `agent_action_log`. Zero remediation actions. Agent never throttles or activates kill switches automatically.
+
+### User Support Agent (Agent 5)
+
+**What it does:** Syncs Canny support requests, classifies by category (bug/feature_request/billing/account/general), assigns triage priority (urgent/high/medium/low), and drafts suggested responses for Marston review. Runs every 15 minutes.
+
+**Checks performed:**
+1. **Canny Sync** — Fetches latest posts from Canny API boards (general, bugs, feature-requests); upserts to `canny_sync_log`
+2. **Triage** — Uses Claude Haiku to classify and prioritize unclassified items (up to 25 per run)
+3. **Draft Responses** — Generates suggested response drafts for urgent/high priority items only
+
+**Database additions:**
+- `canny_sync_log` table — mirrors Canny posts with triage metadata, priority, agent_suggested_response, marston_reviewed flag
+- `fn_user_support_summary()` — queue health function for admin panel: urgent/high/unreviewed/awaiting-triage counts
+- Gateway routes #105 (crewai-user-support)
+- pg_cron: every 15 minutes
+
+**Observe mode:** Agent NEVER sends responses. `marston_reviewed = false` until Marston explicitly marks items reviewed. All drafts are suggestions only.
+
+**AI usage:** Claude Haiku for classification + draft generation. Max 10 AI calls per run, capped to `max_items_per_run: 25`. Zero cost when CANNY_API_KEY not configured.
+
+### Hook & Scar Points (SA-020 additions)
+
+| Type | What | Purpose |
+|------|------|---------|
+| HOOK | `vendor_cost_budgets.track_via` column | 'manual' / 'vault_api' / 'stripe_webhook' — extensible without migration |
+| HOOK | `vendor_cost_budgets.api_endpoint` | Ready to automate pull from vendor APIs when credentials available |
+| HOOK | `fn_cost_guardian_summary()` | RPC function callable by CrewAI orchestrator and admin panel alike |
+| SCAR | `canny_sync_log.category` | Enum-like text; ready for new categories as product grows |
+| SCAR | `canny_sync_log.agent_suggested_response` | Draft field exists now; delivery mechanism (Canny API) added when agent graduates to suggest mode |
+| SCAR | `vendor_cost_budgets` table | Budget ceilings in place before any real spend occurs; thresholds tunable without code changes |

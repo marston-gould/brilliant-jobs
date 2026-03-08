@@ -52,6 +52,23 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**SA-020** — Cost Guardian Agent + User Support Agent (Phase S4)
+- Completed: 2026-03-07
+- Git tag: `admin@1.8.0-crewai-agents-4-5`
+- Product version bumped: `v7.53` → `v7.54`
+- ROADMAP.md updated: SA-020 row → ✅ with completion notes
+- roadmap.html updated: SA-020 entry → `s: 'done'`, p: 100
+- **Created:**
+  - `supabase/migrations/v6.29-crewai-agents-4-5.sql` — vendor_cost_budgets table (8 vendors seeded with budgets/thresholds), canny_sync_log table (Canny posts mirror with triage metadata), fn_cost_guardian_summary() JSONB function, fn_user_support_summary() JSONB function, agent_config rows for cost-guardian + user-support, api_consumers + agent_credentials, pg_cron schedules (hourly cost, 15min support)
+  - `supabase/functions/crewai-cost-guardian/index.ts` — 3 checks: budget status (fn_cost_guardian_summary), spend velocity (MTD run-rate projection), Anthropic token rate (agent_action_log proxy). Actions: check + status.
+  - `supabase/functions/crewai-user-support/index.ts` — 3 actions: sync_and_triage (Canny fetch + upsert + AI triage via Claude Haiku), status (queue summary). NEVER sends responses. All drafts require Marston review.
+- **Modified:**
+  - `supabase/functions/api-gateway/index.ts` — Routes #104 (crewai-cost-guardian), #105 (crewai-user-support). Total: 105 routes.
+  - `js/admin-crewai.js` — refreshCostGuardian() (vendor budget table with status colors), refreshUserSupport() (queue counts + urgent item list)
+  - `docs/scaling/adr-05-crewai.md` — SA-020 section: IMPLEMENTED. Cost Guardian + User Support architecture, tables, functions, hook/scar points.
+- **Tests:** 63 SA-020 validation tests (migration structure, tables, RLS, functions, EF actions, observe mode, gateway routes, admin UI, ADR docs)
+- Phase S4 CONTINUING
+
 **SA-019** — Database Partitioning: ats_jobs by Source (Phase S4)
 - Completed: 2026-03-07
 - Git tag: `infra@partitioning-v1.0.0`
@@ -306,14 +323,14 @@ None.
 
 ## Next Session
 
-**SA-020** — Cost Guardian Agent + User Support Agent (Phase S4)
-- Entry gate: SA-012 ✅ (Agent graduation pipeline operational), SA-019 ✅ (Partitioning complete)
-- Pair: Backend + Frontend
+**SA-021** — Referral Pipeline Agent (Phase S4)
+- Entry gate: SA-020 ✅ (Agents 4 + 5 operational)
+- Pair: Backend + Eng Lead
 - Reviewer: Forward-Looking Dev
-- Estimated: 14–18h
-- Build: Cost Guardian Agent (Agent 4) — monitors spend across all 12+ services via vendor_cost_budgets table. User Support Agent (Agent 5) — triages Canny support requests. Both start in observe mode.
+- Estimated: 12–16h
+- Build: Referral Pipeline Agent (Agent 6) — fraud detection, reward eligibility checks, referral attribution validation. Monitors referral_events + referral_rewards tables. Observe mode.
 
-**Phase S4 continuing.** SA-020 next.
+**Phase S4 continuing.** SA-021 next.
 
 ---
 
@@ -345,11 +362,11 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.53`** | **SA-017** |
-| Dashboard | **`dashboard@3.0.0-all-pages`** | **SA-017** |
+| **Product (BJ_VERSION)** | **`v7.54`** | **SA-020** |
+| Dashboard | `dashboard@3.0.0-all-pages` | SA-017 |
 | Extension | `extension@2.22.0-error-handling` | FIX-11 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
-| Admin | `admin@1.7.0-graduation` | SA-012 |
+| **Admin** | **`admin@1.8.0-crewai-agents-4-5`** | **SA-020** |
 | **SPA Scaffold** | **`spa@1.0.0-scaffold`** | **SA-013** |
 | **API Gateway** | `infra@gateway-v1.0.0` | SA-018 (103 routes) |
 | **Partitioning** | **`infra@partitioning-v1.0.0`** | **SA-019** |

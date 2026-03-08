@@ -397,3 +397,82 @@ async function sendDigestNow() {
     if (typeof reportError === 'function') reportError('admin-crewai', 'sendDigestNow', e);
   }
 }
+
+// ─── SA-020: Cost Guardian Panel ───
+async function refreshCostGuardian() {
+  var el = document.getElementById('crewai-cost-guardian-panel');
+  if (!el) return;
+  el.innerHTML = '<p class="u-text-muted">Loading cost status…</p>';
+  try {
+    var resp = await sb.functions.invoke('crewai-cost-guardian', {
+      body: { action: 'status' },
+    });
+    if (resp.error) throw resp.error;
+    var summary = resp.data.summary;
+    if (!summary || !summary.vendor_status) {
+      el.innerHTML = '<p class="u-text-muted">No cost data available yet.</p>';
+      return;
+    }
+    var statusColor = { ok: '#22c55e', warn: '#f59e0b', throttle: '#ef4444', hard_stop: '#7f1d1d', no_budget: '#94a3b8' };
+    var rows = summary.vendor_status.map(function(v) {
+      var color = statusColor[v.status] || '#94a3b8';
+      var pct = v.status === 'no_budget' ? 'N/A' : v.spent_pct + '%';
+      return '<tr>' +
+        '<td>' + v.display_name + '</td>' +
+        '<td>$' + (v.spent || 0).toFixed(2) + ' / $' + (v.budget || 0).toFixed(2) + '</td>' +
+        '<td>' + pct + '</td>' +
+        '<td><span style="color:' + color + '; font-weight:600;">' + v.status.toUpperCase() + '</span></td>' +
+        '</tr>';
+    }).join('');
+    el.innerHTML =
+      '<div style="display:flex; gap:12px; margin-bottom:12px;">' +
+        '<div class="stat-chip"><span class="stat-num">$' + (summary.total_spent || 0).toFixed(2) + '</span><span class="stat-label">MTD Spend</span></div>' +
+        '<div class="stat-chip"><span class="stat-num">$' + (summary.total_budget || 0).toFixed(2) + '</span><span class="stat-label">Total Budget</span></div>' +
+        '<div class="stat-chip"><span class="stat-num">' + (summary.alerts ? summary.alerts.length : 0) + '</span><span class="stat-label">Alerts</span></div>' +
+      '</div>' +
+      '<table class="data-table"><thead><tr><th>Vendor</th><th>Spent / Budget</th><th>%</th><th>Status</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table>';
+  } catch (e) {
+    el.innerHTML = '<p class="u-text-muted">Error loading cost data.</p>';
+    if (typeof reportError === 'function') reportError('admin-crewai', 'refreshCostGuardian', e);
+  }
+}
+
+// ─── SA-020: User Support Panel ───
+async function refreshUserSupport() {
+  var el = document.getElementById('crewai-user-support-panel');
+  if (!el) return;
+  el.innerHTML = '<p class="u-text-muted">Loading support queue…</p>';
+  try {
+    var resp = await sb.functions.invoke('crewai-user-support', {
+      body: { action: 'status' },
+    });
+    if (resp.error) throw resp.error;
+    var q = resp.data.summary;
+    if (!q) {
+      el.innerHTML = '<p class="u-text-muted">No support data available yet.</p>';
+      return;
+    }
+    var urgentColor = (q.urgent || 0) > 0 ? '#ef4444' : '#22c55e';
+    el.innerHTML =
+      '<div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px;">' +
+        '<div class="stat-chip"><span class="stat-num" style="color:' + urgentColor + ';">' + (q.urgent || 0) + '</span><span class="stat-label">Urgent</span></div>' +
+        '<div class="stat-chip"><span class="stat-num">' + (q.high || 0) + '</span><span class="stat-label">High</span></div>' +
+        '<div class="stat-chip"><span class="stat-num">' + (q.unreviewed_by_marston || 0) + '</span><span class="stat-label">Awaiting Review</span></div>' +
+        '<div class="stat-chip"><span class="stat-num">' + (q.awaiting_triage || 0) + '</span><span class="stat-label">Needs Triage</span></div>' +
+        '<div class="stat-chip"><span class="stat-num">' + (q.total_open || 0) + '</span><span class="stat-label">Total Open</span></div>' +
+      '</div>' +
+      ((q.recent_urgent && q.recent_urgent.length > 0) ?
+        '<p style="font-weight:600; margin:8px 0 4px;">High Priority Items</p>' +
+        '<ul style="margin:0; padding-left:18px;">' +
+          q.recent_urgent.map(function(item) {
+            return '<li><strong>[' + item.triage_priority.toUpperCase() + ']</strong> ' +
+              item.title + ' <span class="u-text-muted">(👍 ' + item.votes + ')</span></li>';
+          }).join('') +
+        '</ul>'
+        : '<p class="u-text-muted">No urgent items. 🎉</p>');
+  } catch (e) {
+    el.innerHTML = '<p class="u-text-muted">Error loading support queue.</p>';
+    if (typeof reportError === 'function') reportError('admin-crewai', 'refreshUserSupport', e);
+  }
+}

@@ -3185,7 +3185,7 @@ Phase S can overlap with Phase 1 feature work on separate tracks. Sessions withi
 |---|------|------|--------|-------|
 | SA-018 | Read replica + query routing | 10–14h | ✅ | Supabase read replica infrastructure. Read-only route classification (17 routes). Gateway middleware + x-gateway-db-mode headers. _shared/db-client.ts dual-mode factory with failover. replica-health EF (route #103). v6.27 migration (health_log + routing_stats + pg_cron). ADR-06 SA-018 documented. 68 tests. Pair: DevOps + Backend. |
 | SA-019 | Database partitioning | 12–16h | ✅ | Partition ats_jobs by source (ats, common_crawl, amazon). v6.28 migration: LIST partitioning on ats_source, 4 partitions, 18 indexes, per-partition VACUUM cron, v_partition_stats view, fn_partition_health(). 53 tests. DONE 2026-03-07. |
-| SA-020 | CrewAI Agents 4–5 | 14–18h | 🔲 | Cost Optimization + User Behavior agents. Observe mode + kill switches. Pair: Backend + Data Eng. |
+| SA-020 | CrewAI Agents 4–5 | 14–18h | ✅ | Cost Guardian (Agent 4) + User Support (Agent 5). vendor_cost_budgets + canny_sync_log tables. fn_cost_guardian_summary + fn_user_support_summary. hourly cost checks + 15min Canny sync. 63 tests. v7.54. |
 | SA-021 | CrewAI Agent 6 + graduation | 12–16h | 🔲 | SEO Content Agent. Graduate Agents 4–6. All 6 operational. Pair: Backend + Eng Lead. |
 | SA-022 | TypeScript — extension + EFs | 16–22h | 🔲 | All 43 extension files + 88 EFs to strict TS. Shared types package. Pair: Frontend + Backend. |
 | SA-023 | Load test 5,000 concurrent | 12–16h | 🔲 | k6 at 5K concurrent. Zero 5xx, p95 search <500ms. Pass/fail gate. Pair: DevOps + QA. |
