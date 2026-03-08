@@ -20,13 +20,21 @@ import { AuthGuard } from '@shell/AuthGuard';
 import { AdminGuard } from '@shell/AdminGuard';
 import { LegacyPageWrapper } from '@shell/LegacyPageWrapper';
 
-// ── Lazy-loaded page placeholders ─────────────────────────
-// SA-014+: Replace these with actual React page components.
-// Example: const FeedPage = lazy(() => import('@app/pages/dashboard/FeedPage'));
+// ── Migrated page components ──────────────────────────────
+// SA-014: FeedPage is the first fully migrated React page.
+import { lazy, Suspense } from 'react';
+const FeedPage = lazy(() => import('@app/pages/dashboard/feed/FeedPage'));
+
+function FeedPageRoute() {
+  return (
+    <Suspense fallback={<div className="p-6 text-text-faint text-sm">Loading feed…</div>}>
+      <FeedPage />
+    </Suspense>
+  );
+}
 
 // ── Dashboard Legacy Routes ───────────────────────────────
 
-function LegacyFeed() { return <LegacyPageWrapper tabId="feed" surface="dashboard" />; }
 function LegacyPipeline() { return <LegacyPageWrapper tabId="pipeline" surface="dashboard" />; }
 function LegacyKeywords() { return <LegacyPageWrapper tabId="keywords" surface="dashboard" />; }
 function LegacyResumes() { return <LegacyPageWrapper tabId="resumes" surface="dashboard" />; }
@@ -64,7 +72,7 @@ export const routes: RouteObject[] = [
         children: [
           // ── Dashboard Routes ──
           { index: true, element: <Navigate to="feed" replace /> },
-          { path: 'feed', element: <LegacyFeed /> },
+          { path: 'feed', element: <FeedPageRoute /> },
           { path: 'pipeline', element: <LegacyPipeline /> },
           { path: 'keywords', element: <LegacyKeywords /> },
           { path: 'resumes', element: <LegacyResumes /> },
