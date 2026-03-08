@@ -52,6 +52,36 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**POD3-GS** — Get Started + Setup Page Consolidation & UX Defect Resolution
+- Completed: 2026-03-08
+- Git tag: `dashboard@3.2.0-gs-setup-consolidation`
+- Product version bumped: `v7.79` → `v7.80` (JS/CSS/HTML changes — dashboard.html, integrations.js, app.js, input.css, styles.css; all HTML surfaces cache-busted)
+- ROADMAP.md updated: POD3-GS → ✅
+- roadmap.html updated: POD3-GS → `s: 'done'`, p: 100
+- **9 BUG fixes resolved:**
+  - BUG-1 (Architecture): Get Started = educational only, Setup = execution surface
+  - BUG-2 (Redundancy): gs-progress-bar removed from Get Started, updateSetupProgress() no-op'd
+  - BUG-3 (Inconsistency): Connect Gmail button removed, all 3 Step 2 cards uniform display-only with "Set up on Setup page →" links
+  - BUG-4 (Data integrity): Hardcoded stats (320,000+ / 39,000+ / 6) replaced with live Supabase data containers (gs-stat-positions, gs-stat-pages, gs-stat-companies)
+  - BUG-5 (Content): "6 hiring platforms covered" replaced with "companies hiring now" (distinct company count)
+  - BUG-6 (State sync): Shared `window._connectionState` object + `renderConnectionStatus()` drives BOTH status bar dots AND card header dots from single source of truth
+  - BUG-7 (Visual parity): All 4 integration cards (Extension, Gmail, Calendar, Drive) use identical connected/disconnected containers with phone-verified-badge pattern. Extension ext-dot → setup-dot. Calendar connect/disconnect functions added with localStorage persistence.
+  - BUG-8 (Layout): Setup page-body max-width: 760px. Both gs-hero and setup-hero standardized: border-radius: 12px, padding: 28px 32px.
+  - BUG-9 (Button sizing): .setup-connect-btn utility class: min-width: 140px, padding: 6px 16px, font-size: 11px. Applied to all connect/disconnect buttons.
+- **New functions:** connectGoogleCalendar(), disconnectGoogleCalendar(), renderConnectionStatus(), fetchGetStartedStats()
+- **Pod 3 Team:** 5 additional roles already present in pod-team-manifest.md since SA-006 (Chief Architect, Lead Platform Engineer, System Architect—Scalability, Forward-Looking Developer(s), Evolvability Strategist).
+- **Created:**
+  - `tests/pod3-gs-consolidation.test.js` — 61 validation tests (10 sections)
+- **Modified:**
+  - `dashboard.html` — Get Started + Setup page restructuring
+  - `js/integrations.js` — connectionState, renderConnectionStatus, Calendar integration, Drive card refactor
+  - `js/app.js` — updateSetupProgress no-op, checkExtensionStatus unified pattern, updateGmailUI shared state, fetchGetStartedStats
+  - `src/input.css` — gs-hero/setup-hero standardized, setup-connect-btn utility
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — POD3-GS → ✅
+  - `roadmap.html` — POD3-GS → done/100
+- **Tests:** 61 POD3-GS validation tests (all passing)
+
 **BI-07** — CI Pipeline Enforcement & Gate Remediation
 - Completed: 2026-03-08
 - Git tag: `infra@ci-enforcement-v1.0.0`
@@ -795,8 +825,8 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.79`** | **BI-07 — CI Pipeline Enforcement & Gate Remediation** |
-| Dashboard | `dashboard@3.0.0-all-pages` | SA-017 |
+| **Product (BJ_VERSION)** | **`v7.80`** | **POD3-GS — Get Started + Setup Page Consolidation** |
+| Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
 | **Admin** | **`admin@1.9.0-referral-pipeline-agent`** | **SA-021** |

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v7.79 -->
+<!-- Brilliant Jobs Dashboard v7.80 -->
 <html lang="en">
 <head>
   <!-- CS-P1-009: Theme flash prevention — must be first script -->
@@ -17,22 +17,22 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="/js/vendor/supabase.min.js" defer></script>
-  <script src="/js/pipeline-migration.js?v=v7.79" defer></script>
-  <script src="/js/notification-center.js?v=v7.79" defer></script>
+  <script src="/js/pipeline-migration.js?v=v7.80" defer></script>
+  <script src="/js/notification-center.js?v=v7.80" defer></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" integrity="sha384-nFoSjZIoH3CCp8W639jJyQkuPHinJ2NHe7on1xvlUA7SuGfJAfvMldrsoAVm6ECz" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" integrity="sha384-eEu5CTj3qGvu9PdJuS+YlkNi7d2XxQROAFYOr59zgObtlcux1ae1Il3u7jvdCSWu" crossorigin="anonymous"></script>
   <!-- CS-014: CX-09 — ECharts lazy-loaded by stats.js when Stats tab opens -->
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js" integrity="sha384-TcLTgu6flPhnZ5dfHnHimsxNFjYWN0povfGgnOvgPJKbZe6IbuoC2ociiatSHl9E" crossorigin="anonymous"></script>
   <!-- CS-016 FIX-10: Code-split chunks — shell (globals+routing) + feed (job list) loaded eagerly; all other chunks lazy-loaded on tab switch -->
-  <script src="dist/dashboard-shell.min.js?v=v7.79" defer></script>
-  <script src="dist/dashboard-feed.min.js?v=v7.79" defer></script>
+  <script src="dist/dashboard-shell.min.js?v=v7.80" defer></script>
+  <script src="dist/dashboard-feed.min.js?v=v7.80" defer></script>
   <!-- CS-P1-002: dashboard inline scripts externalized (pdfjs, preload, feedback, insights, a11y) -->
-  <script src="js/dashboard-inline.js?v=v7.79" defer></script>
-  <script src="js/canny.js?v=v7.79" defer></script>
+  <script src="js/dashboard-inline.js?v=v7.80" defer></script>
+  <script src="js/canny.js?v=v7.80" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=v7.79">
+  <link rel="stylesheet" href="styles.css?v=v7.80">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -107,11 +107,11 @@
     </style>
   <!-- CSS extracted to styles.css in v3.28 -->
   <!-- A13: PostHog analytics — CS-P1-002: externalized for CSP compliance -->
-  <script src="js/posthog-dashboard.js?v=v7.79" defer></script>
-  <script src="js/posthog-perf.js?v=v7.79" defer></script>
-  <script src="js/feature-flags.js?v=v7.79" defer></script>
-  <script src="js/structured-logger.js?v=v7.79" defer></script>
-  <script src="js/theme.js?v=v7.79" defer></script>
+  <script src="js/posthog-dashboard.js?v=v7.80" defer></script>
+  <script src="js/posthog-perf.js?v=v7.80" defer></script>
+  <script src="js/feature-flags.js?v=v7.80" defer></script>
+  <script src="js/structured-logger.js?v=v7.80" defer></script>
+  <script src="js/theme.js?v=v7.80" defer></script>
 </head>
 <body>
 
@@ -362,17 +362,7 @@
         </div>
         <div class="page-body" style="max-width:760px;">
 
-          <!-- DS1-11: Unified setup progress bar — ties Getting Started to Setup page -->
-          <div id="gs-progress-bar" class="card gs-progress-bar">
-            <div style="font-size:13px;font-weight:600;color:var(--text);">Setup Progress</div>
-            <div style="display:flex;gap:12px;flex-wrap:wrap;">
-              <div class="setup-status-item"><span class="setup-status-dot" id="gs-dot-resume"></span> <span class="u-meta">Resume</span></div>
-              <div class="setup-status-item"><span class="setup-status-dot" id="gs-dot-ext"></span> <span class="u-meta">Extension</span></div>
-              <div class="setup-status-item"><span class="setup-status-dot" id="gs-dot-gmail"></span> <span class="u-meta">Gmail</span></div>
-              <div class="setup-status-item"><span class="setup-status-dot" id="gs-dot-filters"></span> <span class="u-meta">Filters</span></div>
-            </div>
-            <div id="gs-progress-pct" style="margin-left:auto;font-family:var(--mono);font-size:14px;font-weight:700;color:var(--accent);">0%</div>
-          </div>
+          <!-- POD3-GS: Progress bar removed (BUG-2). Get Started is educational — no progress indicators. Setup page is the single source of truth for connection status. -->
 
           <!-- Resume-first onboarding prompt -->
           <div id="onboard-resume-first" class="gs-resume-drop" role="button" tabindex="0" aria-label="Upload your resume to auto-build your first search" onclick="document.getElementById('resume-input-gs').click()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('resume-input-gs').click()}">
@@ -469,15 +459,14 @@
               Authorize read-only access so Brilliant Jobs can help track your application pipeline &mdash; detecting responses, scheduling interviews, and flagging companies that go silent.
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:16px;">
-              <div class="gs-connect-card" id="gs-gmail-card">
+              <!-- POD3-GS: BUG-3 resolved — all three cards are uniform display-only. No action buttons on Get Started. -->
+              <div class="gs-connect-card">
                 <div style="width:36px;height:36px;border-radius:10px;background:hsla(4,80%,56%,0.08);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
                   <svg width="18" height="14" viewBox="0 0 24 18" fill="none"><path d="M1.5 4.5L12 10.5L22.5 4.5V15.75C22.5 16.575 21.825 17.25 21 17.25H3C2.175 17.25 1.5 16.575 1.5 15.75V4.5Z" fill="#EA4335" opacity="0.8"/><path d="M22.5 2.25C22.5 1.425 21.825 0.75 21 0.75H3C2.175 0.75 1.5 1.425 1.5 2.25L12 8.25L22.5 2.25Z" fill="#EA4335"/></svg>
                 </div>
                 <div class="u-label-bold">Gmail</div>
                 <div class="u-meta-dim-lh">Detects confirmations, rejections, and interview requests</div>
-                <div id="gs-gmail-status" style="margin-top:8px;">
-                  <button class="btn btn-sm btn-primary" onclick="connectGmail()" style="font-size:11px;padding:4px 12px;">Connect Gmail</button>
-                </div>
+                <a href="#" onclick="event.preventDefault();document.querySelector('[data-page=setup]').click()" style="display:inline-block;margin-top:8px;font-size:11px;color:var(--accent);text-decoration:none;">Set up on Setup page &rarr;</a>
               </div>
               <div class="gs-connect-card">
                 <div style="width:36px;height:36px;border-radius:10px;background:hsla(217,80%,56%,0.08);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
@@ -485,6 +474,7 @@
                 </div>
                 <div class="u-label-bold">Calendar</div>
                 <div class="u-meta-dim-lh">Tracks interview schedules and follow-up timelines</div>
+                <a href="#" onclick="event.preventDefault();document.querySelector('[data-page=setup]').click()" style="display:inline-block;margin-top:8px;font-size:11px;color:var(--accent);text-decoration:none;">Set up on Setup page &rarr;</a>
               </div>
               <div class="gs-connect-card">
                 <div style="width:36px;height:36px;border-radius:10px;background:hsla(217,80%,56%,0.08);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
@@ -492,6 +482,7 @@
                 </div>
                 <div class="u-label-bold">Drive</div>
                 <div class="u-meta-dim-lh">Keep resumes synced &mdash; edit in Docs, always current here</div>
+                <a href="#" onclick="event.preventDefault();document.querySelector('[data-page=setup]').click()" style="display:inline-block;margin-top:8px;font-size:11px;color:var(--accent);text-decoration:none;">Set up on Setup page &rarr;</a>
               </div>
             </div>
             <div class="gs-tip">
@@ -599,9 +590,10 @@
               And unlike generic market reports, your <strong>Stats dashboard</strong> shows data about <em>your</em> job market &mdash; salary ranges, hiring velocity, top companies, and competition levels based only on roles that match your filters. Not the world's numbers. Yours.
             </div>
             <div style="display:flex;gap:32px;flex-wrap:wrap;margin-top:18px;padding-top:18px;border-top:1px solid var(--border);">
-              <div><div class="u-stat-lg">320,000+</div><div class="u-meta">open positions</div></div>
-              <div><div class="u-stat-lg">39,000+</div><div class="u-meta">career pages tracked</div></div>
-              <div><div class="u-stat-lg">6</div><div class="u-meta">hiring platforms covered</div></div>
+              <!-- POD3-GS: BUG-4 + BUG-5 resolved — live stats from Supabase, "hiring platforms" replaced with "companies hiring now" -->
+              <div><div class="u-stat-lg" id="gs-stat-positions">—</div><div class="u-meta">open positions</div></div>
+              <div><div class="u-stat-lg" id="gs-stat-pages">—</div><div class="u-meta">career pages tracked</div></div>
+              <div><div class="u-stat-lg" id="gs-stat-companies">—</div><div class="u-meta">companies hiring now</div></div>
             </div>
           </div>
 
@@ -614,7 +606,8 @@
           <h2>Setup</h2>
           <p>Connect your network and integrations <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('setup')">How this works →</a></p>
         </div>
-        <div class="page-body">
+        <!-- POD3-GS: BUG-8 resolved — page-body max-width: 760px matches Get Started for consistent hero treatment -->
+        <div class="page-body" style="max-width:760px;">
 
           <!-- Setup hero -->
           <div class="setup-hero">
@@ -648,15 +641,25 @@
                   <div class="card-title u-mb-0">Chrome Extension</div>
                   <div class="u-meta-dim">Your network mapped to active hiring</div>
                 </div>
-                <div class="ext-dot off" id="ext-dot" role="status" aria-label="Extension not connected"></div>
+                <!-- POD3-GS: BUG-7 — unified header dot class -->
+                <div class="setup-dot" id="ext-dot" role="status" aria-label="Extension not connected"></div>
               </div>
               <div class="setup-int-body">
-                <div class="ext-status u-mb-14" id="ext-status-bar">
-                  <div>
-                    <div style="font-size:13px;font-weight:600;" id="ext-status-text">Extension not detected</div>
-                    <div class="u-meta" id="ext-status-detail">Download and install below</div>
+                <!-- POD3-GS: BUG-7 — Extension connected state matches Gmail pattern -->
+                <div id="ext-setup-connected" style="display:none;margin-bottom:12px;">
+                  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                    <div class="phone-verified-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Connected</div>
+                    <span id="ext-instance-label" style="font-size:12px;color:var(--text-dim);font-family:var(--mono);"></span>
                   </div>
+                  <div class="u-meta" id="ext-status-detail-connected" style="margin-bottom:8px;"></div>
                 </div>
+                <div id="ext-setup-disconnected" style="margin-bottom:12px;">
+                  <div class="ext-status u-mb-14" id="ext-status-bar">
+                    <div>
+                      <div style="font-size:13px;font-weight:600;" id="ext-status-text">Extension not detected</div>
+                      <div class="u-meta" id="ext-status-detail">Download and install below</div>
+                    </div>
+                  </div>
                 <div id="download-box" class="u-mb-12">
                   <button class="btn btn-primary btn-sm" id="download-btn">Download Extension</button>
                   <div class="download-status" id="download-status"></div>
@@ -722,6 +725,7 @@
                     </div>
                   </div>
                 </div>
+                </div><!-- /ext-setup-disconnected -->
               </div>
             </div>
 
@@ -738,15 +742,16 @@
                 <div class="setup-dot" id="gmail-dot"></div>
               </div>
               <div class="setup-int-body">
+                <!-- POD3-GS: BUG-7 — Gmail is the template pattern for connected/disconnected states -->
                 <div id="gmail-setup-connected" style="display:none;margin-bottom:12px;">
                   <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
                     <div class="phone-verified-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Connected</div>
                     <span id="gmail-address" style="font-size:12px;color:var(--text-dim);font-family:var(--mono);"></span>
                   </div>
-                  <button class="btn btn-sm btn-secondary u-fs-11" onclick="disconnectGmail()">Disconnect Gmail</button>
+                  <button class="btn btn-sm btn-secondary setup-connect-btn" onclick="disconnectGmail()">Disconnect Gmail</button>
                 </div>
                 <div id="gmail-setup-disconnected" style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-                  <button class="btn btn-sm btn-primary" id="gmail-setup-connect-btn" onclick="connectGmail()">Connect Gmail</button>
+                  <button class="btn btn-sm btn-primary setup-connect-btn" id="gmail-setup-connect-btn" onclick="connectGmail()">Connect Gmail</button>
                   <span class="u-meta">Read-only access</span>
                 </div>
                 <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">
@@ -768,11 +773,16 @@
                 <div class="setup-dot" id="gcal-dot"></div>
               </div>
               <div class="setup-int-body">
-                <div id="gcal-status" style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-                  <span class="u-label-dim" id="gcal-status-text">Not connected</span>
+                <!-- POD3-GS: BUG-7 — Calendar matches Gmail pattern -->
+                <div id="gcal-setup-connected" style="display:none;margin-bottom:12px;">
+                  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                    <div class="phone-verified-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Connected</div>
+                    <span id="gcal-address" style="font-size:12px;color:var(--text-dim);font-family:var(--mono);"></span>
+                  </div>
+                  <button class="btn btn-sm btn-secondary setup-connect-btn" id="gcal-disconnect-btn" onclick="disconnectGoogleCalendar()">Disconnect Calendar</button>
                 </div>
-                <div class="u-flex-gap-10">
-                  <button class="btn btn-primary btn-sm" id="gcal-connect-btn" onclick="connectGoogleCalendar()">Connect Calendar</button>
+                <div id="gcal-setup-disconnected" style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                  <button class="btn btn-sm btn-primary setup-connect-btn" id="gcal-connect-btn" onclick="connectGoogleCalendar()">Connect Calendar</button>
                   <span class="u-meta">Read-only access</span>
                 </div>
                 <div style="font-size:12px;color:var(--text-dim);line-height:1.6;margin-top:12px;">
@@ -794,12 +804,16 @@
                 <div class="setup-dot" id="gdrive-dot"></div>
               </div>
               <div class="setup-int-body">
-                <div id="gdrive-status" style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-                  <span class="u-label-dim" id="gdrive-status-text">Not connected</span>
+                <!-- POD3-GS: BUG-7 — Drive matches Gmail pattern -->
+                <div id="gdrive-setup-connected" style="display:none;margin-bottom:12px;">
+                  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                    <div class="phone-verified-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Connected</div>
+                    <span id="gdrive-address" style="font-size:12px;color:var(--text-dim);font-family:var(--mono);"></span>
+                  </div>
+                  <button class="btn btn-sm btn-secondary setup-connect-btn" id="gdrive-disconnect-btn" onclick="disconnectGoogleDrive()">Disconnect Drive</button>
                 </div>
-                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                  <button class="btn btn-sm btn-primary" id="gdrive-connect-btn" onclick="connectGoogleDrive()">Connect Drive</button>
-                  <button class="btn btn-sm btn-secondary u-hidden" id="gdrive-disconnect-btn" onclick="disconnectGoogleDrive()">Disconnect</button>
+                <div id="gdrive-setup-disconnected" style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                  <button class="btn btn-sm btn-primary setup-connect-btn" id="gdrive-connect-btn" onclick="connectGoogleDrive()">Connect Drive</button>
                   <span class="u-meta">Read-only access</span>
                 </div>
                 <div id="gdrive-files" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">

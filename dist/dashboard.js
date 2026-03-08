@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v7.79';
+var BJ_VERSION = 'v7.80';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -2675,10 +2675,14 @@ async function checkExtensionStatus() {
       .eq('id', currentUser.id).single(), { label: 'app:profiles', fallback: null });
 
     const navDot = $('#ext-status-dot');
-    const dot = $('#ext-dot');
     const text = $('#ext-status-text');
     const detail = $('#ext-status-detail');
     const updateBanner = $('#ext-update-banner');
+    // POD3-GS: BUG-7 — unified connected/disconnected containers
+    const extConnDiv = document.getElementById('ext-setup-connected');
+    const extDiscDiv = document.getElementById('ext-setup-disconnected');
+    const extInstanceLabel = document.getElementById('ext-instance-label');
+    const extDetailConn = document.getElementById('ext-status-detail-connected');
 
     if (profile?.last_scan_at) {
       const lastScan = new Date(profile.last_scan_at);
@@ -2701,10 +2705,27 @@ async function checkExtensionStatus() {
         navDot.title = 'Extension update available (v' + REQUIRED_EXTENSION_VERSION + ')';
       }
 
-      // Setup page status
-      if (dot && text && detail) {
+      // POD3-GS: BUG-6 — Update shared connection state
+      window._connectionState.ext = isActive && !needsUpdate;
+      window.renderConnectionStatus();
+
+      // POD3-GS: BUG-7 — Toggle unified connected/disconnected containers
+      if (isActive && !needsUpdate) {
+        if (extConnDiv) extConnDiv.style.display = '';
+        if (extDiscDiv) extDiscDiv.style.display = 'none';
+        if (extInstanceLabel) extInstanceLabel.textContent = 'v' + (profile.extension_version || '—');
+        const timeStr = lastScan.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        if (extDetailConn) extDetailConn.textContent = profile.scanner_running
+          ? 'Active now · last synced at ' + timeStr
+          : 'Last active at ' + timeStr;
+      } else {
+        if (extConnDiv) extConnDiv.style.display = 'none';
+        if (extDiscDiv) extDiscDiv.style.display = '';
+      }
+
+      // Setup page status text (inside disconnected container)
+      if (text && detail) {
         if (isActive) {
-          dot.className = needsUpdate ? 'ext-dot warning' : 'ext-dot on';
           text.textContent = needsUpdate ? 'Extension update available' : 'Extension connected';
           const timeStr = lastScan.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
           const todayStr = lastScan.toDateString() === new Date().toDateString() ? 'today' : lastScan.toLocaleDateString([], { month: 'short', day: 'numeric' });
@@ -2715,7 +2736,6 @@ async function checkExtensionStatus() {
           var dlBox = $('#download-box');
           if (dlBox) dlBox.style.display = needsUpdate ? '' : 'none';
         } else {
-          dot.className = 'ext-dot off';
           text.textContent = 'Extension inactive';
           detail.textContent = `Last seen ${lastScan.toLocaleDateString([], { month: 'short', day: 'numeric' })} — open Chrome to reconnect`;
         }
@@ -2840,16 +2860,17 @@ async function initGmailStatus() {
 }
 
 function updateGmailUI(connected, email) {
+  // POD3-GS: BUG-6 — Update shared connection state
+  window._connectionState.gmail = connected;
+  window.renderConnectionStatus();
   // Setup page
   const setupConn = $('#gmail-setup-connected');
   const setupDisc = $('#gmail-setup-disconnected');
   const setupAddr = $('#gmail-address');
-  const setupDot = $('#gmail-dot');
   if (setupConn && setupDisc) {
     setupConn.style.display = connected ? '' : 'none';
     setupDisc.style.display = connected ? 'none' : '';
     if (setupAddr) setupAddr.textContent = email;
-    if (setupDot) setupDot.className = 'setup-dot' + (connected ? ' connected' : '');
   }
   // Ghost monitor page
   const ghostConn = $('#ghost-gmail-connected');
@@ -2939,6 +2960,45 @@ window.disconnectGmail = async function() {
 
 // Init Gmail status on load
 initGmailStatus();
+
+// POD3-GS: BUG-4 + BUG-5 — Fetch live community stats for Get Started data advantage section
+(async function fetchGetStartedStats() {
+  try {
+    // Open positions (active jobs count)
+    var posEl = document.getElementById('gs-stat-positions');
+    var pagesEl = document.getElementById('gs-stat-pages');
+    var companiesEl = document.getElementById('gs-stat-companies');
+    if (!posEl && !pagesEl && !companiesEl) return; // Not on Get Started page
+
+    var jobsCount = await safeQuery(function() {
+      return sb.from('ats_jobs').select('id', { count: 'exact', head: true }).eq('is_active', true);
+    }, { label: 'app:gs-stats-jobs', fallback: null });
+    if (posEl && jobsCount !== null) {
+      var count = typeof jobsCount === 'number' ? jobsCount : (jobsCount && jobsCount.count != null ? jobsCount.count : null);
+      if (count != null) posEl.textContent = Number(count).toLocaleString() + '+';
+    }
+
+    var pagesCount = await safeQuery(function() {
+      return sb.from('ats_companies').select('id', { count: 'exact', head: true }).eq('is_active', true);
+    }, { label: 'app:gs-stats-pages', fallback: null });
+    if (pagesEl && pagesCount !== null) {
+      var pCount = typeof pagesCount === 'number' ? pagesCount : (pagesCount && pagesCount.count != null ? pagesCount.count : null);
+      if (pCount != null) pagesEl.textContent = Number(pCount).toLocaleString() + '+';
+    }
+
+    // Companies hiring now: distinct company count from active jobs
+    var compResult = await safeQuery(function() {
+      return sb.rpc('get_active_company_count');
+    }, { label: 'app:gs-stats-companies', fallback: null });
+    if (companiesEl && compResult != null) {
+      companiesEl.textContent = Number(compResult).toLocaleString() + '+';
+    } else if (companiesEl) {
+      // Fallback: use ats_companies count if RPC not available
+      var cCount = typeof pagesCount === 'number' ? pagesCount : (pagesCount && pagesCount.count != null ? pagesCount.count : null);
+      if (cCount != null) companiesEl.textContent = Number(cCount).toLocaleString() + '+';
+    }
+  } catch(e) { reportError('app:gs-stats', e); }
+})();
 
 // Q22: Switch between Queue, Pipeline, and History views in My Applications
 window.switchAppView = function(view) {
@@ -3142,33 +3202,10 @@ function applyProgressiveNav(step) {
   updateSetupProgress();
 })();
 
+// POD3-GS: BUG-2 — updateSetupProgress removed. Progress bar no longer exists on Get Started.
+// Get Started is educational only; Setup Connections status bar is the single source of truth.
 function updateSetupProgress() {
-  var completed = 0;
-  var total = 4;
-  // Resume
-  var hasResume = (typeof resumes !== 'undefined' && resumes && resumes.length > 0);
-  var dotResume = document.getElementById('gs-dot-resume');
-  if (dotResume) dotResume.className = 'setup-status-dot' + (hasResume ? ' connected' : '');
-  if (hasResume) completed++;
-  // Extension
-  var extConnected = document.querySelector('.ext-dot.on') || document.querySelector('.ext-status-dot.connected');
-  var dotExt = document.getElementById('gs-dot-ext');
-  if (dotExt) dotExt.className = 'setup-status-dot' + (extConnected ? ' connected' : '');
-  if (extConnected) completed++;
-  // Gmail
-  var gmailConn = document.querySelector('#gmail-dot.connected') || document.querySelector('#status-gmail.connected');
-  var dotGmail = document.getElementById('gs-dot-gmail');
-  if (dotGmail) dotGmail.className = 'setup-status-dot' + (gmailConn ? ' connected' : '');
-  if (gmailConn) completed++;
-  // Filters
-  var hasFilters = (typeof savedFilters !== 'undefined' && savedFilters && savedFilters.length > 0);
-  var dotFilters = document.getElementById('gs-dot-filters');
-  if (dotFilters) dotFilters.className = 'setup-status-dot' + (hasFilters ? ' connected' : '');
-  if (hasFilters) completed++;
-  // Percentage
-  var pct = Math.round((completed / total) * 100);
-  var pctEl = document.getElementById('gs-progress-pct');
-  if (pctEl) { pctEl.textContent = pct + '%'; pctEl.style.color = pct === 100 ? 'var(--green)' : 'var(--accent)'; }
+  // No-op — function preserved to prevent call-site errors from legacy callers
 }
 
 
@@ -17823,48 +17860,78 @@ window.onGapTermClick = function(term) {
 
 // === js/integrations.js ===
 // ============================================================
+// POD3-GS: BUG-6 — Shared Connection State (single source of truth)
+// All connect/disconnect actions update this object first,
+// then call renderConnectionStatus() to sync BOTH status bar
+// dots AND individual card dots.
+// ============================================================
+window._connectionState = { ext: false, gmail: false, gcal: false, gdrive: false };
+
+window.renderConnectionStatus = function() {
+  var cs = window._connectionState;
+  // Status bar dots
+  var barExt = document.getElementById('status-ext');
+  var barGmail = document.getElementById('status-gmail');
+  var barGcal = document.getElementById('status-gcal');
+  var barGdrive = document.getElementById('status-gdrive');
+  if (barExt) barExt.className = 'setup-status-dot' + (cs.ext ? ' connected' : '');
+  if (barGmail) barGmail.className = 'setup-status-dot' + (cs.gmail ? ' connected' : '');
+  if (barGcal) barGcal.className = 'setup-status-dot' + (cs.gcal ? ' connected' : '');
+  if (barGdrive) barGdrive.className = 'setup-status-dot' + (cs.gdrive ? ' connected' : '');
+  // Card header dots
+  var cardExt = document.getElementById('ext-dot');
+  var cardGmail = document.getElementById('gmail-dot');
+  var cardGcal = document.getElementById('gcal-dot');
+  var cardGdrive = document.getElementById('gdrive-dot');
+  if (cardExt) cardExt.className = 'setup-dot' + (cs.ext ? ' connected' : '');
+  if (cardGmail) cardGmail.className = 'setup-dot' + (cs.gmail ? ' connected' : '');
+  if (cardGcal) cardGcal.className = 'setup-dot' + (cs.gcal ? ' connected' : '');
+  if (cardGdrive) cardGdrive.className = 'setup-dot' + (cs.gdrive ? ' connected' : '');
+};
+
+// ============================================================
 // GOOGLE DRIVE INTEGRATION
 // ============================================================
 let gdriveState = safeReadLS('bj_gdrive', {connected: false, files: []});
 
 function renderGdriveState() {
-  const dot = $('#gdrive-dot');
-  const statusText = $('#gdrive-status-text');
-  const connectBtn = $('#gdrive-connect-btn');
-  const disconnectBtn = $('#gdrive-disconnect-btn');
+  const connDiv = document.getElementById('gdrive-setup-connected');
+  const discDiv = document.getElementById('gdrive-setup-disconnected');
+  const addressEl = document.getElementById('gdrive-address');
   const filesSection = $('#gdrive-files');
   const fileList = $('#gdrive-file-list');
 
-  if (gdriveState.connected) {
-    dot.className = 'setup-dot connected';
-    statusText.textContent = `Connected as ${gdriveState.email || 'Google Account'}`;
-    statusText.style.color = 'var(--green)';
-    connectBtn.style.display = 'none';
-    disconnectBtn.style.display = '';
-    filesSection.style.display = '';
+  // Update shared state
+  window._connectionState.gdrive = gdriveState.connected;
+  window.renderConnectionStatus();
 
-    if (gdriveState.files.length === 0) {
-      fileList.innerHTML = '<div style="font-size:12px;color:var(--text-faint);padding:8px 0;">No files linked yet. Click below to link a Google Doc as a resume.</div>';
-    } else {
-      fileList.innerHTML = gdriveState.files.map((f, i) => `
-        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(148,163,184,0.08);">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4285F4" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${f.name}</div>
-            <div style="font-size:10px;color:var(--text-faint);">Linked ${f.linkedAt || ''}</div>
+  if (gdriveState.connected) {
+    if (connDiv) connDiv.style.display = '';
+    if (discDiv) discDiv.style.display = 'none';
+    if (addressEl) addressEl.textContent = gdriveState.email || 'Google Account';
+    if (filesSection) filesSection.style.display = '';
+
+    if (fileList) {
+      if (gdriveState.files.length === 0) {
+        fileList.innerHTML = '<div style="font-size:12px;color:var(--text-faint);padding:8px 0;">No files linked yet. Click below to link a Google Doc as a resume.</div>';
+      } else {
+        fileList.innerHTML = gdriveState.files.map((f, i) => `
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(148,163,184,0.08);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4285F4" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${f.name}</div>
+              <div style="font-size:10px;color:var(--text-faint);">Linked ${f.linkedAt || ''}</div>
+            </div>
+            <button class="btn btn-sm" style="font-size:10px;padding:2px 8px;color:var(--accent);background:none;border:1px solid var(--accent);" onclick="importGdriveAsResume(${i})">Import as Resume</button>
+            <button style="background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:14px;padding:2px 4px;" onclick="unlinkGdriveFile(${i})" title="Unlink">✕</button>
           </div>
-          <button class="btn btn-sm" style="font-size:10px;padding:2px 8px;color:var(--accent);background:none;border:1px solid var(--accent);" onclick="importGdriveAsResume(${i})">Import as Resume</button>
-          <button style="background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:14px;padding:2px 4px;" onclick="unlinkGdriveFile(${i})" title="Unlink">✕</button>
-        </div>
-      `).join('');
+        `).join('');
+      }
     }
   } else {
-    dot.className = 'setup-dot';
-    statusText.textContent = 'Not connected';
-    statusText.style.color = 'var(--text-dim)';
-    connectBtn.style.display = '';
-    disconnectBtn.style.display = 'none';
-    filesSection.style.display = 'none';
+    if (connDiv) connDiv.style.display = 'none';
+    if (discDiv) discDiv.style.display = '';
+    if (filesSection) filesSection.style.display = 'none';
   }
 }
 
@@ -17931,10 +17998,51 @@ window.importGdriveAsResume = function(idx) {
 
 renderGdriveState();
 
+// ============================================================
+// GOOGLE CALENDAR INTEGRATION (POD3-GS: BUG-7)
+// ============================================================
+let gcalState = safeReadLS('bj_gcal', { connected: false, email: null });
+
+function renderGcalState() {
+  const connDiv = document.getElementById('gcal-setup-connected');
+  const discDiv = document.getElementById('gcal-setup-disconnected');
+  const addressEl = document.getElementById('gcal-address');
+  // Update shared state
+  window._connectionState.gcal = gcalState.connected;
+  window.renderConnectionStatus();
+  if (gcalState.connected) {
+    if (connDiv) connDiv.style.display = '';
+    if (discDiv) discDiv.style.display = 'none';
+    if (addressEl) addressEl.textContent = gcalState.email || 'Google Account';
+  } else {
+    if (connDiv) connDiv.style.display = 'none';
+    if (discDiv) discDiv.style.display = '';
+  }
+}
+
+window.connectGoogleCalendar = function() {
+  // TODO: Replace with real Google OAuth flow via Supabase Auth
+  const email = prompt('Enter your Google account email to connect Calendar:');
+  if (!email || !email.includes('@')) return;
+  gcalState.connected = true;
+  gcalState.email = email;
+  localStorage.setItem('bj_gcal', JSON.stringify(gcalState));
+  renderGcalState();
+};
+
+window.disconnectGoogleCalendar = function() {
+  if (!confirm('Disconnect Google Calendar?')) return;
+  gcalState = { connected: false, email: null };
+  localStorage.setItem('bj_gcal', JSON.stringify(gcalState));
+  renderGcalState();
+};
+
+renderGcalState();
+
 
 // CS-P1-004 FE-005: Register integrations exports with BJ namespace
 (function() {
-  ['addGdriveFile','connectGoogleDrive','disconnectGoogleDrive','importGdriveAsResume','unlinkGdriveFile'].forEach(function(name) {
+  ['addGdriveFile','connectGoogleDrive','disconnectGoogleDrive','importGdriveAsResume','unlinkGdriveFile','connectGoogleCalendar','disconnectGoogleCalendar','renderConnectionStatus'].forEach(function(name) {
     if (typeof window[name] === 'function') {
       window.BJ[name] = window[name];
       window.BJ._registry[name] = { module: 'integrations', registered: Date.now() };
