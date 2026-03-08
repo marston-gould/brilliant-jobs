@@ -204,8 +204,8 @@ test('routes.tsx has Suspense wrappers', () => {
   const content = readFile('src/app/routes.tsx');
   assert(content.includes('function PipelinePageRoute'), 'Missing PipelinePageRoute function');
   assert(content.includes('function KeywordsPageRoute'), 'Missing KeywordsPageRoute function');
-  assert(content.includes('Loading pipeline'), 'Missing pipeline loading text');
-  assert(content.includes('Loading readiness'), 'Missing readiness loading text');
+  assert(content.includes('label="pipeline"'), 'Missing pipeline Loader label');
+  assert(content.includes('label="readiness"'), 'Missing readiness Loader label');
 });
 
 // ── Design System Compliance ─────────────────────────────────
