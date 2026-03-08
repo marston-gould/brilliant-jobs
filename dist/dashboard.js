@@ -3372,6 +3372,9 @@ async function getLocationMatchIds(wherePillsArr, whereNotPillsArr, tuning, incl
   // The ID set would be too large (30K+) and gets truncated to 200 in buildFilterQuery.
   // Instead, return null so buildFilterQuery uses inline ilike filtering.
   const hasNonRemotePills = radiusPills.length > 0 || statePills.length > 0;
+  // v7.68: For text pills (e.g. "united states") + includeRemote, return null early.
+  // buildFilterQuery handles includeRemote by injecting remote into the OR clause.
+  // Fetching 30K+ remote IDs here would be wasteful — let SQL do it inline.
   const shouldSearchRemote = remotePills.length > 0 || (includeRemote && hasNonRemotePills);
   
   if (remotePills.length > 0 && !hasNonRemotePills && textPills.length === 0) {
@@ -3618,6 +3621,13 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
           ); // wfts removed v7.13
         }
       }
+      // v7.68: When includeRemote is ON, add remote to the location OR clause.
+      // Without this, remote jobs (location="Remote", loc_country=null) fail the
+      // location filter because they don't contain "united states" or loc_country=US.
+      // The includeRemote toggle was only preventing exclusion, never ensuring inclusion.
+      if (sf.includeRemote === true) {
+        allClauses.push('location.ilike.Remote%', 'loc_type.eq.remote', 'is_remote.eq.true');
+      }
       if (allClauses.length > 0) {
         query = query.or(allClauses.join(','));
       }
@@ -3673,8 +3683,8 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
     query = query.not('location', 'ilike', 'Remote%');
     query = query.not('loc_type', 'eq', 'remote');
   }
-  // When includeRemote is true, remote jobs are already included via getLocationMatchIds
-  // or via the ilike fallback's broad matching. No additional filter needed.
+  // v7.68: When includeRemote is true, remote clauses are injected into the location
+  // OR clause above. The exclusion logic here only fires when includeRemote is OFF.
 
   // WHO — company_name ilike
   // WHO — company_name ilike + FTS
