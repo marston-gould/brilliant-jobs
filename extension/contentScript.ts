@@ -91,6 +91,14 @@
     'avature': {
       hostnamePattern: /\.avature\.net$/,
       module: 'handlers/avature.js'
+    },
+    'bamboohr': {
+      hostnamePattern: /\.bamboohr\.com$/,
+      module: 'handlers/bamboohr.js'
+    },
+    'jazzhr': {
+      hostnamePattern: /\.applytojob\.com$/,
+      module: 'handlers/jazzhr.js'
     }
   };
 
@@ -253,6 +261,20 @@
       '[class*="description"]',
       '.content-area',
     ],
+    'bamboohr': [
+      '.BambooHR-ATS-board__job-body',
+      '.job-description',
+      '.JobDescription',
+      '[class*="description"]',
+      '.content',
+    ],
+    'jazzhr': [
+      '#job_description',
+      '.job-description',
+      '.jazzhr-job-description',
+      '[class*="description"]',
+      '.job-details',
+    ],
     'generic': [
       '.job-description',
       '.job-post-content',
@@ -282,6 +304,8 @@
     'taleo': '.pagecontainer h1, .requisitioncontenttitle, h1.title, #requisitionTitle',
     'smartrecruiters': 'h1.job-title, h1[class*="title"], [data-test="job-title"]',
     'avature': 'h1.job-title, h1[class*="title"], .career-title h1',
+    'bamboohr': 'h1.job-title, h2.header__job-title, .positionTitleText, h1[class*="title"]',
+    'jazzhr': 'h1.job-title, h1#job_title, .jazzhr-job-title, h1[class*="title"]',
     'generic': 'h1, h2.job-title, [class*="title"] h1, [class*="title"] h2, [data-testid*="title"]',
   };
 
@@ -299,6 +323,8 @@
     'taleo': '.company-name, .companyname, .requisitioncompany',
     'smartrecruiters': '.company-name, [data-test="company-name"], a[class*="company"]',
     'avature': '.company-name, [class*="company"], .career-company',
+    'bamboohr': '.company-name, .ResHeader__company, [class*="company"]',
+    'jazzhr': '.company-name, .jazzhr-company, [class*="company"]',
     'generic': '[class*="company"] a, [class*="company"], [class*="employer"], [data-testid*="company"]',
   };
 

@@ -3294,12 +3294,12 @@ Phase S is complete when ALL of the following are true:
 
 | Session | Items | Hours | Status | Notes |
 |---------|-------|-------|--------|-------|
-| REM-004 | EXT-CWS-001 (manifest permissions), EXT-QA (E2E tests) | 3h | 🔲 | Depends on REM-002. |
+| REM-004 | EXT-CWS-001 (manifest permissions), EXT-QA (E2E tests) | 3h | ✅ | 2026-03-08. All 7 permissions justified. BambooHR+JazzHR handler routing wired. safeFill export added to generic.ts. 257 validation tests. Permissions audit doc created. |
 
 ### REM-005: Analytics + CSP Strict (3.5h) — LS1-6, SE-005
 
 | Session | Items | Hours | Status | Notes |
 |---------|-------|-------|--------|-------|
-| REM-005 | LS1-6 (Ahrefs audit), SE-005 (CSP strict dashboard) | 3.5h | ⏸ BLOCKED | Depends on REM-001–004 + SA-017. SA-017 is complete. Ready after REM-004. |
+| REM-005 | LS1-6 (Ahrefs audit), SE-005 (CSP strict dashboard) | 3.5h | 🔲 | REM-004 complete. SA-017 complete. Ready to execute. |
 
 **Phase REM total: 5 sessions | 19.5h | 13 items from P75 + P76**

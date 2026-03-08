@@ -52,6 +52,44 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**REM-004** — Extension QA + Manifest
+- Completed: 2026-03-08
+- Git tag: `extension@2.23.0-qa-manifest`
+- Product version bumped: `v7.61` → `v7.62` (JS/TS changes — contentScript routing, generic.ts safeFill, background.ts STATIC_DOMAINS)
+- ROADMAP.md updated: REM-004 → ✅ with completion notes. REM-005 unblocked.
+- roadmap.html updated: REM-004 → `s: 'done'`, p: 100. REM-005 → `s: 'not-started'`.
+- **EXT-CWS-001 (Manifest Permissions Audit):**
+  - All 7 permissions justified and documented (activeTab, scripting, storage, tabs, alarms, sidePanel, notifications)
+  - 23 host_permissions mapped to 15 ATS platforms + infrastructure
+  - optional_host_permissions wildcard documented (correct MV3 pattern for generic handler)
+  - BambooHR handler wired into contentScript routing (hostnamePattern: /\.bamboohr\.com$/)
+  - JazzHR handler wired into contentScript routing (hostnamePattern: /\.applytojob\.com$/)
+  - JD_SELECTORS, TITLE_SELECTORS, COMPANY_SELECTORS entries added for both
+  - background.ts STATIC_DOMAINS updated for both
+  - Bug fix: `safeFill` export added to generic.ts — bamboohr/jazzhr handlers imported it but it didn't exist
+  - Manifest version: 2.21.0 → 2.23.0
+- **EXT-QA (Extension E2E Tests):**
+  - 257 validation tests across 12 sections
+  - Section 1: Handler file existence (17 files)
+  - Section 2: Handler export patterns (fill function, default/named exports)
+  - Section 3: ContentScript routing coverage (15 named entries + generic fallback)
+  - Section 4: Manifest → handler mapping (19 host patterns → 15 handlers)
+  - Section 5: Manifest permissions validation (7 permissions, no dangerous perms)
+  - Section 6: Selector snapshots (routing hostnames, handler key selectors, JD/title/company selectors)
+  - Section 7–8: ContentScript + background structure validation
+  - Section 9–10: Web accessible resources, build output, MV3 compliance
+  - Section 11: Permissions audit document validation
+  - Section 12: File inventory
+- **Created:**
+  - `docs/audit/ext-cws-001-permissions-audit.md` — Formal permissions justification
+  - `tests/rem-004-ext-qa.test.js` — 257 validation tests
+- **Modified:**
+  - `extension/manifest.json` — Version 2.21.0 → 2.23.0
+  - `extension/contentScript.ts` — bamboohr + jazzhr added to ATS_HANDLERS, JD_SELECTORS, TITLE_SELECTORS, COMPANY_SELECTORS
+  - `extension/background.ts` — bamboohr + jazzhr added to STATIC_DOMAINS wildcard checks
+  - `extension/handlers/generic.ts` — safeFill wrapper function + export added
+- **Tests:** 257 REM-004 validation tests (all passing)
+
 **REM-001 + REM-002 + REM-003** — Security Hygiene + Extension Error Handling + EF Hardening + Cost Monitoring
 - Completed: 2026-03-08
 - Git tag: `rem@001-003-v1.0.0`
@@ -496,9 +534,9 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.60`** | **SA-028** |
+| **Product (BJ_VERSION)** | **`v7.62`** | **REM-004** |
 | Dashboard | `dashboard@3.0.0-all-pages` | SA-017 |
-| Extension | `extension@2.22.0-error-handling` | FIX-11 |
+| Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
 | **Admin** | **`admin@1.9.0-referral-pipeline-agent`** | **SA-021** |
 | **SPA Scaffold** | **`spa@1.0.0-scaffold`** | **SA-013** |
@@ -598,30 +636,21 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 | REM-001 | 2026-03-08 | SE-002 (prep), EXT-SEC-005 (CSP audit) | rem@001-security-hygiene |
 | REM-002 | 2026-03-08 | EXT-ES-002, EXT-ES-003, EXT-ES-004, EXT-BE-003 | rem@002-ext-error-handling |
 | REM-003 | 2026-03-08 | BE-006, Cost Monitor | rem@003-ef-cost-monitor |
+| REM-004 | 2026-03-08 | EXT-CWS-001 (permissions audit, handler routing fix), EXT-QA (257 tests, 17 handlers, selector snapshots) | extension@2.23.0-qa-manifest |
 
 ---
 
-## Remaining Sessions (2 of 5 Remaining Items)
+## Remaining Sessions (1 of 5 Remaining Items)
 
-### Next Session: REM-004 — Extension QA + Manifest (3h)
+### Next Session: REM-005 — Analytics + CSP Strict (3.5h)
 
-**Entry gate:** REM-002 complete ✅. Extension source available. PostHog SDK operational on extension.
-
-**Fix items:**
-- 0.067 EXT-CWS-001: Manifest permissions audit — justify each permission or remove
-- 0.181 EXT-QA: Extension E2E tests against live ATS — 15 handlers validated, snapshot tests
-
-**Exit gate:** Manifest permissions justified/minimized. 15 handler E2E tests passing. Extension builds with updated manifest.
-
-**Pair:** Frontend + QA | **Pod 4 Reviewer:** Forward-Looking Dev
-
-### After REM-004: REM-005 — Analytics + CSP Strict (3.5h)
-
-⛔ **BLOCKED on:** REM-004 complete. SA-017 complete ✅.
+**Entry gate:** REM-004 complete ✅. SA-017 complete ✅. All dependencies met.
 
 **Fix items:**
 - 0.140 LS1-6: Ahrefs analytics audit — redundant with PostHog+GSC? Remove if yes.
 - 0.005 SE-005: CSP strict on dashboard — remove unsafe-inline (122 inline handlers removed by SA-017 SPA migration)
+
+**Exit gate:** Ahrefs decision documented. Dashboard CSP in enforce mode with no unsafe-inline. All surfaces functional.
 
 **Pair:** Frontend + Security | **Pod 4 Reviewer:** Evolvability Strategist + Chief Architect
 

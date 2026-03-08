@@ -439,5 +439,30 @@ async function fill({ profile, resume, preferences, jobContext, authToken }) {
   };
 }
 
-export default { fill };
-export { fill, GENERIC_LABEL_PATTERNS, GENERIC_QUESTION_PATTERNS };
+/**
+ * Safe wrapper around fill() for use as a fallback from specialized handlers.
+ * Accepts the simplified (profile, options) signature used by bamboohr/jazzhr.
+ */
+async function safeFill(profile: unknown, options: Record<string, unknown> = {}) {
+  try {
+    return await fill({
+      profile,
+      resume: options.resume || null,
+      preferences: options.preferences || {},
+      jobContext: options.jobContext || {},
+      authToken: options.authToken || null,
+    });
+  } catch (err) {
+    return {
+      success: false,
+      filledCount: 0,
+      totalFields: 0,
+      errors: [`safeFill fallback error: ${err instanceof Error ? err.message : String(err)}`],
+      aiFieldCount: 0,
+      handler: 'generic-safe',
+    };
+  }
+}
+
+export default { fill, safeFill };
+export { fill, safeFill, GENERIC_LABEL_PATTERNS, GENERIC_QUESTION_PATTERNS };

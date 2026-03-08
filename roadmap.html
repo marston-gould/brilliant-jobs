@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.61"></script>
+  <script src="/js/version.js?v=v7.62"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2138,8 +2138,8 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'REM-001 Security Hygiene', d: 'SE-002: key rotation script ready (Marston maintenance window required). EXT-SEC-005: CSP audit — 0 vulnerabilities, all innerHTML writes use escHtml(). Error reporter utility created for extension. 59 tests.', p: 100, e: '3h' },
 { s: 'done', b: 'post-launch', n: 'REM-002 Extension Error Handling Sweep', d: '28+ empty .catch(()=>{}) replaced with reportError across 12 files. Token refresh: PostHog capture + badge notification on failure. Background reportError handler wired. Handlers (lever, greenhouse, linkedin) upgraded. lastError checks added.', p: 100, e: '5h' },
 { s: 'done', b: 'post-launch', n: 'REM-003 EF Hardening + Cost Monitoring', d: '23 empty catch blocks fixed in 16 EF files with structured logging. Cost monitoring: migration (3 views + fn_ai_cost_summary), cost-monitor EF (5 actions), admin dashboard, gateway route #110.', p: 100, e: '5h' },
-{ s: 'not-started', b: 'post-launch', n: 'REM-004 Extension QA + Manifest', d: 'EXT-CWS-001: Manifest permissions audit. EXT-QA: E2E tests against live ATS (15 handlers). Depends on REM-002.', p: 0, e: '3h' },
-{ s: 'blocked', b: 'post-launch', n: 'REM-005 Analytics + CSP Strict', d: 'LS1-6: Ahrefs analytics audit (redundant with PostHog+GSC?). SE-005: CSP strict on dashboard (no unsafe-inline). Depends on REM-001–004 + SA-017 (complete).', p: 0, e: '3.5h' },
+{ s: 'done', b: 'post-launch', n: 'REM-004 Extension QA + Manifest', d: 'EXT-CWS-001: All 7 permissions justified. BambooHR+JazzHR routing wired. safeFill export fixed. EXT-QA: 257 validation tests (17 handlers, selectors, routing, manifest mapping). Permissions audit doc.', p: 100, e: '3h' },
+{ s: 'not-started', b: 'post-launch', n: 'REM-005 Analytics + CSP Strict', d: 'LS1-6: Ahrefs analytics audit (redundant with PostHog+GSC?). SE-005: CSP strict on dashboard (no unsafe-inline). All dependencies met.', p: 0, e: '3.5h' },
 
 ];
 

@@ -1686,6 +1686,8 @@ async function injectContentScriptIfNeeded(tabId, url) {
     // Recruitee and Workday wildcards covered by manifest
     if (hostname.endsWith('.recruitee.com')) return;
     if (hostname.endsWith('.myworkdayjobs.com')) return;
+    if (hostname.endsWith('.bamboohr.com')) return;
+    if (hostname.endsWith('.applytojob.com')) return;
   } catch { return; }
 
   try {
