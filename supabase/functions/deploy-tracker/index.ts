@@ -1,5 +1,5 @@
 /**
- * BI-01 + BI-02 + BI-03: Deploy Tracker, Build Analytics & Deployment Visibility Edge Function
+ * BI-01 + BI-02 + BI-03 + BI-04: Deploy Tracker, Build Analytics, Deployment Visibility & Alerting Edge Function
  *
  * BI-01 Actions:
  *   POST { action: "summary", days: 30 }      → Deploy summary with daily counts, surface health, recent deploys
@@ -21,11 +21,18 @@
  *   POST { action: "release-history", limit: 50 }              → Release timeline with notes
  *   POST { action: "record-release", git_tag, title, ... }     → Record a release note
  *
+ * BI-04 Actions:
+ *   POST { action: "deploy-health-score" }                        → Composite health score (0-100) with dimension breakdown
+ *   POST { action: "deploy-alerts", status?, limit? }             → Active alerts with severity counts
+ *   POST { action: "acknowledge-alert", alert_id, resolve? }     → Acknowledge or resolve an alert
+ *   POST { action: "manage-alert-rules", sub_action: "list"|"toggle"|"update"|"evaluate" } → Alert rule management
+ *
  * Auth:
- *   - "summary", "list", "build-analytics", "deployment-visibility", "release-history" require admin role
+ *   - Admin-only: summary, list, build-analytics, deployment-visibility, release-history,
+ *     deploy-health-score, deploy-alerts, acknowledge-alert, manage-alert-rules
  *   - Write actions require service role OR valid deploy API key
  *
- * Phase: BI-01 + BI-02 + BI-03 — Build Instrumentation & Deployment Visibility
+ * Phase: BI-01 + BI-02 + BI-03 + BI-04 — Build Instrumentation & Deployment Visibility
  * Pair: DevOps + Lead Platform Engineer | Chief Architect + System Architect—Scalability reviewers
  */
 
@@ -69,7 +76,7 @@ serve(async (req: Request) => {
 
   try {
     // ── Admin-only actions ─────────────────────────────────────────────
-    if (action === "summary" || action === "list" || action === "build-analytics" || action === "deployment-visibility" || action === "release-history") {
+    if (action === "summary" || action === "list" || action === "build-analytics" || action === "deployment-visibility" || action === "release-history" || action === "deploy-health-score" || action === "deploy-alerts" || action === "acknowledge-alert" || action === "manage-alert-rules") {
       const userRole = req.headers.get("x-gateway-user-role") || "";
       if (userRole !== "admin") {
         return json({ error: "Admin access required" }, 403);
@@ -411,6 +418,173 @@ serve(async (req: Request) => {
         return json({ error: "Failed to record release" }, 500);
       }
       return json({ ok: true, release_id: data?.id });
+    }
+
+    // ── BI-04: Deployment Alerting & Health Scoring ─────────────────────────
+
+    if (action === "deploy-health-score") {
+      const { data, error } = await sb.rpc("fn_deployment_health_score");
+      if (error) {
+        logger.warn("[deploy-tracker] deploy-health-score failed:", error.message);
+        return json({ error: "Failed to compute health score" }, 500);
+      }
+      return json(data || {});
+    }
+
+    if (action === "deploy-alerts") {
+      const statusFilter = (body.status as string) || null;
+      const limit = Number(body.limit) || 50;
+
+      let query = sb
+        .from("v_active_alerts")
+        .select("*")
+        .order("fired_at", { ascending: false })
+        .limit(limit);
+
+      if (statusFilter) {
+        query = query.eq("status", statusFilter);
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        logger.warn("[deploy-tracker] deploy-alerts failed:", error.message);
+        return json({ error: "Failed to fetch alerts" }, 500);
+      }
+
+      // Also get total counts by severity
+      const { data: countData } = await sb
+        .from("deploy_alert_history")
+        .select("severity, status")
+        .in("status", ["active", "acknowledged"]);
+
+      const counts = {
+        active_critical: 0, active_warning: 0, active_info: 0,
+        acknowledged: 0, total_active: 0
+      };
+      if (countData) {
+        for (const row of countData) {
+          if (row.status === "active") {
+            if (row.severity === "critical") counts.active_critical++;
+            else if (row.severity === "warning") counts.active_warning++;
+            else counts.active_info++;
+          }
+          if (row.status === "acknowledged") counts.acknowledged++;
+          counts.total_active++;
+        }
+      }
+
+      return json({ alerts: data || [], counts });
+    }
+
+    if (action === "acknowledge-alert") {
+      if (!body.alert_id) return json({ error: "alert_id required" }, 400);
+
+      const updateData: Record<string, unknown> = {
+        acknowledged_at: new Date().toISOString(),
+        acknowledged_by: body.acknowledged_by || "admin",
+      };
+
+      // If resolving
+      if (body.resolve) {
+        updateData.status = "resolved";
+        updateData.resolved_at = new Date().toISOString();
+        updateData.resolved_by = body.acknowledged_by || "admin";
+        updateData.resolve_notes = body.resolve_notes || null;
+      } else {
+        updateData.status = "acknowledged";
+      }
+
+      const { data, error } = await sb
+        .from("deploy_alert_history")
+        .update(updateData)
+        .eq("id", body.alert_id)
+        .select("id, status")
+        .single();
+
+      if (error) {
+        logger.warn("[deploy-tracker] acknowledge-alert failed:", error.message);
+        return json({ error: "Failed to acknowledge alert" }, 500);
+      }
+      return json({ ok: true, alert: data });
+    }
+
+    if (action === "manage-alert-rules") {
+      const subAction = (body.sub_action as string) || "list";
+
+      // List rules
+      if (subAction === "list") {
+        const { data, error } = await sb
+          .from("deploy_alert_rules")
+          .select("*")
+          .order("severity", { ascending: true })
+          .order("rule_name", { ascending: true });
+
+        if (error) {
+          logger.warn("[deploy-tracker] manage-alert-rules list failed:", error.message);
+          return json({ error: "Failed to list rules" }, 500);
+        }
+        return json({ rules: data || [] });
+      }
+
+      // Toggle enable/disable
+      if (subAction === "toggle") {
+        if (!body.rule_id) return json({ error: "rule_id required" }, 400);
+
+        const { data: current } = await sb
+          .from("deploy_alert_rules")
+          .select("is_enabled")
+          .eq("id", body.rule_id)
+          .single();
+
+        const { data, error } = await sb
+          .from("deploy_alert_rules")
+          .update({ is_enabled: !(current?.is_enabled), updated_at: new Date().toISOString() })
+          .eq("id", body.rule_id)
+          .select("id, rule_name, is_enabled")
+          .single();
+
+        if (error) {
+          logger.warn("[deploy-tracker] manage-alert-rules toggle failed:", error.message);
+          return json({ error: "Failed to toggle rule" }, 500);
+        }
+        return json({ ok: true, rule: data });
+      }
+
+      // Update threshold
+      if (subAction === "update") {
+        if (!body.rule_id) return json({ error: "rule_id required" }, 400);
+
+        const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+        if (body.threshold) updates.threshold = body.threshold;
+        if (body.severity) updates.severity = body.severity;
+        if (body.cooldown_minutes != null) updates.cooldown_minutes = body.cooldown_minutes;
+        if (body.description) updates.description = body.description;
+
+        const { data, error } = await sb
+          .from("deploy_alert_rules")
+          .update(updates)
+          .eq("id", body.rule_id)
+          .select("id, rule_name")
+          .single();
+
+        if (error) {
+          logger.warn("[deploy-tracker] manage-alert-rules update failed:", error.message);
+          return json({ error: "Failed to update rule" }, 500);
+        }
+        return json({ ok: true, rule: data });
+      }
+
+      // Evaluate now (manual trigger)
+      if (subAction === "evaluate") {
+        const { data, error } = await sb.rpc("fn_evaluate_deploy_alerts");
+        if (error) {
+          logger.warn("[deploy-tracker] evaluate-alerts failed:", error.message);
+          return json({ error: "Failed to evaluate alerts" }, 500);
+        }
+        return json(data || {});
+      }
+
+      return json({ error: `Unknown sub_action: ${subAction}` }, 400);
     }
 
     return json({ error: `Unknown action: ${action}` }, 400);

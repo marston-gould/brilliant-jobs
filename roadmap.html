@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.75"></script>
+  <script src="/js/version.js?v=v7.76"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2149,6 +2149,7 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'BI-01 Build Instrumentation & Deployment Visibility', d: 'v6.34 migration: deploy_events, build_events, deploy_health_log tables. Views: v_deploy_dashboard, v_surface_deploy_health. Functions: fn_deploy_summary, fn_record_deploy, fn_complete_deploy. deploy-tracker EF (6 actions). Admin dashboard: summary cards, 30d sparkline, surface health, timeline. Gateway route #110. 54 tests. v7.73.', p: 100, e: '3h' },
 { s: 'done', b: 'post-launch', n: 'BI-02 CI Pipeline Analytics & Bundle Size Tracking', d: 'v6.35 migration: ci_workflow_runs, bundle_size_history tables. Views: v_build_step_performance (p95), v_bundle_size_trends (delta), v_ci_workflow_health. Function: fn_build_analytics. deploy-tracker EF extended (4 new actions: build-analytics, record-ci-run, complete-ci-run, record-bundle-size). Admin dashboard: build step perf, CI health, bundle sizes with sparklines, CI runs timeline. ADMIN_SUBPAGE_MAP #37. 81 tests. v7.74.', p: 100, e: '3h' },
 { s: 'done', b: 'post-launch', n: 'BI-03 Deployment Visibility System', d: 'v6.36 migration: environment_versions (current version per surface×env, auto-updated by deploy trigger), release_notes (git tag linked, release type, surfaces, finding_ids) tables. Views: v_environment_drift (prod vs staging drift detection), v_release_timeline (release history with counts), v_deploy_cadence (7d/30d/90d frequency). Function: fn_deployment_visibility. Trigger: fn_update_environment_version (auto-upsert on deploy success). deploy-tracker EF extended (4 new actions: deployment-visibility, update-environment, release-history, record-release; 14 total). Admin dashboard: env version matrix with drift badges, deploy cadence table, release timeline with type badges. 108 tests. v7.75.', p: 100, e: '3h' },
+{ s: 'done', b: 'post-launch', n: 'BI-04 Deployment Alerting & Health Scoring', d: 'v6.37 migration: deploy_alert_rules (configurable thresholds, severity, cooldown, surfaces), deploy_alert_history (ack workflow: active/acknowledged/resolved/expired) tables. View: v_active_alerts (critical-first ordering). Functions: fn_deployment_health_score (composite 0-100: deploy 30%, CI 25%, drift 20%, bundle 15%, duration 10%, letter grade A-F), fn_evaluate_deploy_alerts (rule evaluation with cooldown, H-02 event bus for critical). 6 seed rules. 2 pg_cron (15min evaluate, daily cleanup). deploy-tracker EF extended (4 new actions: deploy-health-score, deploy-alerts, acknowledge-alert, manage-alert-rules; 18 total). Admin dashboard: health gauge, 5-dimension breakdown, alerts table with ack/resolve, rules config with toggle. 72 tests. v7.76.', p: 100, e: '3h' },
 
 ];
 

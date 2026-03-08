@@ -52,6 +52,30 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**BI-04** — Deployment Alerting & Health Scoring
+- Completed: 2026-03-08
+- Git tag: `infra@deploy-alerting-v1.0.0`
+- Product version bumped: `v7.75` → `v7.76` (JS/HTML changes — admin-deploy-alerting.js, admin.js ADMIN_SUBPAGE_MAP entry, admin.html container + script tag; all HTML surfaces cache-busted)
+- ROADMAP.md updated: BI-04 → ✅ with completion notes
+- roadmap.html updated: BI-04 → `s: 'done'`, p: 100
+- **Migration (v6.37):** `deploy_alert_rules` (configurable thresholds with rule_type CHECK: deploy_failure_rate/bundle_size_regression/environment_drift/ci_failure_streak/deploy_duration_spike/health_score_threshold/custom, severity, cooldown_minutes, last_fired_at, surfaces array, S-12 scar metadata JSONB), `deploy_alert_history` (acknowledgment workflow: active/acknowledged/resolved/expired, fired_at, acknowledged_at/by, resolved_at/by, resolve_notes). 6 indexes. RLS on both tables (admin read, service write). View: `v_active_alerts` (unresolved alerts with rule context, critical-first ordering). Functions: `fn_deployment_health_score` (composite 0-100 score: deploy success 30%, CI health 25%, drift 20%, bundle 15%, duration 10%, letter grade A-F, critical alert penalty), `fn_evaluate_deploy_alerts` (checks all enabled rules, respects cooldown, fires alerts, H-02 event bus for critical via fn_publish_event). 6 seed rules: Deploy Failure Rate >20%, Environment Drift Detected, Bundle Size Regression >10%, CI Failure Streak ≥3, Deploy Duration Spike >50%, Health Score Below 50. 2 pg_cron (every 15min evaluate, daily cleanup >90d).
+- **Edge Function:** `deploy-tracker/index.ts` extended with 4 new BI-04 actions: deploy-health-score (fn_deployment_health_score RPC), deploy-alerts (v_active_alerts query with severity counts), acknowledge-alert (ack or resolve with notes), manage-alert-rules (list/toggle/update/evaluate sub-actions). Total: 18 actions (6 BI-01 + 4 BI-02 + 4 BI-03 + 4 BI-04). No new gateway route — extends existing deploy-tracker route.
+- **Admin Panel:** `admin-deploy-alerting.js` — Health score gauge (0-100 with letter grade and color coding), 5-dimension breakdown cards (deploy success, CI health, environment drift, bundle health, deploy duration with weights and progress bars), active alerts table (severity badges, ack/resolve buttons, age display), alert rules configuration table (enable/disable toggles, threshold display, cooldown, last fired). Evaluate Now button for on-demand checks. 2min auto-refresh polling.
+- **Admin Nav:** `ADMIN_SUBPAGE_MAP` entry in operations section. `loadDeployAlertingPanel()` global function.
+- **Team:** BI-04 pairing added to pod-team-manifest.md (DevOps + Lead Platform Eng, Chief Architect + Evolvability Strategist reviewers).
+- **Created:**
+  - `supabase/migrations/v6.37-deploy-alerting.sql` — Full migration
+  - `js/admin-deploy-alerting.js` — Deploy alerting admin dashboard
+  - `tests/bi-004-deploy-alerting.test.js` — 72 validation tests
+- **Modified:**
+  - `supabase/functions/deploy-tracker/index.ts` — 4 new BI-04 actions (18 total)
+  - `js/admin.js` — ADMIN_SUBPAGE_MAP (deploy-alerting in operations)
+  - `admin.html` — deploy-alerting container + script tag
+  - `docs/scaling/pod-team-manifest.md` — BI-04 pairing assignment
+  - `ROADMAP.md` — BI-04 → ✅
+  - `roadmap.html` — BI-04 → done/100
+- **Tests:** 72 BI-04 validation tests (all passing)
+
 **BI-03** — Deployment Visibility System — Environment Status & Release Tracking
 - Completed: 2026-03-08
 - Git tag: `infra@deploy-visibility-v1.0.0`
@@ -757,7 +781,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.74`** | **BI-02 — CI Pipeline Analytics & Bundle Size Tracking** |
+| **Product (BJ_VERSION)** | **`v7.76`** | **BI-04 — Deployment Alerting & Health Scoring** |
 | Dashboard | `dashboard@3.0.0-all-pages` | SA-017 |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
@@ -769,6 +793,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 | **Capacity Model** | **`infra@capacity-model-v1.0.0`** | **SA-028** |
 | **Deploy Tracker** | **`infra@deploy-tracker-v1.0.0`** | **BI-01** |
 | **Build Analytics** | **`infra@build-analytics-v1.0.0`** | **BI-02** |
+| **Deploy Alerting** | **`infra@deploy-alerting-v1.0.0`** | **BI-04** |
 | **Partitioning** | **`infra@partitioning-v1.0.0`** | **SA-019** |
 | **Read Replica** | **`infra@read-replica-v1.0.0`** | **SA-018** |
 | **Common Crawl** | **`infra@common-crawl-v0.1.0`** | **SA-007** |
@@ -788,6 +813,8 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 ## Completed Sessions (24 of 24 + 17 Phase 1 + 16 Scaling + FIX-11 + PRE-LAUNCH)
 
 | BI-02 | 2026-03-08 | CI pipeline analytics + bundle size tracking. v6.35 migration (ci_workflow_runs, bundle_size_history, 3 views, fn_build_analytics). deploy-tracker EF: 4 new actions (build-analytics, record-ci-run, complete-ci-run, record-bundle-size). admin-build-analytics.js (5 cards, build step perf, CI health, bundle sizes with sparklines, CI runs timeline). ADMIN_SUBPAGE_MAP #37. 81 tests. v7.74. | infra@build-analytics-v1.0.0 |
+
+| BI-04 | 2026-03-08 | Deployment alerting & health scoring. v6.37 migration (deploy_alert_rules, deploy_alert_history, v_active_alerts, fn_deployment_health_score, fn_evaluate_deploy_alerts). deploy-tracker EF: 4 new actions (deploy-health-score, deploy-alerts, acknowledge-alert, manage-alert-rules; 18 total). admin-deploy-alerting.js (health gauge, 5 dimensions, alerts table, rules config). 6 seed rules. 2 pg_cron. H-02 event bus for critical. ADMIN_SUBPAGE_MAP. 72 tests. v7.76. | infra@deploy-alerting-v1.0.0 |
 
 | BI-03 | 2026-03-08 | Deployment visibility system. v6.36 migration (environment_versions, release_notes, v_environment_drift, v_release_timeline, v_deploy_cadence, fn_deployment_visibility, fn_update_environment_version trigger). deploy-tracker EF: 4 new actions (deployment-visibility, update-environment, release-history, record-release; 14 total). admin-deploy-visibility.js (4 summary cards, env version matrix with drift badges, deploy cadence table, release timeline with type badges). ADMIN_SUBPAGE_MAP. 108 tests. v7.75. | infra@deploy-visibility-v1.0.0 |
 
