@@ -52,44 +52,29 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**BI-02** — CI Pipeline Analytics & Bundle Size Tracking
+**BI-03** — Deployment Visibility System — Environment Status & Release Tracking
 - Completed: 2026-03-08
-- Git tag: `infra@build-analytics-v1.0.0`
-- Product version bumped: `v7.73` → `v7.74` (JS/HTML changes — admin-build-analytics.js, admin.js subpage #37, admin.html container + script tag; all HTML surfaces cache-busted)
-- ROADMAP.md updated: BI-02 → ✅ with completion notes
-- roadmap.html updated: BI-02 → `s: 'done'`, p: 100
-- **Migration (v6.35):** `ci_workflow_runs` (workflow tracking with GH Actions run_id, conclusion, deploy_id FK), `bundle_size_history` (per-surface per-bundle size tracking with gzip and deploy_id FK). 7 indexes. RLS on both tables (admin read, service write). Views: `v_build_step_performance` (avg/p95 duration + failure rate per step), `v_bundle_size_trends` (delta tracking with row numbers), `v_ci_workflow_health` (per-workflow 30d stats). Function: `fn_build_analytics` (combined build, CI, and bundle analytics). Weekly cleanup cron (90d retention, offset from BI-01).
-- **Edge Function:** `deploy-tracker/index.ts` extended with 4 new BI-02 actions: build-analytics (admin dashboard data), record-ci-run (CI webhook), complete-ci-run (status update by UUID or run_id), record-bundle-size (bundle measurement). Total: 10 actions (6 BI-01 + 4 BI-02). No new gateway route — extends existing deploy-tracker route.
-- **Admin Panel:** `admin-build-analytics.js` — 5 summary cards (build steps, CI runs, CI success rate, avg build duration, bundle regressions), build step performance table (9 columns: step, runs, failed, fail %, avg, p95, min, max, last run), CI workflow health table (8 columns with success rate + p95), bundle sizes table (8 columns with delta + trend sparklines), recent CI runs timeline (8 columns). 2min auto-refresh polling.
-- **Admin Nav:** `ADMIN_SUBPAGE_MAP` entry #37 in operations section. `loadBuildAnalyticsPanel()` global function.
-- **Team:** BI-02 pairing added to pod-team-manifest.md (DevOps + Lead Platform Eng, Chief Architect + System Architect—Scalability reviewers).
+- Git tag: `infra@deploy-visibility-v1.0.0`
+- Product version bumped: `v7.74` → `v7.75` (JS/HTML changes — admin-deploy-visibility.js, admin.js ADMIN_SUBPAGE_MAP entry, admin.html container + script tag; all HTML surfaces cache-busted)
+- ROADMAP.md updated: BI-03 → ✅ with completion notes
+- roadmap.html updated: BI-03 → `s: 'done'`, p: 100
+- **Migration (v6.36):** `environment_versions` (current version snapshot per surface×environment, UNIQUE constraint, deploy_id FK, deployed_by, auto-updated by trigger), `release_notes` (git_tag UNIQUE, title, summary, surfaces array, finding_ids array, deploy_ids array, release_type CHECK, is_rollback). 6 indexes. RLS on both tables (admin read, service write). Views: `v_environment_drift` (prod vs staging SHA comparison, has_drift flag per surface), `v_release_timeline` (release history with surface_count, findings_resolved, deploy_count), `v_deploy_cadence` (7d/30d/90d deploy frequency, success/failure/rollback rates, avg duration). Function: `fn_deployment_visibility` (combined environment matrix, drift report, release timeline, deploy cadence, summary). Triggers: `fn_update_environment_version` (auto-upsert on deploy_events INSERT/UPDATE with status='success'), `trg_deploy_events_update_env_version` (AFTER UPDATE), `trg_deploy_events_insert_env_version` (AFTER INSERT WHEN success).
+- **Edge Function:** `deploy-tracker/index.ts` extended with 4 new BI-03 actions: deployment-visibility (admin dashboard data via fn_deployment_visibility RPC), update-environment (upsert environment_versions), release-history (v_release_timeline with limit + release_type filter), record-release (upsert release_notes by git_tag). Total: 14 actions (6 BI-01 + 4 BI-02 + 4 BI-03). No new gateway route — extends existing deploy-tracker route.
+- **Admin Panel:** `admin-deploy-visibility.js` — 4 summary cards (surfaces tracked, drift alerts, total releases, latest release), environment version matrix (surfaces × production/staging with SHA, deployed timestamp, drift IN SYNC/DRIFT badge), deploy cadence table (9 columns: surface, 7d/30d/90d counts, success rate, failed, rollbacks, avg duration, last deploy), release timeline table (7 columns: tag, version, title, type badge, surface count, findings resolved, released timestamp). 2min auto-refresh polling.
+- **Admin Nav:** `ADMIN_SUBPAGE_MAP` entry in operations section. `loadDeployVisibilityPanel()` global function.
+- **Team:** BI-03 pairing added to pod-team-manifest.md (DevOps + Lead Platform Eng, Chief Architect + System Architect—Scalability reviewers).
 - **Created:**
-  - `supabase/migrations/v6.35-build-analytics.sql` — Full migration
-  - `js/admin-build-analytics.js` — Build analytics admin dashboard
-  - `tests/bi-002-build-analytics.test.js` — 81 validation tests
+  - `supabase/migrations/v6.36-deploy-visibility.sql` — Full migration
+  - `js/admin-deploy-visibility.js` — Deploy visibility admin dashboard
+  - `tests/bi-003-deploy-visibility.test.js` — 108 validation tests
 - **Modified:**
-  - `supabase/functions/deploy-tracker/index.ts` — 4 new BI-02 actions (10 total)
-  - `js/admin.js` — ADMIN_SUBPAGE_MAP #37 (build-analytics in operations)
-  - `admin.html` — build-analytics container + script tag
-  - `docs/scaling/pod-team-manifest.md` — BI-02 pairing assignment
-  - `ROADMAP.md` — BI-02 → ✅
-  - `roadmap.html` — BI-02 → done/100
-- **Tests:** 81 BI-02 validation tests (all passing)
-- **Gateway:** Route #110 (deploy-tracker). Total: 110 routes.
-- **Admin Panel:** `admin-deploy-tracker.js` — 6 summary cards (total, success rate, today, this week, failed, avg duration), 30d deploy frequency sparkline (SVG polyline, 3 lines: total/success/failed), per-surface health table (9 columns), recent deploys timeline (7 columns with error expansion rows). 2min auto-refresh polling.
-- **Team:** BI-01 pairing added to pod-team-manifest.md (DevOps + Lead Platform Eng, Chief Architect reviewer).
-- **Created:**
-  - `supabase/migrations/v6.34-deploy-tracker.sql` — Full migration
-  - `supabase/functions/deploy-tracker/index.ts` — Deploy tracker EF
-  - `js/admin-deploy-tracker.js` — Admin deployment dashboard
-  - `tests/bi-001-deploy-tracker.test.js` — 54 validation tests
-- **Modified:**
-  - `supabase/functions/api-gateway/index.ts` — Route #110 (deploy-tracker). Total: 110 routes.
-  - `admin.html` — deploy-tracker container + script tag
-  - `docs/scaling/pod-team-manifest.md` — BI-01 pairing assignment
-  - `ROADMAP.md` — BI-01 → ✅
-  - `roadmap.html` — BI-01 → done/100
-- **Tests:** 54 BI-01 validation tests (all passing)
+  - `supabase/functions/deploy-tracker/index.ts` — 4 new BI-03 actions (14 total)
+  - `js/admin.js` — ADMIN_SUBPAGE_MAP (deploy-visibility in operations)
+  - `admin.html` — deploy-visibility container + script tag
+  - `docs/scaling/pod-team-manifest.md` — BI-03 pairing assignment
+  - `ROADMAP.md` — BI-03 → ✅
+  - `roadmap.html` — BI-03 → done/100
+- **Tests:** 108 BI-03 validation tests (all passing)
 
 **PR-003** — Dashboard Bug Fixes (Chat Toggle, Logout, Resumes, Company Browser)
 - Completed: 2026-03-08
@@ -803,6 +788,8 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 ## Completed Sessions (24 of 24 + 17 Phase 1 + 16 Scaling + FIX-11 + PRE-LAUNCH)
 
 | BI-02 | 2026-03-08 | CI pipeline analytics + bundle size tracking. v6.35 migration (ci_workflow_runs, bundle_size_history, 3 views, fn_build_analytics). deploy-tracker EF: 4 new actions (build-analytics, record-ci-run, complete-ci-run, record-bundle-size). admin-build-analytics.js (5 cards, build step perf, CI health, bundle sizes with sparklines, CI runs timeline). ADMIN_SUBPAGE_MAP #37. 81 tests. v7.74. | infra@build-analytics-v1.0.0 |
+
+| BI-03 | 2026-03-08 | Deployment visibility system. v6.36 migration (environment_versions, release_notes, v_environment_drift, v_release_timeline, v_deploy_cadence, fn_deployment_visibility, fn_update_environment_version trigger). deploy-tracker EF: 4 new actions (deployment-visibility, update-environment, release-history, record-release; 14 total). admin-deploy-visibility.js (4 summary cards, env version matrix with drift badges, deploy cadence table, release timeline with type badges). ADMIN_SUBPAGE_MAP. 108 tests. v7.75. | infra@deploy-visibility-v1.0.0 |
 
 | PRE-LAUNCH | 2026-03-08 | 0.181 Extension E2E (17 handlers, routing, permissions, snapshots), 0.182 Kill-switch (3-layer verified, DB flag, admin UI), 0.184 Final CX (PostHog 4 surfaces, ARIA, CSP, a11y). 34 validation tests. Phase 0-DD COMPLETE. | pre-launch@1.0.0-validation |
 

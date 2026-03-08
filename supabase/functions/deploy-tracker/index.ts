@@ -1,5 +1,5 @@
 /**
- * BI-01 + BI-02: Deploy Tracker & Build Analytics Edge Function
+ * BI-01 + BI-02 + BI-03: Deploy Tracker, Build Analytics & Deployment Visibility Edge Function
  *
  * BI-01 Actions:
  *   POST { action: "summary", days: 30 }      → Deploy summary with daily counts, surface health, recent deploys
@@ -15,12 +15,18 @@
  *   POST { action: "complete-ci-run", run_id, ... }     → Complete a CI workflow run
  *   POST { action: "record-bundle-size", surface, ... } → Record bundle size measurement
  *
+ * BI-03 Actions:
+ *   POST { action: "deployment-visibility" }                    → Full visibility dashboard (env matrix, drift, cadence, releases)
+ *   POST { action: "update-environment", surface, environment, ...} → Upsert environment version snapshot
+ *   POST { action: "release-history", limit: 50 }              → Release timeline with notes
+ *   POST { action: "record-release", git_tag, title, ... }     → Record a release note
+ *
  * Auth:
- *   - "summary", "list", "build-analytics" require admin role
+ *   - "summary", "list", "build-analytics", "deployment-visibility", "release-history" require admin role
  *   - Write actions require service role OR valid deploy API key
  *
- * Phase: BI-01 + BI-02 — Build Instrumentation & Deployment Visibility
- * Pair: DevOps + Lead Platform Engineer | Chief Architect reviewer
+ * Phase: BI-01 + BI-02 + BI-03 — Build Instrumentation & Deployment Visibility
+ * Pair: DevOps + Lead Platform Engineer | Chief Architect + System Architect—Scalability reviewers
  */
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
@@ -63,7 +69,7 @@ serve(async (req: Request) => {
 
   try {
     // ── Admin-only actions ─────────────────────────────────────────────
-    if (action === "summary" || action === "list" || action === "build-analytics") {
+    if (action === "summary" || action === "list" || action === "build-analytics" || action === "deployment-visibility" || action === "release-history") {
       const userRole = req.headers.get("x-gateway-user-role") || "";
       if (userRole !== "admin") {
         return json({ error: "Admin access required" }, 403);
@@ -320,6 +326,91 @@ serve(async (req: Request) => {
         return json({ error: "Failed to record bundle size" }, 500);
       }
       return json({ ok: true, bundle_record_id: data?.id });
+    }
+
+    // ── BI-03: Deployment Visibility ──────────────────────────────────────
+
+    if (action === "deployment-visibility") {
+      const { data, error } = await sb.rpc("fn_deployment_visibility");
+      if (error) {
+        logger.warn("[deploy-tracker] deployment-visibility failed:", error.message);
+        return json({ error: "Failed to fetch deployment visibility" }, 500);
+      }
+      return json(data || {});
+    }
+
+    if (action === "release-history") {
+      const limit = Number(body.limit) || 50;
+      const releaseType = (body.release_type as string) || null;
+
+      let query = sb
+        .from("v_release_timeline")
+        .select("*")
+        .order("released_at", { ascending: false })
+        .limit(limit);
+
+      if (releaseType) {
+        query = query.eq("release_type", releaseType);
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        logger.warn("[deploy-tracker] release-history failed:", error.message);
+        return json({ error: "Failed to fetch release history" }, 500);
+      }
+      return json({ releases: data || [], count: (data || []).length });
+    }
+
+    if (action === "update-environment") {
+      if (!body.surface || !body.environment) {
+        return json({ error: "surface and environment are required" }, 400);
+      }
+
+      const { data, error } = await sb.from("environment_versions").upsert({
+        surface: body.surface,
+        environment: body.environment,
+        product_version: body.product_version || null,
+        git_sha: body.git_sha || null,
+        git_tag: body.git_tag || null,
+        git_branch: body.git_branch || "main",
+        deploy_id: body.deploy_id || null,
+        deployed_at: body.deployed_at || new Date().toISOString(),
+        deployed_by: body.deployed_by || "github-actions",
+        metadata: body.metadata || {},
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "surface,environment" }).select("id").single();
+
+      if (error) {
+        logger.warn("[deploy-tracker] update-environment failed:", error.message);
+        return json({ error: "Failed to update environment version" }, 500);
+      }
+      return json({ ok: true, environment_version_id: data?.id });
+    }
+
+    if (action === "record-release") {
+      if (!body.git_tag || !body.title) {
+        return json({ error: "git_tag and title are required" }, 400);
+      }
+
+      const { data, error } = await sb.from("release_notes").upsert({
+        git_tag: body.git_tag,
+        product_version: body.product_version || null,
+        title: body.title,
+        summary: body.summary || null,
+        surfaces: body.surfaces || [],
+        finding_ids: body.finding_ids || [],
+        deploy_ids: body.deploy_ids || [],
+        release_type: body.release_type || "feature",
+        is_rollback: body.is_rollback || false,
+        metadata: body.metadata || {},
+        released_at: body.released_at || new Date().toISOString(),
+      }, { onConflict: "git_tag" }).select("id").single();
+
+      if (error) {
+        logger.warn("[deploy-tracker] record-release failed:", error.message);
+        return json({ error: "Failed to record release" }, 500);
+      }
+      return json({ ok: true, release_id: data?.id });
     }
 
     return json({ error: `Unknown action: ${action}` }, 400);

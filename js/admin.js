@@ -72,6 +72,7 @@ var ADMIN_SUBPAGE_MAP = {
   'kill-switch':    { section: 'operations',  label: 'Kill Switch',    init: function(){ loadKillSwitchPanel(); } },
   'crewai':         { section: 'operations',  label: 'CrewAI Agents',  init: function(){ loadCrewAIPanel(); } },
   'build-analytics':{ section: 'operations',  label: 'Build Analytics', init: function(){ loadBuildAnalyticsPanel(); } },
+  'deploy-visibility':{ section: 'operations',  label: 'Deploy Visibility', init: function(){ loadDeployVisibilityPanel(); } },
   // ── Growth ──
   'seo':            { section: 'growth',      label: 'SEO',            init: function(){ loadSeoTab(); } },
   'content':        { section: 'growth',      label: 'Content',        init: function(){ loadContentTab(); } },
