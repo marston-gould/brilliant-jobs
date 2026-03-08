@@ -52,6 +52,29 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**SA-029** — Hook Prototyping + Evolvability Baseline (Phase S6 — FINAL)
+- Completed: 2026-03-08
+- Git tag: `docs@evolvability-baseline-v1.0.0`
+- No product version bump (docs-only session, no JS/CSS/HTML user-facing changes)
+- ROADMAP.md updated: SA-029 row → ✅ with completion notes
+- roadmap.html updated: SA-029 entry → `s: 'done'`, p: 100
+- **Created:**
+  - `docs/scaling/poc/README.md` — POC index: 5 hook integrations, coverage summary, key findings
+  - `docs/scaling/poc/poc-01-request-timing-middleware.ts` — H-01 gateway middleware POC
+  - `docs/scaling/poc/poc-02-job-alert-subscriber.ts` — H-02 event bus subscriber POC
+  - `docs/scaling/poc/poc-03-workday-ats-handler.ts` — H-04 ATS handler POC (Workday)
+  - `docs/scaling/poc/poc-04-premium-search-flag.ts` — H-03 + S-06 feature flag POC
+  - `docs/scaling/poc/poc-05-uptime-monitor-agent.ts` — H-07 CrewAI agent POC (uptime monitor)
+  - `docs/scaling/dependency-management-policy.md` — Dependabot config, pinning rules, vuln response SLAs, Deno strategy
+  - `docs/scaling/evolvability-review-s6-final.md` — S6 Final evolvability review: 15/15 hooks, 16/16 scars, 9/9 ADRs, 100% fitness score, Phase S completion criteria (11/11 met)
+  - `tests/sa-029-hook-prototyping.test.js` — 66 validation tests (12 sections: POC files, tech debt, deprecation, dependency policy, evolvability review, ADR-09, blueprint integrity, templates, fitness scripts, team manifest, Dependabot, file inventory)
+- **Modified:**
+  - `docs/scaling/technical-debt-register.md` — SA-029 final review. TD-007 → resolved (SA-028). 8 open items, 0 P0. Debt velocity updated.
+  - `docs/scaling/deprecation-log.md` — DEP-002 (Deno std 0.177.0), DEP-003 (window.BJ bridge globals) added. 3 active deprecations.
+  - `docs/scaling/adr-09-fitness-functions.md` — SA-029 additions documented. Phase S6 COMPLETE. Phase S COMPLETE.
+- **Tests:** 66 SA-029 validation tests (all passing)
+- **Phase S6 COMPLETE. Phase S (all 6 phases, 29 sessions) COMPLETE.**
+
 **SA-028** — Capacity Model + Scaling Triggers (Phase S6)
 - Completed: 2026-03-08
 - Git tag: `infra@capacity-model-v1.0.0`
@@ -390,13 +413,14 @@ None.
 
 ## Next Session
 
-**SA-029** — Hook Prototyping + Evolvability Baseline (Phase S6 — FINAL)
-- Entry gate: SA-028 ✅ (Capacity model complete; all 18 CI gates green)
-- Pair: Forward-Looking Dev(s) + Evolvability Strategist + Chief Architect
-- Reviewer: Full Pod 4
-- Estimated: 14–20h
-- Build: 3–5 POC integrations against hook points (H-01–H-15). Tech debt register finalization. Deprecation protocol enforcement. Dependency management policy. Final evolvability review. Phase S completion criteria evaluation. Architecture fitness score.
-- **Phase S6 FINAL session. After SA-029, Phase S is COMPLETE.**
+**Phase S is COMPLETE.** All 29 sessions (SA-001 through SA-029) across 6 phases are done.
+
+Next work streams (pending Marston direction):
+- Phase 0a–0b audit remediation sessions (if any remain)
+- S-01 activation (TD-001): EF auth trust migration — first post-launch SA session
+- S-10 DataProvider migration (TD-004): Post-launch SPA consolidation
+- Agent graduation: First CrewAI agent graduation (Marston approval required)
+- Launch preparation: June 1, 2026 go/no-go gate evaluation
 
 ---
 

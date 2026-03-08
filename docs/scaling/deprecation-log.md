@@ -1,7 +1,7 @@
 # Deprecation Log
 
 > This file is the authoritative record of all deprecated and retired components, routes, and patterns.
-> Updated at: SA-023 (2026-03-07)
+> Updated at: SA-029 (2026-03-08) — Final Phase S review
 
 ## Lifecycle States
 
@@ -16,6 +16,8 @@ Grace period: 90 days. Immediate retirement permitted only for security vulnerab
 | ID | Component | Deprecated In | Deprecated Date | Replacement | Retirement Gate | Owner |
 |----|-----------|--------------|----------------|-------------|----------------|-------|
 | DEP-001 | Direct EF URL paths (`/functions/v1/<ef-name>`) | SA-005 | 2026-03-07 | Route through `/functions/v1/api-gateway` with route key | CI grep: no `functions/v1/` calls outside gateway config in client JS | Backend Eng |
+| DEP-002 | Deno std imports pinned to 0.177.0 | SA-029 | 2026-03-08 | Upgrade to latest Deno std stable (post-launch, TD-010) | All EF imports updated + full test pass | Backend + DevOps |
+| DEP-003 | `window.BJ.*` bridge globals (DataProvider bypass) | SA-029 | 2026-03-08 | Direct Supabase DataProvider (post-launch, TD-004) | All React pages use DataProvider hooks exclusively | Frontend |
 
 ## Retired
 

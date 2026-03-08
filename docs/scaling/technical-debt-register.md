@@ -1,7 +1,7 @@
 # Technical Debt Register
 **Brilliant Jobs — Scaling Architecture**  
 **Maintained by:** Evolvability Strategist  
-**Last updated:** 2026-03-08 (SA-026)
+**Last updated:** 2026-03-08 (SA-029 — Final Review)
 
 ---
 
@@ -15,7 +15,6 @@
 | TD-004 | S-10: Migrate DataProviders from window.BJ bridge to direct Supabase provider | P1 | 10–16h | S3 | Post-launch SPA consolidation | Frontend |
 | TD-005 | SE-002 JWT secret rotation (compensating controls in place, needs maintenance window) | P1 | 2–4h | P1 Audit | Marston coordination required | Security + DevOps |
 | TD-006 | Typesense cluster provisioning (SA-001–003 deferred post-launch) | P2 | 6–8h setup | S1 | When search latency > 500ms at scale | Data Eng |
-| TD-007 | S-14: Build capacity model using v_partition_stats (SA-028) | P2 | 8h | S4 | SA-028 | Data Eng |
 | TD-008 | S-15: Read replica routing analytics and SLA reporting | P2 | 4h | S4 | Post-launch | DevOps |
 | TD-009 | ADR-03 S-04: Gateway request logging to Postgres (rate limiter analytics) | P2 | 4h | S1 | Post-launch | Backend |
 | TD-010 | Deno std imports pinned to 0.177.0 across all EFs — upgrade to latest stable | P2 | 4h | S1 | Pre-launch or SA-027 | Backend + DevOps |
@@ -32,6 +31,7 @@
 | TD-R004 | Direct EF access (no API gateway) | SA-004, SA-005 | All 108 routes through gateway |
 | TD-R005 | Missing database indexes for 1M+ scale | SA-018, SA-019 | Read replica + partitioning |
 | TD-R006 | Refresh-mv-incremental dangling gateway route | SA-026 | Fixed: now points to refresh-materialized-views |
+| TD-R007 | S-14: Build capacity model using v_partition_stats | SA-028 | Capacity model fully implemented with v_partition_stats integration |
 
 ---
 
@@ -60,7 +60,9 @@
 | Phase 1 Remediation | 10 (audit findings) | 6 | +4 |
 | S1–S5 Scaling | 6 | 1 | +5 |
 | S6 (SA-026) | 0 | 1 (TD-R006) | -1 |
-| **Current total** | | | **10 open** |
+| S6 (SA-028) | 0 | 1 (TD-R007) | -1 |
+| S6 (SA-029 Final) | 0 | 0 | 0 |
+| **Current total** | | | **8 open** |
 
 ---
 
