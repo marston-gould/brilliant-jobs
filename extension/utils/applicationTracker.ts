@@ -144,7 +144,7 @@ export class ApplicationTracker {
     chrome.runtime.sendMessage({
       type: 'ats:submitDetected',
       ...info
-    }).catch(() => {});
+    }).catch(e => { try { chrome.runtime.sendMessage({ type: 'reportError', payload: { context: 'ats_submit_detected', error: e?.message || String(e) } }).catch(() => {}); } catch {} });
 
     // Auto-clear pending after 30 seconds if no confirmation found
     setTimeout(() => {
@@ -180,7 +180,7 @@ export class ApplicationTracker {
         chrome.runtime.sendMessage({
           type: 'ats:confirmationDetected',
           ...confirmation
-        }).catch(() => {});
+        }).catch(e => { try { chrome.runtime.sendMessage({ type: 'reportError', payload: { context: 'ats_confirmation_detected', error: e?.message || String(e) } }).catch(() => {}); } catch {} });
 
         this._pendingSubmit = null;
         break;

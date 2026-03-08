@@ -116,7 +116,7 @@ async function getBetterMatchCount(userId: string): Promise<number> {
       .eq("notification_type", "score_high_match");
     // Rough estimate: if user has high-match notifications, there are likely more
     return Math.max((count || 0) * 3, 5);
-  } catch {
+  } catch (e) { console.warn("[EF][score-sequence]", e?.message || String(e));
     return 0;
   }
 }

@@ -97,7 +97,7 @@ serve(withCorrelation("dedup-promote", async (req: Request, logger: Logger) => {
   let body: { action?: string; batch_size?: number; fuzzy_threshold?: number } = {};
   try {
     body = await req.json();
-  } catch {
+  } catch (e) { console.warn("[EF][dedup_promote_json_parse]", e?.message || String(e));
     // Default action
   }
 

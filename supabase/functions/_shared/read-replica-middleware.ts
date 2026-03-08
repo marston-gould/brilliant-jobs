@@ -135,7 +135,7 @@ export const readReplicaRoutingMiddleware: MiddlewareFn = async (req, ctx, next)
       })
       .then(() => {})
       .catch(() => {}); // fire and forget
-  } catch {
+  } catch (e) { console.warn("[EF][read_replica_middleware]", e?.message || String(e));
     // Stats logging failure is never fatal
   }
 

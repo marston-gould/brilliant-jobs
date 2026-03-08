@@ -16,7 +16,7 @@
         type: 'interceptedProfileData',
         profileUrn: event.data.profileUrn,
         data: event.data.data
-      }).catch(() => {});
+      }).catch(e => { try { chrome.runtime.sendMessage({ type: 'reportError', payload: { context: 'interceptor_bridge_msg', error: e?.message || String(e) } }).catch(() => {}); } catch {} });
     }
   });
 

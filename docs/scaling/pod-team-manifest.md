@@ -63,3 +63,13 @@
 | S4 → S5 | Evolvability Strategist + System Architect | Scale validation results, partition strategy, read replica health |
 | S5 → S6 | Evolvability Strategist + Chief Architect | Platform evolution completeness, fitness function coverage, hook/scar utilization rates, event bus adoption, feature flag usage |
 | S6 Final | Full Pod 4 + Marston | Architecture governance readiness, capacity model accuracy, evolvability baseline established, Phase S complete |
+
+## Pairing Assignments (Remaining Items Sessions)
+
+| Session | Primary Pair | Pod 4 Reviewer |
+|---------|-------------|----------------|
+| REM-001 | Security + DevOps | Chief Architect |
+| REM-002 | Frontend + QA | Lead Platform Eng |
+| REM-003 | Backend + DevOps | System Architect—Scalability |
+| REM-004 | Frontend + QA | Forward-Looking Dev |
+| REM-005 | Frontend + Security | Evolvability Strategist + Chief Architect |

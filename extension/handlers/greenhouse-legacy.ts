@@ -458,7 +458,7 @@ async function safeFill(opts) {
         error: errorMsg,
         url: window.location.href,
         timestamp: new Date().toISOString()
-      }).catch(() => {});
+      }).catch(e => { try { chrome.runtime.sendMessage({ type: 'reportError', payload: { context: 'greenhouse_legacy_error_report', error: e?.message || String(e) } }).catch(() => {}); } catch {} });
     } catch (_) { console.warn('[BJ] greenhouse-legacy error report failed'); }
     return {
       success: false,

@@ -157,7 +157,7 @@ serve(async (req: Request) => {
     let parsed;
     try {
       parsed = JSON.parse(cleanJson);
-    } catch {
+    } catch (e) { console.warn("[EF][prompt_to_filter_json_parse]", e?.message || String(e));
       console.error('Failed to parse filter JSON:', cleanJson);
       return new Response(JSON.stringify({ filters: {}, parse_error: true }), {
         status: 200, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },

@@ -133,7 +133,7 @@ export function withGracefulDegradation(fillFn, handlerId) {
           error: errorMsg,
           url: window.location.href,
           timestamp: new Date().toISOString()
-        }).catch(() => {});
+        }).catch(e => { try { chrome.runtime.sendMessage({ type: 'reportError', payload: { context: 'handler_error_report_' + handlerId, error: e?.message || String(e) } }).catch(() => {}); } catch {} });
       } catch (_) { console.warn('[BJ]', handlerId, 'error report failed'); }
 
       return {
@@ -183,6 +183,6 @@ function _flushMisses() {
       misses,
       count: misses.length,
       url: window.location.href
-    }).catch(() => {});
+    }).catch(e => { try { chrome.runtime.sendMessage({ type: 'reportError', payload: { context: 'selector_miss_report', error: e?.message || String(e) } }).catch(() => {}); } catch {} });
   } catch (_) { console.warn('[BJ] selector miss report failed'); }
 }

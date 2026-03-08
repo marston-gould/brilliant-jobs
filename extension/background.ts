@@ -275,6 +275,9 @@ async function ensureValidToken(session) {
         return true;
       }
       logMsg('Token refresh failed — please log in again', 'error');
+      // REM-002 EXT-BE-003: Report refresh failure to PostHog + notify user
+      captureEvent('extension_token_refresh_failed', { status: res.status, had_refresh_token: true });
+      try { chrome.action.setBadgeText({ text: '!' }); chrome.action.setBadgeBackgroundColor({ color: '#ef4444' }); } catch {}
       return false;
     }
 
@@ -290,9 +293,14 @@ async function ensureValidToken(session) {
     await setAuth(newSession);
     supabase.setAuthToken(data.access_token);
     logMsg('Auth token refreshed', 'info');
+    // REM-002: Clear error badge on successful refresh
+    try { chrome.action.setBadgeText({ text: '' }); } catch {}
     return true;
   } catch (e) {
     logMsg(`Token refresh error: ${e.message}`, 'error');
+    // REM-002 EXT-BE-003: Report refresh exception to PostHog
+    captureEvent('extension_token_refresh_error', { error: e.message });
+    try { chrome.action.setBadgeText({ text: '!' }); chrome.action.setBadgeBackgroundColor({ color: '#ef4444' }); } catch {}
     return false;
   } finally {
     refreshInProgress = false;
@@ -1055,7 +1063,7 @@ async function visitNextProfile() {
     if (scannerState.currentProfile) {
       await supabase.update('connections', { profile_slug: scannerState.currentProfile }, {
         visit_status: 'error'
-      }).catch(() => {});
+      }).catch(e => captureEvent('extension_catch_error', { context: 'connection_visit_status_update', error: e?.message || String(e) }));
     }
     scannerState.currentProfile = null;
   }
@@ -1203,6 +1211,17 @@ const interceptedProfiles = {};
 // ============================================================
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  // REM-002: Centralized error reporting from extension contexts
+  if (msg.type === 'reportError' && msg.payload) {
+    captureEvent('extension_catch_error', {
+      context: msg.payload.context || 'unknown',
+      error: msg.payload.error || 'unknown',
+      source: sender?.tab?.url ? 'content_script' : sender?.id ? 'popup' : 'unknown',
+      timestamp: msg.payload.timestamp || new Date().toISOString(),
+    });
+    return;
+  }
+
   // Cache intercepted profile data from content script
   if (msg.type === 'interceptedProfileData') {
     if (msg.profileUrn && msg.data) {

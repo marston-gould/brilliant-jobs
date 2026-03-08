@@ -164,7 +164,7 @@ export const authMiddleware: MiddlewareFn = async (req, ctx, next) => {
           .then(() => {})
           .catch(() => {}); // never fail request
       }
-    } catch {
+    } catch (e) { console.warn("[EF][gateway_middleware]", e?.message || String(e));
       // API key lookup failure is non-fatal — fall through to JWT auth
       ctx.logger.warn("gateway:auth:api_key_lookup_failed", {
         correlationId: ctx.correlationId,

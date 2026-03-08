@@ -210,6 +210,7 @@ const ROUTE_REGISTRY: Record<string, string> = {
 
   // ── Capacity Model + Scaling (SA-028) ──────────────────────────────────────
   "capacity-model":           "capacity-model",           // SA-028: snapshot/forecast/cost-model/triggers/summary/acknowledge
+  "cost-monitor":             "cost-monitor",             // REM-003: summary/daily/weekly/monthly/budget-update
 
   // ═══════════════════════════════════════════════════════════════════════════
   // TOTAL: 109 routes (93 SA-005 + 1 SA-007 + 1 SA-008 + 1 SA-009 + 2 SA-010 + 2 SA-011 + 2 SA-012 + 1 SA-018 + 2 SA-020 + 1 SA-021 + 1 SA-024 + 1 SA-028). Direct paths deprecated.

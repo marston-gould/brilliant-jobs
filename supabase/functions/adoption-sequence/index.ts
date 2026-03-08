@@ -483,7 +483,7 @@ serve(async (req: Request) => {
     let body: Record<string, unknown> = {};
     try {
       body = await req.json();
-    } catch {
+    } catch (e) { console.warn("[EF][adoption_sequence_json_parse]", e?.message || String(e));
       // Empty body = cron mode
     }
 

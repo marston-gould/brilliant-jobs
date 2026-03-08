@@ -506,7 +506,7 @@
     chrome.runtime.sendMessage({
       type: 'ats:submitDetected',
       ...info,
-    }).catch(() => {});
+    }).catch(e => { try { chrome.runtime.sendMessage({ type: 'reportError', payload: { context: 'content_script_msg', error: e?.message || String(e) } }).catch(() => {}); } catch {} });
 
     // Auto-clear after 60s if no confirmation
     setTimeout(() => {
@@ -534,7 +534,7 @@
         chrome.runtime.sendMessage({
           type: 'ats:confirmationDetected',
           ...confirmation,
-        }).catch(() => {});
+        }).catch(e => { try { chrome.runtime.sendMessage({ type: 'reportError', payload: { context: 'content_script_msg', error: e?.message || String(e) } }).catch(() => {}); } catch {} });
 
         _pendingSubmit = null;
         clearInterval(_confirmationInterval);
@@ -582,7 +582,7 @@
             type: 'ats:fieldsChanged',
             fieldCount: newCount,
             url: window.location.href
-          }).catch(() => {});
+          }).catch(e => { try { chrome.runtime.sendMessage({ type: 'reportError', payload: { context: 'content_script_msg', error: e?.message || String(e) } }).catch(() => {}); } catch {} });
         }
       }
     });
@@ -789,7 +789,7 @@
       title: jd?.title || '',
       company: jd?.company || '',
       fieldCount: fields.length
-    }).catch(() => {});
+    }).catch(e => { try { chrome.runtime.sendMessage({ type: 'reportError', payload: { context: 'content_script_msg', error: e?.message || String(e) } }).catch(() => {}); } catch {} });
 
     // Start observing for dynamic form changes
     startMutationObserver();

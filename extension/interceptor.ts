@@ -37,7 +37,7 @@
         const cloned = response.clone();
         cloned.json().then(data => {
           processInterceptedData(url, data);
-        }).catch(() => {});
+        }).catch(e => { try { chrome.runtime.sendMessage({ type: 'reportError', payload: { context: 'interceptor_msg', error: e?.message || String(e) } }).catch(() => {}); } catch {} });
       }
     } catch (e) {
       // Silent fail - never interfere with page functionality

@@ -32,8 +32,7 @@ async function phCapture(eventName, properties = {}) {
         },
         timestamp: new Date().toISOString(),
       }),
-    }).catch(() => {});
-  } catch { /* analytics should never break functionality */ }
+    }).catch(e => { console.warn('[BJ] PostHog init capture failed:', e?.message); });  } catch { /* analytics should never break functionality */ }
 }
 
 // Track popup opened
@@ -309,7 +308,7 @@ $('#auth-login-btn').addEventListener('click', async () => {
     await saveSession(data);
     $('#auth-msg').className = 'auth-msg'; // clear message
     // Notify background so it can pick up the new token and resume if paused
-    chrome.runtime.sendMessage({ type: 'tokenUpdated' }).catch(() => {});
+    chrome.runtime.sendMessage({ type: 'tokenUpdated' }).catch(e => phCapture('extension_catch_error', { context: 'token_updated_notify', error: e?.message || String(e) }));
     checkAuth();
   } catch (e) {
     showAuthMsg(e.message, 'error');

@@ -89,7 +89,7 @@ async function logEvaluation(
       evaluation_ms: evalMs,
       source,
     });
-  } catch {
+  } catch (e) { console.warn("[EF][feature_flags_service]", e?.message || String(e));
     // Fire-and-forget: never block the response on logging
   }
 }

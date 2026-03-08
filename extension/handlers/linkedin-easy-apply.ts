@@ -194,7 +194,7 @@ function waitForElement(selector, timeout = 5000) {
           misses: [{ fn: 'waitForElement', context: 'linkedin', selectors: [selector.substring(0, 100)], url: window.location.href, timestamp: Date.now() }],
           count: 1,
           url: window.location.href
-        }).catch(() => {});
+        }).catch(e => { try { chrome.runtime.sendMessage({ type: 'reportError', payload: { context: 'linkedin_selector_miss_report', error: e?.message || String(e) } }).catch(() => {}); } catch {} });
       } catch (_) { console.warn('[BJ] linkedin selector miss report failed'); }
       resolve(null);
     }, timeout);

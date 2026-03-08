@@ -654,7 +654,7 @@ async function safeFill(opts) {
         error: errorMsg,
         url: window.location.href,
         timestamp: new Date().toISOString()
-      }).catch(() => {});
+      }).catch(e => { try { chrome.runtime.sendMessage({ type: 'reportError', payload: { context: 'greenhouse_react_error_report', error: e?.message || String(e) } }).catch(() => {}); } catch {} });
     } catch (_) { console.warn('[BJ] greenhouse-react error report failed'); }
     return {
       success: false,

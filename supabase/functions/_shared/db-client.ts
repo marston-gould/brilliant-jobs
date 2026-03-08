@@ -195,7 +195,7 @@ export async function isReplicaAvailable(): Promise<boolean> {
     _replicaAvailable = !error;
     _lastHealthCheck = now;
     return _replicaAvailable;
-  } catch {
+  } catch (e) { console.warn("[EF][db_client_replica_check]", e?.message || String(e));
     _replicaAvailable = false;
     _lastHealthCheck = now;
     return false;

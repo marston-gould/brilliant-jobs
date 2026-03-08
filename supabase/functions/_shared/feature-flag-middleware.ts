@@ -56,7 +56,7 @@ export async function resolveFlagsForRequest(
     }
 
     return compact;
-  } catch {
+  } catch (e) { console.warn("[EF][feature_flag_eval]", e?.message || String(e));
     // Never block gateway request on flag evaluation failure
     return null;
   }
@@ -112,7 +112,7 @@ export function parseFlagHeader(
   if (!header) return {};
   try {
     return JSON.parse(atob(header));
-  } catch {
+  } catch (e) { console.warn("[EF][feature_flag_eval]", e?.message || String(e));
     return {};
   }
 }

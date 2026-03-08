@@ -155,7 +155,7 @@ serve(async (req) => {
     let result: unknown;
     try {
       result = JSON.parse(text.replace(/```json|```/g, '').trim());
-    } catch {
+    } catch (e) { console.warn("[EF][generate_filter_json_parse]", e?.message || String(e));
       console.error('[generate-filter] Parse failed:', text.slice(0, 200));
       return new Response(JSON.stringify({ error: 'Failed to parse AI response' }),
         { status: 500, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });

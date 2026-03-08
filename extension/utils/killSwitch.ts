@@ -241,11 +241,10 @@ function _logKillEvent(layer, reason) {
         killed: _killed,
         timestamp: Date.now()
       }
-    }).catch(() => {});
+    }).catch(e => { try { chrome.runtime.sendMessage({ type: 'reportError', payload: { context: 'kill_switch_event_log', error: e?.message || String(e) } }).catch(() => {}); } catch {} });
   } catch {
     // Fail silently
   }
-}
 
 // ─── Public API ──────────────────────────────────────────────
 

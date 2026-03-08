@@ -61,7 +61,7 @@ export async function requireAdmin(req: Request): Promise<AdminAuthResult> {
     if (payload.role === "service_role") {
       return { user: null, isServiceRole: true };
     }
-  } catch {
+  } catch (e) { console.warn("[EF][admin_auth_verify]", e?.message || String(e));
     // Not a parseable JWT — will try user auth below
   }
 

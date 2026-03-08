@@ -413,7 +413,7 @@ async function handleFetch(params: FetchParams, logger: ReturnType<typeof import
       p_inserted: inserted,
       p_rejected: failed,
     });
-  } catch {
+  } catch (e) { console.warn("[EF][ingest-common-crawl]", e?.message || String(e));
     // RPC may not exist yet — fallback is acceptable, counters update on next status check
   }
 
@@ -688,7 +688,7 @@ function extractSchemaOrg(html: string): ParsedJob | null {
         loc_display: loc.display,
         extraction_method: "schema_org",
       };
-    } catch {
+    } catch (e) { console.warn("[EF][ingest-common-crawl]", e?.message || String(e));
       continue;
     }
   }

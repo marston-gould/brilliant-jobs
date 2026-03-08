@@ -53,7 +53,7 @@ serve(withCorrelation("refresh-materialized-views", async (req: Request, logger:
     let body: { action?: string } = {};
     try {
       body = await req.json();
-    } catch {
+    } catch (e) { console.warn("[EF][refresh_views_json_parse]", e?.message || String(e));
       // Default to incremental if no body
     }
 
@@ -113,7 +113,7 @@ serve(withCorrelation("refresh-materialized-views", async (req: Request, logger:
           }),
         }).catch(() => {}); // Fire-and-forget
       }
-    } catch {
+    } catch (e) { console.warn("[EF][refresh_views_json_parse]", e?.message || String(e));
       // Non-critical
     }
 

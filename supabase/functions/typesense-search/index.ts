@@ -205,7 +205,7 @@ Deno.serve(async (req) => {
   let body: SearchRequest = {};
   try {
     body = await req.json();
-  } catch {
+  } catch (e) { console.warn("[EF][typesense_search_json_parse]", e?.message || String(e));
     return new Response(JSON.stringify({ error: "Invalid JSON" }), {
       status: 400,
       headers: corsHeaders,

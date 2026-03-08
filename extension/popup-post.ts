@@ -59,7 +59,7 @@
         chrome.storage.local.get('userRole').then(data => {
           var role = data.userRole || 'user';
           console.log('[BJ Extension] v' + ver.version + ' loaded | role: ' + role);
-        });
+        }).catch(() => { /* REM-002: storage may be unavailable during startup */ });
         verLabel.addEventListener('click', function() {
           var panel = document.getElementById('about-panel');
           if (panel) panel.classList.toggle('active');

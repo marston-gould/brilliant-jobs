@@ -27,9 +27,12 @@
           user_id: parsed.user?.id || null,
           email: parsed.user?.email || null
         }
-      }).catch(() => {});
-    } catch {
-      // Non-critical — silently fail
+      }).catch(e => {
+        // REM-002: Report token sync failures to PostHog
+        try { chrome.runtime.sendMessage({ type: 'reportError', payload: { context: 'dashboard_token_sync', error: e?.message || String(e) } }).catch(() => {}); } catch {}
+      });
+    } catch (e) {
+      try { chrome.runtime.sendMessage({ type: 'reportError', payload: { context: 'dashboard_token_parse', error: e?.message || String(e) } }).catch(() => {}); } catch {}
     }
   }
 
@@ -69,8 +72,8 @@
           };
           localStorage.setItem(SUPABASE_AUTH_KEY, JSON.stringify(updated));
         }
-      } catch {
-        // Non-critical
+      } catch (e) {
+        try { chrome.runtime.sendMessage({ type: 'reportError', payload: { context: 'extension_token_sync_write', error: e?.message || String(e) } }).catch(() => {}); } catch {}
       }
     }
   });

@@ -334,7 +334,7 @@ async function scrapeGreenhouseToken(slug: string): Promise<{ token: string; sou
     }
 
     return null;
-  } catch {
+  } catch (e) { console.warn("[EF][refresh-jobs]", e?.message || String(e));
     // Timeout or network error — don't block refresh
     return null;
   }
@@ -699,7 +699,7 @@ Deno.serve(async (req: Request) => {
           tokensScraped++;
           console.log(`[refresh-jobs] Token scraped: ${b.slug} (${tokenResult.source})`);
         }
-      } catch {
+      } catch (e) { console.warn("[EF][refresh-jobs]", e?.message || String(e));
         // Token scraping failures must never block the refresh cycle
       }
     });

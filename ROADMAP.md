@@ -3262,3 +3262,44 @@ Phase S is complete when ALL of the following are true:
 - Final evolvability review completed with Phase S exit report
 
 **Phase S total: 29 sessions | 414–562h chat | 24 weeks | 6 ADRs + CSS/Design System + Platform Evolution + Architecture Governance**
+
+---
+
+## Phase REM: Remaining Items (Post-Phase S + Concurrent with Phase 1)
+
+**Source:** Remaining_Items_Execution_Plan v1.0
+**Sessions:** 5 (REM-001 → REM-005)
+**Total estimated effort:** 19.5 hours
+**Dependencies:** CS-024 complete (Phase 0), SA-017 complete (for REM-005 only)
+
+### REM-001: Security Hygiene (3h) — SE-002, EXT-SEC-005
+
+| Session | Items | Hours | Status | Notes |
+|---------|-------|-------|--------|-------|
+| REM-001 | SE-002 (key rotation prep), EXT-SEC-005 (CSP audit) | 3h | ✅ | EXT-SEC-005 audit: 0 vulnerabilities found. All innerHTML writes use escHtml(). SE-002 rotation script ready, requires Marston maintenance window to execute. Error reporter utility created. 59 tests. 2026-03-08. |
+
+### REM-002: Extension Error Handling Sweep (5h) — EXT-ES-002, EXT-ES-003, EXT-ES-004, EXT-BE-003
+
+| Session | Items | Hours | Status | Notes |
+|---------|-------|-------|--------|-------|
+| REM-002 | EXT-ES-002 (fire-and-forget), EXT-ES-003 (console-only), EXT-ES-004 (lastError), EXT-BE-003 (token refresh) | 5h | ✅ | 28+ empty .catch(()=>{}) replaced with reportError pattern across 12 extension files. Token refresh failures now report to PostHog + set badge notification. Background reportError handler wired. Handlers (lever, greenhouse, linkedin) upgraded. 59 tests. 2026-03-08. |
+
+### REM-003: EF Hardening + Cost Monitoring (5h) — BE-006, Cost Monitor
+
+| Session | Items | Hours | Status | Notes |
+|---------|-------|-------|--------|-------|
+| REM-003 | BE-006 (EF empty catches), 0.170 (cost monitor) | 5h | ✅ | 23 empty catch blocks fixed across 16 EF files with structured logging. Cost monitoring: v6.33 migration (3 views + fn_ai_cost_summary), cost-monitor EF (5 actions), admin-cost-monitor.js dashboard, gateway route #110. 59 tests. 2026-03-08. |
+
+### REM-004: Extension QA + Manifest (3h) — EXT-CWS-001, EXT-QA
+
+| Session | Items | Hours | Status | Notes |
+|---------|-------|-------|--------|-------|
+| REM-004 | EXT-CWS-001 (manifest permissions), EXT-QA (E2E tests) | 3h | 🔲 | Depends on REM-002. |
+
+### REM-005: Analytics + CSP Strict (3.5h) — LS1-6, SE-005
+
+| Session | Items | Hours | Status | Notes |
+|---------|-------|-------|--------|-------|
+| REM-005 | LS1-6 (Ahrefs audit), SE-005 (CSP strict dashboard) | 3.5h | ⏸ BLOCKED | Depends on REM-001–004 + SA-017. SA-017 is complete. Ready after REM-004. |
+
+**Phase REM total: 5 sessions | 19.5h | 13 items from P75 + P76**

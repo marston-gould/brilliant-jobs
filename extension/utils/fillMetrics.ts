@@ -44,9 +44,9 @@ async function captureEvent(eventName, properties = {}) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(10000), // CS-013 FIX-12: 10s timeout
-    }).catch(() => {});
-  } catch {
-    // Silent fail — analytics should never break functionality
+    }).catch(e => { try { chrome.runtime.sendMessage({ type: 'reportError', payload: { context: 'fill_metrics_posthog', error: e?.message || String(e) } }).catch(() => {}); } catch {} });
+  } catch (e) {
+    try { chrome.runtime.sendMessage({ type: 'reportError', payload: { context: 'fill_metrics_capture', error: e?.message || String(e) } }).catch(() => {}); } catch {}
   }
 }
 
@@ -76,9 +76,9 @@ async function persistMetric(metric) {
         created_at: new Date().toISOString(),
       }),
       signal: AbortSignal.timeout(10000), // CS-013 FIX-12: 10s timeout
-    }).catch(() => {});
-  } catch {
-    // Silent fail
+    }).catch(e => { try { chrome.runtime.sendMessage({ type: 'reportError', payload: { context: 'fill_metrics_persist', error: e?.message || String(e) } }).catch(() => {}); } catch {} });
+  } catch (e) {
+    try { chrome.runtime.sendMessage({ type: 'reportError', payload: { context: 'fill_metrics_persist_outer', error: e?.message || String(e) } }).catch(() => {}); } catch {}
   }
 }
 

@@ -52,21 +52,49 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**SA-023b** — Load Test 5,000 Concurrent (Phase S4 — Gap Fill)
+**REM-001 + REM-002 + REM-003** — Security Hygiene + Extension Error Handling + EF Hardening + Cost Monitoring
 - Completed: 2026-03-08
-- Git tag: `loadtest@5k-v1.0.0`
-- No product version bump (test infrastructure only, no JS/CSS/HTML user-facing changes)
-- ROADMAP.md updated: SA-023b row → ✅ with completion notes
-- roadmap.html updated: SA-023b entry → `s: 'done'`, p: 100
+- Git tag: `rem@001-003-v1.0.0`
+- Product version bumped: `v7.60` → `v7.61` (JS/CSS/HTML changes — admin cost dashboard, extension error reporter)
+- ROADMAP.md updated: REM-001, REM-002, REM-003 → ✅ with completion notes
+- roadmap.html updated: REM-001, REM-002, REM-003 → `s: 'done'`, p: 100
+- **REM-001 (Security Hygiene):**
+  - SE-002: Key rotation script verified. Requires Marston maintenance window to execute.
+  - EXT-SEC-005: Content script CSP audit complete — 0 vulnerabilities. All innerHTML writes use escHtml(). Audit report at `docs/audit/ext-sec-005-csp-audit.md`.
+- **REM-002 (Extension Error Handling Sweep):**
+  - EXT-ES-002: 28+ empty `.catch(()=>{})` replaced with `reportError` pattern across 12 extension files
+  - EXT-ES-003: Console-only handlers in lever, greenhouse-legacy, greenhouse-react, linkedin upgraded with PostHog context
+  - EXT-ES-004: lastError / promise error handling added to popup-post.ts chrome.storage calls
+  - EXT-BE-003: Token refresh failures now capture to PostHog + set badge notification. Successful refresh clears badge.
+  - Created `extension/utils/errorReporter.ts` — shared error reporting utility
+  - Background `reportError` message handler wired for centralized error capture from all extension contexts
+- **REM-003 (EF Hardening + Cost Monitoring):**
+  - BE-006: 23 empty catch blocks fixed across 16 EF files with structured `[EF][function_name]` console.warn logging
+  - Cost Monitor: Migration `20260308_rem003_cost_monitoring.sql` (3 views: v_ai_cost_daily, v_ai_cost_weekly, v_ai_cost_monthly + fn_ai_cost_summary RPC)
+  - Cost-monitor EF with 5 actions (summary, daily, weekly, monthly, budget-update)
+  - Gateway route #110 (cost-monitor)
+  - Admin cost dashboard: `js/admin-cost-monitor.js` (spend overview, budget bar, daily sparkline, per-function table)
 - **Created:**
-  - `load-tests/scale-5k-suite.js` — 4-scenario k6 test: search (2000 VUs), dashboard (1500), extension (1000), admin (500). All traffic routed through API gateway (SA-005). 7 exit gates: search p95 < 500ms, dashboard p95 < 1500ms, heartbeat p95 < 1000ms, admin p95 < 2000ms, gateway p95 < 2000ms, zero 5xx, error rate < 0.1%. Tracks read-replica routing (SA-018 X-Gateway-Db-Mode header). Tests partitioned ats_jobs queries (SA-019). Tests capacity-model endpoint (SA-028). 10-minute sustained peak. JSON results output with pass/fail verdict.
-  - `tests/sa-023b-load-test-5k.test.js` — 47 validation tests (10 sections: suite file, exit gates, gateway routing, scaling infrastructure, config, workflow, README, summary report, existing tests preserved, file inventory)
+  - `docs/audit/ext-sec-005-csp-audit.md` — Content script injection audit report
+  - `extension/utils/errorReporter.ts` — Shared error reporting utility
+  - `supabase/migrations/20260308_rem003_cost_monitoring.sql` — Cost aggregation views
+  - `supabase/functions/cost-monitor/index.ts` — Cost monitoring Edge Function
+  - `js/admin-cost-monitor.js` — Admin AI cost dashboard
+  - `tests/rem-001-002-003.test.js` — 59 validation tests
 - **Modified:**
-  - `load-tests/config.js` — Added `scale5k` profile (ramp to 5000 VUs over 11min + 10min sustained), GATEWAY_URL constant
-  - `load-tests/README.md` — SA-023b documentation: 5K test structure, exit gates, run command, gateway routing explanation
-  - `.github/workflows/load-test.yml` — Added scale5k profile + scale-5k-suite target. GATEWAY_URL env var. Timeout increased to 60min.
-- **Tests:** 47 SA-023b validation tests (all passing)
-- **Note:** This session was originally scheduled as part of Phase S4 but was dropped during renumbering when SA-023 was reassigned to Architecture Governance Review. Identified and executed as gap fill after SA-029 completion.
+  - `extension/background.ts` — reportError handler, token refresh PostHog capture + badge notifications, connection update error reporting
+  - `extension/token-sync.ts` — Error reporting on sync failures
+  - `extension/popup.ts` — PostHog init error logging, tokenUpdated message error capture
+  - `extension/popup-post.ts` — .catch() on chrome.storage promise
+  - `extension/contentScript.ts` — 4 empty catches replaced with reportError
+  - `extension/interceptor.ts`, `extension/interceptor-bridge.ts` — Error reporting
+  - `extension/handlers/lever.ts`, `greenhouse-legacy.ts`, `greenhouse-react.ts`, `linkedin-easy-apply.ts` — Handler error reporting upgraded
+  - `extension/utils/applicationTracker.ts`, `fillMetrics.ts`, `resilientDOM.ts`, `killSwitch.ts` — Error reporting added
+  - 16 EF files — Empty catches replaced with structured logging
+  - `supabase/functions/api-gateway/index.ts` — cost-monitor route added
+  - `admin.html` — Cost monitor page container + script tag
+  - `docs/scaling/pod-team-manifest.md` — REM pairing assignments added
+- **Tests:** 59 REM validation tests (all passing)
 
 **SA-029** — Hook Prototyping + Evolvability Baseline (Phase S6 — FINAL)
 - Completed: 2026-03-08
@@ -567,12 +595,35 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 | CS-022 | 2026-03-07 | FIX-23 (72-hour dry run + Go/No-Go) | dryrun@1.0.0 |
 | CS-023 | 2026-03-07 | AD-FIX-11, AD-FIX-12 (monitoring + alerts) | admin@1.0.0-monitoring |
 | CS-024 | 2026-03-07 | AD-FIX-13, AD-FIX-14, AD-FIX-15 (error replay + EF health + DB activity) | admin@1.1.0-analytics |
+| REM-001 | 2026-03-08 | SE-002 (prep), EXT-SEC-005 (CSP audit) | rem@001-security-hygiene |
+| REM-002 | 2026-03-08 | EXT-ES-002, EXT-ES-003, EXT-ES-004, EXT-BE-003 | rem@002-ext-error-handling |
+| REM-003 | 2026-03-08 | BE-006, Cost Monitor | rem@003-ef-cost-monitor |
 
 ---
 
-## Remaining Sessions (0 of 17 Phase 1)
+## Remaining Sessions (2 of 5 Remaining Items)
 
-All 17 Phase 1 sessions complete.
+### Next Session: REM-004 — Extension QA + Manifest (3h)
+
+**Entry gate:** REM-002 complete ✅. Extension source available. PostHog SDK operational on extension.
+
+**Fix items:**
+- 0.067 EXT-CWS-001: Manifest permissions audit — justify each permission or remove
+- 0.181 EXT-QA: Extension E2E tests against live ATS — 15 handlers validated, snapshot tests
+
+**Exit gate:** Manifest permissions justified/minimized. 15 handler E2E tests passing. Extension builds with updated manifest.
+
+**Pair:** Frontend + QA | **Pod 4 Reviewer:** Forward-Looking Dev
+
+### After REM-004: REM-005 — Analytics + CSP Strict (3.5h)
+
+⛔ **BLOCKED on:** REM-004 complete. SA-017 complete ✅.
+
+**Fix items:**
+- 0.140 LS1-6: Ahrefs analytics audit — redundant with PostHog+GSC? Remove if yes.
+- 0.005 SE-005: CSP strict on dashboard — remove unsafe-inline (122 inline handlers removed by SA-017 SPA migration)
+
+**Pair:** Frontend + Security | **Pod 4 Reviewer:** Evolvability Strategist + Chief Architect
 
 ---
 

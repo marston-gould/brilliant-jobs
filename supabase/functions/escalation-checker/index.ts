@@ -50,7 +50,7 @@ function isQuietHours(quietStart: string, quietEnd: string, timezone: string): b
       return currentMinutes >= startMinutes || currentMinutes < endMinutes;
     }
     return currentMinutes >= startMinutes && currentMinutes < endMinutes;
-  } catch {
+  } catch (e) { console.warn("[EF][escalation-checker]", e?.message || String(e));
     return false;
   }
 }

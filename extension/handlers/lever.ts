@@ -238,7 +238,7 @@ async function safeFill(opts) {
         error: errorMsg,
         url: window.location.href,
         timestamp: new Date().toISOString()
-      }).catch(() => {});
+      }).catch(e => { try { chrome.runtime.sendMessage({ type: 'reportError', payload: { context: 'lever_handler_error_report', error: e?.message || String(e) } }).catch(() => {}); } catch {} });
     } catch (_) { console.warn('[BJ] lever error report failed'); }
     return {
       success: false,

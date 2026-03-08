@@ -76,7 +76,7 @@ ${resume_text.slice(0, 8000)}`;
     try {
       const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       profile = JSON.parse(cleaned);
-    } catch {
+    } catch (e) { console.warn("[EF][resume_profile_json_parse]", e?.message || String(e));
       return new Response(JSON.stringify({ error: 'Failed to parse AI response', raw: text }), { status: 500, headers: CORS_HEADERS });
     }
 
