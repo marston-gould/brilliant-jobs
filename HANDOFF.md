@@ -52,6 +52,23 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**SA-009** — Incremental Materialized Views + Staleness Monitoring (Phase S2)
+- Completed: 2026-03-07
+- Git tag: `infra@incremental-mv-v1.0.0`
+- No product version bump (infrastructure only, no JS/CSS/HTML changes — frontend code already existed)
+- ROADMAP.md updated: SA-009 row → ✅ with completion notes
+- roadmap.html updated: SA-009 entry → `s: 'done'`, p: 100
+- Created: v6.23-incremental-materialized-views.sql migration, refresh-materialized-views EF, adr-08-incremental-mv.md
+- Modified: api-gateway/index.ts (95 → 96 routes)
+- Database: ats_jobs_change_log (change tracking), mv_job_feed_counts, mv_source_breakdown, mv_landing_stats (pre-aggregated), mv_refresh_log
+- Functions: fn_ats_jobs_change_log (trigger), mv_full_refresh_feed_counts, mv_full_refresh_source_breakdown, mv_full_refresh_landing_stats, mv_full_refresh_all, mv_incremental_refresh
+- Trigger: trg_ats_jobs_change_log on ats_jobs (AFTER INSERT/UPDATE/DELETE)
+- EF deployed: refresh-materialized-views (3 actions: incremental, full, status)
+- Gateway: Route #96 (refresh-materialized-views)
+- Cron: mv-incremental-refresh (*/3 * * * *), mv-full-refresh-weekly (0 4 * * 0)
+- Strategy: Change log accumulates deltas → incremental refresh processes only affected dimensions → falls back to full if delta > 10% of table
+- Staleness model: Fresh ≤5min, Amber 5-15min, Stale >15min
+
 **SA-008** — Deduplication Engine + Enrichment Queue Integration (Phase S2)
 - Completed: 2026-03-07
 - Git tag: `infra@dedup-v1.0.0`
@@ -112,17 +129,16 @@ None.
 
 ## Next Session
 
-**SA-009** — Incremental Materialized Views (Phase S2)
-- Entry gate: SA-008 complete ✅. Dedup pipeline operational. enrichment_queue functional. pg_trgm indexes in place.
-- Pair: Data Eng + DevOps
-- Estimated: 10–14h
-- Build: Delta-only MV refreshes replacing full-table rebuilds. Minutes → seconds refresh times. Incremental change tracking on ats_jobs. Performance benchmarks before/after.
-
-**OR SA-010** — CrewAI Agent Framework + Content QA Agent (Phase S2, parallel track)
-- Entry gate: SA-005 complete ✅ (gateway operational).
+**SA-010** — CrewAI Agent Framework + Content QA Agent (Phase S2)
+- Entry gate: SA-005 complete ✅ (gateway operational). SA-009 complete ✅ (MV infrastructure in place).
 - Pair: Backend + Eng Lead + Forward-Looking Dev
 - Estimated: 16–22h
-- Build: CrewAI framework, agent lifecycle manager, Content QA Agent (Agent 1) in observe mode, admin panel integration.
+- Build: CrewAI framework, agent lifecycle manager, agent configuration store (Supabase table), agent credentials (gateway API key per agent), agent action log table, Content QA Agent (Agent 1) in observe mode, admin panel integration, kill switch toggle per agent.
+
+**OR SA-013** — SPA Scaffold + Vite + React Router (Phase S3, if S2 automation deferred)
+- Entry gate: SA-006 complete ✅ (TypeScript core in place).
+- Pair: Frontend + CSS/Tailwind Eng
+- Estimated: 18–24h
 
 ---
 
@@ -162,6 +178,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 | **API Gateway** | **`infra@gateway-v1.0.0`** | **SA-005** |
 | **Common Crawl** | **`infra@common-crawl-v0.1.0`** | **SA-007** |
 | **Dedup Engine** | **`infra@dedup-v1.0.0`** | **SA-008** |
+| **Incremental MVs** | **`infra@incremental-mv-v1.0.0`** | **SA-009** |
 | Load Tests | `loadtest@1.0.0` | CS-020 |
 | CI/CD | `cicd@1.0.0` | CS-020 |
 | Quality Gates | `qualitygates@1.0.0` | CS-021 |
@@ -172,10 +189,11 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 ---
 
-## Completed Sessions (24 of 24 + 17 Phase 1 + 5 Scaling + FIX-11)
+## Completed Sessions (24 of 24 + 17 Phase 1 + 6 Scaling + FIX-11)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
+| SA-009 | 2026-03-07 | Incremental MVs: ats_jobs_change_log + mv_job_feed_counts + mv_source_breakdown + mv_landing_stats + mv_refresh_log + trigger + 6 functions + refresh-materialized-views EF + gateway route #96 + 2 cron jobs + ADR-08 | infra@incremental-mv-v1.0.0 |
 | SA-008 | 2026-03-07 | Dedup engine: enrichment_queue + dedup_log + 6 functions + 2 views + GIN trgm indexes + dedup-promote EF + gateway route #95 + ADR-07 | infra@dedup-v1.0.0 |
 | SA-007 | 2026-03-07 | CC ingestion: 3 tables + batch view + 2 functions + EF + gateway route #94 + ADR-06 + Athena discovery + live web fetch + 3-tier parser | infra@common-crawl-v0.1.0 |
 | SA-006 | 2026-03-07 | ALREADY SATISFIED by CS-P1-015 (tsconfig strict, 7 core .ts modules, shared types, CI gate, ADR-04). No new code needed. | (see p1-015@1.0.0-typescript) |
