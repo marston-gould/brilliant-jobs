@@ -42,6 +42,7 @@
 
   var TAB_CHUNKS: Record<TabName, ChunkName[]> = {
     'brilliant':    ['keywords'],
+    'jobs':         ['keywords', 'deferred'],
     'resumes':      ['deferred', 'keywords'],
     'pipeline':     ['pipeline'],
     'tuning':       ['tuning'],

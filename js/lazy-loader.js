@@ -32,6 +32,7 @@
   }
   var TAB_CHUNKS = {
     "brilliant": ["keywords"],
+    "jobs": ["keywords", "deferred"],
     "resumes": ["deferred", "keywords"],
     "pipeline": ["pipeline"],
     "tuning": ["tuning"],

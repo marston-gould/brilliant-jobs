@@ -27,15 +27,7 @@ $('#st-export')?.addEventListener('click', async () => {
   } catch (e) { showToast('Export failed: ' + e.message, { type: 'error' }); }
 });
 
-// Logout
-$('#logout-btn').addEventListener('click', async () => {
-  // CS-P1-007 DS1-4: Reset PostHog identity before signout to prevent cross-session pollution
-  if (window.posthog) {
-    try { posthog.reset(); } catch (_) { /* reset must never block logout */ }
-  }
-  await sb.auth.signOut();
-  window.location.href = '/';
-});
+// Logout handler moved to dashboard-inline.js (loads with shell, not deferred chunk)
 
 // ---- CS-P1-014: Privacy & Data Rights ----
 

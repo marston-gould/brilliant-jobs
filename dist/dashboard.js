@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v7.70';
+var BJ_VERSION = 'v7.71';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -1778,6 +1778,7 @@ window.requiredTierFor = requiredTier;
 
   var TAB_CHUNKS: Record<TabName, ChunkName[]> = {
     'brilliant':    ['keywords'],
+    'jobs':         ['keywords', 'deferred'],
     'resumes':      ['deferred', 'keywords'],
     'pipeline':     ['pipeline'],
     'tuning':       ['tuning'],
@@ -2319,7 +2320,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   // savedJobIds and appliedJobIds are populated by initPipeline()
   savedJobIds = [];
   appliedJobIds = [];
-  resumes = safeReadLS('bj_resumes', []);
+  resumes = (await readPiiData('bj_resumes')) || [];
   // Safety net: if resumes still empty after loadUserData, try direct cloud fetch (v4.33)
   if (resumes.length === 0 && userId) {
     try {
@@ -16194,7 +16195,9 @@ function acceptAnalyzeHidden() {
 // ============================================================
 // RESUMES
 // ============================================================
-resumes = safeReadLS('bj_resumes', []);
+// `resumes` global is declared in globals.js (shell) and populated
+// by cloud recovery in app.js. Do NOT re-read here — safeReadLS
+// returns [] for encrypted PII data, destroying recovered state.
 
 function saveResumes() {
   saveUserData('bj_resumes', JSON.stringify(resumes));
@@ -18951,15 +18954,7 @@ $('#st-export')?.addEventListener('click', async () => {
   } catch (e) { showToast('Export failed: ' + e.message, { type: 'error' }); }
 });
 
-// Logout
-$('#logout-btn').addEventListener('click', async () => {
-  // CS-P1-007 DS1-4: Reset PostHog identity before signout to prevent cross-session pollution
-  if (window.posthog) {
-    try { posthog.reset(); } catch (_) { /* reset must never block logout */ }
-  }
-  await sb.auth.signOut();
-  window.location.href = '/';
-});
+// Logout handler moved to dashboard-inline.js (loads with shell, not deferred chunk)
 
 // ---- CS-P1-014: Privacy & Data Rights ----
 

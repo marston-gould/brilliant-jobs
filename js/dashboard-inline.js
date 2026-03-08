@@ -118,6 +118,17 @@ document.addEventListener('DOMContentLoaded', function() {
   var logoutBtn = document.getElementById('logout-btn');
   if (logoutBtn && !logoutBtn.getAttribute('aria-label')) logoutBtn.setAttribute('aria-label', 'Log out');
 
+  // 3b. Logout handler — must live in shell/inline, not deferred chunk
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', async function() {
+      if (window.posthog) {
+        try { posthog.reset(); } catch (_) { /* reset must never block logout */ }
+      }
+      if (typeof sb !== 'undefined') await sb.auth.signOut();
+      window.location.href = '/';
+    });
+  }
+
   // 4. Focus trap utility
   function trapFocus(container) {
     container.addEventListener('keydown', function(e) {

@@ -1,3 +1,6 @@
+## v7.71 Session NN: TITLE (2026-03-08)
+- DESCRIBE CHANGES HERE
+
 ## v7.70 Pill Pipeline Audit Remediation (2026-03-08)
 
 - **BUG-5 fix (residual):** `query-builder.js` saved-filters-section was using `style.display=''`

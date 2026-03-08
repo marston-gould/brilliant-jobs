@@ -255,7 +255,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   // savedJobIds and appliedJobIds are populated by initPipeline()
   savedJobIds = [];
   appliedJobIds = [];
-  resumes = safeReadLS('bj_resumes', []);
+  resumes = (await readPiiData('bj_resumes')) || [];
   // Safety net: if resumes still empty after loadUserData, try direct cloud fetch (v4.33)
   if (resumes.length === 0 && userId) {
     try {

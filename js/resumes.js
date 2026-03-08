@@ -1,7 +1,9 @@
 // ============================================================
 // RESUMES
 // ============================================================
-resumes = safeReadLS('bj_resumes', []);
+// `resumes` global is declared in globals.js (shell) and populated
+// by cloud recovery in app.js. Do NOT re-read here — safeReadLS
+// returns [] for encrypted PII data, destroying recovered state.
 
 function saveResumes() {
   saveUserData('bj_resumes', JSON.stringify(resumes));

@@ -52,6 +52,16 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**PR-003** — Dashboard Bug Fixes (Chat Toggle, Logout, Resumes, Company Browser)
+- Completed: 2026-03-08
+- Product version bumped: `v7.70` → `v7.71` (JS changes — lazy-loader.ts, dashboard-inline.js, settings.js, resumes.js, app.js; all HTML surfaces cache-busted)
+- ROADMAP.md updated: PR-003 → ✅ with completion notes
+- roadmap.html updated: PR-003 → `s: 'done'`, p: 100
+- **Fix 1 (Chat toggle):** `jobs` tab missing from TAB_CHUNKS in lazy-loader.ts. chat.js (deferred chunk) never loaded on Jobs page. Added `'jobs': ['keywords', 'deferred']`.
+- **Fix 2 (Log Out):** Click handler was in settings.js (deferred chunk only). Moved to dashboard-inline.js (loads with page). Removed duplicate from settings.js.
+- **Fix 3 (Resumes):** Deferred chunk re-assigned `resumes = safeReadLS('bj_resumes', [])` which returns `[]` for encrypted PII data, overwriting cloud-recovered state. Removed redundant re-assignment. Changed app.js to use `readPiiData()` (async, handles `enc:` prefix).
+- **Fix 4 (Company browser WHO/NOT WHO):** Same root cause as Fix 1 — browsers.js in keywords chunk only loaded for `brilliant` tab, not `jobs`. Fixed by TAB_CHUNKS entry.
+
 **Pill Pipeline Audit Remediation** — BUG-5 fix, R1-R5 risk documentation, version discipline reconciliation
 - Completed: 2026-03-08
 - Git tag: `pill-pipeline@1.0.0-audit-remediation`
@@ -684,7 +694,7 @@ None.
 **Phase REM is COMPLETE.** All 5 sessions (REM-001 through REM-005) are done.
 
 Next work streams (pending Marston direction):
-- PR-001 ✅ and PR-002 ✅ completed 2026-03-08
+- PR-001 ✅, PR-002 ✅, PR-003 ✅ completed 2026-03-08
 - **Phase 69 Card 5 (Vonage 10DLC brand registration) ✅** — Brand verified (Sole Proprietor, OTP-confirmed 2026-03-08). Cloudflare email routing active: admin@brilliantjobs.app → brilliantjobsapp@gmail.com.
 - **Phase 69.5: Vonage 10DLC campaign design + setup** — 7 cards: SMS use case taxonomy, campaign description + samples, privacy policy page, terms page, opt-in CTAs, campaign submission, external vetting. Requires Marston to define SMS use cases first.
 - **Run the 5K load test against production** — `k6 run load-tests/scale-5k-suite.js` (test infra is built, needs actual execution against live environment with test user credentials)
