@@ -108,3 +108,80 @@ CC_AWS_SECRET_KEY = <set via supabase secrets set — see CREDENTIALS_MASTER>
 ## SA-008: Deduplication Engine + Enrichment Queue (PENDING)
 
 ## SA-009: Incremental Materialized Views + Staleness Monitoring (PENDING)
+
+---
+
+## SA-018: Read Replica Setup + Query Routing (IMPLEMENTED)
+
+**Date:** 2026-03-07
+**Status:** IMPLEMENTED
+**Pair:** DevOps + Backend Eng
+**Reviewer:** System Architect—Scalability
+
+### Decision
+
+Provision a Supabase read replica and route all read-only SELECT queries through the replica, keeping all writes on the primary. The gateway middleware classifies routes at the gateway layer and injects `x-gateway-db-mode` headers for downstream Edge Functions.
+
+### Context
+
+With 413K+ jobs in ats_jobs and growing (Common Crawl pipeline producing 50K+ records per batch), read load on the primary database is the dominant performance bottleneck. Dashboard search, job previews, analytics, and admin reads account for ~70% of total database queries. Offloading these to a read replica reduces primary CPU load and improves write performance for enrichment, pipeline mutations, and user actions.
+
+### Architecture
+
+```
+Client → Cloudflare → Gateway
+          │
+          ├── auth middleware
+          ├── read-replica-routing middleware (NEW)
+          │     ├── GET + READ_ONLY_ROUTES → x-gateway-db-mode: read
+          │     └── else → x-gateway-db-mode: write
+          ├── rate-limiter
+          ├── response-cache
+          │
+          └── downstream EF
+                ├── getDbClient('read')  → replica (via _shared/db-client.ts)
+                └── getDbClient('write') → primary
+```
+
+### Components
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| SQL migration | `v6.27-read-replica-monitoring.sql` | replica_health_log, replica_routing_stats, monitoring functions, pg_cron |
+| Shared client | `_shared/db-client.ts` | Dual-mode client factory with automatic failover |
+| Gateway middleware | `_shared/read-replica-middleware.ts` | Route classification + header injection + stats logging |
+| Health EF | `replica-health/index.ts` | Replica lag monitoring, config, reset endpoint |
+| Gateway update | `api-gateway/index.ts` | Pipeline integration, route #103, header forwarding |
+
+### Read-Only Route Classification
+
+17 routes classified as read-only (GET only): chat-job-search, preview-jobs, match-score-overlay, job-intelligence, recruiter-lookup, extension-heartbeat, health-check, admin-analytics, trend-anomaly-detector, refresh-city-stats, score-job-fraud, score-sequence, filter-to-prompt, crewai-orchestrator, refresh-mv-incremental, replica-health.
+
+Classification criteria: route is confirmed to execute only SELECT queries with no side effects. Mixed-mode routes (read + conditional write) remain on primary.
+
+### Failover Strategy
+
+1. If `READ_REPLICA_URL` is not set → all reads go to primary (graceful degradation)
+2. If replica client errors → automatic fallback to primary + cache "unavailable" for 60s
+3. `readWithFallback()` utility retries on primary if replica query fails
+4. Admin can POST `/replica-health/reset` to clear the availability cache
+5. pg_cron health check every 30s detects disconnection + fires CrewAI Pipeline Health alert
+
+### Monitoring
+
+- `replica_health_log` — 30-second interval time-series of lag measurements
+- `replica_routing_stats` — per-route read/write/fallback counts
+- `v_replica_dashboard` — admin panel view with current state + 1h aggregates
+- Alert threshold: lag > 5 seconds → `alert_fired = true` + agent_action_log entry
+- PostHog: `gateway:replica_routing` structured log events
+
+### HOOK & SCAR Points
+
+| Type | Location | Purpose |
+|------|----------|---------|
+| HOOK | `READ_ONLY_ROUTES` set | New read-only routes register here without editing gateway core |
+| HOOK | `db-client.ts` | Any EF can import getReadClient()/getWriteClient() for explicit routing |
+| HOOK | `x-gateway-db-mode` header | Future EFs inspect this header to decide their own routing |
+| SCAR | `readWithFallback()` | Ready for connection pool-aware routing (Supavisor integration) |
+| SCAR | `replica_routing_stats.avg_latency_ms` | Data point for SA-023 load test validation |
+| SCAR | PostHog routing events | Event bus (SA-024) will emit `db.query.routed` from this data |

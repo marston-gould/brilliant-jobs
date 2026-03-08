@@ -2116,7 +2116,7 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'SA-017 Remaining pages + legacy removal', d: 'All 17 remaining pages migrated to React + TypeScript. 75 files. Bridge hooks. Zero inline styles. 254 tests. LegacyPageWrapper removed from routes. Phase S3 COMPLETE. v7.53.', p: 100, e: '28h' },
 
 // Phase S4: Scale Validation (Weeks 10-16) — ADR-04 P5-6, ADR-06
-{ s: 'todo', b: 'post-launch', n: 'SA-018 Read replica + query routing', d: 'Provision Supabase read replica. Route all SELECT queries to replica, writes to primary. Monitor replication lag. Pair: DevOps + Backend. 10-14h.', p: 93, e: '14h' },
+{ s: 'done', b: 'post-launch', n: 'SA-018 Read replica + query routing', d: 'Read replica infrastructure: 17 read-only routes classified, gateway middleware + db-client dual-mode factory with failover, replica-health EF (route #103), v6.27 migration, ADR-06 documented. 68 tests.', p: 100, e: '14h' },
 { s: 'todo', b: 'post-launch', n: 'SA-019 Database partitioning', d: 'Partition ats_jobs by source (ats, common_crawl, amazon). Migrate existing data. Verify query plans use partition pruning. Pair: Data Eng + DevOps. 12-16h.', p: 93, e: '16h' },
 { s: 'todo', b: 'post-launch', n: 'SA-020 CrewAI Agents 4-5', d: 'Build Cost Optimization Agent + User Behavior Agent. Observe mode with kill switches. Pair: Backend + Data Eng. 14-18h.', p: 93, e: '18h' },
 { s: 'todo', b: 'post-launch', n: 'SA-021 CrewAI Agent 6 + graduation', d: 'Build SEO Content Agent. Graduate Agents 4-6 based on metrics. All 6 agents operational. Pair: Backend + Eng Lead. 12-16h.', p: 93, e: '16h' },

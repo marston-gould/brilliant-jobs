@@ -38,6 +38,7 @@ import {
   responseCacheMiddleware,
 } from "../_shared/gateway-middleware.ts";
 import { API_VERSION } from "../_shared/api-version.ts";
+import { readReplicaRoutingMiddleware } from "../_shared/read-replica-middleware.ts";
 
 // ─── Route Registry ───────────────────────────────────────────────────────────
 //
@@ -193,8 +194,11 @@ const ROUTE_REGISTRY: Record<string, string> = {
   "typesense-search":         "typesense-search",         // SA-005 (deferred)
   "typesense-seed":           "typesense-seed",           // SA-005 (deferred)
 
+  // ── Read Replica Health (SA-018) ──────────────────────────────────────────
+  "replica-health":           "replica-health",           // SA-018: Replica lag monitoring + health
+
   // ═══════════════════════════════════════════════════════════════════════════
-  // TOTAL: 102 routes (93 SA-005 + 1 SA-007 + 1 SA-008 + 1 SA-009 + 2 SA-010 + 2 SA-011 + 2 SA-012). Direct paths deprecated.
+  // TOTAL: 103 routes (93 SA-005 + 1 SA-007 + 1 SA-008 + 1 SA-009 + 2 SA-010 + 2 SA-011 + 2 SA-012 + 1 SA-018). Direct paths deprecated.
   // HOOK: Future EFs register here. Future: load from DB table for
   //       runtime updates without redeploy (api_consumers integration).
   // ═══════════════════════════════════════════════════════════════════════════
@@ -203,7 +207,7 @@ const ROUTE_REGISTRY: Record<string, string> = {
 // ─── Middleware Pipeline ──────────────────────────────────────────────────────
 //
 // Built-in middleware executes in this order for every request:
-//   request-logger → auth → rate-limiter → response-cache → proxy
+//   request-logger → auth → read-replica-routing → rate-limiter → response-cache → proxy
 //
 // HOOK: Insert future middleware between any step without editing gateway core.
 // Example additions: analytics, A/B routing, webhook dispatch, transformation.
@@ -211,6 +215,7 @@ const ROUTE_REGISTRY: Record<string, string> = {
 const pipeline = createMiddlewarePipeline([
   requestLoggerMiddleware,
   authMiddleware,
+  readReplicaRoutingMiddleware,  // SA-018: Annotates read/write + logs routing stats
   rateLimiterMiddleware,
   responseCacheMiddleware,
   // ← future middleware registered here
@@ -308,6 +313,9 @@ async function proxyToUpstream(
   upstreamHeaders.set("x-gateway-user-id", ctx.userId ?? "");
   upstreamHeaders.set("x-gateway-user-role", ctx.userRole ?? "");
   upstreamHeaders.set("x-gateway-tier", ctx.rateLimitTier);
+  // SA-018: Inject database routing hint for downstream EFs
+  upstreamHeaders.set("x-gateway-db-mode", (ctx.meta.dbMode as string) ?? "write");
+  upstreamHeaders.set("x-gateway-db-target", (ctx.meta.dbTarget as string) ?? "primary");
   // Remove hop-by-hop headers that shouldn't be forwarded
   upstreamHeaders.delete("host");
   upstreamHeaders.delete("connection");

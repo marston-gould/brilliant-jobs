@@ -52,7 +52,22 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**SA-017** — Remaining Pages + Legacy Removal (React + TypeScript + Design System) (Phase S3)
+**SA-018** — Read Replica Setup + Query Routing (Phase S4)
+- Completed: 2026-03-07
+- Git tag: `infra@read-replica-v1.0.0`
+- No product version bump (infrastructure only, no JS/CSS/HTML changes)
+- ROADMAP.md updated: SA-018 row → ✅ with completion notes
+- roadmap.html updated: SA-018 entry → `s: 'done'`, p: 100
+- **Created:**
+  - `supabase/migrations/v6.27-read-replica-monitoring.sql` — replica_health_log + replica_routing_stats tables, fn_log_replica_health() + fn_replica_health_summary() + fn_cleanup_replica_logs() functions, v_replica_dashboard view, 4 indexes, 2 pg_cron schedules (30s health check + daily cleanup), RLS on both tables, CrewAI agent_action_log integration for lag alerts
+  - `supabase/functions/_shared/db-client.ts` — Dual-mode client factory: getDbClient('read'|'write'), getReadClient(), getWriteClient(), getDbClientWithMetadata(), readWithFallback() auto-failover, isReplicaAvailable() 60s-cached health check, getRoutingConfig() debug endpoint, resetReplicaHealth() admin reset. Reads READ_REPLICA_URL from Vault. Falls back to primary if not configured or replica fails. Singleton pattern, persistSession: false.
+  - `supabase/functions/_shared/read-replica-middleware.ts` — Gateway middleware: classifies 17 routes as read-only (chat-job-search, preview-jobs, match-score-overlay, job-intelligence, recruiter-lookup, extension-heartbeat, health-check, admin-analytics, trend-anomaly-detector, refresh-city-stats, score-job-fraud, score-sequence, filter-to-prompt, crewai-orchestrator, refresh-mv-incremental, replica-health). Sets x-gateway-db-mode + x-gateway-db-target headers. Logs routing stats to replica_routing_stats (fire-and-forget).
+  - `supabase/functions/replica-health/index.ts` — Health monitoring EF: GET /replica-health (public health summary), GET /replica-health/config (admin-only routing config), POST /replica-health/reset (admin-only cache reset). Calls fn_replica_health_summary RPC.
+- **Modified:**
+  - `supabase/functions/api-gateway/index.ts` — Added readReplicaRoutingMiddleware to pipeline (between auth and rate-limiter). Route #103 (replica-health). Injects x-gateway-db-mode + x-gateway-db-target headers into proxy. Total routes: 103.
+  - `docs/scaling/adr-06-pipeline.md` — SA-018 section: IMPLEMENTED. Architecture diagram, failover strategy, route classification, monitoring, HOOK & SCAR points.
+- **Tests:** 68 SA-018 validation tests (files, migration, db-client exports, middleware classification, gateway integration, EF structure, ADR docs)
+- **Phase S4 STARTED**
 - Completed: 2026-03-07
 - Git tag: `dashboard@3.0.0-all-pages`
 - Product version bumped: `v7.52` → `v7.53`
@@ -278,14 +293,14 @@ None.
 
 ## Next Session
 
-**SA-018** — Read Replica + Query Routing (Phase S4)
-- Entry gate: SA-017 ✅ (All pages migrated, Phase S3 complete)
-- Pair: DevOps + Backend Eng
+**SA-019** — Database Partitioning: ats_jobs by Source (Phase S4)
+- Entry gate: SA-018 ✅ (Read replica operational)
+- Pair: Data Eng + DevOps
 - Reviewer: System Architect—Scalability
-- Estimated: 10–14h
-- Build: Supabase read replica. Route SELECT queries → replica, writes → primary. Monitor replication lag. Load test read replica under concurrent load.
+- Estimated: 12–16h
+- Build: Partition ats_jobs by source column (ats, common_crawl, amazon). Native Postgres declarative partitioning. Migrate existing data. Update queries. Verify all indexes.
 
-**Phase S4 is starting.** SA-018 next.
+**Phase S4 continuing.** SA-019 next.
 
 ---
 
@@ -323,7 +338,8 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
 | Admin | `admin@1.7.0-graduation` | SA-012 |
 | **SPA Scaffold** | **`spa@1.0.0-scaffold`** | **SA-013** |
-| **API Gateway** | `infra@gateway-v1.0.0` | SA-012 (102 routes) |
+| **API Gateway** | `infra@gateway-v1.0.0` | SA-018 (103 routes) |
+| **Read Replica** | **`infra@read-replica-v1.0.0`** | **SA-018** |
 | **Common Crawl** | **`infra@common-crawl-v0.1.0`** | **SA-007** |
 | **Dedup Engine** | **`infra@dedup-v1.0.0`** | **SA-008** |
 | **Incremental MVs** | **`infra@incremental-mv-v1.0.0`** | **SA-009** |
@@ -338,7 +354,11 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 ---
 
-## Completed Sessions (24 of 24 + 17 Phase 1 + 13 Scaling + FIX-11)
+## Completed Sessions (24 of 24 + 17 Phase 1 + 14 Scaling + FIX-11)
+
+| Session | Date | Fix Items | Tag(s) |
+|---------|------|-----------|--------|
+| SA-018 | 2026-03-07 | Read replica infrastructure: v6.27 migration (replica_health_log + replica_routing_stats + 3 functions + dashboard view + 4 indexes + 2 pg_cron). _shared/db-client.ts dual-mode factory with failover. read-replica-middleware.ts (17 read-only routes classified). replica-health EF. Gateway route #103 + x-gateway-db-mode/db-target headers. ADR-06 SA-018 documented. 68 tests. Phase S4 STARTED. | infra@read-replica-v1.0.0 |
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|

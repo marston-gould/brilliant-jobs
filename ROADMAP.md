@@ -3183,7 +3183,7 @@ Phase S can overlap with Phase 1 feature work on separate tracks. Sessions withi
 
 | # | Item | Est. | Status | Notes |
 |---|------|------|--------|-------|
-| SA-018 | Read replica + query routing | 10–14h | 🔲 | Supabase read replica. Route SELECT → replica, writes → primary. Monitor lag. Pair: DevOps + Backend. |
+| SA-018 | Read replica + query routing | 10–14h | ✅ | Supabase read replica infrastructure. Read-only route classification (17 routes). Gateway middleware + x-gateway-db-mode headers. _shared/db-client.ts dual-mode factory with failover. replica-health EF (route #103). v6.27 migration (health_log + routing_stats + pg_cron). ADR-06 SA-018 documented. 68 tests. Pair: DevOps + Backend. |
 | SA-019 | Database partitioning | 12–16h | 🔲 | Partition ats_jobs by source (ats, common_crawl, amazon). Verify partition pruning. Pair: Data Eng + DevOps. |
 | SA-020 | CrewAI Agents 4–5 | 14–18h | 🔲 | Cost Optimization + User Behavior agents. Observe mode + kill switches. Pair: Backend + Data Eng. |
 | SA-021 | CrewAI Agent 6 + graduation | 12–16h | 🔲 | SEO Content Agent. Graduate Agents 4–6. All 6 operational. Pair: Backend + Eng Lead. |
