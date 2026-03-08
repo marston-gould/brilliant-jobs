@@ -18,6 +18,24 @@
 
 Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
+> ⛔ **NON-NEGOTIABLE — ROADMAP UPDATES EVERY SESSION:**
+>
+> Steps 7–8 require updating **THREE files**: `ROADMAP.md`, `roadmap.html`, AND `HANDOFF.md`.
+>
+> - `ROADMAP.md` = markdown source of truth
+> - `roadmap.html` = live `/roadmap` page users see
+> - `HANDOFF.md` = session state for the next session
+>
+> **All three must reflect the same status.** This has been flagged multiple times by Marston.
+>
+> **Before committing Step 7, run this verification:**
+> ```bash
+> grep "SA-XXX" ROADMAP.md     # Must show ✅
+> grep "SA-XXX" roadmap.html   # Must show s: 'done'
+> ```
+> If either grep shows the old status, the update is incomplete. Fix it before committing.
+> **Do NOT close the session until all three files are updated, committed, and pushed.**
+
 | Step | Action | What to do |
 |------|--------|-----------|
 | 0 | Entry Gate | Verify prerequisites listed below are met |
@@ -27,8 +45,8 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 | 4 | Test (Prod) | Validate fixes in the live production environment |
 | 5 | Sync Environments | Apply changes to staging + dev (if separate envs exist) |
 | 6 | Version Bump | **TWO version systems:** (1) Git tags for audit tracking (e.g., `extension@0.8.0-architecture`). (2) **Product version** (`BJ_VERSION` in `js/version.js`) — controls cache busting on ALL HTML surfaces. Run `bash scripts/bump-version.sh X.YY` to bump, then `node build.js && node build-admin.js && npm run bundle:css` to rebuild. Run `bash scripts/pre-commit-version-check.sh` to verify all surfaces in sync. **Every session that changes JS/CSS/HTML must bump the product version.** |
-| 7 | Update Docs | Update **ROADMAP.md** AND **roadmap.html** — BOTH files, every session, no exceptions. `ROADMAP.md` is the markdown source; `roadmap.html` is the live `/roadmap` page users see. Search both files for every finding ID touched this session. If you update one and not the other they drift apart. |
-| 8 | Update HANDOFF.md | Update THIS FILE as the last commit of the session |
+| 7 | ⛔ Update ROADMAP.md + roadmap.html | **MANDATORY — BOTH files, EVERY session, NO exceptions.** Find the session row in `ROADMAP.md` → change status to ✅ with notes. Find matching entry in `roadmap.html` → change `s:` to `'done'`, `p:` to `100`. Run `grep "SA-XXX" ROADMAP.md roadmap.html` to verify both reflect the same status. If they don't match, fix before committing. |
+| 8 | Update HANDOFF.md | Update THIS FILE as the last commit of the session. Move session to Completed, set Next Session, update Version Manifest. |
 
 ---
 
@@ -256,8 +274,16 @@ None as of CS-014 complete.
    - Update "Session In Progress" → move completed items to "What Was Done"
    - Update "What Remains" with exact remaining tasks, effort, and file references
    - Keep "Next Session" pointing to the session AFTER this one
-3. Always:
-   - **Update BOTH `ROADMAP.md` AND `roadmap.html`** — every session, no exceptions. `ROADMAP.md` is the markdown source of truth; `roadmap.html` is the rendered `/roadmap` page users see. If you update one and not the other they drift apart.
+3. ⛔ **ALWAYS — ROADMAP VERIFICATION (non-negotiable):**
+   - Update `ROADMAP.md`: find the session row → set status to ✅ → add completion notes
+   - Update `roadmap.html`: find the matching JS object → set `s: 'done'` → set `p: 100`
+   - **RUN THIS VERIFICATION BEFORE COMMITTING:**
+     ```
+     grep "SA-XXX" ROADMAP.md roadmap.html
+     ```
+   - Both lines must show the updated status. If either still shows the old value, fix it.
+   - **Do NOT commit Step 8 (HANDOFF.md) until Step 7 verification passes.**
+4. Always:
    - Update "Deferred Items" if anything was pushed
    - Update "Blockers" if any were discovered
    - Commit this file as part of the session's final push
