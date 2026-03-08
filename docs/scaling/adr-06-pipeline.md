@@ -185,3 +185,84 @@ Classification criteria: route is confirmed to execute only SELECT queries with 
 | SCAR | `readWithFallback()` | Ready for connection pool-aware routing (Supavisor integration) |
 | SCAR | `replica_routing_stats.avg_latency_ms` | Data point for SA-023 load test validation |
 | SCAR | PostHog routing events | Event bus (SA-024) will emit `db.query.routed` from this data |
+
+---
+
+## SA-019: Database Partitioning — ats_jobs by Source
+
+**Status:** IMPLEMENTED  
+**Date:** 2026-03-07  
+**Migration:** `v6.28-ats-jobs-partitioning.sql`  
+**Git tag:** `infra@partitioning-v1.0.0`
+
+### Decision
+
+Partition `ats_jobs` using PostgreSQL native declarative LIST partitioning on the `ats_source` column. This separates ATS platform records, Common Crawl ingested records, and Amazon records into independent physical storage.
+
+### Rationale
+
+With Common Crawl ingestion (SA-007/SA-008) producing records at scale, the single `ats_jobs` table will grow to 1M+ rows. Partitioning provides:
+
+1. **Partition pruning** — queries filtering by `ats_source` scan only the relevant partition
+2. **Independent maintenance** — VACUUM/ANALYZE schedules per partition based on write patterns
+3. **Source isolation** — Common Crawl bulk operations don't create dead tuples in ATS partition
+4. **Retention flexibility** — future per-source data retention policies without table-wide locks
+5. **Operational clarity** — `v_partition_stats` view shows per-partition health at a glance
+
+### Partition Layout
+
+| Partition | Values | Expected Volume |
+|-----------|--------|-----------------|
+| `ats_jobs_ats` | greenhouse, lever, ashby, workable, recruitee, usajobs | ~400K (existing ATS data) |
+| `ats_jobs_common_crawl` | common_crawl | 500K–1M (growing via SA-007) |
+| `ats_jobs_amazon` | amazon | 0 (SCAR — ready for activation) |
+| `ats_jobs_default` | any unlisted value | 0 (catches future sources) |
+
+### Migration Strategy
+
+PostgreSQL does not support `ALTER TABLE ... SET PARTITION BY`. Migration uses the rename-create-copy-drop pattern:
+
+1. Drop dependent objects (trigger, RLS policies, indexes)
+2. Rename `ats_jobs` → `ats_jobs_pre_partition`
+3. Create partitioned `ats_jobs` with identical schema
+4. Create 4 partitions (ats, common_crawl, amazon, default)
+5. `INSERT INTO ats_jobs SELECT FROM ats_jobs_pre_partition` — rows auto-route to partitions
+6. Verify row count matches (EXCEPTION on mismatch)
+7. Recreate all indexes (auto-propagate to partitions)
+8. Recreate RLS policies and change_log trigger
+9. Drop `ats_jobs_pre_partition`
+
+### Indexes (18 total, auto-propagated)
+
+All existing indexes recreated on the parent table. PostgreSQL automatically creates matching indexes on each partition. New addition: `idx_ats_jobs_search_vector` GIN index for full-text search.
+
+### Maintenance Schedules
+
+| Partition | VACUUM Schedule | Rationale |
+|-----------|----------------|-----------|
+| `ats_jobs_ats` | Daily 4 AM UTC | Bulk crawler updates generate dead tuples |
+| `ats_jobs_common_crawl` | Daily 6 AM UTC | After 2-6 AM ingestion window |
+| `ats_jobs_amazon` | Weekly Sunday 4 AM | Low volume until activated |
+| `ats_jobs_default` | Weekly Sunday 4 AM | Catch-all, minimal expected volume |
+
+### Monitoring
+
+- `v_partition_stats` view: per-partition rows, dead tuples, vacuum age, sizes
+- `fn_partition_health()` function: returns vacuum-needed assessment per partition
+- CrewAI data-freshness agent: receives `partition_migration` event in agent_action_log
+- Future: partition health integrated into agent-digest daily email
+
+### Transparent to Application Layer
+
+Partitioning is transparent to all existing queries. The Supabase client queries `ats_jobs` as before — PostgreSQL automatically routes to the correct partition. No Edge Function or client-side code changes required.
+
+### HOOK & SCAR Points
+
+| Type | Location | Purpose |
+|------|----------|---------|
+| HOOK | `DEFAULT` partition | New ats_source values auto-handled without schema changes |
+| HOOK | `fn_partition_health()` | CrewAI agents and admin monitoring can query partition health |
+| HOOK | `v_partition_stats` view | Admin dashboard can display per-partition metrics |
+| SCAR | `ats_jobs_amazon` partition | Empty partition ready for Amazon source activation |
+| SCAR | Per-partition VACUUM cron | Each partition's maintenance is independently tunable |
+| SCAR | Partition DETACH/ATTACH | Ready for archival workflows (detach old CC batches) |

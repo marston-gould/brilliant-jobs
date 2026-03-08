@@ -52,6 +52,19 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**SA-019** — Database Partitioning: ats_jobs by Source (Phase S4)
+- Completed: 2026-03-07
+- Git tag: `infra@partitioning-v1.0.0`
+- No product version bump (infrastructure only, no JS/CSS/HTML changes)
+- ROADMAP.md updated: SA-019 row → ✅ with completion notes
+- roadmap.html updated: SA-019 entry → `s: 'done'`, p: 100
+- **Created:**
+  - `supabase/migrations/v6.28-ats-jobs-partitioning.sql` — Full partition migration: LIST partitioning on ats_source column. 4 partitions (ats_jobs_ats for 6 ATS platforms, ats_jobs_common_crawl, ats_jobs_amazon, ats_jobs_default). Rename-create-copy-verify-drop migration strategy with pre/post row count verification (EXCEPTION on mismatch). 18 indexes recreated (auto-propagated to all partitions). RLS policies recreated (public_read + admin_manage). Change_log trigger recreated. 4 per-partition VACUUM cron schedules (ATS daily 4AM, CC daily 6AM, amazon/default weekly). v_partition_stats view (per-partition rows, dead tuples, vacuum age, sizes). fn_partition_health() function for CrewAI data-freshness agent integration. agent_action_log partition_migration event.
+- **Modified:**
+  - `docs/scaling/adr-06-pipeline.md` — SA-019 section: IMPLEMENTED. Decision rationale, partition layout, migration strategy, index catalog, maintenance schedules, monitoring, transparency note, HOOK & SCAR points.
+- **Tests:** 53 SA-019 validation tests (migration structure, partitions, schema fidelity, indexes, RLS, trigger, data migration, vacuum schedules, monitoring, CrewAI integration, ADR docs, ordering)
+- Phase S4 CONTINUING
+
 **SA-018** — Read Replica Setup + Query Routing (Phase S4)
 - Completed: 2026-03-07
 - Git tag: `infra@read-replica-v1.0.0`
@@ -293,14 +306,14 @@ None.
 
 ## Next Session
 
-**SA-019** — Database Partitioning: ats_jobs by Source (Phase S4)
-- Entry gate: SA-018 ✅ (Read replica operational)
-- Pair: Data Eng + DevOps
-- Reviewer: System Architect—Scalability
-- Estimated: 12–16h
-- Build: Partition ats_jobs by source column (ats, common_crawl, amazon). Native Postgres declarative partitioning. Migrate existing data. Update queries. Verify all indexes.
+**SA-020** — Cost Guardian Agent + User Support Agent (Phase S4)
+- Entry gate: SA-012 ✅ (Agent graduation pipeline operational), SA-019 ✅ (Partitioning complete)
+- Pair: Backend + Frontend
+- Reviewer: Forward-Looking Dev
+- Estimated: 14–18h
+- Build: Cost Guardian Agent (Agent 4) — monitors spend across all 12+ services via vendor_cost_budgets table. User Support Agent (Agent 5) — triages Canny support requests. Both start in observe mode.
 
-**Phase S4 continuing.** SA-019 next.
+**Phase S4 continuing.** SA-020 next.
 
 ---
 
@@ -339,6 +352,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 | Admin | `admin@1.7.0-graduation` | SA-012 |
 | **SPA Scaffold** | **`spa@1.0.0-scaffold`** | **SA-013** |
 | **API Gateway** | `infra@gateway-v1.0.0` | SA-018 (103 routes) |
+| **Partitioning** | **`infra@partitioning-v1.0.0`** | **SA-019** |
 | **Read Replica** | **`infra@read-replica-v1.0.0`** | **SA-018** |
 | **Common Crawl** | **`infra@common-crawl-v0.1.0`** | **SA-007** |
 | **Dedup Engine** | **`infra@dedup-v1.0.0`** | **SA-008** |
@@ -354,7 +368,11 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 ---
 
-## Completed Sessions (24 of 24 + 17 Phase 1 + 14 Scaling + FIX-11)
+## Completed Sessions (24 of 24 + 17 Phase 1 + 15 Scaling + FIX-11)
+
+| Session | Date | Fix Items | Tag(s) |
+|---------|------|-----------|--------|
+| SA-019 | 2026-03-07 | Database partitioning: v6.28 migration. LIST partitioning on ats_source (4 partitions: ats/cc/amazon/default). Rename-create-copy-verify-drop strategy. 18 indexes recreated. RLS + change_log trigger. 4 per-partition VACUUM cron. v_partition_stats view + fn_partition_health(). ADR-06 SA-019 documented. 53 tests. Phase S4 CONTINUING. | infra@partitioning-v1.0.0 |
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
