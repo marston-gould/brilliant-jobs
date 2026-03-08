@@ -1,6 +1,6 @@
 # Pod 3 + Pod 4 — Team Manifest
 
-> Last updated: 2026-03-07 | SA-008 complete
+> Last updated: 2026-03-08 | SA-028 in progress
 
 ## Pod 3: Core Engineering (10 roles — original)
 
@@ -49,6 +49,9 @@
 | SA-023 | Full Pod 3 | Full Pod 4 |
 | SA-024–SA-025 | Backend + Lead Platform Eng | Forward-Looking Dev |
 | SA-026 | Evolvability Strategist + Chief Architect | Full Pod 4 |
+| SA-027 | Chief Architect + Lead Platform Eng | Evolvability Strategist |
+| SA-028 | System Architect—Scalability + DevOps + Data Eng | Chief Architect |
+| SA-029 | Forward-Looking Dev(s) + Evolvability Strategist + Chief Architect | Full Pod 4 |
 
 ## Phase Transition Reviews
 
@@ -58,3 +61,5 @@
 | S2 → S3 | Evolvability Strategist | Data pipeline scalability, CrewAI agent framework flexibility |
 | S3 → S4 | Evolvability Strategist + CSS/Tailwind Eng | SPA architecture, design system completeness, dark mode coverage |
 | S4 → S5 | Evolvability Strategist + System Architect | Scale validation results, partition strategy, read replica health |
+| S5 → S6 | Evolvability Strategist + Chief Architect | Platform evolution completeness, fitness function coverage, hook/scar utilization rates, event bus adoption, feature flag usage |
+| S6 Final | Full Pod 4 + Marston | Architecture governance readiness, capacity model accuracy, evolvability baseline established, Phase S complete |

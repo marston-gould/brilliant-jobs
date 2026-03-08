@@ -266,3 +266,83 @@ Partitioning is transparent to all existing queries. The Supabase client queries
 | SCAR | `ats_jobs_amazon` partition | Empty partition ready for Amazon source activation |
 | SCAR | Per-partition VACUUM cron | Each partition's maintenance is independently tunable |
 | SCAR | Partition DETACH/ATTACH | Ready for archival workflows (detach old CC batches) |
+
+---
+
+## SA-028: Capacity Model + Scaling Triggers
+
+**Status:** IMPLEMENTED  
+**Date:** 2026-03-08  
+**Pair:** System Architect—Scalability + DevOps + Data Eng  
+**Reviewer:** Chief Architect  
+
+### Decision
+
+Build a comprehensive capacity monitoring and forecasting system that captures periodic system snapshots, evaluates configurable scaling triggers, projects growth at 6/12/24 month horizons, and models per-service costs with tier transitions. The system integrates with existing infrastructure (v_partition_stats, replica_routing_stats, vendor_cost_budgets, agent_action_log) and publishes critical alerts via the event bus (H-02).
+
+### Architecture
+
+**Data flow:** pg_cron (15min) → fn_capture_capacity_snapshot() → capacity_snapshots table → fn_evaluate_scaling_triggers() (5min) → scaling_trigger_log + fn_publish_event (H-02) for critical alerts.
+
+**Forecasting:** fn_capacity_forecast() uses configurable growth rate (default 15% MoM) with actual 30-day growth rate when sufficient history exists. Projects users, database rows, database size, and active users.
+
+**Cost modeling:** fn_cost_model() implements tiered pricing logic for 12 services. Supabase, Vercel, PostHog, and Resend have non-linear tier transitions. Anthropic and others use linear scaling.
+
+**Admin dashboard:** admin-capacity.js renders health overview, growth forecast table, cost model per service with tier transition badges, scaling trigger alerts with acknowledgment workflow, and 24h trend sparklines via SVG polyline.
+
+### Tables
+
+| Table | Purpose | Retention |
+|-------|---------|-----------|
+| `capacity_snapshots` | Point-in-time system metrics | 90 days (pg_cron cleanup) |
+| `scaling_trigger_config` | Configurable thresholds with cooldown | Persistent |
+| `scaling_trigger_log` | Trigger activation audit trail | Persistent |
+| `cost_projections` | Per-service cost forecasting | Persistent (upserted) |
+
+### Functions
+
+| Function | Purpose | Schedule |
+|----------|---------|----------|
+| `fn_capture_capacity_snapshot()` | Captures system metrics | Every 15 min |
+| `fn_evaluate_scaling_triggers()` | Evaluates thresholds | Every 5 min |
+| `fn_capacity_forecast(growth%)` | Growth projections | On-demand |
+| `fn_cost_model(growth%)` | Cost tier projections | On-demand |
+| `fn_capacity_summary()` | JSONB summary for admin/agent | On-demand |
+
+### Default Scaling Triggers
+
+| Trigger | Metric | Warn | Critical | Cooldown |
+|---------|--------|------|----------|----------|
+| db_connections_high | db_connections_active | 200 | 270 | 30min |
+| db_size_large | db_size_bytes | 5GB | 8GB | 24h |
+| ats_jobs_volume | db_ats_jobs_rows | 750K | 1M | 24h |
+| replica_lag_high | replica_lag_ms | 3000 | 5000 | 15min |
+| ef_error_rate_high | ef_error_rate_1h | 1% | 5% | 30min |
+| budget_utilization_high | budget_utilization_pct | 80% | 95% | 24h |
+| active_users_growth | active_users_24h | 500 | 1000 | 24h |
+| agent_cost_spike | agent_cost_24h | $25 | $50 | 12h |
+
+### Alternatives Rejected
+
+1. **External monitoring (Datadog, Grafana Cloud):** Additional vendor cost and complexity. PostHog + internal monitoring sufficient for current scale. Can add via S-12 scar later.
+2. **Real-time streaming metrics:** Over-engineered for current user count. 15-minute snapshots provide sufficient granularity for capacity planning. S-12 custom_metrics JSONB allows adding real-time streams later.
+3. **Automated auto-scaling actions:** Premature — auto-scale action_type is reserved in scaling_trigger_config but not implemented. Manual review required for all scaling decisions at current stage.
+
+### HOOK & SCAR Points
+
+| Type | Location | Purpose |
+|------|----------|---------|
+| HOOK | H-02 (fn_publish_event) | Critical trigger alerts published to event bus for webhook delivery |
+| HOOK | fn_capacity_summary() | CrewAI agents can query capacity status |
+| HOOK | scaling_trigger_config | Admin-editable thresholds without code changes |
+| SCAR | S-12 (custom_metrics JSONB) | Extensible metric dimensions in capacity_snapshots |
+| SCAR | action_type 'auto-scale' | Reserved for future automated scaling responses |
+| SCAR | cost_projections.scaling_notes | Per-service scaling guidance text |
+| SCAR | capacity-model EF | Additional actions can be added without new EFs |
+
+### Back-Test Alignment with SA-023
+
+The scaling trigger thresholds are calibrated against the SA-023 load test data:
+- Connection threshold (270 critical) aligns with Supavisor pool size from CS-009
+- Active user threshold (1,000 critical) is below the 1,200 concurrent target from FIX-20/CS-020
+- Replica lag threshold (5,000ms critical) exceeds the 5-second alert threshold from SA-018

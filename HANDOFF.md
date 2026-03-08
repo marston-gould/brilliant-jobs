@@ -52,25 +52,24 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**SA-027** — Architecture Blueprint + Hook/Scar Standards (Phase S6)
+**SA-028** — Capacity Model + Scaling Triggers (Phase S6)
 - Completed: 2026-03-08
-- Git tag: `arch@blueprint-v1.0.0`
-- Product version bumped: `v7.58` → `v7.59`
-- ROADMAP.md updated: SA-027 row → ✅ with completion notes
-- roadmap.html updated: SA-027 entry → `s: 'done'`, p: 100
+- Git tag: `infra@capacity-model-v1.0.0`
+- Product version bumped: `v7.59` → `v7.60`
+- ROADMAP.md updated: SA-028 row → ✅ with completion notes
+- roadmap.html updated: SA-028 entry → `s: 'done'`, p: 100
 - **Created:**
-  - `docs/scaling/architecture-blueprint.md` — H-01–H-15 hook registry + S-01–S-16 scar registry. 5 interface contracts. 5 extension scenarios (incl. S-01 phased activation plan). Naming conventions, FF maintenance procedure, architectural boundaries. ADR cross-reference table.
-  - `docs/scaling/hook-scar-integration-templates.md` — 6 copy-paste templates: new agent, middleware, ATS, feature flag, React page, DB migration. PR checklist.
-  - `tests/sa-027-architecture-blueprint.test.js` — 76 tests (8 sections).
-- **Note:** SA-026 session close also completed in this session (v7.58, infra@fitness-functions-v1.0.0).
-  - `src/app/providers/FeatureFlagProvider.tsx` — FeatureFlagContext. fn_evaluate_all_flags bootstrap. 60s poll. PostHog $feature_flag_called on enable. S-07 scar. window.BJ bridge pattern. refresh() on context.
-  - `docs/scaling/adr-08-feature-flags.md` — ADR-08 IMPLEMENTED. Architecture, evaluation algorithm, PostHog/LaunchDarkly alternatives rejected, 6 scars (S-06–S-11), consequences.
-  - `tests/sa-025-feature-flags.test.js` — 106 validation tests (all passing)
+  - `supabase/migrations/v6.33-capacity-model.sql` — 4 tables (capacity_snapshots, scaling_trigger_config, scaling_trigger_log, cost_projections). 5 functions (fn_capture_capacity_snapshot, fn_evaluate_scaling_triggers, fn_capacity_forecast, fn_cost_model, fn_capacity_summary). v_capacity_dashboard view. 3 pg_cron (15min snapshot, 5min trigger check, daily cleanup). 8 default scaling triggers seeded. 12 service cost projections seeded with tiered pricing. RLS on all 4 tables. S-12 scar (custom_metrics JSONB). H-02 integration (fn_publish_event for critical alerts). S-14/S-15 integration (v_partition_stats, replica_routing_stats).
+  - `supabase/functions/capacity-model/index.ts` — 6 actions: snapshot, forecast, cost-model, triggers, summary, acknowledge. Admin-only auth. Configurable growth_rate_pct. 24h snapshot history for trend charts. Alert acknowledgment workflow.
+  - `js/admin-capacity.js` — Admin capacity dashboard: health overview (6 stat cards), growth forecast table (6/12/24mo), cost model per service with tier transition badges, scaling trigger alerts with Ack button, 24h trend sparklines (SVG polyline).
+  - `tests/sa-028-capacity-model.test.js` — 97 tests (11 sections: migration structure, integration points, EF structure, gateway route, admin panel, team manifest, ADR docs, trigger design, cost model design, load test integration, file inventory).
 - **Modified:**
-  - `supabase/functions/api-gateway/index.ts` — Route #108 (feature-flags) + featureFlagMiddleware() in pipeline. H-03 activated. Total: 108 routes.
-- **Hook/Scar activations:** H-03 (gateway feature flag injection)
-- **Standing scars:** S-06 (expand FLAG_AWARE_ROUTES), S-07 (PostHog Remote Flags), S-08 (posthog eval log sync), S-09 (expires_at time-bounded experiments), S-10 (targeting_rules engine), S-11 (metadata bucket)
-- **Phase S5 COMPLETE** (SA-022 ✅ TypeScript, SA-023 ✅ Full audit, SA-024 ✅ Event Bus, SA-025 ✅ Feature Flags)
+  - `supabase/functions/api-gateway/index.ts` — Route #109 (capacity-model). Total: 109 routes.
+  - `docs/scaling/adr-06-pipeline.md` — SA-028 section: IMPLEMENTED. Architecture, tables, functions, triggers, alternatives rejected, hook/scar points, back-test alignment.
+  - `docs/scaling/pod-team-manifest.md` — SA-027/SA-028/SA-029 pairing assignments added. S5→S6 and S6 Final phase transition reviews added.
+- **Tests:** 97 SA-028 validation tests (all passing)
+- **Hook/scar activations:** H-02 (critical alert events published to event bus)
+- **Standing scars:** S-12 (custom_metrics JSONB in capacity_snapshots), auto-scale action_type reserved
 
 
 - **Created:**
@@ -391,12 +390,13 @@ None.
 
 ## Next Session
 
-**SA-028** — Capacity Model + Scaling Triggers (Phase S6)
-- Entry gate: SA-027 ✅ (Architecture blueprint complete; all 18 CI gates green)
-- Pair: System Architect—Scalability + DevOps + Data Eng
-- Reviewer: Chief Architect
-- Estimated: 12–18h
-- Build: Growth projections (6/12/24 months). Auto-scaling thresholds. Cost model per tier. Capacity dashboard with alerts. Queries v_partition_stats (S-14) and replica_routing_stats (S-15). Back-tests against SA-023 load test data.
+**SA-029** — Hook Prototyping + Evolvability Baseline (Phase S6 — FINAL)
+- Entry gate: SA-028 ✅ (Capacity model complete; all 18 CI gates green)
+- Pair: Forward-Looking Dev(s) + Evolvability Strategist + Chief Architect
+- Reviewer: Full Pod 4
+- Estimated: 14–20h
+- Build: 3–5 POC integrations against hook points (H-01–H-15). Tech debt register finalization. Deprecation protocol enforcement. Dependency management policy. Final evolvability review. Phase S completion criteria evaluation. Architecture fitness score.
+- **Phase S6 FINAL session. After SA-029, Phase S is COMPLETE.**
 
 ---
 
@@ -428,7 +428,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.59`** | **SA-027** |
+| **Product (BJ_VERSION)** | **`v7.60`** | **SA-028** |
 | Dashboard | `dashboard@3.0.0-all-pages` | SA-017 |
 | Extension | `extension@2.22.0-error-handling` | FIX-11 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
@@ -436,7 +436,8 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 | **SPA Scaffold** | **`spa@1.0.0-scaffold`** | **SA-013** |
 | **Feature Flags** | **`infra@feature-flags-v1.0.0`** | **SA-025** |
 | **Event Bus** | **`infra@event-bus-v1.0.0`** | **SA-024** |
-| **API Gateway** | `infra@gateway-v1.0.0` | SA-025 (108 routes) |
+| **API Gateway** | `infra@gateway-v1.0.0` | SA-028 (109 routes) |
+| **Capacity Model** | **`infra@capacity-model-v1.0.0`** | **SA-028** |
 | **Partitioning** | **`infra@partitioning-v1.0.0`** | **SA-019** |
 | **Read Replica** | **`infra@read-replica-v1.0.0`** | **SA-018** |
 | **Common Crawl** | **`infra@common-crawl-v0.1.0`** | **SA-007** |
@@ -453,7 +454,9 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 ---
 
-## Completed Sessions (24 of 24 + 17 Phase 1 + 15 Scaling + FIX-11)
+## Completed Sessions (24 of 24 + 17 Phase 1 + 16 Scaling + FIX-11)
+
+| SA-028 | 2026-03-08 | Capacity model: v6.33 migration (capacity_snapshots, scaling_trigger_config, scaling_trigger_log, cost_projections). fn_capture_capacity_snapshot (15min) + fn_evaluate_scaling_triggers (5min) + fn_capacity_forecast + fn_cost_model + fn_capacity_summary. v_capacity_dashboard view. 3 pg_cron. 8 default triggers. 12 service cost projections (tiered pricing). capacity-model EF (6 actions). Gateway route #109. admin-capacity.js (health overview, forecast, cost model, trigger alerts, sparklines). S-14/S-15 integration. H-02 critical alerts. S-12 scar. ADR-06 SA-028. pod-team-manifest S6 pairings. 97 tests. v7.60. | infra@capacity-model-v1.0.0 |
 
 | SA-025 | 2026-03-07 | Feature flags: v6.32 migration (feature_flags/user_segments/flag_assignments/flag_evaluation_log). fn_evaluate_flag (deterministic bucket, sticky variants, overrides). fn_evaluate_all_flags (batch). fn_flag_summary. v_flag_dashboard. 4 RLS policies. 5 seed flags (draft). feature-flags EF (8 actions). feature-flag-middleware H-03 activation. FLAG_AWARE_ROUTES S-06 scar. useFeatureFlag + useFeatureFlagVariant hooks. FeatureFlagProvider (60s poll, PostHog). parseFlagHeader. 6 scars (S-06–S-11). ADR-08. Gateway route #108. 106 tests. v7.57. Phase S5 COMPLETE. | infra@feature-flags-v1.0.0 |
 | SA-024 | 2026-03-07 | Event bus: v6.31 migration (platform_events append-only, webhook_subscriptions, webhook_delivery_log, api_consumers upgrade). fn_publish_event + fn_queue_webhook_deliveries + fn_webhook_delivery_summary + fn_mark_subscription_failure. v_event_bus_dashboard. 2 pg_cron. event-bus EF (8 actions). event-bus-middleware H-01 activation. S-03 activated. Gateway route #107. ADR-03 extended. 79 tests. v7.56. | infra@event-bus-v1.0.0 |
