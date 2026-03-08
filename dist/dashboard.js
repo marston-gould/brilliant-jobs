@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v7.69';
+var BJ_VERSION = 'v7.70';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -3465,6 +3465,12 @@ async function getLocationMatchIds(wherePillsArr, whereNotPillsArr, tuning, incl
 }
 
 function buildFilterQuery(sf, baseQuery, locationIds) {
+  // ⚠️ RISK R1 (Pill Pipeline Audit v7.69): Multiple .or() calls on a PostgREST query
+  // create IMPLICIT ANDs between them. Each .or() becomes a separate `or=` query param,
+  // and PostgREST ANDs all top-level params together. This is correct for our use case
+  // (WHAT matches AND WHERE matches AND PAY matches) but non-obvious. Adding new .or()
+  // calls to this function will silently narrow results. Always verify the generated
+  // PostgREST URL when modifying filter logic. See: postgrest.org/en/stable/api/tables_views.html
   let query = baseQuery;
 
   // Always filter to active/open jobs only
@@ -3525,6 +3531,9 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
       query = query.in('greenhouse_id', locationIds.includeIds);
     } else if (locationIds.boundingBox) {
       // Too many IDs — use bounding box filter instead
+      // ⚠️ RISK R2 (Pill Pipeline Audit v7.69): Bounding box is a rectangle, not a circle.
+      // For border cities, this may include jobs in neighboring countries/states.
+      // Monitor via admin error dashboard. Consider PostGIS for precision if complaints arise.
       const bb = locationIds.boundingBox;
       query = query
         .gte('job_lat', bb.minLat)
@@ -4235,6 +4244,10 @@ async function searchJobs(page = 0) {
     await fetchAiJdScores(currentJobs);
 
     // Phase 4: Apply trust level filter (client-side post-filter)
+    // ⚠️ RISK R4 (Pill Pipeline Audit v7.69): Client-side filters (trust, AI content) reduce
+    // results AFTER the DB query returns. Pagination is DB-side (LIMIT 50), so a page may show
+    // fewer than 50 visible rows after client-side filtering. "Load More" might even load pages
+    // with 0 visible rows. Long-term fix: move trust/AI filtering server-side.
     if (isTrustFilterActive()) {
       currentJobs = applyTrustFilter(currentJobs);
       totalCount = currentJobs.length;
@@ -4374,6 +4387,10 @@ async function updateJobStatsFromFilters(filters) {
 
         // TOTAL: all matching jobs WITHOUT time restriction (WHEN filter stripped)
         // This prevents TOTAL < NEW TODAY which is mathematically impossible
+        // ⚠️ RISK R5 (Pill Pipeline Audit v7.69): TOTAL shows all-time count while the table
+        // shows WHEN-filtered results. This is intentional (TOTAL is a "universe size" indicator)
+        // but may confuse users when TOTAL >> table count. filter-count bar now shows post-filter
+        // truth (v7.68). Consider adding a tooltip to the TOTAL stat card explaining the difference.
         const sfNoWhen = Object.assign({}, sf, { whenPills: [] });
         let q = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
         q = buildFilterQuery(sfNoWhen, q, locIds);
@@ -6276,8 +6293,8 @@ function renderAllPills() {
   const hasAny = allPills() > 0;
   $('#save-filter-row').style.display = hasAny ? 'inline-flex' : 'none';
   $('#clear-filters-btn').style.display = hasAny ? '' : 'none';
-  // Always show saved filters if any exist
-  $('#saved-filters-section').style.display = savedFilters.length > 0 ? '' : 'none';
+  // Always show saved filters if any exist (v7.69: use classList to match location.js pattern — style.display='' does not override u-hidden CSS class)
+  $('#saved-filters-section').classList.toggle('u-hidden', savedFilters.length === 0);
 
   // Update collapse badge count
   const count = allPills();

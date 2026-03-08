@@ -201,8 +201,8 @@ function renderAllPills() {
   const hasAny = allPills() > 0;
   $('#save-filter-row').style.display = hasAny ? 'inline-flex' : 'none';
   $('#clear-filters-btn').style.display = hasAny ? '' : 'none';
-  // Always show saved filters if any exist
-  $('#saved-filters-section').style.display = savedFilters.length > 0 ? '' : 'none';
+  // Always show saved filters if any exist (v7.69: use classList to match location.js pattern — style.display='' does not override u-hidden CSS class)
+  $('#saved-filters-section').classList.toggle('u-hidden', savedFilters.length === 0);
 
   // Update collapse badge count
   const count = allPills();

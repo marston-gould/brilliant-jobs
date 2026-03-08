@@ -1,3 +1,18 @@
+## v7.70 Pill Pipeline Audit Remediation (2026-03-08)
+
+- **BUG-5 fix (residual):** `query-builder.js` saved-filters-section was using `style.display=''`
+  which failed to override the `u-hidden` CSS class. Changed to `classList.toggle('u-hidden')`
+  matching the pattern already used in `location.js:renderSavedFilters()`.
+- **R1 documentation:** Added PostgREST implicit AND warning to `buildFilterQuery()` header.
+  Multiple `.or()` calls create separate `or=` params that PostgREST ANDs together.
+- **R2 documentation:** Added bounding box over-inclusion warning at radius fallback code.
+- **R4 documentation:** Added client-side filter pagination risk note at trust filter section.
+- **R5 documentation:** Added stat card TOTAL vs WHEN-filter explanation at stats query.
+- **Version discipline:** Reconciled v7.67→v7.70 across all 15 HTML surfaces. Secondary pages
+  (SEO, compare, pricing, roadmap, etc.) were stuck at v7.67 cache busters from the v7.68/v7.69
+  pill pipeline work that didn't go through the session tracking process.
+- DESCRIBE CHANGES HERE
+
 ## v7.67 Session NN: TITLE (2026-03-08)
 - DESCRIBE CHANGES HERE
 

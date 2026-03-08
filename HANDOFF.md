@@ -52,6 +52,20 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**Pill Pipeline Audit Remediation** — BUG-5 fix, R1-R5 risk documentation, version discipline reconciliation
+- Completed: 2026-03-08
+- Git tag: `pill-pipeline@1.0.0-audit-remediation`
+- Product version bumped: `v7.69` → `v7.70` (JS changes — query-builder.js classList fix, job-feed.js risk documentation; HTML — all 15 surfaces reconciled from stale v7.67 busters)
+- **BUG-5 residual fix:** `query-builder.js` line 205 changed from `style.display=''` to `classList.toggle('u-hidden')` — matches location.js pattern and properly overrides the `u-hidden` CSS class on `#saved-filters-section`
+- **Risk documentation added:**
+  - R1: PostgREST multiple `.or()` implicit AND behavior warning in `buildFilterQuery()`
+  - R2: Bounding box over-inclusion for border cities at radius fallback
+  - R4: Client-side trust/AI filters reducing visible results below page size
+  - R5: Stat card TOTAL intentionally strips whenPills (design decision, not bug)
+- **Version discipline:** 13 secondary HTML surfaces were stuck at v7.67 — the v7.68/v7.69 pill pipeline work bypassed the session tracking process. All 15 surfaces now at v7.70.
+- **Team manifest:** 5 Pod 4 roles (Chief Architect, Lead Platform Engineer, System Architect—Scalability, Forward-Looking Developer(s), Evolvability Strategist) already present in pod-team-manifest.md since SA-006.
+- **Tests:** All existing tests passing (0 failures)
+
 **PR-001 + PR-002** — PostHog Chat Mode Dashboard + Edge Function Cost Monitoring + Response Cache
 - Completed: 2026-03-08
 - Git tag: `admin@2.0.0-chat-analytics`
@@ -709,7 +723,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.67`** | **PR-001/PR-002** |
+| **Product (BJ_VERSION)** | **`v7.70`** | **Pill Pipeline Audit Remediation** |
 | Dashboard | `dashboard@3.0.0-all-pages` | SA-017 |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
