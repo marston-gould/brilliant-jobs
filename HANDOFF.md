@@ -52,7 +52,39 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**SA-014** — Feed Page Migration (React + TypeScript + Design System) (Phase S3)
+**SA-015** — Pipeline + Keywords Migration (React + TypeScript + Design System) (Phase S3)
+- Completed: 2026-03-07
+- Git tag: `dashboard@2.2.0-pipeline-keywords`
+- Product version bumped: `v7.50` → `v7.51`
+- ROADMAP.md updated: SA-015 row → ✅ with completion notes
+- roadmap.html updated: SA-015 entry → `s: 'done'`, p: 100
+- **Pipeline Page Created:** `src/app/pages/dashboard/pipeline/` directory:
+  - `PipelinePage.tsx` (main container orchestrating all pipeline components)
+  - `components/PipelineHero.tsx` (stats banner: Total Tracked, Active, Response Rate, Avg Days + Pipeline/Ghost view toggle)
+  - `components/PipelineFilterTags.tsx` (filter bar with saved search tags)
+  - `components/StageSection.tsx` (collapsible stage with header, count, signal badge, match range, job table)
+  - `components/PipelineRow.tsx` (job row: stale dot, title, company, resume, filters, dates, days, activity, match, move dropdown, action menu)
+  - `components/SignalCard.tsx` (inline signal confirmation: Gmail/Calendar/time-based signals with confirm/correct/dismiss/snooze)
+  - `components/GhostMonitor.tsx` (ghost detection sub-tab: stats + table with score bars, status, archive actions)
+  - `components/index.ts` (barrel export)
+  - `hooks/usePipeline.ts` (pipeline data + ghost monitor + signals: loads from window.* bridge, 9 stages, stale dot computation, relative time helper)
+  - `index.ts` (page barrel export)
+- **Keywords Page Created:** `src/app/pages/dashboard/keywords/` directory:
+  - `KeywordsPage.tsx` (main container orchestrating readiness analysis)
+  - `components/ResumeSelector.tsx` (resume picker with select all/none, eligibility badges)
+  - `components/ResumeScoreCard.tsx` (per-resume readiness card with overall score, filter breakdowns, level fit)
+  - `components/FilterBreakdown.tsx` (per-filter keyword analysis: matched/missing counts, expandable keyword detail, AI recommendations)
+  - `components/KeywordTag.tsx` (matched/missing keyword pill component)
+  - `components/LevelFit.tsx` (career level fit cards with scores per level)
+  - `components/index.ts` (barrel export)
+  - `hooks/useKeywords.ts` (readiness data: resumes, scores, analysis trigger via window.* bridge)
+  - `index.ts` (page barrel export)
+- **Modified:** `src/app/routes.tsx` (LegacyPipeline/LegacyKeywords → lazy-loaded PipelinePageRoute/KeywordsPageRoute with Suspense)
+- **Bridge pattern:** usePipeline reads from window._pipelineCache, window._pendingSignals, delegates to window.movePipelineStage, window.confirmPipelineSignal, etc. useKeywords reads from window.readinessCache, delegates to window.runReadinessAnalysis. Components do NOT access window.* directly — all data flows through hooks.
+- **Design compliance:** Zero inline styles (except data-driven dynamic colors for filter tags and stage indicators). All colors via CSS custom properties. Dark mode automatic. Design system primitives (Button, Badge, Card, Select) used throughout.
+- **Bundle:** PipelinePage chunk 28.25KB (7.65KB gzip), KeywordsPage chunk 12.45KB (3.76KB gzip) — both well under 50KB target
+- **Tests:** 70 SA-015 validation tests (dirs, files, exports, design tokens, provider pattern, a11y, routes, builds)
+- Phase S3 CONTINUING
 - Completed: 2026-03-07
 - Git tag: `dashboard@2.1.0-feed-page`
 - Product version bumped: `v7.49` → `v7.50`
@@ -197,14 +229,14 @@ None.
 
 ## Next Session
 
-**SA-015** — Pipeline + Keywords Migration (React + TypeScript + Design System) (Phase S3)
-- Entry gate: SA-014 ✅ (Feed page migrated, design system proven in production use).
+**SA-016** — Resumes + Applications Migration (React + TypeScript + Design System) (Phase S3)
+- Entry gate: SA-015 ✅ (Pipeline + Keywords migrated, bridge pattern proven for complex stateful pages)
 - Pair: Frontend + CSS/Tailwind Eng
 - Reviewer: Lead Platform Eng + Chief Architect
 - Estimated: 16–22h
-- Build: Migrate Pipeline and Keywords pages as React + TypeScript component trees. All components use design tokens via Tailwind. Zero inline styles. Dark mode complete. Data through providers only. Functional parity with legacy Pipeline and Keywords tabs.
+- Build: Migrate Resumes and Applications pages as React + TypeScript component trees. All components use design tokens via Tailwind. Zero inline styles. Dark mode complete. Data through providers only. Functional parity with legacy Resumes and Applications tabs.
 
-**Phase S3 is in progress.** SA-013 ✅, SA-014 ✅, SA-015 next.
+**Phase S3 is in progress.** SA-013 ✅, SA-014 ✅, SA-015 ✅, SA-016 next.
 
 ---
 
@@ -236,8 +268,8 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.50`** | **SA-014** |
-| Dashboard | **`dashboard@2.1.0-feed-page`** | **SA-014** |
+| **Product (BJ_VERSION)** | **`v7.51`** | **SA-015** |
+| Dashboard | **`dashboard@2.2.0-pipeline-keywords`** | **SA-015** |
 | Extension | `extension@2.22.0-error-handling` | FIX-11 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
 | Admin | `admin@1.7.0-graduation` | SA-012 |
@@ -257,10 +289,11 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 ---
 
-## Completed Sessions (24 of 24 + 17 Phase 1 + 10 Scaling + FIX-11)
+## Completed Sessions (24 of 24 + 17 Phase 1 + 11 Scaling + FIX-11)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
+| SA-015 | 2026-03-07 | Pipeline + Keywords migration: Pipeline — 7 components (PipelinePage/PipelineHero/PipelineFilterTags/StageSection/PipelineRow/SignalCard/GhostMonitor). usePipeline hook (9-stage tracker, ghost monitor, signals, stale dots, filter tags). Keywords — 6 components (KeywordsPage/ResumeSelector/ResumeScoreCard/FilterBreakdown/KeywordTag/LevelFit). useKeywords hook (readiness analysis, resume scoring). Bridge pattern. Design tokens only. Lazy-loaded. Pipeline 7.65KB gzip, Keywords 3.76KB gzip. 70 tests. v7.51. | dashboard@2.2.0-pipeline-keywords |
 | SA-014 | 2026-03-07 | Feed page migration: 11 React components (FeedPage/FeedHero/SearchModeToggle/FilterBuilder/FilterSidebar/SavedSearches/SortControls/SearchBar/JobTable/JobRow/PaginationControls). useFeedSearch hook (multi-filter merge/dedup/sort/paginate/abort). Bridge pattern via window.BJ. Design tokens only. Lazy-loaded with Suspense. FeedPage chunk 11KB gzip. 39 tests. v7.50. | dashboard@2.1.0-feed-page |
 | SA-013 | 2026-03-07 | SPA scaffold: React 18 + React Router 6 + Vite React plugin. Design system primitives (Button/Card/Badge/Input/Select/Modal). Data provider interfaces (Search/Job/User/Pipeline) + Supabase impls + React context. AppShell unified nav + AuthGuard + AdminGuard + LegacyPageWrapper. 12 dashboard + 10 admin routes. ADR-02 + pattern library. 60 validation tests. v7.49. Phase S3 STARTED. | dashboard@2.0.0-spa-scaffold, spa@1.0.0-scaffold |
 | SA-012 | 2026-03-07 | Graduation framework: agent_graduation_log table, fn_evaluate_agent_graduation() function (configurable criteria), crewai-graduation EF (evaluate/graduate/rollback/history/criteria), crewai-agent-digest EF (daily email), admin-crewai.js graduation UI + graduate/rollback buttons + send digest now, v6.26 migration, gateway routes #101-102, ADR-05 SA-012 docs. Phase S2 COMPLETE. | admin@1.7.0-graduation |
