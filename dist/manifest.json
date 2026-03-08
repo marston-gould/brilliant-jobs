@@ -6,8 +6,8 @@
   },
   "feed": {
     "file": "dashboard-feed.min.js",
-    "hash": "142eaf18",
-    "size": 84918
+    "hash": "b0b81c48",
+    "size": 85320
   },
   "keywords": {
     "file": "dashboard-keywords.min.js",
@@ -31,13 +31,13 @@
   },
   "full": {
     "file": "dashboard.min.js",
-    "hash": "228643fe",
-    "size": 876513
+    "hash": "64303d3c",
+    "size": 876915
   },
   "styles": {
     "file": "styles.css",
     "hash": "564c5982",
     "size": 128113
   },
-  "_buildHash": "97306280"
+  "_buildHash": "0f103f66"
 }

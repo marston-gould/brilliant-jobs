@@ -811,7 +811,7 @@ async function searchJobs(page = 0) {
       // Single filter — A14 pagination: 500-row cap with Load More
       const feedCacheKey = 'feed:' + _filterCacheKey('single', filtersToRun[0]) + ':p' + page;
       const feedResult = await cachedQuery(feedCacheKey, async function() {
-        let query = sb.from('ats_jobs').select('*', { count: 'planned' });
+        let query = sb.from('ats_jobs').select('*', { count: 'exact' });
         query = buildFilterQuery(filtersToRun[0], query, filtersToRun[0]._locationIds);
         if (hiddenIds.length > 0) {
           query = query.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
@@ -837,7 +837,7 @@ async function searchJobs(page = 0) {
       // Multiple filters — fetch up to limit per filter, merge, dedupe
       const perFilter = Math.min(Math.ceil(MAX_FEED_ROWS / filtersToRun.length), 250);
       const promises = filtersToRun.map(sf => {
-        let q = sb.from('ats_jobs').select('*', { count: 'planned' });
+        let q = sb.from('ats_jobs').select('*', { count: 'exact' });
         q = buildFilterQuery(sf, q, sf._locationIds);
         if (hiddenIds.length > 0) {
           q = q.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
@@ -893,12 +893,10 @@ async function searchJobs(page = 0) {
     currentJobs = allJobs;
 
     // Update filter count display — include WHEN notice if time-filtered
+    // NOTE: This is the initial count from DB; will be reconciled after client-side filters below.
     const activeWhenPills = filtersToRun.flatMap(f => (f.whenPills || []).flatMap(p => p.values)).filter(Boolean);
-    let filterCountHtml = `<strong>${totalCount.toLocaleString()}</strong> job${totalCount !== 1 ? 's' : ''} found`;
-    if (activeWhenPills.length > 0) {
-      filterCountHtml += ` <span style="color:var(--purple);font-size:11px;font-weight:600;margin-left:6px;">⏱ ${activeWhenPills[0]}</span>`;
-    }
-    $('#filter-count').innerHTML = filterCountHtml;
+    // Don't show count yet — wait for client-side filter reconciliation to avoid misleading flash
+    $('#filter-count').innerHTML = `<span style="color:var(--text-faint);font-size:12px;">Searching…</span>`;
 
     // Update top stat cards
     await updateJobStatsFromFilters(filtersToRun);
@@ -996,12 +994,31 @@ async function searchJobs(page = 0) {
     currentJobs = applyAiScoringExclusions(currentJobs);
     const exclusionsActive = currentJobs.length !== beforeExclusions;
 
-    // v7.18: Always sync j-total after ALL client-side filters (trust, AI content, exclusions)
-    // Prior conditional (isTrustFilterActive || isAiFilterActive || exclusionsActive) failed when
-    // all checkboxes were checked (filters "not active") but exclusions still reduced count.
-    totalCount = currentJobs.length;
+    // v7.18+v7.68: Sync counts after ALL client-side filters
+    // _feedTotalCount = exact DB count; currentJobs.length = this page after client filters
+    // For single-page results (no more pages), use currentJobs.length as truth
+    // For multi-page, use DB total but note client filters may reduce each page
+    var pageJobCount = currentJobs.length;
+    if (_feedTotalCount > 0 && pageJobCount < JOBS_PER_PAGE && page === 0) {
+      // All results fit on one page — actual total IS what we see after client filters
+      totalCount = pageJobCount;
+      _feedTotalCount = pageJobCount;
+    } else if (page === 0 && pageJobCount >= JOBS_PER_PAGE) {
+      // Full first page — DB total is the right number for display
+      totalCount = _feedTotalCount;
+    } else {
+      totalCount = _feedTotalCount;
+    }
     var $jt = $('#j-total');
     if ($jt) $jt.textContent = totalCount.toLocaleString();
+
+    // v7.68: Reconcile filter-count with actual post-filter reality
+    var activeWhenPillsReconcile = filtersToRun.flatMap(f => (f.whenPills || []).flatMap(p => p.values)).filter(Boolean);
+    var reconciledHtml = `<strong>${totalCount.toLocaleString()}</strong> job${totalCount !== 1 ? 's' : ''} found`;
+    if (activeWhenPillsReconcile.length > 0) {
+      reconciledHtml += ` <span style="color:var(--purple);font-size:11px;font-weight:600;margin-left:6px;">⏱ ${activeWhenPillsReconcile[0]}</span>`;
+    }
+    $('#filter-count').innerHTML = reconciledHtml;
 
     // v7.18: Sync j-new to match jobs actually shown with green "new" styling (last 24h)
     // DB query uses rolling 24h but client-side filters may remove some; sync to rendered set
@@ -1098,12 +1115,12 @@ async function updateJobStatsFromFilters(filters) {
         // TOTAL: all matching jobs WITHOUT time restriction (WHEN filter stripped)
         // This prevents TOTAL < NEW TODAY which is mathematically impossible
         const sfNoWhen = Object.assign({}, sf, { whenPills: [] });
-        let q = sb.from('ats_jobs').select('greenhouse_id', { count: 'planned', head: true });
+        let q = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
         q = buildFilterQuery(sfNoWhen, q, locIds);
         q = excludeHidden(q);
 
         // NEW TODAY: all matching jobs updated in last 24h (also without WHEN, uses its own time window)
-        let q2 = sb.from('ats_jobs').select('greenhouse_id', { count: 'planned', head: true });
+        let q2 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
         q2 = buildFilterQuery(sfNoWhen, q2, locIds);
         q2 = excludeHidden(q2);
         q2 = q2.gte('first_seen_at', last24h.toISOString());
@@ -1114,7 +1131,7 @@ async function updateJobStatsFromFilters(filters) {
         ];
 
         if (lastViewDate) {
-          let qLogin = sb.from('ats_jobs').select('greenhouse_id', { count: 'planned', head: true });
+          let qLogin = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
           qLogin = buildFilterQuery(sf, qLogin, locIds);
           qLogin = excludeHidden(qLogin);
           qLogin = qLogin.gte('first_seen_at', lastViewDate.toISOString());
