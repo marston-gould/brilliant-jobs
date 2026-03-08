@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.45"></script>
+  <script src="/js/version.js?v=v7.46"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2104,7 +2104,7 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'SA-007 Common Crawl ingestion pipeline', d: 'Athena discovery + live web fetch + 3-tier HTML parsing. 3 tables + batch tracking + gateway route #94. Domain diversity. ADR-06 started. Done 2026-03-07.', p: 100, e: '14h' },
 { s: 'done', b: 'post-launch', n: 'SA-008 Deduplication engine', d: 'Two-tier dedup: URL-hash exact match + pg_trgm fuzzy match (title 50%, company 30%, location 20%, threshold 0.7). enrichment_queue + dedup_log + 6 SQL functions + 2 views. dedup-promote EF. Gateway route #95. ADR-07. Done 2026-03-07.', p: 100, e: '14h' },
 { s: 'done', b: 'post-launch', n: 'SA-009 Incremental materialized views', d: 'Delta-only refreshes via ats_jobs_change_log. 3 MV tables + change tracking trigger + incremental refresh functions + 3-min cron + weekly full consistency. ADR-08. Gateway route #96.', p: 100, e: '14h' },
-{ s: 'todo', b: 'post-launch', n: 'SA-010 CrewAI framework + Agent 1', d: 'Deploy CrewAI orchestration framework. Build first agent (Data Freshness Monitor) in observe mode. Gateway routing for agent API calls. Pair: Backend + DevOps. 14-18h.', p: 91, e: '18h' },
+{ s: 'done', b: 'post-launch', n: 'SA-010 CrewAI framework + Agent 1', d: 'Agent framework: agent_config + agent_action_log + agent_credentials + v_agent_dashboard. Content QA Agent (observe mode). crewai-orchestrator + crewai-content-qa EFs. Admin panel CrewAI tab with kill switches. Gateway routes #97-98. ADR-05.', p: 100, e: '18h' },
 { s: 'todo', b: 'post-launch', n: 'SA-011 CrewAI Agents 2-3', d: 'Build Content Quality Agent + Pipeline Health Agent. Both in observe mode with kill switches. Pair: Backend + QA. 12-16h.', p: 91, e: '16h' },
 { s: 'todo', b: 'post-launch', n: 'SA-012 CrewAI agent graduation', d: 'Graduate Agents 1-3 from observe to active mode based on accuracy metrics. Define graduation criteria and rollback triggers. Pair: Backend + Eng Lead. 10-14h.', p: 91, e: '14h' },
 

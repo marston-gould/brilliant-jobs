@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Admin Console v7.45 -->
+<!-- Brilliant Jobs Admin Console v7.46 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -10,16 +10,17 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Admin Console</title>
   <script src="/js/vendor/supabase.min.js"></script>
-  <script src="/js/version.js?v=v7.45"></script>
+  <script src="/js/version.js?v=v7.46"></script>
   <!-- CS-003: PostHog SDK for admin surface (DO-001) — CS-P1-002: externalized for CSP -->
-  <script src="js/posthog-admin.js?v=v7.45"></script>
-  <script src="js/posthog-perf.js?v=v7.45" defer></script>
-  <script src="js/feature-flags.js?v=v7.45" defer></script>
-  <script src="js/structured-logger.js?v=v7.45" defer></script>
-  <script src="js/admin-posthog-insights.js?v=v7.45" defer></script>
-  <script src="js/admin-ab-tests.js?v=v7.45" defer></script>
+  <script src="js/posthog-admin.js?v=v7.46"></script>
+  <script src="js/posthog-perf.js?v=v7.46" defer></script>
+  <script src="js/feature-flags.js?v=v7.46" defer></script>
+  <script src="js/structured-logger.js?v=v7.46" defer></script>
+  <script src="js/admin-posthog-insights.js?v=v7.46" defer></script>
+  <script src="js/admin-ab-tests.js?v=v7.46" defer></script>
+  <script src="js/admin-crewai.js?v=v7.46" defer></script>
   <script defer src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" integrity="sha384-pPi0zxBAoDu6+JXW/C68UZLvBUUtU+7zonhif43rqj7pxsGyqyqzcian2Rj37Rss" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="styles.css?v=v7.45">
+  <link rel="stylesheet" href="styles.css?v=v7.46">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -347,6 +348,20 @@
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
+    /* ─── SA-010: CrewAI Agent Cards ─── */
+    .crewai-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+    .crewai-card { background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+    .crewai-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .crewai-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .crewai-dot-green { background: var(--green); }
+    .crewai-dot-red { background: var(--red); }
+    .crewai-card-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+    .crewai-stat { text-align: center; }
+    .crewai-stat-val { display: block; font-size: 16px; font-weight: 700; font-family: var(--mono); color: var(--text); }
+    .crewai-stat-label { display: block; font-size: 10px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px; }
+    .crewai-card-footer { display: flex; justify-content: space-between; align-items: center; }
+    .crewai-card-actions { display: flex; gap: 6px; }
+    .crewai-error { font-size: 11px; color: var(--red); margin-bottom: 8px; }
     .admin-age-bucket {
       display: flex;
       flex-direction: column;
@@ -902,6 +917,10 @@
             <div id="admin-page-killswitch"><div class="admin-loading">Loading kill switch…</div></div>
           </div>
 
+          <div class="admin-panel" id="admin-panel-crewai">
+            <div id="admin-page-crewai"><div class="admin-loading">Loading CrewAI agents…</div></div>
+          </div>
+
           <div class="admin-panel" id="admin-panel-monitoring">
             <div id="admin-page-monitoring"><div class="admin-loading">Loading monitoring dashboard…</div></div>
           </div>
@@ -1059,10 +1078,10 @@
   </div> <!-- end admin-shell -->
 
   <!-- JS: Admin bundle loads globals, admin.js, admin-notifications.js -->
-  <script src="dist/admin.min.js?v=v7.45-g11" defer></script>
+  <script src="dist/admin.min.js?v=v7.46-g11" defer></script>
 
   <!-- CS-P1-002: Cohort handler moved to js/admin-inline.js -->
-  <script src="js/admin-inline.js?v=v7.45"></script>
+  <script src="js/admin-inline.js?v=v7.46"></script>
 </body>
 </html>
 

@@ -68,6 +68,7 @@ var ADMIN_SUBPAGE_MAP = {
   'posthog-insights':{ section: 'operations',  label: 'PostHog Insights',init: function(){ loadPostHogInsightsPanel(); } },
   'ab-tests':        { section: 'operations',  label: 'A/B Tests',       init: function(){ loadAbTestsPanel(); } },
   'kill-switch':    { section: 'operations',  label: 'Kill Switch',    init: function(){ loadKillSwitchPanel(); } },
+  'crewai':         { section: 'operations',  label: 'CrewAI Agents',  init: function(){ loadCrewAIPanel(); } },
   // ── Growth ──
   'seo':            { section: 'growth',      label: 'SEO',            init: function(){ loadSeoTab(); } },
   'content':        { section: 'growth',      label: 'Content',        init: function(){ loadContentTab(); } },

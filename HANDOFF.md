@@ -52,22 +52,19 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**SA-009** — Incremental Materialized Views + Staleness Monitoring (Phase S2)
+**SA-010** — CrewAI Framework + Content QA Agent (Phase S2)
 - Completed: 2026-03-07
-- Git tag: `infra@incremental-mv-v1.0.0`
-- No product version bump (infrastructure only, no JS/CSS/HTML changes — frontend code already existed)
-- ROADMAP.md updated: SA-009 row → ✅ with completion notes
-- roadmap.html updated: SA-009 entry → `s: 'done'`, p: 100
-- Created: v6.23-incremental-materialized-views.sql migration, refresh-materialized-views EF, adr-08-incremental-mv.md
-- Modified: api-gateway/index.ts (95 → 96 routes)
-- Database: ats_jobs_change_log (change tracking), mv_job_feed_counts, mv_source_breakdown, mv_landing_stats (pre-aggregated), mv_refresh_log
-- Functions: fn_ats_jobs_change_log (trigger), mv_full_refresh_feed_counts, mv_full_refresh_source_breakdown, mv_full_refresh_landing_stats, mv_full_refresh_all, mv_incremental_refresh
-- Trigger: trg_ats_jobs_change_log on ats_jobs (AFTER INSERT/UPDATE/DELETE)
-- EF deployed: refresh-materialized-views (3 actions: incremental, full, status)
-- Gateway: Route #96 (refresh-materialized-views)
-- Cron: mv-incremental-refresh (*/3 * * * *), mv-full-refresh-weekly (0 4 * * 0)
-- Strategy: Change log accumulates deltas → incremental refresh processes only affected dimensions → falls back to full if delta > 10% of table
-- Staleness model: Fresh ≤5min, Amber 5-15min, Stale >15min
+- Git tag: `admin@X.Y.Z-crewai-foundation`
+- Product version bumped: `v7.45` → `v7.46`
+- ROADMAP.md updated: SA-010 row → ✅ with completion notes
+- roadmap.html updated: SA-010 entry → `s: 'done'`, p: 100
+- Created: v6.24-crewai-agent-framework.sql migration, crewai-orchestrator EF, crewai-content-qa EF, admin-crewai.js, adr-05-crewai.md
+- Modified: api-gateway/index.ts (96 → 98 routes), admin.html (CrewAI panel + CSS), admin.js (CrewAI tab registration)
+- Database: agent_config + agent_action_log + agent_credentials tables, v_agent_dashboard view, fn_agent_config_updated_at trigger
+- EFs deployed: crewai-orchestrator (status, run, toggle, history, override), crewai-content-qa (observe mode)
+- Gateway: Routes #97 (crewai-orchestrator), #98 (crewai-content-qa)
+- Agent 1 (Content QA): Evaluates editorial content via Claude Sonnet — factual accuracy, brand voice, data completeness, length compliance, actionability. Observe mode only (executed = false always). Admin panel shows kill switch + action log.
+- Admin panel: CrewAI Agents tab under Operations. Agent cards with status dots, 24h metrics, kill switch toggle, manual run. Action log table with agent filter.
 
 **SA-008** — Deduplication Engine + Enrichment Queue Integration (Phase S2)
 - Completed: 2026-03-07
@@ -129,11 +126,11 @@ None.
 
 ## Next Session
 
-**SA-010** — CrewAI Agent Framework + Content QA Agent (Phase S2)
-- Entry gate: SA-005 complete ✅ (gateway operational). SA-009 complete ✅ (MV infrastructure in place).
-- Pair: Backend + Eng Lead + Forward-Looking Dev
-- Estimated: 16–22h
-- Build: CrewAI framework, agent lifecycle manager, agent configuration store (Supabase table), agent credentials (gateway API key per agent), agent action log table, Content QA Agent (Agent 1) in observe mode, admin panel integration, kill switch toggle per agent.
+**SA-011** — Pipeline Health Agent + Data Freshness Agent (Phase S2)
+- Entry gate: SA-010 complete ✅. CrewAI framework operational. Agent infrastructure tables deployed. Content QA Agent running in observe mode.
+- Pair: Backend + Data Eng
+- Estimated: 12–16h
+- Build: Pipeline Health Agent (Agent 2) — monitors cron execution, detects failures, logs recommended actions, daily summary email. Data Freshness Agent (Agent 3) — monitors MV staleness, sync lag, ingestion progress, weekly freshness report. Both in observe mode with kill switches.
 
 **OR SA-013** — SPA Scaffold + Vite + React Router (Phase S3, if S2 automation deferred)
 - Entry gate: SA-006 complete ✅ (TypeScript core in place).
@@ -170,15 +167,16 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.45`** | **SA-005** |
+| **Product (BJ_VERSION)** | **`v7.46`** | **SA-010** |
 | Dashboard | `dashboard@1.2.0-typescript` | CS-P1-015 |
 | Extension | `extension@2.22.0-error-handling` | FIX-11 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
-| Admin | `admin@1.4.0-compliance` | CS-P1-017 |
+| Admin | `admin@1.5.0-crewai-foundation` | SA-010 |
 | **API Gateway** | **`infra@gateway-v1.0.0`** | **SA-005** |
 | **Common Crawl** | **`infra@common-crawl-v0.1.0`** | **SA-007** |
 | **Dedup Engine** | **`infra@dedup-v1.0.0`** | **SA-008** |
 | **Incremental MVs** | **`infra@incremental-mv-v1.0.0`** | **SA-009** |
+| **CrewAI Framework** | **`admin@1.5.0-crewai-foundation`** | **SA-010** |
 | Load Tests | `loadtest@1.0.0` | CS-020 |
 | CI/CD | `cicd@1.0.0` | CS-020 |
 | Quality Gates | `qualitygates@1.0.0` | CS-021 |
@@ -189,10 +187,11 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 ---
 
-## Completed Sessions (24 of 24 + 17 Phase 1 + 6 Scaling + FIX-11)
+## Completed Sessions (24 of 24 + 17 Phase 1 + 7 Scaling + FIX-11)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
+| SA-010 | 2026-03-07 | CrewAI framework: agent_config + agent_action_log + agent_credentials + v_agent_dashboard + fn_agent_config_updated_at trigger + crewai-orchestrator EF + crewai-content-qa EF + admin-crewai.js + gateway routes #97-98 + ADR-05 + Content QA Agent (observe mode) + admin panel kill switch | admin@1.5.0-crewai-foundation |
 | SA-009 | 2026-03-07 | Incremental MVs: ats_jobs_change_log + mv_job_feed_counts + mv_source_breakdown + mv_landing_stats + mv_refresh_log + trigger + 6 functions + refresh-materialized-views EF + gateway route #96 + 2 cron jobs + ADR-08 | infra@incremental-mv-v1.0.0 |
 | SA-008 | 2026-03-07 | Dedup engine: enrichment_queue + dedup_log + 6 functions + 2 views + GIN trgm indexes + dedup-promote EF + gateway route #95 + ADR-07 | infra@dedup-v1.0.0 |
 | SA-007 | 2026-03-07 | CC ingestion: 3 tables + batch view + 2 functions + EF + gateway route #94 + ADR-06 + Athena discovery + live web fetch + 3-tier parser | infra@common-crawl-v0.1.0 |
