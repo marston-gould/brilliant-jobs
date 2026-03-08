@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v7.64';
+var BJ_VERSION = 'v7.65';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -1091,6 +1091,10 @@ async function _drainRetryQueue(): Promise<void> {
 }
 
 /** Global unhandled error and rejection handlers */
+// BE-005: Throttle for network error toasts to avoid spam
+var _lastNetworkToastTime = 0;
+var _NETWORK_TOAST_THROTTLE_MS = 10000; // 10s between network error toasts
+
 function initGlobalErrorHandlers(): void {
   window.addEventListener('error', function(event) {
     console.error('[BJ] Uncaught error:', event.message, 'at', event.filename + ':' + event.lineno);
@@ -1099,12 +1103,28 @@ function initGlobalErrorHandlers(): void {
   window.addEventListener('unhandledrejection', function(event) {
     var reason = event.reason;
     var msg = reason && reason.message ? reason.message : String(reason);
-    // Suppress noisy auth/network errors
+    // BE-005: Network errors are no longer silently suppressed.
+    // Offline: report to PostHog (offline banner already visible via initOfflineDetection).
+    // Online: report to PostHog + show user-facing toast with retry guidance.
     if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('Load failed')) {
+      reportError('network', reason, { online: _isOnline, handler: 'unhandledrejection' });
       if (!_isOnline) {
-        event.preventDefault(); // Don't spam console when offline
+        // Offline banner already handles user notification — just log, don't toast-spam
+        console.warn('[BJ] Network error while offline (reported):', msg);
+        event.preventDefault();
         return;
       }
+      // Online but network failed — surface to user with throttle
+      var now = Date.now();
+      if (now - _lastNetworkToastTime > _NETWORK_TOAST_THROTTLE_MS) {
+        _lastNetworkToastTime = now;
+        toastWarning('Network request failed — check your connection and try again.', {
+          duration: 6000,
+          action: { label: 'Retry', fn: function() { window.location.reload(); } }
+        });
+      }
+      console.warn('[BJ] Network error while online (reported + user notified):', msg);
+      return;
     }
     console.error('[BJ] Unhandled promise rejection:', msg);
   });

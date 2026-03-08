@@ -2824,8 +2824,8 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.032 | ES-002: Replace 40 console-only catches | 3h | 3h | ✅ | 161 console-only catches upgraded to reportError() + PostHog capture across 43 JS files (original 40 grew to 161 during scaling sessions). Zero console-only catches remain. 30 validation tests. v7.64. 2026-03-08. |
 | 0.033 | BE-003: 17 unchecked {data, error} | 2h | CS-P1-003 | ✅ | Error checks added to all dashboard sb.from() calls. reportError() wired. |
 | 0.034 | BE-004: 7 fire-and-forget RPCs | 1h | CS-P1-003 | ✅ | Heartbeats, signals, outreach RPCs all have .then() error handlers or reportError(). |
-| 0.035 | BE-005: Suppressed network errors | 1h | — | 🔲 | Network failures hidden. Retry + user notification. |
-| 0.036 | BE-006: Edge Function empty catches | 2h | — | 🔲 | EF catches mirror dashboard pattern. |
+| 0.035 | BE-005: Suppressed network errors | 1h | 1h | ✅ | Network errors no longer silently suppressed. reportError('network') with online/handler context sent to PostHog. toastWarning with Retry button shown to user when online (10s throttle). Offline errors logged + reported (banner already visible). globals.ts + globals.js updated. 23 validation tests. v7.65. 2026-03-08. |
+| 0.036 | BE-006: Edge Function empty catches | 2h | 2h | ✅ | REM-003: 23 empty catch blocks fixed across 16 EF files with structured [EF][function_name] console.warn logging. 2026-03-08. |
 | 0.037 | FE-002: Error boundaries all tabs | 2h | CS-015 | ✅ | Zero error boundaries. Blank screen on failure. Fallback UI + retry. |
 | 0.038 | FE-003: Loading states all fetches | 2h | CS-015 | ✅ | No loading indicators. Add skeleton loaders. |
 | 0.039 | FE-004: Pagination on unbounded queries | 2h | CS-015 | ✅ | Full table returns. limit + Load More. |
@@ -2836,7 +2836,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 |---|------|------|--------|--------|-------|
 | 0.040 | EXT-ES-001: 20 empty catches | 2h | 2h | ✅ | FIX-11: All 22 empty catches remediated. background.js(7→console.warn+comment), popup.js(6→console.warn+phCapture), handlers(5→console.warn), interceptor(1→console.warn), resilientDOM(2→console.warn), build-ext(1→comment). Zero empty catches in extension source. |
 | 0.041 | EXT-ES-002: 19 fire-and-forget .catch(()=>{}) | 1h | 1h | ✅ | REM-002: 28+ empty .catch(()=>{}) replaced with reportError pattern across 12 extension files. Error reporter utility at extension/utils/errorReporter.ts. Background reportError handler wired. 2026-03-08. |
-| 0.042 | EXT-ES-003: 7 console/comment-only handlers | 1h | — | 🔲 | Catch blocks with only console or comment. |
+| 0.042 | EXT-ES-003: 7 console/comment-only handlers | 1h | 1h | ✅ | REM-002: Console-only handlers in lever, greenhouse-legacy, greenhouse-react, linkedin upgraded with PostHog context via errorReporter.ts. 2026-03-08. |
 | 0.043 | EXT-ES-004: 14+ missing lastError checks | 2h | — | 🔲 | Only toolbar-overlay checks (4x). All other chrome API calls skip. |
 | 0.044 | EXT-BE-001: No fetch timeouts | 1h | — | 🔲 | Zero AbortController. Add timeout on all fetches. |
 | 0.045 | EXT-BE-002: No retry with backoff | 2h | — | 🔲 | Zero retry. Exponential backoff on auth, scan, pipeline. |

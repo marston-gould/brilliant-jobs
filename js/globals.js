@@ -824,6 +824,8 @@ async function _drainRetryQueue() {
     }
   }
 }
+var _lastNetworkToastTime = 0;
+var _NETWORK_TOAST_THROTTLE_MS = 1e4;
 function initGlobalErrorHandlers() {
   window.addEventListener("error", function(event) {
     console.error("[BJ] Uncaught error:", event.message, "at", event.filename + ":" + event.lineno);
@@ -832,10 +834,24 @@ function initGlobalErrorHandlers() {
     var reason = event.reason;
     var msg = reason && reason.message ? reason.message : String(reason);
     if (msg.includes("Failed to fetch") || msg.includes("NetworkError") || msg.includes("Load failed")) {
+      reportError("network", reason, { online: _isOnline, handler: "unhandledrejection" });
       if (!_isOnline) {
+        console.warn("[BJ] Network error while offline (reported):", msg);
         event.preventDefault();
         return;
       }
+      var now = Date.now();
+      if (now - _lastNetworkToastTime > _NETWORK_TOAST_THROTTLE_MS) {
+        _lastNetworkToastTime = now;
+        toastWarning("Network request failed \u2014 check your connection and try again.", {
+          duration: 6e3,
+          action: { label: "Retry", fn: function() {
+            window.location.reload();
+          } }
+        });
+      }
+      console.warn("[BJ] Network error while online (reported + user notified):", msg);
+      return;
     }
     console.error("[BJ] Unhandled promise rejection:", msg);
   });

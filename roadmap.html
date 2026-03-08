@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.64"></script>
+  <script src="/js/version.js?v=v7.65"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -1876,8 +1876,8 @@ const features = [
 { s: 'done', b: 'pre-launch', n: '0.032 ES-002: Replace 40 console-only catches', d: '161 console-only catches upgraded to reportError() + PostHog capture across 43 JS files. Zero remaining. 30 validation tests. v7.64.', p: 100, e: '3h' },
 { s: 'done', b: 'pre-launch', n: '0.033 BE-003: 17 unchecked {data,error}', d: 'CS-P1-003: Error checks added to all dashboard sb.from() calls. reportError() wired.', p: 75, e: '2h' },
 { s: 'done', b: 'pre-launch', n: '0.034 BE-004: 7 fire-and-forget RPCs', d: 'CS-P1-003: Heartbeats, signals, outreach RPCs error-handled via .then() or reportError().', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.035 BE-005: Suppressed network errors', d: 'Network failures hidden. Retry + notification.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.036 BE-006: Edge Function empty catches', d: 'EF catches mirror dashboard pattern.', p: 75, e: '2h' },
+{ s: 'done', b: 'pre-launch', n: '0.035 BE-005: Suppressed network errors', d: 'Network errors no longer silently suppressed. reportError + toastWarning with Retry. 23 tests. v7.65. 2026-03-08.', p: 100, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.036 BE-006: Edge Function empty catches', d: 'REM-003: 23 empty catches fixed across 16 EF files. 2026-03-08.', p: 100, e: '2h' },
 { s: 'done', b: 'pre-launch', n: '0.037 FE-002: Error boundaries all tabs', d: 'CS-015: bjTabGuard wraps all tab inits with try/catch + fallback UI + retry button.', p: 75, e: '2h' },
 { s: 'done', b: 'pre-launch', n: '0.038 FE-003: Loading states all fetches', d: 'CS-015: bjSkeleton loaders (6 types: table, card, form, chart, list) on all tab switches.', p: 75, e: '2h' },
 { s: 'done', b: 'pre-launch', n: '0.039 FE-004: Pagination unbounded queries', d: 'CS-015: Resume archive 100-row limit. Job feed + notification log already paginated.', p: 75, e: '2h' },
@@ -1885,7 +1885,7 @@ const features = [
 // 0-G: Error Handling — Extension (Pod 3, P1)
 { s: 'done', b: 'pre-launch', n: '0.040 EXT-ES-001: 22 empty catches', d: 'FIX-11: All 22 empty catches remediated with console.warn + PostHog. Zero empty catches remaining.', p: 75, e: '2h' },
 { s: 'done', b: 'pre-launch', n: '0.041 EXT-ES-002: 19 fire-and-forget', d: 'REM-002: 28+ empty .catch(()=>{}) replaced with reportError across 12 extension files. Error reporter utility + background handler wired.', p: 100, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.042 EXT-ES-003: 7 console/comment handlers', d: 'Catch with only console or comment.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.042 EXT-ES-003: 7 console/comment handlers', d: 'REM-002: Console-only handlers upgraded with PostHog via errorReporter.ts. 2026-03-08.', p: 100, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.043 EXT-ES-004: 14+ missing lastError', d: 'Only toolbar-overlay checks. All other chrome API skip.', p: 75, e: '2h' },
 { s: 'done', b: 'pre-launch', n: '0.044 EXT-BE-001: No fetch timeouts', d: 'CS-013 FIX-12: fetchWithRetry utility with AbortSignal.timeout (10–15s per call criticality). Wired into 27 service-worker/popup fetch calls + 3 content-script calls get AbortSignal.timeout. Zero bare fetch() remaining in extension source.', p: 75, e: '1h' },
 { s: 'done', b: 'pre-launch', n: '0.045 EXT-BE-002: No retry with backoff', d: 'CS-013 FIX-12: Exponential backoff with jitter (baseDelay 1s, maxDelay 8s) in fetchWithRetry. 5xx auto-retry. fetchFireAndForget for telemetry calls (PostHog, extension_events). All 30 extension fetch sites covered.', p: 75, e: '2h' },

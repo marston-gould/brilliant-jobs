@@ -52,6 +52,36 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**BE-005** — Suppressed Network Errors + Roadmap Sync (BE-006, EXT-ES-003)
+- Completed: 2026-03-08
+- Git tag: `dashboard@3.1.1-network-errors`
+- Product version bumped: `v7.64` → `v7.65` (JS changes — globals.ts/globals.js network error handler)
+- ROADMAP.md updated: BE-005, BE-006, EXT-ES-003 → ✅ with completion notes
+- roadmap.html updated: BE-005, BE-006, EXT-ES-003 → `s: 'done'`, p: 100
+- **BE-005 (Suppressed Network Errors):**
+  - Global unhandledrejection handler no longer silently suppresses network errors
+  - reportError('network', error, { online, handler }) called for ALL network errors (offline AND online)
+  - When online: toastWarning with "Retry" button shown to user (10s throttle to avoid spam)
+  - When offline: error reported to PostHog, offline banner already visible via initOfflineDetection
+  - Removed old "Suppress noisy auth/network errors" pattern
+  - globals.ts source updated, globals.js rebuilt via `node build.js`
+- **BE-006 (Roadmap Sync):**
+  - Already completed in REM-003 — individual finding row was still marked 🔲
+  - Updated to ✅ in both ROADMAP.md and roadmap.html
+- **EXT-ES-003 (Roadmap Sync):**
+  - Already completed in REM-002 — individual finding row was still marked 🔲
+  - Updated to ✅ in both ROADMAP.md and roadmap.html
+- **Pod 3 Team:** 5 hook-and-scar roles (Chief Architect, Lead Platform Engineer, System Architect—Scalability, Forward-Looking Developer(s), Evolvability Strategist) confirmed already present in pod-team-manifest.md since SA-006.
+- **Created:**
+  - `tests/be-005-network-errors.test.js` — 23 validation tests (7 sections: suppression removed, PostHog reporting, user notification, throttle, pattern detection, console logging, build output)
+- **Modified:**
+  - `js/globals.ts` — initGlobalErrorHandlers rewritten (reportError + toastWarning + throttle)
+  - `js/globals.js` — rebuilt from globals.ts
+  - `dist/dashboard.min.js` — rebuilt
+  - `ROADMAP.md` — BE-005, BE-006, EXT-ES-003 → ✅
+  - `roadmap.html` — BE-005, BE-006, EXT-ES-003 → done/100
+- **Tests:** 23 BE-005 validation tests (all passing)
+
 **ES-002** — Console-Only Catch Elimination + ROADMAP Sync
 - Completed: 2026-03-08
 - Git tag: `dashboard@3.1.0-error-reporting`
@@ -594,7 +624,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.64`** | **ES-002** |
+| **Product (BJ_VERSION)** | **`v7.65`** | **BE-005** |
 | Dashboard | `dashboard@3.0.0-all-pages` | SA-017 |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
