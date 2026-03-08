@@ -210,7 +210,35 @@ function renderAllPills() {
   if (count > 0) { badge.textContent = count + ' filter' + (count > 1 ? 's' : ''); badge.style.display = ''; }
   else { badge.style.display = 'none'; }
 
-  // Trigger job search when filters change (only from filter builder)
-  if (allPills() > 0) debouncedSearchJobs();
+  // POD3-GS: Auto-save pill changes back to the saved filter being edited
+  if (window._editingFilterIdx != null && savedFilters[window._editingFilterIdx]) {
+    var sf = savedFilters[window._editingFilterIdx];
+    sf.whatPills = JSON.parse(JSON.stringify(whatPills));
+    sf.wherePills = JSON.parse(JSON.stringify(wherePills));
+    sf.whenPills = JSON.parse(JSON.stringify(whenPills));
+    sf.whoPills = JSON.parse(JSON.stringify(whoPills));
+    sf.payPills = JSON.parse(JSON.stringify(payPills));
+    sf.whatNotPills = JSON.parse(JSON.stringify(whatNotPills));
+    sf.whereNotPills = JSON.parse(JSON.stringify(whereNotPills));
+    sf.whoNotPills = JSON.parse(JSON.stringify(whoNotPills));
+    sf.skillsPills = JSON.parse(JSON.stringify(skillsPills));
+    sf.levelPills = JSON.parse(JSON.stringify(levelPills));
+    sf.jdPills = JSON.parse(JSON.stringify(jdPills));
+    sf.deptPills = JSON.parse(JSON.stringify(deptPills));
+    var noSalaryCb = document.getElementById('save-filter-include-no-salary');
+    if (noSalaryCb) sf.includeNoSalary = noSalaryCb.checked;
+    var remoteCb = document.getElementById('save-filter-include-remote');
+    if (remoteCb) sf.includeRemote = remoteCb.checked;
+    saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
+    // Update mini-pills in the saved filter row without full re-render (preserves checkbox state)
+    var sfRow = document.querySelector('.sf-item[data-idx="' + window._editingFilterIdx + '"]');
+    if (sfRow) {
+      var oldPills = sfRow.querySelector('.sf-item-pills');
+      if (oldPills) oldPills.remove();
+    }
+  }
+
+  // Trigger job search when filters change
+  debouncedSearchJobs();
 }
 

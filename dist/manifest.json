@@ -1,18 +1,18 @@
 {
   "shell": {
     "file": "dashboard-shell.min.js",
-    "hash": "10bba65c",
+    "hash": "d68c4534",
     "size": 85361
   },
   "feed": {
     "file": "dashboard-feed.min.js",
-    "hash": "dce1c3d5",
-    "size": 85585
+    "hash": "9c1b56ab",
+    "size": 86797
   },
   "keywords": {
     "file": "dashboard-keywords.min.js",
-    "hash": "db3aaaaf",
-    "size": 248068
+    "hash": "0c0c749a",
+    "size": 247366
   },
   "pipeline": {
     "file": "dashboard-pipeline.min.js",
@@ -31,13 +31,13 @@
   },
   "full": {
     "file": "dashboard.min.js",
-    "hash": "a92c9c90",
-    "size": 880280
+    "hash": "a916c625",
+    "size": 880790
   },
   "styles": {
     "file": "styles.css",
     "hash": "564c5982",
     "size": 128113
   },
-  "_buildHash": "3c35caf6"
+  "_buildHash": "ea575352"
 }

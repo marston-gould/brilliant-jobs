@@ -667,6 +667,7 @@ function updateSfStatusDot() {
 
 // Clear all
 $('#clear-filters-btn').addEventListener('click', () => {
+  window._editingFilterIdx = null; // POD3-GS: Prevent auto-save from wiping saved filter
   whatPills = [];
   wherePills = [];
   whenPills = [];
@@ -906,7 +907,24 @@ function renderSavedFilters() {
   // Sort by last used (most recent first)
   const sorted = [...savedFilters]
     .map((sf, i) => ({ ...sf, _idx: i }))
-    .filter(sf => !query || sf.name.toLowerCase().includes(query))
+    .filter(sf => {
+      if (!query) return true;
+      // POD3-GS: Search filter names AND pill values
+      if (sf.name.toLowerCase().includes(query)) return true;
+      // Search all pill arrays for matching values
+      const allPillArrays = [
+        sf.whatPills || sf.pills || [], sf.wherePills || [], sf.whenPills || [],
+        sf.whoPills || [], sf.payPills || [], sf.whatNotPills || [],
+        sf.whereNotPills || [], sf.whoNotPills || [], sf.skillsPills || [],
+        sf.levelPills || [], sf.jdPills || [], sf.deptPills || []
+      ];
+      for (const pills of allPillArrays) {
+        for (const p of pills) {
+          if (p.values && p.values.some(v => v.toLowerCase().includes(query))) return true;
+        }
+      }
+      return false;
+    })
     .sort((a, b) => (b.lastUsed || 0) - (a.lastUsed || 0));
 
   if (sorted.length === 0) {
@@ -921,26 +939,11 @@ function renderSavedFilters() {
     <div style="width:16px;"></div>
     <div style="flex:1;font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">Filter</div>
     <div style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0;">
-      <div class="sf-item-counts">
-        <span class="sf-count" style="font-size:9px;font-weight:700;color:var(--text-faint);">1D</span>
-        <span class="sf-count" style="font-size:9px;font-weight:700;color:var(--text-faint);">7D</span>
-        <span class="sf-count" style="font-size:9px;font-weight:700;color:var(--text-faint);">30D</span>
-      </div>
       <div style="width:48px;"></div>
     </div>
   </div>` + sorted.map(sf => {
     const ago = sf.createdAt ? timeAgo(sf.createdAt) : '';
     const meta = ago ? `created ${ago}` : '';
-    const jToday = sf.jobsToday || '—';
-    const jWeek = sf.jobsWeek || '—';
-    const jMonth = sf.jobsMonth || '—';
-    const trendBadge = (sf.trendPct !== undefined && Math.abs(sf.trendPct) >= 5 && sf.jobsPrevWeek > 0)
-      ? (() => {
-          var c = sf.trendPct > 0 ? '#4a9a6b' : '#c06060';
-          var a = sf.trendPct > 0 ? '↑' : '↓';
-          return '<span class="sf-trend-badge" style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;margin-left:4px;background:' + c + '15;color:' + c + ';border:1px solid ' + c + '30;" title="vs previous 7 days">' + a + Math.abs(sf.trendPct) + '%</span>';
-        })()
-      : '';
 
     // Build mini pill HTML from saved filter criteria
     let miniPills = '';
@@ -1025,12 +1028,6 @@ function renderSavedFilters() {
         return `<div style="display:flex;gap:3px;flex-wrap:wrap;align-items:center;">${badges}${otherLabel}</div>`;
       })()}
       <div class="sf-right" style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0;">
-        <div class="sf-item-counts">
-          <span class="sf-count sf-count-today">${jToday}</span>
-          <span class="sf-count sf-count-week">${jWeek}</span>
-          <span class="sf-count sf-count-month">${jMonth}</span>
-        </div>
-        ${trendBadge}
         <span class="sf-dup" data-dupidx="${sf._idx}" title="Duplicate filter" style="font-size:11px;color:var(--text-faint);cursor:pointer;padding:2px 4px;opacity:0;transition:opacity 0.1s;">⧉</span>
         <span class="sf-health-btn" data-idx="${sf._idx}" title="Filter health & suggestions" style="font-size:10px;color:var(--text-faint);cursor:pointer;padding:2px 4px;opacity:0;transition:opacity 0.1s;">💡</span>
         <span class="sf-levels-btn" data-idx="${sf._idx}" title="${sf.assignedLevels?.length ? sf.assignedLevels.length + ' levels assigned — click to edit' : sf.levelHierarchy ? 'Custom levels — click to edit' : 'Assign levels to this filter'}" style="font-size:10px;color:${sf.assignedLevels?.length ? 'var(--green)' : sf.levelHierarchy ? 'var(--accent)' : 'var(--text-faint)'};cursor:pointer;padding:2px 4px;opacity:${sf.assignedLevels?.length || sf.levelHierarchy ? '0.8' : '0'};transition:opacity 0.1s;">⚙</span>

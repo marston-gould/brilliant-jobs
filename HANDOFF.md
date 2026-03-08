@@ -52,6 +52,24 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**POD3-SF** — Saved Filters UX Fixes
+- Completed: 2026-03-08
+- Product version bumped: `v7.80` → `v7.81` (JS changes — location.js, query-builder.js; all HTML surfaces cache-busted)
+- ROADMAP.md updated: POD3-SF → ✅
+- roadmap.html updated: POD3-SF → `s: 'done'`, p: 100
+- **3 issues resolved:**
+  - (1) Removed 1D/7D/30D column headers and per-row counts/trend badges from saved filters list in renderSavedFilters()
+  - (2) Pill changes auto-save: when `_editingFilterIdx` is set, renderAllPills() writes current pills back to `savedFilters[idx]` and persists via saveUserData(). `debouncedSearchJobs()` called unconditionally (not gated on `allPills() > 0`). Clear All button clears `_editingFilterIdx` to prevent accidental overwrites. Auto-save does NOT call renderSavedFilters() to preserve checkbox state.
+  - (3) Saved filter search now checks all pill arrays (whatPills, wherePills, whenPills, whoPills, payPills, whatNotPills, whereNotPills, whoNotPills, skillsPills, levelPills, jdPills, deptPills) for substring matches in addition to filter names.
+- **Created:**
+  - `tests/pod3-sf-ux-fixes.test.js` — 21 validation tests (4 sections)
+- **Modified:**
+  - `js/location.js` — renderSavedFilters: removed 1D/7D/30D headers + row counts + trend badge template; search expanded to pill values; Clear All clears _editingFilterIdx
+  - `js/query-builder.js` — renderAllPills: auto-save to saved filter when _editingFilterIdx set; debouncedSearchJobs() unconditional
+  - `ROADMAP.md` — POD3-SF → ✅
+  - `roadmap.html` — POD3-SF → done/100
+- **Tests:** 21 POD3-SF validation tests (all passing)
+
 **POD3-GS** — Get Started + Setup Page Consolidation & UX Defect Resolution
 - Completed: 2026-03-08
 - Git tag: `dashboard@3.2.0-gs-setup-consolidation`
@@ -825,7 +843,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.80`** | **POD3-GS — Get Started + Setup Page Consolidation** |
+| **Product (BJ_VERSION)** | **`v7.81`** | **POD3-SF — Saved Filters UX Fixes** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
