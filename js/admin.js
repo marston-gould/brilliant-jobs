@@ -64,6 +64,7 @@ var ADMIN_SUBPAGE_MAP = {
   'monitoring':     { section: 'operations',  label: 'Monitoring',     init: function(){ loadMonitoringPanel(); } },
   'alerts':         { section: 'operations',  label: 'Alerts',         init: function(){ loadAlertsPanel(); } },
   'error-replay':   { section: 'operations',  label: 'Error Replay',   init: function(){ loadErrorReplayPanel(); } },
+  'client-errors':  { section: 'operations',  label: 'Client Errors',  init: function(){ loadClientErrorsPanel(); } },
   'ef-health':      { section: 'operations',  label: 'EF Health',      init: function(){ loadEfHealthPanel(); } },
   'db-activity':    { section: 'operations',  label: 'DB Activity',    init: function(){ loadDbActivityPanel(); } },
   'posthog-insights':{ section: 'operations',  label: 'PostHog Insights',init: function(){ loadPostHogInsightsPanel(); } },

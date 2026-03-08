@@ -244,6 +244,72 @@ async function _collectMetrics(
     logger.warn(`Failed to collect latency metrics: ${(e as Error).message}`);
   }
 
+  // DO-001: Client errors from client_errors table
+  try {
+    const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
+    const fiveMinAgo = new Date(Date.now() - 300000).toISOString();
+
+    // Errors in last hour
+    const { count: errCount1h } = await sb
+      .from('client_errors')
+      .select('*', { count: 'exact', head: true })
+      .gte('created_at', oneHourAgo);
+    metrics['client_errors_1h'] = errCount1h || 0;
+
+    // Fatal errors in last hour
+    const { count: fatalCount1h } = await sb
+      .from('client_errors')
+      .select('*', { count: 'exact', head: true })
+      .eq('severity', 'fatal')
+      .gte('created_at', oneHourAgo);
+    metrics['client_errors_fatal_1h'] = fatalCount1h || 0;
+
+    // Errors in last 5 minutes (spike detection)
+    const { count: errCount5m } = await sb
+      .from('client_errors')
+      .select('*', { count: 'exact', head: true })
+      .gte('created_at', fiveMinAgo);
+    metrics['client_errors_5m'] = errCount5m || 0;
+
+    // Unique affected users in last hour
+    const { data: affectedRows } = await sb
+      .from('client_errors')
+      .select('user_id')
+      .gte('created_at', oneHourAgo)
+      .not('user_id', 'is', null)
+      .limit(1000);
+    if (affectedRows) {
+      const uniqueUsers = new Set(affectedRows.map((r: { user_id: string }) => r.user_id));
+      metrics['client_errors_affected_users_1h'] = uniqueUsers.size;
+    }
+
+    // Top error fingerprint in last hour (for details in alert email)
+    const { data: topErrors } = await sb
+      .from('client_errors')
+      .select('fingerprint, label, message')
+      .gte('created_at', oneHourAgo)
+      .order('created_at', { ascending: false })
+      .limit(500);
+    if (topErrors && topErrors.length > 0) {
+      const fpCounts: Record<string, { count: number; label: string; message: string }> = {};
+      for (const r of topErrors) {
+        const fp = r.fingerprint || 'unknown';
+        if (!fpCounts[fp]) fpCounts[fp] = { count: 0, label: r.label, message: r.message };
+        fpCounts[fp].count++;
+      }
+      const sorted = Object.entries(fpCounts).sort((a, b) => b[1].count - a[1].count);
+      if (sorted.length > 0) {
+        const top = sorted[0];
+        (metrics['client_errors_1h'] as any) = {
+          value: errCount1h || 0,
+          details: `Top error: ${top[1].label} — "${top[1].message?.substring(0, 80)}" (${top[1].count}x)`
+        };
+      }
+    }
+  } catch (e) {
+    logger.warn(`Failed to collect client_errors metrics: ${(e as Error).message}`);
+  }
+
   return metrics;
 }
 
