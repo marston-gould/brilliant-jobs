@@ -576,6 +576,7 @@ async function fetchAIScore(params) {
       upgradePrompt: data.upgrade_prompt
     };
   } catch (e) {
+    reportError('keywords', e);
     console.error('[BJ] AI score error, falling back to ngram:', e);
     return null;
   }
@@ -1371,6 +1372,7 @@ async function fetchGapInterview(gapAnalysis, resumeProfile) {
     if (data.error) { console.log('[BJ] Gap interview error:', data.error); return null; }
     return data.gap_questions || [];
   } catch (e) {
+    reportError('keywords', e);
     console.error('[BJ] Gap interview error:', e);
     return null;
   }
@@ -1801,6 +1803,7 @@ async function bjGenerateRewrite(stateKey, ri, fi) {
     bjShowRewriteResults(stateKey, ri, fi, data);
 
   } catch (e) {
+    reportError('keywords', e);
     console.error('[BJ] Rewrite exception:', e);
     if (btn) { btn.textContent = 'Error — try again'; btn.disabled = false; btn.style.opacity = '1'; btn.style.background = 'var(--red)'; }
   }
@@ -2043,6 +2046,7 @@ async function bjSubmitFeedback(stateKey) {
     bjShowRevisionAssessment(stateKey, state.feedback, assessment);
 
   } catch (e) {
+    reportError('keywords', e);
     console.error('[BJ] Revision assessment error:', e);
     bjShowRevisionAssessment(stateKey, state.feedback, null);
   }
@@ -2164,6 +2168,7 @@ async function bjRequestRevision(stateKey) {
     bjShowRewriteResults(stateKey, ri, fi, data);
 
   } catch (e) {
+    reportError('keywords', e);
     console.error('[BJ] Revision error:', e);
     if (btn) btn.innerHTML = '<div style="padding:8px;font-size:11px;color:var(--red);">Error: ' + escapeHtml(e.message) + '</div>';
   }
@@ -3586,6 +3591,7 @@ async function bjImproveFiltersFromHidden() {
     if (btn) { btn.disabled = false; bjUpdateImproveButton(); }
 
   } catch (e) {
+    reportError('keywords', e);
     console.error('[BJ] Improve filters error:', e);
     if (btn) { btn.disabled = false; bjUpdateImproveButton(); }
   }
@@ -3906,7 +3912,7 @@ async function bjRenderCoverLetterArchive() {
     });
     html += '</div>';
     container.innerHTML = html;
-  } catch (e) { console.error('[BJ] Cover letter archive error:', e); container.style.display = 'none'; }
+  } catch (e) { reportError('keywords', e); console.error('[BJ] Cover letter archive error:', e); container.style.display = 'none'; }
 }
 
 async function bjDeleteCoverLetter(id) {

@@ -73,6 +73,7 @@ window.loadResumeArchive = async function() {
 
     renderArchiveTable(archives || []);
   } catch (e) {
+    reportError('resume_archive', e);
     console.log('[BJ] Archive load error:', e.message);
     body.innerHTML = '<tr><td colspan="7" style="padding:32px;text-align:center;color:var(--red);">Failed to load archive: ' + e.message + '</td></tr>';
   }

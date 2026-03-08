@@ -227,6 +227,7 @@ async function encryptForStorage(plaintext: string, userId: string): Promise<str
     combined.set(new Uint8Array(encrypted), iv.length);
     return 'enc:' + btoa(String.fromCharCode.apply(null, combined));
   } catch (e: unknown) {
+    reportError('globals', e);
     console.warn('[BJ] Encryption failed, storing plaintext:', (e as Error).message);
     return plaintext;
   }
@@ -250,6 +251,7 @@ async function decryptFromStorage(ciphertext: string, userId: string): Promise<s
     var decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, data);
     return new TextDecoder().decode(decrypted);
   } catch (e: unknown) {
+    reportError('globals', e);
     console.warn('[BJ] Decryption failed (key mismatch or corruption):', (e as Error).message);
     return null;
   }
@@ -439,12 +441,13 @@ function saveUserData(lsKey: string, jsonStr: string): boolean {
   if (isPiiKey(lsKey) && currentUser) {
     encryptForStorage(jsonStr, currentUser.id).then(function(encrypted) {
       try { localStorage.setItem(lsKey, encrypted); }
-      catch (e) { console.error('[BJ] Storage full (encrypted):', (e as Error).message); _handleStorageFull(lsKey); }
+      catch (e) { reportError('globals', e); console.error('[BJ] Storage full (encrypted):', (e as Error).message); _handleStorageFull(lsKey); }
     });
   } else {
     try {
       localStorage.setItem(lsKey, jsonStr);
     } catch (e: unknown) {
+      reportError('globals', e);
       console.error('[BJ] Storage full! Failed to save ' + lsKey + ':', (e as Error).message);
       _handleStorageFull(lsKey);
       return false;
@@ -502,6 +505,7 @@ async function _flushUserData() {
     localStorage.setItem('_bj_ud_cache', JSON.stringify(cached));
     console.log('[sync] Flushed', Object.keys(patch).join(', '));
   } catch (e: unknown) {
+    reportError('globals', e);
     console.warn('[sync] Flush error:', (e as Error).message);
   }
 }
@@ -560,6 +564,7 @@ async function loadUserData(userId: string): Promise<void> {
       _flushUserData();
     }
   } catch (e: unknown) {
+    reportError('globals', e);
     console.warn('[sync] Load error:', (e as Error).message);
   }
 }
@@ -597,6 +602,7 @@ async function checkEntitlement(feature: string, usageCount: number): Promise<Re
     _entitlementCache[cacheKey] = data;
     return data;
   } catch (e: unknown) {
+    reportError('globals', e);
     console.warn('[entitlement] Error:', (e as Error).message);
     return { allowed: true, behavior: 'fixed', effective_limit: 99, remaining: 99 };
   }
@@ -707,6 +713,7 @@ async function enrichJob(jobId: string, data: Record<string, unknown>): Promise<
     });
     if (!resp.ok) console.warn('[enrich-job] Failed for', jobId, resp.status);
   } catch (e: unknown) {
+    reportError('globals', e);
     console.warn('[enrich-job] Error:', (e as Error).message);
   }
 }
@@ -852,6 +859,7 @@ async function cachedQuery(key: string, queryFn: () => Promise<unknown>, opts?: 
     if (_cacheDebug) console.log('[cache] MISS', key, '(' + (result.data ? result.data.length : 0) + ' rows)');
     return { data: result.data, count: result.count, cached: false };
   } catch (e: unknown) {
+    reportError('globals', e);
     console.warn('[cachedQuery] Failed for', key, (e as Error).message);
     if (entry) return { data: entry.data, count: entry.count, cached: true };
     return { data: null, count: null, cached: false };
@@ -971,6 +979,7 @@ async function prewarmRefCaches(): Promise<void> {
     ]);
     console.log('[BJ] Ref caches pre-warmed');
   } catch (e: unknown) {
+    reportError('globals', e);
     console.warn('[BJ] Ref cache pre-warm failed:', (e as Error).message);
   }
 }
@@ -1025,10 +1034,12 @@ async function withRetry<T>(fn: () => Promise<T>, opts?: { retries?: number; del
       return await fn();
     } catch (e: unknown) {
       if (attempt === maxRetries) {
+        reportError('globals', e);
         console.error('[BJ] ' + label + ' failed after ' + (maxRetries + 1) + ' attempts:', (e as Error).message);
         throw e;
       }
       var delay = baseDelay * Math.pow(2, attempt) + Math.random() * 500;
+      reportError('globals', e);
       console.warn('[BJ] ' + label + ' attempt ' + (attempt + 1) + ' failed, retrying in ' + Math.round(delay) + 'ms');
       await new Promise(function(resolve) { setTimeout(resolve, delay); });
     }
@@ -1052,6 +1063,7 @@ async function _drainRetryQueue(): Promise<void> {
       await queue[i].fn();
       console.log('[BJ] Retry succeeded: ' + queue[i].label);
     } catch (e: unknown) {
+      reportError('globals', e);
       console.warn('[BJ] Retry failed: ' + queue[i].label, (e as Error).message);
       // Don't re-queue items older than 10 minutes
       if (Date.now() - queue[i].addedAt < 600000) {

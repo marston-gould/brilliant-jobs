@@ -120,6 +120,7 @@ async function loadNotificationsTab() {
     container.innerHTML = html;
     renderSuppressionSection();
   } catch (e) {
+    reportError('admin_notifications', e);
     console.error('[Admin] Notifications tab error:', e);
     container.innerHTML = '<div class="admin-red">Error: ' + escapeHtml(String(e)) + '</div>';
   }
@@ -402,6 +403,7 @@ async function loadTemplatesTab() {
 
     container.innerHTML = html;
   } catch (e) {
+    reportError('admin_notifications', e);
     console.error('[Admin] Templates tab error:', e);
     container.innerHTML = '<div class="admin-red">Error: ' + escapeHtml(String(e)) + '</div>';
   }
@@ -1183,6 +1185,7 @@ async function loadNotifAnalyticsTab() {
     console.log('[Admin] Notification analytics loaded: ' + logs.length + ' events');
 
   } catch (e) {
+    reportError('admin_notifications', e);
     console.error('[Admin] Notification analytics error:', e);
     container.innerHTML = '<div class="admin-red">Failed to load analytics: ' + (e.message || e) + '</div>';
   }
@@ -1361,6 +1364,7 @@ async function initPushToggle() {
       toggle.checked = !!sub;
     }
   } catch (e) {
+    reportError('admin_notifications', e);
     console.warn('[Push] Init check failed:', e);
   }
 
@@ -1421,6 +1425,7 @@ async function subscribeToPush() {
       throw new Error(saveData.error || 'Failed to save subscription');
     }
   } catch (e) {
+    reportError('admin_notifications', e);
     console.error('[Push] Subscribe failed:', e);
     if (toggle) toggle.checked = false;
     if (e.name === 'NotAllowedError') {
@@ -1460,6 +1465,7 @@ async function unsubscribeFromPush() {
     console.log('[Push] Unsubscribed');
     if (typeof toastSuccess === 'function') toastSuccess('Push notifications disabled');
   } catch (e) {
+    reportError('admin_notifications', e);
     console.error('[Push] Unsubscribe error:', e);
   }
 }
@@ -1533,6 +1539,7 @@ async function loadEmailCohortsTab() {
     console.log('[Admin] Email cohort analytics loaded: ' + (logs || []).length + ' email events, ' + (cohorts || []).length + ' cohorts');
 
   } catch (e) {
+    reportError('admin_notifications', e);
     console.error('[Admin] Email cohort analytics error:', e);
     container.innerHTML = '<div style="padding:24px;color:#ef4444;font-size:13px">Failed to load: ' + (e.message || e) + '</div>';
   }
@@ -2089,6 +2096,7 @@ async function loadCadenceTab() {
     console.log('[Admin] Cadence optimization loaded: ' + (logs || []).length + ' email events analyzed');
 
   } catch (e) {
+    reportError('admin_notifications', e);
     console.error('[Admin] Cadence optimization error:', e);
     container.innerHTML = '<div style="padding:24px;color:#ef4444;font-size:13px">Failed to load: ' + (e.message || e) + '</div>';
   }
@@ -2465,6 +2473,7 @@ async function saveCadenceSettings() {
     _cadenceState.settings.reengagement_tier3_days = tier3;
     if (typeof toastSuccess === 'function') toastSuccess('Thresholds saved');
   } catch (e) {
+    reportError('admin_notifications', e);
     console.error('[Cadence] Save error:', e);
     if (typeof toastError === 'function') toastError('Save failed: ' + (e.message || e));
   }
@@ -2479,6 +2488,7 @@ async function toggleCadenceAutoAdjust(enabled) {
     if (error) throw error;
     _cadenceState.settings.auto_adjust_enabled = enabled;
   } catch (e) {
+    reportError('admin_notifications', e);
     console.error('[Cadence] Toggle error:', e);
   }
 }
@@ -2524,6 +2534,7 @@ async function applyCadenceAnalysis() {
     if (container) renderCadenceTab(container);
     if (typeof toastSuccess === 'function') toastSuccess('Analysis applied to settings');
   } catch (e) {
+    reportError('admin_notifications', e);
     console.error('[Cadence] Apply error:', e);
     if (typeof toastError === 'function') toastError('Apply failed: ' + (e.message || e));
   }
@@ -2671,6 +2682,7 @@ async function _renderNotifLog() {
     container.innerHTML = html;
 
   } catch (e) {
+    reportError('admin_notifications', e);
     console.error('[Admin] Notif log error:', e);
     var container2 = document.getElementById('admin-panel-notif-log');
     if (container2) container2.innerHTML = '<div style="color:#ef4444;padding:16px">Failed to load notification log: ' + _escHtml(e.message || String(e)) + '</div>';

@@ -181,6 +181,7 @@ async function saveAiScoringPrefs() {
     if (error) throw error;
     if (typeof showToast === 'function') showToast('AI scoring preferences updated', { type: 'success' });
   } catch (e) {
+    reportError('settings', e);
     console.error('[BJ] AI prefs save error:', e);
     if (typeof showToast === 'function') showToast('Failed to save AI preferences', { type: 'error' });
   }
@@ -332,7 +333,7 @@ async function submitFeedback() {
         const { data: urlData } = sb.storage.from('feedback-uploads').getPublicUrl(path);
         if (urlData?.publicUrl) imageUrls.push(urlData.publicUrl);
       }
-    } catch (e) { console.warn('[BJ] File upload failed:', e); toastError('File upload failed'); }
+    } catch (e) { reportError('settings', e); console.warn('[BJ] File upload failed:', e); toastError('File upload failed'); }
   }
 
   const payload = {
@@ -366,6 +367,7 @@ async function submitFeedback() {
     $('#fb-form-view').style.display = 'none';
     $('#fb-success-view').style.display = 'flex';
   } catch (e) {
+    reportError('settings', e);
     console.error('[BJ] Feedback submit error:', e); toastError('Failed to submit feedback');
     showToast('Failed to submit feedback. Please try again.', { type: 'error' });
     btn.disabled = false;
@@ -442,6 +444,7 @@ async function savePassiveMode() {
     await syncPassiveNotificationChannels();
     if (typeof showToast === 'function') showToast('Mode saved', { type: 'success' });
   } catch (e) {
+    reportError('settings', e);
     console.error('[BJ] Passive mode save error:', e);
     if (typeof showToast === 'function') showToast('Failed to save passive mode', { type: 'error' });
   }

@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v7.63';
+var BJ_VERSION = 'v7.64';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -244,6 +244,7 @@ async function encryptForStorage(plaintext: string, userId: string): Promise<str
     combined.set(new Uint8Array(encrypted), iv.length);
     return 'enc:' + btoa(String.fromCharCode.apply(null, combined));
   } catch (e: unknown) {
+    reportError('globals', e);
     console.warn('[BJ] Encryption failed, storing plaintext:', (e as Error).message);
     return plaintext;
   }
@@ -267,6 +268,7 @@ async function decryptFromStorage(ciphertext: string, userId: string): Promise<s
     var decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, data);
     return new TextDecoder().decode(decrypted);
   } catch (e: unknown) {
+    reportError('globals', e);
     console.warn('[BJ] Decryption failed (key mismatch or corruption):', (e as Error).message);
     return null;
   }
@@ -456,12 +458,13 @@ function saveUserData(lsKey: string, jsonStr: string): boolean {
   if (isPiiKey(lsKey) && currentUser) {
     encryptForStorage(jsonStr, currentUser.id).then(function(encrypted) {
       try { localStorage.setItem(lsKey, encrypted); }
-      catch (e) { console.error('[BJ] Storage full (encrypted):', (e as Error).message); _handleStorageFull(lsKey); }
+      catch (e) { reportError('globals', e); console.error('[BJ] Storage full (encrypted):', (e as Error).message); _handleStorageFull(lsKey); }
     });
   } else {
     try {
       localStorage.setItem(lsKey, jsonStr);
     } catch (e: unknown) {
+      reportError('globals', e);
       console.error('[BJ] Storage full! Failed to save ' + lsKey + ':', (e as Error).message);
       _handleStorageFull(lsKey);
       return false;
@@ -519,6 +522,7 @@ async function _flushUserData() {
     localStorage.setItem('_bj_ud_cache', JSON.stringify(cached));
     console.log('[sync] Flushed', Object.keys(patch).join(', '));
   } catch (e: unknown) {
+    reportError('globals', e);
     console.warn('[sync] Flush error:', (e as Error).message);
   }
 }
@@ -577,6 +581,7 @@ async function loadUserData(userId: string): Promise<void> {
       _flushUserData();
     }
   } catch (e: unknown) {
+    reportError('globals', e);
     console.warn('[sync] Load error:', (e as Error).message);
   }
 }
@@ -614,6 +619,7 @@ async function checkEntitlement(feature: string, usageCount: number): Promise<Re
     _entitlementCache[cacheKey] = data;
     return data;
   } catch (e: unknown) {
+    reportError('globals', e);
     console.warn('[entitlement] Error:', (e as Error).message);
     return { allowed: true, behavior: 'fixed', effective_limit: 99, remaining: 99 };
   }
@@ -724,6 +730,7 @@ async function enrichJob(jobId: string, data: Record<string, unknown>): Promise<
     });
     if (!resp.ok) console.warn('[enrich-job] Failed for', jobId, resp.status);
   } catch (e: unknown) {
+    reportError('globals', e);
     console.warn('[enrich-job] Error:', (e as Error).message);
   }
 }
@@ -869,6 +876,7 @@ async function cachedQuery(key: string, queryFn: () => Promise<unknown>, opts?: 
     if (_cacheDebug) console.log('[cache] MISS', key, '(' + (result.data ? result.data.length : 0) + ' rows)');
     return { data: result.data, count: result.count, cached: false };
   } catch (e: unknown) {
+    reportError('globals', e);
     console.warn('[cachedQuery] Failed for', key, (e as Error).message);
     if (entry) return { data: entry.data, count: entry.count, cached: true };
     return { data: null, count: null, cached: false };
@@ -988,6 +996,7 @@ async function prewarmRefCaches(): Promise<void> {
     ]);
     console.log('[BJ] Ref caches pre-warmed');
   } catch (e: unknown) {
+    reportError('globals', e);
     console.warn('[BJ] Ref cache pre-warm failed:', (e as Error).message);
   }
 }
@@ -1042,10 +1051,12 @@ async function withRetry<T>(fn: () => Promise<T>, opts?: { retries?: number; del
       return await fn();
     } catch (e: unknown) {
       if (attempt === maxRetries) {
+        reportError('globals', e);
         console.error('[BJ] ' + label + ' failed after ' + (maxRetries + 1) + ' attempts:', (e as Error).message);
         throw e;
       }
       var delay = baseDelay * Math.pow(2, attempt) + Math.random() * 500;
+      reportError('globals', e);
       console.warn('[BJ] ' + label + ' attempt ' + (attempt + 1) + ' failed, retrying in ' + Math.round(delay) + 'ms');
       await new Promise(function(resolve) { setTimeout(resolve, delay); });
     }
@@ -1069,6 +1080,7 @@ async function _drainRetryQueue(): Promise<void> {
       await queue[i].fn();
       console.log('[BJ] Retry succeeded: ' + queue[i].label);
     } catch (e: unknown) {
+      reportError('globals', e);
       console.warn('[BJ] Retry failed: ' + queue[i].label, (e as Error).message);
       // Don't re-queue items older than 10 minutes
       if (Date.now() - queue[i].addedAt < 600000) {
@@ -2297,6 +2309,7 @@ async function initSession() {
     sessionStorage.setItem('bj_session_id', sessionId);
     return sessionId;
   } catch (e) {
+    reportError('app', e);
     console.error('[BJ] Session init error:', e);
     return null;
   }
@@ -4153,6 +4166,7 @@ async function searchJobs(page = 0) {
     }
 
   } catch (e) {
+    reportError('job_feed', e);
     console.error('Search error:', e);
     if (typeof toastError === 'function') toastError('Job search failed. Please try again.');
     tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--red);padding:32px 12px;">
@@ -4287,6 +4301,7 @@ async function updateJobStatsFromFilters(filters) {
     if (total > 0 && companyCount > total) companyCount = total;
     updateJobStats(total, companyCount, newSinceLoginCount, todayCount);
   } catch (e) {
+    reportError('job_feed', e);
     console.error('Stats update error:', e);
     // Fallback: compute from loaded jobs if available
     try {
@@ -6711,6 +6726,7 @@ async function fetchAIScore(params) {
       upgradePrompt: data.upgrade_prompt
     };
   } catch (e) {
+    reportError('keywords', e);
     console.error('[BJ] AI score error, falling back to ngram:', e);
     return null;
   }
@@ -7506,6 +7522,7 @@ async function fetchGapInterview(gapAnalysis, resumeProfile) {
     if (data.error) { console.log('[BJ] Gap interview error:', data.error); return null; }
     return data.gap_questions || [];
   } catch (e) {
+    reportError('keywords', e);
     console.error('[BJ] Gap interview error:', e);
     return null;
   }
@@ -7936,6 +7953,7 @@ async function bjGenerateRewrite(stateKey, ri, fi) {
     bjShowRewriteResults(stateKey, ri, fi, data);
 
   } catch (e) {
+    reportError('keywords', e);
     console.error('[BJ] Rewrite exception:', e);
     if (btn) { btn.textContent = 'Error — try again'; btn.disabled = false; btn.style.opacity = '1'; btn.style.background = 'var(--red)'; }
   }
@@ -8178,6 +8196,7 @@ async function bjSubmitFeedback(stateKey) {
     bjShowRevisionAssessment(stateKey, state.feedback, assessment);
 
   } catch (e) {
+    reportError('keywords', e);
     console.error('[BJ] Revision assessment error:', e);
     bjShowRevisionAssessment(stateKey, state.feedback, null);
   }
@@ -8299,6 +8318,7 @@ async function bjRequestRevision(stateKey) {
     bjShowRewriteResults(stateKey, ri, fi, data);
 
   } catch (e) {
+    reportError('keywords', e);
     console.error('[BJ] Revision error:', e);
     if (btn) btn.innerHTML = '<div style="padding:8px;font-size:11px;color:var(--red);">Error: ' + escapeHtml(e.message) + '</div>';
   }
@@ -9721,6 +9741,7 @@ async function bjImproveFiltersFromHidden() {
     if (btn) { btn.disabled = false; bjUpdateImproveButton(); }
 
   } catch (e) {
+    reportError('keywords', e);
     console.error('[BJ] Improve filters error:', e);
     if (btn) { btn.disabled = false; bjUpdateImproveButton(); }
   }
@@ -10041,7 +10062,7 @@ async function bjRenderCoverLetterArchive() {
     });
     html += '</div>';
     container.innerHTML = html;
-  } catch (e) { console.error('[BJ] Cover letter archive error:', e); container.style.display = 'none'; }
+  } catch (e) { reportError('keywords', e); console.error('[BJ] Cover letter archive error:', e); container.style.display = 'none'; }
 }
 
 async function bjDeleteCoverLetter(id) {
@@ -11292,6 +11313,7 @@ async function loadAiAggregationHealth() {
     }
 
   } catch (e) {
+    reportError('browsers', e);
     console.warn('[BJ] AI aggregation health check failed:', e.message);
     panel.style.display = 'none';
   }
@@ -11862,7 +11884,7 @@ async function searchCompaniesForNot(query) {
         name: c.name || c.slug, slug: c.slug, source: 'ats', ats: c.source || 'greenhouse'
       }));
     }
-  } catch (e) { console.warn('[BJ] ATS company search (not) failed:', e); }
+  } catch (e) { reportError('location', e); console.warn('[BJ] ATS company search (not) failed:', e); }
 
   try {
     const { data: connData } = await sb
@@ -11886,7 +11908,7 @@ async function searchCompaniesForNot(query) {
           }
         });
     }
-  } catch (e) { console.warn('[BJ] Connection company search (not) failed:', e); }
+  } catch (e) { reportError('location', e); console.warn('[BJ] Connection company search (not) failed:', e); }
 
   renderCompanyNotDropdown(results, query);
 }
@@ -12792,6 +12814,7 @@ async function handleAiResumeUpload(file) {
     _doAiFilterAnalysis();
     
   } catch (err) {
+    reportError('location', err);
     console.error('[AI Filter Upload]', err);
     body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">Upload failed: ' + err.message + '</div>';
   }
@@ -12862,6 +12885,7 @@ async function _doAiFilterAnalysis() {
     renderAiFilterPreview(data);
     
   } catch (err) {
+    reportError('location', err);
     console.error('[AI Filter]', err);
     body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">Error: ' + err.message + '</div>';
   }
@@ -13099,6 +13123,7 @@ async function loadPendingSignals() {
       posthog.capture('signal_detected', { count: sigCount, sources: sources });
     }
   } catch (e) {
+    reportError('pipeline', e);
     console.error('[BJ] Signal load error:', e); toastError('Failed to load pipeline signals');
   }
 }
@@ -13134,6 +13159,7 @@ async function confirmPipelineSignal(signalId, action, correctedStage) {
     await loadPipelineFromSupabase();
     renderPipeline();
   } catch (e) {
+    reportError('pipeline', e);
     console.error('[BJ] Signal confirm error:', e); toastError('Failed to update signal');
   }
 }
@@ -13199,6 +13225,7 @@ async function loadPipelineFromSupabase() {
     _pipelineLoaded = true;
     console.log('[BJ] Pipeline loaded from Supabase:', data?.length || 0, 'entries');
   } catch (e) {
+    reportError('pipeline', e);
     console.error('[BJ] Pipeline load error:', e); toastError('Failed to load your pipeline');
     // Fallback: try localStorage if Supabase fails
     _pipelineCache = safeReadLS('bj_pipeline_meta', {});
@@ -13223,6 +13250,7 @@ async function loadNewPipelineFromSupabase() {
     window._newPipelineLoaded = true;
     console.log('[BJ] New pipeline table loaded:', data?.length || 0, 'entries');
   } catch (e) {
+    reportError('pipeline', e);
     console.warn('[BJ] New pipeline load error (non-fatal):', e);
   }
 }
@@ -13274,6 +13302,7 @@ async function saveToNewPipeline(entry) {
     _newPipelineCache[entry.source_url] = { ...row, id: data?.id || existing?.id };
     window._newPipelineCache = _newPipelineCache; // keep window ref in sync
   } catch (e) {
+    reportError('pipeline', e);
     console.warn('[BJ] New pipeline write error (non-fatal):', e);
   }
 }
@@ -13335,6 +13364,7 @@ async function savePipelineEntry(jobId, meta) {
       }
     }
   } catch (e) {
+    reportError('pipeline', e);
     console.error('[BJ] Pipeline save error:', e); toastError('Failed to save pipeline changes');
   }
 }
@@ -13379,7 +13409,7 @@ async function migratePipelineToSupabase() {
       const data = await safeQuery(() => sb.from('ats_jobs').select('greenhouse_id, title, company_name, ats_source, status')
         .in('greenhouse_id', batch), { label: 'pipeline:ats_jobs', fallback: [] });
       if (data) data.forEach(j => { jobMap[j.greenhouse_id] = j; });
-    } catch (e) { console.error('[BJ] Migration fetch error:', e); toastWarning('Pipeline migration data fetch failed'); }
+    } catch (e) { reportError('pipeline', e); console.error('[BJ] Migration fetch error:', e); toastWarning('Pipeline migration data fetch failed'); }
   }
 
   // Build rows
@@ -13618,7 +13648,7 @@ async function renderPipeline() {
       const data = await safeQuery(() => sb.from('ats_jobs').select('greenhouse_id, title, company_name, location, loc_display, status, closed_at, first_seen_at, content, salary_min, salary_max')
         .in('greenhouse_id', batch), { label: 'pipeline:ats_jobs', fallback: [] });
       if (data) allJobData = allJobData.concat(data);
-    } catch (e) { console.error('[BJ] Pipeline fetch error:', e); toastWarning('Some pipeline job details failed to load'); }
+    } catch (e) { reportError('pipeline', e); console.error('[BJ] Pipeline fetch error:', e); toastWarning('Some pipeline job details failed to load'); }
   }
 
   const jobMap = {};
@@ -13990,6 +14020,7 @@ async function renderGhostMonitor() {
     tbody.innerHTML = html;
 
   } catch (err) {
+    reportError('pipeline', err);
     console.error('[BJ] Ghost monitor error:', err); toastWarning('Ghost monitor failed to load');
     tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--red);padding:32px;">Error loading ghost data: ' + (err.message || 'unknown') + '</td></tr>';
   }
@@ -14073,7 +14104,7 @@ function showCustomReminder(jobId) {
   meta.custom_reminder_at = date.toISOString();
   sb.from('user_pipeline').update({ custom_reminder_at: date.toISOString() }).eq('id', meta._dbId)
     .then(() => renderPipeline())
-    .catch(e => { console.error('[BJ] Custom reminder error:', e); toastError('Failed to set reminder'); });
+    .catch(e => { reportError('pipeline', e); console.error('[BJ] Custom reminder error:', e); toastError('Failed to set reminder'); });
 }
 
 function showStatusNote(jobId) {
@@ -14084,7 +14115,7 @@ function showStatusNote(jobId) {
   meta.status_note = note || null;
   sb.from('user_pipeline').update({ status_note: note || null }).eq('id', meta._dbId)
     .then(() => renderPipeline())
-    .catch(e => { console.error('[BJ] Status note error:', e); toastError('Failed to save note'); });
+    .catch(e => { reportError('pipeline', e); console.error('[BJ] Status note error:', e); toastError('Failed to save note'); });
 }
 
 // ── Manual Pipeline Entry ────────────────────────────────────
@@ -14176,6 +14207,7 @@ async function saveManualPipelineEntry() {
     renderPipeline();
     console.log('[BJ] Manual pipeline entry added:', manualId);
   } catch (e) {
+    reportError('pipeline', e);
     console.error('[BJ] Manual add error:', e); toastError('Failed to add pipeline entry');
     alert('Failed to add: ' + (e.message || 'Unknown error'));
   }
@@ -14233,6 +14265,7 @@ async function findRecruiters(jobId) {
       toastWarning('No recruiter contacts found for ' + company);
     }
   } catch (e) {
+    reportError('pipeline', e);
     console.error('[BJ] Recruiter lookup error:', e);
     toastError('Recruiter lookup failed: ' + e.message);
   } finally {
@@ -14305,6 +14338,7 @@ async function loadRecruiterContacts() {
     });
     return byCompany;
   } catch (e) {
+    reportError('pipeline', e);
     console.error('[BJ] Load recruiter contacts error:', e);
     return {};
   }
@@ -15082,6 +15116,7 @@ async function loadIndustryCache() {
       return sb.from('ref_industries').select('name, category').order('name');
     }, { ttl: 3600000 }) || [];
   } catch (e) {
+    reportError('tuning', e);
     console.warn('[BJ] Failed to load industries:', e);
     industryCache = [];
   }
@@ -15848,6 +15883,7 @@ async function analyzeHiddenJob(jobId, btn) {
     renderAnalyzeHiddenPreview(data, hidden);
     
   } catch (err) {
+    reportError('tuning', err);
     console.error('[Analyze Hidden]', err);
     body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">Error: ' + err.message + '</div>';
   }
@@ -16502,7 +16538,7 @@ window.archiveResume = async function(idx) {
         .update({ is_active: false, is_archived: true, archived_at: new Date().toISOString() })
         .eq('resume_id', resumes[idx].archiveId);
       if (error) { showToast('Failed to archive — please try again.', { type: 'error' }); console.error('[resume-sync] Archive DB write failed:', error); return; }
-    } catch (e) { showToast('Failed to archive — please try again.', { type: 'error' }); console.error('[resume-sync] Archive DB write exception:', e); return; }
+    } catch (e) { showToast('Failed to archive — please try again.', { type: 'error' }); reportError('resumes', e); console.error('[resume-sync] Archive DB write exception:', e); return; }
   }
   resumes[idx].archived = true;
   resumes[idx].archivedAt = new Date().toLocaleDateString();
@@ -16519,7 +16555,7 @@ window.unarchiveResume = async function(idx) {
         .update({ is_active: true, is_archived: false, archived_at: null })
         .eq('resume_id', resumes[idx].archiveId);
       if (error) { showToast('Failed to restore — please try again.', { type: 'error' }); console.error('[resume-sync] Restore DB write failed:', error); return; }
-    } catch (e) { showToast('Failed to restore — please try again.', { type: 'error' }); console.error('[resume-sync] Restore DB write exception:', e); return; }
+    } catch (e) { showToast('Failed to restore — please try again.', { type: 'error' }); reportError('resumes', e); console.error('[resume-sync] Restore DB write exception:', e); return; }
   }
   resumes[idx].archived = false;
   delete resumes[idx].archivedAt;
@@ -16665,6 +16701,7 @@ async function extractTextFromPDF(file) {
     }
     return fullText.trim();
   } catch (e) {
+    reportError('resumes', e);
     console.error('[BJ] PDF text extraction failed:', e);
     if (typeof toastWarning === 'function') toastWarning('Could not extract text from PDF. Try re-uploading or use a different file format.');
     return '';
@@ -16688,6 +16725,7 @@ async function extractTextFromDOCX(fileOrBuffer) {
     const result = await mammoth.extractRawText({ arrayBuffer });
     return (result.value || '').trim();
   } catch (e) {
+    reportError('resumes', e);
     console.error('[BJ] DOCX text extraction failed:', e);
     return '';
   }
@@ -16799,7 +16837,7 @@ async function addResume(file) {
   clearEntitlementCache('resumes');
   renderResumes();
   // Store file blob in IndexedDB for downloads
-  bjFileStore.put(id, file).catch(e => console.warn('[BJ] File store error:', e));
+  bjFileStore.put(id, file).catch(e => { reportError('resumes', e); console.warn('[BJ] File store error:', e); });
 
   // Upload to Supabase Storage for cross-device persistence
   if (currentUser) {
@@ -16816,7 +16854,7 @@ async function addResume(file) {
         saveResumes();
         console.log('[resume-storage] Uploaded', storagePath);
       }
-    }).catch(e => console.warn('[resume-storage] Upload error:', e.message));
+    }).catch(e => { reportError('resumes', e); console.warn('[resume-storage] Upload error:', e.message); });
   }
 
   extractTextFromFile(file).then(text => {
@@ -16907,6 +16945,7 @@ async function scoreResumeAI(resumeId, text) {
     renderResumes();
     console.log('[ai-score] Resume scored:', resumeId, result?.ai_label, result?.ai_generated_score);
   } catch (e) {
+    reportError('resumes', e);
     console.warn('[ai-score] Resume scoring error:', e.message);
     const idx = resumes.findIndex(r => r.id === resumeId);
     if (idx >= 0) {
@@ -17262,7 +17301,7 @@ window.reUploadResume = function(idx) {
     renderResumes();
 
     // Store file blob in IndexedDB
-    bjFileStore.put(resumes[idx].id, file).catch(e => console.warn('[BJ] File store error:', e));
+    bjFileStore.put(resumes[idx].id, file).catch(e => { reportError('resumes', e); console.warn('[BJ] File store error:', e); });
 
     extractTextFromFile(file).then(text => {
       if (!resumes[idx]) return;
@@ -17517,6 +17556,7 @@ window.triggerGapAnalysis = async function(jobId, resumeId, outcome) {
       console.log('[BJ] Gap analysis recorded — ' + (result.gap_term_count || 0) + ' gap terms');
     }
   } catch (e) {
+    reportError('resumes', e);
     console.warn('[BJ] Gap analysis error (non-fatal):', e.message);
   }
 };
@@ -18202,6 +18242,7 @@ $('#phone-send-otp')?.addEventListener('click', async () => {
     btn.textContent = 'Resend Code';
     btn.disabled = false;
   } catch (e) {
+    reportError('applications', e);
     console.error('[Phone] OTP send failed:', e);
     $('#otp-status').textContent = 'Failed to send code: ' + (e.message || e);
     $('#otp-status').style.color = 'var(--red)';
@@ -18249,6 +18290,7 @@ $('#phone-verify-otp')?.addEventListener('click', async () => {
     btn.textContent = 'Verify';
     btn.disabled = false;
   } catch (e) {
+    reportError('applications', e);
     console.error('[Phone] Verify failed:', e);
     $('#otp-status').textContent = 'Invalid code. Try again.';
     $('#otp-status').style.color = 'var(--red)';
@@ -18292,6 +18334,7 @@ $('#notif-save-escalation')?.addEventListener('click', async () => {
     btn.textContent = 'Saved';
     setTimeout(() => { btn.textContent = 'Save Escalation Rules'; btn.disabled = false; }, 1500);
   } catch (e) {
+    reportError('applications', e);
     console.error('[Notif] Escalation save failed:', e);
     btn.textContent = 'Error — retry';
     btn.disabled = false;
@@ -18424,6 +18467,7 @@ $('#override-save')?.addEventListener('click', async () => {
     btn.textContent = 'Saved';
     setTimeout(() => { btn.textContent = 'Save Overrides'; btn.disabled = false; }, 1500);
   } catch (e) {
+    reportError('applications', e);
     console.error('[Notif] Override save failed:', e);
     btn.textContent = 'Error — retry';
     btn.disabled = false;
@@ -18900,6 +18944,7 @@ async function saveAiScoringPrefs() {
     if (error) throw error;
     if (typeof showToast === 'function') showToast('AI scoring preferences updated', { type: 'success' });
   } catch (e) {
+    reportError('settings', e);
     console.error('[BJ] AI prefs save error:', e);
     if (typeof showToast === 'function') showToast('Failed to save AI preferences', { type: 'error' });
   }
@@ -19051,7 +19096,7 @@ async function submitFeedback() {
         const { data: urlData } = sb.storage.from('feedback-uploads').getPublicUrl(path);
         if (urlData?.publicUrl) imageUrls.push(urlData.publicUrl);
       }
-    } catch (e) { console.warn('[BJ] File upload failed:', e); toastError('File upload failed'); }
+    } catch (e) { reportError('settings', e); console.warn('[BJ] File upload failed:', e); toastError('File upload failed'); }
   }
 
   const payload = {
@@ -19085,6 +19130,7 @@ async function submitFeedback() {
     $('#fb-form-view').style.display = 'none';
     $('#fb-success-view').style.display = 'flex';
   } catch (e) {
+    reportError('settings', e);
     console.error('[BJ] Feedback submit error:', e); toastError('Failed to submit feedback');
     showToast('Failed to submit feedback. Please try again.', { type: 'error' });
     btn.disabled = false;
@@ -19161,6 +19207,7 @@ async function savePassiveMode() {
     await syncPassiveNotificationChannels();
     if (typeof showToast === 'function') showToast('Mode saved', { type: 'success' });
   } catch (e) {
+    reportError('settings', e);
     console.error('[BJ] Passive mode save error:', e);
     if (typeof showToast === 'function') showToast('Failed to save passive mode', { type: 'error' });
   }
@@ -20025,7 +20072,7 @@ async function fetchAndRenderStats() {
       if (anyCapped) { notice.textContent = 'Based on ' + deduped.length.toLocaleString() + ' most recent matches'; notice.style.display = ''; }
       else { notice.style.display = 'none'; }
     }
-  } catch (err) { console.error('[Stats] Fetch error:', err); toastError('Failed to load stats data'); showEmptyState('error'); }
+  } catch (err) { reportError('stats', err); console.error('[Stats] Fetch error:', err); toastError('Failed to load stats data'); showEmptyState('error'); }
 }
 
 function getSelectedFilterConfigs() {
@@ -20051,7 +20098,7 @@ async function fetchFilterData(sf) {
     });
     if (cResult && cResult.error) { console.error('[Stats] Query error:', cResult.error); toastWarning('Stats query failed'); return []; }
     return (cResult && cResult.data) || [];
-  } catch (e) { console.error('[Stats] fetchFilterData:', e); toastWarning('Stats data failed to load'); return []; }
+  } catch (e) { reportError('stats', e); console.error('[Stats] fetchFilterData:', e); toastWarning('Stats data failed to load'); return []; }
 }
 
 // ─── Aggregation ───
@@ -21026,6 +21073,7 @@ async function loadCreditBalance() {
       checkLowCreditAlert(data);
     }
   } catch (e) {
+    reportError('billing', e);
     console.warn('[Billing] Failed to load credit balance:', e.message); toastWarning('Unable to load credit balance');
   }
 }
@@ -21043,6 +21091,7 @@ async function loadUserPricing() {
       renderUpgradeBanner(data);
     }
   } catch (e) {
+    reportError('billing', e);
     console.warn('[Billing] Failed to load pricing:', e.message); toastWarning('Unable to load pricing');
   }
 }
@@ -21078,6 +21127,7 @@ async function loadCreditHistory() {
       renderBurnRate(data);
     }
   } catch (e) {
+    reportError('billing', e);
     console.warn('[Billing] Failed to load credit history:', e.message); toastWarning('Unable to load credit history');
   }
 }
@@ -21377,6 +21427,7 @@ async function debitCreditsForAction(amount, costCategory, description, costCent
     }
     return data;
   } catch (e) {
+    reportError('billing', e);
     console.error('[Billing] debitCreditsForAction error:', e); toastError('Credit deduction failed');
     return { success: false, error: e.message };
   }
@@ -21404,6 +21455,7 @@ async function triggerAutoRefill() {
       showToast('Auto-refill failed: ' + (data.error || 'payment declined') + '. Check your payment method.', 'error');
     }
   } catch (e) {
+    reportError('billing', e);
     console.warn('[Billing] Auto-refill trigger error:', e); toastWarning('Auto-refill check failed');
   }
 }
@@ -21563,6 +21615,7 @@ async function loadHireFeeStatus() {
       activeEl.style.display = data.has_payment_method ? '' : 'none';
     }
   } catch (e) {
+    reportError('billing', e);
     console.warn('[Billing] Failed to load hire fee status:', e); toastWarning('Unable to load hire fee status');
   }
 }
@@ -21821,6 +21874,7 @@ function _initTierChangeListener() {
         body: JSON.stringify(payload)
       });
     } catch (e) {
+      reportError('micro_surveys', e);
       console.warn('[micro-survey] Submit failed:', e);
     }
   }
@@ -22221,6 +22275,7 @@ async function _rwStartAnalysis() {
     _rwRenderBody();
 
   } catch (e) {
+    reportError('rewrite', e);
     console.error('[rewrite] Analysis error:', e);
     _rwState.status = 'failed';
     _rwRenderError('Something went wrong. No credits were deducted. Please try again.');
@@ -22299,6 +22354,7 @@ async function _rwStartRewrite(feedback) {
     _rwRenderBody();
 
   } catch (e) {
+    reportError('rewrite', e);
     console.error('[rewrite] Execute error:', e);
     _rwState.status = 'failed';
     _rwRenderError('Something went wrong. Please try again.');
@@ -22374,6 +22430,7 @@ async function _rwAcceptAll() {
     closeRewritePanel();
 
   } catch (e) {
+    reportError('rewrite', e);
     console.error('[rewrite] Accept error:', e);
     showToast('Download failed: ' + e.message, { type: 'error' });
     if (acceptBtn) { acceptBtn.disabled = false; acceptBtn.textContent = 'Accept All'; }
@@ -22919,6 +22976,7 @@ window.loadResumeArchive = async function() {
 
     renderArchiveTable(archives || []);
   } catch (e) {
+    reportError('resume_archive', e);
     console.log('[BJ] Archive load error:', e.message);
     body.innerHTML = '<tr><td colspan="7" style="padding:32px;text-align:center;color:var(--red);">Failed to load archive: ' + e.message + '</td></tr>';
   }
@@ -23264,6 +23322,7 @@ async function populateResumeSelector() {
     });
     if (currentVal) sel.value = currentVal;
   } catch (e) {
+    reportError('resume_metrics', e);
     console.log('[BJ] Resume selector error:', e.message);
   }
 }
@@ -23319,6 +23378,7 @@ window.loadResumeMetrics = async function() {
       archiveLink.href = '#resumes?tab=archive&id=' + resumeId;
     }
   } catch (e) {
+    reportError('resume_metrics', e);
     console.log('[BJ] Metrics load error:', e.message);
   }
 };
@@ -24517,6 +24577,7 @@ async function sendChatMessage() {
 
   } catch (err) {
     showTypingIndicator(false);
+    reportError('chat', err);
     console.error('[BJ] Chat error:', err);
     appendChatBubble('assistant', 'Connection error. Please check your network and try again.');
   }
@@ -24948,6 +25009,7 @@ async function executeSavePrompt() {
     }
 
   } catch (err) {
+    reportError('chat', err);
     console.error('[BJ] Save prompt error:', err);
     if (typeof showToast === 'function') showToast('Save failed', 'error');
   } finally {
@@ -25453,6 +25515,7 @@ async function loadPendingApplications() {
       pendingApplications = data || [];
     }
   } catch (e) {
+    reportError('apply_workflow', e);
     console.error('[apply-workflow] Load pending apps exception:', e);
     pendingApplications = [];
   }
@@ -25473,6 +25536,7 @@ async function savePendingApplication(app) {
     }
     return data;
   } catch (e) {
+    reportError('apply_workflow', e);
     console.error('[apply-workflow] Insert pending app exception:', e);
     return null;
   }
@@ -25492,6 +25556,7 @@ async function updatePendingApplication(id, updates) {
     }
     return true;
   } catch (e) {
+    reportError('apply_workflow', e);
     console.error('[apply-workflow] Update pending app exception:', e);
     return false;
   }
@@ -25563,6 +25628,7 @@ async function callSubmitApplication(pendingApp, resumeFileId, resumeFilename) {
     if (e.name === 'TimeoutError' || e.name === 'AbortError') {
       return { ok: false, error: 'timeout' };
     }
+    reportError('apply_workflow', e);
     console.error('[apply-workflow] submit-application error:', e);
     return { ok: false, error: 'network_error' };
   }
@@ -25830,6 +25896,7 @@ async function scoreAndRecheck(jobId, jobTitle, companyName, jobUrl) {
     showScoreGateModal(jobId, jobTitle || '', companyName || '', jobUrl || '', data);
 
   } catch (e) {
+    reportError('apply_workflow', e);
     console.error('[apply-workflow] scoreAndRecheck error:', e);
     if (typeof showToast === 'function') showToast('Scoring failed. Please try again.', { type: 'error' });
   }
@@ -26060,6 +26127,7 @@ async function _fetchJdMatchScore(jobId) {
     jobMatchScores[jobId] = data;
     return data;
   } catch (e) {
+    reportError('apply_workflow', e);
     console.warn('[apply-workflow] JD match fetch failed:', e);
     return null;
   }
@@ -26568,6 +26636,7 @@ function updateApplySettingsVisibility(mode) {
         }
       }
     } catch (err) {
+      reportError('referrals', err);
       console.error('[Referrals] Init error:', err);
       container.innerHTML = '<div class="ref-empty">Unable to load referral data. Refresh to retry.</div>';
     }
@@ -26968,6 +27037,7 @@ Or use my code: ${referralStats.referral_code}`);
         </table>
       `;
     } catch (err) {
+      reportError('referrals', err);
       console.error('[Referrals] Leaderboard error:', err);
       body.innerHTML = '<div class="ref-empty">Unable to load leaderboard. Refresh to retry.</div>';
     }

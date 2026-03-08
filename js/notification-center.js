@@ -265,6 +265,7 @@ async function ncSaveOptInPreferences() {
     });
 
   } catch (e) {
+    reportError('notification_center', e);
     console.error('[NC] Opt-in save failed:', e);
     btn.textContent = 'Error — retry';
     btn.disabled = false;
@@ -452,6 +453,7 @@ async function ncResendConfirmation() {
       ncShowToast(data.error || 'Failed to resend. Please try again.', 'error');
     }
   } catch (e) {
+    reportError('notification_center', e);
     console.error('[NC] Resend confirmation failed:', e);
     ncShowToast('Failed to resend confirmation email.', 'error');
   }
@@ -654,6 +656,7 @@ async function ncLoadNotificationLog(page) {
     console.log('[NC] Notification log loaded: ' + rows.length + ' rows, page ' + page + '/' + Math.ceil(total / NC_LOG_PAGE_SIZE));
 
   } catch (err) {
+    reportError('notification_center', err);
     console.error('[NC] Failed to load notification log:', err);
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--red);padding:32px;">Failed to load notification log. Please try again.</td></tr>';
   }

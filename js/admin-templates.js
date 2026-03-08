@@ -25,6 +25,7 @@ async function _loadTemplates() {
     if (res.error) throw res.error;
     _tplList = res.data || [];
   } catch (e) {
+    reportError('admin_templates', e);
     console.warn('[Admin] notification_templates table unavailable, using built-ins:', e.message);
     _tplList = _builtInTemplates();
   }

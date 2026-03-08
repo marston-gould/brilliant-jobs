@@ -1030,6 +1030,7 @@ async function searchJobs(page = 0) {
     }
 
   } catch (e) {
+    reportError('job_feed', e);
     console.error('Search error:', e);
     if (typeof toastError === 'function') toastError('Job search failed. Please try again.');
     tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--red);padding:32px 12px;">
@@ -1164,6 +1165,7 @@ async function updateJobStatsFromFilters(filters) {
     if (total > 0 && companyCount > total) companyCount = total;
     updateJobStats(total, companyCount, newSinceLoginCount, todayCount);
   } catch (e) {
+    reportError('job_feed', e);
     console.error('Stats update error:', e);
     // Fallback: compute from loaded jobs if available
     try {

@@ -464,6 +464,7 @@ $('#phone-send-otp')?.addEventListener('click', async () => {
     btn.textContent = 'Resend Code';
     btn.disabled = false;
   } catch (e) {
+    reportError('applications', e);
     console.error('[Phone] OTP send failed:', e);
     $('#otp-status').textContent = 'Failed to send code: ' + (e.message || e);
     $('#otp-status').style.color = 'var(--red)';
@@ -511,6 +512,7 @@ $('#phone-verify-otp')?.addEventListener('click', async () => {
     btn.textContent = 'Verify';
     btn.disabled = false;
   } catch (e) {
+    reportError('applications', e);
     console.error('[Phone] Verify failed:', e);
     $('#otp-status').textContent = 'Invalid code. Try again.';
     $('#otp-status').style.color = 'var(--red)';
@@ -554,6 +556,7 @@ $('#notif-save-escalation')?.addEventListener('click', async () => {
     btn.textContent = 'Saved';
     setTimeout(() => { btn.textContent = 'Save Escalation Rules'; btn.disabled = false; }, 1500);
   } catch (e) {
+    reportError('applications', e);
     console.error('[Notif] Escalation save failed:', e);
     btn.textContent = 'Error — retry';
     btn.disabled = false;
@@ -686,6 +689,7 @@ $('#override-save')?.addEventListener('click', async () => {
     btn.textContent = 'Saved';
     setTimeout(() => { btn.textContent = 'Save Overrides'; btn.disabled = false; }, 1500);
   } catch (e) {
+    reportError('applications', e);
     console.error('[Notif] Override save failed:', e);
     btn.textContent = 'Error — retry';
     btn.disabled = false;

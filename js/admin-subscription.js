@@ -143,6 +143,7 @@ async function _loadSubMetrics() {
     }
 
   } catch (err) {
+    reportError('admin_subscription', err);
     console.error('[Admin] _loadSubMetrics error:', err);
     toastWarning('Subscription metrics unavailable');
   }
@@ -185,6 +186,7 @@ async function _loadSubNewTable() {
       '</tbody></table></div>';
 
   } catch (err) {
+    reportError('admin_subscription', err);
     console.error('[Admin] New subs table error:', err);
     el.innerHTML = '<div class="admin-red" style="font-size:13px">Failed to load new subscriptions</div>';
   }
@@ -228,6 +230,7 @@ async function _loadSubChurnTable() {
       '</tbody></table></div>';
 
   } catch (err) {
+    reportError('admin_subscription', err);
     console.error('[Admin] Churn table error:', err);
     el.innerHTML = '<div class="admin-red" style="font-size:13px">Failed to load churn data</div>';
   }
@@ -277,6 +280,7 @@ async function _loadSubMrrChart() {
     window.addEventListener('resize', function() { chart.resize(); });
 
   } catch (err) {
+    reportError('admin_subscription', err);
     console.error('[Admin] MRR chart error:', err);
     chart.setOption({ title: { text: 'MRR Trend', subtext: 'Chart error', left: 'center', top: 'center', textStyle: { color: '#d1d5db', fontSize: 13 } } });
   }

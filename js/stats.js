@@ -325,7 +325,7 @@ async function fetchAndRenderStats() {
       if (anyCapped) { notice.textContent = 'Based on ' + deduped.length.toLocaleString() + ' most recent matches'; notice.style.display = ''; }
       else { notice.style.display = 'none'; }
     }
-  } catch (err) { console.error('[Stats] Fetch error:', err); toastError('Failed to load stats data'); showEmptyState('error'); }
+  } catch (err) { reportError('stats', err); console.error('[Stats] Fetch error:', err); toastError('Failed to load stats data'); showEmptyState('error'); }
 }
 
 function getSelectedFilterConfigs() {
@@ -351,7 +351,7 @@ async function fetchFilterData(sf) {
     });
     if (cResult && cResult.error) { console.error('[Stats] Query error:', cResult.error); toastWarning('Stats query failed'); return []; }
     return (cResult && cResult.data) || [];
-  } catch (e) { console.error('[Stats] fetchFilterData:', e); toastWarning('Stats data failed to load'); return []; }
+  } catch (e) { reportError('stats', e); console.error('[Stats] fetchFilterData:', e); toastWarning('Stats data failed to load'); return []; }
 }
 
 // ─── Aggregation ───

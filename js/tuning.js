@@ -592,6 +592,7 @@ async function loadIndustryCache() {
       return sb.from('ref_industries').select('name, category').order('name');
     }, { ttl: 3600000 }) || [];
   } catch (e) {
+    reportError('tuning', e);
     console.warn('[BJ] Failed to load industries:', e);
     industryCache = [];
   }
@@ -1358,6 +1359,7 @@ async function analyzeHiddenJob(jobId, btn) {
     renderAnalyzeHiddenPreview(data, hidden);
     
   } catch (err) {
+    reportError('tuning', err);
     console.error('[Analyze Hidden]', err);
     body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">Error: ' + err.message + '</div>';
   }

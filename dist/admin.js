@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v7.63';
+var BJ_VERSION = 'v7.64';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -244,6 +244,7 @@ async function encryptForStorage(plaintext: string, userId: string): Promise<str
     combined.set(new Uint8Array(encrypted), iv.length);
     return 'enc:' + btoa(String.fromCharCode.apply(null, combined));
   } catch (e: unknown) {
+    reportError('globals', e);
     console.warn('[BJ] Encryption failed, storing plaintext:', (e as Error).message);
     return plaintext;
   }
@@ -267,6 +268,7 @@ async function decryptFromStorage(ciphertext: string, userId: string): Promise<s
     var decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, data);
     return new TextDecoder().decode(decrypted);
   } catch (e: unknown) {
+    reportError('globals', e);
     console.warn('[BJ] Decryption failed (key mismatch or corruption):', (e as Error).message);
     return null;
   }
@@ -456,12 +458,13 @@ function saveUserData(lsKey: string, jsonStr: string): boolean {
   if (isPiiKey(lsKey) && currentUser) {
     encryptForStorage(jsonStr, currentUser.id).then(function(encrypted) {
       try { localStorage.setItem(lsKey, encrypted); }
-      catch (e) { console.error('[BJ] Storage full (encrypted):', (e as Error).message); _handleStorageFull(lsKey); }
+      catch (e) { reportError('globals', e); console.error('[BJ] Storage full (encrypted):', (e as Error).message); _handleStorageFull(lsKey); }
     });
   } else {
     try {
       localStorage.setItem(lsKey, jsonStr);
     } catch (e: unknown) {
+      reportError('globals', e);
       console.error('[BJ] Storage full! Failed to save ' + lsKey + ':', (e as Error).message);
       _handleStorageFull(lsKey);
       return false;
@@ -519,6 +522,7 @@ async function _flushUserData() {
     localStorage.setItem('_bj_ud_cache', JSON.stringify(cached));
     console.log('[sync] Flushed', Object.keys(patch).join(', '));
   } catch (e: unknown) {
+    reportError('globals', e);
     console.warn('[sync] Flush error:', (e as Error).message);
   }
 }
@@ -577,6 +581,7 @@ async function loadUserData(userId: string): Promise<void> {
       _flushUserData();
     }
   } catch (e: unknown) {
+    reportError('globals', e);
     console.warn('[sync] Load error:', (e as Error).message);
   }
 }
@@ -614,6 +619,7 @@ async function checkEntitlement(feature: string, usageCount: number): Promise<Re
     _entitlementCache[cacheKey] = data;
     return data;
   } catch (e: unknown) {
+    reportError('globals', e);
     console.warn('[entitlement] Error:', (e as Error).message);
     return { allowed: true, behavior: 'fixed', effective_limit: 99, remaining: 99 };
   }
@@ -724,6 +730,7 @@ async function enrichJob(jobId: string, data: Record<string, unknown>): Promise<
     });
     if (!resp.ok) console.warn('[enrich-job] Failed for', jobId, resp.status);
   } catch (e: unknown) {
+    reportError('globals', e);
     console.warn('[enrich-job] Error:', (e as Error).message);
   }
 }
@@ -869,6 +876,7 @@ async function cachedQuery(key: string, queryFn: () => Promise<unknown>, opts?: 
     if (_cacheDebug) console.log('[cache] MISS', key, '(' + (result.data ? result.data.length : 0) + ' rows)');
     return { data: result.data, count: result.count, cached: false };
   } catch (e: unknown) {
+    reportError('globals', e);
     console.warn('[cachedQuery] Failed for', key, (e as Error).message);
     if (entry) return { data: entry.data, count: entry.count, cached: true };
     return { data: null, count: null, cached: false };
@@ -988,6 +996,7 @@ async function prewarmRefCaches(): Promise<void> {
     ]);
     console.log('[BJ] Ref caches pre-warmed');
   } catch (e: unknown) {
+    reportError('globals', e);
     console.warn('[BJ] Ref cache pre-warm failed:', (e as Error).message);
   }
 }
@@ -1042,10 +1051,12 @@ async function withRetry<T>(fn: () => Promise<T>, opts?: { retries?: number; del
       return await fn();
     } catch (e: unknown) {
       if (attempt === maxRetries) {
+        reportError('globals', e);
         console.error('[BJ] ' + label + ' failed after ' + (maxRetries + 1) + ' attempts:', (e as Error).message);
         throw e;
       }
       var delay = baseDelay * Math.pow(2, attempt) + Math.random() * 500;
+      reportError('globals', e);
       console.warn('[BJ] ' + label + ' attempt ' + (attempt + 1) + ' failed, retrying in ' + Math.round(delay) + 'ms');
       await new Promise(function(resolve) { setTimeout(resolve, delay); });
     }
@@ -1069,6 +1080,7 @@ async function _drainRetryQueue(): Promise<void> {
       await queue[i].fn();
       console.log('[BJ] Retry succeeded: ' + queue[i].label);
     } catch (e: unknown) {
+      reportError('globals', e);
       console.warn('[BJ] Retry failed: ' + queue[i].label, (e as Error).message);
       // Don't re-queue items older than 10 minutes
       if (Date.now() - queue[i].addedAt < 600000) {
@@ -1198,6 +1210,7 @@ function _logAdminAction(action, resourceType, resourceId, details) {
     });
   } catch(e) {
     // Fire-and-forget — never throw
+    reportError('admin', e);
     console.warn('[Audit] error:', e);
   }
 }
@@ -1590,6 +1603,7 @@ async function loadBoardHealth() {
     // A15 S5: Show MV staleness in feed health header
     loadMVStalenessIndicator().catch(function(e) { console.warn('[Admin] MV staleness check failed:', e.message); if (typeof reportError === 'function') reportError('admin-mv-staleness', e); });
   } catch (err) {
+    reportError('admin', err);
     console.error('[Admin] loadBoardHealth error:', err); toastError('Failed to load board health');
   }
 }
@@ -1661,6 +1675,7 @@ async function exportBoardsCsv(type) {
 
     if (typeof showToast === 'function') showToast('Exported ' + allRows.length.toLocaleString() + ' ' + type + ' boards', { type: 'success' });
   } catch (err) {
+    reportError('admin', err);
     console.error('[Admin] Export error:', err); toastError('Export failed');
     if (typeof showToast === 'function') showToast('Export failed: ' + err.message, { type: 'error' });
   } finally {
@@ -1776,6 +1791,7 @@ async function loadFeedHealthCharts() {
       Object.keys(_fhCharts).forEach(function(k) { if (_fhCharts[k]) _fhCharts[k].resize(); });
     });
   } catch (err) {
+    reportError('admin', err);
     console.error('[Admin] Feed health charts error:', err); toastWarning('Feed health charts failed to load');
   }
 }
@@ -1854,6 +1870,7 @@ async function loadDiscoveryPipelineStats() {
     setAdminText('dp-queue-total', fmtAdminNum(queueTotal || 0));
 
   } catch (err) {
+    reportError('admin', err);
     console.error('[Admin] Discovery pipeline stats error:', err);
   }
 }
@@ -1893,6 +1910,7 @@ async function loadAutoApplyStats() {
       if (queuedEl) queuedEl.title = pendingCount + ' total pending';
     }
   } catch (err) {
+    reportError('admin', err);
     console.error('[Admin] Auto-apply stats error:', err);
   }
 }
@@ -1964,6 +1982,7 @@ async function loadRefreshCycle() {
       });
     }
   } catch (err) {
+    reportError('admin', err);
     console.error('[Admin] loadRefreshCycle error:', err); toastWarning('Refresh cycle data failed to load');
   }
 }
@@ -2027,6 +2046,7 @@ async function loadCohortTab() {
     // Build cohort filter chips
     renderCohortData(cohorts);
   } catch (err) {
+    reportError('admin', err);
     console.error('[Admin] loadCohortTab error:', err); toastError('Failed to load cohort data');
   }
 }
@@ -2321,6 +2341,7 @@ async function loadUsersTab() {
       }
     }
   } catch (err) {
+    reportError('admin', err);
     console.error('[Admin] loadUsersTab error:', err); toastError('Failed to load users data');
   }
 }
@@ -3515,6 +3536,7 @@ async function loadNotificationsTab() {
     container.innerHTML = html;
     renderSuppressionSection();
   } catch (e) {
+    reportError('admin_notifications', e);
     console.error('[Admin] Notifications tab error:', e);
     container.innerHTML = '<div class="admin-red">Error: ' + escapeHtml(String(e)) + '</div>';
   }
@@ -3797,6 +3819,7 @@ async function loadTemplatesTab() {
 
     container.innerHTML = html;
   } catch (e) {
+    reportError('admin_notifications', e);
     console.error('[Admin] Templates tab error:', e);
     container.innerHTML = '<div class="admin-red">Error: ' + escapeHtml(String(e)) + '</div>';
   }
@@ -4578,6 +4601,7 @@ async function loadNotifAnalyticsTab() {
     console.log('[Admin] Notification analytics loaded: ' + logs.length + ' events');
 
   } catch (e) {
+    reportError('admin_notifications', e);
     console.error('[Admin] Notification analytics error:', e);
     container.innerHTML = '<div class="admin-red">Failed to load analytics: ' + (e.message || e) + '</div>';
   }
@@ -4756,6 +4780,7 @@ async function initPushToggle() {
       toggle.checked = !!sub;
     }
   } catch (e) {
+    reportError('admin_notifications', e);
     console.warn('[Push] Init check failed:', e);
   }
 
@@ -4816,6 +4841,7 @@ async function subscribeToPush() {
       throw new Error(saveData.error || 'Failed to save subscription');
     }
   } catch (e) {
+    reportError('admin_notifications', e);
     console.error('[Push] Subscribe failed:', e);
     if (toggle) toggle.checked = false;
     if (e.name === 'NotAllowedError') {
@@ -4855,6 +4881,7 @@ async function unsubscribeFromPush() {
     console.log('[Push] Unsubscribed');
     if (typeof toastSuccess === 'function') toastSuccess('Push notifications disabled');
   } catch (e) {
+    reportError('admin_notifications', e);
     console.error('[Push] Unsubscribe error:', e);
   }
 }
@@ -4928,6 +4955,7 @@ async function loadEmailCohortsTab() {
     console.log('[Admin] Email cohort analytics loaded: ' + (logs || []).length + ' email events, ' + (cohorts || []).length + ' cohorts');
 
   } catch (e) {
+    reportError('admin_notifications', e);
     console.error('[Admin] Email cohort analytics error:', e);
     container.innerHTML = '<div style="padding:24px;color:#ef4444;font-size:13px">Failed to load: ' + (e.message || e) + '</div>';
   }
@@ -5484,6 +5512,7 @@ async function loadCadenceTab() {
     console.log('[Admin] Cadence optimization loaded: ' + (logs || []).length + ' email events analyzed');
 
   } catch (e) {
+    reportError('admin_notifications', e);
     console.error('[Admin] Cadence optimization error:', e);
     container.innerHTML = '<div style="padding:24px;color:#ef4444;font-size:13px">Failed to load: ' + (e.message || e) + '</div>';
   }
@@ -5860,6 +5889,7 @@ async function saveCadenceSettings() {
     _cadenceState.settings.reengagement_tier3_days = tier3;
     if (typeof toastSuccess === 'function') toastSuccess('Thresholds saved');
   } catch (e) {
+    reportError('admin_notifications', e);
     console.error('[Cadence] Save error:', e);
     if (typeof toastError === 'function') toastError('Save failed: ' + (e.message || e));
   }
@@ -5874,6 +5904,7 @@ async function toggleCadenceAutoAdjust(enabled) {
     if (error) throw error;
     _cadenceState.settings.auto_adjust_enabled = enabled;
   } catch (e) {
+    reportError('admin_notifications', e);
     console.error('[Cadence] Toggle error:', e);
   }
 }
@@ -5919,6 +5950,7 @@ async function applyCadenceAnalysis() {
     if (container) renderCadenceTab(container);
     if (typeof toastSuccess === 'function') toastSuccess('Analysis applied to settings');
   } catch (e) {
+    reportError('admin_notifications', e);
     console.error('[Cadence] Apply error:', e);
     if (typeof toastError === 'function') toastError('Apply failed: ' + (e.message || e));
   }
@@ -6066,6 +6098,7 @@ async function _renderNotifLog() {
     container.innerHTML = html;
 
   } catch (e) {
+    reportError('admin_notifications', e);
     console.error('[Admin] Notif log error:', e);
     var container2 = document.getElementById('admin-panel-notif-log');
     if (container2) container2.innerHTML = '<div style="color:#ef4444;padding:16px">Failed to load notification log: ' + _escHtml(e.message || String(e)) + '</div>';
@@ -6846,6 +6879,7 @@ async function _sendDirectKillCommand() {
       extensionId = data[0].event_data.extension_id;
     }
   } catch (e) {
+    reportError('admin_killswitch', e);
     console.warn('[kill-switch] Could not look up extension ID:', e.message);
   }
 
@@ -9723,6 +9757,7 @@ async function loadEnrichmentTab() {
     // Load refresh schedule (A5)
     loadRefreshSchedule();
   } catch(e) {
+    reportError('admin_enrichment', e);
     console.error('[Admin] Enrichment error:', e); toastError('Enrichment data failed to load');
   }
 }
@@ -9761,6 +9796,7 @@ async function loadRefreshSchedule() {
       }).join('');
     }
   } catch(e) {
+    reportError('admin_enrichment', e);
     console.error('[Admin] Refresh schedule error:', e); toastWarning('Refresh schedule failed to load');
   }
 }
@@ -9853,6 +9889,7 @@ async function loadMockAtsTab() {
     container.innerHTML = statsHtml + tableHtml;
 
   } catch (e) {
+    reportError('admin_enrichment', e);
     console.error('[Admin] Mock ATS tab error:', e); toastError('Mock ATS failed to load');
     container.innerHTML = '<div class="admin-red">Error: ' + escapeHtml(String(e)) + '</div>';
   }
@@ -10012,7 +10049,7 @@ async function loadSeoTab() {
         if (_seoCharts[k]) _seoCharts[k].resize();
       });
     }, 200);
-  } catch(err) { console.error('[Admin] SEO load error:', err); toastWarning('SEO data failed to load'); }
+  } catch(err) { reportError('admin_seo', err); console.error('[Admin] SEO load error:', err); toastWarning('SEO data failed to load'); }
 }
 
 // ─── Data Fetching (auth-only) ───
@@ -10583,6 +10620,7 @@ async function triggerSeoSync(tasks) {
     _adminTabInit['seo'] = false;
     loadSeoTab();
   } catch(err) {
+    reportError('admin_seo', err);
     console.error('[Admin] SEO sync error:', err); toastError('SEO sync failed');
     if (btn) { btn.disabled = false; btn.textContent = '\u21BB Sync All'; }
     alert('Sync failed: ' + err.message);
@@ -10682,6 +10720,7 @@ async function loadRevenueTab(daysBack) {
     window.addEventListener('resize', function() { tierChart.resize(); dailyChart.resize(); });
 
   } catch (err) {
+    reportError('admin_seo', err);
     console.error('[Admin] loadRevenueTab error:', err); toastError('Failed to load revenue data');
   }
 }
@@ -10751,6 +10790,7 @@ async function loadSurveysTab() {
     renderSurveyRecentTable(d.recent || []);
 
   } catch (err) {
+    reportError('admin_seo', err);
     console.error('[Admin] loadSurveysTab error:', err); toastError('Failed to load survey data');
   }
 }
@@ -10946,6 +10986,7 @@ async function loadGhostTab() {
     renderAdminGhostChart(stats);
 
   } catch (err) {
+    reportError('admin_seo', err);
     console.error('[BJ] Ghost admin error:', err); toastError('Ghost admin failed to load');
     var tbody = document.getElementById('ag-company-body');
     if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--red);padding:24px;">Error: ' + escapeHtml(err.message || 'unknown') + '</td></tr>';
@@ -11209,6 +11250,7 @@ window.generateSeoReport = async function() {
 
     if (typeof showToast === 'function') showToast('SEO report downloaded!', { type: 'success' });
   } catch (e) {
+    reportError('admin_seo', e);
     console.error('[SEO Report]', e);
     if (typeof showToast === 'function') showToast('Report generation failed: ' + e.message, { type: 'error' });
   } finally {
@@ -11260,6 +11302,7 @@ async function loadFeedbackTab() {
     applyFeedbackFilters();
     renderFeedbackCards();
   } catch (e) {
+    reportError('admin_seo', e);
     console.error('[Feedback]', e); toastWarning('Feedback load error');
   }
 }
@@ -11414,6 +11457,7 @@ window.triggerFeedbackSync = async function() {
     if (typeof showToast === 'function') showToast('Synced: ' + (data.canny_fr || 0) + ' FR, ' + (data.canny_bug || 0) + ' bugs', { type: 'success' });
     loadFeedbackTab(); // Reload
   } catch (e) {
+    reportError('admin_seo', e);
     console.error('[Feedback] Sync failed:', e); toastError('Feedback sync failed');
     if (typeof showToast === 'function') showToast('Sync failed: ' + e.message, { type: 'error' });
   } finally {
@@ -11532,6 +11576,7 @@ async function loadContentTab() {
 
     fetchContentStories();
   } catch (e) {
+    reportError('admin_content', e);
     console.error('[Admin] Content tab error:', e); toastError('Content tab failed to load');
   }
 }
@@ -11602,6 +11647,7 @@ async function fetchContentStories() {
     window._contentStories = {};
     stories.forEach(function(s) { window._contentStories[s.id] = s; });
   } catch(e) {
+    reportError('admin_content', e);
     console.error('[Admin] Fetch content stories error:', e); toastWarning('Failed to load content stories');
   }
 }
@@ -12258,6 +12304,7 @@ async function loadAdminSignals() {
       }).join('');
     }
   } catch (e) {
+    reportError('admin_merch', e);
     console.error('[Admin] Signals tab error:', e); toastError('Signals tab failed to load');
   }
 }
@@ -12394,6 +12441,7 @@ async function loadReferralsAdminTab() {
     }
 
   } catch (e) {
+    reportError('admin_referrals', e);
     console.error('[Admin] Referrals tab error:', e); toastError('Referrals tab failed to load');
   }
 }
@@ -12416,6 +12464,7 @@ window.adminRefAction = async function(referralId, referrerId, action) {
     _adminTabInit['referrals'] = false;
     loadReferralsAdminTab();
   } catch (e) {
+    reportError('admin_referrals', e);
     console.error('[Admin] Referral action error:', e); toastError('Referral action failed');
     alert('Error: ' + e.message);
   }
@@ -12465,6 +12514,7 @@ window.adminClawback = async function(rewardId, userId) {
     _adminTabInit['referrals'] = false;
     loadReferralsAdminTab();
   } catch (e) {
+    reportError('admin_referrals', e);
     console.error('[Admin] Clawback error:', e); toastError('Clawback failed');
     alert('Error: ' + e.message);
   }
@@ -12479,6 +12529,7 @@ window.adminUnban = async function(userId) {
     _adminTabInit['referrals'] = false;
     loadReferralsAdminTab();
   } catch (e) {
+    reportError('admin_referrals', e);
     console.error('[Admin] Unban error:', e); toastError('Unban failed');
   }
 };
@@ -12612,6 +12663,7 @@ async function stripeSearchNow() {
       }).join('') +
       '</div>';
   } catch (err) {
+    reportError('admin_stripe', err);
     console.error('[Admin] Stripe search error:', err);
     resultsEl.innerHTML = '<div class="admin-red" style="font-size:13px">Search failed: ' + escapeHtml(err.message || '') + '</div>';
   }
@@ -12733,6 +12785,7 @@ async function loadStripeCustomer(userId) {
     });
 
   } catch (err) {
+    reportError('admin_stripe', err);
     console.error('[Admin] loadStripeCustomer error:', err);
     headerEl.innerHTML = '<div class="admin-red" style="font-size:13px">Error loading customer: ' + escapeHtml(err.message || '') + '</div>';
   }
@@ -12786,6 +12839,7 @@ async function loadStripeRecentSubs() {
       }).join('') +
       '</tbody></table></div>';
   } catch (err) {
+    reportError('admin_stripe', err);
     console.error('[Admin] loadStripeRecentSubs error:', err);
     el.innerHTML = '<div class="admin-red" style="font-size:13px">Failed to load subscribers</div>';
   }
@@ -12805,6 +12859,7 @@ async function openStripePlanOverride(userId) {
     toastSuccess('Plan updated to ' + newPlan + ' for user');
     loadStripeCustomer(userId);
   } catch (err) {
+    reportError('admin_stripe', err);
     console.error('[Admin] Plan override error:', err);
     toastError('Plan override failed: ' + (err.message || ''));
   }
@@ -12975,6 +13030,7 @@ async function _loadSubMetrics() {
     }
 
   } catch (err) {
+    reportError('admin_subscription', err);
     console.error('[Admin] _loadSubMetrics error:', err);
     toastWarning('Subscription metrics unavailable');
   }
@@ -13017,6 +13073,7 @@ async function _loadSubNewTable() {
       '</tbody></table></div>';
 
   } catch (err) {
+    reportError('admin_subscription', err);
     console.error('[Admin] New subs table error:', err);
     el.innerHTML = '<div class="admin-red" style="font-size:13px">Failed to load new subscriptions</div>';
   }
@@ -13060,6 +13117,7 @@ async function _loadSubChurnTable() {
       '</tbody></table></div>';
 
   } catch (err) {
+    reportError('admin_subscription', err);
     console.error('[Admin] Churn table error:', err);
     el.innerHTML = '<div class="admin-red" style="font-size:13px">Failed to load churn data</div>';
   }
@@ -13109,6 +13167,7 @@ async function _loadSubMrrChart() {
     window.addEventListener('resize', function() { chart.resize(); });
 
   } catch (err) {
+    reportError('admin_subscription', err);
     console.error('[Admin] MRR chart error:', err);
     chart.setOption({ title: { text: 'MRR Trend', subtext: 'Chart error', left: 'center', top: 'center', textStyle: { color: '#d1d5db', fontSize: 13 } } });
   }
@@ -13199,6 +13258,7 @@ async function _loadGhostData() {
       days: cutoffDays,
     };
   } catch (e) {
+    reportError('admin_ghost', e);
     console.error('[Admin] Ghost load error:', e);
     _ghostData = null;
   }
@@ -13373,6 +13433,7 @@ async function _loadTemplates() {
     if (res.error) throw res.error;
     _tplList = res.data || [];
   } catch (e) {
+    reportError('admin_templates', e);
     console.warn('[Admin] notification_templates table unavailable, using built-ins:', e.message);
     _tplList = _builtInTemplates();
   }
@@ -13624,6 +13685,7 @@ async function _loadRevData() {
       period: _revPeriod,
     };
   } catch (e) {
+    reportError('admin_revenue', e);
     console.error('[Admin] Revenue load error:', e);
     _revData = null;
   }
@@ -13759,6 +13821,7 @@ async function _loadFeedback(panel) {
     var data = await res.json();
     _renderFeedback(panel, data.posts || [], null);
   } catch (e) {
+    reportError('admin_feedback', e);
     console.warn('[Admin] Canny fetch error:', e.message);
     _renderFeedback(panel, [], e.message);
   }
@@ -14071,6 +14134,7 @@ async function _loadNotifAnalyticsData() {
     }
 
   } catch (err) {
+    reportError('admin_notif_analytics', err);
     console.error('[Admin] loadNotifAnalyticsData error:', err);
     toastWarning('Notification analytics unavailable — notification_log table may be empty');
     var el = document.getElementById('naf-types-table');
@@ -14219,6 +14283,7 @@ async function _loadEmailCohortsData() {
     }
 
   } catch (err) {
+    reportError('admin_notif_analytics', err);
     console.error('[Admin] _loadEmailCohortsData error:', err);
     toastWarning('Email cohort data unavailable');
   }
@@ -14341,6 +14406,7 @@ async function _loadCadenceData() {
     }
 
   } catch (err) {
+    reportError('admin_notif_analytics', err);
     console.error('[Admin] _loadCadenceData error:', err);
     toastWarning('Cadence data unavailable');
   }
@@ -14517,6 +14583,7 @@ async function _fetchNotifLog() {
     }
 
   } catch (err) {
+    reportError('admin_notif_analytics', err);
     console.error('[Admin] _fetchNotifLog error:', err);
     if (el) el.innerHTML = '<div class="admin-red" style="font-size:13px">Error loading notification log: ' + escapeHtml(err.message || '') + '</div>';
   }
@@ -16188,6 +16255,7 @@ async function _loadComplianceStats() {
     var piiEl = document.getElementById('comp-pii-accesses');
     if (piiEl) piiEl.textContent = piiAccess.count || 0;
   } catch (e) {
+    reportError('admin_compliance', e);
     console.warn('[Compliance] Stats error:', e);
   }
 }
@@ -16455,6 +16523,7 @@ function _relativeTime(dateStr) {
     showAdminConsole(user, profile);
 
   } catch (e) {
+    reportError('admin_shell', e);
     console.error('[Admin Shell] Auth error:', e);
     if (window.posthog) posthog.capture('admin_auth_error', { error: e.message });
     showDenied();
@@ -16565,6 +16634,7 @@ function _relativeTime(dateStr) {
       });
 
     } catch (err) {
+      reportError('admin_shell', err);
       console.error('[Admin Shell] MFA enroll error:', err);
       qrLoading.textContent = 'Error generating QR code. Refresh to retry.';
       if (window.posthog) posthog.capture('admin_mfa_enroll_error', { error: err.message });

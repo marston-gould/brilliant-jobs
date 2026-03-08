@@ -127,6 +127,7 @@ async function loadReferralsAdminTab() {
     }
 
   } catch (e) {
+    reportError('admin_referrals', e);
     console.error('[Admin] Referrals tab error:', e); toastError('Referrals tab failed to load');
   }
 }
@@ -149,6 +150,7 @@ window.adminRefAction = async function(referralId, referrerId, action) {
     _adminTabInit['referrals'] = false;
     loadReferralsAdminTab();
   } catch (e) {
+    reportError('admin_referrals', e);
     console.error('[Admin] Referral action error:', e); toastError('Referral action failed');
     alert('Error: ' + e.message);
   }
@@ -198,6 +200,7 @@ window.adminClawback = async function(rewardId, userId) {
     _adminTabInit['referrals'] = false;
     loadReferralsAdminTab();
   } catch (e) {
+    reportError('admin_referrals', e);
     console.error('[Admin] Clawback error:', e); toastError('Clawback failed');
     alert('Error: ' + e.message);
   }
@@ -212,6 +215,7 @@ window.adminUnban = async function(userId) {
     _adminTabInit['referrals'] = false;
     loadReferralsAdminTab();
   } catch (e) {
+    reportError('admin_referrals', e);
     console.error('[Admin] Unban error:', e); toastError('Unban failed');
   }
 };

@@ -115,6 +115,7 @@ async function stripeSearchNow() {
       }).join('') +
       '</div>';
   } catch (err) {
+    reportError('admin_stripe', err);
     console.error('[Admin] Stripe search error:', err);
     resultsEl.innerHTML = '<div class="admin-red" style="font-size:13px">Search failed: ' + escapeHtml(err.message || '') + '</div>';
   }
@@ -236,6 +237,7 @@ async function loadStripeCustomer(userId) {
     });
 
   } catch (err) {
+    reportError('admin_stripe', err);
     console.error('[Admin] loadStripeCustomer error:', err);
     headerEl.innerHTML = '<div class="admin-red" style="font-size:13px">Error loading customer: ' + escapeHtml(err.message || '') + '</div>';
   }
@@ -289,6 +291,7 @@ async function loadStripeRecentSubs() {
       }).join('') +
       '</tbody></table></div>';
   } catch (err) {
+    reportError('admin_stripe', err);
     console.error('[Admin] loadStripeRecentSubs error:', err);
     el.innerHTML = '<div class="admin-red" style="font-size:13px">Failed to load subscribers</div>';
   }
@@ -308,6 +311,7 @@ async function openStripePlanOverride(userId) {
     toastSuccess('Plan updated to ' + newPlan + ' for user');
     loadStripeCustomer(userId);
   } catch (err) {
+    reportError('admin_stripe', err);
     console.error('[Admin] Plan override error:', err);
     toastError('Plan override failed: ' + (err.message || ''));
   }

@@ -89,6 +89,7 @@
         }
       }
     } catch (err) {
+      reportError('referrals', err);
       console.error('[Referrals] Init error:', err);
       container.innerHTML = '<div class="ref-empty">Unable to load referral data. Refresh to retry.</div>';
     }
@@ -489,6 +490,7 @@ Or use my code: ${referralStats.referral_code}`);
         </table>
       `;
     } catch (err) {
+      reportError('referrals', err);
       console.error('[Referrals] Leaderboard error:', err);
       body.innerHTML = '<div class="ref-empty">Unable to load leaderboard. Refresh to retry.</div>';
     }

@@ -51,6 +51,7 @@ async function loadPendingSignals() {
       posthog.capture('signal_detected', { count: sigCount, sources: sources });
     }
   } catch (e) {
+    reportError('pipeline', e);
     console.error('[BJ] Signal load error:', e); toastError('Failed to load pipeline signals');
   }
 }
@@ -86,6 +87,7 @@ async function confirmPipelineSignal(signalId, action, correctedStage) {
     await loadPipelineFromSupabase();
     renderPipeline();
   } catch (e) {
+    reportError('pipeline', e);
     console.error('[BJ] Signal confirm error:', e); toastError('Failed to update signal');
   }
 }
@@ -151,6 +153,7 @@ async function loadPipelineFromSupabase() {
     _pipelineLoaded = true;
     console.log('[BJ] Pipeline loaded from Supabase:', data?.length || 0, 'entries');
   } catch (e) {
+    reportError('pipeline', e);
     console.error('[BJ] Pipeline load error:', e); toastError('Failed to load your pipeline');
     // Fallback: try localStorage if Supabase fails
     _pipelineCache = safeReadLS('bj_pipeline_meta', {});
@@ -175,6 +178,7 @@ async function loadNewPipelineFromSupabase() {
     window._newPipelineLoaded = true;
     console.log('[BJ] New pipeline table loaded:', data?.length || 0, 'entries');
   } catch (e) {
+    reportError('pipeline', e);
     console.warn('[BJ] New pipeline load error (non-fatal):', e);
   }
 }
@@ -226,6 +230,7 @@ async function saveToNewPipeline(entry) {
     _newPipelineCache[entry.source_url] = { ...row, id: data?.id || existing?.id };
     window._newPipelineCache = _newPipelineCache; // keep window ref in sync
   } catch (e) {
+    reportError('pipeline', e);
     console.warn('[BJ] New pipeline write error (non-fatal):', e);
   }
 }
@@ -287,6 +292,7 @@ async function savePipelineEntry(jobId, meta) {
       }
     }
   } catch (e) {
+    reportError('pipeline', e);
     console.error('[BJ] Pipeline save error:', e); toastError('Failed to save pipeline changes');
   }
 }
@@ -331,7 +337,7 @@ async function migratePipelineToSupabase() {
       const data = await safeQuery(() => sb.from('ats_jobs').select('greenhouse_id, title, company_name, ats_source, status')
         .in('greenhouse_id', batch), { label: 'pipeline:ats_jobs', fallback: [] });
       if (data) data.forEach(j => { jobMap[j.greenhouse_id] = j; });
-    } catch (e) { console.error('[BJ] Migration fetch error:', e); toastWarning('Pipeline migration data fetch failed'); }
+    } catch (e) { reportError('pipeline', e); console.error('[BJ] Migration fetch error:', e); toastWarning('Pipeline migration data fetch failed'); }
   }
 
   // Build rows
@@ -570,7 +576,7 @@ async function renderPipeline() {
       const data = await safeQuery(() => sb.from('ats_jobs').select('greenhouse_id, title, company_name, location, loc_display, status, closed_at, first_seen_at, content, salary_min, salary_max')
         .in('greenhouse_id', batch), { label: 'pipeline:ats_jobs', fallback: [] });
       if (data) allJobData = allJobData.concat(data);
-    } catch (e) { console.error('[BJ] Pipeline fetch error:', e); toastWarning('Some pipeline job details failed to load'); }
+    } catch (e) { reportError('pipeline', e); console.error('[BJ] Pipeline fetch error:', e); toastWarning('Some pipeline job details failed to load'); }
   }
 
   const jobMap = {};
@@ -942,6 +948,7 @@ async function renderGhostMonitor() {
     tbody.innerHTML = html;
 
   } catch (err) {
+    reportError('pipeline', err);
     console.error('[BJ] Ghost monitor error:', err); toastWarning('Ghost monitor failed to load');
     tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--red);padding:32px;">Error loading ghost data: ' + (err.message || 'unknown') + '</td></tr>';
   }
@@ -1025,7 +1032,7 @@ function showCustomReminder(jobId) {
   meta.custom_reminder_at = date.toISOString();
   sb.from('user_pipeline').update({ custom_reminder_at: date.toISOString() }).eq('id', meta._dbId)
     .then(() => renderPipeline())
-    .catch(e => { console.error('[BJ] Custom reminder error:', e); toastError('Failed to set reminder'); });
+    .catch(e => { reportError('pipeline', e); console.error('[BJ] Custom reminder error:', e); toastError('Failed to set reminder'); });
 }
 
 function showStatusNote(jobId) {
@@ -1036,7 +1043,7 @@ function showStatusNote(jobId) {
   meta.status_note = note || null;
   sb.from('user_pipeline').update({ status_note: note || null }).eq('id', meta._dbId)
     .then(() => renderPipeline())
-    .catch(e => { console.error('[BJ] Status note error:', e); toastError('Failed to save note'); });
+    .catch(e => { reportError('pipeline', e); console.error('[BJ] Status note error:', e); toastError('Failed to save note'); });
 }
 
 // ── Manual Pipeline Entry ────────────────────────────────────
@@ -1128,6 +1135,7 @@ async function saveManualPipelineEntry() {
     renderPipeline();
     console.log('[BJ] Manual pipeline entry added:', manualId);
   } catch (e) {
+    reportError('pipeline', e);
     console.error('[BJ] Manual add error:', e); toastError('Failed to add pipeline entry');
     alert('Failed to add: ' + (e.message || 'Unknown error'));
   }
@@ -1185,6 +1193,7 @@ async function findRecruiters(jobId) {
       toastWarning('No recruiter contacts found for ' + company);
     }
   } catch (e) {
+    reportError('pipeline', e);
     console.error('[BJ] Recruiter lookup error:', e);
     toastError('Recruiter lookup failed: ' + e.message);
   } finally {
@@ -1257,6 +1266,7 @@ async function loadRecruiterContacts() {
     });
     return byCompany;
   } catch (e) {
+    reportError('pipeline', e);
     console.error('[BJ] Load recruiter contacts error:', e);
     return {};
   }

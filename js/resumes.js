@@ -506,7 +506,7 @@ window.archiveResume = async function(idx) {
         .update({ is_active: false, is_archived: true, archived_at: new Date().toISOString() })
         .eq('resume_id', resumes[idx].archiveId);
       if (error) { showToast('Failed to archive — please try again.', { type: 'error' }); console.error('[resume-sync] Archive DB write failed:', error); return; }
-    } catch (e) { showToast('Failed to archive — please try again.', { type: 'error' }); console.error('[resume-sync] Archive DB write exception:', e); return; }
+    } catch (e) { showToast('Failed to archive — please try again.', { type: 'error' }); reportError('resumes', e); console.error('[resume-sync] Archive DB write exception:', e); return; }
   }
   resumes[idx].archived = true;
   resumes[idx].archivedAt = new Date().toLocaleDateString();
@@ -523,7 +523,7 @@ window.unarchiveResume = async function(idx) {
         .update({ is_active: true, is_archived: false, archived_at: null })
         .eq('resume_id', resumes[idx].archiveId);
       if (error) { showToast('Failed to restore — please try again.', { type: 'error' }); console.error('[resume-sync] Restore DB write failed:', error); return; }
-    } catch (e) { showToast('Failed to restore — please try again.', { type: 'error' }); console.error('[resume-sync] Restore DB write exception:', e); return; }
+    } catch (e) { showToast('Failed to restore — please try again.', { type: 'error' }); reportError('resumes', e); console.error('[resume-sync] Restore DB write exception:', e); return; }
   }
   resumes[idx].archived = false;
   delete resumes[idx].archivedAt;
@@ -669,6 +669,7 @@ async function extractTextFromPDF(file) {
     }
     return fullText.trim();
   } catch (e) {
+    reportError('resumes', e);
     console.error('[BJ] PDF text extraction failed:', e);
     if (typeof toastWarning === 'function') toastWarning('Could not extract text from PDF. Try re-uploading or use a different file format.');
     return '';
@@ -692,6 +693,7 @@ async function extractTextFromDOCX(fileOrBuffer) {
     const result = await mammoth.extractRawText({ arrayBuffer });
     return (result.value || '').trim();
   } catch (e) {
+    reportError('resumes', e);
     console.error('[BJ] DOCX text extraction failed:', e);
     return '';
   }
@@ -803,7 +805,7 @@ async function addResume(file) {
   clearEntitlementCache('resumes');
   renderResumes();
   // Store file blob in IndexedDB for downloads
-  bjFileStore.put(id, file).catch(e => console.warn('[BJ] File store error:', e));
+  bjFileStore.put(id, file).catch(e => { reportError('resumes', e); console.warn('[BJ] File store error:', e); });
 
   // Upload to Supabase Storage for cross-device persistence
   if (currentUser) {
@@ -820,7 +822,7 @@ async function addResume(file) {
         saveResumes();
         console.log('[resume-storage] Uploaded', storagePath);
       }
-    }).catch(e => console.warn('[resume-storage] Upload error:', e.message));
+    }).catch(e => { reportError('resumes', e); console.warn('[resume-storage] Upload error:', e.message); });
   }
 
   extractTextFromFile(file).then(text => {
@@ -911,6 +913,7 @@ async function scoreResumeAI(resumeId, text) {
     renderResumes();
     console.log('[ai-score] Resume scored:', resumeId, result?.ai_label, result?.ai_generated_score);
   } catch (e) {
+    reportError('resumes', e);
     console.warn('[ai-score] Resume scoring error:', e.message);
     const idx = resumes.findIndex(r => r.id === resumeId);
     if (idx >= 0) {
@@ -1266,7 +1269,7 @@ window.reUploadResume = function(idx) {
     renderResumes();
 
     // Store file blob in IndexedDB
-    bjFileStore.put(resumes[idx].id, file).catch(e => console.warn('[BJ] File store error:', e));
+    bjFileStore.put(resumes[idx].id, file).catch(e => { reportError('resumes', e); console.warn('[BJ] File store error:', e); });
 
     extractTextFromFile(file).then(text => {
       if (!resumes[idx]) return;
@@ -1521,6 +1524,7 @@ window.triggerGapAnalysis = async function(jobId, resumeId, outcome) {
       console.log('[BJ] Gap analysis recorded — ' + (result.gap_term_count || 0) + ' gap terms');
     }
   } catch (e) {
+    reportError('resumes', e);
     console.warn('[BJ] Gap analysis error (non-fatal):', e.message);
   }
 };

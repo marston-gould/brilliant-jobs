@@ -595,6 +595,7 @@ async function loadAdminSignals() {
       }).join('');
     }
   } catch (e) {
+    reportError('admin_merch', e);
     console.error('[Admin] Signals tab error:', e); toastError('Signals tab failed to load');
   }
 }

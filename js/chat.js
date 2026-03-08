@@ -696,6 +696,7 @@ async function sendChatMessage() {
 
   } catch (err) {
     showTypingIndicator(false);
+    reportError('chat', err);
     console.error('[BJ] Chat error:', err);
     appendChatBubble('assistant', 'Connection error. Please check your network and try again.');
   }
@@ -1127,6 +1128,7 @@ async function executeSavePrompt() {
     }
 
   } catch (err) {
+    reportError('chat', err);
     console.error('[BJ] Save prompt error:', err);
     if (typeof showToast === 'function') showToast('Save failed', 'error');
   } finally {

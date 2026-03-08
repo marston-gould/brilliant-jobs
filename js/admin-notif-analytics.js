@@ -223,6 +223,7 @@ async function _loadNotifAnalyticsData() {
     }
 
   } catch (err) {
+    reportError('admin_notif_analytics', err);
     console.error('[Admin] loadNotifAnalyticsData error:', err);
     toastWarning('Notification analytics unavailable — notification_log table may be empty');
     var el = document.getElementById('naf-types-table');
@@ -371,6 +372,7 @@ async function _loadEmailCohortsData() {
     }
 
   } catch (err) {
+    reportError('admin_notif_analytics', err);
     console.error('[Admin] _loadEmailCohortsData error:', err);
     toastWarning('Email cohort data unavailable');
   }
@@ -493,6 +495,7 @@ async function _loadCadenceData() {
     }
 
   } catch (err) {
+    reportError('admin_notif_analytics', err);
     console.error('[Admin] _loadCadenceData error:', err);
     toastWarning('Cadence data unavailable');
   }
@@ -669,6 +672,7 @@ async function _fetchNotifLog() {
     }
 
   } catch (err) {
+    reportError('admin_notif_analytics', err);
     console.error('[Admin] _fetchNotifLog error:', err);
     if (el) el.innerHTML = '<div class="admin-red" style="font-size:13px">Error loading notification log: ' + escapeHtml(err.message || '') + '</div>';
   }

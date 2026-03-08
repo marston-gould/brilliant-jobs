@@ -2791,7 +2791,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.014 | EXT-SEC-002: Remove broad host permissions | 1h | 1h | ⚡ | CS-004: web_accessible_resources scoped from utils/*.js + \<all_urls\> to utils/fillMetrics.js + 19 ATS domains. Host permissions remain as-is (required for content script injection). Deployed 2026-03-06. |
 | 0.015 | EXT-SEC-003: Popup innerHTML XSS | 1h | 1h | ✅ | CS-004: escHtml() sanitizer added to popup.js (company names in discovery list) and inject-overlay.js (field names/details in fill overlay). toolbar-overlay.js already sanitized. Zero unsanitized dynamic innerHTML in extension. Deployed 2026-03-06. |
 | 0.016 | EXT-SEC-004: PII minimization for AI answerer | 1h | — | 🔲 | Full profile sent every call. Per-question field subsets. |
-| 0.017 | EXT-SEC-005: Content script CSP bypass vectors | 1h | — | 🔲 | Audit all injection points in ATS pages. |
+| 0.017 | EXT-SEC-005: Content script CSP bypass vectors | 1h | 1h | ✅ | REM-001: Audit complete — 0 vulnerabilities found. All innerHTML writes use escHtml(). No eval/Function/document.write usage. CSP audit report at docs/audit/ext-sec-005-csp-audit.md. 2026-03-08. |
 
 ### 0-D: Security — Admin (Pod 3, P0)
 
@@ -2821,7 +2821,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 |---|------|------|--------|--------|-------|
 | 0.030 | BE-001: safeQuery() wiring — 22 call sites + reportError | 6h | CS-009 | ✅ | safeQuery exists, zero calls. 3 batches ~12-15. Highest-leverage code change. |
 | 0.031 | ES-001: Replace 130 empty/console catches | 6h | CS-009 | ✅ | 67 catch(e){} vanish errors. 3 batches ~22. safeQuery.handleError + PostHog. |
-| 0.032 | ES-002: Replace 40 console-only catches | 3h | — | 🔲 | Invisible in production. Upgrade to PostHog capture. |
+| 0.032 | ES-002: Replace 40 console-only catches | 3h | 3h | ✅ | 161 console-only catches upgraded to reportError() + PostHog capture across 43 JS files (original 40 grew to 161 during scaling sessions). Zero console-only catches remain. 30 validation tests. v7.64. 2026-03-08. |
 | 0.033 | BE-003: 17 unchecked {data, error} | 2h | CS-P1-003 | ✅ | Error checks added to all dashboard sb.from() calls. reportError() wired. |
 | 0.034 | BE-004: 7 fire-and-forget RPCs | 1h | CS-P1-003 | ✅ | Heartbeats, signals, outreach RPCs all have .then() error handlers or reportError(). |
 | 0.035 | BE-005: Suppressed network errors | 1h | — | 🔲 | Network failures hidden. Retry + user notification. |
@@ -2835,7 +2835,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
 | 0.040 | EXT-ES-001: 20 empty catches | 2h | 2h | ✅ | FIX-11: All 22 empty catches remediated. background.js(7→console.warn+comment), popup.js(6→console.warn+phCapture), handlers(5→console.warn), interceptor(1→console.warn), resilientDOM(2→console.warn), build-ext(1→comment). Zero empty catches in extension source. |
-| 0.041 | EXT-ES-002: 19 fire-and-forget .catch(()=>{}) | 1h | — | 🔲 | chrome.runtime.sendMessage calls suppress errors. |
+| 0.041 | EXT-ES-002: 19 fire-and-forget .catch(()=>{}) | 1h | 1h | ✅ | REM-002: 28+ empty .catch(()=>{}) replaced with reportError pattern across 12 extension files. Error reporter utility at extension/utils/errorReporter.ts. Background reportError handler wired. 2026-03-08. |
 | 0.042 | EXT-ES-003: 7 console/comment-only handlers | 1h | — | 🔲 | Catch blocks with only console or comment. |
 | 0.043 | EXT-ES-004: 14+ missing lastError checks | 2h | — | 🔲 | Only toolbar-overlay checks (4x). All other chrome API calls skip. |
 | 0.044 | EXT-BE-001: No fetch timeouts | 1h | — | 🔲 | Zero AbortController. Add timeout on all fetches. |

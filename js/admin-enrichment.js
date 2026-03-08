@@ -130,6 +130,7 @@ async function loadEnrichmentTab() {
     // Load refresh schedule (A5)
     loadRefreshSchedule();
   } catch(e) {
+    reportError('admin_enrichment', e);
     console.error('[Admin] Enrichment error:', e); toastError('Enrichment data failed to load');
   }
 }
@@ -168,6 +169,7 @@ async function loadRefreshSchedule() {
       }).join('');
     }
   } catch(e) {
+    reportError('admin_enrichment', e);
     console.error('[Admin] Refresh schedule error:', e); toastWarning('Refresh schedule failed to load');
   }
 }
@@ -260,6 +262,7 @@ async function loadMockAtsTab() {
     container.innerHTML = statsHtml + tableHtml;
 
   } catch (e) {
+    reportError('admin_enrichment', e);
     console.error('[Admin] Mock ATS tab error:', e); toastError('Mock ATS failed to load');
     container.innerHTML = '<div class="admin-red">Error: ' + escapeHtml(String(e)) + '</div>';
   }

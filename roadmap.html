@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.63"></script>
+  <script src="/js/version.js?v=v7.64"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -1852,7 +1852,7 @@ const features = [
 { s: 'done', b: 'pre-launch', n: '0.014 EXT-SEC-002: Scope web_accessible_resources', d: 'CS-004: Scoped from utils/*.js + <all_urls> to utils/fillMetrics.js + 19 ATS domains.', p: 75, e: '1h' },
 { s: 'done', b: 'pre-launch', n: '0.015 EXT-SEC-003: Popup innerHTML XSS', d: 'CS-004: escHtml() sanitizer in popup.js + inject-overlay.js. Zero unsanitized dynamic innerHTML.', p: 75, e: '1h' },
 { s: 'done', b: 'pre-launch', n: '0.016 EXT-SEC-004: PII minimization AI answerer', d: 'CS-013 FIX-14: Per-question profile field subsets via _selectProfileFields() pattern matching. Resume truncated to 2000 chars, only sent for experience/skill questions via _needsResume(). Full profile no longer sent on every call.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.017 EXT-SEC-005: Content script CSP bypass', d: 'Audit all injection points in ATS pages.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.017 EXT-SEC-005: Content script CSP bypass', d: 'REM-001: Audit complete — 0 vulnerabilities. All innerHTML writes use escHtml(). CSP audit report at docs/audit/ext-sec-005-csp-audit.md.', p: 100, e: '1h' },
 
 // 0-D: Security — Admin (Pod 3, P0)
 { s: 'done', b: 'pre-launch', n: '0.018 AD-SE-001: Admin auth server-side', d: 'G11: Shared admin-auth.ts middleware created. requireAdmin() with service_role bypass, 401/403 error handling, authErrorResponse() helper. 4 admin EFs refactored (admin-analytics, approve-content, generate-editorial-content, seo-sync). 24 tests.', p: 75, e: '2h' },
@@ -1873,7 +1873,7 @@ const features = [
 // 0-F: Error Handling — Dashboard (Pod 3, P0/P1)
 { s: 'done', b: 'pre-launch', n: '0.030 BE-001: safeQuery() 22 call sites + reportError', d: 'CS-009: safeQuery wired to 22 call sites. reportError() surfaces all errors in PostHog. safeRpc() convenience wrapper added.', p: 75, e: '6h' },
 { s: 'done', b: 'pre-launch', n: '0.031 ES-001: Replace 130 empty/console catches', d: 'CS-009: 130 empty and console-only catches replaced with reportError() across 22 files. Zero empty catches in dashboard + admin.', p: 75, e: '6h' },
-{ s: 'todo', b: 'pre-launch', n: '0.032 ES-002: Replace 40 console-only catches', d: 'Invisible in production. PostHog capture.', p: 75, e: '3h' },
+{ s: 'done', b: 'pre-launch', n: '0.032 ES-002: Replace 40 console-only catches', d: '161 console-only catches upgraded to reportError() + PostHog capture across 43 JS files. Zero remaining. 30 validation tests. v7.64.', p: 100, e: '3h' },
 { s: 'done', b: 'pre-launch', n: '0.033 BE-003: 17 unchecked {data,error}', d: 'CS-P1-003: Error checks added to all dashboard sb.from() calls. reportError() wired.', p: 75, e: '2h' },
 { s: 'done', b: 'pre-launch', n: '0.034 BE-004: 7 fire-and-forget RPCs', d: 'CS-P1-003: Heartbeats, signals, outreach RPCs error-handled via .then() or reportError().', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.035 BE-005: Suppressed network errors', d: 'Network failures hidden. Retry + notification.', p: 75, e: '1h' },
@@ -1884,7 +1884,7 @@ const features = [
 
 // 0-G: Error Handling — Extension (Pod 3, P1)
 { s: 'done', b: 'pre-launch', n: '0.040 EXT-ES-001: 22 empty catches', d: 'FIX-11: All 22 empty catches remediated with console.warn + PostHog. Zero empty catches remaining.', p: 75, e: '2h' },
-{ s: 'todo', b: 'pre-launch', n: '0.041 EXT-ES-002: 19 fire-and-forget', d: 'chrome.runtime.sendMessage .catch(()=>{}).', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.041 EXT-ES-002: 19 fire-and-forget', d: 'REM-002: 28+ empty .catch(()=>{}) replaced with reportError across 12 extension files. Error reporter utility + background handler wired.', p: 100, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.042 EXT-ES-003: 7 console/comment handlers', d: 'Catch with only console or comment.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.043 EXT-ES-004: 14+ missing lastError', d: 'Only toolbar-overlay checks. All other chrome API skip.', p: 75, e: '2h' },
 { s: 'done', b: 'pre-launch', n: '0.044 EXT-BE-001: No fetch timeouts', d: 'CS-013 FIX-12: fetchWithRetry utility with AbortSignal.timeout (10–15s per call criticality). Wired into 27 service-worker/popup fetch calls + 3 content-script calls get AbortSignal.timeout. Zero bare fetch() remaining in extension source.', p: 75, e: '1h' },

@@ -140,6 +140,7 @@
         body: JSON.stringify(payload)
       });
     } catch (e) {
+      reportError('micro_surveys', e);
       console.warn('[micro-survey] Submit failed:', e);
     }
   }

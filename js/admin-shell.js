@@ -80,6 +80,7 @@
     showAdminConsole(user, profile);
 
   } catch (e) {
+    reportError('admin_shell', e);
     console.error('[Admin Shell] Auth error:', e);
     if (window.posthog) posthog.capture('admin_auth_error', { error: e.message });
     showDenied();
@@ -190,6 +191,7 @@
       });
 
     } catch (err) {
+      reportError('admin_shell', err);
       console.error('[Admin Shell] MFA enroll error:', err);
       qrLoading.textContent = 'Error generating QR code. Refresh to retry.';
       if (window.posthog) posthog.capture('admin_mfa_enroll_error', { error: err.message });

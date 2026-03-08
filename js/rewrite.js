@@ -169,6 +169,7 @@ async function _rwStartAnalysis() {
     _rwRenderBody();
 
   } catch (e) {
+    reportError('rewrite', e);
     console.error('[rewrite] Analysis error:', e);
     _rwState.status = 'failed';
     _rwRenderError('Something went wrong. No credits were deducted. Please try again.');
@@ -247,6 +248,7 @@ async function _rwStartRewrite(feedback) {
     _rwRenderBody();
 
   } catch (e) {
+    reportError('rewrite', e);
     console.error('[rewrite] Execute error:', e);
     _rwState.status = 'failed';
     _rwRenderError('Something went wrong. Please try again.');
@@ -322,6 +324,7 @@ async function _rwAcceptAll() {
     closeRewritePanel();
 
   } catch (e) {
+    reportError('rewrite', e);
     console.error('[rewrite] Accept error:', e);
     showToast('Download failed: ' + e.message, { type: 'error' });
     if (acceptBtn) { acceptBtn.disabled = false; acceptBtn.textContent = 'Accept All'; }

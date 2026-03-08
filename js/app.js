@@ -359,6 +359,7 @@ async function initSession() {
     sessionStorage.setItem('bj_session_id', sessionId);
     return sessionId;
   } catch (e) {
+    reportError('app', e);
     console.error('[BJ] Session init error:', e);
     return null;
   }

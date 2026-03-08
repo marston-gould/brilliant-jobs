@@ -41,6 +41,7 @@ function _logAdminAction(action, resourceType, resourceId, details) {
     });
   } catch(e) {
     // Fire-and-forget — never throw
+    reportError('admin', e);
     console.warn('[Audit] error:', e);
   }
 }
@@ -433,6 +434,7 @@ async function loadBoardHealth() {
     // A15 S5: Show MV staleness in feed health header
     loadMVStalenessIndicator().catch(function(e) { console.warn('[Admin] MV staleness check failed:', e.message); if (typeof reportError === 'function') reportError('admin-mv-staleness', e); });
   } catch (err) {
+    reportError('admin', err);
     console.error('[Admin] loadBoardHealth error:', err); toastError('Failed to load board health');
   }
 }
@@ -504,6 +506,7 @@ async function exportBoardsCsv(type) {
 
     if (typeof showToast === 'function') showToast('Exported ' + allRows.length.toLocaleString() + ' ' + type + ' boards', { type: 'success' });
   } catch (err) {
+    reportError('admin', err);
     console.error('[Admin] Export error:', err); toastError('Export failed');
     if (typeof showToast === 'function') showToast('Export failed: ' + err.message, { type: 'error' });
   } finally {
@@ -619,6 +622,7 @@ async function loadFeedHealthCharts() {
       Object.keys(_fhCharts).forEach(function(k) { if (_fhCharts[k]) _fhCharts[k].resize(); });
     });
   } catch (err) {
+    reportError('admin', err);
     console.error('[Admin] Feed health charts error:', err); toastWarning('Feed health charts failed to load');
   }
 }
@@ -697,6 +701,7 @@ async function loadDiscoveryPipelineStats() {
     setAdminText('dp-queue-total', fmtAdminNum(queueTotal || 0));
 
   } catch (err) {
+    reportError('admin', err);
     console.error('[Admin] Discovery pipeline stats error:', err);
   }
 }
@@ -736,6 +741,7 @@ async function loadAutoApplyStats() {
       if (queuedEl) queuedEl.title = pendingCount + ' total pending';
     }
   } catch (err) {
+    reportError('admin', err);
     console.error('[Admin] Auto-apply stats error:', err);
   }
 }
@@ -807,6 +813,7 @@ async function loadRefreshCycle() {
       });
     }
   } catch (err) {
+    reportError('admin', err);
     console.error('[Admin] loadRefreshCycle error:', err); toastWarning('Refresh cycle data failed to load');
   }
 }
@@ -870,6 +877,7 @@ async function loadCohortTab() {
     // Build cohort filter chips
     renderCohortData(cohorts);
   } catch (err) {
+    reportError('admin', err);
     console.error('[Admin] loadCohortTab error:', err); toastError('Failed to load cohort data');
   }
 }
@@ -1164,6 +1172,7 @@ async function loadUsersTab() {
       }
     }
   } catch (err) {
+    reportError('admin', err);
     console.error('[Admin] loadUsersTab error:', err); toastError('Failed to load users data');
   }
 }

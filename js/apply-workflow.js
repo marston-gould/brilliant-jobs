@@ -87,6 +87,7 @@ async function loadPendingApplications() {
       pendingApplications = data || [];
     }
   } catch (e) {
+    reportError('apply_workflow', e);
     console.error('[apply-workflow] Load pending apps exception:', e);
     pendingApplications = [];
   }
@@ -107,6 +108,7 @@ async function savePendingApplication(app) {
     }
     return data;
   } catch (e) {
+    reportError('apply_workflow', e);
     console.error('[apply-workflow] Insert pending app exception:', e);
     return null;
   }
@@ -126,6 +128,7 @@ async function updatePendingApplication(id, updates) {
     }
     return true;
   } catch (e) {
+    reportError('apply_workflow', e);
     console.error('[apply-workflow] Update pending app exception:', e);
     return false;
   }
@@ -197,6 +200,7 @@ async function callSubmitApplication(pendingApp, resumeFileId, resumeFilename) {
     if (e.name === 'TimeoutError' || e.name === 'AbortError') {
       return { ok: false, error: 'timeout' };
     }
+    reportError('apply_workflow', e);
     console.error('[apply-workflow] submit-application error:', e);
     return { ok: false, error: 'network_error' };
   }
@@ -464,6 +468,7 @@ async function scoreAndRecheck(jobId, jobTitle, companyName, jobUrl) {
     showScoreGateModal(jobId, jobTitle || '', companyName || '', jobUrl || '', data);
 
   } catch (e) {
+    reportError('apply_workflow', e);
     console.error('[apply-workflow] scoreAndRecheck error:', e);
     if (typeof showToast === 'function') showToast('Scoring failed. Please try again.', { type: 'error' });
   }
@@ -694,6 +699,7 @@ async function _fetchJdMatchScore(jobId) {
     jobMatchScores[jobId] = data;
     return data;
   } catch (e) {
+    reportError('apply_workflow', e);
     console.warn('[apply-workflow] JD match fetch failed:', e);
     return null;
   }

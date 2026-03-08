@@ -24,6 +24,7 @@ async function _costAction(action, extra) {
     });
     return typeof data === 'string' ? JSON.parse(data) : data;
   } catch (e) {
+    reportError('admin_cost_monitor', e);
     console.warn('[admin-cost]', action, 'failed:', e.message);
     return null;
   }

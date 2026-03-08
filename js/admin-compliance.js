@@ -697,6 +697,7 @@ async function _loadComplianceStats() {
     var piiEl = document.getElementById('comp-pii-accesses');
     if (piiEl) piiEl.textContent = piiAccess.count || 0;
   } catch (e) {
+    reportError('admin_compliance', e);
     console.warn('[Compliance] Stats error:', e);
   }
 }

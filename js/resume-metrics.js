@@ -60,6 +60,7 @@ async function populateResumeSelector() {
     });
     if (currentVal) sel.value = currentVal;
   } catch (e) {
+    reportError('resume_metrics', e);
     console.log('[BJ] Resume selector error:', e.message);
   }
 }
@@ -115,6 +116,7 @@ window.loadResumeMetrics = async function() {
       archiveLink.href = '#resumes?tab=archive&id=' + resumeId;
     }
   } catch (e) {
+    reportError('resume_metrics', e);
     console.log('[BJ] Metrics load error:', e.message);
   }
 };

@@ -36,7 +36,7 @@ async function loadSeoTab() {
         if (_seoCharts[k]) _seoCharts[k].resize();
       });
     }, 200);
-  } catch(err) { console.error('[Admin] SEO load error:', err); toastWarning('SEO data failed to load'); }
+  } catch(err) { reportError('admin_seo', err); console.error('[Admin] SEO load error:', err); toastWarning('SEO data failed to load'); }
 }
 
 // ─── Data Fetching (auth-only) ───
@@ -607,6 +607,7 @@ async function triggerSeoSync(tasks) {
     _adminTabInit['seo'] = false;
     loadSeoTab();
   } catch(err) {
+    reportError('admin_seo', err);
     console.error('[Admin] SEO sync error:', err); toastError('SEO sync failed');
     if (btn) { btn.disabled = false; btn.textContent = '\u21BB Sync All'; }
     alert('Sync failed: ' + err.message);
@@ -706,6 +707,7 @@ async function loadRevenueTab(daysBack) {
     window.addEventListener('resize', function() { tierChart.resize(); dailyChart.resize(); });
 
   } catch (err) {
+    reportError('admin_seo', err);
     console.error('[Admin] loadRevenueTab error:', err); toastError('Failed to load revenue data');
   }
 }
@@ -775,6 +777,7 @@ async function loadSurveysTab() {
     renderSurveyRecentTable(d.recent || []);
 
   } catch (err) {
+    reportError('admin_seo', err);
     console.error('[Admin] loadSurveysTab error:', err); toastError('Failed to load survey data');
   }
 }
@@ -970,6 +973,7 @@ async function loadGhostTab() {
     renderAdminGhostChart(stats);
 
   } catch (err) {
+    reportError('admin_seo', err);
     console.error('[BJ] Ghost admin error:', err); toastError('Ghost admin failed to load');
     var tbody = document.getElementById('ag-company-body');
     if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--red);padding:24px;">Error: ' + escapeHtml(err.message || 'unknown') + '</td></tr>';
@@ -1233,6 +1237,7 @@ window.generateSeoReport = async function() {
 
     if (typeof showToast === 'function') showToast('SEO report downloaded!', { type: 'success' });
   } catch (e) {
+    reportError('admin_seo', e);
     console.error('[SEO Report]', e);
     if (typeof showToast === 'function') showToast('Report generation failed: ' + e.message, { type: 'error' });
   } finally {
@@ -1284,6 +1289,7 @@ async function loadFeedbackTab() {
     applyFeedbackFilters();
     renderFeedbackCards();
   } catch (e) {
+    reportError('admin_seo', e);
     console.error('[Feedback]', e); toastWarning('Feedback load error');
   }
 }
@@ -1438,6 +1444,7 @@ window.triggerFeedbackSync = async function() {
     if (typeof showToast === 'function') showToast('Synced: ' + (data.canny_fr || 0) + ' FR, ' + (data.canny_bug || 0) + ' bugs', { type: 'success' });
     loadFeedbackTab(); // Reload
   } catch (e) {
+    reportError('admin_seo', e);
     console.error('[Feedback] Sync failed:', e); toastError('Feedback sync failed');
     if (typeof showToast === 'function') showToast('Sync failed: ' + e.message, { type: 'error' });
   } finally {

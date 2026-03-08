@@ -1067,6 +1067,7 @@ async function loadAiAggregationHealth() {
     }
 
   } catch (e) {
+    reportError('browsers', e);
     console.warn('[BJ] AI aggregation health check failed:', e.message);
     panel.style.display = 'none';
   }

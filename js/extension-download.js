@@ -54,6 +54,7 @@
         return _activeChannelMap;
       }
     } catch (e) {
+      reportError('extension_download', e);
       console.warn('[BJ] Channel map load failed, using defaults:', e.message);
     }
 
@@ -160,6 +161,7 @@
         .eq('build_id', buildId);
 
     } catch (err) {
+      reportError('extension_download', err);
       console.error('[BJ] Extension build failed:', err);
       if (btn) {
         btn.disabled = false;
@@ -222,6 +224,7 @@
         </table>
       `;
     } catch (e) {
+      reportError('extension_download', e);
       console.warn('[BJ] Build history load failed:', e.message);
     }
   }

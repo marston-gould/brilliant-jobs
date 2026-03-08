@@ -52,6 +52,35 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**ES-002** — Console-Only Catch Elimination + ROADMAP Sync
+- Completed: 2026-03-08
+- Git tag: `dashboard@3.1.0-error-reporting`
+- Product version bumped: `v7.63` → `v7.64` (JS changes — 43 files, 161 reportError() calls added)
+- ROADMAP.md updated: ES-002, EXT-SEC-005, EXT-ES-002 → ✅ with completion notes
+- roadmap.html updated: ES-002, EXT-SEC-005, EXT-ES-002 → `s: 'done'`, p: 100
+- **ES-002 (Console-Only Catch Elimination):**
+  - 161 console-only catch blocks upgraded to reportError() + PostHog capture (original audit found 40; grew to 161 during scaling sessions)
+  - 43 JS files modified (42 dashboard/admin + 1 admin-cost-monitor)
+  - globals.ts source updated (13 catches) — compiled output verified in globals.js
+  - 3 arrow function catch syntax errors fixed in resumes.js (single-expression arrow → block body)
+  - Zero console-only catches remaining across entire codebase
+- **EXT-SEC-005 (ROADMAP Sync):**
+  - Already completed in REM-001 — individual finding row was still marked 🔲
+  - Updated to ✅ in both ROADMAP.md and roadmap.html
+- **EXT-ES-002 (ROADMAP Sync):**
+  - Already completed in REM-002 — individual finding row was still marked 🔲
+  - Updated to ✅ in both ROADMAP.md and roadmap.html
+- **Pod 3 Team:** 5 hook-and-scar roles (Chief Architect, Lead Platform Engineer, System Architect—Scalability, Forward-Looking Developer(s), Evolvability Strategist) already present in pod-team-manifest.md from SA-006. No changes needed.
+- **Created:**
+  - `tests/es-002-console-catches.test.js` — 30 validation tests (5 sections: zero violations, reportError infrastructure, per-file coverage, build output, file inventory)
+- **Modified:**
+  - 43 JS source files — reportError() added to all console-only catch blocks
+  - `js/globals.ts` — 13 catches fixed (source of truth for globals.js)
+  - `js/resumes.js` — 3 arrow function syntax fixes (.catch(e => { ... }))
+  - `ROADMAP.md` — ES-002, EXT-SEC-005, EXT-ES-002 → ✅
+  - `roadmap.html` — ES-002, EXT-SEC-005, EXT-ES-002 → done/100
+- **Tests:** 30 ES-002 validation tests (all passing)
+
 **REM-005** — Analytics + CSP Strict
 - Completed: 2026-03-08
 - Git tag: `security@csp-strict-v1.0.0`
@@ -565,7 +594,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.63`** | **REM-005** |
+| **Product (BJ_VERSION)** | **`v7.64`** | **ES-002** |
 | Dashboard | `dashboard@3.0.0-all-pages` | SA-017 |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

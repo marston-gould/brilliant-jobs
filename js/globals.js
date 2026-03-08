@@ -143,6 +143,7 @@ async function encryptForStorage(plaintext, userId) {
     combined.set(new Uint8Array(encrypted), iv.length);
     return "enc:" + btoa(String.fromCharCode.apply(null, combined));
   } catch (e) {
+    reportError("globals", e);
     console.warn("[BJ] Encryption failed, storing plaintext:", e.message);
     return plaintext;
   }
@@ -159,6 +160,7 @@ async function decryptFromStorage(ciphertext, userId) {
     var decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, data);
     return new TextDecoder().decode(decrypted);
   } catch (e) {
+    reportError("globals", e);
     console.warn("[BJ] Decryption failed (key mismatch or corruption):", e.message);
     return null;
   }
@@ -306,6 +308,7 @@ function saveUserData(lsKey, jsonStr) {
       try {
         localStorage.setItem(lsKey, encrypted);
       } catch (e) {
+        reportError("globals", e);
         console.error("[BJ] Storage full (encrypted):", e.message);
         _handleStorageFull(lsKey);
       }
@@ -314,6 +317,7 @@ function saveUserData(lsKey, jsonStr) {
     try {
       localStorage.setItem(lsKey, jsonStr);
     } catch (e) {
+      reportError("globals", e);
       console.error("[BJ] Storage full! Failed to save " + lsKey + ":", e.message);
       _handleStorageFull(lsKey);
       return false;
@@ -365,6 +369,7 @@ async function _flushUserData() {
     localStorage.setItem("_bj_ud_cache", JSON.stringify(cached));
     console.log("[sync] Flushed", Object.keys(patch).join(", "));
   } catch (e) {
+    reportError("globals", e);
     console.warn("[sync] Flush error:", e.message);
   }
 }
@@ -407,6 +412,7 @@ async function loadUserData(userId) {
       _flushUserData();
     }
   } catch (e) {
+    reportError("globals", e);
     console.warn("[sync] Load error:", e.message);
   }
 }
@@ -433,6 +439,7 @@ async function checkEntitlement(feature, usageCount) {
     _entitlementCache[cacheKey] = data;
     return data;
   } catch (e) {
+    reportError("globals", e);
     console.warn("[entitlement] Error:", e.message);
     return { allowed: true, behavior: "fixed", effective_limit: 99, remaining: 99 };
   }
@@ -514,6 +521,7 @@ async function enrichJob(jobId, data) {
     });
     if (!resp.ok) console.warn("[enrich-job] Failed for", jobId, resp.status);
   } catch (e) {
+    reportError("globals", e);
     console.warn("[enrich-job] Error:", e.message);
   }
 }
@@ -625,6 +633,7 @@ async function cachedQuery(key, queryFn, opts) {
     if (_cacheDebug) console.log("[cache] MISS", key, "(" + (result.data ? result.data.length : 0) + " rows)");
     return { data: result.data, count: result.count, cached: false };
   } catch (e) {
+    reportError("globals", e);
     console.warn("[cachedQuery] Failed for", key, e.message);
     if (entry) return { data: entry.data, count: entry.count, cached: true };
     return { data: null, count: null, cached: false };
@@ -734,6 +743,7 @@ async function prewarmRefCaches() {
     ]);
     console.log("[BJ] Ref caches pre-warmed");
   } catch (e) {
+    reportError("globals", e);
     console.warn("[BJ] Ref cache pre-warm failed:", e.message);
   }
 }
@@ -779,10 +789,12 @@ async function withRetry(fn, opts) {
       return await fn();
     } catch (e) {
       if (attempt === maxRetries) {
+        reportError("globals", e);
         console.error("[BJ] " + label + " failed after " + (maxRetries + 1) + " attempts:", e.message);
         throw e;
       }
       var delay = baseDelay * Math.pow(2, attempt) + Math.random() * 500;
+      reportError("globals", e);
       console.warn("[BJ] " + label + " attempt " + (attempt + 1) + " failed, retrying in " + Math.round(delay) + "ms");
       await new Promise(function(resolve) {
         setTimeout(resolve, delay);
@@ -804,6 +816,7 @@ async function _drainRetryQueue() {
       await queue[i].fn();
       console.log("[BJ] Retry succeeded: " + queue[i].label);
     } catch (e) {
+      reportError("globals", e);
       console.warn("[BJ] Retry failed: " + queue[i].label, e.message);
       if (Date.now() - queue[i].addedAt < 6e5) {
         _retryQueue.push(queue[i]);

@@ -71,6 +71,7 @@ async function _loadGhostData() {
       days: cutoffDays,
     };
   } catch (e) {
+    reportError('admin_ghost', e);
     console.error('[Admin] Ghost load error:', e);
     _ghostData = null;
   }

@@ -64,6 +64,7 @@ async function _loadRevData() {
       period: _revPeriod,
     };
   } catch (e) {
+    reportError('admin_revenue', e);
     console.error('[Admin] Revenue load error:', e);
     _revData = null;
   }

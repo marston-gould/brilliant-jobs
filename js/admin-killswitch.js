@@ -189,6 +189,7 @@ async function _sendDirectKillCommand() {
       extensionId = data[0].event_data.extension_id;
     }
   } catch (e) {
+    reportError('admin_killswitch', e);
     console.warn('[kill-switch] Could not look up extension ID:', e.message);
   }
 

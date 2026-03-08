@@ -25,6 +25,7 @@ async function _loadFeedback(panel) {
     var data = await res.json();
     _renderFeedback(panel, data.posts || [], null);
   } catch (e) {
+    reportError('admin_feedback', e);
     console.warn('[Admin] Canny fetch error:', e.message);
     _renderFeedback(panel, [], e.message);
   }

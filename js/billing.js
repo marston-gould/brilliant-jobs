@@ -22,6 +22,7 @@ async function loadCreditBalance() {
       checkLowCreditAlert(data);
     }
   } catch (e) {
+    reportError('billing', e);
     console.warn('[Billing] Failed to load credit balance:', e.message); toastWarning('Unable to load credit balance');
   }
 }
@@ -39,6 +40,7 @@ async function loadUserPricing() {
       renderUpgradeBanner(data);
     }
   } catch (e) {
+    reportError('billing', e);
     console.warn('[Billing] Failed to load pricing:', e.message); toastWarning('Unable to load pricing');
   }
 }
@@ -74,6 +76,7 @@ async function loadCreditHistory() {
       renderBurnRate(data);
     }
   } catch (e) {
+    reportError('billing', e);
     console.warn('[Billing] Failed to load credit history:', e.message); toastWarning('Unable to load credit history');
   }
 }
@@ -373,6 +376,7 @@ async function debitCreditsForAction(amount, costCategory, description, costCent
     }
     return data;
   } catch (e) {
+    reportError('billing', e);
     console.error('[Billing] debitCreditsForAction error:', e); toastError('Credit deduction failed');
     return { success: false, error: e.message };
   }
@@ -400,6 +404,7 @@ async function triggerAutoRefill() {
       showToast('Auto-refill failed: ' + (data.error || 'payment declined') + '. Check your payment method.', 'error');
     }
   } catch (e) {
+    reportError('billing', e);
     console.warn('[Billing] Auto-refill trigger error:', e); toastWarning('Auto-refill check failed');
   }
 }
@@ -559,6 +564,7 @@ async function loadHireFeeStatus() {
       activeEl.style.display = data.has_payment_method ? '' : 'none';
     }
   } catch (e) {
+    reportError('billing', e);
     console.warn('[Billing] Failed to load hire fee status:', e); toastWarning('Unable to load hire fee status');
   }
 }

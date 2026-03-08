@@ -50,6 +50,7 @@
       console.log('[BJ:Merch] Content injected for ' + placements.length + ' placement(s)');
     } catch (e) {
       // Silent fail — static fallback content remains visible
+      reportError('merch_client', e);
       console.warn('[BJ:Merch] Fetch failed:', e.message);
     }
   }

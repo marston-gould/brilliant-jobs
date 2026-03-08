@@ -90,6 +90,7 @@ var PipelineMigration = (function () {
       var datesStr = localStorage.getItem(APPLIED_DATES_KEY);
       if (datesStr) raw_applied_dates = JSON.parse(datesStr);
     } catch (e) {
+      reportError('pipeline_migration', e);
       console.warn('[BJ] pipeline-migration: failed to parse localStorage data', e);
       markComplete();
       return { migrated: 0, skipped: 0, errors: 1 };
@@ -116,6 +117,7 @@ var PipelineMigration = (function () {
           migrated++;
         }
       } catch (e) {
+        reportError('pipeline_migration', e);
         console.warn('[BJ] pipeline-migration: exception on write', e);
         errors++;
       }

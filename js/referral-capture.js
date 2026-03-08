@@ -77,6 +77,7 @@
         window.history.replaceState({}, '', url.toString());
       } catch(e) { /* old browser */ }
 
+      reportError('referral_capture', e);
       console.log('[BJ] Referral captured:', code, 'source:', source);
       return;
     }

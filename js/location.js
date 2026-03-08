@@ -534,7 +534,7 @@ async function searchCompaniesForNot(query) {
         name: c.name || c.slug, slug: c.slug, source: 'ats', ats: c.source || 'greenhouse'
       }));
     }
-  } catch (e) { console.warn('[BJ] ATS company search (not) failed:', e); }
+  } catch (e) { reportError('location', e); console.warn('[BJ] ATS company search (not) failed:', e); }
 
   try {
     const { data: connData } = await sb
@@ -558,7 +558,7 @@ async function searchCompaniesForNot(query) {
           }
         });
     }
-  } catch (e) { console.warn('[BJ] Connection company search (not) failed:', e); }
+  } catch (e) { reportError('location', e); console.warn('[BJ] Connection company search (not) failed:', e); }
 
   renderCompanyNotDropdown(results, query);
 }
@@ -1464,6 +1464,7 @@ async function handleAiResumeUpload(file) {
     _doAiFilterAnalysis();
     
   } catch (err) {
+    reportError('location', err);
     console.error('[AI Filter Upload]', err);
     body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">Upload failed: ' + err.message + '</div>';
   }
@@ -1534,6 +1535,7 @@ async function _doAiFilterAnalysis() {
     renderAiFilterPreview(data);
     
   } catch (err) {
+    reportError('location', err);
     console.error('[AI Filter]', err);
     body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">Error: ' + err.message + '</div>';
   }

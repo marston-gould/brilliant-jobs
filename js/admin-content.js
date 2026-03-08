@@ -54,6 +54,7 @@ async function loadContentTab() {
 
     fetchContentStories();
   } catch (e) {
+    reportError('admin_content', e);
     console.error('[Admin] Content tab error:', e); toastError('Content tab failed to load');
   }
 }
@@ -124,6 +125,7 @@ async function fetchContentStories() {
     window._contentStories = {};
     stories.forEach(function(s) { window._contentStories[s.id] = s; });
   } catch(e) {
+    reportError('admin_content', e);
     console.error('[Admin] Fetch content stories error:', e); toastWarning('Failed to load content stories');
   }
 }
