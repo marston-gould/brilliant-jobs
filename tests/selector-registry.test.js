@@ -15,12 +15,12 @@ import {
 
 const ROOT = join(__dirname, '..');
 const EXTENSION_DIR = join(ROOT, 'extension');
-const REGISTRY_PATH = join(EXTENSION_DIR, 'selectors', 'registry.js');
+const REGISTRY_PATH = join(EXTENSION_DIR, 'selectors', 'registry.ts'); // BI-07: SA-022 .js → .ts
 
-// ── Get handler files from filesystem ──
+// BI-07: SA-022 migrated handlers from .js to .ts
 function getHandlerFiles() {
   const files = readdirSync(join(EXTENSION_DIR, 'handlers'));
-  return files.filter(f => f.endsWith('.js')).map(f => f.replace('.js', ''));
+  return files.filter(f => f.endsWith('.js') || f.endsWith('.ts')).map(f => f.replace(/\.(js|ts)$/, ''));
 }
 
 describe('Selector Registry Structure (CS-017)', () => {
