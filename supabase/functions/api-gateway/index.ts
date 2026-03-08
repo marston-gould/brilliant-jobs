@@ -212,8 +212,11 @@ const ROUTE_REGISTRY: Record<string, string> = {
   "capacity-model":           "capacity-model",           // SA-028: snapshot/forecast/cost-model/triggers/summary/acknowledge
   "cost-monitor":             "cost-monitor",             // REM-003: summary/daily/weekly/monthly/budget-update
 
+  // ── Build Instrumentation (BI-01) ─────────────────────────────────────────
+  "deploy-tracker":           "deploy-tracker",           // BI-01: summary/list/record/complete/record-build-step/health
+
   // ═══════════════════════════════════════════════════════════════════════════
-  // TOTAL: 109 routes (93 SA-005 + 1 SA-007 + 1 SA-008 + 1 SA-009 + 2 SA-010 + 2 SA-011 + 2 SA-012 + 1 SA-018 + 2 SA-020 + 1 SA-021 + 1 SA-024 + 1 SA-028). Direct paths deprecated.
+  // TOTAL: 110 routes (93 SA-005 + 1 SA-007 + 1 SA-008 + 1 SA-009 + 2 SA-010 + 2 SA-011 + 2 SA-012 + 1 SA-018 + 2 SA-020 + 1 SA-021 + 1 SA-024 + 1 SA-028 + 1 BI-01). Direct paths deprecated.
   // HOOK: Future EFs register here. Future: load from DB table for
   //       runtime updates without redeploy (api_consumers integration).
   // ═══════════════════════════════════════════════════════════════════════════

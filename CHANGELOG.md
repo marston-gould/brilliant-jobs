@@ -1,3 +1,6 @@
+## v7.73 Session NN: TITLE (2026-03-08)
+- DESCRIBE CHANGES HERE
+
 ## v7.72 CRITICAL: SQL NULL bug killing all remote job results (2026-03-08)
 
 - **Root cause:** `query.not('loc_country', 'eq', 'CA')` generates SQL `loc_country <> 'CA'`.

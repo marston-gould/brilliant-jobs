@@ -73,3 +73,9 @@
 | REM-003 | Backend + DevOps | System Architect—Scalability |
 | REM-004 | Frontend + QA | Forward-Looking Dev |
 | REM-005 | Frontend + Security | Evolvability Strategist + Chief Architect |
+
+## Pairing Assignments (Build Instrumentation Sessions)
+
+| Session | Primary Pair | Pod 4 Reviewer |
+|---------|-------------|----------------|
+| BI-01 | DevOps + Lead Platform Engineer | Chief Architect |

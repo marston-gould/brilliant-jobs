@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.72"></script>
+  <script src="/js/version.js?v=v7.73"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2144,6 +2144,9 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'PR-001 PostHog Chat Mode Dashboard', d: 'admin-chat-analytics.js: all 16 chat events (13 original + 3 Session 11). Funnels: toggle→message→filters, saved prompt adoption, rate limit by tier. Latency percentiles (p50/p95/p99) with sparkline + 2000ms target. Tooltip conversion: shown→dismissed by method. Cache performance panel. admin-analytics EF chat_analytics action. 48 tests. v7.67.', p: 100, e: '2h' },
 { s: 'done', b: 'post-launch', n: 'PR-002 Edge Function Cost Monitoring + Cache', d: 'In-memory response cache in chat-job-search EF: djb2 hash of last 3 user messages, 5min TTL, 200-entry LRU. Cache hit skips Anthropic API call (~$0.0005 saved/hit). cache_hit tracked in PostHog latency events. p95 > 2000ms alert in admin dashboard. 48 tests. v7.67.', p: 100, e: '2h' },
 { s: 'done', b: 'post-launch', n: 'PR-003 Dashboard Bug Fixes (Chat, Logout, Resumes, Company Browser)', d: '4 fixes: (1) Chat toggle dead on Jobs page — added jobs to TAB_CHUNKS. (2) Log Out dead — moved handler from deferred to inline. (3) Resumes empty — removed destructive safeReadLS re-assignment + readPiiData for encrypted data. (4) Company browser dead on WHO/NOT WHO — same TAB_CHUNKS fix. v7.71.', p: 100, e: '1h' },
+
+// Build Instrumentation (BI-01+)
+{ s: 'done', b: 'post-launch', n: 'BI-01 Build Instrumentation & Deployment Visibility', d: 'v6.34 migration: deploy_events, build_events, deploy_health_log tables. Views: v_deploy_dashboard, v_surface_deploy_health. Functions: fn_deploy_summary, fn_record_deploy, fn_complete_deploy. deploy-tracker EF (6 actions). Admin dashboard: summary cards, 30d sparkline, surface health, timeline. Gateway route #110. 54 tests. v7.73.', p: 100, e: '3h' },
 
 ];
 

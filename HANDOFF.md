@@ -52,6 +52,30 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**BI-01** — Build Instrumentation & Deployment Visibility System
+- Completed: 2026-03-08
+- Git tag: `infra@deploy-tracker-v1.0.0`
+- Product version bumped: `v7.72` → `v7.73` (JS/HTML changes — admin-deploy-tracker.js, admin.html container + script tag; all HTML surfaces cache-busted)
+- ROADMAP.md updated: BI-01 → ✅ with completion notes
+- roadmap.html updated: BI-01 → `s: 'done'`, p: 100
+- **Migration (v6.34):** `deploy_events` (9 surface types, 5 status types, 5 trigger types), `build_events` (per-step tracking with FK to deploy), `deploy_health_log` (post-deploy health checks). 6 indexes. RLS on all 3 tables (admin read, service write). Views: `v_deploy_dashboard` (recent deploys with build step counts), `v_surface_deploy_health` (per-surface 30d stats). Functions: `fn_deploy_summary` (full admin dashboard data), `fn_record_deploy` (CI webhook entry), `fn_complete_deploy` (status update). Weekly cleanup cron (90d retention).
+- **Edge Function:** `deploy-tracker/index.ts` — 6 actions: summary (admin dashboard), list (recent deploys), record (CI webhook), complete (status update), record-build-step (build step tracking), health (post-deploy health check). Auth: admin for reads, deploy key or service role for writes.
+- **Gateway:** Route #110 (deploy-tracker). Total: 110 routes.
+- **Admin Panel:** `admin-deploy-tracker.js` — 6 summary cards (total, success rate, today, this week, failed, avg duration), 30d deploy frequency sparkline (SVG polyline, 3 lines: total/success/failed), per-surface health table (9 columns), recent deploys timeline (7 columns with error expansion rows). 2min auto-refresh polling.
+- **Team:** BI-01 pairing added to pod-team-manifest.md (DevOps + Lead Platform Eng, Chief Architect reviewer).
+- **Created:**
+  - `supabase/migrations/v6.34-deploy-tracker.sql` — Full migration
+  - `supabase/functions/deploy-tracker/index.ts` — Deploy tracker EF
+  - `js/admin-deploy-tracker.js` — Admin deployment dashboard
+  - `tests/bi-001-deploy-tracker.test.js` — 54 validation tests
+- **Modified:**
+  - `supabase/functions/api-gateway/index.ts` — Route #110 (deploy-tracker). Total: 110 routes.
+  - `admin.html` — deploy-tracker container + script tag
+  - `docs/scaling/pod-team-manifest.md` — BI-01 pairing assignment
+  - `ROADMAP.md` — BI-01 → ✅
+  - `roadmap.html` — BI-01 → done/100
+- **Tests:** 54 BI-01 validation tests (all passing)
+
 **PR-003** — Dashboard Bug Fixes (Chat Toggle, Logout, Resumes, Company Browser)
 - Completed: 2026-03-08
 - Product version bumped: `v7.70` → `v7.71` (JS changes — lazy-loader.ts, dashboard-inline.js, settings.js, resumes.js, app.js; all HTML surfaces cache-busted)
@@ -733,7 +757,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.72`** | **SQL NULL bug fix — remote jobs restored** |
+| **Product (BJ_VERSION)** | **`v7.73`** | **BI-01 — Build Instrumentation & Deployment Visibility** |
 | Dashboard | `dashboard@3.0.0-all-pages` | SA-017 |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
@@ -741,8 +765,9 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 | **SPA Scaffold** | **`spa@1.0.0-scaffold`** | **SA-013** |
 | **Feature Flags** | **`infra@feature-flags-v1.0.0`** | **SA-025** |
 | **Event Bus** | **`infra@event-bus-v1.0.0`** | **SA-024** |
-| **API Gateway** | `infra@gateway-v1.0.0` | SA-028 (109 routes) |
+| **API Gateway** | `infra@gateway-v1.0.0` | BI-01 (110 routes) |
 | **Capacity Model** | **`infra@capacity-model-v1.0.0`** | **SA-028** |
+| **Deploy Tracker** | **`infra@deploy-tracker-v1.0.0`** | **BI-01** |
 | **Partitioning** | **`infra@partitioning-v1.0.0`** | **SA-019** |
 | **Read Replica** | **`infra@read-replica-v1.0.0`** | **SA-018** |
 | **Common Crawl** | **`infra@common-crawl-v0.1.0`** | **SA-007** |
