@@ -327,8 +327,11 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
 
     // Country disambiguation: if searching US locations, exclude clearly non-US jobs
     // This catches cases like Vancouver, BC being confused with Vancouver, WA
+    // v7.70: not('loc_country','eq','CA') generates SQL `loc_country <> 'CA'` which returns
+    // FALSE for NULL values — silently excluding every remote job (loc_country=NULL).
+    // Fix: use OR that preserves NULLs.
     if (locationIds.isUSSearch) {
-      query = query.not('loc_country', 'eq', 'CA');
+      query = query.or('loc_country.neq.CA,loc_country.is.null');
       query = query.not('location', 'ilike', '%Canada%');
       query = query.not('location', 'ilike', '%, BC%');
       query = query.not('location', 'ilike', '%British Columbia%');
@@ -395,9 +398,10 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
       // v6.51: Use loc_country for US filtering (92%+ coverage, uses index, single param)
       // Include US + NULL (ungeocoded jobs) in one clause
       query = query.or('loc_country.eq.US,loc_country.is.null');
-      // For NULL loc_country rows, exclude obvious non-US via location string
-      // Keep this minimal — only high-frequency false positives to stay within PostgREST URL limits
-      query = query.not('loc_country', 'eq', 'CA');
+      // v7.70: not('loc_country','eq','CA') generates SQL `loc_country <> 'CA'` which returns
+      // FALSE for NULL values — silently excluding every remote job (loc_country=NULL).
+      // Fix: use OR that preserves NULLs while still excluding Canadian jobs.
+      query = query.or('loc_country.neq.CA,loc_country.is.null');
       query = query.not('location', 'ilike', '%Canada%');
       query = query.not('location', 'ilike', '%, BC%');
       query = query.not('location', 'ilike', '%British Columbia%');

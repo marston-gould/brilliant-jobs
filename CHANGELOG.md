@@ -1,3 +1,17 @@
+## v7.72 CRITICAL: SQL NULL bug killing all remote job results (2026-03-08)
+
+- **Root cause:** `query.not('loc_country', 'eq', 'CA')` generates SQL `loc_country <> 'CA'`.
+  In SQL, `NULL <> 'CA'` evaluates to NULL (falsy), not TRUE. Every remote job has
+  `loc_country=NULL`. The Canada exclusion filter silently killed every remote job in the database.
+- **Impact:** User's "organic usa remote" search returned 4 jobs instead of 30+. All remote jobs
+  dropped. The v7.69 "Include Remote" fix (BUG-1) was working correctly at the query construction
+  level, but the usOnly Canada exclusion immediately re-excluded every remote job it had just included.
+- **Fix:** Changed both instances of `.not('loc_country', 'eq', 'CA')` to
+  `.or('loc_country.neq.CA,loc_country.is.null')` — preserves NULL rows (remote jobs) while
+  still excluding Canadian jobs.
+- **Verified:** PostgREST returns 30 results with fix vs 7 without. Both code paths patched
+  (locationIds path line 334, ilike fallback path line 404).
+
 ## v7.71 Session NN: TITLE (2026-03-08)
 - DESCRIBE CHANGES HERE
 
