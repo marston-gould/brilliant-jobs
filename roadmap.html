@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.62"></script>
+  <script src="/js/version.js?v=v7.63"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -1836,7 +1836,7 @@ const features = [
 { s: 'todo', b: 'pre-launch', n: '0.002 SE-002: Service role key rotation', d: 'CS-001: git purge DONE. CS-P1-002: Rotation procedure scripted (scripts/rotate-jwt-secret.sh), SECURITY.md documents compensating controls. Execution requires maintenance window.', p: 75, e: '2h' },
 { s: 'done', b: 'pre-launch', n: '0.003 SE-003: Auth on generate-editorial-content', d: 'CS-001: Auth + admin role check (requireAdmin). G11: Shared middleware. Verified CS-P1-001.', p: 75, e: '1h' },
 { s: 'done', b: 'pre-launch', n: '0.004 SE-004: Classify+gate 89 Edge Functions', d: 'CS-P1-001: All 89 EFs classified in edge-function-auth.yaml (4 admin, 28 auth, 46 cron, 7 webhook, 4 public). CI Gate 04 validates registry.', p: 75, e: '6h' },
-{ s: 'todo', b: 'pre-launch', n: '0.005 SE-005: CSP unsafe-inline on dashboard', d: 'CS-P1-002: All inline script blocks extracted (4 new external JS files). Enforcement deferred — 122 dashboard + 21 admin inline event handlers (onclick=, onchange=) also blocked by strict CSP. Handler extraction is prerequisite.', p: 75, e: '3h' },
+{ s: 'done', b: 'pre-launch', n: '0.005 SE-005: CSP unsafe-inline on dashboard', d: 'REM-005: SPA /app/* CSP enforced without unsafe-inline — SHA-256 hash for theme script. Legacy dashboard.html retains unsafe-inline (130 inline handlers, deprecated per SA-017 Phase 3).', p: 100, e: '3h' },
 
 // 0-B: Security — Landing Page (Pod 3, P0)
 { s: 'done', b: 'pre-launch', n: '0.006 IX-SE-001: postMessage wildcard → restrict', d: 'CS-005: postMessage restricted to window.location.origin. Auth tokens no longer leaked to wildcard. X-Frame-Options DENY + frame-ancestors none confirmed.', p: 75, e: '15min' },
@@ -2029,7 +2029,7 @@ const features = [
 // 0-Y: CX Landing (Pod 4, P2/P3)
 { s: 'done', b: 'pre-launch', n: '0.138 LS1-2: 97 inline styles', d: 'Token bypass. Migrate to vars.', p: 75, e: '1h' },
 { s: 'done', b: 'pre-launch', n: '0.139 LS1-5: 30KB inline CSS', d: 'Extract external. P3→P2.', p: 75, e: '2h' },
-{ s: 'todo', b: 'pre-launch', n: '0.140 LS1-6: Ahrefs audit', d: 'If redundant remove. Decision item.', p: 75, e: '30min' },
+{ s: 'done', b: 'pre-launch', n: '0.140 LS1-6: Ahrefs audit', d: 'REM-005: Removed. Redundant with PostHog (all 4 surfaces) + GSC (organic search). Script removed from index.html + compare.html. Origin removed from all CSP rules.', p: 100, e: '30min' },
 { s: 'done', b: 'pre-launch', n: '0.141 LS1-7: Only 2 breakpoints', d: 'Add 1024px. Grids break.', p: 75, e: '1h' },
 { s: 'done', b: 'pre-launch', n: '0.142 LS1-8: Segment localStorage fragility', d: 'Incognito resets. Fix detection.', p: 75, e: '30min' },
 { s: 'done', b: 'pre-launch', n: '0.143 LS1-9: Auth modal a11y', d: 'aria-pressed, aria-live, headings.', p: 75, e: '30min' },
@@ -2139,7 +2139,7 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'REM-002 Extension Error Handling Sweep', d: '28+ empty .catch(()=>{}) replaced with reportError across 12 files. Token refresh: PostHog capture + badge notification on failure. Background reportError handler wired. Handlers (lever, greenhouse, linkedin) upgraded. lastError checks added.', p: 100, e: '5h' },
 { s: 'done', b: 'post-launch', n: 'REM-003 EF Hardening + Cost Monitoring', d: '23 empty catch blocks fixed in 16 EF files with structured logging. Cost monitoring: migration (3 views + fn_ai_cost_summary), cost-monitor EF (5 actions), admin dashboard, gateway route #110.', p: 100, e: '5h' },
 { s: 'done', b: 'post-launch', n: 'REM-004 Extension QA + Manifest', d: 'EXT-CWS-001: All 7 permissions justified. BambooHR+JazzHR routing wired. safeFill export fixed. EXT-QA: 257 validation tests (17 handlers, selectors, routing, manifest mapping). Permissions audit doc.', p: 100, e: '3h' },
-{ s: 'not-started', b: 'post-launch', n: 'REM-005 Analytics + CSP Strict', d: 'LS1-6: Ahrefs analytics audit (redundant with PostHog+GSC?). SE-005: CSP strict on dashboard (no unsafe-inline). All dependencies met.', p: 0, e: '3.5h' },
+{ s: 'done', b: 'post-launch', n: 'REM-005 Analytics + CSP Strict', d: 'LS1-6: Ahrefs removed (redundant with PostHog+GSC). SE-005: SPA /app/* CSP enforced — no unsafe-inline, SHA-256 hash for theme script. 22 validation tests. v7.63.', p: 100, e: '3.5h' },
 
 ];
 

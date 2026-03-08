@@ -77,14 +77,16 @@ test('admin.html: echarts pinned @5.6.0 with SRI', () => {
 });
 
 // Dynamic scripts documented
-test('index.html: Ahrefs SRI documented as accepted risk', () => {
+test('index.html: Ahrefs removed (REM-005 LS1-6: redundant with PostHog+GSC)', () => {
   const html = readFile('index.html');
-  assert(html.includes('IX-DM-001') && html.includes('SRI not applicable'), 'Missing SRI accepted risk comment');
+  assert(!html.includes('analytics.ahrefs.com/analytics.js'), 'Ahrefs script tag still present');
+  assert(html.includes('REM-005 LS1-6'), 'Missing REM-005 removal comment');
 });
 
-test('compare.html: Ahrefs SRI documented as accepted risk', () => {
+test('compare.html: Ahrefs removed (REM-005 LS1-6: redundant with PostHog+GSC)', () => {
   const html = readFile('compare.html');
-  assert(html.includes('IX-DM-001') && html.includes('SRI not applicable'), 'Missing SRI accepted risk comment');
+  assert(!html.includes('analytics.ahrefs.com/analytics.js'), 'Ahrefs script tag still present');
+  assert(html.includes('REM-005 LS1-6'), 'Missing REM-005 removal comment');
 });
 
 // ─── IX-SEO-001: Canonical URL ───

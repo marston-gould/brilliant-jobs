@@ -52,6 +52,36 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**REM-005** — Analytics + CSP Strict
+- Completed: 2026-03-08
+- Git tag: `security@csp-strict-v1.0.0`
+- Product version bumped: `v7.62` → `v7.63` (HTML changes — Ahrefs removal, CSP headers)
+- ROADMAP.md updated: REM-005, LS1-6, SE-005 → ✅ with completion notes
+- roadmap.html updated: REM-005, LS1-6, SE-005 → `s: 'done'`, p: 100
+- **LS1-6 (Ahrefs Analytics Audit):**
+  - Decision: REMOVE — redundant with PostHog (all 4 surfaces) + GSC (organic search)
+  - Ahrefs analytics.js is a web analytics snippet (page views, sessions), NOT the Ahrefs SEO crawler
+  - PostHog provides all the same metrics plus event tracking, session recording, feature flags
+  - Script removed from index.html and compare.html
+  - `analytics.ahrefs.com` removed from CSP `script-src` and `connect-src` in both `/` and `/(.*)`  Vercel header rules
+  - Reduces third-party script load and CSP surface area
+- **SE-005 (CSP Strict on Dashboard):**
+  - New `/app/:path*` CSP header in vercel.json — strict, no `unsafe-inline`
+  - Theme flash prevention inline script whitelisted via SHA-256 hash: `sha256-DxI1Xb7ZaftmBbfsr/G8P/o5YMStn92mvbY1xkHad5o=`
+  - SPA (React) has zero inline event handlers — CSP is fully enforceable
+  - Legacy `dashboard.html` retains `unsafe-inline` in catch-all `/(.*)`  rule (130 inline handlers, deprecated per SA-017 Phase 3)
+  - `style-src` also strict on SPA (no `unsafe-inline`) — React + Tailwind use external stylesheets only
+- **Modified:**
+  - `index.html` — Ahrefs script removed, REM-005 comment added
+  - `compare.html` — Ahrefs script removed, REM-005 comment added
+  - `vercel.json` — Ahrefs removed from all CSP rules, new `/app/:path*` strict CSP added
+  - `dashboard.html` — CSP status comment updated
+  - `tests/cs-p1-013-seo-sri-referral.test.js` — Ahrefs tests updated to verify removal
+- **Created:**
+  - `tests/rem-005-analytics-csp.test.js` — 22 validation tests (6 sections: Ahrefs removal, CSP cleanup, SPA CSP strict, legacy preservation, SPA index sanity, no Ahrefs anywhere)
+- **Tests:** 22 REM-005 validation tests (all passing). 97 CS-P1-013 regression tests (all passing).
+- **Phase REM COMPLETE** (REM-001 ✅, REM-002 ✅, REM-003 ✅, REM-004 ✅, REM-005 ✅)
+
 **REM-004** — Extension QA + Manifest
 - Completed: 2026-03-08
 - Git tag: `extension@2.23.0-qa-manifest`
@@ -496,6 +526,7 @@ None.
 ## Next Session
 
 **Phase S is COMPLETE.** All 29 sessions (SA-001 through SA-029) plus SA-023b are done.
+**Phase REM is COMPLETE.** All 5 sessions (REM-001 through REM-005) are done.
 
 Next work streams (pending Marston direction):
 - **Run the 5K load test against production** — `k6 run load-tests/scale-5k-suite.js` (test infra is built, needs actual execution against live environment with test user credentials)
@@ -534,7 +565,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.62`** | **REM-004** |
+| **Product (BJ_VERSION)** | **`v7.63`** | **REM-005** |
 | Dashboard | `dashboard@3.0.0-all-pages` | SA-017 |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
@@ -637,22 +668,13 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 | REM-002 | 2026-03-08 | EXT-ES-002, EXT-ES-003, EXT-ES-004, EXT-BE-003 | rem@002-ext-error-handling |
 | REM-003 | 2026-03-08 | BE-006, Cost Monitor | rem@003-ef-cost-monitor |
 | REM-004 | 2026-03-08 | EXT-CWS-001 (permissions audit, handler routing fix), EXT-QA (257 tests, 17 handlers, selector snapshots) | extension@2.23.0-qa-manifest |
+| REM-005 | 2026-03-08 | LS1-6 (Ahrefs removed — redundant with PostHog+GSC), SE-005 (SPA CSP strict — no unsafe-inline, SHA-256 hash for theme script). 22 validation tests. v7.63. Phase REM COMPLETE. | security@csp-strict-v1.0.0 |
 
 ---
 
-## Remaining Sessions (1 of 5 Remaining Items)
+## Remaining Sessions (0 of 5 Remaining Items — ALL COMPLETE)
 
-### Next Session: REM-005 — Analytics + CSP Strict (3.5h)
-
-**Entry gate:** REM-004 complete ✅. SA-017 complete ✅. All dependencies met.
-
-**Fix items:**
-- 0.140 LS1-6: Ahrefs analytics audit — redundant with PostHog+GSC? Remove if yes.
-- 0.005 SE-005: CSP strict on dashboard — remove unsafe-inline (122 inline handlers removed by SA-017 SPA migration)
-
-**Exit gate:** Ahrefs decision documented. Dashboard CSP in enforce mode with no unsafe-inline. All surfaces functional.
-
-**Pair:** Frontend + Security | **Pod 4 Reviewer:** Evolvability Strategist + Chief Architect
+All 5 REM sessions (REM-001 through REM-005) completed 2026-03-08.
 
 ---
 

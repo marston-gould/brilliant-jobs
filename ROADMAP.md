@@ -2769,7 +2769,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.002 | SE-002: Service role key rotation + git history clean | 2h | 1h | ⚡ | CS-001: git-filter-repo purge DONE. CS-P1-002: Rotation procedure scripted (scripts/rotate-jwt-secret.sh), SECURITY.md documents compensating controls. Execution requires maintenance window + Marston coordination. |
 | 0.003 | SE-003: Auth on generate-editorial-content | 1h | 1h | ✅ | CS-001: Auth + admin role check added. Service_role passthrough for cron. Deployed 2026-03-05. |
 | 0.004 | SE-004: Classify + gate 25 unauthenticated Edge Functions | 3h | 6h | ✅ | CS-P1-001: All 89 EFs classified in edge-function-auth.yaml (4 admin-only, 28 authenticated, 46 cron-internal, 7 webhook, 4 public). CI Gate 04 validates registry + code match. Deployed 2026-03-06. |
-| 0.005 | SE-005: CSP unsafe-inline on dashboard | 1h | 3h | ⚡ | CS-P1-002: All inline scripts extracted (posthog-dashboard.js, dashboard-inline.js, posthog-admin.js, admin-inline.js). CSP enforcement deferred — 122 dashboard + 21 admin inline event handlers (onclick=, onchange=) also blocked by strict CSP. Handler extraction is prerequisite. |
+| 0.005 | SE-005: CSP unsafe-inline on dashboard | 1h | 3h | ✅ | REM-005: SPA (`/app/*`) CSP enforced without `unsafe-inline` — hash-based allowance for theme script. Legacy dashboard.html retains `unsafe-inline` (130 inline handlers, deprecated per SA-017 Phase 3). Ahrefs also removed from all CSP rules. |
 
 ### 0-B: Security — Landing Page (Pod 3, P0)
 
@@ -3024,7 +3024,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 |---|------|------|--------|--------|-------|
 | 0.138 | LS1-2: 97 inline styles (token bypass) | 1h | CS-018+P1-008 | ✅ | Migrate to CSS variables. |
 | 0.139 | LS1-5: 30KB inline CSS uncacheable | 2h | CS-018+P1-008 | ✅ | Extract to external file. Upgraded P3→P2. |
-| 0.140 | LS1-6: Ahrefs analytics audit | 30min | — | 🔲 | If redundant with PostHog+GSC, remove. Decision item. |
+| 0.140 | LS1-6: Ahrefs analytics audit | 30min | — | ✅ | REM-005: Removed. Redundant with PostHog (all 4 surfaces) + GSC (organic search). Ahrefs web analytics ≠ Ahrefs SEO tool — the analytics.js snippet only duplicated page view/session tracking already covered by PostHog. Script removed from index.html, compare.html. Origin removed from all CSP rules. |
 | 0.141 | LS1-7: Only 2 responsive breakpoints | 1h | CS-P1-008 | ✅ | Add 1024px. Benefits/pricing/comparison break 768→desktop. |
 | 0.142 | LS1-8: Segment localStorage fragility | 30min | CS-P1-008 | ✅ | Incognito resets to 'new'. Fix detection order. |
 | 0.143 | LS1-9: Auth modal a11y refinements | 30min | CS-007+P1-008 | ✅ | aria-pressed, aria-live, heading structure. |
@@ -3300,6 +3300,6 @@ Phase S is complete when ALL of the following are true:
 
 | Session | Items | Hours | Status | Notes |
 |---------|-------|-------|--------|-------|
-| REM-005 | LS1-6 (Ahrefs audit), SE-005 (CSP strict dashboard) | 3.5h | 🔲 | REM-004 complete. SA-017 complete. Ready to execute. |
+| REM-005 | LS1-6 (Ahrefs audit), SE-005 (CSP strict dashboard) | 3.5h | ✅ | Ahrefs removed (redundant with PostHog+GSC). SPA `/app/*` CSP enforced — no `unsafe-inline`, SHA-256 hash for theme script. 22 validation tests. v7.63. |
 
 **Phase REM total: 5 sessions | 19.5h | 13 items from P75 + P76**
