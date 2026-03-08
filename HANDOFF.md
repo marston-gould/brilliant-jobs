@@ -34,6 +34,21 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**SA-007** — Common Crawl Ingestion Worker + Staging Table (Phase S2)
+- Completed: 2026-03-07
+- Git tag: `infra@common-crawl-v0.1.0`
+- No product version bump (infrastructure only, no JS/CSS/HTML changes)
+- ROADMAP.md updated: SA-007 row → ✅ with completion notes
+- roadmap.html updated: SA-007 entry → `s: 'done'`, p: 100
+- Created: v6.21-common-crawl-staging.sql migration, ingest-common-crawl EF, adr-06-pipeline.md
+- Modified: api-gateway/index.ts (93 → 94 routes)
+- Database: cc_staging_jobs, cc_batch_tracking, cc_url_queue tables + cc_batch_summary view + 2 functions
+- EF deployed: ingest-common-crawl (Athena discovery + live web fetch + 3-tier HTML parsing)
+- Gateway: Route #94 (ingest-common-crawl)
+- Secrets: CC_AWS_ACCESS_KEY, CC_AWS_SECRET_KEY set in Supabase Vault
+- Production tested: Athena discovery (500+ URLs), auth enforcement (401), batch tracking, error handling
+- Architecture decision: Live web fetch replaces WARC archive (EF memory limits). Documented in ADR-06.
+
 **SA-006** — TypeScript Phase 1: Core Files + CI Gate (Phase S1)
 - Completed: 2026-03-07 (already satisfied by CS-P1-015 — no new code needed)
 - All 7 core .ts files, shared types, strict tsconfig, CI gate — all present from Phase 1 remediation
@@ -64,19 +79,17 @@ None.
 
 ## Next Session
 
-**SA-007** — Common Crawl Ingestion Worker + Staging Table (Phase S2)
-- Entry gate: SA-005 complete ✅. SA-006 complete ✅. Gateway operational ✅. **Modified gate:** SA-001/SA-002 (Typesense) deferred — Common Crawl records ingest to Postgres `ats_jobs` directly without Typesense sync queue. Sync queue will be added post-launch when Typesense is provisioned.
+**SA-008** — Deduplication Engine + Enrichment Queue Integration (Phase S2)
+- Entry gate: SA-007 complete ✅. Staging table operational with test records. Batch tracking functional. pg_trgm extension available in Supabase.
 - Pair: Data Eng + Backend
-- Estimated: 14–18h
-- Build: Common Crawl WARC download worker, job extraction pipeline, staging table (`cc_staging_jobs`), dedup logic, promotion to `ats_jobs`, pg_cron scheduling.
+- Estimated: 12–16h
+- Build: Enable pg_trgm extension. Hash-based exact match on URL (fast path). Fuzzy match on title + company + location using pg_trgm similarity (threshold 0.7). Promote surviving records from cc_staging_jobs → ats_jobs. Connect to enrichment queue. Rate-limit enrichment at 100 Anthropic API calls/hour for CC records.
 
 **OR SA-010** — CrewAI Agent Framework + Content QA Agent (Phase S2, parallel track)
-- Entry gate: SA-005 complete ✅ (gateway with middleware plugin architecture operational).
+- Entry gate: SA-005 complete ✅ (gateway operational).
 - Pair: Backend + Eng Lead + Forward-Looking Dev
 - Estimated: 16–22h
 - Build: CrewAI framework, agent lifecycle manager, Content QA Agent (Agent 1) in observe mode, admin panel integration.
-
-> ⚠️ Awaiting Marston decision on Phase S2 entry path.
 
 ---
 
@@ -114,6 +127,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
 | Admin | `admin@1.4.0-compliance` | CS-P1-017 |
 | **API Gateway** | **`infra@gateway-v1.0.0`** | **SA-005** |
+| **Common Crawl** | **`infra@common-crawl-v0.1.0`** | **SA-007** |
 | Load Tests | `loadtest@1.0.0` | CS-020 |
 | CI/CD | `cicd@1.0.0` | CS-020 |
 | Quality Gates | `qualitygates@1.0.0` | CS-021 |
@@ -128,6 +142,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
+| SA-007 | 2026-03-07 | CC ingestion: 3 tables + batch view + 2 functions + EF + gateway route #94 + ADR-06 + Athena discovery + live web fetch + 3-tier parser | infra@common-crawl-v0.1.0 |
 | SA-006 | 2026-03-07 | ALREADY SATISFIED by CS-P1-015 (tsconfig strict, 7 core .ts modules, shared types, CI gate, ADR-04). No new code needed. | (see p1-015@1.0.0-typescript) |
 | SA-005 | 2026-03-07 | All 93 EFs routed + api_consumers table + API key auth + deprecation logging + ADR-03 complete | infra@gateway-v1.0.0 |
 | SA-004 | 2026-03-07 | Gateway EF + middleware plugins + 10 routes + rate_limits migration + ADR-03 | infra@gateway-v0.1.0 |

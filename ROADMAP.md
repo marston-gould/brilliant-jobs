@@ -3158,7 +3158,7 @@ Phase S can overlap with Phase 1 feature work on separate tracks. Sessions withi
 
 | # | Item | Est. | Status | Notes |
 |---|------|------|--------|-------|
-| SA-007 | Common Crawl ingestion pipeline | 14–18h | 🔲 | S3 → parse → normalize → dedup → insert. 50K+ records/batch. Pair: Data Eng + Backend. |
+| SA-007 | Common Crawl ingestion pipeline | 14–18h | ✅ | Athena discovery + live web fetch + 3-tier HTML parsing (schema.org, meta tags, heuristics). 3 tables (cc_staging_jobs, cc_batch_tracking, cc_url_queue) + batch summary view + counter RPC. Gateway route #94. Live web fetch (not WARC — EF memory limits). Domain diversity via window function. SPA job boards excluded. pg_cron placeholder only. ADR-06 started. Done 2026-03-07. |
 | SA-008 | Deduplication engine | 10–14h | 🔲 | Content-based dedup across ATS + Common Crawl. Fuzzy matching. 30–40% dedup rate. Pair: Data Eng + Backend. |
 | SA-009 | Incremental materialized views | 10–14h | 🔲 | Delta-only refreshes replace full-table. Minutes → seconds. Pair: Data Eng + DevOps. |
 | SA-010 | CrewAI framework + Agent 1 | 14–18h | 🔲 | Orchestration framework. Data Freshness Monitor in observe mode. Gateway routing. Pair: Backend + DevOps. |
@@ -3225,7 +3225,7 @@ S6: SA-027 → SA-028 → SA-029 (strictly sequential)
 Critical cross-phase:
   SA-005 (gateway) MUST precede SA-010 (CrewAI routes through gateway)
   SA-006 (TS core) MUST precede SA-013 (SPA uses typed modules)
-  SA-002 (sync queue) MUST precede SA-007 (Common Crawl auto-syncs)
+  SA-002 (sync queue) MUST precede SA-007 (**MODIFIED**: Typesense deferred. SA-007 ingests to Postgres directly. Sync queue will be added post-launch.)
   SA-005 (gateway middleware) MUST precede SA-024 (webhook is middleware)
   SA-017 (SPA data providers) MUST precede SA-025 (flag SDK in React tree)
   SA-023 (load test) MUST precede SA-028 (capacity model back-tests)

@@ -2101,7 +2101,7 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'SA-006 TypeScript strict — core modules', d: 'Already satisfied by CS-P1-015 (Phase 1 remediation). 7 core .ts files, shared types, tsconfig strict, CI gate. ADR-04 Phase 1 complete. Confirmed 2026-03-07.', p: 100, e: '0h (pre-existing)' },
 
 // Phase S2: Automation + Data (Weeks 3-8) — ADR-05, ADR-06
-{ s: 'todo', b: 'post-launch', n: 'SA-007 Common Crawl ingestion pipeline', d: 'Build ingestion pipeline for Common Crawl job postings. S3 → parse → normalize → deduplicate → insert. Target: 50K+ records per batch. Pair: Data Eng + Backend. 14-18h.', p: 91, e: '18h' },
+{ s: 'done', b: 'post-launch', n: 'SA-007 Common Crawl ingestion pipeline', d: 'Athena discovery + live web fetch + 3-tier HTML parsing. 3 tables + batch tracking + gateway route #94. Domain diversity. ADR-06 started. Done 2026-03-07.', p: 100, e: '14h' },
 { s: 'todo', b: 'post-launch', n: 'SA-008 Deduplication engine', d: 'Content-based dedup across ATS + Common Crawl sources. Fuzzy matching on title + company + location. 30-40% dedup rate target. Pair: Data Eng + Backend. 10-14h.', p: 91, e: '14h' },
 { s: 'todo', b: 'post-launch', n: 'SA-009 Incremental materialized views', d: 'Replace full-table materialized view refreshes with delta-only incremental updates. Reduce refresh time from minutes to seconds. Pair: Data Eng + DevOps. 10-14h.', p: 91, e: '14h' },
 { s: 'todo', b: 'post-launch', n: 'SA-010 CrewAI framework + Agent 1', d: 'Deploy CrewAI orchestration framework. Build first agent (Data Freshness Monitor) in observe mode. Gateway routing for agent API calls. Pair: Backend + DevOps. 14-18h.', p: 91, e: '18h' },
