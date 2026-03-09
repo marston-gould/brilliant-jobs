@@ -114,8 +114,8 @@ function _renderRevenue(panel) {
     // Stat cards
     '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">' +
     _revStatCard('Est. MRR', '$' + d.mrr.toLocaleString(), 'Monthly recurring', '💰') +
-    _revStatCard('Active Subs', d.totalActive.toLocaleString(), 'Across all plans', '📋') +
-    _revStatCard('New Subs (' + d.period + 'd)', d.newSubsCount.toLocaleString(), 'In selected period', '📈') +
+    _revStatCard('Active Subs', d.totalActive.toLocaleString(), 'Across all plans', '<i data-lucide="clipboard-list" class="icon-xs icon-stroke"></i>') +
+    _revStatCard('New Subs (' + d.period + 'd)', d.newSubsCount.toLocaleString(), 'In selected period', '<i data-lucide="trending-up" class="icon-xs icon-stroke"></i>') +
     _revStatCard('Stripe Portal', '<a href="https://dashboard.stripe.com" target="_blank" style="color:var(--accent);font-size:13px;font-weight:400">Open ↗</a>', 'Live mode', '⚡') +
     '</div>' +
 

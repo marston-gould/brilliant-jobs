@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.19';
+var BJ_VERSION = 'v8.20';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -648,7 +648,7 @@ function showUpgradePrompt(featureName: string, ent: Record<string, unknown>): v
   var toast = document.createElement('div');
   toast.className = 'upgrade-toast';
   toast.innerHTML = '<div style="display:flex;align-items:center;gap:12px;">' +
-    '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2l2.5 5 5.5.8-4 3.9.9 5.3L10 14.5 5.1 17l.9-5.3-4-3.9 5.5-.8z" fill="var(--accent)"/></svg>' +
+    '<i data-lucide="star" class="icon-lg icon-stroke-lg" style="color:var(--accent);fill:var(--accent)"></i>' +
     '<div><div style="font-weight:600;color:var(--text);font-size:13px;">' + msg + '</div>' +
     '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">Go to Settings → Subscription to upgrade.</div></div>' +
     '</div>';
@@ -1407,11 +1407,11 @@ var ADMIN_SUBPAGE_MAP = {
 };
 
 var ADMIN_SECTIONS = [
-  { key: 'operations', label: 'Operations',  icon: '⚙' },
-  { key: 'growth',     label: 'Growth',      icon: '📈' },
-  { key: 'audience',   label: 'Audience',    icon: '👥' },
-  { key: 'business',   label: 'Business',    icon: '💰' },
-  { key: 'compliance', label: 'Compliance',  icon: '🛡' }
+  { key: 'operations', label: 'Operations',  icon: '<i data-lucide="settings" class="icon-sm icon-stroke"></i>' },
+  { key: 'growth',     label: 'Growth',      icon: '<i data-lucide="trending-up" class="icon-sm icon-stroke"></i>' },
+  { key: 'audience',   label: 'Audience',    icon: '<i data-lucide="users" class="icon-sm icon-stroke"></i>' },
+  { key: 'business',   label: 'Business',    icon: '<i data-lucide="wallet" class="icon-sm icon-stroke"></i>' },
+  { key: 'compliance', label: 'Compliance',  icon: '<i data-lucide="shield-check" class="icon-sm icon-stroke"></i>' }
 ];
 
 // ─── Nav state ───
@@ -6595,7 +6595,7 @@ function _renderCronTable(data) {
       '<button class="admin-btn admin-btn-sm" data-cron-action="toggle" data-jid="' + jid + '" data-active="' + !act + '" title="' + ti + '" style="font-size:12px;min-width:28px;">' + ic + '</button>' +
       '<button class="admin-btn admin-btn-sm" data-cron-action="force" data-jid="' + jid + '" data-jname="' + jn + '" title="Force run" style="font-size:12px;min-width:28px;">🔄</button>' +
       '<button class="admin-btn admin-btn-sm" data-cron-action="edit" data-jid="' + jid + '" data-sched="' + _escHtml(j.schedule) + '" data-jname="' + jn + '" title="Edit schedule" style="font-size:12px;min-width:28px;">✏️</button>' +
-      '<button class="admin-btn admin-btn-sm" data-cron-action="history" data-jid="' + jid + '" data-jname="' + jn + '" title="Run history" style="font-size:12px;min-width:28px;">📋</button>' +
+      '<button class="admin-btn admin-btn-sm" data-cron-action="history" data-jid="' + jid + '" data-jname="' + jn + '" title="Run history" style="font-size:12px;min-width:28px;"><i data-lucide="clipboard-list" class="icon-xs icon-stroke"></i></button>' +
       '</div>';
     return '<tr data-cron-health="' + j.health + '">' +
       '<td style="white-space:nowrap;">' + dot + ' ' + ab + '</td>' +
@@ -13995,7 +13995,7 @@ function _builtInTemplates() {
   var now = new Date().toISOString();
   return [
     { id: 'tpl_welcome',       name: 'Welcome Email',      channel: 'email', status: 'active',
-      subject: 'Welcome to Brilliant Jobs 🎉',
+      subject: 'Welcome to Brilliant Jobs ',
       body: 'Hi {{first_name}},\n\nWelcome to Brilliant Jobs! You now have access to 400,000+ open roles.\n\nGet started by setting your first job filter.\n\n— The Brilliant Jobs Team',
       variables: ['first_name', 'dashboard_url'], updated_at: now },
     { id: 'tpl_job_alert',     name: 'Job Alert',          channel: 'email', status: 'active',
@@ -14287,8 +14287,8 @@ function _renderRevenue(panel) {
     // Stat cards
     '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">' +
     _revStatCard('Est. MRR', '$' + d.mrr.toLocaleString(), 'Monthly recurring', '💰') +
-    _revStatCard('Active Subs', d.totalActive.toLocaleString(), 'Across all plans', '📋') +
-    _revStatCard('New Subs (' + d.period + 'd)', d.newSubsCount.toLocaleString(), 'In selected period', '📈') +
+    _revStatCard('Active Subs', d.totalActive.toLocaleString(), 'Across all plans', '<i data-lucide="clipboard-list" class="icon-xs icon-stroke"></i>') +
+    _revStatCard('New Subs (' + d.period + 'd)', d.newSubsCount.toLocaleString(), 'In selected period', '<i data-lucide="trending-up" class="icon-xs icon-stroke"></i>') +
     _revStatCard('Stripe Portal', '<a href="https://dashboard.stripe.com" target="_blank" style="color:var(--accent);font-size:13px;font-weight:400">Open ↗</a>', 'Live mode', '⚡') +
     '</div>' +
 
@@ -14422,7 +14422,7 @@ function _renderFeedback(panel, posts, err) {
 
     // Stats
     '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">' +
-    _fbStatCard('Total Posts', posts.length.toString(), 'All boards', '📋') +
+    _fbStatCard('Total Posts', posts.length.toString(), 'All boards', '<i data-lucide="clipboard-list" class="icon-xs icon-stroke"></i>') +
     _fbStatCard('Total Votes', totalVotes.toLocaleString(), 'User upvotes', '👍') +
     _fbStatCard('Open', (statusCounts['open'] || 0).toString(), 'Awaiting review', '🔵') +
     _fbStatCard('Planned / In Progress', ((statusCounts['planned'] || 0) + (statusCounts['in progress'] || 0)).toString(), 'Being worked on', '🟢') +

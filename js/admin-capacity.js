@@ -68,7 +68,7 @@ async function refreshCapacityDashboard() {
   html += _adminStatCard('Total Users', _fmtNum(snapshot.users?.total || 0), _fmtNum(snapshot.users?.active_24h || 0) + ' active (24h)');
   html += _adminStatCard('Database Size', (snapshot.db_size_gb || 0) + ' GB', _fmtNum(snapshot.db_rows || 0) + ' rows');
   html += _adminStatCard('Connections', (snapshot.connections?.active || 0) + ' / ' + (snapshot.connections?.max || 0), _connPct(snapshot.connections) + '% utilization');
-  html += _adminStatCard('Replica Lag', (snapshot.replica_lag_ms || 0) + ' ms', snapshot.replica_lag_ms > 3000 ? '⚠️ HIGH' : '✅ Healthy');
+  html += _adminStatCard('Replica Lag', (snapshot.replica_lag_ms || 0) + ' ms', snapshot.replica_lag_ms > 3000 ? '<i data-lucide="triangle-alert" class="icon-xs icon-stroke" style="color:var(--warm)"></i> HIGH' : 'OK Healthy');
   html += _adminStatCard('Budget Used', (snapshot.budget_utilization_pct || 0).toFixed(1) + '%', '$' + (costTotals.current_mo || 0).toFixed(2) + '/mo');
   html += _adminStatCard('Alerts', (alerts.unacknowledged || 0) + ' pending', (alerts.critical_24h || 0) + ' critical (24h)');
   html += '</div>';

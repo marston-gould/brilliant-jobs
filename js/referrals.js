@@ -82,7 +82,7 @@
             bonusResult.granted.forEach(g => {
               const parts = [`${g.credits} credits`];
               if (g.pro_days > 0) parts.push(`${g.pro_days} days Pro`);
-              showToast(`🎉 ${g.name} tier unlocked! You earned ${parts.join(' + ')}`, { type: 'success', duration: 6000 });
+              showToast(`${g.name} tier unlocked! You earned ${parts.join(' + ')}`, { type: 'success', duration: 6000 });
             });
           }
         } catch(bonusErr) { reportError('referrals', bonusErr); console.warn('[Referrals] Tier bonus check:', bonusErr.message);

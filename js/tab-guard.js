@@ -65,7 +65,7 @@
     fallback.className = 'bj-tab-error';
     fallback.setAttribute('role', 'alert');
     fallback.innerHTML =
-      '<div class="bj-tab-error-icon">⚠️</div>' +
+      '<div class="bj-tab-error-icon"><i data-lucide="triangle-alert" class="icon-lg icon-stroke-lg" style="color:var(--warm)"></i></div>' +
       '<h3 class="bj-tab-error-title">Something went wrong</h3>' +
       '<p class="bj-tab-error-msg">This section encountered an error while loading. ' +
         'Your other tabs are still working fine.</p>' +

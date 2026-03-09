@@ -109,11 +109,11 @@ var ADMIN_SUBPAGE_MAP = {
 };
 
 var ADMIN_SECTIONS = [
-  { key: 'operations', label: 'Operations',  icon: '⚙' },
-  { key: 'growth',     label: 'Growth',      icon: '📈' },
-  { key: 'audience',   label: 'Audience',    icon: '👥' },
-  { key: 'business',   label: 'Business',    icon: '💰' },
-  { key: 'compliance', label: 'Compliance',  icon: '🛡' }
+  { key: 'operations', label: 'Operations',  icon: '<i data-lucide="settings" class="icon-sm icon-stroke"></i>' },
+  { key: 'growth',     label: 'Growth',      icon: '<i data-lucide="trending-up" class="icon-sm icon-stroke"></i>' },
+  { key: 'audience',   label: 'Audience',    icon: '<i data-lucide="users" class="icon-sm icon-stroke"></i>' },
+  { key: 'business',   label: 'Business',    icon: '<i data-lucide="wallet" class="icon-sm icon-stroke"></i>' },
+  { key: 'compliance', label: 'Compliance',  icon: '<i data-lucide="shield-check" class="icon-sm icon-stroke"></i>' }
 ];
 
 // ─── Nav state ───

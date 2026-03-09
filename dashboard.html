@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v8.19 -->
+<!-- Brilliant Jobs Dashboard v8.20 -->
 <html lang="en">
 <head>
   <!-- CS-P1-009: Theme flash prevention — must be first script -->
@@ -19,22 +19,22 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="/js/vendor/supabase.min.js" defer></script>
-  <script src="/js/pipeline-migration.js?v=v8.19" defer></script>
-  <script src="/js/notification-center.js?v=v8.19" defer></script>
+  <script src="/js/pipeline-migration.js?v=v8.20" defer></script>
+  <script src="/js/notification-center.js?v=v8.20" defer></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" integrity="sha384-nFoSjZIoH3CCp8W639jJyQkuPHinJ2NHe7on1xvlUA7SuGfJAfvMldrsoAVm6ECz" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" integrity="sha384-eEu5CTj3qGvu9PdJuS+YlkNi7d2XxQROAFYOr59zgObtlcux1ae1Il3u7jvdCSWu" crossorigin="anonymous"></script>
   <!-- CS-014: CX-09 — ECharts lazy-loaded by stats.js when Stats tab opens -->
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js" integrity="sha384-TcLTgu6flPhnZ5dfHnHimsxNFjYWN0povfGgnOvgPJKbZe6IbuoC2ociiatSHl9E" crossorigin="anonymous"></script>
   <!-- CS-016 FIX-10: Code-split chunks — shell (globals+routing) + feed (job list) loaded eagerly; all other chunks lazy-loaded on tab switch -->
-  <script src="dist/dashboard-shell.min.js?v=v8.19" defer></script>
-  <script src="dist/dashboard-feed.min.js?v=v8.19" defer></script>
+  <script src="dist/dashboard-shell.min.js?v=v8.20" defer></script>
+  <script src="dist/dashboard-feed.min.js?v=v8.20" defer></script>
   <!-- CS-P1-002: dashboard inline scripts externalized (pdfjs, preload, feedback, insights, a11y) -->
-  <script src="js/dashboard-inline.js?v=v8.19" defer></script>
-  <script src="js/canny.js?v=v8.19" defer></script>
+  <script src="js/dashboard-inline.js?v=v8.20" defer></script>
+  <script src="js/canny.js?v=v8.20" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=v8.19">
+  <link rel="stylesheet" href="styles.css?v=v8.20">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -109,11 +109,11 @@
     </style>
   <!-- CSS extracted to styles.css in v3.28 -->
   <!-- A13: PostHog analytics — CS-P1-002: externalized for CSP compliance -->
-  <script src="js/posthog-dashboard.js?v=v8.19" defer></script>
-  <script src="js/posthog-perf.js?v=v8.19" defer></script>
-  <script src="js/feature-flags.js?v=v8.19" defer></script>
-  <script src="js/structured-logger.js?v=v8.19" defer></script>
-  <script src="js/theme.js?v=v8.19" defer></script>
+  <script src="js/posthog-dashboard.js?v=v8.20" defer></script>
+  <script src="js/posthog-perf.js?v=v8.20" defer></script>
+  <script src="js/feature-flags.js?v=v8.20" defer></script>
+  <script src="js/structured-logger.js?v=v8.20" defer></script>
+  <script src="js/theme.js?v=v8.20" defer></script>
 </head>
 <body>
 
@@ -241,7 +241,7 @@
         <!-- QA-017: Theme toggle on same row as credits -->
         <div style="display:flex;align-items:center;gap:0;margin:0 -4px;">
         <div class="credit-balance" id="credit-balance" onclick="openPricingModal()" title="Click to purchase credits" style="flex:1;min-width:0;">
-          <svg class="credit-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <!-- POD3-LUCIDE: Credits icon removed — number + label is sufficient -->
           <span class="credit-balance-count credit-green" id="credit-balance-badge" aria-label="Credit balance: 0">0</span>
           <span class="credit-balance-label">credits</span>
         </div>
@@ -1148,7 +1148,7 @@
           </div>
 
           <!-- Sort bar -->
-                      <button class="btn btn-sm" id="improve-filters-btn" onclick="bjImproveFiltersFromHidden()" style="display:none;margin-left:auto;padding:3px 10px;font-size:10px;background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(239,68,68,0.1));border:1px solid rgba(245,158,11,0.3);color:var(--warm);font-weight:600;" title="Analyze hidden jobs to suggest NOT filters">🔧 Improve Filters</button>
+                      <button class="btn btn-sm" id="improve-filters-btn" onclick="bjImproveFiltersFromHidden()" style="display:none;margin-left:auto;padding:3px 10px;font-size:10px;background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(239,68,68,0.1));border:1px solid rgba(245,158,11,0.3);color:var(--warm);font-weight:600;" title="Analyze hidden jobs to suggest NOT filters"><i data-lucide="wrench" class="icon-xs icon-stroke"></i> Improve Filters</button>
           </div>
 
 
@@ -1156,18 +1156,18 @@
           <div style="display:flex;align-items:center;gap:8px;margin:4px 12px 0;">
             <div class="trust-filter-wrap" style="position:relative;flex-shrink:0;">
               <button id="trust-filter-btn" class="btn btn-sm" style="padding:2px 10px;font-size:10px;color:var(--text-faint);border:1px solid var(--border);background:transparent;cursor:pointer;border-radius:4px;display:flex;align-items:center;gap:4px;white-space:nowrap;flex-shrink:0;">
-                🛡️ Trust Level <span id="trust-filter-count" style="display:none;background:var(--accent);color:#fff;font-size:9px;padding:0 5px;border-radius:8px;font-weight:700;"></span>
+                <i data-lucide="shield-check" class="icon-sm icon-stroke"></i> Trust Level <span id="trust-filter-count" style="display:none;background:var(--accent);color:#fff;font-size:9px;padding:0 5px;border-radius:8px;font-weight:700;"></span>
               </button>
               <div id="trust-filter-dropdown" style="display:none;position:absolute;top:100%;left:0;z-index:60;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.2);padding:8px;min-width:180px;margin-top:4px;">
                 <div style="font-size:10px;font-weight:700;color:var(--text-dim);padding:2px 6px 6px;border-bottom:1px solid var(--border);margin-bottom:4px;">Show jobs with trust level:</div>
                 <label class="trust-filter-opt u-btn-action" data-label="safe">
-                  <input type="checkbox" class="trust-cb" value="safe" checked> 🛡️ <span style="color:var(--green);">Verified</span>
+                  <input type="checkbox" class="trust-cb" value="safe" checked> <i data-lucide="shield-check" class="icon-xs icon-stroke"></i> <span style="color:var(--green);">Verified</span>
                 </label>
                 <label class="trust-filter-opt u-btn-action" data-label="caution">
-                  <input type="checkbox" class="trust-cb" value="caution" checked> ⚠️ <span style="color:var(--warm);">Caution</span>
+                  <input type="checkbox" class="trust-cb" value="caution" checked> <i data-lucide="triangle-alert" class="icon-xs icon-stroke"></i> <span style="color:var(--warm);">Caution</span>
                 </label>
                 <label class="trust-filter-opt u-btn-action" data-label="suspicious">
-                  <input type="checkbox" class="trust-cb" value="suspicious" checked> 🚩 <span style="color:var(--red);">Suspicious</span>
+                  <input type="checkbox" class="trust-cb" value="suspicious" checked> <i data-lucide="flag" class="icon-xs icon-stroke"></i> <span style="color:var(--red);">Suspicious</span>
                 </label>
                 <label class="trust-filter-opt u-btn-action" data-label="unknown">
                   <input type="checkbox" class="trust-cb" value="unknown" checked> <span class="u-text-faint">Unscored</span>
@@ -1181,7 +1181,7 @@
             <!-- AI Content filter (Phase 72 Session 3.3) -->
             <div class="ai-filter-wrap u-pos-rel">
               <button id="ai-filter-btn" class="btn btn-sm" style="padding:2px 10px;font-size:10px;color:var(--text-faint);border:1px solid var(--border);background:transparent;cursor:pointer;border-radius:4px;display:flex;align-items:center;gap:4px;">
-                🤖 AI Content <span id="ai-filter-count" style="display:none;background:var(--accent);color:#fff;font-size:9px;padding:0 5px;border-radius:8px;font-weight:700;"></span>
+                <i data-lucide="scan-text" class="icon-sm icon-stroke"></i> AI Content <span id="ai-filter-count" style="display:none;background:var(--accent);color:#fff;font-size:9px;padding:0 5px;border-radius:8px;font-weight:700;"></span>
               </button>
               <div id="ai-filter-dropdown" style="display:none;position:absolute;top:100%;left:0;z-index:60;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.2);padding:8px;min-width:190px;margin-top:4px;">
                 <div style="font-size:10px;font-weight:700;color:var(--text-dim);padding:2px 6px 6px;border-bottom:1px solid var(--border);margin-bottom:4px;">Show jobs by AI content level:</div>
@@ -3103,7 +3103,7 @@
             </div>
             <div id="danger-zone-pending" style="display:none;margin-top:12px;">
               <div style="background:var(--bg-warn, #fefce8);border:1px solid var(--warm, #eab308);border-radius:6px;padding:12px;margin-bottom:12px;">
-                <div style="font-weight:600;color:var(--text);margin-bottom:4px;">⚠️ Account Deletion Pending</div>
+                <div style="font-weight:600;color:var(--text);margin-bottom:4px;"><i data-lucide="triangle-alert" class="icon-sm icon-stroke"></i> Account Deletion Pending</div>
                 <div class="u-meta">Your account is scheduled for permanent deletion on <strong id="dz-delete-date"></strong>. All data will be removed after this date.</div>
               </div>
               <button class="btn btn-sm" id="st-cancel-delete" style="background:var(--green, #22c55e);color:#fff;border:none;width:fit-content;">
@@ -3481,7 +3481,7 @@
           <!-- AI Aggregation Health Panel (v6.95 Session 4.3) -->
           <div id="cb-ai-health-panel" style="display:none;margin:10px 0;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;font-size:12px;">
             <div class="u-flex-between-mb8">
-              <span style="font-weight:600;color:var(--text-main);font-size:13px;">🔬 AI Content Scoring Pipeline</span>
+              <span style="font-weight:600;color:var(--text-main);font-size:13px;"><i data-lucide="scan-text" class="icon-sm icon-stroke"></i> AI Content Scoring Pipeline</span>
               <button id="cb-ai-health-toggle" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--text-dim);text-decoration:underline;">Hide</button>
             </div>
             <div id="cb-ai-health-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;">
@@ -3742,6 +3742,9 @@
   </div>
 </div>
 
+
+<!-- POD3-LUCIDE: Lucide icon library (ISC license, pinned version) -->
+  <script src="https://unpkg.com/lucide@0.577.0/dist/umd/lucide.min.js"></script>
 
 <!-- CS-P1-002: Market intel + a11y moved to js/dashboard-inline.js -->
   <!-- Reusable confirm modal — replaces all browser confirm() dialogs -->

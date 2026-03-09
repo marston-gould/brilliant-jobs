@@ -35,7 +35,7 @@ function _builtInTemplates() {
   var now = new Date().toISOString();
   return [
     { id: 'tpl_welcome',       name: 'Welcome Email',      channel: 'email', status: 'active',
-      subject: 'Welcome to Brilliant Jobs 🎉',
+      subject: 'Welcome to Brilliant Jobs ',
       body: 'Hi {{first_name}},\n\nWelcome to Brilliant Jobs! You now have access to 400,000+ open roles.\n\nGet started by setting your first job filter.\n\n— The Brilliant Jobs Team',
       variables: ['first_name', 'dashboard_url'], updated_at: now },
     { id: 'tpl_job_alert',     name: 'Job Alert',          channel: 'email', status: 'active',

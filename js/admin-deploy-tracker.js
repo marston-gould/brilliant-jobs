@@ -197,7 +197,7 @@ async function refreshDeployTracker() {
       html += '<td style="font-size:12px;">' + _fmtTimeAgo(d.created_at) + '</td>';
       html += '</tr>';
       if (d.error_message) {
-        html += '<tr><td colspan="7" style="padding:4px 12px;font-size:11px;color:#ef4444;background:var(--bg-main);">⚠️ ' + d.error_message + '</td></tr>';
+        html += '<tr><td colspan="7" style="padding:4px 12px;font-size:11px;color:#ef4444;background:var(--bg-main);"><i data-lucide="triangle-alert" class="icon-xs icon-stroke" style="color:var(--warm)"></i> ' + d.error_message + '</td></tr>';
       }
     });
 

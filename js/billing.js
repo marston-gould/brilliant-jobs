@@ -654,7 +654,7 @@ function _initTierChangeListener() {
           var isUpgrade = (newTier === 'pro') || (newTier === 'starter' && oldTier === 'free');
           if (typeof showToast === 'function') {
             showToast(
-              (isUpgrade ? '🎉 ' : '') + 'Plan changed: ' + (tierNames[oldTier] || oldTier) + ' → ' + (tierNames[newTier] || newTier),
+              (isUpgrade ? '' : '') + 'Plan changed: ' + (tierNames[oldTier] || oldTier) + ' → ' + (tierNames[newTier] || newTier),
               { type: isUpgrade ? 'success' : 'info', duration: 8000 }
             );
           }

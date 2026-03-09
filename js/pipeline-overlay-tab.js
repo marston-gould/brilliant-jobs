@@ -88,7 +88,7 @@ window.renderOverlayPipelineTab = async function() {
       var matchScore = typeof e.match_score === 'number' ? e.match_score + '%' : '—';
       var matchColor = typeof e.match_score === 'number' ? (e.match_score >= 70 ? 'color:var(--green);' : e.match_score >= 40 ? 'color:var(--warm);' : 'color:var(--red);') : '';
       var fraudScore = typeof e.fraud_score === 'number' ? e.fraud_score : null;
-      var fraudHtml = fraudScore !== null ? (fraudScore >= 60 ? '<span style="color:var(--red);font-weight:600;">🛡 ' + fraudScore + '</span>' : '<span style="color:var(--text-faint);">' + fraudScore + '</span>') : '<span style="color:var(--text-faint);">—</span>';
+      var fraudHtml = fraudScore !== null ? (fraudScore >= 60 ? '<span style="color:var(--red);font-weight:600;"><i data-lucide="shield-check" class="icon-xs icon-stroke"></i> ' + fraudScore + '</span>' : '<span style="color:var(--text-faint);">' + fraudScore + '</span>') : '<span style="color:var(--text-faint);">—</span>';
       var aiScore = typeof e.ai_content_score === 'number' ? e.ai_content_score : null;
       var aiHtml = aiScore !== null ? (aiScore >= 0.7 ? '<span style="color:var(--warm);font-weight:600;">⚠ ' + Math.round(aiScore * 100) + '%</span>' : '<span style="color:var(--text-faint);">' + Math.round(aiScore * 100) + '%</span>') : '<span style="color:var(--text-faint);">—</span>';
       var savedAt = e.created_at ? new Date(e.created_at).toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '—';

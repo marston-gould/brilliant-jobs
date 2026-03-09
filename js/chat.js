@@ -809,6 +809,8 @@ function appendChatBubble(role, text) {
   }
 
   container.appendChild(bubble);
+  // POD3-LUCIDE: Re-initialize any Lucide icons in chat messages
+  if (typeof window.refreshIcons === 'function') window.refreshIcons();
 
   // Scroll to bottom
   container.scrollTop = container.scrollHeight;

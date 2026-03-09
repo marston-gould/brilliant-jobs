@@ -470,7 +470,7 @@ async function refreshUserSupport() {
               item.title + ' <span class="u-text-muted">(👍 ' + item.votes + ')</span></li>';
           }).join('') +
         '</ul>'
-        : '<p class="u-text-muted">No urgent items. 🎉</p>');
+        : '<p class="u-text-muted">No urgent items. </p>');
   } catch (e) {
     el.innerHTML = '<p class="u-text-muted">Error loading support queue.</p>';
     if (typeof reportError === 'function') reportError('admin-crewai', 'refreshUserSupport', e);

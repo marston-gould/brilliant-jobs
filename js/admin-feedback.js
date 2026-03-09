@@ -74,7 +74,7 @@ function _renderFeedback(panel, posts, err) {
 
     // Stats
     '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">' +
-    _fbStatCard('Total Posts', posts.length.toString(), 'All boards', '📋') +
+    _fbStatCard('Total Posts', posts.length.toString(), 'All boards', '<i data-lucide="clipboard-list" class="icon-xs icon-stroke"></i>') +
     _fbStatCard('Total Votes', totalVotes.toLocaleString(), 'User upvotes', '👍') +
     _fbStatCard('Open', (statusCounts['open'] || 0).toString(), 'Awaiting review', '🔵') +
     _fbStatCard('Planned / In Progress', ((statusCounts['planned'] || 0) + (statusCounts['in progress'] || 0)).toString(), 'Being worked on', '🟢') +

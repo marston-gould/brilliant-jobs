@@ -457,7 +457,7 @@ function showUpgradePrompt(featureName, ent) {
   var msg = ent.behavior === "off" ? featureName + " is a Pro feature. Upgrade to unlock it." : "You've reached the " + featureName + " limit (" + ent.effective_limit + "). Upgrade to Pro for more.";
   var toast = document.createElement("div");
   toast.className = "upgrade-toast";
-  toast.innerHTML = '<div style="display:flex;align-items:center;gap:12px;"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2l2.5 5 5.5.8-4 3.9.9 5.3L10 14.5 5.1 17l.9-5.3-4-3.9 5.5-.8z" fill="var(--accent)"/></svg><div><div style="font-weight:600;color:var(--text);font-size:13px;">' + msg + '</div><div style="font-size:11px;color:var(--text-dim);margin-top:2px;">Go to Settings \u2192 Subscription to upgrade.</div></div></div>';
+  toast.innerHTML = '<div style="display:flex;align-items:center;gap:12px;"><i data-lucide="star" class="icon-lg icon-stroke-lg" style="color:var(--accent);fill:var(--accent)"></i><div><div style="font-weight:600;color:var(--text);font-size:13px;">' + msg + '</div><div style="font-size:11px;color:var(--text-dim);margin-top:2px;">Go to Settings \u2192 Subscription to upgrade.</div></div></div>';
   document.body.appendChild(toast);
   requestAnimationFrame(function() {
     toast.classList.add("show");

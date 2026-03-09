@@ -631,7 +631,7 @@ function showUpgradePrompt(featureName: string, ent: Record<string, unknown>): v
   var toast = document.createElement('div');
   toast.className = 'upgrade-toast';
   toast.innerHTML = '<div style="display:flex;align-items:center;gap:12px;">' +
-    '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2l2.5 5 5.5.8-4 3.9.9 5.3L10 14.5 5.1 17l.9-5.3-4-3.9 5.5-.8z" fill="var(--accent)"/></svg>' +
+    '<i data-lucide="star" class="icon-lg icon-stroke-lg" style="color:var(--accent);fill:var(--accent)"></i>' +
     '<div><div style="font-weight:600;color:var(--text);font-size:13px;">' + msg + '</div>' +
     '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">Go to Settings → Subscription to upgrade.</div></div>' +
     '</div>';

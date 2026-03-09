@@ -67,7 +67,7 @@ function _ccEventIcon(type) {
   if (type === 'deploy') return '🚀';
   if (type === 'alert') return '🔔';
   if (type === 'rollback') return '⏪';
-  return '📋';
+  return '<i data-lucide="clipboard-list" class="icon-xs icon-stroke"></i>';
 }
 
 // ── Main Render ──────────────────────────────────────────────────────────────

@@ -149,7 +149,7 @@ async function refreshChatAnalytics() {
     // p95 alert status
     if (latency.p95 && latency.p95 > 2000) {
       html += '<div class="admin-alert admin-alert-danger" style="margin-top:12px;">';
-      html += '⚠️ p95 latency (' + latency.p95 + 'ms) exceeds 2000ms target. PostHog alert should fire.';
+      html += '<i data-lucide="triangle-alert" class="icon-xs icon-stroke" style="color:var(--warm)"></i> p95 latency (' + latency.p95 + 'ms) exceeds 2000ms target. PostHog alert should fire.';
       html += '</div>';
     }
     html += '</div>';

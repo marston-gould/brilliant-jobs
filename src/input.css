@@ -3460,3 +3460,12 @@
     .u-flex-gap-10 { display: flex; align-items: center; gap: 10px; }
     .u-btn-outline-sm { background: none; border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer; color: var(--text-dim); }
     .u-mh-240 { max-height: 240px; }
+
+    /* ── Lucide Icon Size Tokens (POD3-LUCIDE) ────────── */
+    .icon-xs { width: 12px; height: 12px; }
+    .icon-sm { width: 14px; height: 14px; }
+    .icon-md { width: 16px; height: 16px; }
+    .icon-lg { width: 20px; height: 20px; }
+    .icon-xl { width: 28px; height: 28px; }
+    .icon-stroke { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .icon-stroke-lg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }

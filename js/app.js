@@ -333,7 +333,19 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
       }
     }, 5 * 60 * 1000);
   }
+  // POD3-LUCIDE: Initialize Lucide icons after all DOM content is ready
+  if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
+    lucide.createIcons();
+  }
 }
+
+// POD3-LUCIDE: Global helper to re-init Lucide icons after dynamic content injection
+// Call after renderJobCards(), appendMessage(), renderNotificationItems(), etc.
+window.refreshIcons = function() {
+  if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
+    lucide.createIcons();
+  }
+};
 
 // Session analytics — create or reuse session
 async function initSession() {

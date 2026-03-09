@@ -3433,3 +3433,9 @@ Phase S is complete when ALL of the following are true:
 | QA-HEADER | Saved Searches header doesn't mention prompts | ✅ | Changed to "Saved Searches & Prompts". |
 | QA-EXT-AUTOSUBMIT | Extension auto-submit "vanished" | ⚠️ | Code is intact — all 17 ATS handlers + auto-apply are in repo. The extension needs re-authentication (expired refresh token). After re-auth, all functionality resumes. |
 | QA-EXT-TOKEN | Token refresh code removed? | ⚠️ | Code is intact in background.ts lines 251-302. The refresh_token itself expired (Supabase 60-day expiry). Needs manual re-login in extension popup. |
+
+## POD3-LUCIDE — Lucide Icon Migration
+
+| ID | Item | Status | Notes |
+|----|------|--------|-------|
+| POD3-LUCIDE | Lucide Icon Migration — Standardize all dashboard iconography on Lucide open-source library (ISC license, pinned v0.577.0). Eliminated 43+ emoji from UI across 15+ JS files. Added 7 CSS icon size tokens (.icon-xs through .icon-xl, .icon-stroke, .icon-stroke-lg). Replaced trust/AI badge emoji with Lucide SVG icons (shield-check, triangle-alert, flag, scan-text, check). Removed unrecognizable credits icon. Added lucide.createIcons() init + window.refreshIcons() global helper for dynamic content. Admin nav emoji replaced with Lucide equivalents. | ✅ | Lucide CDN script tag + 7 CSS tokens + emoji elimination across dashboard.html, job-feed.js, chat.js, resumes.js, referrals.js, billing.js, admin.js, admin-*.js, tab-guard.js, location.js, pipeline-overlay-tab.js, globals.ts. refreshIcons() calls after dynamic renders. Credits icon removed. 37 validation tests. v8.20. 2026-03-09. |

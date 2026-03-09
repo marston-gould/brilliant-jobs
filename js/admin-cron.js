@@ -184,7 +184,7 @@ function _renderCronTable(data) {
       '<button class="admin-btn admin-btn-sm" data-cron-action="toggle" data-jid="' + jid + '" data-active="' + !act + '" title="' + ti + '" style="font-size:12px;min-width:28px;">' + ic + '</button>' +
       '<button class="admin-btn admin-btn-sm" data-cron-action="force" data-jid="' + jid + '" data-jname="' + jn + '" title="Force run" style="font-size:12px;min-width:28px;">🔄</button>' +
       '<button class="admin-btn admin-btn-sm" data-cron-action="edit" data-jid="' + jid + '" data-sched="' + _escHtml(j.schedule) + '" data-jname="' + jn + '" title="Edit schedule" style="font-size:12px;min-width:28px;">✏️</button>' +
-      '<button class="admin-btn admin-btn-sm" data-cron-action="history" data-jid="' + jid + '" data-jname="' + jn + '" title="Run history" style="font-size:12px;min-width:28px;">📋</button>' +
+      '<button class="admin-btn admin-btn-sm" data-cron-action="history" data-jid="' + jid + '" data-jname="' + jn + '" title="Run history" style="font-size:12px;min-width:28px;"><i data-lucide="clipboard-list" class="icon-xs icon-stroke"></i></button>' +
       '</div>';
     return '<tr data-cron-health="' + j.health + '">' +
       '<td style="white-space:nowrap;">' + dot + ' ' + ab + '</td>' +
