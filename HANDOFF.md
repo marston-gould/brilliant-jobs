@@ -52,6 +52,38 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**FA-007** — SPA useFeedSearch.ts Full Parity
+- Completed: 2026-03-08
+- Product version bumped: `v7.93` → `v7.94` (JS changes — useFeedSearch.ts full buildFilterQuery parity; all HTML surfaces cache-busted)
+- ROADMAP.md updated: FA-007 → ✅
+- roadmap.html updated: FA-007 → `s: 'done'`, p: 100
+- **Core change:** SPA buildFilterQuery now produces identical Supabase PostgREST queries as legacy job-feed.js for all filter types.
+- **14 parity gaps fixed:**
+  1. `status='open'` filter — was missing entirely, closed/inactive jobs leaked into SPA results
+  2. What pills + content_tsv — FA-001 content search (title OR content_tsv wfts) now in SPA
+  3. What NOT pills + content_tsv — FA-001 negation against BOTH title AND content_tsv (NULL-safe FA-002)
+  4. Title excludes + content_tsv — tuning titleExcludes now negate content_tsv too
+  5. Hourly exclusion — `tuning.excludeHourly` → `salary_rate != 'hr'`
+  6. Staffing exclusion — `tuning.excludeStaffing` → `is_staffing_agency != true`
+  7. Industry exclusions — `tuning.industryExcludes` with string/object compat
+  8. Skills pills — `sf.skillsPills` → `extracted_skills.cs.{term}` (contains operator)
+  9. Department pills — `sf.deptPills` → `extracted_department` eq/in
+  10. Pay pill parsing — `pill.min`/`pill.max` with salary overlap + includeNoSalary OR
+  11. Level column — `career_level` → `extracted_seniority` (correct column)
+  12. JD column + config — `fts` → `content_tsv` with `config: 'english'`
+  13. Pill value sanitization — strips `,()` from What/JD values (legacy match)
+  14. NOT pill prefix — strips `nor ` prefix from What NOT/Where NOT/Who NOT
+- **Content search flag:** Single-filter path now checks `feed_content_search` flag (was only checked in multi-filter RPC path)
+- **Interface updates:** FilterPill gained `min?/max?` props; SavedFilter gained `skillsPills?/deptPills?/pills?`
+- **Created:**
+  - `tests/fa-007-spa-feed-parity.test.js` — 43 validation tests (14 sections)
+- **Modified:**
+  - `src/app/pages/dashboard/feed/hooks/useFeedSearch.ts` — buildFilterQuery rewritten for full parity
+  - `dist/dashboard.min.js` — rebuilt
+  - `ROADMAP.md` — FA-007 → ✅
+  - `roadmap.html` — FA-007 → done/100
+- **Tests:** 43 FA-007 parity tests (all passing)
+
 **FA-006** — Server-Side Trust/AI Filters
 - Completed: 2026-03-08
 - Product version bumped: `v7.92` → `v7.93` (JS changes — job-feed.js server trust/AI filter path + cache population; SPA useFeedSearch.ts mirrored; Postgres function search_jobs_multi updated with p_trust_labels/p_ai_labels + EXISTS clauses + _enriched CTE; feature flag feed_server_trust_filter; all HTML surfaces cache-busted)
@@ -938,13 +970,9 @@ None.
 
 ## Next Session
 
-**Feed Accuracy Sprint — FA-006 COMPLETE.** FA-010, FA-001, FA-002, FA-003, FA-009, FA-004, FA-005, and FA-006 are done.
+**Feed Accuracy Sprint — FA-007 COMPLETE.** FA-010, FA-001, FA-002, FA-003, FA-009, FA-004, FA-005, FA-006, and FA-007 are done.
 
-**FA-007: SPA useFeedSearch.ts Full Parity** — 6-8h
-- **Entry gate:** FA-006 server trust filter deployed.
-- **Fix:** Bring useFeedSearch.ts to full parity with the production feed. Audit every filter path in legacy buildFilterQuery against SPA buildFilterQuery. Add missing: status="open", staffing exclusion, hourly exclusion, industry exclusions, skills pills, department pills. Fix pay pill parsing: use pill.min/pill.max instead of pill.values[0] string parse. CRITICAL: SPA What NOT pills only negate title — must match legacy FA-001 fix (negate against both title AND content_tsv).
-- **Files:** `src/app/pages/dashboard/feed/hooks/useFeedSearch.ts`, possibly shared module extraction
-- **Exit gate:** All filter types produce identical results between legacy and SPA. Parity test suite passes.
+**FA-007: SPA useFeedSearch.ts Full Parity** — ✅ COMPLETE (see Last Completed Session above)
 
 **Phase S is COMPLETE.** All 29 sessions (SA-001 through SA-029) plus SA-023b are done.
 **Phase REM is COMPLETE.** All 5 sessions (REM-001 through REM-005) are done.
@@ -992,7 +1020,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.93`** | **FA-006 — Server-Side Trust/AI Filters** |
+| **Product (BJ_VERSION)** | **`v7.94`** | **FA-007 — SPA Feed Parity** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

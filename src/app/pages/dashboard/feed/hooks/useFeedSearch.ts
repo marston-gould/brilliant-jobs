@@ -27,6 +27,8 @@ export interface FilterPill {
   radius_mi?: number;
   locType?: 'state' | 'remote' | 'text';
   stateCode?: string;
+  min?: number;  // FA-007: Pay pill min (legacy parity)
+  max?: number;  // FA-007: Pay pill max (legacy parity)
 }
 
 export interface SavedFilter {
@@ -46,6 +48,9 @@ export interface SavedFilter {
   levelPills: FilterPill[];
   typePills: FilterPill[];
   scorePills: FilterPill[];
+  skillsPills?: FilterPill[];    // FA-007: Skills filter (legacy parity)
+  deptPills?: FilterPill[];      // FA-007: Department filter (legacy parity)
+  pills?: FilterPill[];          // FA-007: Legacy whatPills fallback
   includeRemote: boolean;
   includeNoSalary: boolean;
   levelHierarchy?: LevelEntry[];
@@ -324,37 +329,57 @@ function buildFilterQuery(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   baseQuery: any,
   locationIds: string[] | null,
-  tuning: Record<string, unknown>
+  tuning: Record<string, unknown>,
+  contentSearchEnabled = false
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): any {
   let query = baseQuery;
 
-  // What pills (title/keyword search)
-  const whatPills = sf.whatPills || [];
-  for (const pill of whatPills) {
-    for (const v of pill.values) {
-      if (v.trim()) {
-        query = query.ilike('title', `%${v.trim()}%`);
-      }
-    }
-  }
+  // FA-007: Always filter to active/open jobs only (legacy parity)
+  query = query.eq('status', 'open');
 
-  // What NOT pills
+  // What pills (title/keyword search) — FA-001/FA-007: OR title ilike + content_tsv wfts
+  const whatPills = sf.whatPills || sf.pills || [];
+  const allWhatClauses: string[] = whatPills.flatMap(pill => {
+    return pill.values.flatMap(v => {
+      const safe = v.replace(/[,()]/g, '').trim();
+      if (!safe) return [];
+      if (contentSearchEnabled) {
+        // FA-001: OR title match with full-text content match
+        return [
+          `title.ilike.%${safe}%`,
+          `content_tsv.wfts(english).${safe}`,
+        ];
+      }
+      return [`title.ilike.%${safe}%`];
+    });
+  });
+  if (allWhatClauses.length > 0) query = query.or(allWhatClauses.join(','));
+
+  // What NOT pills — FA-001/FA-007: negate BOTH title AND content_tsv
+  // FA-002: NULL-safe — jobs with NULL content_tsv are NOT excluded
   const whatNotPills = sf.whatNotPills || [];
   for (const pill of whatNotPills) {
     for (const v of pill.values) {
-      if (v.trim()) {
-        query = query.not('title', 'ilike', `%${v.trim()}%`);
+      const term = v.trim().replace(/^nor\s+/i, '');
+      if (term) {
+        query = query.not('title', 'ilike', `%${term}%`);
+        if (contentSearchEnabled) {
+          query = query.or(`not.content_tsv.wfts(english).${term},content_tsv.is.null`);
+        }
       }
     }
   }
 
-  // Apply tuning title exclusions
+  // Apply tuning title exclusions — FA-001/FA-007: + content exclusions
   const titleExcludes = (tuning.titleExcludes as FilterPill[]) || [];
   for (const pill of titleExcludes) {
     for (const v of pill.values) {
       if (v.trim()) {
         query = query.not('title', 'ilike', `%${v.trim()}%`);
+        if (contentSearchEnabled) {
+          query = query.or(`not.content_tsv.wfts(english).${v.trim()},content_tsv.is.null`);
+        }
       }
     }
   }
@@ -378,8 +403,9 @@ function buildFilterQuery(
   const whereNotPills = sf.whereNotPills || [];
   for (const pill of whereNotPills) {
     for (const v of pill.values) {
-      if (v.trim()) {
-        query = query.not('location', 'ilike', `%${v.trim()}%`);
+      const term = v.trim().replace(/^nor\s+/i, '');
+      if (term) {
+        query = query.not('location', 'ilike', `%${term}%`);
       }
     }
   }
@@ -399,6 +425,16 @@ function buildFilterQuery(
     query = query.or('location.ilike.%United States%,location.ilike.%USA%,location.ilike.%Remote%');
   }
 
+  // FA-007: Exclude hourly-rate jobs if tuning says so (legacy parity)
+  if (tuning.excludeHourly) {
+    query = query.not('salary_rate', 'eq', 'hr');
+  }
+
+  // FA-007: Exclude staffing agency jobs if tuning says so (legacy parity)
+  if (tuning.excludeStaffing) {
+    query = query.neq('is_staffing_agency', true);
+  }
+
   // Who pills (company)
   const whoPills = sf.whoPills || [];
   for (const pill of whoPills) {
@@ -413,8 +449,9 @@ function buildFilterQuery(
   const whoNotPills = sf.whoNotPills || [];
   for (const pill of whoNotPills) {
     for (const v of pill.values) {
-      if (v.trim()) {
-        query = query.not('company_name', 'ilike', `%${v.trim()}%`);
+      const term = v.trim().replace(/^nor\s+/i, '');
+      if (term) {
+        query = query.not('company_name', 'ilike', `%${term}%`);
       }
     }
   }
@@ -429,6 +466,14 @@ function buildFilterQuery(
     }
   }
 
+  // FA-007: Global industry exclusions (legacy parity)
+  const indExcludes = ((tuning.industryExcludes as FilterPill[]) || [])
+    .map(p => typeof p === 'string' ? p : (p.values ? p.values[0] : p))
+    .filter(Boolean) as string[];
+  for (const ind of indExcludes) {
+    query = query.not('industry', 'ilike', `%${ind}%`);
+  }
+
   // When pills (time filter)
   const whenPills = sf.whenPills || [];
   for (const pill of whenPills) {
@@ -440,44 +485,86 @@ function buildFilterQuery(
     }
   }
 
-  // Pay range
+  // FA-007: Pay range — use pill.min/pill.max (legacy parity)
+  // Legacy uses structured min/max with overlap logic + includeNoSalary OR clause
   const payPills = sf.payPills || [];
-  for (const pill of payPills) {
-    if (pill.values.length >= 1 && pill.values[0]) {
-      const min = parseInt(pill.values[0].replace(/[^0-9]/g, ''), 10);
-      if (!isNaN(min)) query = query.gte('salary_max', min);
-    }
-    if (pill.values.length >= 2 && pill.values[1]) {
-      const max = parseInt(pill.values[1].replace(/[^0-9]/g, ''), 10);
-      if (!isNaN(max)) query = query.lte('salary_min', max);
-    }
-  }
+  if (payPills.length > 0) {
+    const pill = payPills[0]!;
+    const minVal = pill.min;
+    const maxVal = pill.max;
+    const includeNoSalary = sf.includeNoSalary !== false; // default true
 
-  // Include no salary option
-  if (!sf.includeNoSalary) {
-    query = query.not('salary_max', 'is', null);
-  }
-
-  // JD contains (full-text search on description)
-  const jdPills = sf.jdPills || [];
-  for (const pill of jdPills) {
-    for (const v of pill.values) {
-      if (v.trim()) {
-        query = query.textSearch('fts', v.trim(), { type: 'websearch' });
+    if (minVal && maxVal) {
+      // Jobs where salary range overlaps the filter range
+      if (includeNoSalary) {
+        query = query.or(`and(salary_max.gte.${minVal},salary_min.lte.${maxVal}),salary_min.is.null`);
+      } else {
+        query = query.gte('salary_max', minVal).lte('salary_min', maxVal);
+      }
+    } else if (minVal) {
+      if (includeNoSalary) {
+        query = query.or(`salary_max.gte.${minVal},salary_min.is.null`);
+      } else {
+        query = query.gte('salary_max', minVal);
+      }
+    } else if (maxVal) {
+      if (includeNoSalary) {
+        query = query.or(`salary_min.lte.${maxVal},salary_min.is.null`);
+      } else {
+        query = query.lte('salary_min', maxVal);
       }
     }
   }
 
-  // Level filter
-  const levelPills = sf.levelPills || [];
-  if (levelPills.length > 0) {
-    const levels = levelPills.flatMap(p => p.values).filter(Boolean);
-    if (levels.length > 0) {
-      query = query.in('career_level', levels);
+  // Include no salary option (fallback for filters without min/max on pill)
+  if (payPills.length === 0 && !sf.includeNoSalary) {
+    query = query.not('salary_max', 'is', null);
+  }
+
+  // JD contains (full-text search on content_tsv) — FA-007: correct column + config
+  const jdPills = sf.jdPills || [];
+  for (const pill of jdPills) {
+    for (const v of pill.values) {
+      const safe = v.replace(/[,()]/g, '').trim();
+      if (safe) {
+        query = query.textSearch('content_tsv', safe, { type: 'websearch', config: 'english' });
+      }
     }
   }
 
-  // Type filter
+  // FA-007: Skills pills — filter on extracted_skills array (legacy parity)
+  const skillsPills = sf.skillsPills || [];
+  for (const pill of skillsPills) {
+    const terms = pill.values.map(v => v.trim().toLowerCase()).filter(Boolean);
+    if (terms.length > 0) {
+      // Use cs (contains) operator — job must have at least one of these skills
+      query = query.or(terms.map(t => `extracted_skills.cs.{${t}}`).join(','));
+    }
+  }
+
+  // Level filter — FA-007: correct column to extracted_seniority (legacy parity)
+  const levelPills = sf.levelPills || [];
+  if (levelPills.length > 0) {
+    const levels = levelPills.flatMap(p => p.values.map(v => v.trim().toLowerCase())).filter(Boolean);
+    if (levels.length === 1) {
+      query = query.eq('extracted_seniority', levels[0]!);
+    } else if (levels.length > 1) {
+      query = query.in('extracted_seniority', levels);
+    }
+  }
+
+  // FA-007: Department pills — filter on extracted_department (legacy parity)
+  const deptPills = sf.deptPills || [];
+  if (deptPills.length > 0) {
+    const depts = deptPills.flatMap(p => p.values.map(v => v.trim().toLowerCase())).filter(Boolean);
+    if (depts.length === 1) {
+      query = query.eq('extracted_department', depts[0]!);
+    } else if (depts.length > 1) {
+      query = query.in('extracted_department', depts);
+    }
+  }
+
+  // Type filter (SPA-only — not in legacy, keep for forward compat)
   const typePills = sf.typePills || [];
   if (typePills.length > 0) {
     const types = typePills.flatMap(p => p.values).filter(Boolean);
@@ -553,9 +640,11 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
 
       if (checkedFilters.length === 1 && !needsServerTrustFilter) {
         // Single filter path
+        // FA-007: Check content search flag for parity with legacy What/What NOT pills
+        const contentSearchEnabled = await isFeatureFlagEnabled('feed_content_search', false);
         const sf = checkedFilters[0]!;
         let query = sb.from('ats_jobs').select('*', { count: 'planned' });
-        query = buildFilterQuery(sf, query, sf._locationIds || null, tuning);
+        query = buildFilterQuery(sf, query, sf._locationIds || null, tuning, contentSearchEnabled);
 
         if (hiddenIds.length > 0) {
           query = query.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
@@ -661,7 +750,7 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
 
           const promises = checkedFilters.map(sf => {
             let q = sb.from('ats_jobs').select('*', { count: 'planned' });
-            q = buildFilterQuery(sf, q, sf._locationIds || null, tuning);
+            q = buildFilterQuery(sf, q, sf._locationIds || null, tuning, contentSearchEnabled);
             if (hiddenIds.length > 0) {
               q = q.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
             }
