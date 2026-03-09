@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Admin Console v8.23 -->
+<!-- Brilliant Jobs Admin Console v8.24 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -15,17 +15,17 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Admin Console</title>
   <script src="/js/vendor/supabase.min.js"></script>
-  <script src="/js/version.js?v=v8.23"></script>
+  <script src="/js/version.js?v=v8.24"></script>
   <!-- CS-003: PostHog SDK for admin surface (DO-001) — CS-P1-002: externalized for CSP -->
-  <script src="js/posthog-admin.js?v=v8.23"></script>
-  <script src="js/posthog-perf.js?v=v8.23" defer></script>
-  <script src="js/feature-flags.js?v=v8.23" defer></script>
-  <script src="js/structured-logger.js?v=v8.23" defer></script>
-  <script src="js/admin-posthog-insights.js?v=v8.23" defer></script>
-  <script src="js/admin-ab-tests.js?v=v8.23" defer></script>
-  <script src="js/admin-crewai.js?v=v8.23" defer></script>
+  <script src="js/posthog-admin.js?v=v8.24"></script>
+  <script src="js/posthog-perf.js?v=v8.24" defer></script>
+  <script src="js/feature-flags.js?v=v8.24" defer></script>
+  <script src="js/structured-logger.js?v=v8.24" defer></script>
+  <script src="js/admin-posthog-insights.js?v=v8.24" defer></script>
+  <script src="js/admin-ab-tests.js?v=v8.24" defer></script>
+  <script src="js/admin-crewai.js?v=v8.24" defer></script>
   <script defer src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" integrity="sha384-pPi0zxBAoDu6+JXW/C68UZLvBUUtU+7zonhif43rqj7pxsGyqyqzcian2Rj37Rss" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="styles.css?v=v8.23">
+  <link rel="stylesheet" href="styles.css?v=v8.24">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1003,6 +1003,11 @@
             <div class="card" style="padding:0;overflow:hidden;"><div style="padding:12px 16px;border-bottom:1px solid var(--border);"><strong>Banned Referrers</strong></div><div style="overflow-x:auto;"><table class="admin-table" style="width:100%;"><thead><tr><th>User</th><th>Email</th><th>Referral Count</th><th>Actions</th></tr></thead><tbody id="ar-banned-body"></tbody></table></div><div id="ar-banned-empty" style="display:none;padding:16px;text-align:center;color:var(--text-faint);font-size:13px;">No banned referrers.</div></div>
           </div>
 
+          <!-- FB-PAYL-S2: PAYL Analytics Panel -->
+          <div class="admin-panel" id="admin-panel-payl">
+            <div id="admin-payl"><div class="admin-loading">Loading PAYL analytics…</div></div>
+          </div>
+
           <div class="admin-panel" id="admin-panel-cache">
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
               <div class="card" style="padding:14px;text-align:center;"><div class="stat-val" id="cache-entries">—</div><div class="stat-label">Cached Entries</div></div>
@@ -1115,18 +1120,19 @@
   </div> <!-- end admin-shell -->
 
   <!-- JS: Admin bundle loads globals, admin.js, admin-notifications.js -->
-  <script src="dist/admin.min.js?v=v8.23-g11" defer></script>
+  <script src="dist/admin.min.js?v=v8.24-g11" defer></script>
 
   <!-- CS-P1-002: Cohort handler moved to js/admin-inline.js -->
-  <script src="js/admin-inline.js?v=v8.23"></script>
-  <script src="js/admin-cost-monitor.js?v=v8.23" defer></script>
-  <script src="js/admin-chat-analytics.js?v=v8.23" defer></script>
-  <script src="js/admin-deploy-tracker.js?v=v8.23" defer></script>
-  <script src="js/admin-build-analytics.js?v=v8.23" defer></script>
-  <script src="js/admin-deploy-visibility.js?v=v8.23" defer></script>
-  <script src="js/admin-deploy-alerting.js?v=v8.23" defer></script>
-  <script src="js/admin-deploy-command-center.js?v=v8.23" defer></script>
-  <script src="js/admin-deploy-reports.js?v=v8.23" defer></script>
+  <script src="js/admin-inline.js?v=v8.24"></script>
+  <script src="js/admin-cost-monitor.js?v=v8.24" defer></script>
+  <script src="js/admin-chat-analytics.js?v=v8.24" defer></script>
+  <script src="js/admin-payl.js?v=v8.24" defer></script>
+  <script src="js/admin-deploy-tracker.js?v=v8.24" defer></script>
+  <script src="js/admin-build-analytics.js?v=v8.24" defer></script>
+  <script src="js/admin-deploy-visibility.js?v=v8.24" defer></script>
+  <script src="js/admin-deploy-alerting.js?v=v8.24" defer></script>
+  <script src="js/admin-deploy-command-center.js?v=v8.24" defer></script>
+  <script src="js/admin-deploy-reports.js?v=v8.24" defer></script>
   <script src="https://unpkg.com/lucide@0.577.0/dist/umd/lucide.min.js"></script>
 </body>
 </html>

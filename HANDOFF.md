@@ -52,7 +52,36 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FB-PAYL-S1** — Pay After You Land — Foundation
+**FB-PAYL-S2** — Pay After You Land — Dashboard UI
+- Completed: 2026-03-09
+- Product version bumped: `v8.23` → `v8.24` (JS/HTML changes — payl.js enrollment flow + referral widget + employment nudge; billing.js PAYL tier card; admin-payl.js analytics panel; dashboard.html PAYL containers; admin.html PAYL panel + script; all HTML surfaces cache-busted)
+- ROADMAP.md updated: FB-PAYL-S2 → ✅
+- roadmap.html updated: FB-PAYL-S2 → `s: 'done'`, p: 100
+- **Core changes:**
+  - **Migration v6.47-fb-payl-002-dashboard-ui.sql:** 7 notification templates (10 rows: 7 email + 3 SMS channels) for payl_activated, payl_referral_progress, payl_referral_revoked, payl_employment_nudge, payl_expiring_soon, payl_expired, payl_converted. notification_categories payl entry. v_payl_analytics view (enrollment funnel counts, conversion_rate_pct, avg_days_to_activation, avg_days_to_conversion). v_payl_daily_funnel view (daily cohorts: started/pdf/activated/referred/converted/expired). fn_payl_admin_summary() function (overview, daily_funnel, recent_enrollments, referral_leaderboard, anti_gaming_flags). Grants to authenticated + service_role.
+  - **payl.js (new):** 3-step PAYL enrollment modal (Step 1: LinkedIn PDF drag-and-drop upload + file picker, Step 2: Stripe setup_intent card authorization with no charge, Step 3: Confirmation with referral link). Referral progress dashboard widget (progress bar, per-referral status dots, days remaining, CTA). Employment self-report flow (nudge UI at day 90/120/150/175, final warning at 175, confirmation modal, conversion via payl-expiry-check EF). 9 client-side PostHog events (enrollment_started, pdf_uploaded, pdf_parsed, pdf_rejected, activated, referral_link_copied, referral_link_shared, employment_reported, converted). Copy + native share for referral links. Auto-init when deferred chunk loads. 14 window exports.
+  - **billing.js:** renderTierComparison updated — PAYL tier card inserted after Free tier for non-Pro users. Card shows $0 upfront, full Pro features, LinkedIn PDF + 3 referrals + 180-day window. Highlighted with accent border + "Popular" badge.
+  - **admin-payl.js (new):** PAYL analytics admin panel — 6 enrollment status cards (pending_pdf, pending_referrals, active, converted, expired, total), 4 conversion metric cards (rate, avg days to activation, avg days to conversion, qualified referrals), daily enrollment funnel table (14 days), recent enrollments table (20 rows), referral leaderboard (top 10), anti-gaming flags table (revoked referrals). 2min auto-refresh polling.
+  - **dashboard.html:** PAYL referral widget container (hidden by default, between filters and job table), employment nudge container (hidden by default, above referral widget). Both activated by payl.js for PAYL users.
+  - **admin.html:** PAYL analytics panel container (admin-panel-payl → admin-payl div). admin-payl.js script tag.
+  - **admin.js:** ADMIN_SUBPAGE_MAP 'payl' entry in growth section → loadPaylAnalyticsPanel.
+  - **build.js:** payl.js added to deferred chunk (16 files).
+- **Created:**
+  - `supabase/migrations/v6.47-fb-payl-002-dashboard-ui.sql`
+  - `js/payl.js` — PAYL enrollment + referral widget + employment nudge + PostHog
+  - `js/admin-payl.js` — Admin PAYL analytics panel
+  - `tests/fb-payl-s2-dashboard-ui.test.js` — 81 validation tests
+- **Modified:**
+  - `js/billing.js` — PAYL tier card in renderTierComparison
+  - `js/admin.js` — ADMIN_SUBPAGE_MAP payl entry
+  - `dashboard.html` — PAYL referral widget + employment nudge containers
+  - `admin.html` — PAYL panel container + admin-payl.js script tag
+  - `build.js` — payl.js added to deferred chunk
+  - `dist/dashboard-deferred.min.js` — rebuilt (includes payl.js)
+  - `dist/dashboard.min.js` — rebuilt
+  - `ROADMAP.md` — FB-PAYL-S2 → ✅
+  - `roadmap.html` — FB-PAYL-S2 → done/100
+- **Tests:** 81 FB-PAYL-S2 validation tests (all passing)
 - Completed: 2026-03-09
 - Product version bumped: `v8.22` → `v8.23` (JS changes — tier-gating.ts/js PAYL→Pro mapping + isPaylUser; all HTML surfaces cache-busted)
 - ROADMAP.md updated: FB-PAYL-S1 → ✅
@@ -1151,18 +1180,21 @@ None.
 
 ## Next Session
 
-**FB-PAYL-S2** — Pay After You Land — Dashboard UI
-- **Entry gate:** FB-PAYL-S1 ✅ (migration, EFs, gateway, feature gating all in place)
+**FB-PAYL-S3** — Pay After You Land — Production Deployment + E2E Testing
+- **Entry gate:** FB-PAYL-S2 ✅ (all UI flows built, templates seeded, admin panel ready)
 - **Scope:**
-  - Dashboard PAYL enrollment flow (pricing page tier card, modal, step-by-step)
-  - LinkedIn PDF upload widget (drag-and-drop, file picker, preview, confirm)
-  - Referral progress dashboard widget (progress bar, per-referral status, CTA)
-  - Employment self-report flow (nudge UI, confirmation modal)
-  - 7 notification templates (payl_activated, payl_referral_progress, payl_referral_revoked, payl_employment_nudge, payl_expiring_soon, payl_expired, payl_converted)
-  - Stripe setup_intent integration (card on file without charge)
-  - PostHog event instrumentation (12 events per FB-PAYL-001 Section 6.4)
-  - Admin PAYL analytics panel (enrollment funnel, referral metrics, conversion rates)
-- **Exit gate:** All UI flows functional, notifications queued, PostHog events firing, Stripe setup_intent creates without charge
+  - Deploy migration v6.46 + v6.47 to production (supabase db push)
+  - Deploy 3 PAYL Edge Functions to production (parse-linkedin-pdf, payl-referral-webhook, payl-expiry-check)
+  - Create Supabase Storage bucket `linkedin-profiles` (private, RLS)
+  - Configure Stripe: create PAYL product + setup_intent flow
+  - E2E validation: full enrollment flow, PDF upload → parse → card auth → activation
+  - E2E validation: referral signup → subscribe → qualify cycle
+  - E2E validation: employment nudge → self-report → conversion
+  - E2E validation: expiry → downgrade to Free
+  - PostHog event verification (all 12 events firing correctly)
+  - Admin panel verification (analytics loading from live data)
+  - Load test: concurrent PAYL enrollments + referral webhooks
+- **Exit gate:** Full PAYL flow operational in production, all PostHog events verified, admin panel showing live data
 
 **Feed Accuracy Sprint — FA-007 COMPLETE.** FA-010, FA-001, FA-002, FA-003, FA-009, FA-004, FA-005, FA-006, and FA-007 are done.
 
@@ -1214,7 +1246,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.23`** | **FB-PAYL-S1: Pay After You Land foundation** |
+| **Product (BJ_VERSION)** | **`v8.24`** | **FB-PAYL-S2: Pay After You Land dashboard UI** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

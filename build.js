@@ -61,6 +61,7 @@ const chunks = {
     'js/apply-workflow.js',
     'js/referrals.js',
     'js/referral-outreach.js',
+    'js/payl.js',
   ],
 };
 

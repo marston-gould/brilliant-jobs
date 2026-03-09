@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.23';
+var BJ_VERSION = 'v8.24';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -1386,6 +1386,7 @@ var ADMIN_SUBPAGE_MAP = {
   'cadence':        { section: 'growth',      label: 'Cadence',        init: function(){ loadCadenceTab(); } },
   'notif-log':      { section: 'growth',      label: 'Notif Log',      init: function(){ loadNotifLogTab(); } },
   'referrals':      { section: 'growth',      label: 'Referrals',      init: function(){ loadReferralsAdminTab(); } },
+  'payl':           { section: 'growth',      label: 'PAYL Analytics',  init: function(){ loadPaylAnalyticsPanel(); } },
   'paid':           { section: 'growth',      label: 'Paid',           init: function(){ loadPaidTab(); } },
   'social':         { section: 'growth',      label: 'Social',         init: function(){ loadSocialTab(); } },
   'analytics':      { section: 'growth',      label: 'Analytics',      init: function(){ loadAnalyticsOverviewTab(); } },

@@ -223,10 +223,15 @@ function renderTierComparison(pricing) {
     { id: 'starter', name: 'Starter', price: 2000, credits: 100, payg: 15, features: ['10 saved filters', '5 resumes', 'AI resume scoring', 'SMS notifications', 'Boolean search'] },
     { id: 'pro', name: 'Pro', price: 4000, credits: 300, payg: 10, features: ['10 saved filters', '5 resumes', 'AI resume scoring', 'AI resume rewrites', 'SMS notifications', 'Boolean search', 'Auto-apply', 'Network intelligence'] },
   ];
-  container.innerHTML = tiers.map(t => {
+  // FB-PAYL-S2: Insert PAYL card between Free and Starter for non-Pro users
+  var paylCard = '';
+  if (typeof window.renderPaylTierCard === 'function' && currentTier !== 'pro') {
+    paylCard = window.renderPaylTierCard(currentTier);
+  }
+  container.innerHTML = tiers.map((t, idx) => {
     const isCurrent = t.id === currentTier;
     const priceStr = t.price === 0 ? '$0' : '$' + (t.price / 100);
-    return `
+    var card = `
       <div class="sub-tier-card ${isCurrent ? 'sub-tier-current' : ''}" style="display:flex;flex-direction:column;">
         ${isCurrent ? '<div class="sub-tier-badge">Current</div>' : ''}
         <div class="sub-tier-name">${t.name}</div>
@@ -243,6 +248,9 @@ function renderTierComparison(pricing) {
         }
         </div>
       </div>`;
+    // Insert PAYL card after Free tier
+    if (idx === 0 && paylCard) card += paylCard;
+    return card;
   }).join('');
 }
 
