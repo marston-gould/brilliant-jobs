@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v8.16 -->
+<!-- Brilliant Jobs Dashboard v8.17 -->
 <html lang="en">
 <head>
   <!-- CS-P1-009: Theme flash prevention — must be first script -->
@@ -19,22 +19,22 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="/js/vendor/supabase.min.js" defer></script>
-  <script src="/js/pipeline-migration.js?v=v8.16" defer></script>
-  <script src="/js/notification-center.js?v=v8.16" defer></script>
+  <script src="/js/pipeline-migration.js?v=v8.17" defer></script>
+  <script src="/js/notification-center.js?v=v8.17" defer></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" integrity="sha384-nFoSjZIoH3CCp8W639jJyQkuPHinJ2NHe7on1xvlUA7SuGfJAfvMldrsoAVm6ECz" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" integrity="sha384-eEu5CTj3qGvu9PdJuS+YlkNi7d2XxQROAFYOr59zgObtlcux1ae1Il3u7jvdCSWu" crossorigin="anonymous"></script>
   <!-- CS-014: CX-09 — ECharts lazy-loaded by stats.js when Stats tab opens -->
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js" integrity="sha384-TcLTgu6flPhnZ5dfHnHimsxNFjYWN0povfGgnOvgPJKbZe6IbuoC2ociiatSHl9E" crossorigin="anonymous"></script>
   <!-- CS-016 FIX-10: Code-split chunks — shell (globals+routing) + feed (job list) loaded eagerly; all other chunks lazy-loaded on tab switch -->
-  <script src="dist/dashboard-shell.min.js?v=v8.16" defer></script>
-  <script src="dist/dashboard-feed.min.js?v=v8.16" defer></script>
+  <script src="dist/dashboard-shell.min.js?v=v8.17" defer></script>
+  <script src="dist/dashboard-feed.min.js?v=v8.17" defer></script>
   <!-- CS-P1-002: dashboard inline scripts externalized (pdfjs, preload, feedback, insights, a11y) -->
-  <script src="js/dashboard-inline.js?v=v8.16" defer></script>
-  <script src="js/canny.js?v=v8.16" defer></script>
+  <script src="js/dashboard-inline.js?v=v8.17" defer></script>
+  <script src="js/canny.js?v=v8.17" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=v8.16">
+  <link rel="stylesheet" href="styles.css?v=v8.17">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -109,11 +109,11 @@
     </style>
   <!-- CSS extracted to styles.css in v3.28 -->
   <!-- A13: PostHog analytics — CS-P1-002: externalized for CSP compliance -->
-  <script src="js/posthog-dashboard.js?v=v8.16" defer></script>
-  <script src="js/posthog-perf.js?v=v8.16" defer></script>
-  <script src="js/feature-flags.js?v=v8.16" defer></script>
-  <script src="js/structured-logger.js?v=v8.16" defer></script>
-  <script src="js/theme.js?v=v8.16" defer></script>
+  <script src="js/posthog-dashboard.js?v=v8.17" defer></script>
+  <script src="js/posthog-perf.js?v=v8.17" defer></script>
+  <script src="js/feature-flags.js?v=v8.17" defer></script>
+  <script src="js/structured-logger.js?v=v8.17" defer></script>
+  <script src="js/theme.js?v=v8.17" defer></script>
 </head>
 <body>
 
@@ -725,12 +725,12 @@
                 </div>
                 </div><!-- /ext-setup-disconnected -->
                 <div class="setup-action-zone">
-                  <div id="ext-setup-connected" style="display:none;">
-                    <div style="display:flex;align-items:center;gap:10px;justify-content:center;">
+                  <div class="setup-connected" id="ext-setup-connected" style="display:none;">
+                    <div style="display:flex;align-items:center;gap:8px;justify-content:center;">
                       <div class="phone-verified-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Connected</div>
-                      <span id="ext-instance-label" style="font-size:12px;color:var(--text-dim);font-family:var(--mono);"></span>
+                      <span id="ext-instance-label" style="font-size:11px;color:var(--text-dim);font-family:var(--mono);"></span>
                     </div>
-                    <div class="u-meta" id="ext-status-detail-connected" style="margin-top:4px;text-align:center;"></div>
+                    <div class="u-meta" id="ext-status-detail-connected" style="text-align:center;"></div>
                   </div>
                 </div>
               </div>
@@ -753,14 +753,14 @@
                   Detects confirmation emails, interview requests, and rejections — so your dashboard tracks application status without manual updates.
                 </div>
                 <div class="setup-action-zone">
-                  <div id="gmail-setup-connected" style="display:none;">
-                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                  <div class="setup-connected" id="gmail-setup-connected" style="display:none;">
+                    <div style="display:flex;align-items:center;gap:8px;justify-content:center;">
                       <div class="phone-verified-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Connected</div>
-                      <span id="gmail-address" style="font-size:12px;color:var(--text-dim);font-family:var(--mono);"></span>
+                      <span id="gmail-address" style="font-size:11px;color:var(--text-dim);font-family:var(--mono);"></span>
                     </div>
                     <button class="btn btn-sm btn-secondary setup-connect-btn" onclick="disconnectGmail()">Disconnect Gmail</button>
                   </div>
-                  <div id="gmail-setup-disconnected" style="display:flex;align-items:center;justify-content:center;gap:12px;">
+                  <div class="setup-disconnected" id="gmail-setup-disconnected">
                     <button class="btn btn-sm btn-primary setup-connect-btn" id="gmail-setup-connect-btn" onclick="connectGmail()">Connect Gmail</button>
                     <span class="u-meta">Read-only access</span>
                   </div>
@@ -785,14 +785,14 @@
                   Picks up interview schedules and follow-up timelines. Paired with Gmail, gives you a complete picture of every application.
                 </div>
                 <div class="setup-action-zone">
-                  <div id="gcal-setup-connected" style="display:none;">
-                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                  <div class="setup-connected" id="gcal-setup-connected" style="display:none;">
+                    <div style="display:flex;align-items:center;gap:8px;justify-content:center;">
                       <div class="phone-verified-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Connected</div>
-                      <span id="gcal-address" style="font-size:12px;color:var(--text-dim);font-family:var(--mono);"></span>
+                      <span id="gcal-address" style="font-size:11px;color:var(--text-dim);font-family:var(--mono);"></span>
                     </div>
                     <button class="btn btn-sm btn-secondary setup-connect-btn" id="gcal-disconnect-btn" onclick="disconnectGoogleCalendar()">Disconnect Calendar</button>
                   </div>
-                  <div id="gcal-setup-disconnected" style="display:flex;align-items:center;justify-content:center;gap:12px;">
+                  <div class="setup-disconnected" id="gcal-setup-disconnected">
                     <button class="btn btn-sm btn-primary setup-connect-btn" id="gcal-connect-btn" onclick="connectGoogleCalendar()">Connect Calendar</button>
                     <span class="u-meta">Read-only access</span>
                   </div>
@@ -817,22 +817,17 @@
                   Resumes stay synced from Google Docs. Optional — you can also upload files directly.
                 </div>
                 <div class="setup-action-zone">
-                  <div id="gdrive-setup-connected" style="display:none;">
-                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                  <div class="setup-connected" id="gdrive-setup-connected" style="display:none;">
+                    <div style="display:flex;align-items:center;gap:8px;justify-content:center;">
                       <div class="phone-verified-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Connected</div>
-                      <span id="gdrive-address" style="font-size:12px;color:var(--text-dim);font-family:var(--mono);"></span>
+                      <span id="gdrive-address" style="font-size:11px;color:var(--text-dim);font-family:var(--mono);"></span>
                     </div>
                     <button class="btn btn-sm btn-secondary setup-connect-btn" id="gdrive-disconnect-btn" onclick="disconnectGoogleDrive()">Disconnect Drive</button>
                   </div>
-                  <div id="gdrive-setup-disconnected" style="display:flex;align-items:center;justify-content:center;gap:12px;">
+                  <div class="setup-disconnected" id="gdrive-setup-disconnected">
                     <button class="btn btn-sm btn-primary setup-connect-btn" id="gdrive-connect-btn" onclick="connectGoogleDrive()">Connect Drive</button>
                     <span class="u-meta">Read-only access</span>
                   </div>
-                </div>
-                <div id="gdrive-files" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">
-                  <div style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Linked Resume Files</div>
-                  <div id="gdrive-file-list"></div>
-                  <button class="btn btn-sm" id="gdrive-add-file" style="margin-top:8px;padding:4px 14px;font-size:11px;background:transparent;color:var(--accent);border:1px solid var(--accent);cursor:pointer;" onclick="addGdriveFile()">+ Link a Google Doc</button>
                 </div>
               </div>
             </div>
