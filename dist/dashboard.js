@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.36';
+var BJ_VERSION = 'v8.37';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -3894,11 +3894,23 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
         }
       }
       // v7.68: When includeRemote is ON, add remote to the location OR clause.
-      // Without this, remote jobs (location="Remote", loc_country=null) fail the
-      // location filter because they don't contain "united states" or loc_country=US.
-      // The includeRemote toggle was only preventing exclusion, never ensuring inclusion.
+      // UX-001: When US-Only is active, only include US-based remote jobs.
+      // Without US constraint, is_remote=true/loc_type=remote matches worldwide remote jobs,
+      // and Tier 4 of the US-Only filter trusts bare "Remote" with NULL country.
       if (sf.includeRemote === true) {
-        allClauses.push('location.ilike.Remote%', 'loc_type.eq.remote', 'is_remote.eq.true');
+        if (tuning.usOnly) {
+          // Only remote jobs with US evidence
+          allClauses.push(
+            'and(loc_country.eq.US,is_remote.eq.true)',
+            'and(loc_country.eq.US,loc_type.eq.remote)',
+            'and(loc_country.is.null,location.eq.Remote)',
+            'and(loc_country.is.null,location.ilike.Remote%United States%)',
+            'and(loc_country.is.null,location.ilike.Remote%USA%)',
+            'and(loc_country.is.null,location.ilike.Remote%US %)'
+          );
+        } else {
+          allClauses.push('location.ilike.Remote%', 'loc_type.eq.remote', 'is_remote.eq.true');
+        }
       }
       if (allClauses.length > 0) {
         query = query.or(allClauses.join(','));
