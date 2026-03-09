@@ -1286,6 +1286,9 @@ function renderFilterBrowserList() {
     items = items.filter(d => d.value.toLowerCase().includes(query));
   }
 
+  // Sort alphabetically for pill wall
+  items.sort((a, b) => a.value.localeCompare(b.value));
+
   if (countEl) countEl.textContent = items.length + ' value' + (items.length !== 1 ? 's' : '');
 
   if (items.length === 0) {
@@ -1307,25 +1310,26 @@ function renderFilterBrowserList() {
     }
   }
 
-  // Render rows grouped by first letter
+  // Render as alphabetical pill wall
   let html = '';
   let lastLetter = '';
+  let pillsOpen = false;
   for (const item of items) {
     const letter = (item.value[0] || '').toUpperCase();
     if (letter !== lastLetter) {
-      html += `<div id="fb-letter-${letter}" style="font-size:11px;font-weight:700;color:var(--text-faint);padding:10px 0 4px;border-bottom:1px solid var(--border);margin-top:8px;">${letter}</div>`;
+      if (pillsOpen) html += '</div>'; // close previous pill group
+      html += `<div id="fb-letter-${letter}" style="font-size:11px;font-weight:700;color:var(--text-faint);padding:10px 0 4px;margin-top:4px;">${letter}</div>`;
+      html += '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:2px 0;">';
+      pillsOpen = true;
       lastLetter = letter;
     }
     const selected = _fbSelections[item.value];
-    const selectedClass = selected ? ' style="background:hsla(var(--accent-hsl),0.08);border-color:var(--accent);"' : '';
-    html += `<div class="fb-item" data-value="${escapeHtml(item.value)}"${selectedClass} onclick="_toggleFbItem(this)" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;margin:2px 0;border-radius:8px;border:1px solid var(--border);cursor:pointer;transition:all 0.1s;">
-      <div style="display:flex;align-items:center;gap:8px;min-width:0;">
-        <span style="width:18px;height:18px;border-radius:4px;border:1.5px solid ${selected ? 'var(--accent)' : 'var(--border)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;color:var(--accent);transition:all 0.1s;">${selected ? '✓' : ''}</span>
-        <span style="font-size:13px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(item.value)}</span>
-      </div>
-      <span style="font-size:11px;font-weight:600;color:var(--text-faint);background:var(--bg-input);padding:2px 8px;border-radius:4px;flex-shrink:0;">${item.job_count.toLocaleString()}</span>
-    </div>`;
+    const bg = selected ? 'var(--accent)' : 'var(--bg-input)';
+    const color = selected ? '#fff' : 'var(--text)';
+    const border = selected ? 'var(--accent)' : 'var(--border)';
+    html += `<span class="fb-pill" data-value="${escapeHtml(item.value)}" onclick="_toggleFbItem(this)" style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:20px;border:1px solid ${border};background:${bg};color:${color};font-size:12px;font-weight:500;cursor:pointer;transition:all 0.12s;white-space:nowrap;user-select:none;">${escapeHtml(item.value)}<span style="font-size:10px;opacity:0.6;font-weight:600;">${item.job_count.toLocaleString()}</span></span>`;
   }
+  if (pillsOpen) html += '</div>';
 
   list.innerHTML = html;
 }
@@ -1337,14 +1341,10 @@ function _toggleFbItem(el) {
   } else {
     _fbSelections[value] = true;
   }
-  // Update visual
-  const checkbox = el.querySelector('span');
+  // Update pill visual
   const isSelected = !!_fbSelections[value];
-  if (checkbox) {
-    checkbox.textContent = isSelected ? '✓' : '';
-    checkbox.style.borderColor = isSelected ? 'var(--accent)' : 'var(--border)';
-  }
-  el.style.background = isSelected ? 'hsla(var(--accent-hsl),0.08)' : '';
+  el.style.background = isSelected ? 'var(--accent)' : 'var(--bg-input)';
+  el.style.color = isSelected ? '#fff' : 'var(--text)';
   el.style.borderColor = isSelected ? 'var(--accent)' : 'var(--border)';
 
   // Update count in back button
