@@ -601,7 +601,7 @@ function populateOverrideFilterSelect() {
       sel.innerHTML += '<option disabled>── Chat Prompts ──</option>';
       _savedPrompts.forEach(p => {
         if (p.derived_filters && Object.keys(p.derived_filters).length > 0) {
-          sel.innerHTML += `<option value="prompt:${escapeHtml(p.id)}" data-prompt-id="${escapeHtml(p.id)}">💬 ${escapeHtml(p.name)}</option>`;
+          sel.innerHTML += `<option value="prompt:${escapeHtml(p.id)}" data-prompt-id="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`;
         }
       });
     }

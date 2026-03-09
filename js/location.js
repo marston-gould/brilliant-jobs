@@ -242,7 +242,7 @@ function renderLocationDropdown(results, query) {
       radius: `<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">${r.radius_mi}mi</span>`,
       country: '<span style="font-size:9px;background:rgba(59,130,246,0.1);color:var(--accent);padding:1px 6px;border-radius:4px;font-weight:600;">country</span>',
       remote: '<span style="font-size:9px;background:rgba(52,211,153,0.1);color:var(--green);padding:1px 6px;border-radius:4px;font-weight:600;">remote</span>',
-      pin: '<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">📍</span>',
+      pin: '<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;display:inline-flex;align-items:center;"><i data-lucide="map-pin" class="icon-xs icon-stroke"></i></span>',
     };
     const badge = badgeMap[r.badge] || '';
     const hl = highlightCompanyMatch(r.display, query);
@@ -441,7 +441,7 @@ function renderLocationNotDropdown(results, query) {
     metro: '<span style="font-size:9px;background:rgba(245,158,11,0.1);color:#f59e0b;padding:1px 6px;border-radius:4px;font-weight:600;">metro</span>',
     city: '<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">city</span>',
     remote: '<span style="font-size:9px;background:rgba(52,211,153,0.1);color:var(--green);padding:1px 6px;border-radius:4px;font-weight:600;">remote</span>',
-    pin: '<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">📍</span>',
+    pin: '<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;display:inline-flex;align-items:center;"><i data-lucide="map-pin" class="icon-xs icon-stroke"></i></span>',
   };
   locationNotDropdown.innerHTML = results.map(r => {
     const badge = badgeMap[r.badge] || '';
@@ -1076,7 +1076,7 @@ function renderSavedFilters() {
   const prompts = typeof window._getSavedPrompts === 'function' ? window._getSavedPrompts() : [];
   const promptsWithFilters = prompts.filter(p => p.derived_filters && Object.keys(p.derived_filters).length > 0);
   if (promptsWithFilters.length > 0) {
-    list.innerHTML += '<div class="sf-prompt-separator"><span style="font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">💬 Chat Prompts</span></div>';
+    list.innerHTML += '<div class="sf-prompt-separator"><span style="font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;display:inline-flex;align-items:center;gap:4px;"><i data-lucide="message-square" class="icon-xs icon-stroke"></i> Chat Prompts</span></div>';
     list.innerHTML += promptsWithFilters.map((prompt, pi) => {
       const promptNum = sorted.length + pi + 1;
       const promptColor = filterColors[(promptNum - 1) % filterColors.length];
@@ -1101,7 +1101,7 @@ function renderSavedFilters() {
         <input type="checkbox" class="sf-prompt-check" data-prompt-id="${prompt.id}" data-filternum="${promptNum}" data-filtercolor="${promptColor}">
         <span class="sf-num" style="background:${promptColor};">${promptNum}</span>
         <div class="sf-item-info">
-          <div class="sf-item-name">💬 ${escapeHtml(prompt.name || 'Chat Prompt')}</div>
+          <div class="sf-item-name"><i data-lucide="message-square" class="icon-xs icon-stroke" style="display:inline;vertical-align:-1px;margin-right:2px;"></i> ${escapeHtml(prompt.name || 'Chat Prompt')}</div>
           <div class="sf-item-meta">chat prompt</div>
         </div>
         ${pills}
@@ -1472,7 +1472,7 @@ async function startAiFilterSuggest() {
     // No resumes at all — show upload-only modal
     meta.textContent = 'Upload a resume to get started';
     body.innerHTML = '<div style="padding:16px;text-align:center;">' +
-      '<div style="font-size:32px;margin-bottom:8px;opacity:0.3;">📄</div>' +
+      '<div style="margin-bottom:8px;opacity:0.3;"><i data-lucide="file-text" class="icon-xl icon-stroke-lg"></i></div>' +
       '<div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:4px;">No resumes yet</div>' +
       '<div style="font-size:12px;color:var(--text-faint);max-width:280px;margin:0 auto;line-height:1.5;margin-bottom:16px;">Upload your resume on the Resumes tab, then come back to generate filters.</div>' +
       '<button class="btn btn-sm btn-primary" onclick="document.getElementById(\'ai-filter-modal\').style.display=\'none\';document.body.style.overflow=\'\';$$(\'.nav-item\').forEach(n=>n.classList.toggle(\'active\',n.dataset.page===\'resumes\'));$$(\'.page\').forEach(p=>p.classList.toggle(\'active\',p.id===\'page-resumes\'));">Go to Resumes →</button>' +
@@ -1502,7 +1502,7 @@ async function startAiFilterSuggest() {
   } else {
     meta.textContent = 'Upload a resume to get started';
     pickerHtml += '<div style="text-align:center;margin-bottom:16px;">' +
-      '<div style="font-size:32px;margin-bottom:8px;opacity:0.3;">📄</div>' +
+      '<div style="margin-bottom:8px;opacity:0.3;"><i data-lucide="file-text" class="icon-xl icon-stroke-lg"></i></div>' +
       '<div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:4px;">No resumes yet</div>' +
       '<div style="font-size:12px;color:var(--text-faint);max-width:280px;margin:0 auto;line-height:1.5;">Upload your resume and AI will analyze it to generate optimized job search filters.</div></div>';
   }

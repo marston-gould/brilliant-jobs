@@ -72,7 +72,7 @@ window.renderOverlayPipelineTab = async function() {
     if (jobs.length === 0) return;
     html += '<div class="pl-stage-section" data-stage="' + stage + '">';
     html += '<div class="pl-stage-header" onclick="this.closest(\'.pl-stage-section\').classList.toggle(\'collapsed\')">';
-    html += '<svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>';
+    html += '<i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>';
     html += '<span class="pl-stage-name">' + (PL_OV_LABELS[stage] || stage) + '</span>';
     html += '<span class="pl-stage-count">' + jobs.length + '</span>';
     html += '</div>';

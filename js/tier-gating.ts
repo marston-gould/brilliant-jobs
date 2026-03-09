@@ -55,11 +55,12 @@ window.showTierGate = function(el: HTMLElement, minTier: TierName, message?: str
   overlay.className = 'tier-gate-overlay';
   overlay.style.cssText = 'position:absolute;inset:0;background:rgba(15,17,23,0.85);backdrop-filter:blur(4px);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;border-radius:inherit;';
   overlay.innerHTML = `
-    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="var(--warm)" stroke-width="2" style="margin-bottom:8px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    <i data-lucide="lock-keyhole" class="icon-lg icon-stroke" style="stroke:var(--warm);margin-bottom:8px;"></i>
     <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;">${message || (tierNames[minTier] || 'Upgrade') + ' plan required'}</div>
     <button class="btn btn-sm btn-primary" onclick="event.stopPropagation();showPage('subscription');" style="font-size:10px;padding:4px 14px;margin-top:6px;">Upgrade to ${tierNames[minTier] || 'Pro'}</button>
   `;
   el.appendChild(overlay);
+  if (typeof window.refreshIcons === 'function') window.refreshIcons();
 };
 
 window.removeTierGate = function(el: HTMLElement): void {

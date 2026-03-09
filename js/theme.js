@@ -11,9 +11,9 @@
 
   var STORAGE_KEY = 'bj-theme';
   var VALID_THEMES = ['light', 'dark', 'auto'];
-  var ICON_SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-toggle-icon"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
-  var ICON_MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-toggle-icon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
-  var ICON_AUTO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-toggle-icon"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20V2z"/></svg>';
+  var ICON_SUN = '<i data-lucide="sun" class="theme-toggle-icon icon-stroke"></i>';
+  var ICON_MOON = '<i data-lucide="moon" class="theme-toggle-icon icon-stroke"></i>';
+  var ICON_AUTO = '<i data-lucide="sun-moon" class="theme-toggle-icon icon-stroke"></i>';
 
   var LABELS = { light: 'Light', dark: 'Dark', auto: 'Auto' };
   var ICONS = { light: ICON_SUN, dark: ICON_MOON, auto: ICON_AUTO };
@@ -39,6 +39,7 @@
       el.innerHTML = ICONS[theme] + '<span class="theme-toggle-label">' + LABELS[theme] + '</span>';
       el.setAttribute('title', 'Theme: ' + LABELS[theme] + ' (click to cycle)');
     });
+    if (typeof window.refreshIcons === 'function') window.refreshIcons();
     // Track with PostHog if available
     if (window.posthog && typeof window.posthog.capture === 'function') {
       window.posthog.capture('theme_changed', { theme: theme });

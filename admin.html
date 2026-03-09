@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Admin Console v8.21 -->
+<!-- Brilliant Jobs Admin Console v8.22 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -15,17 +15,17 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Admin Console</title>
   <script src="/js/vendor/supabase.min.js"></script>
-  <script src="/js/version.js?v=v8.21"></script>
+  <script src="/js/version.js?v=v8.22"></script>
   <!-- CS-003: PostHog SDK for admin surface (DO-001) — CS-P1-002: externalized for CSP -->
-  <script src="js/posthog-admin.js?v=v8.21"></script>
-  <script src="js/posthog-perf.js?v=v8.21" defer></script>
-  <script src="js/feature-flags.js?v=v8.21" defer></script>
-  <script src="js/structured-logger.js?v=v8.21" defer></script>
-  <script src="js/admin-posthog-insights.js?v=v8.21" defer></script>
-  <script src="js/admin-ab-tests.js?v=v8.21" defer></script>
-  <script src="js/admin-crewai.js?v=v8.21" defer></script>
+  <script src="js/posthog-admin.js?v=v8.22"></script>
+  <script src="js/posthog-perf.js?v=v8.22" defer></script>
+  <script src="js/feature-flags.js?v=v8.22" defer></script>
+  <script src="js/structured-logger.js?v=v8.22" defer></script>
+  <script src="js/admin-posthog-insights.js?v=v8.22" defer></script>
+  <script src="js/admin-ab-tests.js?v=v8.22" defer></script>
+  <script src="js/admin-crewai.js?v=v8.22" defer></script>
   <script defer src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" integrity="sha384-pPi0zxBAoDu6+JXW/C68UZLvBUUtU+7zonhif43rqj7pxsGyqyqzcian2Rj37Rss" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="styles.css?v=v8.21">
+  <link rel="stylesheet" href="styles.css?v=v8.22">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -544,7 +544,7 @@
   <!-- MFA Setup (CS-006: AD-FIX-02) -->
   <div id="admin-mfa-setup" style="display:none; max-width:420px; margin:80px auto; padding:32px; background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); text-align:center; font-family:system-ui,-apple-system,sans-serif;">
     <div style="width:48px; height:48px; margin:0 auto 16px; background:#f0f4ff; border-radius:50%; display:flex; align-items:center; justify-content:center;">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <i data-lucide="lock-keyhole" class="icon-lg icon-stroke" style="stroke:#4f46e5;"></i>
     </div>
     <h2 style="margin:0 0 8px; font-size:20px; font-weight:600; color:#1a1a2e;">Two-Factor Authentication Required</h2>
     <p style="margin:0 0 24px; color:#64748b; font-size:14px;">Admin access requires MFA. Scan the QR code with your authenticator app (Google Authenticator, Authy, 1Password, etc.).</p>
@@ -1115,18 +1115,19 @@
   </div> <!-- end admin-shell -->
 
   <!-- JS: Admin bundle loads globals, admin.js, admin-notifications.js -->
-  <script src="dist/admin.min.js?v=v8.21-g11" defer></script>
+  <script src="dist/admin.min.js?v=v8.22-g11" defer></script>
 
   <!-- CS-P1-002: Cohort handler moved to js/admin-inline.js -->
-  <script src="js/admin-inline.js?v=v8.21"></script>
-  <script src="js/admin-cost-monitor.js?v=v8.21" defer></script>
-  <script src="js/admin-chat-analytics.js?v=v8.21" defer></script>
-  <script src="js/admin-deploy-tracker.js?v=v8.21" defer></script>
-  <script src="js/admin-build-analytics.js?v=v8.21" defer></script>
-  <script src="js/admin-deploy-visibility.js?v=v8.21" defer></script>
-  <script src="js/admin-deploy-alerting.js?v=v8.21" defer></script>
-  <script src="js/admin-deploy-command-center.js?v=v8.21" defer></script>
-  <script src="js/admin-deploy-reports.js?v=v8.21" defer></script>
+  <script src="js/admin-inline.js?v=v8.22"></script>
+  <script src="js/admin-cost-monitor.js?v=v8.22" defer></script>
+  <script src="js/admin-chat-analytics.js?v=v8.22" defer></script>
+  <script src="js/admin-deploy-tracker.js?v=v8.22" defer></script>
+  <script src="js/admin-build-analytics.js?v=v8.22" defer></script>
+  <script src="js/admin-deploy-visibility.js?v=v8.22" defer></script>
+  <script src="js/admin-deploy-alerting.js?v=v8.22" defer></script>
+  <script src="js/admin-deploy-command-center.js?v=v8.22" defer></script>
+  <script src="js/admin-deploy-reports.js?v=v8.22" defer></script>
+  <script src="https://unpkg.com/lucide@0.577.0/dist/umd/lucide.min.js"></script>
 </body>
 </html>
 

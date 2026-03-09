@@ -155,7 +155,7 @@ function renderArchiveTable(archives) {
     return `<tr style="border-bottom:1px solid var(--border);${highlight}" data-resume-id="${a.resume_id}">
       <td style="padding:10px 12px;">
         <div style="display:flex;align-items:center;gap:6px;">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--text-faint)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <i data-lucide="file-text" class="icon-sm icon-stroke" style="stroke:var(--text-faint);"></i>
           <div>
             <div style="font-weight:600;color:var(--text);">${a.display_name}</div>
             <div style="font-size:10px;color:var(--text-faint);">${a.file_type.toUpperCase()} ${levelBadge}</div>
@@ -177,6 +177,7 @@ function renderArchiveTable(archives) {
       </td>
     </tr>`;
   }).join('');
+  if (typeof window.refreshIcons === 'function') window.refreshIcons();
 
   _archiveHighlightId = null;
 }

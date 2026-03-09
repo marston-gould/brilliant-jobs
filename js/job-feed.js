@@ -910,7 +910,7 @@ async function searchJobs(page = 0) {
   // If nothing is driving the search, show prompt but with global stats
   if (checked.length === 0 && checkedPrompts.length === 0 && !hasBuilderPills) {
     tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
-      <div style="margin-bottom:12px;color:var(--text-faint);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25;"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div>
+      <div style="margin-bottom:12px;color:var(--text-faint);"><i data-lucide="briefcase" class="icon-xl icon-stroke-lg" style="opacity:0.25;"></i></div>
       <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Select saved searches or add filters to search jobs</div>
       <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">Check one or more saved searches above, or use the filter builder.</div>
     </td></tr>`;

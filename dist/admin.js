@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.21';
+var BJ_VERSION = 'v8.22';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -1453,7 +1453,7 @@ function _buildAdminSidebar() {
     html += '<div class="admin-sidebar-section' + expandedClass + '" data-section="' + sec.key + '">';
     html += '<div class="admin-sidebar-header" data-section-toggle="' + sec.key + '">';
     html += '<span>' + sec.label + '</span>';
-    html += '<svg class="admin-sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>';
+    html += '<i data-lucide="chevron-right" class="admin-sidebar-chevron icon-stroke"></i>';
     html += '</div>';
     html += '<div class="admin-sidebar-items">';
 
@@ -1577,6 +1577,8 @@ function navigateAdminSubpage(key) {
       var loader = panel.querySelector('.admin-loading-state');
       if (loader) loader.remove();
     }
+    // POD3-LUCIDE: Re-initialize Lucide icons after panel content loads
+    if (typeof window.refreshIcons === 'function') window.refreshIcons();
   }
 }
 
@@ -17108,6 +17110,15 @@ function _relativeTime(dateStr) {
     if (typeof initAdminPage === 'function') {
       initAdminPage();
     }
+    // POD3-LUCIDE: Initialize Lucide icons in admin panel
+    if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
+      lucide.createIcons();
+    }
+    window.refreshIcons = function() {
+      if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
+        lucide.createIcons();
+      }
+    };
   }
 
   // ── MFA Setup Flow (new enrollment) ──

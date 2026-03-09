@@ -113,6 +113,15 @@
     if (typeof initAdminPage === 'function') {
       initAdminPage();
     }
+    // POD3-LUCIDE: Initialize Lucide icons in admin panel
+    if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
+      lucide.createIcons();
+    }
+    window.refreshIcons = function() {
+      if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
+        lucide.createIcons();
+      }
+    };
   }
 
   // ── MFA Setup Flow (new enrollment) ──

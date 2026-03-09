@@ -188,7 +188,7 @@ function renderResumes() {
     const aiData = r.aiScore;
     let aiBadge = '';
     if (r.aiScoreStatus === 'scoring') {
-      aiBadge = '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(148,163,184,0.1);color:#94a3b8;border:1px solid rgba(148,163,184,0.15);cursor:help;" title="Analyzing content for AI authorship…">🔄 Scoring…</span>';
+      aiBadge = '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(148,163,184,0.1);color:#94a3b8;border:1px solid rgba(148,163,184,0.15);cursor:help;display:inline-flex;align-items:center;gap:3px;" title="Analyzing content for AI authorship…"><i data-lucide="loader-2" class="icon-xs icon-stroke"></i> Scoring…</span>';
     } else if (aiData && aiData.label) {
       const aiColors = { human: { bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.2)', text: 'var(--green)', icon: '<i data-lucide="check" class="icon-xs icon-stroke" style="color:var(--green)"></i>' }, mixed: { bg: 'rgba(234,179,8,0.1)', border: 'rgba(234,179,8,0.2)', text: '#eab308', icon: '<i data-lucide="triangle-alert" class="icon-xs icon-stroke" style="color:var(--warm)"></i>' }, ai_generated: { bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.2)', text: '#ef4444', icon: '<i data-lucide="scan-text" class="icon-xs icon-stroke" style="color:var(--red)"></i>' }, unknown: { bg: 'rgba(148,163,184,0.1)', border: 'rgba(148,163,184,0.2)', text: '#94a3b8', icon: '<i data-lucide="help-circle" class="icon-xs icon-stroke"></i>' } };
       const ac = aiColors[aiData.label] || aiColors.unknown;

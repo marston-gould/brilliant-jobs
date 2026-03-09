@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.21';
+var BJ_VERSION = 'v8.22';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -1309,9 +1309,9 @@ async function safeRpc(fnName: string, params?: Record<string, unknown>, opts?: 
 
   var STORAGE_KEY = 'bj-theme';
   var VALID_THEMES = ['light', 'dark', 'auto'];
-  var ICON_SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-toggle-icon"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
-  var ICON_MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-toggle-icon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
-  var ICON_AUTO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-toggle-icon"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20V2z"/></svg>';
+  var ICON_SUN = '<i data-lucide="sun" class="theme-toggle-icon icon-stroke"></i>';
+  var ICON_MOON = '<i data-lucide="moon" class="theme-toggle-icon icon-stroke"></i>';
+  var ICON_AUTO = '<i data-lucide="sun-moon" class="theme-toggle-icon icon-stroke"></i>';
 
   var LABELS = { light: 'Light', dark: 'Dark', auto: 'Auto' };
   var ICONS = { light: ICON_SUN, dark: ICON_MOON, auto: ICON_AUTO };
@@ -1337,6 +1337,7 @@ async function safeRpc(fnName: string, params?: Record<string, unknown>, opts?: 
       el.innerHTML = ICONS[theme] + '<span class="theme-toggle-label">' + LABELS[theme] + '</span>';
       el.setAttribute('title', 'Theme: ' + LABELS[theme] + ' (click to cycle)');
     });
+    if (typeof window.refreshIcons === 'function') window.refreshIcons();
     // Track with PostHog if available
     if (window.posthog && typeof window.posthog.capture === 'function') {
       window.posthog.capture('theme_changed', { theme: theme });
@@ -1677,11 +1678,12 @@ window.showTierGate = function(el: HTMLElement, minTier: TierName, message?: str
   overlay.className = 'tier-gate-overlay';
   overlay.style.cssText = 'position:absolute;inset:0;background:rgba(15,17,23,0.85);backdrop-filter:blur(4px);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;border-radius:inherit;';
   overlay.innerHTML = `
-    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="var(--warm)" stroke-width="2" style="margin-bottom:8px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    <i data-lucide="lock-keyhole" class="icon-lg icon-stroke" style="stroke:var(--warm);margin-bottom:8px;"></i>
     <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;">${message || (tierNames[minTier] || 'Upgrade') + ' plan required'}</div>
     <button class="btn btn-sm btn-primary" onclick="event.stopPropagation();showPage('subscription');" style="font-size:10px;padding:4px 14px;margin-top:6px;">Upgrade to ${tierNames[minTier] || 'Pro'}</button>
   `;
   el.appendChild(overlay);
+  if (typeof window.refreshIcons === 'function') window.refreshIcons();
 };
 
 window.removeTierGate = function(el: HTMLElement): void {
@@ -4372,7 +4374,7 @@ async function searchJobs(page = 0) {
   // If nothing is driving the search, show prompt but with global stats
   if (checked.length === 0 && checkedPrompts.length === 0 && !hasBuilderPills) {
     tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
-      <div style="margin-bottom:12px;color:var(--text-faint);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25;"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div>
+      <div style="margin-bottom:12px;color:var(--text-faint);"><i data-lucide="briefcase" class="icon-xl icon-stroke-lg" style="opacity:0.25;"></i></div>
       <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Select saved searches or add filters to search jobs</div>
       <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">Check one or more saved searches above, or use the filter builder.</div>
     </td></tr>`;
@@ -12425,7 +12427,7 @@ function renderLocationDropdown(results, query) {
       radius: `<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">${r.radius_mi}mi</span>`,
       country: '<span style="font-size:9px;background:rgba(59,130,246,0.1);color:var(--accent);padding:1px 6px;border-radius:4px;font-weight:600;">country</span>',
       remote: '<span style="font-size:9px;background:rgba(52,211,153,0.1);color:var(--green);padding:1px 6px;border-radius:4px;font-weight:600;">remote</span>',
-      pin: '<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">📍</span>',
+      pin: '<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;display:inline-flex;align-items:center;"><i data-lucide="map-pin" class="icon-xs icon-stroke"></i></span>',
     };
     const badge = badgeMap[r.badge] || '';
     const hl = highlightCompanyMatch(r.display, query);
@@ -12624,7 +12626,7 @@ function renderLocationNotDropdown(results, query) {
     metro: '<span style="font-size:9px;background:rgba(245,158,11,0.1);color:#f59e0b;padding:1px 6px;border-radius:4px;font-weight:600;">metro</span>',
     city: '<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">city</span>',
     remote: '<span style="font-size:9px;background:rgba(52,211,153,0.1);color:var(--green);padding:1px 6px;border-radius:4px;font-weight:600;">remote</span>',
-    pin: '<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">📍</span>',
+    pin: '<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;display:inline-flex;align-items:center;"><i data-lucide="map-pin" class="icon-xs icon-stroke"></i></span>',
   };
   locationNotDropdown.innerHTML = results.map(r => {
     const badge = badgeMap[r.badge] || '';
@@ -13259,7 +13261,7 @@ function renderSavedFilters() {
   const prompts = typeof window._getSavedPrompts === 'function' ? window._getSavedPrompts() : [];
   const promptsWithFilters = prompts.filter(p => p.derived_filters && Object.keys(p.derived_filters).length > 0);
   if (promptsWithFilters.length > 0) {
-    list.innerHTML += '<div class="sf-prompt-separator"><span style="font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">💬 Chat Prompts</span></div>';
+    list.innerHTML += '<div class="sf-prompt-separator"><span style="font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;display:inline-flex;align-items:center;gap:4px;"><i data-lucide="message-square" class="icon-xs icon-stroke"></i> Chat Prompts</span></div>';
     list.innerHTML += promptsWithFilters.map((prompt, pi) => {
       const promptNum = sorted.length + pi + 1;
       const promptColor = filterColors[(promptNum - 1) % filterColors.length];
@@ -13284,7 +13286,7 @@ function renderSavedFilters() {
         <input type="checkbox" class="sf-prompt-check" data-prompt-id="${prompt.id}" data-filternum="${promptNum}" data-filtercolor="${promptColor}">
         <span class="sf-num" style="background:${promptColor};">${promptNum}</span>
         <div class="sf-item-info">
-          <div class="sf-item-name">💬 ${escapeHtml(prompt.name || 'Chat Prompt')}</div>
+          <div class="sf-item-name"><i data-lucide="message-square" class="icon-xs icon-stroke" style="display:inline;vertical-align:-1px;margin-right:2px;"></i> ${escapeHtml(prompt.name || 'Chat Prompt')}</div>
           <div class="sf-item-meta">chat prompt</div>
         </div>
         ${pills}
@@ -13655,7 +13657,7 @@ async function startAiFilterSuggest() {
     // No resumes at all — show upload-only modal
     meta.textContent = 'Upload a resume to get started';
     body.innerHTML = '<div style="padding:16px;text-align:center;">' +
-      '<div style="font-size:32px;margin-bottom:8px;opacity:0.3;">📄</div>' +
+      '<div style="margin-bottom:8px;opacity:0.3;"><i data-lucide="file-text" class="icon-xl icon-stroke-lg"></i></div>' +
       '<div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:4px;">No resumes yet</div>' +
       '<div style="font-size:12px;color:var(--text-faint);max-width:280px;margin:0 auto;line-height:1.5;margin-bottom:16px;">Upload your resume on the Resumes tab, then come back to generate filters.</div>' +
       '<button class="btn btn-sm btn-primary" onclick="document.getElementById(\'ai-filter-modal\').style.display=\'none\';document.body.style.overflow=\'\';$$(\'.nav-item\').forEach(n=>n.classList.toggle(\'active\',n.dataset.page===\'resumes\'));$$(\'.page\').forEach(p=>p.classList.toggle(\'active\',p.id===\'page-resumes\'));">Go to Resumes →</button>' +
@@ -13685,7 +13687,7 @@ async function startAiFilterSuggest() {
   } else {
     meta.textContent = 'Upload a resume to get started';
     pickerHtml += '<div style="text-align:center;margin-bottom:16px;">' +
-      '<div style="font-size:32px;margin-bottom:8px;opacity:0.3;">📄</div>' +
+      '<div style="margin-bottom:8px;opacity:0.3;"><i data-lucide="file-text" class="icon-xl icon-stroke-lg"></i></div>' +
       '<div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:4px;">No resumes yet</div>' +
       '<div style="font-size:12px;color:var(--text-faint);max-width:280px;margin:0 auto;line-height:1.5;">Upload your resume and AI will analyze it to generate optimized job search filters.</div></div>';
   }
@@ -15455,7 +15457,7 @@ window.renderOverlayPipelineTab = async function() {
     if (jobs.length === 0) return;
     html += '<div class="pl-stage-section" data-stage="' + stage + '">';
     html += '<div class="pl-stage-header" onclick="this.closest(\'.pl-stage-section\').classList.toggle(\'collapsed\')">';
-    html += '<svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>';
+    html += '<i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>';
     html += '<span class="pl-stage-name">' + (PL_OV_LABELS[stage] || stage) + '</span>';
     html += '<span class="pl-stage-count">' + jobs.length + '</span>';
     html += '</div>';
@@ -17251,7 +17253,7 @@ function renderResumes() {
     const aiData = r.aiScore;
     let aiBadge = '';
     if (r.aiScoreStatus === 'scoring') {
-      aiBadge = '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(148,163,184,0.1);color:#94a3b8;border:1px solid rgba(148,163,184,0.15);cursor:help;" title="Analyzing content for AI authorship…">🔄 Scoring…</span>';
+      aiBadge = '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(148,163,184,0.1);color:#94a3b8;border:1px solid rgba(148,163,184,0.15);cursor:help;display:inline-flex;align-items:center;gap:3px;" title="Analyzing content for AI authorship…"><i data-lucide="loader-2" class="icon-xs icon-stroke"></i> Scoring…</span>';
     } else if (aiData && aiData.label) {
       const aiColors = { human: { bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.2)', text: 'var(--green)', icon: '<i data-lucide="check" class="icon-xs icon-stroke" style="color:var(--green)"></i>' }, mixed: { bg: 'rgba(234,179,8,0.1)', border: 'rgba(234,179,8,0.2)', text: '#eab308', icon: '<i data-lucide="triangle-alert" class="icon-xs icon-stroke" style="color:var(--warm)"></i>' }, ai_generated: { bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.2)', text: '#ef4444', icon: '<i data-lucide="scan-text" class="icon-xs icon-stroke" style="color:var(--red)"></i>' }, unknown: { bg: 'rgba(148,163,184,0.1)', border: 'rgba(148,163,184,0.2)', text: '#94a3b8', icon: '<i data-lucide="help-circle" class="icon-xs icon-stroke"></i>' } };
       const ac = aiColors[aiData.label] || aiColors.unknown;
@@ -19487,7 +19489,7 @@ function populateOverrideFilterSelect() {
       sel.innerHTML += '<option disabled>── Chat Prompts ──</option>';
       _savedPrompts.forEach(p => {
         if (p.derived_filters && Object.keys(p.derived_filters).length > 0) {
-          sel.innerHTML += `<option value="prompt:${escapeHtml(p.id)}" data-prompt-id="${escapeHtml(p.id)}">💬 ${escapeHtml(p.name)}</option>`;
+          sel.innerHTML += `<option value="prompt:${escapeHtml(p.id)}" data-prompt-id="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`;
         }
       });
     }
@@ -19930,7 +19932,8 @@ $('#st-full-export')?.addEventListener('click', async () => {
     showToast('Export failed: ' + e.message, { type: 'error' });
   } finally {
     var btn2 = $('#st-full-export');
-    if (btn2) { btn2.disabled = false; btn2.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;vertical-align:-2px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download All My Data (JSON)'; }
+    if (btn2) { btn2.disabled = false; btn2.innerHTML = '<i data-lucide="download" class="icon-sm icon-stroke" style="margin-right:6px;vertical-align:-2px;"></i>Download All My Data (JSON)'; }
+    if (typeof window.refreshIcons === 'function') window.refreshIcons();
   }
 });
 
@@ -24165,7 +24168,7 @@ function renderArchiveTable(archives) {
     return `<tr style="border-bottom:1px solid var(--border);${highlight}" data-resume-id="${a.resume_id}">
       <td style="padding:10px 12px;">
         <div style="display:flex;align-items:center;gap:6px;">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--text-faint)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <i data-lucide="file-text" class="icon-sm icon-stroke" style="stroke:var(--text-faint);"></i>
           <div>
             <div style="font-weight:600;color:var(--text);">${a.display_name}</div>
             <div style="font-size:10px;color:var(--text-faint);">${a.file_type.toUpperCase()} ${levelBadge}</div>
@@ -24187,6 +24190,7 @@ function renderArchiveTable(archives) {
       </td>
     </tr>`;
   }).join('');
+  if (typeof window.refreshIcons === 'function') window.refreshIcons();
 
   _archiveHighlightId = null;
 }

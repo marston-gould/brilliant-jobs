@@ -171,9 +171,9 @@ describe('POD3-LUCIDE: Lucide Icon Migration', () => {
 
   // Section 8: Version and build
   describe('8. Version & Build', () => {
-    it('version is v8.21', () => {
+    it('version is v8.22', () => {
       const v = read('js/version.js');
-      expect(v).toContain('v8.21');
+      expect(v).toContain('v8.22');
     });
     it('dist/dashboard.min.js exists and is rebuilt', () => {
       expect(existsSync('dist/dashboard.min.js')).toBe(true);
