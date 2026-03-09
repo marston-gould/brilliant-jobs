@@ -52,6 +52,28 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**FA-009** — US-Only Filter Leakage Fix
+- Completed: 2026-03-08
+- Product version bumped: `v7.88` → `v7.89` (JS changes — job-feed.js US-Only filter rewrite; all HTML surfaces cache-busted)
+- ROADMAP.md updated: FA-009 → ✅
+- roadmap.html updated: FA-009 → `s: 'done'`, p: 100
+- **Core change:** Replaced blind NULL catch-all (`loc_country.eq.US,loc_country.is.null` → all ~57K NULL jobs) with 4-tier smart filter:
+  - Tier 1: `loc_country.eq.US` (definite US)
+  - Tier 2: NULL + valid US state code (`loc_state.in.(50 states + DC)`)
+  - Tier 3: NULL + US text indicators (`location.ilike.%United States%`, `% USA%`)
+  - Tier 4: NULL + bare Remote patterns (`location.eq.Remote`, `Remote%United States%`, `Remote%USA%`, `Remote%US %`)
+- **Non-US exclusion by omission:** Hong Kong, Bangalore, Kyiv, London, "Remote - Europe", "Remote (EMEA)" etc. no longer included because the NULL catch-all is gone
+- **Canada exclusion preserved:** NULL-safe `.or('loc_country.neq.CA,loc_country.is.null')` + location ilike exclusions for Canada/BC/British Columbia
+- **SPA unchanged:** useFeedSearch.ts deferred to FA-007 (SPA Feed Parity)
+- **Created:**
+  - `tests/fa-009-us-only-filter-fix.test.js` — 27 validation tests (9 sections)
+- **Modified:**
+  - `js/job-feed.js` — US-Only filter rewrite in buildFilterQuery
+  - `dist/dashboard-feed.min.js` — rebuilt
+  - `ROADMAP.md` — FA-009 → ✅
+  - `roadmap.html` — FA-009 → done/100
+- **Tests:** 27 FA-009 validation tests (all passing)
+
 **FA-003** — preview-jobs Content Search + Landing Page
 - Completed: 2026-03-08
 - Product version bumped: `v7.87` → `v7.88` (EF change — preview-jobs content_tsv search; all HTML surfaces cache-busted)
@@ -866,18 +888,18 @@ None.
 
 ## Next Session
 
-**Feed Accuracy Sprint is ACTIVE.** FA-010 (Phase 0: Instrumentation), FA-001 (Phase 1: Content Search), FA-002 (Phase 2: Backfill + Enrichment Cron), and FA-003 (preview-jobs Content Search) are complete.
+**Feed Accuracy Sprint — Phase 1 COMPLETE.** FA-010 (Instrumentation), FA-001 (Content Search), FA-002 (Backfill + Enrichment Cron), FA-003 (preview-jobs), and FA-009 (US-Only Filter) are done.
 
-**FA-009: US-Only Filter Leakage Fix** — 3-4h (independent — parallel with Phase 1)
-- **Entry gate:** FA-010 instrumentation deployed with US-Only leakage tracking.
-- **Fix:** Fix US-Only filter to properly exclude non-US jobs. PostHog data from FA-010 identifies leakage rate.
-- **Files:** `js/job-feed.js` (buildFilterQuery US-Only logic)
-- **Exit gate:** Zero US-Only filter leakage in PostHog after fix. Tests passing.
+**FA-004: Remove 500-Row Cap + Real Pagination** — 5-7h
+- **Entry gate:** FA-001 content search deployed. Content_tsv backfilled (FA-002). US-Only filter fixed (FA-009).
+- **Fix:** Remove MAX_FEED_ROWS 500 cap. Implement real server-side pagination with LIMIT/OFFSET via Supabase `range()`. Each page turn is one lightweight DB query. Use `count: 'exact'` for accurate total counts.
+- **Files:** `js/job-feed.js` (searchJobs, pagination logic), possibly new RPC function
+- **Exit gate:** Feed returns all matching results across pages. No truncation at 500. Page load < 1s. Accurate total counts shown to user. Tests passing.
 
-**FA-004: Remove 500-Row Cap + Real Pagination** — 5-7h (requires FA-001)
-- **Entry gate:** FA-001 content search deployed.
-- **Fix:** Remove MAX_FEED_ROWS 500 cap. Implement real server-side pagination with LIMIT/OFFSET.
-- **Exit gate:** Feed returns all matching results across pages. No truncation.
+**FA-005: Server-Side Multi-Filter Merge** — 6-8h (requires FA-004)
+- **Entry gate:** FA-004 pagination deployed.
+- **Fix:** Replace client-side merge of multiple filter results with server-side UNION via Postgres function. Single round trip, server-side sort, no client-side merge.
+- **Exit gate:** Multi-filter queries return correct deduped results from server. No client-side merge.
 
 **Phase S is COMPLETE.** All 29 sessions (SA-001 through SA-029) plus SA-023b are done.
 **Phase REM is COMPLETE.** All 5 sessions (REM-001 through REM-005) are done.

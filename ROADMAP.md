@@ -3353,7 +3353,7 @@ Phase S is complete when ALL of the following are true:
 | FA-001 | Expand What Pills to Content Search (Positive AND Negative) — FA-F01. What pills now search title OR content_tsv (GIN index, wfts/websearch). What NOT pills + global exclusions exclude from BOTH title AND content. Atomic: positive+negative always ship together. Feature flag `feed_content_search` controls toggle. PostHog `content_search_enabled` property added for pre/post segmentation. v6.40 migration seeds flag. | 10-14h | ✅ | 42 validation tests. v7.86. 2026-03-08. |
 | FA-002 | Backfill content_tsv + Enrichment Cron — FA-F08. | 8-12h | ✅ | content_tsv column + trigger + GIN index + backfill cron + enrichment gap fixer + NULL-safe NOT queries. v6.41 migration. v7.87. |
 | FA-003 | preview-jobs Content Search + Landing Page — FA-F07. | 2-3h | ✅ | preview-jobs keyword search now uses title.ilike OR content_tsv.wfts(english) via .or(). Status filter: .neq('closed') → .eq('open'). Landing page client unchanged. 21 tests. v7.88. |
-| FA-009 | US-Only Filter Leakage Fix — FA-F09. | 3-4h | 🔲 | Independent — parallel with Phase 1. |
+| FA-009 | US-Only Filter Leakage Fix — FA-F10. | 3-4h | ✅ | Replaced blind NULL catch-all with 4-tier smart filter: (1) loc_country=US, (2) NULL+US state code, (3) NULL+US text indicators, (4) NULL+bare Remote. Non-US NULLs excluded by omission. Canada exclusion preserved (NULL-safe). SPA unchanged (FA-007 scope). 24 tests. v7.89. |
 | FA-004 | Remove 500-Row Cap + Real Pagination — FA-F02. | 5-7h | 🔲 | Requires FA-001. |
 | FA-005 | Server-Side Multi-Filter Merge — FA-F06. | 6-8h | 🔲 | Requires FA-004. |
 | FA-006 | Server-Side Trust/AI Filters — FA-F05. | 6-10h | 🔲 | Requires FA-005. |

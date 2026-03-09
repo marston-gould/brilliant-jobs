@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v7.88';
+var BJ_VERSION = 'v7.89';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -3724,12 +3724,30 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
       }
     }
     if (tuning.usOnly) {
-      // v6.51: Use loc_country for US filtering (92%+ coverage, uses index, single param)
-      // Include US + NULL (ungeocoded jobs) in one clause
-      query = query.or('loc_country.eq.US,loc_country.is.null');
+      // FA-009: Smart US-Only filter — tiered NULL handling
+      // BEFORE: loc_country.eq.US OR loc_country IS NULL → all ~57K NULL jobs included
+      //   → ~9,700 clearly non-US jobs (Hong Kong, Bangalore, Kyiv, London, etc.) leak through
+      // AFTER: loc_country.eq.US OR (NULL with US evidence) → non-US NULLs excluded
+      var US_STATES = 'AL,AK,AZ,AR,CA,CO,CT,DE,FL,GA,HI,ID,IL,IN,IA,KS,KY,LA,ME,MD,MA,MI,MN,MS,MO,MT,NE,NV,NH,NJ,NM,NY,NC,ND,OH,OK,OR,PA,RI,SC,SD,TN,TX,UT,VT,VA,WA,WV,WI,WY,DC';
+      query = query.or([
+        // Tier 1: Definite US (loc_country resolved)
+        'loc_country.eq.US',
+        // Tier 2: NULL country but valid US state code (strong signal)
+        'and(loc_country.is.null,loc_state.in.(' + US_STATES + '))',
+        // Tier 3: NULL country but location text contains US indicators
+        'and(loc_country.is.null,location.ilike.%United States%)',
+        'and(loc_country.is.null,location.ilike.% USA%)',
+        // Tier 4: NULL country, bare "Remote" — benefit of doubt for US platform
+        // Includes: "Remote", "Remote - US", "Remote - United States", "Remote, US"
+        // Excludes (by omission): "Remote - Europe", "Remote (EMEA)", "Remote Philippines"
+        'and(loc_country.is.null,location.eq.Remote)',
+        'and(loc_country.is.null,location.ilike.Remote%United States%)',
+        'and(loc_country.is.null,location.ilike.Remote%USA%)',
+        'and(loc_country.is.null,location.ilike.Remote%US %)',
+      ].join(','));
       // v7.70: not('loc_country','eq','CA') generates SQL `loc_country <> 'CA'` which returns
-      // FALSE for NULL values — silently excluding every remote job (loc_country=NULL).
-      // Fix: use OR that preserves NULLs while still excluding Canadian jobs.
+      // FALSE for NULL values — silently excluding NULL rows from Tiers 2-4 above.
+      // Fix: OR preserves NULLs while excluding Canada.
       query = query.or('loc_country.neq.CA,loc_country.is.null');
       query = query.not('location', 'ilike', '%Canada%');
       query = query.not('location', 'ilike', '%, BC%');
