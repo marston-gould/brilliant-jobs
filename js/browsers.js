@@ -582,9 +582,10 @@ async function loadCompanyBrowser() {
   usOnlyBanner.style.display = tuning.usOnly ? '' : 'none';
 
   try {
-    // Load all companies from ats_companies — uses cachedQuery (v3.84, pre-warmed)
+    // Load companies with active jobs — filter to job_count > 0 to stay within Supabase row limits
+    // (ats_companies has 65K+ rows but only ~5-10K have open jobs)
     let cacheResult = await cachedQuery('ref:companies:list', function() {
-      return sb.from('ats_companies').select('slug, name, job_count, source, ai_jd_rate').order('name');
+      return sb.from('ats_companies').select('slug, name, job_count, source, ai_jd_rate').gt('job_count', 0).order('name').limit(50000);
     }, { ttl: 600000 });
     let allData = (cacheResult && cacheResult.data) || [];
 
@@ -1175,6 +1176,7 @@ async function loadFilterBrowserData() {
   list.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-faint);">Loading…</div>';
 
   try {
+    // Try MV first (fast, pre-computed)
     const resp = await sb.from('mv_filter_browser_data')
       .select('dimension, value, job_count')
       .order('job_count', { ascending: false });
@@ -1182,9 +1184,90 @@ async function loadFilterBrowserData() {
     if (resp.error) throw resp.error;
     _fbCache = { data: resp.data || [], ts: Date.now() };
     renderFilterBrowserList();
+  } catch (mvErr) {
+    // MV not deployed yet — fall back to direct query for current dimension
+    console.warn('[BJ] MV not available, falling back to direct query:', mvErr.message);
+    try {
+      const dim = _fbConfig?.mvDim;
+      let data = [];
+
+      if (dim === 'title') {
+        const r = await sb.rpc('sql', { query: "SELECT title AS value, COUNT(*)::int AS job_count FROM ats_jobs WHERE status = 'open' AND title IS NOT NULL AND length(title) > 2 GROUP BY title ORDER BY COUNT(*) DESC LIMIT 200" });
+        if (r.error) throw r.error;
+        data = (r.data || []).map(d => ({ dimension: 'title', ...d }));
+      } else if (dim === 'skill') {
+        const r = await sb.rpc('sql', { query: "SELECT unnest(extracted_skills) AS value, COUNT(*)::int AS job_count FROM ats_jobs WHERE status = 'open' AND extracted_skills IS NOT NULL GROUP BY 1 ORDER BY COUNT(*) DESC LIMIT 200" });
+        if (r.error) throw r.error;
+        data = (r.data || []).map(d => ({ dimension: 'skill', ...d }));
+      } else if (dim === 'dept') {
+        const r = await sb.rpc('sql', { query: "SELECT extracted_department AS value, COUNT(*)::int AS job_count FROM ats_jobs WHERE status = 'open' AND extracted_department IS NOT NULL AND length(extracted_department) > 1 GROUP BY 1 ORDER BY COUNT(*) DESC LIMIT 200" });
+        if (r.error) throw r.error;
+        data = (r.data || []).map(d => ({ dimension: 'dept', ...d }));
+      } else if (dim === 'level') {
+        const r = await sb.rpc('sql', { query: "SELECT extracted_seniority AS value, COUNT(*)::int AS job_count FROM ats_jobs WHERE status = 'open' AND extracted_seniority IS NOT NULL AND length(extracted_seniority) > 1 GROUP BY 1 ORDER BY COUNT(*) DESC" });
+        if (r.error) throw r.error;
+        data = (r.data || []).map(d => ({ dimension: 'level', ...d }));
+      } else if (dim === 'jd_keyword') {
+        const r = await sb.rpc('sql', { query: "SELECT word AS value, ndoc::int AS job_count FROM ts_stat('SELECT content_tsv FROM ats_jobs WHERE status = ''open'' AND content_tsv IS NOT NULL') WHERE length(word) > 3 ORDER BY ndoc DESC LIMIT 200" });
+        if (r.error) throw r.error;
+        data = (r.data || []).map(d => ({ dimension: 'jd_keyword', ...d }));
+      }
+
+      if (data.length > 0) {
+        _fbCache = { data, ts: Date.now() };
+        renderFilterBrowserList();
+      } else {
+        // Direct queries also failed (no sql RPC or permission issue) — use PostgREST fallback
+        await _loadFilterBrowserFallback(dim, list);
+      }
+    } catch (directErr) {
+      console.warn('[BJ] Direct query fallback also failed:', directErr.message);
+      // Final fallback: simple PostgREST queries
+      await _loadFilterBrowserFallback(_fbConfig?.mvDim, list);
+    }
+  }
+}
+
+// PostgREST-only fallback (no sql RPC needed)
+async function _loadFilterBrowserFallback(dim, list) {
+  try {
+    let data = [];
+    if (dim === 'title') {
+      // Get distinct titles from ats_jobs — Supabase doesn't support GROUP BY via PostgREST,
+      // so we select title + count from a view or just get the distinct values
+      const r = await sb.from('ats_jobs').select('title').eq('status', 'open').not('title', 'is', null).order('title').limit(5000);
+      if (r.error) throw r.error;
+      // Count manually
+      const counts = {};
+      (r.data || []).forEach(d => { counts[d.title] = (counts[d.title] || 0) + 1; });
+      data = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 200).map(([value, job_count]) => ({ dimension: 'title', value, job_count }));
+    } else if (dim === 'dept') {
+      const r = await sb.from('ats_jobs').select('extracted_department').eq('status', 'open').not('extracted_department', 'is', null).limit(5000);
+      if (r.error) throw r.error;
+      const counts = {};
+      (r.data || []).forEach(d => { if (d.extracted_department) counts[d.extracted_department] = (counts[d.extracted_department] || 0) + 1; });
+      data = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 200).map(([value, job_count]) => ({ dimension: 'dept', value, job_count }));
+    } else if (dim === 'level') {
+      const r = await sb.from('ats_jobs').select('extracted_seniority').eq('status', 'open').not('extracted_seniority', 'is', null).limit(5000);
+      if (r.error) throw r.error;
+      const counts = {};
+      (r.data || []).forEach(d => { if (d.extracted_seniority) counts[d.extracted_seniority] = (counts[d.extracted_seniority] || 0) + 1; });
+      data = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([value, job_count]) => ({ dimension: 'level', value, job_count }));
+    } else {
+      // skill and jd_keyword require unnest/ts_stat — can't do via PostgREST
+      list.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-faint);">This browser requires a database migration to be deployed. Contact your admin.</div>';
+      return;
+    }
+
+    if (data.length > 0) {
+      _fbCache = { data, ts: Date.now() };
+      renderFilterBrowserList();
+    } else {
+      list.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-faint);">No data available for this dimension.</div>';
+    }
   } catch (err) {
-    reportError('filter-browser', err);
-    list.innerHTML = '<div style="text-align:center;padding:32px;color:var(--red);">Failed to load browser data. The materialized view may not be deployed yet.</div>';
+    reportError('filter-browser-fallback', err);
+    list.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-faint);">Unable to load browser data. Try again later.</div>';
   }
 }
 

@@ -1391,7 +1391,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority â€
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.31`** | **Company Browser: admin-gate AI panel, # nav fix, alpha link color** |
+| **Product (BJ_VERSION)** | **`v8.32`** | **Company browser row limit fix + filter browser PostgREST fallback** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
