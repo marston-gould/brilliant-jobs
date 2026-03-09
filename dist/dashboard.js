@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v7.86';
+var BJ_VERSION = 'v7.87';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -3575,8 +3575,11 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
       if (term) {
         query = query.not('title', 'ilike', `%${term}%`);
         // FA-001: Also exclude from job description content
+        // FA-002: NULL-safe — jobs with NULL content_tsv are NOT excluded
+        // (only title match matters for those). Without this, NOT(NULL@@term)
+        // evaluates to NULL → row excluded, losing jobs during backfill.
         if (_contentSearchEnabled) {
-          query = query.not('content_tsv', 'wfts(english)', term);
+          query = query.or(`not.content_tsv.wfts(english).${term},content_tsv.is.null`);
         }
       }
     }
@@ -3585,8 +3588,9 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
   for (const pill of (tuning.titleExcludes || [])) {
     for (const v of (pill.values || [])) {
       query = query.not('title', 'ilike', `%${v}%`);
+      // FA-002: NULL-safe content exclusion (same pattern as NOT pills above)
       if (_contentSearchEnabled) {
-        query = query.not('content_tsv', 'wfts(english)', v);
+        query = query.or(`not.content_tsv.wfts(english).${v},content_tsv.is.null`);
       }
     }
   }

@@ -52,6 +52,25 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**FA-002** — Backfill content_tsv + Enrichment Cron
+- Completed: 2026-03-08
+- Product version bumped: `v7.86` → `v7.87` (JS changes — job-feed.js NULL-safe NOT queries; enrich-jd-ai retry tracking; all HTML surfaces cache-busted)
+- ROADMAP.md updated: FA-002 → ✅
+- roadmap.html updated: FA-002 → `s: 'done'`, p: 100
+- **Migration (v6.41):** `content_tsv tsvector` column on ats_jobs (propagates to all partitions). `jd_enrich_retry_count integer DEFAULT 0` for failure tracking. `fn_update_content_tsv()` trigger function — strips HTML tags + entities, collapses whitespace, generates weighted tsvector (title=A, content=B). `trg_content_tsv` BEFORE INSERT/UPDATE trigger. `idx_ats_jobs_content_tsv` GIN index (partial: WHERE content_tsv IS NOT NULL). `fn_backfill_content_tsv(10000)` — batch backfill with SKIP LOCKED, content-first then title-only fallback, returns progress JSON. `fn_mark_jobs_for_enrichment(200)` — marks jobs with content but no jd_extracted_at, skips retry_count >= 3. `v_content_tsv_status` monitoring view (coverage %, breakdown by content availability, AI enrichment status, queue depth). 2 pg_cron: `backfill-content-tsv` every 1min (10K batch, self-disabling when complete), `mark-jobs-for-enrichment` every 15min (200 batch).
+- **enrich-jd-ai EF updated:** Reads `jd_enrich_retry_count` from ats_jobs. On AI enrichment failure, increments retry count. Jobs with retry_count >= 3 are excluded from batch queries (permanently skipped). Both queue-filling query and batch query filter on `jd_enrich_retry_count < 3`.
+- **job-feed.js NULL-safe NOT queries:** What NOT pills and global title exclusions use `.or('not.content_tsv.wfts(english).${term},content_tsv.is.null')` pattern — jobs with NULL content_tsv are NOT accidentally excluded during backfill window.
+- **Created:**
+  - `supabase/migrations/v6.41-fa002-content-tsv-backfill.sql` — Full migration (310 lines)
+  - `tests/fa-002-content-tsv-backfill.test.js` — 47 validation tests
+- **Modified:**
+  - `js/job-feed.js` — NULL-safe NOT query pattern for content_tsv
+  - `supabase/functions/enrich-jd-ai/index.ts` — jd_enrich_retry_count support + failure tracking
+  - `dist/dashboard.min.js` — rebuilt
+  - `ROADMAP.md` — FA-002 → ✅
+  - `roadmap.html` — FA-002 → done/100
+- **Tests:** 47 FA-002 validation tests (all passing)
+
 **FA-001** — Expand What Pills to Content Search (Positive AND Negative)
 - Completed: 2026-03-08
 - Product version bumped: `v7.85` → `v7.86` (JS changes — job-feed.js content search in buildFilterQuery; all HTML surfaces cache-busted)
@@ -831,13 +850,18 @@ None.
 
 ## Next Session
 
-**Feed Accuracy Sprint is ACTIVE.** FA-010 (Phase 0: Instrumentation) and FA-001 (Phase 1: Content Search) are complete.
+**Feed Accuracy Sprint is ACTIVE.** FA-010 (Phase 0: Instrumentation), FA-001 (Phase 1: Content Search), and FA-002 (Phase 2: Backfill + Enrichment Cron) are complete.
 
-**FA-002: Backfill content_tsv + Enrichment Cron** — 8-12h
-- **Entry gate:** FA-001 content search deployed. Feature flag `feed_content_search` active. Verify jobs with NULL content_tsv still exist (backfill target).
-- **Fix:** Ensure all existing and new jobs have populated content_tsv columns. Audit backfill_content_tsv cron (runs every 30s, 1000 rows/batch). Verify enrichment pipeline populates content_tsv for new jobs. Handle edge cases: jobs with no description, jobs with only title.
-- **Files:** `supabase/` (cron jobs, functions), `js/job-feed.js` (verify no NULL content_tsv issues in search)
-- **Exit gate:** Zero NULL content_tsv rows in ats_jobs where status='open'. Backfill cron healthy. New job enrichment pipeline populates content_tsv within 30s of insertion.
+**FA-003: preview-jobs Content Search + Landing Page** — 2-3h
+- **Entry gate:** FA-001 content search deployed. content_tsv column exists (FA-002). preview-jobs EF exists.
+- **Fix:** Extend preview-jobs Edge Function to search content_tsv in addition to title. Ensure landing page job previews benefit from full-text content matching. Align with FA-001 query patterns.
+- **Files:** `supabase/functions/preview-jobs/index.ts`, landing page JS
+- **Exit gate:** preview-jobs returns content-matched results. Landing page search uses content_tsv. Tests passing.
+
+**FA-009: US-Only Filter Leakage Fix** — 3-4h (can run in parallel)
+- **Entry gate:** FA-010 instrumentation deployed with US-Only leakage tracking.
+- **Fix:** Fix US-Only filter to properly exclude non-US jobs. PostHog data from FA-010 identifies leakage rate.
+- **Exit gate:** Zero US-Only filter leakage in PostHog after fix.
 
 **Phase S is COMPLETE.** All 29 sessions (SA-001 through SA-029) plus SA-023b are done.
 **Phase REM is COMPLETE.** All 5 sessions (REM-001 through REM-005) are done.
@@ -885,7 +909,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.86`** | **FA-001 — Content Search in What Pills** |
+| **Product (BJ_VERSION)** | **`v7.87`** | **FA-002 — Backfill content_tsv + Enrichment Cron** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

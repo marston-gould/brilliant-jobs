@@ -1,3 +1,6 @@
+## v7.87 Session NN: TITLE (2026-03-09)
+- DESCRIBE CHANGES HERE
+
 ## v7.86 FA-001: Expand What Pills to Content Search (2026-03-08)
 - What pills now search `title.ilike OR content_tsv.wfts(english)` (was title-only)
 - What NOT pills + global exclusions also exclude from content_tsv (atomic with positive)

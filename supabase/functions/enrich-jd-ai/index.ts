@@ -47,7 +47,7 @@ function stripHtml(html: string): string {
 }
 
 async function enrichJob(
-  job: { greenhouse_id: string; title: string; content: string },
+  job: { greenhouse_id: string; title: string; content: string; jd_enrich_retry_count: number | null },
   apiKey: string,
   supabase: unknown
 ): Promise<{ ok: boolean; id: string; skills?: number }> {
@@ -133,8 +133,12 @@ async function enrichJob(
   } catch (e) {
     console.error(`Failed ${job.greenhouse_id}:`, e.message)
     if (!e.message?.includes('429')) {
-      await supabase.from('ats_jobs').update({
+      // FA-002: Increment retry count on non-rate-limit failures
+      // Jobs with jd_enrich_retry_count >= 3 are skipped by enrichment pipeline
+      const currentRetry = typeof job.jd_enrich_retry_count === 'number' ? job.jd_enrich_retry_count : 0;
+      await (supabase as any).from('ats_jobs').update({
         jd_skills: [], jd_requirements: [],
+        jd_enrich_retry_count: currentRetry + 1,
       }).eq('greenhouse_id', job.greenhouse_id)
     }
     return { ok: false, id: job.greenhouse_id }
@@ -177,14 +181,16 @@ serve(async (req) => {
 
     // v2: Only enrich Tier 1 (user-relevant) and Tier 2 (high-value) jobs
     // Tier 3 (on-demand) jobs use the enrich-job-ondemand endpoint
+    // FA-002: Skip jobs with 3+ retry failures
     const { data: jobs, error: fetchError } = await supabase
       .from('ats_jobs')
-      .select('greenhouse_id, title, content')
+      .select('greenhouse_id, title, content, jd_enrich_retry_count')
       .not('content', 'is', null)
       .is('jd_skills', null)
       .eq('status', 'open')
       .not('jd_extracted_at', 'is', null)
       .in('enrichment_priority', [1, 2])
+      .lt('jd_enrich_retry_count', 3)
       .order('enrichment_priority', { ascending: true })
       .order('jd_extracted_at', { ascending: true })
       .limit(BATCH_SIZE)
@@ -203,6 +209,38 @@ serve(async (req) => {
     const errors = results.filter(r => !r.ok).length
     const elapsed = Date.now() - startTime
 
+    // FA-002: Query enrichment queue depth for monitoring
+    const { data: queueData } = await supabase
+      .from('ats_jobs')
+      .select('greenhouse_id', { count: 'exact', head: true })
+      .not('content', 'is', null)
+      .is('jd_skills', null)
+      .eq('status', 'open')
+      .not('jd_extracted_at', 'is', null)
+      .in('enrichment_priority', [1, 2])
+      .lt('jd_enrich_retry_count', 3)
+
+    const queueRemaining = queueData?.length ?? 0
+    const failureRate = jobs.length > 0 ? Math.round(errors / jobs.length * 100) : 0
+
+    // FA-002: Log enrichment batch to hygiene_log for monitoring
+    try {
+      await supabase.from('hygiene_log').insert({
+        check_name: 'jd_enrichment_batch',
+        status: failureRate > 10 ? 'warning' : 'ok',
+        details: {
+          batch_size: jobs.length,
+          success_count: processed,
+          error_count: errors,
+          queue_remaining: queueRemaining,
+          failure_rate_pct: failureRate,
+          elapsed_ms: elapsed,
+        }
+      })
+    } catch (logErr) {
+      console.warn('[enrich-jd-ai] hygiene_log insert failed:', logErr.message)
+    }
+
     return new Response(
       JSON.stringify({
         ok: true,
@@ -211,6 +249,8 @@ serve(async (req) => {
         batch_size: jobs.length,
         elapsed_ms: elapsed,
         rate: Math.round(processed / (elapsed / 1000) * 60) + '/min',
+        queue_remaining: queueRemaining,
+        failure_rate_pct: failureRate,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
