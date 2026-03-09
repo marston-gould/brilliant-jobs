@@ -32,7 +32,7 @@ function renderGdriveState() {
       } else {
         fileList.innerHTML = gdriveState.files.map((f, i) => `
           <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(148,163,184,0.08);">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4285F4" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <i data-lucide="file-text" class="icon-md icon-stroke" style="stroke:#4285F4;"></i>
             <div style="flex:1;min-width:0;">
               <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${f.name}</div>
               <div style="font-size:10px;color:var(--text-faint);">Linked ${f.linkedAt || ''}</div>
@@ -41,6 +41,7 @@ function renderGdriveState() {
             <button style="background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:14px;padding:2px 4px;" onclick="unlinkGdriveFile(${i})" title="Unlink">✕</button>
           </div>
         `).join('');
+        if (typeof window.refreshIcons === 'function') window.refreshIcons();
       }
     }
   } else {

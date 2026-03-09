@@ -387,9 +387,10 @@ async function syncFilterToChat() {
       // Show subtle hint that this was auto-generated
       var banner = document.getElementById('chat-filter-banner');
       if (banner) {
-        banner.innerHTML = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>' +
+        banner.innerHTML = '<i data-lucide="filter" class="icon-xs icon-stroke" style="flex-shrink:0;"></i>' +
           '<span>Pre-filled from your active filters — edit or send as-is</span>';
         banner.style.display = 'flex';
+        if (typeof window.refreshIcons === 'function') window.refreshIcons();
         // Auto-hide after 6s
         setTimeout(function() { banner.style.display = 'none'; }, 6000);
       }
@@ -474,7 +475,7 @@ function _showSyncConfirmation(filters) {
   var summary = parts.join(', ');
 
   banner.innerHTML = '<div class="chat-sync-msg">' +
-    '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+    '<i data-lucide="message-square" class="icon-sm icon-stroke" style="flex-shrink:0;"></i>' +
     '<span>Extracted from chat: ' + escapeHtml(summary) + '</span>' +
     '</div>' +
     '<div class="chat-sync-actions">' +
@@ -482,6 +483,7 @@ function _showSyncConfirmation(filters) {
     '<button class="chat-sync-dismiss" id="chat-sync-dismiss">Dismiss</button>' +
     '</div>';
   banner.style.display = 'flex';
+  if (typeof window.refreshIcons === 'function') window.refreshIcons();
 
   // Bind accept
   document.getElementById('chat-sync-accept').addEventListener('click', function() {
@@ -764,9 +766,10 @@ function applyChatFilters(filters) {
     if (filters.remote) count++;
     if (filters.salary_min || filters.salary_max) count++;
 
-    banner.innerHTML = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg> ' +
+    banner.innerHTML = '<i data-lucide="filter" class="icon-xs icon-stroke" style="flex-shrink:0;"></i> ' +
       '<span>' + count + ' filter' + (count !== 1 ? 's' : '') + ' extracted from conversation</span>';
     banner.style.display = 'flex';
+    if (typeof window.refreshIcons === 'function') window.refreshIcons();
 
     // Auto-hide after 5s
     setTimeout(function() { banner.style.display = 'none'; }, 5000);
@@ -824,7 +827,7 @@ function renderChatMessages() {
 
   if (_chatSession.messages.length === 0) {
     container.innerHTML = '<div class="chat-empty">' +
-      '<div class="chat-empty-icon"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>' +
+      '<div class="chat-empty-icon"><i data-lucide="message-square" class="icon-xl icon-stroke-lg"></i></div>' +
       '<div class="chat-empty-title">Describe your ideal role</div>' +
       '<div class="chat-empty-sub">Try: "Senior product manager roles in Austin, TX paying over $150K" or "Remote React developer positions at mid-size companies"</div>' +
       '</div>';
@@ -891,12 +894,13 @@ function showChatRateLimit(data) {
     : 'Daily chat limit reached (' + limit.perDay + '/day).' + resetText;
 
   banner.innerHTML = '<div class="chat-rate-msg">' +
-    '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>' +
+    '<i data-lucide="triangle-alert" class="icon-sm icon-stroke"></i>' +
     '<span>' + msg + '</span></div>';
 
   if (tier !== 'pro') {
     banner.innerHTML += '<a href="#" class="chat-rate-upgrade" onclick="event.preventDefault();document.querySelector(\'[data-page=billing]\')?.click();">Upgrade for more →</a>';
   }
+  if (typeof window.refreshIcons === 'function') window.refreshIcons();
 
   // PostHog: chat_rate_limited
   if (window.posthog) {
@@ -1520,7 +1524,7 @@ function renderSavedPromptsInFilterSelector() {
   // Add a separator before chat prompts
   var sep = document.createElement('div');
   sep.className = 'sf-item-prompt sf-prompt-separator';
-  sep.innerHTML = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;opacity:0.5;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+  sep.innerHTML = '<i data-lucide="message-square" class="icon-xs icon-stroke" style="flex-shrink:0;opacity:0.5;"></i>' +
     '<span style="font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">Chat Prompts</span>';
   container.appendChild(sep);
 
@@ -1536,7 +1540,7 @@ function renderSavedPromptsInFilterSelector() {
     item.innerHTML =
       '<div class="sf-item-left">' +
         '<div class="sf-color-dot" style="background:' + color + ';"></div>' +
-        '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="' + color + '" stroke-width="2" style="flex-shrink:0;margin-right:4px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+        '<i data-lucide="message-square" class="icon-xs icon-stroke" style="flex-shrink:0;margin-right:4px;" stroke="' + color + '"></i>' +
         '<span class="sf-name">' + escapeHtml(prompt.name) + '</span>' +
         '<span class="sf-count">' + filterCount + '</span>' +
       '</div>';
@@ -1549,6 +1553,7 @@ function renderSavedPromptsInFilterSelector() {
 
     container.appendChild(item);
   });
+  if (typeof window.refreshIcons === 'function') window.refreshIcons();
 }
 
 

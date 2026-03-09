@@ -18,23 +18,23 @@
   const BADGE_LABELS = {
     signal: {
       name: 'Signal', desc: 'First referral landed',
-      icon: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h2"/><path d="M6 8v8"/><path d="M10 4v16"/><path d="M14 8v8"/><path d="M18 6v12"/><path d="M22 2v20"/></svg>'
+      icon: '<i data-lucide="bar-chart-3" class="icon-lg icon-stroke-lg"></i>'
     },
     source: {
       name: 'Source', desc: '3 activated referrals',
-      icon: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 010 8.49"/><path d="M7.76 16.24a6 6 0 010-8.49"/><path d="M19.07 4.93a10 10 0 010 14.14"/><path d="M4.93 19.07a10 10 0 010-14.14"/></svg>'
+      icon: '<i data-lucide="radio" class="icon-lg icon-stroke-lg"></i>'
     },
     radar: {
       name: 'Radar', desc: 'On the network\u2019s radar',
-      icon: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/><path d="M12 2v4"/></svg>'
+      icon: '<i data-lucide="radar" class="icon-lg icon-stroke-lg"></i>'
     },
     intel: {
       name: 'Intel', desc: 'Feeding intel to the grid',
-      icon: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>'
+      icon: '<i data-lucide="flag" class="icon-lg icon-stroke-lg"></i>'
     },
     clearance: {
       name: 'Clearance', desc: 'Top clearance, inner circle',
-      icon: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>'
+      icon: '<i data-lucide="shield-check" class="icon-lg icon-stroke-lg"></i>'
     }
   };
 
@@ -176,11 +176,11 @@
             LinkedIn
           </button>
           <button class="btn btn-secondary btn-sm" onclick="window._refShareEmail()" style="display:flex;align-items:center;gap:6px;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
+            <i data-lucide="mail" class="icon-sm icon-stroke"></i>
             Email
           </button>
           <button class="btn btn-secondary btn-sm" onclick="window._refShareSMS()" style="display:flex;align-items:center;gap:6px;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            <i data-lucide="message-square" class="icon-sm icon-stroke"></i>
             Text
           </button>
         </div>
@@ -198,7 +198,7 @@
                 <div style="color:${earned ? 'var(--accent)' : 'var(--text-faint)'};margin-bottom:6px;">${info.icon}</div>
                 <div style="font-size:12px;font-weight:600;">${info.name}</div>
                 <div style="font-size:10px;color:var(--text-faint);margin-top:2px;">${info.desc}</div>
-                ${earned ? '<div style="position:absolute;top:6px;right:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>' : ''}
+                ${earned ? '<div style="position:absolute;top:6px;right:8px;"><i data-lucide="check" class="icon-sm" style="stroke:var(--accent);stroke-width:3;fill:none;"></i></div>' : ''}
               </div>
             `;
           }).join('')}
@@ -241,7 +241,7 @@
           <div class="card-title" style="margin:0;">Leaderboard</div>
           <div style="display:flex;align-items:center;gap:10px;">
             <div id="ref-countdown" style="font-size:11px;color:var(--text-faint);font-family:var(--mono);display:flex;align-items:center;gap:4px;">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <i data-lucide="clock" class="icon-xs icon-stroke"></i>
               <span id="ref-countdown-text"></span>
             </div>
             <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim);cursor:pointer;">
@@ -272,6 +272,7 @@
     // Render reward grid and countdown for initial period
     renderRewardGrid('weekly');
     startCountdown();
+    if (typeof window.refreshIcons === 'function') window.refreshIcons();
 
     // Load leaderboard if opted in
     if (s.sharing_enabled) loadLeaderboard('weekly');
@@ -604,7 +605,7 @@ Or use my code: ${referralStats.referral_code}`);
     return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:var(--bg-input);color:var(--text-dim);">
       ${isLinkedIn
         ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>'
-        : '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>'
+        : '<i data-lucide="mail" class="icon-xs icon-stroke"></i>'
       }
       ${isLinkedIn ? 'LinkedIn' : 'Email'}
     </span>`;
@@ -776,6 +777,7 @@ Or use my code: ${referralStats.referral_code}`);
       </div>
     `;
     container.appendChild(section);
+    if (typeof window.refreshIcons === 'function') window.refreshIcons();
   };
 
   // ---- Status update handler ----

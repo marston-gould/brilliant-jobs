@@ -96,7 +96,7 @@ function renderResumes() {
       uploadZone.style.minHeight = '0';
       uploadZone.style.cursor = 'pointer';
       uploadZone.innerHTML = '<input type="file" id="resume-file-input" accept=".pdf,.doc,.docx" style="display:none;" multiple>' +
-        '<div style="display:flex;align-items:center;justify-content:center;gap:8px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--text-faint)" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span style="font-size:11px;color:var(--text-faint);">Add another resume</span></div>';
+        '<div style="display:flex;align-items:center;justify-content:center;gap:8px;"><i data-lucide="plus" class="icon-sm icon-stroke" style="stroke:var(--text-faint);"></i><span style="font-size:11px;color:var(--text-faint);">Add another resume</span></div>';
       uploadZone.onclick = function() { $('#resume-file-input').click(); };
     } else {
       uploadZone.style.padding = '';
@@ -377,6 +377,7 @@ function renderResumes() {
 
   // Refresh readiness panel visibility
   if (typeof initReadinessPanel === 'function') initReadinessPanel();
+  if (typeof window.refreshIcons === 'function') window.refreshIcons();
 }
 
 function renderResumeArchive(archivedResumes) {
@@ -1089,7 +1090,7 @@ window.confirmDeleteResume = function(idx) {
     var gdriveBtn = document.createElement('button');
     gdriveBtn.className = 'btn btn-sm';
     gdriveBtn.style.cssText = 'background:var(--green);color:#fff;border:none;padding:8px 16px;font-size:12px;font-weight:600;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:6px;';
-    gdriveBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/></svg> Save to Google Drive & Delete';
+    gdriveBtn.innerHTML = '<i data-lucide="hard-drive-download" class="icon-sm icon-stroke"></i> Save to Google Drive & Delete';
     gdriveBtn.onclick = function() {
       downloadResume(idx);
       overlay.remove();
@@ -1102,7 +1103,7 @@ window.confirmDeleteResume = function(idx) {
   var downloadBtn = document.createElement('button');
   downloadBtn.className = 'btn btn-sm';
   downloadBtn.style.cssText = 'background:var(--accent);color:#fff;border:none;padding:8px 16px;font-size:12px;font-weight:600;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:6px;';
-  downloadBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' + (gdriveConnected ? ' Download & Delete' : ' Save to Desktop & Delete');
+  downloadBtn.innerHTML = '<i data-lucide="download" class="icon-sm icon-stroke"></i>' + (gdriveConnected ? ' Download & Delete' : ' Save to Desktop & Delete');
   downloadBtn.onclick = function() {
     downloadResume(idx);
     overlay.remove();

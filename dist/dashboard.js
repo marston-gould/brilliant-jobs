@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.20';
+var BJ_VERSION = 'v8.21';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -17159,7 +17159,7 @@ function renderResumes() {
       uploadZone.style.minHeight = '0';
       uploadZone.style.cursor = 'pointer';
       uploadZone.innerHTML = '<input type="file" id="resume-file-input" accept=".pdf,.doc,.docx" style="display:none;" multiple>' +
-        '<div style="display:flex;align-items:center;justify-content:center;gap:8px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--text-faint)" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span style="font-size:11px;color:var(--text-faint);">Add another resume</span></div>';
+        '<div style="display:flex;align-items:center;justify-content:center;gap:8px;"><i data-lucide="plus" class="icon-sm icon-stroke" style="stroke:var(--text-faint);"></i><span style="font-size:11px;color:var(--text-faint);">Add another resume</span></div>';
       uploadZone.onclick = function() { $('#resume-file-input').click(); };
     } else {
       uploadZone.style.padding = '';
@@ -17440,6 +17440,7 @@ function renderResumes() {
 
   // Refresh readiness panel visibility
   if (typeof initReadinessPanel === 'function') initReadinessPanel();
+  if (typeof window.refreshIcons === 'function') window.refreshIcons();
 }
 
 function renderResumeArchive(archivedResumes) {
@@ -18152,7 +18153,7 @@ window.confirmDeleteResume = function(idx) {
     var gdriveBtn = document.createElement('button');
     gdriveBtn.className = 'btn btn-sm';
     gdriveBtn.style.cssText = 'background:var(--green);color:#fff;border:none;padding:8px 16px;font-size:12px;font-weight:600;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:6px;';
-    gdriveBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/></svg> Save to Google Drive & Delete';
+    gdriveBtn.innerHTML = '<i data-lucide="hard-drive-download" class="icon-sm icon-stroke"></i> Save to Google Drive & Delete';
     gdriveBtn.onclick = function() {
       downloadResume(idx);
       overlay.remove();
@@ -18165,7 +18166,7 @@ window.confirmDeleteResume = function(idx) {
   var downloadBtn = document.createElement('button');
   downloadBtn.className = 'btn btn-sm';
   downloadBtn.style.cssText = 'background:var(--accent);color:#fff;border:none;padding:8px 16px;font-size:12px;font-weight:600;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:6px;';
-  downloadBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' + (gdriveConnected ? ' Download & Delete' : ' Save to Desktop & Delete');
+  downloadBtn.innerHTML = '<i data-lucide="download" class="icon-sm icon-stroke"></i>' + (gdriveConnected ? ' Download & Delete' : ' Save to Desktop & Delete');
   downloadBtn.onclick = function() {
     downloadResume(idx);
     overlay.remove();
@@ -18736,7 +18737,7 @@ function renderGdriveState() {
       } else {
         fileList.innerHTML = gdriveState.files.map((f, i) => `
           <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(148,163,184,0.08);">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4285F4" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <i data-lucide="file-text" class="icon-md icon-stroke" style="stroke:#4285F4;"></i>
             <div style="flex:1;min-width:0;">
               <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${f.name}</div>
               <div style="font-size:10px;color:var(--text-faint);">Linked ${f.linkedAt || ''}</div>
@@ -18745,6 +18746,7 @@ function renderGdriveState() {
             <button style="background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:14px;padding:2px 4px;" onclick="unlinkGdriveFile(${i})" title="Unlink">✕</button>
           </div>
         `).join('');
+        if (typeof window.refreshIcons === 'function') window.refreshIcons();
       }
     }
   } else {
@@ -19018,12 +19020,13 @@ function renderAppQueue() {
 
   if (appQueue.length === 0) {
     tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
-      <div style="margin-bottom:12px;color:var(--text-faint);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25;"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></div>
+      <div style="margin-bottom:12px;color:var(--text-faint);"><i data-lucide="mail" class="icon-xl icon-stroke-lg" style="opacity:0.25;"></i></div>
       <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No applications queued</div>
       <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">
         Add jobs manually, or save jobs from Discovery to auto-queue them based on your rules.
       </div>
     </td></tr>`;
+    if (typeof window.refreshIcons === 'function') window.refreshIcons();
     return;
   }
 
@@ -19617,8 +19620,8 @@ function notifStatusBadge(status) {
 }
 
 function channelIcon(ch) {
-  if (ch === 'sms') return `<span class="notif-channel-icon" title="SMS"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>`;
-  return `<span class="notif-channel-icon" title="Email"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></span>`;
+  if (ch === 'sms') return `<span class="notif-channel-icon" title="SMS"><i data-lucide="message-square" class="icon-stroke"></i></span>`;
+  return `<span class="notif-channel-icon" title="Email"><i data-lucide="mail" class="icon-stroke"></i></span>`;
 }
 
 async function loadNotifLog() {
@@ -19644,10 +19647,11 @@ async function loadNotifLog() {
 
     if (!logs || logs.length === 0) {
       tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
-        <div style="margin-bottom:12px;color:var(--text-faint);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+        <div style="margin-bottom:12px;color:var(--text-faint);"><i data-lucide="bell" class="icon-xl icon-stroke-lg" style="opacity:0.25;"></i></div>
         <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No notifications found</div>
         <div style="font-size:12px;">Notification history will appear here once the system is active.</div>
       </td></tr>`;
+      if (typeof window.refreshIcons === 'function') window.refreshIcons();
       return;
     }
 
@@ -19663,6 +19667,7 @@ async function loadNotifLog() {
         <td>${notifStatusBadge(log.status)}</td>
       </tr>`;
     }).join('');
+    if (typeof window.refreshIcons === 'function') window.refreshIcons();
   } catch(e) { reportError('applications', e); console.warn('[Notif] Log load failed:', e);
   }
 }
@@ -25370,9 +25375,10 @@ async function syncFilterToChat() {
       // Show subtle hint that this was auto-generated
       var banner = document.getElementById('chat-filter-banner');
       if (banner) {
-        banner.innerHTML = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>' +
+        banner.innerHTML = '<i data-lucide="filter" class="icon-xs icon-stroke" style="flex-shrink:0;"></i>' +
           '<span>Pre-filled from your active filters — edit or send as-is</span>';
         banner.style.display = 'flex';
+        if (typeof window.refreshIcons === 'function') window.refreshIcons();
         // Auto-hide after 6s
         setTimeout(function() { banner.style.display = 'none'; }, 6000);
       }
@@ -25457,7 +25463,7 @@ function _showSyncConfirmation(filters) {
   var summary = parts.join(', ');
 
   banner.innerHTML = '<div class="chat-sync-msg">' +
-    '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+    '<i data-lucide="message-square" class="icon-sm icon-stroke" style="flex-shrink:0;"></i>' +
     '<span>Extracted from chat: ' + escapeHtml(summary) + '</span>' +
     '</div>' +
     '<div class="chat-sync-actions">' +
@@ -25465,6 +25471,7 @@ function _showSyncConfirmation(filters) {
     '<button class="chat-sync-dismiss" id="chat-sync-dismiss">Dismiss</button>' +
     '</div>';
   banner.style.display = 'flex';
+  if (typeof window.refreshIcons === 'function') window.refreshIcons();
 
   // Bind accept
   document.getElementById('chat-sync-accept').addEventListener('click', function() {
@@ -25747,9 +25754,10 @@ function applyChatFilters(filters) {
     if (filters.remote) count++;
     if (filters.salary_min || filters.salary_max) count++;
 
-    banner.innerHTML = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg> ' +
+    banner.innerHTML = '<i data-lucide="filter" class="icon-xs icon-stroke" style="flex-shrink:0;"></i> ' +
       '<span>' + count + ' filter' + (count !== 1 ? 's' : '') + ' extracted from conversation</span>';
     banner.style.display = 'flex';
+    if (typeof window.refreshIcons === 'function') window.refreshIcons();
 
     // Auto-hide after 5s
     setTimeout(function() { banner.style.display = 'none'; }, 5000);
@@ -25807,7 +25815,7 @@ function renderChatMessages() {
 
   if (_chatSession.messages.length === 0) {
     container.innerHTML = '<div class="chat-empty">' +
-      '<div class="chat-empty-icon"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>' +
+      '<div class="chat-empty-icon"><i data-lucide="message-square" class="icon-xl icon-stroke-lg"></i></div>' +
       '<div class="chat-empty-title">Describe your ideal role</div>' +
       '<div class="chat-empty-sub">Try: "Senior product manager roles in Austin, TX paying over $150K" or "Remote React developer positions at mid-size companies"</div>' +
       '</div>';
@@ -25874,12 +25882,13 @@ function showChatRateLimit(data) {
     : 'Daily chat limit reached (' + limit.perDay + '/day).' + resetText;
 
   banner.innerHTML = '<div class="chat-rate-msg">' +
-    '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>' +
+    '<i data-lucide="triangle-alert" class="icon-sm icon-stroke"></i>' +
     '<span>' + msg + '</span></div>';
 
   if (tier !== 'pro') {
     banner.innerHTML += '<a href="#" class="chat-rate-upgrade" onclick="event.preventDefault();document.querySelector(\'[data-page=billing]\')?.click();">Upgrade for more →</a>';
   }
+  if (typeof window.refreshIcons === 'function') window.refreshIcons();
 
   // PostHog: chat_rate_limited
   if (window.posthog) {
@@ -26503,7 +26512,7 @@ function renderSavedPromptsInFilterSelector() {
   // Add a separator before chat prompts
   var sep = document.createElement('div');
   sep.className = 'sf-item-prompt sf-prompt-separator';
-  sep.innerHTML = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;opacity:0.5;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+  sep.innerHTML = '<i data-lucide="message-square" class="icon-xs icon-stroke" style="flex-shrink:0;opacity:0.5;"></i>' +
     '<span style="font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">Chat Prompts</span>';
   container.appendChild(sep);
 
@@ -26519,7 +26528,7 @@ function renderSavedPromptsInFilterSelector() {
     item.innerHTML =
       '<div class="sf-item-left">' +
         '<div class="sf-color-dot" style="background:' + color + ';"></div>' +
-        '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="' + color + '" stroke-width="2" style="flex-shrink:0;margin-right:4px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+        '<i data-lucide="message-square" class="icon-xs icon-stroke" style="flex-shrink:0;margin-right:4px;" stroke="' + color + '"></i>' +
         '<span class="sf-name">' + escapeHtml(prompt.name) + '</span>' +
         '<span class="sf-count">' + filterCount + '</span>' +
       '</div>';
@@ -26532,6 +26541,7 @@ function renderSavedPromptsInFilterSelector() {
 
     container.appendChild(item);
   });
+  if (typeof window.refreshIcons === 'function') window.refreshIcons();
 }
 
 
@@ -27781,23 +27791,23 @@ function updateApplySettingsVisibility(mode) {
   const BADGE_LABELS = {
     signal: {
       name: 'Signal', desc: 'First referral landed',
-      icon: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h2"/><path d="M6 8v8"/><path d="M10 4v16"/><path d="M14 8v8"/><path d="M18 6v12"/><path d="M22 2v20"/></svg>'
+      icon: '<i data-lucide="bar-chart-3" class="icon-lg icon-stroke-lg"></i>'
     },
     source: {
       name: 'Source', desc: '3 activated referrals',
-      icon: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 010 8.49"/><path d="M7.76 16.24a6 6 0 010-8.49"/><path d="M19.07 4.93a10 10 0 010 14.14"/><path d="M4.93 19.07a10 10 0 010-14.14"/></svg>'
+      icon: '<i data-lucide="radio" class="icon-lg icon-stroke-lg"></i>'
     },
     radar: {
       name: 'Radar', desc: 'On the network\u2019s radar',
-      icon: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/><path d="M12 2v4"/></svg>'
+      icon: '<i data-lucide="radar" class="icon-lg icon-stroke-lg"></i>'
     },
     intel: {
       name: 'Intel', desc: 'Feeding intel to the grid',
-      icon: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>'
+      icon: '<i data-lucide="flag" class="icon-lg icon-stroke-lg"></i>'
     },
     clearance: {
       name: 'Clearance', desc: 'Top clearance, inner circle',
-      icon: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>'
+      icon: '<i data-lucide="shield-check" class="icon-lg icon-stroke-lg"></i>'
     }
   };
 
@@ -27939,11 +27949,11 @@ function updateApplySettingsVisibility(mode) {
             LinkedIn
           </button>
           <button class="btn btn-secondary btn-sm" onclick="window._refShareEmail()" style="display:flex;align-items:center;gap:6px;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
+            <i data-lucide="mail" class="icon-sm icon-stroke"></i>
             Email
           </button>
           <button class="btn btn-secondary btn-sm" onclick="window._refShareSMS()" style="display:flex;align-items:center;gap:6px;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            <i data-lucide="message-square" class="icon-sm icon-stroke"></i>
             Text
           </button>
         </div>
@@ -27961,7 +27971,7 @@ function updateApplySettingsVisibility(mode) {
                 <div style="color:${earned ? 'var(--accent)' : 'var(--text-faint)'};margin-bottom:6px;">${info.icon}</div>
                 <div style="font-size:12px;font-weight:600;">${info.name}</div>
                 <div style="font-size:10px;color:var(--text-faint);margin-top:2px;">${info.desc}</div>
-                ${earned ? '<div style="position:absolute;top:6px;right:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>' : ''}
+                ${earned ? '<div style="position:absolute;top:6px;right:8px;"><i data-lucide="check" class="icon-sm" style="stroke:var(--accent);stroke-width:3;fill:none;"></i></div>' : ''}
               </div>
             `;
           }).join('')}
@@ -28004,7 +28014,7 @@ function updateApplySettingsVisibility(mode) {
           <div class="card-title" style="margin:0;">Leaderboard</div>
           <div style="display:flex;align-items:center;gap:10px;">
             <div id="ref-countdown" style="font-size:11px;color:var(--text-faint);font-family:var(--mono);display:flex;align-items:center;gap:4px;">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <i data-lucide="clock" class="icon-xs icon-stroke"></i>
               <span id="ref-countdown-text"></span>
             </div>
             <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim);cursor:pointer;">
@@ -28035,6 +28045,7 @@ function updateApplySettingsVisibility(mode) {
     // Render reward grid and countdown for initial period
     renderRewardGrid('weekly');
     startCountdown();
+    if (typeof window.refreshIcons === 'function') window.refreshIcons();
 
     // Load leaderboard if opted in
     if (s.sharing_enabled) loadLeaderboard('weekly');
@@ -28367,7 +28378,7 @@ Or use my code: ${referralStats.referral_code}`);
     return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:var(--bg-input);color:var(--text-dim);">
       ${isLinkedIn
         ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>'
-        : '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>'
+        : '<i data-lucide="mail" class="icon-xs icon-stroke"></i>'
       }
       ${isLinkedIn ? 'LinkedIn' : 'Email'}
     </span>`;
@@ -28539,6 +28550,7 @@ Or use my code: ${referralStats.referral_code}`);
       </div>
     `;
     container.appendChild(section);
+    if (typeof window.refreshIcons === 'function') window.refreshIcons();
   };
 
   // ---- Status update handler ----

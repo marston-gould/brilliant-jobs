@@ -52,6 +52,23 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**POD3-LUCIDE-S2** — Dynamic JS Icon Migration + Inline SVG Elimination
+- Completed: 2026-03-09
+- Product version bumped: `v8.20` → `v8.21` (JS/HTML changes — ~100 inline SVGs replaced with data-lucide across dashboard.html + 7 JS modules; refreshIcons() calls added to all dynamic render functions; all HTML surfaces cache-busted)
+- ROADMAP.md updated: POD3-LUCIDE-S2 → ✅
+- roadmap.html updated: POD3-LUCIDE-S2 → `s: 'done'`, p: 100
+- **Core changes:**
+  - dashboard.html: 73 inline SVGs → data-lucide elements (card headers: map-pin, building-2, globe, hash, lock-keyhole-open; empty states: briefcase, mail, bell; Get Started features: circle-plus, link, filter, sliders-horizontal, layout-grid; subscription costs: file-text, square-pen, bell, search, circle-x; notification sequence: mail, clock, message-square, circle-x; pipeline chevrons ×9; tuning chevrons ×5; lock icons ×5; check badges ×6; view toggles: list, layout-grid; chat UI: filter, message-square, send, download, save; misc: info, trending-up, zap, external-link, alert-circle, upload, circle-check, chevron-down)
+  - chat.js: 7 SVGs → data-lucide (filter, message-square, triangle-alert). 5 refreshIcons() calls added.
+  - referrals.js: 10 SVGs → data-lucide (badge icons: bar-chart-3, radio, radar, flag, shield-check; share: mail, message-square; earned: check; clock; outreach: mail). 2 LinkedIn brand SVGs kept. 2 refreshIcons() calls.
+  - applications.js: 4 SVGs → data-lucide (mail, message-square, bell empty states + channel icons). 3 refreshIcons() calls.
+  - notification-center.js: 2 SVGs + 3 emoji → data-lucide (bell, message-square, mail channel icons). 2 refreshIcons() calls.
+  - resumes.js: 3 SVGs → data-lucide (plus, hard-drive-download, download). 1 refreshIcons() call.
+  - tier-gating.js: 1 SVG → data-lucide (lock-keyhole). 1 refreshIcons() call.
+  - integrations.js: 1 SVG → data-lucide (file-text). 1 refreshIcons() call.
+- **23 SVGs remain in dashboard.html:** 14 sidebar nav (out of scope per handoff), 6 Google brand (Gmail/Calendar/Drive × 2, kept per spec), 1 theme toggle, 2 nav-adjacent.
+- **Tests:** 37 POD3-LUCIDE validation tests (all passing, version updated to v8.21)
+
 **POD3-LUCIDE** — Lucide Icon Migration
 - Completed: 2026-03-09
 - Product version bumped: `v8.19` → `v8.20` (JS/CSS/HTML changes — Lucide CDN script, icon CSS tokens, emoji elimination across 15+ files, refreshIcons() calls; all HTML surfaces cache-busted)
@@ -1133,7 +1150,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.20`** | **POD3-LUCIDE: Lucide icon migration** |
+| **Product (BJ_VERSION)** | **`v8.21`** | **POD3-LUCIDE-S2: Dynamic JS icon migration + SVG elimination** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

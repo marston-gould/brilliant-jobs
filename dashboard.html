@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v8.20 -->
+<!-- Brilliant Jobs Dashboard v8.21 -->
 <html lang="en">
 <head>
   <!-- CS-P1-009: Theme flash prevention — must be first script -->
@@ -19,22 +19,22 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="/js/vendor/supabase.min.js" defer></script>
-  <script src="/js/pipeline-migration.js?v=v8.20" defer></script>
-  <script src="/js/notification-center.js?v=v8.20" defer></script>
+  <script src="/js/pipeline-migration.js?v=v8.21" defer></script>
+  <script src="/js/notification-center.js?v=v8.21" defer></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" integrity="sha384-nFoSjZIoH3CCp8W639jJyQkuPHinJ2NHe7on1xvlUA7SuGfJAfvMldrsoAVm6ECz" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" integrity="sha384-eEu5CTj3qGvu9PdJuS+YlkNi7d2XxQROAFYOr59zgObtlcux1ae1Il3u7jvdCSWu" crossorigin="anonymous"></script>
   <!-- CS-014: CX-09 — ECharts lazy-loaded by stats.js when Stats tab opens -->
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js" integrity="sha384-TcLTgu6flPhnZ5dfHnHimsxNFjYWN0povfGgnOvgPJKbZe6IbuoC2ociiatSHl9E" crossorigin="anonymous"></script>
   <!-- CS-016 FIX-10: Code-split chunks — shell (globals+routing) + feed (job list) loaded eagerly; all other chunks lazy-loaded on tab switch -->
-  <script src="dist/dashboard-shell.min.js?v=v8.20" defer></script>
-  <script src="dist/dashboard-feed.min.js?v=v8.20" defer></script>
+  <script src="dist/dashboard-shell.min.js?v=v8.21" defer></script>
+  <script src="dist/dashboard-feed.min.js?v=v8.21" defer></script>
   <!-- CS-P1-002: dashboard inline scripts externalized (pdfjs, preload, feedback, insights, a11y) -->
-  <script src="js/dashboard-inline.js?v=v8.20" defer></script>
-  <script src="js/canny.js?v=v8.20" defer></script>
+  <script src="js/dashboard-inline.js?v=v8.21" defer></script>
+  <script src="js/canny.js?v=v8.21" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=v8.20">
+  <link rel="stylesheet" href="styles.css?v=v8.21">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -109,11 +109,11 @@
     </style>
   <!-- CSS extracted to styles.css in v3.28 -->
   <!-- A13: PostHog analytics — CS-P1-002: externalized for CSP compliance -->
-  <script src="js/posthog-dashboard.js?v=v8.20" defer></script>
-  <script src="js/posthog-perf.js?v=v8.20" defer></script>
-  <script src="js/feature-flags.js?v=v8.20" defer></script>
-  <script src="js/structured-logger.js?v=v8.20" defer></script>
-  <script src="js/theme.js?v=v8.20" defer></script>
+  <script src="js/posthog-dashboard.js?v=v8.21" defer></script>
+  <script src="js/posthog-perf.js?v=v8.21" defer></script>
+  <script src="js/feature-flags.js?v=v8.21" defer></script>
+  <script src="js/structured-logger.js?v=v8.21" defer></script>
+  <script src="js/theme.js?v=v8.21" defer></script>
 </head>
 <body>
 
@@ -201,7 +201,7 @@
         </div>
         <a href="/blog" target="_blank" class="nav-item" style="text-decoration:none;">
           <div class="nav-icon"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg></div>
-          <span>Insights</span><svg style="width:10px;height:10px;margin-left:4px;opacity:.4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          <span>Insights</span><i data-lucide="external-link" style="width:10px;height:10px;margin-left:4px;opacity:.4;display:inline-block;" class="icon-stroke"></i>
         </a>
 
         <div class="nav-section-label">Growth</div>
@@ -268,7 +268,7 @@
 
       <!-- Feedback button -->
       <div class="feedback-btn" id="feedback-btn" title="Squash a bug or pitch an idea!">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <i data-lucide="message-square" class="icon-md icon-stroke"></i>
         <span style="font-size:11px;font-weight:600;letter-spacing:0.2px;">Feedback</span>
       </div>
 
@@ -277,7 +277,7 @@
         <div class="feedback-modal" id="feedback-modal">
           <div id="fb-form-view" style="flex:1;display:flex;flex-direction:column;">
             <h3 id="fb-heading" class="u-flex-gap-8">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="fb-heading-icon"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <i data-lucide="alert-circle" class="icon-lg icon-stroke" id="fb-heading-icon" style="stroke:var(--red);"></i>
               <span id="fb-heading-text">Report a Bug</span>
             </h3>
             <div class="fb-sub" id="fb-subheading">Found something off? Help us fix it.</div>
@@ -372,12 +372,12 @@
           <!-- Resume-first onboarding prompt -->
           <div id="onboard-resume-first" class="gs-resume-drop" role="button" tabindex="0" aria-label="Upload your resume to auto-build your first search" onclick="document.getElementById('resume-input-gs').click()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('resume-input-gs').click()}">
             <div class="gs-resume-drop-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              <i data-lucide="file-text" class="icon-lg icon-stroke-lg" style="stroke:var(--green);"></i>
             </div>
             <div style="font-size:17px;font-weight:700;margin-bottom:4px;">Want to skip the manual setup?</div>
             <div style="font-size:13px;color:var(--text-dim);margin-bottom:16px;max-width:420px;margin-left:auto;margin-right:auto;">Drop your resume and we'll extract titles, locations, and seniority to build your first search automatically.</div>
             <button class="btn btn-primary" style="gap:6px;" onclick="event.stopPropagation(); document.getElementById('resume-input-gs').click()">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <i data-lucide="upload" class="icon-sm icon-stroke"></i>
               Upload Resume
             </button>
             <div style="font-size:11px;color:var(--text-faint);margin-top:10px;">PDF or DOCX &middot; Or keep scrolling to set up manually</div>
@@ -414,7 +414,7 @@
             </div>
             <div style="display:flex;gap:8px;">
               <button class="btn btn-primary btn-sm" id="onboard-create-filter" onclick="createFilterFromProfile()" style="gap:4px;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <i data-lucide="circle-check" class="icon-sm icon-stroke"></i>
                 Create Search from This
               </button>
               <button class="btn btn-secondary btn-sm" onclick="document.getElementById('onboard-profile-card').style.display='none'">Skip</button>
@@ -433,7 +433,7 @@
           <div class="gs-step">
             <div class="gs-step-header">
               <div class="gs-step-icon bg-indigo-dim">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--indigo)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+                <i data-lucide="circle-plus" class="icon-lg icon-stroke-lg" style="stroke:var(--indigo);"></i>
               </div>
               <div>
                 <div class="gs-step-num">Step 1</div>
@@ -453,7 +453,7 @@
           <div class="gs-step">
             <div class="gs-step-header">
               <div class="gs-step-icon" style="background:var(--green-dim);">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                <i data-lucide="link" class="icon-lg icon-stroke-lg" style="stroke:var(--green);"></i>
               </div>
               <div>
                 <div class="gs-step-num">Step 2</div>
@@ -503,7 +503,7 @@
           <div class="gs-step">
             <div class="gs-step-header">
               <div class="gs-step-icon" style="background:var(--accent-dim);">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                <i data-lucide="filter" class="icon-lg icon-stroke-lg" style="stroke:var(--accent);"></i>
               </div>
               <div>
                 <div class="gs-step-num">Step 3</div>
@@ -545,7 +545,7 @@
           <div class="gs-step">
             <div class="gs-step-header">
               <div class="gs-step-icon" style="background:var(--purple-dim);">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+                <i data-lucide="sliders-horizontal" class="icon-lg icon-stroke-lg" style="stroke:var(--purple);"></i>
               </div>
               <div>
                 <div class="gs-step-num">Step 4</div>
@@ -561,7 +561,7 @@
           <div class="gs-step">
             <div class="gs-step-header">
               <div class="gs-step-icon" style="background:var(--warm-dim);">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--warm)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                <i data-lucide="layout-grid" class="icon-lg icon-stroke-lg" style="stroke:var(--warm);"></i>
               </div>
               <div>
                 <div class="gs-step-num">Step 5</div>
@@ -585,7 +585,7 @@
           <!-- Data advantage -->
           <div class="gs-advantage">
             <div style="font-size:15px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:8px;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+              <i data-lucide="trending-up" class="icon-md icon-stroke" style="stroke:var(--green);"></i>
               Your data advantage
             </div>
             <div style="font-size:14px;color:var(--text-dim);line-height:1.7;">
@@ -640,7 +640,7 @@
             <div class="setup-int-card">
               <div class="setup-int-header">
                 <div class="setup-int-icon bg-indigo-dim">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--indigo)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+                  <i data-lucide="circle-plus" class="icon-md icon-stroke" style="stroke:var(--indigo);"></i>
                 </div>
                 <div class="u-flex-1">
                   <div class="card-title u-mb-0">Chrome Extension</div>
@@ -727,7 +727,7 @@
                 <div class="setup-action-zone">
                   <div class="setup-connected" id="ext-setup-connected" style="display:none;">
                     <div style="display:flex;align-items:center;gap:8px;justify-content:center;">
-                      <div class="phone-verified-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Connected</div>
+                      <div class="phone-verified-badge"><i data-lucide="check" class="icon-sm" style="stroke-width:2.5;fill:none;stroke:currentColor;"></i> Connected</div>
                       <span id="ext-instance-label" style="font-size:11px;color:var(--text-dim);font-family:var(--mono);"></span>
                     </div>
                     <div class="u-meta" id="ext-status-detail-connected" style="text-align:center;"></div>
@@ -755,7 +755,7 @@
                 <div class="setup-action-zone">
                   <div class="setup-connected" id="gmail-setup-connected" style="display:none;">
                     <div style="display:flex;align-items:center;gap:8px;justify-content:center;">
-                      <div class="phone-verified-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Connected</div>
+                      <div class="phone-verified-badge"><i data-lucide="check" class="icon-sm" style="stroke-width:2.5;fill:none;stroke:currentColor;"></i> Connected</div>
                       <span id="gmail-address" style="font-size:11px;color:var(--text-dim);font-family:var(--mono);"></span>
                     </div>
                     <button class="btn btn-sm btn-secondary setup-connect-btn" onclick="disconnectGmail()">Disconnect Gmail</button>
@@ -787,7 +787,7 @@
                 <div class="setup-action-zone">
                   <div class="setup-connected" id="gcal-setup-connected" style="display:none;">
                     <div style="display:flex;align-items:center;gap:8px;justify-content:center;">
-                      <div class="phone-verified-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Connected</div>
+                      <div class="phone-verified-badge"><i data-lucide="check" class="icon-sm" style="stroke-width:2.5;fill:none;stroke:currentColor;"></i> Connected</div>
                       <span id="gcal-address" style="font-size:11px;color:var(--text-dim);font-family:var(--mono);"></span>
                     </div>
                     <button class="btn btn-sm btn-secondary setup-connect-btn" id="gcal-disconnect-btn" onclick="disconnectGoogleCalendar()">Disconnect Calendar</button>
@@ -819,7 +819,7 @@
                 <div class="setup-action-zone">
                   <div class="setup-connected" id="gdrive-setup-connected" style="display:none;">
                     <div style="display:flex;align-items:center;gap:8px;justify-content:center;">
-                      <div class="phone-verified-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Connected</div>
+                      <div class="phone-verified-badge"><i data-lucide="check" class="icon-sm" style="stroke-width:2.5;fill:none;stroke:currentColor;"></i> Connected</div>
                       <span id="gdrive-address" style="font-size:11px;color:var(--text-dim);font-family:var(--mono);"></span>
                     </div>
                     <button class="btn btn-sm btn-secondary setup-connect-btn" id="gdrive-disconnect-btn" onclick="disconnectGoogleDrive()">Disconnect Drive</button>
@@ -863,11 +863,11 @@
           <div class="search-mode-bar" id="search-mode-bar">
             <div class="search-mode-toggle" id="search-mode-toggle">
               <button class="smt-btn active" data-mode="filters">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+                <i data-lucide="filter" class="icon-sm icon-stroke"></i>
                 Filters
               </button>
               <button class="smt-btn" data-mode="chat">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <i data-lucide="message-square" class="icon-sm icon-stroke"></i>
                 Chat
               </button>
             </div>
@@ -876,7 +876,7 @@
           <div class="chat-panel" id="chat-panel" style="display:none;opacity:0;">
             <div class="chat-header">
               <div class="chat-header-left">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <i data-lucide="message-square" class="icon-md icon-stroke" style="stroke:var(--accent);"></i>
                 <span class="chat-header-title">Chat Search</span>
                 <span class="chat-msg-counter" id="chat-msg-counter">0/10</span>
                 <span class="chat-remaining u-hidden" id="chat-remaining"></span>
@@ -884,11 +884,11 @@
               <div class="chat-header-actions">
                 <span class="chat-loaded-prompt u-hidden" id="chat-loaded-prompt"></span>
                 <button class="chat-load-btn" id="chat-load-btn" title="Load saved prompt" style="width:auto;padding:4px 10px;gap:4px;font-size:10px;font-weight:600;">
-                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 15v4c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  <i data-lucide="download" class="icon-xs icon-stroke"></i>
                   Load
                 </button>
                 <button class="chat-save-btn" id="chat-save-btn" title="Name and save this prompt" style="width:auto;padding:4px 10px;gap:4px;font-size:10px;font-weight:600;">
-                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                  <i data-lucide="save" class="icon-xs icon-stroke"></i>
                   Save
                 </button>
                 <button class="chat-clear-btn" id="chat-clear-btn" title="Clear conversation">✕</button>
@@ -899,7 +899,7 @@
             <div class="chat-sync-banner u-hidden" id="chat-sync-banner"></div>
             <div class="chat-messages" id="chat-messages">
               <div class="chat-empty">
-                <div class="chat-empty-icon"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+                <div class="chat-empty-icon"><i data-lucide="message-square" class="icon-xl icon-stroke-lg"></i></div>
                 <div class="chat-empty-title">Describe your ideal role</div>
                 <div class="chat-empty-sub">Try: "Senior product manager roles in Austin, TX paying over $150K" or "Remote React developer positions at mid-size companies"</div>
               </div>
@@ -911,7 +911,7 @@
             <div class="chat-input-row">
               <textarea class="chat-input" id="chat-input" placeholder="Describe the job you're looking for..." rows="1" maxlength="500"></textarea>
               <button class="chat-send-btn" id="chat-send-btn" title="Send">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                <i data-lucide="send" class="icon-md icon-stroke"></i>
               </button>
             </div>
             <!-- QA-FIX: Inline save prompt row — mirrors save-filter-row pattern -->
@@ -975,7 +975,7 @@
 
           <!-- Q23: Global Rules crosslink -->
           <div id="global-rules-banner" style="display:none;margin:0 0 8px;padding:8px 12px;background:linear-gradient(135deg,rgba(77,142,255,0.05),rgba(167,139,250,0.05));border:1px solid rgba(77,142,255,0.12);border-radius:8px;font-size:11px;color:var(--text-dim);cursor:pointer;" onclick="document.querySelector('[data-page=tuning]').click()">
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px;opacity:0.5;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            <i data-lucide="info" class="icon-xs icon-stroke" style="vertical-align:-2px;margin-right:4px;opacity:0.5;"></i>
             Global rules applying to ALL searches: <strong id="gr-summary">loading…</strong> <span style="color:var(--accent);margin-left:4px;">Edit Global Rules →</span>
           </div>
 
@@ -991,7 +991,7 @@
 
           <!-- Collapsible query builder -->
           <div class="qb-collapse-header" id="qb-toggle">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="qb-chevron" id="qb-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+            <i data-lucide="chevron-down" class="qb-chevron icon-sm icon-stroke" id="qb-chevron"></i>
             <span>Job Filter Builder</span>
             <span class="qb-active-count" id="qb-active-count"></span>
             <button class="btn btn-sm" id="clear-filters-btn" style="display:none;margin-left:auto;padding:2px 10px;font-size:10px;background:transparent;color:var(--text-faint);border:1px solid var(--border);cursor:pointer;">Clear All</button>
@@ -1127,7 +1127,7 @@
 
           <!-- Saved filters list -->
           <div class="sf-collapse-header" id="sf-toggle">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="qb-chevron" id="sf-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+            <i data-lucide="chevron-down" class="qb-chevron icon-sm icon-stroke" id="sf-chevron"></i>
             <span>Saved Searches &amp; Prompts</span>
             <span class="sf-active-count u-hidden" id="sf-active-count"></span>
           </div>
@@ -1244,7 +1244,7 @@
               <tbody id="job-table-body">
                 <tr>
                   <td colspan="8" class="u-empty">
-                    <div class="u-mb-12 u-text-faint"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="u-dim-25"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div>
+                    <div class="u-mb-12 u-text-faint"><i data-lucide="briefcase" class="icon-xl icon-stroke-lg u-dim-25"></i></div>
                     <div class="u-section-title">Select saved searches or add filters to search jobs</div>
                     <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">
                       Check one or more saved searches above, or use the filter builder.
@@ -1277,9 +1277,9 @@
           <div class="tuning-card" id="tc-location" style="border-left:3px solid var(--warm);">
             <div class="tuning-card-header" onclick="toggleTuningCard(this)">
               <div class="tuning-card-icon" style="background:var(--warm-dim);">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--warm)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                <i data-lucide="map-pin" class="icon-md icon-stroke" style="stroke:var(--warm);"></i>
               </div>
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="tuning-card-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+              <i data-lucide="chevron-down" class="tuning-card-chevron icon-sm icon-stroke"></i>
               <span class="tuning-card-title">Location Rules</span>
               <span class="tuning-card-badge empty" id="tc-loc-badge"></span>
             </div>
@@ -1307,9 +1307,9 @@
           <div class="tuning-card" id="tc-company" style="border-left:3px solid var(--pink);">
             <div class="tuning-card-header" onclick="toggleTuningCard(this)">
               <div class="tuning-card-icon" style="background:var(--pink-dim);">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--pink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9h1"/><path d="M9 13h1"/><path d="M9 17h1"/></svg>
+                <i data-lucide="building-2" class="icon-md icon-stroke" style="stroke:var(--pink);"></i>
               </div>
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="tuning-card-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+              <i data-lucide="chevron-down" class="tuning-card-chevron icon-sm icon-stroke"></i>
               <span class="tuning-card-title">Company Exclusions</span>
               <span class="tuning-card-badge empty" id="tc-co-badge"></span>
             </div>
@@ -1327,9 +1327,9 @@
           <div class="tuning-card" id="tc-industry" style="border-left:3px solid var(--indigo);">
             <div class="tuning-card-header" onclick="toggleTuningCard(this)">
               <div class="tuning-card-icon bg-indigo-dim">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--indigo)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+                <i data-lucide="globe" class="icon-md icon-stroke" style="stroke:var(--indigo);"></i>
               </div>
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="tuning-card-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+              <i data-lucide="chevron-down" class="tuning-card-chevron icon-sm icon-stroke"></i>
               <span class="tuning-card-title">Industry Exclusions</span>
               <span class="tuning-card-badge empty" id="tc-ind-badge"></span>
             </div>
@@ -1347,9 +1347,9 @@
           <div class="tuning-card" id="tc-title" style="border-left:3px solid var(--purple);">
             <div class="tuning-card-header" onclick="toggleTuningCard(this)">
               <div class="tuning-card-icon" style="background:var(--purple-dim);">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>
+                <i data-lucide="hash" class="icon-md icon-stroke" style="stroke:var(--purple);"></i>
               </div>
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="tuning-card-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+              <i data-lucide="chevron-down" class="tuning-card-chevron icon-sm icon-stroke"></i>
               <span class="tuning-card-title">Title Rules</span>
               <span class="tuning-card-badge empty" id="tc-title-badge"></span>
             </div>
@@ -1391,9 +1391,9 @@
           <div class="tuning-card" id="tc-poor" style="border-left:3px solid var(--green);">
             <div class="tuning-card-header" onclick="toggleTuningCard(this)">
               <div class="tuning-card-icon" style="background:var(--green-dim);">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 00-6 0v4"/><rect x="2" y="9" width="20" height="12" rx="2"/><circle cx="12" cy="16" r="1"/></svg>
+                <i data-lucide="lock-keyhole-open" class="icon-md icon-stroke" style="stroke:var(--green);"></i>
               </div>
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="tuning-card-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+              <i data-lucide="chevron-down" class="tuning-card-chevron icon-sm icon-stroke"></i>
               <span class="tuning-card-title">Jobs You've Dismissed</span>
               <span class="tuning-card-badge empty" id="tc-poor-badge"></span>
             </div>
@@ -1463,7 +1463,7 @@
           <div id="pl-stages-container">
             <div class="pl-stage-section" data-stage="saved">
               <div class="pl-stage-header" onclick="togglePipelineStage(this)">
-                <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>
                 <span class="pl-stage-name">Saved</span>
                 <span class="pl-stage-count" id="pc-saved">0</span>
                 <span class="pl-stage-match-summary" id="pm-saved"></span><span class="pl-signal-badge u-hidden" id="psig-saved"></span>
@@ -1472,7 +1472,7 @@
             </div>
             <div class="pl-stage-section" data-stage="applied">
               <div class="pl-stage-header" onclick="togglePipelineStage(this)">
-                <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>
                 <span class="pl-stage-name">Applied</span>
                 <span class="pl-stage-count" id="pc-applied">0</span>
                 <span class="pl-stage-match-summary" id="pm-applied"></span><span class="pl-signal-badge u-hidden" id="psig-applied"></span>
@@ -1481,7 +1481,7 @@
             </div>
             <div class="pl-stage-section" data-stage="posting_closed">
               <div class="pl-stage-header" onclick="togglePipelineStage(this)">
-                <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>
                 <span class="pl-stage-name">Posting Closed</span>
                 <span class="pl-stage-count" id="pc-posting_closed">0</span>
                 <span class="pl-stage-match-summary" id="pm-posting_closed"></span><span class="pl-signal-badge u-hidden" id="psig-posting_closed"></span>
@@ -1490,7 +1490,7 @@
             </div>
             <div class="pl-stage-section" data-stage="responded">
               <div class="pl-stage-header" onclick="togglePipelineStage(this)">
-                <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>
                 <span class="pl-stage-name">Responded</span>
                 <span class="pl-stage-count" id="pc-responded">0</span>
                 <span class="pl-stage-match-summary" id="pm-responded"></span><span class="pl-signal-badge u-hidden" id="psig-responded"></span>
@@ -1499,7 +1499,7 @@
             </div>
             <div class="pl-stage-section" data-stage="interview">
               <div class="pl-stage-header" onclick="togglePipelineStage(this)">
-                <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>
                 <span class="pl-stage-name">Interview</span>
                 <span class="pl-stage-count" id="pc-interview">0</span>
                 <span class="pl-stage-match-summary" id="pm-interview"></span><span class="pl-signal-badge u-hidden" id="psig-interview"></span>
@@ -1508,7 +1508,7 @@
             </div>
             <div class="pl-stage-section" data-stage="offer">
               <div class="pl-stage-header" onclick="togglePipelineStage(this)">
-                <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>
                 <span class="pl-stage-name">Offer</span>
                 <span class="pl-stage-count" id="pc-offer">0</span>
                 <span class="pl-stage-match-summary" id="pm-offer"></span><span class="pl-signal-badge u-hidden" id="psig-offer"></span>
@@ -1517,7 +1517,7 @@
             </div>
             <div class="pl-stage-section" data-stage="rejected">
               <div class="pl-stage-header" onclick="togglePipelineStage(this)">
-                <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>
                 <span class="pl-stage-name">Rejected / Ghosted</span>
                 <span class="pl-stage-count" id="pc-rejected">0</span>
                 <span class="pl-stage-match-summary" id="pm-rejected"></span><span class="pl-signal-badge u-hidden" id="psig-rejected"></span>
@@ -1526,7 +1526,7 @@
             </div>
             <div class="pl-stage-section" data-stage="hired">
               <div class="pl-stage-header" onclick="togglePipelineStage(this)">
-                <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>
                 <span class="pl-stage-name" style="color:hsl(142,70%,35%);">Hired!</span>
                 <span class="pl-stage-count" id="pc-hired">0</span>
                 <span class="pl-stage-match-summary" id="pm-hired"></span>
@@ -1535,7 +1535,7 @@
             </div>
             <div class="pl-stage-section" data-stage="archived">
               <div class="pl-stage-header" onclick="togglePipelineStage(this)">
-                <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>
                 <span class="pl-stage-name u-text-faint">Archived</span>
                 <span class="pl-stage-count" id="pc-archived">0</span>
                 <span class="pl-stage-match-summary" id="pm-archived"></span>
@@ -1731,11 +1731,11 @@
           <!-- List / Board toggle -->
           <div class="u-tab-bar">
             <button class="btn btn-sm app-view-toggle active u-btn-pill" id="app-view-list" data-view="list" onclick="switchAppView('list')">
-              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              <i data-lucide="list" class="icon-xs icon-stroke" style="margin-right:4px;"></i>
               List
             </button>
             <button class="btn btn-sm app-view-toggle u-btn-pill" id="app-view-board" data-view="board" onclick="switchAppView('board')">
-              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+              <i data-lucide="layout-grid" class="icon-xs icon-stroke" style="margin-right:4px;"></i>
               Board
             </button>
           </div>
@@ -1797,7 +1797,7 @@
                 <tbody id="app-queue-body">
                   <tr>
                     <td colspan="8" class="u-empty">
-                      <div class="u-mb-12 u-text-faint"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="u-dim-25"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></div>
+                      <div class="u-mb-12 u-text-faint"><i data-lucide="mail" class="icon-xl icon-stroke-lg u-dim-25"></i></div>
                       <div class="u-section-title">No applications queued</div>
                       <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">
                         Add jobs manually, or save jobs from Discovery to auto-queue them based on your rules.
@@ -2099,7 +2099,7 @@
           <!-- NOTIFICATIONS PANEL -->
           <div class="app-flow-panel" id="panel-notifications">
             <div style="text-align:center;padding:48px 20px;">
-              <div class="u-mb-12 u-text-faint"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.3;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+              <div class="u-mb-12 u-text-faint"><i data-lucide="bell" class="icon-xl icon-stroke-lg" style="opacity:0.3;"></i></div>
               <div style="font-size:15px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Notification Center has moved</div>
               <div style="font-size:13px;color:var(--text-faint);margin-bottom:16px;">Manage all notification preferences from the dedicated Notifications page.</div>
               <button class="btn btn-primary btn-sm" onclick="document.querySelector('[data-page=notifications]').click();">Open Notification Center →</button>
@@ -2186,7 +2186,7 @@
                   <tbody id="notif-log-body">
                     <tr>
                       <td colspan="5" class="u-empty">
-                        <div class="u-mb-12 u-text-faint"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="u-dim-25"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+                        <div class="u-mb-12 u-text-faint"><i data-lucide="bell" class="icon-xl icon-stroke-lg u-dim-25"></i></div>
                         <div class="u-section-title">No notifications sent yet</div>
                         <div class="u-fs-12">Notification history will appear here once the system is active.</div>
                       </td>
@@ -2230,7 +2230,7 @@
 
           <!-- Email confirmation status banner (shown for unverified users) -->
           <div id="nc-email-banner" style="display:none;margin-bottom:16px;padding:12px 16px;background:hsla(var(--warm-hsl),0.08);border:1px solid hsla(var(--warm-hsl),0.2);border-radius:10px;align-items:center;gap:12px;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warm)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <i data-lucide="mail" class="icon-md icon-stroke" style="stroke:var(--warm);"></i>
             <div class="u-flex-1">
               <div class="u-heading-sm">Confirm your email to activate notifications</div>
               <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">Check your inbox for the confirmation link. <button id="nc-resend-confirm-btn" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:11px;font-weight:600;font-family:var(--sans);padding:0;">Resend confirmation</button></div>
@@ -2406,31 +2406,31 @@
                     <!-- Required transactional — always sent, cannot be disabled -->
                     <tr class="notif-section-label"><td colspan="4">Required transactional <span style="font-size:10px;color:var(--text-dim);font-weight:400;margin-left:6px;">Always sent</span></td></tr>
                     <tr data-notif="subscription_confirm" class="notif-locked">
-                      <td><svg class="notif-lock-icon u-icon-inline" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Payment confirmations</td>
+                      <td><i data-lucide="lock-keyhole" class="notif-lock-icon u-icon-inline icon-xs icon-stroke"></i>Payment confirmations</td>
                       <td><label class="toggle-switch disabled" title="Required — cannot be disabled"><input type="checkbox" class="nch-email" checked disabled><span class="toggle-slider"></span></label></td>
                       <td><label class="toggle-switch disabled"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
                       <td><span class="u-label">Always</span></td>
                     </tr>
                     <tr data-notif="payment_failed" class="notif-locked">
-                      <td><svg class="notif-lock-icon u-icon-inline" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Payment failed alerts</td>
+                      <td><i data-lucide="lock-keyhole" class="notif-lock-icon u-icon-inline icon-xs icon-stroke"></i>Payment failed alerts</td>
                       <td><label class="toggle-switch disabled" title="Required — cannot be disabled"><input type="checkbox" class="nch-email" checked disabled><span class="toggle-slider"></span></label></td>
                       <td><label class="toggle-switch disabled"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
                       <td><span class="u-label">Always</span></td>
                     </tr>
                     <tr data-notif="plan_change_confirm" class="notif-locked">
-                      <td><svg class="notif-lock-icon u-icon-inline" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Plan changes</td>
+                      <td><i data-lucide="lock-keyhole" class="notif-lock-icon u-icon-inline icon-xs icon-stroke"></i>Plan changes</td>
                       <td><label class="toggle-switch disabled" title="Required — cannot be disabled"><input type="checkbox" class="nch-email" checked disabled><span class="toggle-slider"></span></label></td>
                       <td><label class="toggle-switch disabled"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
                       <td><span class="u-label">Always</span></td>
                     </tr>
                     <tr data-notif="invoice_generated" class="notif-locked">
-                      <td><svg class="notif-lock-icon u-icon-inline" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Invoices &amp; receipts</td>
+                      <td><i data-lucide="lock-keyhole" class="notif-lock-icon u-icon-inline icon-xs icon-stroke"></i>Invoices &amp; receipts</td>
                       <td><label class="toggle-switch disabled" title="Required — cannot be disabled"><input type="checkbox" class="nch-email" checked disabled><span class="toggle-slider"></span></label></td>
                       <td><label class="toggle-switch disabled"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
                       <td><span class="u-label">Always</span></td>
                     </tr>
                     <tr data-notif="refund_processed" class="notif-locked">
-                      <td><svg class="notif-lock-icon u-icon-inline" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Refund confirmations</td>
+                      <td><i data-lucide="lock-keyhole" class="notif-lock-icon u-icon-inline icon-xs icon-stroke"></i>Refund confirmations</td>
                       <td><label class="toggle-switch disabled" title="Required — cannot be disabled"><input type="checkbox" class="nch-email" checked disabled><span class="toggle-slider"></span></label></td>
                       <td><label class="toggle-switch disabled"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
                       <td><span class="u-label">Always</span></td>
@@ -2484,7 +2484,7 @@
                     <div class="u-flex-gap-10">
                       <span id="verified-phone-display" style="font-family:var(--mono);font-size:13px;color:var(--text);"></span>
                       <span class="phone-verified-badge">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        <i data-lucide="check" class="icon-sm" style="stroke-width:2.5;fill:none;stroke:currentColor;"></i>
                         Verified
                       </span>
                       <button class="btn btn-secondary btn-sm u-fs-11" id="phone-change">Change</button>
@@ -2502,35 +2502,35 @@
               <div class="escalation-timeline">
                 <div class="esc-node">
                   <div class="esc-icon email">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                    <i data-lucide="mail" class="icon-md icon-stroke"></i>
                   </div>
                   <div class="esc-label">Email sent</div>
                 </div>
                 <div class="esc-connector"></div>
                 <div class="esc-node">
                   <div class="esc-icon wait">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <i data-lucide="clock" class="icon-md icon-stroke"></i>
                   </div>
                   <div class="esc-label">Wait <span id="esc-hours-label">4</span>h</div>
                 </div>
                 <div class="esc-connector"></div>
                 <div class="esc-node">
                   <div class="esc-icon sms">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    <i data-lucide="message-square" class="icon-md icon-stroke"></i>
                   </div>
                   <div class="esc-label">SMS reminder</div>
                 </div>
                 <div class="esc-connector"></div>
                 <div class="esc-node">
                   <div class="esc-icon wait">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <i data-lucide="clock" class="icon-md icon-stroke"></i>
                   </div>
                   <div class="esc-label">Wait 2h</div>
                 </div>
                 <div class="esc-connector"></div>
                 <div class="esc-node">
                   <div class="esc-icon skip">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    <i data-lucide="circle-x" class="icon-md icon-stroke"></i>
                   </div>
                   <div class="esc-label">Marked missed</div>
                 </div>
@@ -2660,7 +2660,7 @@
                   <tbody id="nc-notif-log-body">
                     <tr>
                       <td colspan="5" class="u-empty">
-                        <div class="u-mb-12 u-text-faint"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="u-dim-25"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+                        <div class="u-mb-12 u-text-faint"><i data-lucide="bell" class="icon-xl icon-stroke-lg u-dim-25"></i></div>
                         <div class="u-section-title">No notifications sent yet</div>
                         <div class="u-fs-12">Notification history will appear here once the system is active.</div>
                       </td>
@@ -2717,7 +2717,7 @@
             </div>
             <div id="ghost-gmail-connected" style="display:none;margin-bottom:8px;">
               <div class="u-flex-gap-10">
-                <div class="phone-verified-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Connected</div>
+                <div class="phone-verified-badge"><i data-lucide="check" class="icon-sm" style="stroke-width:2.5;fill:none;stroke:currentColor;"></i> Connected</div>
                 <span id="ghost-gmail-address" style="font-size:12px;color:var(--text-dim);font-family:var(--mono);"></span>
                 <button class="btn btn-sm btn-secondary" onclick="disconnectGmail()" style="font-size:11px;margin-left:auto;">Disconnect</button>
               </div>
@@ -3082,7 +3082,7 @@
             <div class="card-sub">Manage your data rights under GDPR and privacy regulations</div>
             <div style="display:flex;flex-direction:column;gap:12px;margin-top:8px;">
               <button class="btn btn-secondary btn-sm" id="st-full-export" style="width:fit-content;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;vertical-align:-2px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <i data-lucide="download" class="icon-sm icon-stroke" style="margin-right:6px;vertical-align:-2px;"></i>
                 Download All My Data (JSON)
               </button>
               <div class="u-meta" style="margin-top:-4px;">
@@ -3124,7 +3124,7 @@
 
           <!-- Low Credit Alert Banner (hidden by default) -->
           <div class="sub-alert u-hidden" id="sub-credit-alert">
-            <div class="sub-alert-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warm)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+            <div class="sub-alert-icon"><i data-lucide="zap" class="icon-md icon-stroke" style="stroke:var(--warm);"></i></div>
             <div class="sub-alert-text">
               <strong>Running low on credits</strong>
               <span id="sub-alert-msg">You have <span id="sub-alert-count">0</span> credits remaining.</span>
@@ -3170,7 +3170,7 @@
             <div class="card-title">What Uses Credits</div>
             <div class="sub-credit-costs">
               <div class="sub-cost-item">
-                <div class="sub-cost-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+                <div class="sub-cost-icon"><i data-lucide="file-text" class="icon-md icon-stroke" style="stroke:var(--accent);"></i></div>
                 <div class="sub-cost-info">
                   <div class="sub-cost-name">Resume Score</div>
                   <div class="sub-cost-desc">AI analysis of your resume against a job description</div>
@@ -3178,7 +3178,7 @@
                 <div class="sub-cost-amount">3 credits</div>
               </div>
               <div class="sub-cost-item">
-                <div class="sub-cost-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+                <div class="sub-cost-icon"><i data-lucide="square-pen" class="icon-md icon-stroke" style="stroke:var(--accent);"></i></div>
                 <div class="sub-cost-info">
                   <div class="sub-cost-name">AI Resume Rewrite</div>
                   <div class="sub-cost-desc">Tailored resume rewrite optimized for a specific role</div>
@@ -3186,7 +3186,7 @@
                 <div class="sub-cost-amount">5 credits</div>
               </div>
               <div class="sub-cost-item">
-                <div class="sub-cost-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></div>
+                <div class="sub-cost-icon"><i data-lucide="bell" class="icon-md icon-stroke" style="stroke:var(--accent);"></i></div>
                 <div class="sub-cost-info">
                   <div class="sub-cost-name">Smart Job Alert</div>
                   <div class="sub-cost-desc">AI-filtered alerts matching your preferences</div>
@@ -3194,7 +3194,7 @@
                 <div class="sub-cost-amount">1 credit</div>
               </div>
               <div class="sub-cost-item">
-                <div class="sub-cost-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+                <div class="sub-cost-icon"><i data-lucide="search" class="icon-md icon-stroke" style="stroke:var(--accent);"></i></div>
                 <div class="sub-cost-info">
                   <div class="sub-cost-name">AI Filter Suggest</div>
                   <div class="sub-cost-desc">Generate optimized search filters from your resume</div>
@@ -3202,7 +3202,7 @@
                 <div class="sub-cost-amount">2 credits</div>
               </div>
               <div class="sub-cost-item">
-                <div class="sub-cost-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
+                <div class="sub-cost-icon"><i data-lucide="circle-x" class="icon-md icon-stroke" style="stroke:var(--accent);"></i></div>
                 <div class="sub-cost-info">
                   <div class="sub-cost-name">AI Exclusions</div>
                   <div class="sub-cost-desc">AI-powered analysis to suggest exclusion patterns from hidden jobs</div>
@@ -3319,7 +3319,7 @@
           <button class="admin-tab active" id="fb-tab-features" onclick="switchFeedbackTab('features')">Feature Requests</button>
           <button class="admin-tab" id="fb-tab-bugs" onclick="switchFeedbackTab('bugs')">Bug Reports</button>
           <a href="https://brilliant-jobs.canny.io/changelog" target="_blank" rel="noopener" style="margin-left:auto;font-size:13px;color:var(--accent);text-decoration:none;display:flex;align-items:center;gap:4px;">
-            Changelog <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Changelog <i data-lucide="external-link" class="icon-xs icon-stroke"></i>
           </a>
         </div>
 

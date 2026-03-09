@@ -163,7 +163,7 @@ function ncShowOptInModal() {
     '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;padding:32px;">' +
       '<div style="text-align:center;margin-bottom:20px;">' +
         '<div style="width:48px;height:48px;border-radius:50%;background:rgba(59,130,246,0.15);display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;">' +
-          '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0"/></svg>' +
+          '<i data-lucide="bell" class="icon-lg icon-stroke" style="stroke:#3b82f6;"></i>' +
         '</div>' +
         '<h3 style="margin:0 0 6px;font-size:18px;color:var(--text);">Set Up Your Notifications</h3>' +
         '<p style="margin:0;font-size:13px;color:var(--text-dim);">Choose what you want to hear about. You can change these anytime in Settings.</p>' +
@@ -183,6 +183,7 @@ function ncShowOptInModal() {
     '</div>';
 
   document.body.appendChild(modal);
+  if (typeof window.refreshIcons === 'function') window.refreshIcons();
 
   // CX-06: PostHog — notification opt-in modal shown
   if (window.posthog) posthog.capture('notification_opt_in_shown', { categories_shown: categoryToggles.map(c => c.key) });
@@ -626,7 +627,7 @@ async function ncLoadNotificationLog(page) {
 
     if (rows.length === 0) {
       tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-faint);padding:48px 12px;">' +
-        '<div style="margin-bottom:12px;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>' +
+        '<div style="margin-bottom:12px;"><i data-lucide="bell" class="icon-xl icon-stroke-lg" style="opacity:0.25;"></i></div>' +
         '<div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No notifications found</div>' +
         '<div style="font-size:12px;">' + (typeFilter || channelFilter || statusFilter ? 'Try adjusting your filters.' : 'Notification history will appear here once the system is active.') + '</div>' +
         '</td></tr>';
@@ -635,7 +636,7 @@ async function ncLoadNotificationLog(page) {
         var ts = new Date(row.created_at);
         var timeStr = ts.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + ts.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
         var typeLabel = (row.notification_type || '').replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
-        var channelIcon = row.channel === 'sms' ? '💬' : row.channel === 'in_app' ? '🔔' : '✉️';
+        var channelIcon = row.channel === 'sms' ? '<i data-lucide="message-square" class="icon-xs icon-stroke"></i>' : row.channel === 'in_app' ? '<i data-lucide="bell" class="icon-xs icon-stroke"></i>' : '<i data-lucide="mail" class="icon-xs icon-stroke"></i>';
         var statusClass = row.status === 'sent' || row.status === 'delivered' ? 'color:var(--green)' :
           row.status === 'failed' ? 'color:var(--red)' :
           row.status === 'held' ? 'color:var(--yellow)' : 'color:var(--text-dim)';
@@ -650,6 +651,7 @@ async function ncLoadNotificationLog(page) {
           '</tr>';
       }).join('');
     }
+    if (typeof window.refreshIcons === 'function') window.refreshIcons();
 
     // Render pagination
     ncRenderLogPagination(page, total);
