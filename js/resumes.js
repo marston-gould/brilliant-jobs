@@ -1616,6 +1616,10 @@ window.onGapTermClick = function(term) {
   }
 };
 
+// QA-FIX: Expose text extraction for AI filter generation (used by location.js)
+window._extractTextFromFile = extractTextFromFile;
+window._bjFileStore = bjFileStore;
+
 // CS-P1-004 FE-005: Register resumes.js exports with BJ namespace
 (function() {
   var exports = [

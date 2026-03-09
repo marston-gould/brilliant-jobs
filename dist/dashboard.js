@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.02';
+var BJ_VERSION = 'v8.03';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -13642,7 +13642,7 @@ async function _doAiFilterAnalysis() {
   var resume = displayResumes[idx];
   if (!resume) return;
   
-  // If resume doesn't have extracted text, show error in modal
+  // If resume doesn't have extracted text, auto-extract it
   if (!resume.extractedText || resume.extractedText.length < 100) {
     var modal = document.getElementById('ai-filter-modal');
     var body = document.getElementById('ai-filter-body');
@@ -13650,13 +13650,59 @@ async function _doAiFilterAnalysis() {
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
     meta.textContent = resume.name || 'Resume';
-    body.innerHTML = '<div style="text-align:center;padding:40px 20px;">' +
-      '<div style="font-size:32px;margin-bottom:12px;opacity:0.5;">⏳</div>' +
-      '<div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:8px;">Resume text not yet extracted</div>' +
-      '<div style="font-size:12px;color:var(--text-faint);max-width:320px;margin:0 auto;line-height:1.5;">' +
-      'This resume needs text extraction before AI can analyze it. Open it on the <strong>Resumes</strong> tab first, then come back here.</div>' +
-      '<button class="btn btn-sm btn-primary" style="margin-top:16px;" onclick="document.getElementById(\'ai-filter-modal\').style.display=\'none\';document.body.style.overflow=\'\';">OK</button></div>';
-    return;
+    body.innerHTML = '<div style="text-align:center;padding:60px 20px;">' +
+      '<div class="loading-spinner" style="margin:0 auto 16px;"></div>' +
+      '<div style="color:var(--text-dim);font-size:13px;">Extracting text from resume…</div>' +
+      '<div style="color:var(--text-faint);font-size:11px;margin-top:8px;">This only happens once per file</div></div>';
+    
+    try {
+      // Try to extract text from stored file
+      if (typeof window._bjFileStore !== 'undefined' && typeof window._extractTextFromFile === 'function') {
+        var fileBlob = await window._bjFileStore.get(resume.id);
+        if (fileBlob) {
+          var file = new File([fileBlob], resume.name || 'resume.pdf', { type: fileBlob.type || 'application/pdf' });
+          var text = await window._extractTextFromFile(file);
+          if (text && text.length > 50) {
+            // Save extracted text to resume object + localStorage
+            var realIdx = (typeof resumes !== 'undefined' ? resumes : []).findIndex(function(r) { return r.id === resume.id; });
+            if (realIdx >= 0) {
+              resumes[realIdx].extractedText = text;
+              saveUserData('bj_resumes', JSON.stringify(resumes));
+            }
+            resume.extractedText = text;
+            // Continue to AI analysis (fall through)
+          } else {
+            body.innerHTML = '<div style="text-align:center;padding:40px 20px;">' +
+              '<div style="font-size:14px;font-weight:600;color:var(--red);margin-bottom:8px;">Could not extract text</div>' +
+              '<div style="font-size:12px;color:var(--text-faint);max-width:320px;margin:0 auto;line-height:1.5;">' +
+              'The file may be a scanned image. Try uploading a text-based PDF or DOCX.</div>' +
+              '<button class="btn btn-sm btn-primary" style="margin-top:16px;" onclick="document.getElementById(\'ai-filter-modal\').style.display=\'none\';document.body.style.overflow=\'\';">OK</button></div>';
+            return;
+          }
+        } else {
+          body.innerHTML = '<div style="text-align:center;padding:40px 20px;">' +
+            '<div style="font-size:14px;font-weight:600;color:var(--red);margin-bottom:8px;">Resume file not found</div>' +
+            '<div style="font-size:12px;color:var(--text-faint);max-width:320px;margin:0 auto;line-height:1.5;">' +
+            'The original file may have been cleared from browser storage. Try re-uploading the resume.</div>' +
+            '<button class="btn btn-sm btn-primary" style="margin-top:16px;" onclick="document.getElementById(\'ai-filter-modal\').style.display=\'none\';document.body.style.overflow=\'\';">OK</button></div>';
+          return;
+        }
+      } else {
+        body.innerHTML = '<div style="text-align:center;padding:40px 20px;">' +
+          '<div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:8px;">Text extraction loading…</div>' +
+          '<div style="font-size:12px;color:var(--text-faint);max-width:320px;margin:0 auto;line-height:1.5;">' +
+          'Open the Resumes tab once to load the extraction library, then try again.</div>' +
+          '<button class="btn btn-sm btn-primary" style="margin-top:16px;" onclick="document.getElementById(\'ai-filter-modal\').style.display=\'none\';document.body.style.overflow=\'\';">OK</button></div>';
+        return;
+      }
+    } catch(e) {
+      reportError('location:extract', e);
+      body.innerHTML = '<div style="text-align:center;padding:40px 20px;">' +
+        '<div style="font-size:14px;font-weight:600;color:var(--red);margin-bottom:8px;">Extraction failed</div>' +
+        '<div style="font-size:12px;color:var(--text-faint);max-width:320px;margin:0 auto;line-height:1.5;">' + (e.message || 'Unknown error') + '</div>' +
+        '<button class="btn btn-sm btn-primary" style="margin-top:16px;" onclick="document.getElementById(\'ai-filter-modal\').style.display=\'none\';document.body.style.overflow=\'\';">OK</button></div>';
+      return;
+    }
   }
   
   // Show modal with loading state
@@ -18476,6 +18522,10 @@ window.onGapTermClick = function(term) {
     showToast('"' + term + '" noted — resume keyword injection coming soon.', { duration: 2500 });
   }
 };
+
+// QA-FIX: Expose text extraction for AI filter generation (used by location.js)
+window._extractTextFromFile = extractTextFromFile;
+window._bjFileStore = bjFileStore;
 
 // CS-P1-004 FE-005: Register resumes.js exports with BJ namespace
 (function() {

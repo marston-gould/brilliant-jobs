@@ -1077,7 +1077,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.02`** | **QA Round 6 — Auth race crash fix, extension dot, column widths, card alignment** |
+| **Product (BJ_VERSION)** | **`v8.03`** | **QA Round 7 — Saved searches visible in chat mode, auto-extract resume text** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
