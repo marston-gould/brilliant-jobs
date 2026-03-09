@@ -915,10 +915,11 @@
     }
     .setup-int-body { padding: 20px 22px; flex: 1; text-align: center; display: flex; flex-direction: column; }
     .setup-int-body .setup-action-zone {
-      min-height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      margin-top: auto; padding-top: 12px;
     }
     .setup-int-body .setup-desc {
-      flex: 1; font-size: 12px; color: var(--text-dim); line-height: 1.6; margin-top: 12px;
+      font-size: 12px; color: var(--text-dim); line-height: 1.6;
     }
     /* POD3-GS: BUG-9 — uniform button sizing across all integration cards */
     .setup-connect-btn { min-width: 140px; padding: 6px 16px; font-size: 11px; text-align: center; }
