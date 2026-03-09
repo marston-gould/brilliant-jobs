@@ -522,7 +522,6 @@ var appliedJobIds = safeReadLS("bj_applied_jobs", []);
 var searchTimeout = null;
 var currentJobPage = 0;
 var JOBS_PER_PAGE = 50;
-var MAX_FEED_ROWS = 500;
 var _feedLoadMoreOffset = 0;
 var _feedTotalCount = 0;
 var resumes = safeReadLS("bj_resumes", []);

@@ -123,7 +123,7 @@ export interface FeedSearchActions {
 }
 
 const JOBS_PER_PAGE = 50;
-const MAX_FEED_ROWS = 500;
+// FA-004: MAX_FEED_ROWS cap removed — real server-side pagination
 
 const ALL_TRUST: Set<TrustLabel> = new Set(['safe', 'caution', 'suspicious', 'unknown']);
 const ALL_AI: Set<AiLabel> = new Set(['human', 'mixed', 'ai_generated', 'unscored']);
@@ -441,12 +441,9 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
           query = query.order(s.field, { ascending: s.asc });
         }
 
+        // FA-004: no cap — each page is one lightweight DB query
         const from = page * JOBS_PER_PAGE;
-        if (from >= MAX_FEED_ROWS) {
-          setState(prev => ({ ...prev, jobs: [], total: 0, loading: false }));
-          return;
-        }
-        const to = Math.min(from + JOBS_PER_PAGE - 1, MAX_FEED_ROWS - 1);
+        const to = from + JOBS_PER_PAGE - 1;
         query = query.range(from, to);
 
         const { data, error, count } = await query;
@@ -460,7 +457,8 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
         totalCount = count || 0;
       } else {
         // Multi-filter path: parallel queries, merge, dedup
-        const perFilter = Math.min(Math.ceil(MAX_FEED_ROWS / checkedFilters.length), 250);
+        // FA-004: raised per-filter limit. FA-005 replaces with server-side UNION.
+        const perFilter = Math.min(Math.ceil(2000 / checkedFilters.length), 500);
         const seenIds = new Set<string>();
         const jobFilterMap = new Map<string, Array<{ num: string; color: string }>>();
 

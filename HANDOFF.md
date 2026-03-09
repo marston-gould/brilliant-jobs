@@ -52,6 +52,29 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**FA-004** — Remove 500-Row Cap + Real Pagination
+- Completed: 2026-03-08
+- Product version bumped: `v7.90` → `v7.91` (JS changes — globals.ts MAX_FEED_ROWS removed, job-feed.js uncapped pagination + raised multi-filter limit + UI cleanup; SPA useFeedSearch.ts mirrored; all HTML surfaces cache-busted)
+- ROADMAP.md updated: FA-004 → ✅
+- roadmap.html updated: FA-004 → `s: 'done'`, p: 100
+- **Core change:** Removed `MAX_FEED_ROWS = 500` hard cap from `globals.ts`. Feed now returns all matching results across pages with no artificial truncation.
+- **Single-filter path:** `range(from, to)` pagination unchanged but cap removed — `to = from + JOBS_PER_PAGE - 1` (was `Math.min(from + JOBS_PER_PAGE - 1, MAX_FEED_ROWS - 1)`). Removed early bail-out `if (from >= MAX_FEED_ROWS) return`. Each page turn is one lightweight DB query. `count: 'exact'` provides accurate totals.
+- **Multi-filter path:** Per-filter limit raised from `Math.ceil(500/N), 250` to `Math.ceil(2000/N), 500`. FA-005 replaces this with server-side UNION.
+- **Pagination UI:** Removed "(limited to 500)" message. Removed `capped` and `reachedCap` variables. `moreAvailable = showing < total || gotFullPage`. Load More button always shown when results remain.
+- **SPA useFeedSearch.ts:** All changes mirrored — MAX_FEED_ROWS removed, single-filter uncapped, multi-filter raised.
+- **PostHog:** `pagination_uncapped: true` property added to `feed_search_completed` event for pre/post segmentation.
+- **Created:**
+  - `tests/fa-004-pagination-uncapped.test.js` — 35 validation tests (9 sections)
+- **Modified:**
+  - `js/globals.ts` — MAX_FEED_ROWS removed
+  - `js/globals.js` — rebuilt (MAX_FEED_ROWS gone)
+  - `js/job-feed.js` — single-filter uncapped range(), multi-filter perFilter raised, pagination UI cleaned, PostHog property
+  - `src/app/pages/dashboard/feed/hooks/useFeedSearch.ts` — mirrored all changes
+  - `dist/dashboard.min.js` — rebuilt
+  - `ROADMAP.md` — FA-004 → ✅
+  - `roadmap.html` — FA-004 → done/100
+- **Tests:** 35 FA-004 validation tests (all passing)
+
 **FA-003b** — preview-jobs FTS Sanitization + PostHog Parity
 - Completed: 2026-03-08
 - Product version bumped: `v7.89` → `v7.90` (JS changes — landing-app.js PostHog content_search_enabled; preview-jobs EF FTS sanitization; all HTML surfaces cache-busted)
@@ -905,18 +928,13 @@ None.
 
 ## Next Session
 
-**Feed Accuracy Sprint — Phase 1 COMPLETE.** FA-010 (Instrumentation), FA-001 (Content Search), FA-002 (Backfill + Enrichment Cron), FA-003 (preview-jobs), and FA-009 (US-Only Filter) are done.
+**Feed Accuracy Sprint — FA-004 COMPLETE.** FA-010, FA-001, FA-002, FA-003, FA-009, and FA-004 are done.
 
-**FA-004: Remove 500-Row Cap + Real Pagination** — 5-7h
-- **Entry gate:** FA-001 content search deployed. Content_tsv backfilled (FA-002). US-Only filter fixed (FA-009).
-- **Fix:** Remove MAX_FEED_ROWS 500 cap. Implement real server-side pagination with LIMIT/OFFSET via Supabase `range()`. Each page turn is one lightweight DB query. Use `count: 'exact'` for accurate total counts.
-- **Files:** `js/job-feed.js` (searchJobs, pagination logic), possibly new RPC function
-- **Exit gate:** Feed returns all matching results across pages. No truncation at 500. Page load < 1s. Accurate total counts shown to user. Tests passing.
-
-**FA-005: Server-Side Multi-Filter Merge** — 6-8h (requires FA-004)
+**FA-005: Server-Side Multi-Filter Merge** — 6-8h
 - **Entry gate:** FA-004 pagination deployed.
 - **Fix:** Replace client-side merge of multiple filter results with server-side UNION via Postgres function. Single round trip, server-side sort, no client-side merge.
-- **Exit gate:** Multi-filter queries return correct deduped results from server. No client-side merge.
+- **Files:** `js/job-feed.js` (multi-filter path), new RPC function in migration, possibly `src/app/pages/dashboard/feed/hooks/useFeedSearch.ts`
+- **Exit gate:** Multi-filter queries return correct deduped results from server. No client-side merge. Page load < 1s. Tests passing.
 
 **Phase S is COMPLETE.** All 29 sessions (SA-001 through SA-029) plus SA-023b are done.
 **Phase REM is COMPLETE.** All 5 sessions (REM-001 through REM-005) are done.
@@ -964,7 +982,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.90`** | **FA-003b — FTS Sanitization + PostHog Parity** |
+| **Product (BJ_VERSION)** | **`v7.91`** | **FA-004 — Remove 500-Row Cap + Real Pagination** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

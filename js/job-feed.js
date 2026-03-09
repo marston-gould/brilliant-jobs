@@ -884,7 +884,7 @@ async function searchJobs(page = 0) {
     const searchTerms = [...jdTerms, ...whatTerms].join(' ').trim();
 
     if (filtersToRun.length === 1) {
-      // Single filter — A14 pagination: 500-row cap with Load More
+      // Single filter — FA-004: real server-side pagination via range()
       const feedCacheKey = 'feed:' + _filterCacheKey('single', filtersToRun[0]) + ':p' + page;
       const feedResult = await cachedQuery(feedCacheKey, async function() {
         let query = sb.from('ats_jobs').select('*', { count: 'exact' });
@@ -897,10 +897,9 @@ async function searchJobs(page = 0) {
           if (s.field === 'level' || s.field === 'match' || s.field === 'relevance') continue;
           query = query.order(s.field, { ascending: s.asc });
         }
-        // A14: page-based but capped at MAX_FEED_ROWS total
+        // FA-004: no cap — each page is one lightweight DB query
         const from = page * JOBS_PER_PAGE;
-        if (from >= MAX_FEED_ROWS) return { data: [], count: 0, error: null };
-        const to = Math.min(from + JOBS_PER_PAGE - 1, MAX_FEED_ROWS - 1);
+        const to = from + JOBS_PER_PAGE - 1;
         query = query.range(from, to);
         return query;
       }, { ttl: 180000 }); // 3-min TTL for feed queries
@@ -911,7 +910,8 @@ async function searchJobs(page = 0) {
       _feedLoadMoreOffset = (page + 1) * JOBS_PER_PAGE;
     } else {
       // Multiple filters — fetch up to limit per filter, merge, dedupe
-      const perFilter = Math.min(Math.ceil(MAX_FEED_ROWS / filtersToRun.length), 250);
+      // FA-004: raised per-filter limit. FA-005 replaces this with server-side UNION.
+      const perFilter = Math.min(Math.ceil(2000 / filtersToRun.length), 500);
       const promises = filtersToRun.map(sf => {
         let q = sb.from('ats_jobs').select('*', { count: 'exact' });
         q = buildFilterQuery(sf, q, sf._locationIds);
@@ -1199,7 +1199,8 @@ async function searchJobs(page = 0) {
         is_zero_results: totalCount === 0,
         null_loc_country_count: _faNullLocCountry,
         content_match_count: _faContentMatchCount,
-        content_search_enabled: _contentSearchEnabled  // FA-001: segment pre/post content search
+        content_search_enabled: _contentSearchEnabled,  // FA-001: segment pre/post content search
+        pagination_uncapped: true  // FA-004: segment pre/post 500-row cap removal
       });
 
       // Distinct zero-results event (alert trigger)
@@ -2386,19 +2387,17 @@ function renderJobRows(jobs, total, page, filtersToRun) {
     <tr class="job-snippet-row"><td></td><td colspan="7">${trustBannerHtml(job.greenhouse_id)}${aiContentBannerHtml(job.greenhouse_id)}<span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td><td></td></tr>`;
   }
 
-  // A14 Pagination: Showing X of Y + Load More (capped at 500)
+  // FA-004: Showing X of Y + Load More (no cap)
   const showing = Math.min(jobs.length + page * JOBS_PER_PAGE, total);
-  const capped = Math.min(total, MAX_FEED_ROWS);
   // v7.68: Always show Load More if we got a full page — count may be wrong or stale
   const gotFullPage = jobs.length >= JOBS_PER_PAGE;
-  const moreAvailable = showing < capped || gotFullPage;
-  const reachedCap = (page + 1) * JOBS_PER_PAGE >= MAX_FEED_ROWS;
+  const moreAvailable = showing < total || gotFullPage;
   html += `<tr><td colspan="9" style="text-align:center;padding:16px;">
     <div style="display:flex;flex-direction:column;justify-content:center;align-items:center;gap:8px;">
-      <span style="font-size:12px;color:var(--text-faint);">Showing ${showing.toLocaleString()} of ${total > showing ? total.toLocaleString() : showing.toLocaleString()} jobs${total > MAX_FEED_ROWS ? ' (limited to ' + MAX_FEED_ROWS.toLocaleString() + ')' : ''}</span>
+      <span style="font-size:12px;color:var(--text-faint);">Showing ${showing.toLocaleString()} of ${total.toLocaleString()} jobs</span>
       <div style="display:flex;gap:8px;align-items:center;">
         ${page > 0 ? '<button class="btn btn-sm btn-secondary" onclick="searchJobs(0)">↑ Back to top</button>' : ''}
-        ${moreAvailable && !reachedCap ? '<button class="btn btn-sm btn-primary" onclick="searchJobs(' + (page + 1) + ')" style="font-weight:600;">Load more jobs</button>' : ''}
+        ${moreAvailable ? '<button class="btn btn-sm btn-primary" onclick="searchJobs(' + (page + 1) + ')" style="font-weight:600;">Load more jobs</button>' : ''}
       </div>
     </div>
   </td></tr>`;

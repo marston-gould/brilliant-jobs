@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.90"></script>
+  <script src="/js/version.js?v=v7.91"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2160,6 +2160,7 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'FA-002 Backfill content_tsv + Enrichment Cron', d: 'Feed Accuracy Sprint Phase 2. content_tsv tsvector column + fn_update_content_tsv trigger (title=A, content=B, HTML stripped) + GIN index. fn_backfill_content_tsv (10K batch, SKIP LOCKED, content-first then title-only). fn_mark_jobs_for_enrichment (200/batch, jd_enrich_retry_count<3). jd_enrich_retry_count column for failure tracking. enrich-jd-ai EF updated with retry support. v_content_tsv_status monitoring view. 2 pg_cron (1min backfill, 15min enrichment marking). NULL-safe NOT queries in job-feed.js. v6.41 migration. 47 tests. v7.87.', p: 100, e: '8-12h' },
 { s: 'done', b: 'post-launch', n: 'FA-003 preview-jobs Content Search + Landing Page', d: 'Feed Accuracy Sprint Phase 1 (parallel). preview-jobs keyword search now uses title.ilike OR content_tsv.wfts(english) via .or() — aligns with FA-001 dashboard pattern. Status filter: .neq(closed) → .eq(open) for consistency. 21 tests. v7.88. FA-003b: FTS input sanitization (strips quotes, angle brackets, FTS operators) with title-only fallback + content_search_enabled response field + PostHog parity. 17 additional tests. v7.90.', p: 100, e: '2-3h' },
 { s: 'done', b: 'post-launch', n: 'FA-009 US-Only Filter Leakage Fix', d: 'Feed Accuracy Sprint Phase 1 (parallel). Replaced blind NULL catch-all (loc_country.eq.US,loc_country.is.null → 57K NULLs included) with 4-tier smart filter: (1) loc_country=US, (2) NULL+US state code (50 states+DC), (3) NULL+US text indicators (United States, USA), (4) NULL+bare Remote patterns. Non-US NULLs (Hong Kong, Bangalore, Europe, EMEA, etc.) excluded by omission. Canada exclusion preserved (NULL-safe). SPA unchanged (FA-007 scope). 24 tests. v7.89.', p: 100, e: '3-4h' },
+{ s: 'done', b: 'post-launch', n: 'FA-004 Remove 500-Row Cap + Real Pagination', d: 'Feed Accuracy Sprint Phase 2. Removed MAX_FEED_ROWS 500 cap from globals.ts. Single-filter: uncapped range() pagination — each page turn is one lightweight DB query with count:exact for accurate totals. Multi-filter: per-filter limit raised from 250 to 500 (FA-005 replaces with server-side UNION). Pagination UI: shows accurate total count, Load More always available when results remain, removed "(limited to 500)" message. SPA useFeedSearch.ts mirrored. PostHog pagination_uncapped property for pre/post segmentation. 35 tests. v7.91.', p: 100, e: '5-7h' },
 
 ];
 
