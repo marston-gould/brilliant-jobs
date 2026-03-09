@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.34';
+var BJ_VERSION = 'v8.35';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -12301,10 +12301,21 @@ function openFilterBrowser(dimension, mode) {
   _fbConfig = { ...dimConfig, dimension, mode: mode || 'include' };
   _fbSelections = {};
 
+  // Invalidate cache if US-Only changed since last load
+  var tuning = safeReadLS('bj_tuning', {});
+  var currentUsOnly = !!tuning.usOnly;
+  if (_fbCache && _fbCache._usOnly !== currentUsOnly) {
+    _fbCache = null; // force reload with new filter
+  }
+
   // Show browser page
   $$('.page').forEach(p => p.classList.remove('active'));
   $('#page-filter-browser').classList.add('active');
   $$('.nav-item').forEach(n => n.classList.remove('active'));
+
+  // Show US-Only banner when active
+  var usBanner = $('#fb-us-only-banner');
+  if (usBanner) usBanner.classList.toggle('u-hidden', !currentUsOnly);
 
   // Update header
   $('#fb-title').textContent = dimConfig.label;
@@ -12334,7 +12345,7 @@ async function loadFilterBrowserData() {
       .order('job_count', { ascending: false });
 
     if (resp.error) throw resp.error;
-    _fbCache = { data: resp.data || [], ts: Date.now() };
+    _fbCache = { data: resp.data || [], ts: Date.now(), _usOnly: !!(safeReadLS('bj_tuning', {}).usOnly) };
     renderFilterBrowserList();
   } catch (mvErr) {
     // MV not deployed yet — fall back to direct query for current dimension
@@ -12342,31 +12353,34 @@ async function loadFilterBrowserData() {
     try {
       const dim = _fbConfig?.mvDim;
       let data = [];
+      const tuning = safeReadLS('bj_tuning', {});
+      const usClause = tuning.usOnly ? " AND loc_country = 'US'" : '';
 
       if (dim === 'title') {
-        const r = await sb.rpc('sql', { query: "SELECT title AS value, COUNT(*)::int AS job_count FROM ats_jobs WHERE status = 'open' AND title IS NOT NULL AND length(title) > 2 GROUP BY title ORDER BY COUNT(*) DESC LIMIT 200" });
+        const r = await sb.rpc('sql', { query: "SELECT title AS value, COUNT(*)::int AS job_count FROM ats_jobs WHERE status = 'open' AND title IS NOT NULL AND length(title) > 2" + usClause + " GROUP BY title ORDER BY COUNT(*) DESC LIMIT 200" });
         if (r.error) throw r.error;
         data = (r.data || []).map(d => ({ dimension: 'title', ...d }));
       } else if (dim === 'skill') {
-        const r = await sb.rpc('sql', { query: "SELECT unnest(extracted_skills) AS value, COUNT(*)::int AS job_count FROM ats_jobs WHERE status = 'open' AND extracted_skills IS NOT NULL GROUP BY 1 ORDER BY COUNT(*) DESC LIMIT 200" });
+        const r = await sb.rpc('sql', { query: "SELECT unnest(extracted_skills) AS value, COUNT(*)::int AS job_count FROM ats_jobs WHERE status = 'open' AND extracted_skills IS NOT NULL" + usClause + " GROUP BY 1 ORDER BY COUNT(*) DESC LIMIT 200" });
         if (r.error) throw r.error;
         data = (r.data || []).map(d => ({ dimension: 'skill', ...d }));
       } else if (dim === 'dept') {
-        const r = await sb.rpc('sql', { query: "SELECT extracted_department AS value, COUNT(*)::int AS job_count FROM ats_jobs WHERE status = 'open' AND extracted_department IS NOT NULL AND length(extracted_department) > 1 GROUP BY 1 ORDER BY COUNT(*) DESC LIMIT 200" });
+        const r = await sb.rpc('sql', { query: "SELECT extracted_department AS value, COUNT(*)::int AS job_count FROM ats_jobs WHERE status = 'open' AND extracted_department IS NOT NULL AND length(extracted_department) > 1" + usClause + " GROUP BY 1 ORDER BY COUNT(*) DESC LIMIT 200" });
         if (r.error) throw r.error;
         data = (r.data || []).map(d => ({ dimension: 'dept', ...d }));
       } else if (dim === 'level') {
-        const r = await sb.rpc('sql', { query: "SELECT extracted_seniority AS value, COUNT(*)::int AS job_count FROM ats_jobs WHERE status = 'open' AND extracted_seniority IS NOT NULL AND length(extracted_seniority) > 1 GROUP BY 1 ORDER BY COUNT(*) DESC" });
+        const r = await sb.rpc('sql', { query: "SELECT extracted_seniority AS value, COUNT(*)::int AS job_count FROM ats_jobs WHERE status = 'open' AND extracted_seniority IS NOT NULL AND length(extracted_seniority) > 1" + usClause + " GROUP BY 1 ORDER BY COUNT(*) DESC" });
         if (r.error) throw r.error;
         data = (r.data || []).map(d => ({ dimension: 'level', ...d }));
       } else if (dim === 'jd_keyword') {
-        const r = await sb.rpc('sql', { query: "SELECT word AS value, ndoc::int AS job_count FROM ts_stat('SELECT content_tsv FROM ats_jobs WHERE status = ''open'' AND content_tsv IS NOT NULL') WHERE length(word) > 3 ORDER BY ndoc DESC LIMIT 200" });
+        const whereClause = "status = ''open'' AND content_tsv IS NOT NULL" + usClause.replace(/'/g, "''");
+        const r = await sb.rpc('sql', { query: "SELECT word AS value, ndoc::int AS job_count FROM ts_stat('SELECT content_tsv FROM ats_jobs WHERE " + whereClause + "') WHERE length(word) > 3 ORDER BY ndoc DESC LIMIT 200" });
         if (r.error) throw r.error;
         data = (r.data || []).map(d => ({ dimension: 'jd_keyword', ...d }));
       }
 
       if (data.length > 0) {
-        _fbCache = { data, ts: Date.now() };
+        _fbCache = { data, ts: Date.now(), _usOnly: !!(safeReadLS('bj_tuning', {}).usOnly) };
         renderFilterBrowserList();
       } else {
         // Direct queries also failed (no sql RPC or permission issue) — use PostgREST fallback
@@ -12384,23 +12398,36 @@ async function loadFilterBrowserData() {
 async function _loadFilterBrowserFallback(dim, list) {
   try {
     let data = [];
+    // Respect US-Only tuning setting
+    const tuning = safeReadLS('bj_tuning', {});
+    const usOnly = !!tuning.usOnly;
+
+    function _applyUsFilter(query) {
+      if (!usOnly) return query;
+      // Simple US filter: loc_country = US (catches the majority; tier 2-4 from FA-009 need SQL)
+      return query.eq('loc_country', 'US');
+    }
+
     if (dim === 'title') {
-      // Get distinct titles from ats_jobs — Supabase doesn't support GROUP BY via PostgREST,
-      // so we select title + count from a view or just get the distinct values
-      const r = await sb.from('ats_jobs').select('title').eq('status', 'open').not('title', 'is', null).order('title').limit(5000);
+      let q = sb.from('ats_jobs').select('title').eq('status', 'open').not('title', 'is', null);
+      q = _applyUsFilter(q);
+      const r = await q.order('title').limit(5000);
       if (r.error) throw r.error;
-      // Count manually
       const counts = {};
       (r.data || []).forEach(d => { counts[d.title] = (counts[d.title] || 0) + 1; });
       data = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 200).map(([value, job_count]) => ({ dimension: 'title', value, job_count }));
     } else if (dim === 'dept') {
-      const r = await sb.from('ats_jobs').select('extracted_department').eq('status', 'open').not('extracted_department', 'is', null).limit(5000);
+      let q = sb.from('ats_jobs').select('extracted_department').eq('status', 'open').not('extracted_department', 'is', null);
+      q = _applyUsFilter(q);
+      const r = await q.limit(5000);
       if (r.error) throw r.error;
       const counts = {};
       (r.data || []).forEach(d => { if (d.extracted_department) counts[d.extracted_department] = (counts[d.extracted_department] || 0) + 1; });
       data = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 200).map(([value, job_count]) => ({ dimension: 'dept', value, job_count }));
     } else if (dim === 'level') {
-      const r = await sb.from('ats_jobs').select('extracted_seniority').eq('status', 'open').not('extracted_seniority', 'is', null).limit(5000);
+      let q = sb.from('ats_jobs').select('extracted_seniority').eq('status', 'open').not('extracted_seniority', 'is', null);
+      q = _applyUsFilter(q);
+      const r = await q.limit(5000);
       if (r.error) throw r.error;
       const counts = {};
       (r.data || []).forEach(d => { if (d.extracted_seniority) counts[d.extracted_seniority] = (counts[d.extracted_seniority] || 0) + 1; });
@@ -12412,7 +12439,7 @@ async function _loadFilterBrowserFallback(dim, list) {
     }
 
     if (data.length > 0) {
-      _fbCache = { data, ts: Date.now() };
+      _fbCache = { data, ts: Date.now(), _usOnly: !!(safeReadLS('bj_tuning', {}).usOnly) };
       renderFilterBrowserList();
     } else {
       list.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-faint);">No data available for this dimension.</div>';
