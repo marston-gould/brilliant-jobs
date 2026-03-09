@@ -902,6 +902,11 @@ function getCheckedSavedPromptFilters() {
 // Main search: OR across all checked saved filters
 async function searchJobs(page = 0) {
   currentJobPage = page;
+  // UX-006: Scroll to top of job table on page change
+  if (page > 0) {
+    var jobTable = $('#job-table');
+    if (jobTable) jobTable.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
   const tbody = $('#job-table-body');
   const checked = getCheckedSavedFilters();
   const checkedPrompts = getCheckedSavedPromptFilters(); // Session 5: prompt-derived filters
@@ -2662,20 +2667,8 @@ function renderJobRows(jobs, total, page, filtersToRun) {
     <tr class="job-snippet-row"><td colspan="8">${trustBannerHtml(job.greenhouse_id)}${aiContentBannerHtml(job.greenhouse_id)}<span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td></tr>`;
   }
 
-  // FA-004: Showing X of Y + Load More (no cap)
-  const showing = Math.min(jobs.length + page * JOBS_PER_PAGE, total);
-  // v7.68: Always show Load More if we got a full page — count may be wrong or stale
-  const gotFullPage = jobs.length >= JOBS_PER_PAGE;
-  const moreAvailable = showing < total || gotFullPage;
-  html += `<tr><td colspan="8" style="text-align:center;padding:16px;">
-    <div style="display:flex;flex-direction:column;justify-content:center;align-items:center;gap:8px;">
-      <span style="font-size:12px;color:var(--text-faint);">Showing ${showing.toLocaleString()} of ${total.toLocaleString()} jobs</span>
-      <div style="display:flex;gap:8px;align-items:center;">
-        ${page > 0 ? '<button class="btn btn-sm btn-secondary" onclick="searchJobs(0)">↑ Back to top</button>' : ''}
-        ${moreAvailable ? '<button class="btn btn-sm btn-primary" onclick="searchJobs(' + (page + 1) + ')" style="font-weight:600;">Load more jobs</button>' : ''}
-      </div>
-    </div>
-  </td></tr>`;
+  // UX-006: Proper pagination controls (replaces inline Load More)
+  renderPagination(jobs.length, total, page);
 
   tbody.innerHTML = html;
   // POD3-LUCIDE: Re-initialize Lucide icons in dynamically injected job cards
@@ -2705,6 +2698,80 @@ function renderJobRows(jobs, total, page, filtersToRun) {
     loadPreviewSnippets();
   }
 }
+
+// ============================================================
+// UX-006: Proper pagination controls
+// ============================================================
+function renderPagination(pageJobCount, total, currentPage) {
+  const container = $('#feed-pagination');
+  if (!container) return;
+
+  const totalPages = Math.max(1, Math.ceil(total / JOBS_PER_PAGE));
+  const from = currentPage * JOBS_PER_PAGE + 1;
+  const to = Math.min(from + pageJobCount - 1, total);
+
+  if (total === 0 || pageJobCount === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  // Summary: "Showing 1–50 of 1,325 jobs"
+  let html = `<div class="fp-summary">Showing ${from.toLocaleString()}–${to.toLocaleString()} of ${total.toLocaleString()} job${total !== 1 ? 's' : ''}</div>`;
+
+  // Only show page controls if there are multiple pages
+  if (totalPages > 1) {
+    html += '<div class="fp-controls">';
+
+    // Previous button
+    html += `<button class="fp-btn" ${currentPage === 0 ? 'disabled' : ''} onclick="searchJobs(${currentPage - 1})" title="Previous page">‹ Prev</button>`;
+
+    // Page number buttons with smart ellipsis
+    const pages = _buildPageRange(currentPage, totalPages);
+    for (const p of pages) {
+      if (p === '...') {
+        html += '<span class="fp-ellipsis">…</span>';
+      } else {
+        const isActive = p === currentPage;
+        html += `<button class="fp-btn${isActive ? ' fp-active' : ''}" ${isActive ? 'disabled' : `onclick="searchJobs(${p})"`}>${p + 1}</button>`;
+      }
+    }
+
+    // Next button
+    const isLastPage = currentPage >= totalPages - 1;
+    html += `<button class="fp-btn" ${isLastPage ? 'disabled' : ''} onclick="searchJobs(${currentPage + 1})" title="Next page">Next ›</button>`;
+    html += '</div>';
+  }
+
+  container.innerHTML = html;
+}
+
+// Build smart page range: [0, 1, '...', 5, 6, 7, '...', 19, 20]
+function _buildPageRange(current, total) {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i);
+  }
+  const pages = new Set();
+  // Always show first and last page
+  pages.add(0);
+  pages.add(total - 1);
+  // Show current page and neighbors
+  for (let i = Math.max(0, current - 1); i <= Math.min(total - 1, current + 1); i++) {
+    pages.add(i);
+  }
+  // Sort and insert ellipsis
+  const sorted = [...pages].sort((a, b) => a - b);
+  const result = [];
+  for (let i = 0; i < sorted.length; i++) {
+    if (i > 0 && sorted[i] - sorted[i - 1] > 1) {
+      result.push('...');
+    }
+    result.push(sorted[i]);
+  }
+  return result;
+}
+
+// UX-006: Export renderPagination for SPA bridge
+window.renderPagination = renderPagination;
 
 let _enrichRunning = false;
 async function backgroundEnrichSalary() {

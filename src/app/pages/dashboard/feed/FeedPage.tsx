@@ -342,8 +342,7 @@ export function FeedPage() {
         onSave={handleSave}
         onHide={handleHide}
         onApply={handleApply}
-        onLoadMore={() => actions.setPage(state.page + 1)}
-        onBackToTop={() => actions.setPage(0)}
+        onPageChange={(p) => actions.setPage(p)}
         savedJobIds={savedJobIds}
         appliedJobIds={appliedJobIds}
         matchScores={matchScores}

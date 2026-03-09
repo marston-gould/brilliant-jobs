@@ -15,8 +15,7 @@ interface JobTableProps {
   onSave: (jobId: string) => void;
   onHide: (jobId: string) => void;
   onApply: (jobId: string, url: string) => void;
-  onLoadMore: () => void;
-  onBackToTop: () => void;
+  onPageChange: (page: number) => void;
   savedJobIds: Set<string>;
   appliedJobIds: Set<string>;
   matchScores: Record<string, number | { score: number }>;
@@ -121,8 +120,7 @@ export function JobTable({
   onSave,
   onHide,
   onApply,
-  onLoadMore,
-  onBackToTop,
+  onPageChange,
   savedJobIds,
   appliedJobIds,
   matchScores,
@@ -144,7 +142,8 @@ export function JobTable({
   };
 
   const JOBS_PER_PAGE = 50;
-  const showing = Math.min(state.jobs.length + state.page * JOBS_PER_PAGE, state.total);
+  // UX-006: pageJobCount for accurate pagination display
+  const pageJobCount = state.jobs.length;
 
   return (
     <div className="overflow-x-auto">
@@ -228,11 +227,10 @@ export function JobTable({
       {/* Pagination */}
       {state.jobs.length > 0 && (
         <PaginationControls
-          showing={showing}
+          pageJobCount={pageJobCount}
           total={state.total}
           page={state.page}
-          onLoadMore={onLoadMore}
-          onBackToTop={onBackToTop}
+          onPageChange={onPageChange}
         />
       )}
     </div>

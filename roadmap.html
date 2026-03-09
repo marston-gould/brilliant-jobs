@@ -11,7 +11,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v8.26"></script>
+  <script src="/js/version.js?v=v8.27"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2168,7 +2168,7 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'FB-PAYL-S3 Pay After You Land — Production Deployment', d: 'Migrations v6.46 + v6.47 deployed (schema compatibility fixes). 3 EFs deployed. linkedin-profiles storage bucket (private, RLS). Gateway redeployed (#111-113). Production E2E verified. 63 tests.', p: 100, e: '2h' },
 { s: 'done', b: 'post-launch', n: 'FB-PAYL-S4 Pay After You Land — Stripe Integration + Launch', d: 'Stripe product + price ($29.99/mo). setup_intent action (card auth). Stripe subscription creation on convert. Stripe.js lazy-load + Elements. payl_tier_enabled flag 100%. Vault secrets. v8.25. 49 tests. FB-PAYL COMPLETE.', p: 100, e: '3h' },
 { s: 'done', b: 'post-launch', n: 'UX-001-S1 Feed UX — Save/Load Unification + Layout', d: 'Chat header Load/Save/X buttons removed. Save dialog removed. Inline save-prompt-row handles all prompt saves. Intel-section (Your Market + Pro Tip) moved above search-mode-toggle — persists across Filters/Chat modes. Chat-extracted filters populate filter builder pills (what/where/who/pay/level). Source: chat metadata + via Chat badge. Saved filter spacing fix (sf-del 28px, margin-right 8px, sf-right padding-left 8px). UX-004 already fixed (QA-FIX modal). v8.26. 46 tests.', p: 100, e: '3h' },
-{ s: 'todo', b: 'post-launch', n: 'UX-001-S2 Feed UX — Pagination', d: 'Replace infinite scroll (Load more) with proper page-based pagination. 50 per page, page controls, DOM replacement, showing X-Y of Z.', p: 0, e: '4h' },
+{ s: 'done', b: 'post-launch', n: 'UX-001-S2 Feed UX — Pagination', d: 'Replaced inline Load More with renderPagination(). #feed-pagination container. Showing X–Y of Z summary. Previous/Next buttons + smart page numbers with ellipsis. Scroll-to-top on page change. CSS: feed-pagination, fp-btn, fp-active, fp-ellipsis. SPA PaginationControls.tsx rewritten (onPageChange, buildPageRange). v8.27. 49 tests.', p: 100, e: '4h' },
 { s: 'todo', b: 'post-launch', n: 'UX-001-S3 Feed UX — Universal Filter Browser', d: 'Extend Browse button to WHAT, SKILLS, DEPT, LEVEL, JD CONTAINS. MV + generic browser component refactor. Top 200 values per dimension from live data.', p: 0, e: '5h' },
 { s: 'done', b: 'post-launch', n: 'FA-010 PostHog Feed Instrumentation', d: 'Feed Accuracy Sprint Phase 0. 4 PostHog events in searchJobs(): feed_search_completed (21 properties), feed_zero_results, feed_page_turn, feed_search_error. Tracks US-Only leakage, content match baseline, client-side filter impact, search latency. Dashboard spec. 48hr soak before Phase 1. 61 tests. v7.84.', p: 100, e: '4-6h' },
 { s: 'done', b: 'post-launch', n: 'FA-001 Content Search — What Pills', d: 'Feed Accuracy Sprint Phase 1. What pills search title OR content_tsv (GIN index, wfts/websearch). What NOT pills + global exclusions exclude from BOTH title AND content. Atomic positive+negative. Feature flag feed_content_search. PostHog content_search_enabled segmentation property. v6.40 migration. 42 tests. v7.86.', p: 100, e: '10-14h' },

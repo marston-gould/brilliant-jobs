@@ -1822,6 +1822,40 @@
     .job-action-btn.hide-btn:hover { border-color: var(--red); color: var(--red); background: var(--red-dim); }
     .job-action-btn.applied-btn { border-color: var(--green); color: var(--green); background: hsla(var(--green-hsl), 0.08); cursor: default; }
 
+    /* UX-006: Feed pagination controls */
+    .feed-pagination {
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      padding: 16px 12px; border-top: 1px solid var(--border);
+    }
+    .feed-pagination:empty { display: none; }
+    .feed-pagination .fp-summary {
+      font-size: 12px; color: var(--text-faint); font-weight: 500;
+    }
+    .feed-pagination .fp-controls {
+      display: flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: center;
+    }
+    .feed-pagination .fp-btn {
+      min-width: 32px; height: 32px; padding: 0 8px;
+      border: 1px solid var(--border); border-radius: 6px;
+      background: var(--bg-card); color: var(--text-dim);
+      font-size: 12px; font-weight: 600; font-family: var(--sans);
+      cursor: pointer; transition: all 0.12s; display: inline-flex;
+      align-items: center; justify-content: center;
+    }
+    .feed-pagination .fp-btn:hover:not(:disabled) {
+      border-color: var(--accent); color: var(--accent); background: hsla(var(--accent-hsl), 0.06);
+    }
+    .feed-pagination .fp-btn:disabled {
+      opacity: 0.3; cursor: default;
+    }
+    .feed-pagination .fp-btn.fp-active {
+      background: var(--accent); color: #fff; border-color: var(--accent); cursor: default;
+    }
+    .feed-pagination .fp-ellipsis {
+      width: 24px; text-align: center; color: var(--text-faint); font-size: 12px;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+
     .source-pill {
       display: inline-flex; align-items: center; padding: 2px 8px;
       border-radius: 4px; font-size: 10px; font-weight: 700;

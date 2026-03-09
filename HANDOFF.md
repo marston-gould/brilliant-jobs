@@ -52,7 +52,35 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**UX-001-S1** — Feed UX Consolidation — Save/Load Unification + Layout Fixes
+**UX-001-S2** — Feed UX Consolidation — Pagination
+- Completed: 2026-03-09
+- Product version bumped: `v8.26` → `v8.27` (JS/CSS/HTML changes — Load More removed, renderPagination added, #feed-pagination container, pagination CSS, SPA PaginationControls rewrite; all HTML surfaces cache-busted)
+- ROADMAP.md updated: UX-001-S2 → ✅
+- roadmap.html updated: UX-001-S2 → `s: 'done'`, p: 100
+- **UX-006 resolved: Infinite scroll replaced with page-based pagination**
+  - **Removed:** Inline "Showing X of Y" + "Load more jobs" + "Back to top" `<tr>` from `renderJobRows()`. Cumulative showing count (misleading) eliminated.
+  - **Added `renderPagination(pageJobCount, total, currentPage)`:** Renders into new `#feed-pagination` container below job table. Shows "Showing 1–50 of 1,325 jobs" with accurate range. Previous/Next buttons with disabled state. Smart page number buttons via `_buildPageRange()` — shows first, last, current ±1, with ellipsis for gaps. Active page highlighted with `fp-active` class.
+  - **Scroll to top:** `searchJobs(page)` calls `scrollIntoView({ behavior: 'smooth', block: 'start' })` on `#job-table` when `page > 0`.
+  - **CSS:** 7 new classes in `src/input.css` — `.feed-pagination`, `.fp-summary`, `.fp-controls`, `.fp-btn`, `.fp-btn:hover`, `.fp-active`, `.fp-ellipsis`. Empty pagination auto-hides (`:empty { display: none }`).
+  - **`_buildPageRange(current, total)` helper:** Returns array of page numbers with '...' ellipsis. ≤7 pages shows all; >7 shows first, last, current±1 with ellipsis gaps. Sorted, deduped via Set.
+  - **SPA parity:** `PaginationControls.tsx` rewritten — `pageJobCount` + `onPageChange(page)` props (removed `showing`, `onLoadMore`, `onBackToTop`, `MAX_FEED_ROWS`). Same `buildPageRange` helper. Uses `fp-btn`/`fp-active`/`fp-ellipsis` CSS classes. `JobTable.tsx` updated (`onPageChange` replaces `onLoadMore`/`onBackToTop`). `FeedPage.tsx` passes `onPageChange={(p) => actions.setPage(p)}`.
+  - **`renderPagination` exported to `window`** for SPA bridge access.
+- **Pod team:** Lead Platform Eng + System Architect—Scalability (primary), Chief Architect + Evolvability Strategist (reviewers)
+- **Created:**
+  - `tests/ux-001-s2-pagination.test.js` — 49 validation tests (9 sections)
+- **Modified:**
+  - `dashboard.html` — `#feed-pagination` container added below job table
+  - `js/job-feed.js` — Load More removed from renderJobRows, renderPagination + _buildPageRange added, scroll-to-top on page change
+  - `src/input.css` — Pagination CSS (7 classes)
+  - `src/app/pages/dashboard/feed/components/PaginationControls.tsx` — Rewritten for page-based nav
+  - `src/app/pages/dashboard/feed/components/JobTable.tsx` — onPageChange prop
+  - `src/app/pages/dashboard/feed/FeedPage.tsx` — onPageChange wiring
+  - `styles.css` — Tailwind rebuild
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `ROADMAP.md` — UX-001-S2 → ✅
+  - `roadmap.html` — UX-001-S2 → done/100
+- **Tests:** 49 UX-001-S2 validation tests (all passing)
 - Completed: 2026-03-09
 - Product version bumped: `v8.25` → `v8.26` (JS/CSS/HTML changes — chat header buttons removed, save dialog removed, intel-section moved, applyChatFilters pill population, source:chat metadata, via Chat badge, sf-del spacing; all HTML surfaces cache-busted)
 - ROADMAP.md updated: UX-001-S1 → ✅
@@ -1287,7 +1315,8 @@ No specific session queued. FB-PAYL feature build is COMPLETE (S1 ✅, S2 ✅, S
 **Phase S is COMPLETE.** All 29 sessions (SA-001 through SA-029) plus SA-023b are done.
 **Phase REM is COMPLETE.** All 5 sessions (REM-001 through REM-005) are done.
 **FB-PAYL is COMPLETE.** All 4 sessions (FB-PAYL-S1 through FB-PAYL-S4) are done. PAYL operational in production with Stripe integration.
-**UX-001-S1 is COMPLETE.** Save/Load unification + layout fixes done. UX-001-S2 (Pagination) and UX-001-S3 (Universal Browser) remain.
+**UX-001-S1 is COMPLETE.** Save/Load unification + layout fixes done. 
+**UX-001-S2 is COMPLETE.** Pagination done. UX-001-S3 (Universal Browser) remains.
 
 Pending work streams (Marston to prioritize):
 - **Stripe configuration:** Create PAYL product in Stripe dashboard, configure setup_intent flow with PAYL-specific metadata. Requires Marston Stripe access.
@@ -1331,7 +1360,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.26`** | **UX-001-S1: Feed UX Save/Load Unification + Layout Fixes** |
+| **Product (BJ_VERSION)** | **`v8.27`** | **UX-001-S2: Feed UX Pagination** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
