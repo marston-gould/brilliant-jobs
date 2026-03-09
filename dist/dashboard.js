@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.01';
+var BJ_VERSION = 'v8.02';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -2693,6 +2693,8 @@ function compareVersions(installed, required) {
 
 async function checkExtensionStatus() {
   try {
+    // QA-FIX: Guard against auth race — currentUser may be null at startup
+    if (!currentUser || !currentUser.id) return;
     const profile = await safeQuery(() => sb.from('profiles').select('last_scan_at, scanner_running, scanner_today_visited, scanner_today_limit, extension_version')
       .eq('id', currentUser.id).single(), { label: 'app:profiles', fallback: null });
 
@@ -2722,10 +2724,13 @@ async function checkExtensionStatus() {
       if (typeof window.renderConnectionStatus === 'function') window.renderConnectionStatus();
 
       // POD3-GS: BUG-7 — Toggle unified connected/disconnected containers
-      if (isActive && !needsUpdate) {
+      if (isActive) {
         if (extConnDiv) extConnDiv.style.display = '';
         if (extDiscDiv) extDiscDiv.style.display = 'none';
-        if (extInstanceLabel) extInstanceLabel.textContent = 'v' + (profile.extension_version || '—');
+        // QA-FIX: Only show version if we have one, hide "v—" entirely
+        if (extInstanceLabel) {
+          extInstanceLabel.textContent = profile.extension_version ? 'v' + profile.extension_version : '';
+        }
         const timeStr = lastScan.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
         if (extDetailConn) extDetailConn.textContent = profile.scanner_running
           ? 'Active now · last synced at ' + timeStr
@@ -2771,6 +2776,8 @@ async function checkExtensionStatus() {
   } catch(e) { reportError('app:ignore', e); }
 }
 checkExtensionStatus();
+// QA-FIX: Retry quickly in case first call hit null currentUser (auth race)
+setTimeout(checkExtensionStatus, 3000);
 setInterval(checkExtensionStatus, 60000);
 
 // Saved Jobs card → navigate to Pipeline

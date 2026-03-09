@@ -913,7 +913,7 @@
       width: 40px; height: 40px; border-radius: 10px;
       display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
-    .setup-int-body { padding: 20px 22px; flex: 1; text-align: center; }
+    .setup-int-body { padding: 20px 22px; flex: 1; text-align: center; display: flex; flex-direction: column; justify-content: flex-start; }
     /* POD3-GS: BUG-9 — uniform button sizing across all integration cards */
     .setup-connect-btn { min-width: 140px; padding: 6px 16px; font-size: 11px; text-align: center; }
     @media (max-width: 700px) {

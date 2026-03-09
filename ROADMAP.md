@@ -3421,3 +3421,15 @@ Phase S is complete when ALL of the following are true:
 | QA-SETUP-DOT | Setup nav dot green when only extension connected (and it's off) | ✅ | Two fixes: (1) Extension isActive threshold tightened from 24h to 2h when scanner_running=false. (2) Setup nav dot now driven by renderConnectionStatus aggregate — green only if all 4 connected, amber if partial, grey if none. No longer just mirrors extension state. |
 | QA-EXT-VERSION | Extension version check outdated (2.17.0 vs current 2.23.0) | ✅ | REQUIRED_EXTENSION_VERSION bumped from 2.17.0 to 2.23.0. This will trigger the update banner for users on older extension versions. |
 | QA-EXT-TOKEN | Token refresh failed, 0 pending 0 visited | ⚠️ | Runtime issue — extension needs re-authentication. The cron is working but the auth token expired. Marston needs to: (1) Click extension popup, (2) Sign out and sign back in, (3) Extension will re-sync auth token. |
+
+## QA Bug Tracker — Round 6 (Console Error Root Cause)
+
+| ID | Item | Status | Notes |
+|----|------|--------|-------|
+| QA-AUTH-RACE | checkExtensionStatus crashes: "Cannot read properties of null (reading 'id')" | ✅ | currentUser null at startup. Added guard + 3s retry. This was the root cause of extension dot showing gray, "v—" version, and Setup dot being wrong. |
+| QA-EXT-VERSION-DISPLAY | Extension shows "v—" even when connected | ✅ | Version display hides entirely when null instead of showing "v—". Also shows connected container even when needsUpdate=true (was hiding it). |
+| QA-PREVIEW-COL | Preview Job Spec column covers Match at narrow widths | ✅ | Column reduced from 130px to 100px, label shortened to "Preview JD". |
+| QA-CARD-ALIGN | Setup card buttons not vertically aligned | ✅ | setup-int-body now uses flex-direction:column for consistent vertical layout across cards. |
+| QA-HEADER | Saved Searches header doesn't mention prompts | ✅ | Changed to "Saved Searches & Prompts". |
+| QA-EXT-AUTOSUBMIT | Extension auto-submit "vanished" | ⚠️ | Code is intact — all 17 ATS handlers + auto-apply are in repo. The extension needs re-authentication (expired refresh token). After re-auth, all functionality resumes. |
+| QA-EXT-TOKEN | Token refresh code removed? | ⚠️ | Code is intact in background.ts lines 251-302. The refresh_token itself expired (Supabase 60-day expiry). Needs manual re-login in extension popup. |
