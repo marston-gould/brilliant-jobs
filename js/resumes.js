@@ -288,7 +288,7 @@ function renderResumes() {
           <button onclick="downloadResume(${i})" title="Download">\u2b07</button>
           <button onclick="renameResume(${i})" title="Rename">\u270e</button>
           <button onclick="archiveResume(${i})" title="Archive">\ud83d\udce6</button>
-          <button class="danger" onclick="confirmDeleteResume(${i})" title="Delete">\u2715 Delete</button>
+          <button class="danger" onclick="confirmDeleteResume(${i})" title="Delete">\u2715</button>
         </div>
       </div>
       <div class="rc-grade-slot" id="rc-grade-${i}" style="display:none;"></div>
@@ -418,7 +418,7 @@ function renderResumeArchive(archivedResumes) {
       </div>
       <div style="font-family:var(--mono);font-size:10px;color:var(--text-faint);white-space:nowrap;">${jobsApplied} apps · ${rate} rate</div>
       <button class="rc-btn rc-download" onclick="unarchiveResume(${i})">Restore</button>
-      <button class="rc-btn rc-delete" onclick="confirmDeleteResume(${i})">Delete</button>
+      <button class="rc-btn rc-delete" onclick="confirmDeleteResume(${i})" title="Delete">✕</button>
     </div>`;
   }).join('');
 

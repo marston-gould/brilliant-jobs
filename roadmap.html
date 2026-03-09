@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.99"></script>
+  <script src="/js/version.js?v=v8.00"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2169,6 +2169,7 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'QA Bug Tracker Fixes', d: 'QA Bug Tracker from Marston User Notes. 18 items (2 P0, 8 P1, 6 P2, 2 P3). 14 resolved: QA-001 stats (QA-HOTFIX-001), QA-002 button centering (CSS), QA-004 min salary tab (already fixed), QA-006/007 location normalization (already fixed), QA-008 chat button (PR-003), QA-009 company browser (PR-003), QA-010 sort cache key (new), QA-011 US-Only (FA-009), QA-012 tuning browse TAB_CHUNKS (new), QA-013 levels (QA-HOTFIX-001), QA-014 dismissed jobs (QA-HOTFIX-001), QA-017 nav layout (already fixed), QA-018 credit icon (new). 4 deferred: QA-003 (HOW MUCH split), QA-005 (icons), QA-015/016 (merchandising content). 16 validation tests. v7.97.', p: 100, e: '3h' },
 { s: 'done', b: 'post-launch', n: 'QA Bug Tracker Round 2 — Screenshot Review', d: 'Marston screenshot review fixes. (1) Stats: career pages and companies hiring were same query — companies now uses get_distinct_company_count RPC (v6.44 migration). (2) Rounding: all 3 stats now floor to nearest 1000 for consistency. (3) Pill grouping: incl. no salary grouped with pay pills, incl. remote grouped with where pills instead of floating at end. (4) Delete consistency: job dismiss moved from dedicated left column to right-side actions area, uses sf-del hover-reveal pattern matching saved search delete. Table colspans 9→8. 25 validation tests. v7.98.', p: 100, e: '2h' },
 { s: 'done', b: 'post-launch', n: 'QA Bug Tracker Round 3 — Screenshot Review 2', d: 'Second screenshot review. (1) Delete consistency: chat clear + prompt delete changed from trashcan SVG to ✕ — all 3 surfaces now unified. (2) Days color: threshold <=3 → <=1, only today/1d green. (3) Hero stats: New Today green (was blue), Pipeline blue (was green). (4) Relevancy survey: target changed from missing element to job-table so it stays in feed area. (5) Unified prompt list: saved prompts now appear in saved searches with 💬 separator, numbers, colors, checkboxes triggering search via derived_filters. v6.44 migration deployed. 34 tests. v7.99.', p: 100, e: '2h' },
+{ s: 'done', b: 'post-launch', n: 'QA Bug Tracker Round 4 — Screenshot Review 3', d: 'Third screenshot review. (1) Resume delete: removed Delete text, ✕ only — all surfaces now unified. (2) Survey: tab-aware guard, only shows on Jobs Feed. (3) HOW MUCH: split from one wide row into Min$/Max$ parallel columns matching WHAT/NOT pattern. (4) Generate filters: alert() replaced with modal for all cases (no resumes → Go to Resumes button, resumes without text → extraction pending note). (5) Company browser: null guards + US-Only banner when tuning active. 42 tests. v8.00.', p: 100, e: '2h' },
 
 ];
 

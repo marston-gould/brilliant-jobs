@@ -1,4 +1,4 @@
-var BJ_VERSION = 'v7.99';
+var BJ_VERSION = 'v8.00';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {

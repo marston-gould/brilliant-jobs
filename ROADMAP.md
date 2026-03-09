@@ -3401,3 +3401,13 @@ Phase S is complete when ALL of the following are true:
 | QA-HERO-COLORS | New Today should be green, Pipeline should be blue | ✅ | New Today: changed from inline blue to hs-green. Pipeline: changed from hs-green to new hs-blue class (var(--accent)). |
 | QA-SURVEY | Relevancy question appears between feed and tuning — belongs on feed | ✅ | Survey target changed from nonexistent job-feed-container (fell through to body) to job-table element. Survey now appears within feed area. |
 | QA-PROMPTS | Named prompts should be in saved searches list with number and color | ✅ | Saved prompts now appear in the unified saved searches list with 💬 Chat Prompts separator, continuing filter numbering and colors. Prompt checkboxes trigger search using derived_filters (existing promptDerivedToFilterObj). Click loads prompt in chat, ✕ deletes. |
+
+## QA Bug Tracker — Round 4 (Marston Screenshot Review 3)
+
+| ID | Item | Status | Notes |
+|----|------|--------|-------|
+| QA-DELETE-3 | Resume page has "✕ Delete" text — 4th deletion pattern | ✅ | Removed "Delete" text from both active resume card and archive card. Now just ✕ symbol matching all other surfaces. |
+| QA-SURVEY-2 | Relevancy question showing on Get Started tab — should only show on feed | ✅ | Added page-jobs active check guard. Survey only fires when Jobs Feed tab is visible. |
+| QA-BROWSE | Company browse button doesn't open picker, should filter US companies | ✅ | Added null guards to all browse event listeners. Added US-Only banner in company browser when tuning.usOnly is active. |
+| QA-GENERATE | Generate button shows browser alert() instead of proper modal | ✅ | alert() replaced with modal for all cases. When no resumes exist: modal with "Go to Resumes" button. When resumes exist but no text extracted: shows all resumes with "extraction pending" note. Falls back gracefully. |
+| QA-HOWMUCH | HOW MUCH still one big row — should be split into Min/Max parallel columns | ✅ | Restructured from grid-column:1/-1 span to qb-row-pair with "Min $" and "Max $" as separate columns. Matches WHAT/NOT, WHERE/NOT, WHO/NOT pattern. |

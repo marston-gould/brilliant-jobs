@@ -1448,15 +1448,16 @@ function initAiFilterButton() {
 }
 
 async function startAiFilterSuggest() {
-  // Check if user has any resumes with extracted text
-  var resumesWithText = (typeof resumes !== 'undefined' ? resumes : []).filter(function(r) {
-    return r.extractedText && r.extractedText.length > 100 && !r.archived;
+  // Check if user has any resumes (with or without extracted text)
+  var allResumes = (typeof resumes !== 'undefined' ? resumes : []).filter(function(r) {
+    return !r.archived && r.name;
+  });
+  var resumesWithText = allResumes.filter(function(r) {
+    return r.extractedText && r.extractedText.length > 100;
   });
   
-  if (resumesWithText.length === 0) {
-    alert('Upload a resume first (Resumes tab), then come back to generate a filter.');
-    return;
-  }
+  // QA-FIX: Use the modal (not alert) even when no resumes have text — show all resumes with note
+  var displayResumes = resumesWithText.length > 0 ? resumesWithText : allResumes;
   
   // Show modal
   var modal = document.getElementById('ai-filter-modal');
@@ -1467,20 +1468,34 @@ async function startAiFilterSuggest() {
   document.body.style.overflow = 'hidden';
   footer.style.display = 'none';
 
+  if (displayResumes.length === 0) {
+    // No resumes at all — show upload-only modal
+    meta.textContent = 'Upload a resume to get started';
+    body.innerHTML = '<div style="padding:16px;text-align:center;">' +
+      '<div style="font-size:32px;margin-bottom:8px;opacity:0.3;">📄</div>' +
+      '<div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:4px;">No resumes yet</div>' +
+      '<div style="font-size:12px;color:var(--text-faint);max-width:280px;margin:0 auto;line-height:1.5;margin-bottom:16px;">Upload your resume on the Resumes tab, then come back to generate filters.</div>' +
+      '<button class="btn btn-sm btn-primary" onclick="document.getElementById(\'ai-filter-modal\').style.display=\'none\';document.body.style.overflow=\'\';$$(\'.nav-item\').forEach(n=>n.classList.toggle(\'active\',n.dataset.page===\'resumes\'));$$(\'.page\').forEach(p=>p.classList.toggle(\'active\',p.id===\'page-resumes\'));">Go to Resumes →</button>' +
+      '</div>';
+    return;
+  }
+
   // Build resume picker with upload option
   var pickerHtml = '<div style="padding:16px;">';
   
-  if (resumesWithText.length > 0) {
+  if (displayResumes.length > 0) {
     meta.textContent = 'Choose a resume to analyze';
     pickerHtml += '<div style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Select a resume for AI to analyze and generate job filters:</div>';
-    resumesWithText.forEach(function(r, idx) {
+    displayResumes.forEach(function(r, idx) {
+      var hasText = r.extractedText && r.extractedText.length > 100;
+      var note = hasText ? '' : '<div style="font-size:9px;color:var(--warm);margin-top:2px;">Text extraction pending — will process on selection</div>';
       pickerHtml += '<div style="padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;transition:all 0.1s;display:flex;align-items:center;gap:10px;" ' +
         'onmouseenter="this.style.borderColor=\'var(--accent)\';this.style.background=\'var(--accent-glow)\'" ' +
         'onmouseleave="this.style.borderColor=\'var(--border)\';this.style.background=\'none\'" ' +
         'onclick="window._aiResumeChoice=' + idx + ';_doAiFilterAnalysis();">' +
         '<div style="width:32px;height:32px;border-radius:6px;background:hsla(var(--accent-hsl),0.1);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">' + (r.name.match(/\.pdf$/i) ? 'PDF' : 'DOC') + '</div>' +
         '<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (r.name || 'Resume') + '</div>' +
-        '<div style="font-size:10px;color:var(--text-faint);">' + (r.size || '') + (r.uploadedAt ? ' · ' + r.uploadedAt : '') + '</div></div>' +
+        '<div style="font-size:10px;color:var(--text-faint);">' + (r.size || '') + (r.uploadedAt ? ' · ' + r.uploadedAt : '') + '</div>' + note + '</div>' +
         '<span style="font-size:18px;color:var(--accent);opacity:0.5;">→</span></div>';
     });
     pickerHtml += '<div style="margin:16px 0 8px;border-top:1px solid var(--border);padding-top:12px;font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Or upload a new resume</div>';
@@ -1505,7 +1520,7 @@ async function startAiFilterSuggest() {
   body.innerHTML = pickerHtml;
   
   // If only one resume, skip picker
-  if (resumesWithText.length === 1) {
+  if (displayResumes.length === 1) {
     window._aiResumeChoice = 0;
     _doAiFilterAnalysis();
     return;
@@ -1572,12 +1587,34 @@ function continueAiFilterSuggest() {
 }
 
 async function _doAiFilterAnalysis() {
-  var resumesWithText = (typeof resumes !== 'undefined' ? resumes : []).filter(function(r) {
-    return r.extractedText && r.extractedText.length > 100 && !r.archived;
+  var allResumes = (typeof resumes !== 'undefined' ? resumes : []).filter(function(r) {
+    return !r.archived && r.name;
   });
+  var resumesWithText = allResumes.filter(function(r) {
+    return r.extractedText && r.extractedText.length > 100;
+  });
+  // QA-FIX: Fall back to all resumes, not just those with text
+  var displayResumes = resumesWithText.length > 0 ? resumesWithText : allResumes;
   var idx = window._aiResumeChoice || 0;
-  var resume = resumesWithText[idx];
+  var resume = displayResumes[idx];
   if (!resume) return;
+  
+  // If resume doesn't have extracted text, show error in modal
+  if (!resume.extractedText || resume.extractedText.length < 100) {
+    var modal = document.getElementById('ai-filter-modal');
+    var body = document.getElementById('ai-filter-body');
+    var meta = document.getElementById('ai-filter-meta');
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    meta.textContent = resume.name || 'Resume';
+    body.innerHTML = '<div style="text-align:center;padding:40px 20px;">' +
+      '<div style="font-size:32px;margin-bottom:12px;opacity:0.5;">⏳</div>' +
+      '<div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:8px;">Resume text not yet extracted</div>' +
+      '<div style="font-size:12px;color:var(--text-faint);max-width:320px;margin:0 auto;line-height:1.5;">' +
+      'This resume needs text extraction before AI can analyze it. Open it on the <strong>Resumes</strong> tab first, then come back here.</div>' +
+      '<button class="btn btn-sm btn-primary" style="margin-top:16px;" onclick="document.getElementById(\'ai-filter-modal\').style.display=\'none\';document.body.style.overflow=\'\';">OK</button></div>';
+    return;
+  }
   
   // Show modal with loading state
   var modal = document.getElementById('ai-filter-modal');

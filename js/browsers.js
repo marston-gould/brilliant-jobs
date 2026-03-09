@@ -108,9 +108,9 @@ $('#cb-back-btn').addEventListener('click', () => {
   }
 });
 
-// Browse icons
-$('#browse-who-btn').addEventListener('click', () => openCompanyBrowser('include'));
-$('#browse-who-not-btn').addEventListener('click', () => openCompanyBrowser('exclude'));
+// Browse icons — null guards for lazy-loaded context
+if ($('#browse-who-btn')) $('#browse-who-btn').addEventListener('click', () => openCompanyBrowser('include'));
+if ($('#browse-who-not-btn')) $('#browse-who-not-btn').addEventListener('click', () => openCompanyBrowser('exclude'));
 if ($('#browse-tuning-co-btn')) $('#browse-tuning-co-btn').addEventListener('click', () => openCompanyBrowser('exclude', 'tuning'));
 
 // ---- Location Browser ----
@@ -568,6 +568,18 @@ $('#cb-collection-name').addEventListener('input', () => {
 async function loadCompanyBrowser() {
   const list = $('#cb-list');
   list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-faint);">Loading companies…</div>';
+
+  // QA-FIX: Show US-Only indicator when tuning is active
+  var usOnlyBanner = $('#cb-us-only-banner');
+  if (!usOnlyBanner) {
+    usOnlyBanner = document.createElement('div');
+    usOnlyBanner.id = 'cb-us-only-banner';
+    usOnlyBanner.style.cssText = 'display:none;padding:8px 14px;margin-bottom:8px;font-size:11px;color:var(--accent);background:hsla(var(--accent-hsl),0.06);border:1px solid hsla(var(--accent-hsl),0.15);border-radius:8px;';
+    usOnlyBanner.textContent = '🇺🇸 US-Only filter active — only US-based jobs from these companies will appear in your feed';
+    list.parentElement.insertBefore(usOnlyBanner, list);
+  }
+  var tuning = safeReadLS('bj_tuning', {});
+  usOnlyBanner.style.display = tuning.usOnly ? '' : 'none';
 
   try {
     // Load all companies from ats_companies — uses cachedQuery (v3.84, pre-warmed)

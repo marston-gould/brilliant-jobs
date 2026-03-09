@@ -108,9 +108,9 @@ describe('QA Bug Tracker — New Fixes (This Session)', () => {
 });
 
 describe('QA Bug Tracker — Build Verification', () => {
-  test('Product version is v7.99', () => {
+  test('Product version is v8.00', () => {
     const version = read('js/version.js');
-    expect(version).toContain('7.99');
+    expect(version).toContain('8.00');
   });
 
   test('Dashboard bundle exists and is rebuilt', () => {
@@ -248,5 +248,64 @@ describe('QA Bug Tracker — Round 3 Fixes (Screenshot Review 2)', () => {
   test('Prompt separator CSS exists', () => {
     const css = read('src/input.css');
     expect(css).toContain('.sf-prompt-separator');
+  });
+});
+
+describe('QA Bug Tracker — Round 4 Fixes (Screenshot Review 3)', () => {
+  test('Resume delete: no "Delete" text, just ✕ symbol', () => {
+    const res = read('js/resumes.js');
+    // Active resume card should have ✕ only, not "✕ Delete"
+    expect(res).not.toMatch(/onclick="confirmDeleteResume.*>.*Delete<\/button>/);
+    expect(res).toMatch(/confirmDeleteResume.*>✕<\/button>/);
+  });
+
+  test('Survey only shows on Jobs Feed tab (not Get Started)', () => {
+    const ms = read('js/micro-surveys.js');
+    expect(ms).toContain("getElementById('page-jobs')");
+    expect(ms).toContain('classList.contains(\'active\')');
+  });
+
+  test('HOW MUCH split into two columns (Min $ | Max $)', () => {
+    const html = read('dashboard.html');
+    // Should have separate query-builder-pay-min and query-builder-pay-max
+    expect(html).toContain('query-builder-pay-min');
+    expect(html).toContain('query-builder-pay-max');
+    // Should NOT have grid-column:1/-1 spanning full width
+    expect(html).not.toMatch(/query-builder-pay.*grid-column.*1\/-1/);
+    // Labels should be "Min $" and "Max $"
+    expect(html).toContain('Min $');
+    expect(html).toContain('Max $');
+  });
+
+  test('Generate filters: no alert(), uses modal for all cases', () => {
+    const loc = read('js/location.js');
+    expect(loc).not.toMatch(/alert\('Upload a resume/);
+    // Should show modal with "Go to Resumes" button
+    expect(loc).toContain('Go to Resumes');
+  });
+
+  test('Generate filters: handles resumes without extractedText', () => {
+    const loc = read('js/location.js');
+    // displayResumes fallback for resumes without text
+    expect(loc).toContain('displayResumes');
+    expect(loc).toContain('Text extraction pending');
+  });
+
+  test('Company browser: null guards on browse button listeners', () => {
+    const br = read('js/browsers.js');
+    // All browse button listeners should have null guards
+    expect(br).toMatch(/if.*browse-who-btn.*addEventListener/);
+    expect(br).toMatch(/if.*browse-who-not-btn.*addEventListener/);
+  });
+
+  test('Company browser: US-Only banner when active', () => {
+    const br = read('js/browsers.js');
+    expect(br).toContain('cb-us-only-banner');
+    expect(br).toContain('US-Only filter active');
+  });
+
+  test('Product version is v8.00', () => {
+    const version = read('js/version.js');
+    expect(version).toContain('8.00');
   });
 });

@@ -337,6 +337,9 @@
   window.trackSearchForSurvey = function(filterName, resultCount) {
     _searchCount++;
     var sessionMinutes = (Date.now() - _sessionStart) / 60000;
+    // QA-FIX: Only show relevancy survey when Jobs Feed tab is active
+    var jobsPage = document.getElementById('page-jobs');
+    if (!jobsPage || !jobsPage.classList.contains('active')) return;
     if (_searchCount >= 10 || sessionMinutes >= 5) {
       showSearchRelevance(filterName, resultCount);
     }
