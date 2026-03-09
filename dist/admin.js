@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v7.84';
+var BJ_VERSION = 'v7.85';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -1245,6 +1245,12 @@ function reportError(label: string, error: unknown, extra?: Record<string, unkno
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', function() {
     if (_errorBatch.length > 0) _flushErrorBatch();
+    // Flush pending user data to Supabase before page close (prevents PII data loss)
+    if (_udPendingKeys.size > 0 && typeof _flushUserData === 'function') _flushUserData();
+  });
+  // Also flush when tab becomes hidden (more reliable for async ops than beforeunload)
+  document.addEventListener('visibilitychange', function() {
+    if (document.hidden && _udPendingKeys.size > 0 && typeof _flushUserData === 'function') _flushUserData();
   });
 }
 

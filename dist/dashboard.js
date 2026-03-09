@@ -3321,6 +3321,9 @@ const HIDE_REASONS = [
   { key: 'other', label: 'Other — not relevant to me' },
 ];
 
+// FA-001: Content search flag — evaluated once per searchJobs() call
+var _contentSearchEnabled = false;
+
 function debouncedSearchJobs() {
   clearTimeout(searchTimeout);
   searchTimeout = setTimeout(() => searchJobs(), 300);
@@ -3540,32 +3543,51 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
   // Load global tuning settings
   const tuning = safeReadLS('bj_tuning', {});
 
-  // WHAT — title matching via ilike + full-text search (ilike uses trigram index)
-  // All What pills are OR'd together (each pill is one keyword)
+  // WHAT — title matching via ilike (trigram index) + FA-001 content_tsv (GIN index)
+  // All What pills are OR'd together: title ilike OR content_tsv websearch match
+  // FA-001: When content search is enabled, each keyword matches against BOTH
+  // title (ilike) and content_tsv (wfts/websearch). The GIN index on content_tsv
+  // prevents seq scans. Controlled by 'feed_content_search' feature flag.
   const allWhatClauses = w.flatMap(pill => {
     return pill.values.flatMap(v => {
       const safe = v.replace(/[,()]/g, '').trim();
       if (!safe) return [];
+      if (_contentSearchEnabled) {
+        // FA-001: OR title match with full-text content match
+        return [
+          `title.ilike.%${safe}%`,
+          `content_tsv.wfts(english).${safe}`,
+        ];
+      }
       return [
         `title.ilike.%${safe}%`,
-      ]; // wfts removed v7.13 — trigram ilike sufficient, wfts caused timeouts
+      ]; // Pre-FA-001 fallback: title-only (wfts removed v7.13)
     });
   });
   if (allWhatClauses.length > 0) query = query.or(allWhatClauses.join(','));
 
-  // WHAT NOT — title not ilike
+  // WHAT NOT — title not ilike + FA-001 content_tsv NOT
+  // FA-001: Atomic — never ship positive content search without negative.
+  // Each NOT pill excludes from title AND content (when flag enabled).
   for (const pill of wnot) {
     for (const v of pill.values) {
       const term = v.trim().replace(/^nor\s+/i, '');
       if (term) {
         query = query.not('title', 'ilike', `%${term}%`);
+        // FA-001: Also exclude from job description content
+        if (_contentSearchEnabled) {
+          query = query.not('content_tsv', 'wfts(english)', term);
+        }
       }
     }
   }
-  // Global title exclusions
+  // Global title exclusions (FA-001: + content exclusions when flag enabled)
   for (const pill of (tuning.titleExcludes || [])) {
     for (const v of (pill.values || [])) {
       query = query.not('title', 'ilike', `%${v}%`);
+      if (_contentSearchEnabled) {
+        query = query.not('content_tsv', 'wfts(english)', v);
+      }
     }
   }
 
@@ -4044,6 +4066,12 @@ async function searchJobs(page = 0) {
   </tr>`).join('');
 
   try {
+    // FA-001: Evaluate content search flag once per search (async, before query building)
+    if (typeof isFeatureEnabled === 'function') {
+      try { _contentSearchEnabled = await isFeatureEnabled('feed_content_search', false); }
+      catch (e) { _contentSearchEnabled = false; }
+    }
+
     // FA-010: Capture search start time for latency measurement
     var _searchStartMs = Date.now();
 
@@ -4451,7 +4479,8 @@ async function searchJobs(page = 0) {
         latency_ms: _faLatencyMs,
         is_zero_results: totalCount === 0,
         null_loc_country_count: _faNullLocCountry,
-        content_match_count: _faContentMatchCount
+        content_match_count: _faContentMatchCount,
+        content_search_enabled: _contentSearchEnabled  // FA-001: segment pre/post content search
       });
 
       // Distinct zero-results event (alert trigger)
