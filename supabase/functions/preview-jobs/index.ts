@@ -76,10 +76,13 @@ serve(async (req: Request) => {
     const sb = createClient(SB_URL, SB_KEY);
     let q = sb.from('ats_jobs')
       .select('title, salary_min, salary_max, loc_type, location, company_name')
-      .neq('status', 'closed');
+      .eq('status', 'open'); // FA-003: .eq('open') for consistency with dashboard + backfill
 
+    // FA-003: Search title OR content_tsv (aligns with FA-001 dashboard pattern)
+    // content_tsv uses GIN index via websearch full-text search (wfts)
+    // NULL-safe: jobs with NULL content_tsv still matched by title ilike
     if (keyword) {
-      q = q.ilike('title', `%${keyword}%`);
+      q = q.or(`title.ilike.%${keyword}%,content_tsv.wfts(english).${keyword}`);
     }
 
     if (location) {

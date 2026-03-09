@@ -52,6 +52,22 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**FA-003** — preview-jobs Content Search + Landing Page
+- Completed: 2026-03-08
+- Product version bumped: `v7.87` → `v7.88` (EF change — preview-jobs content_tsv search; all HTML surfaces cache-busted)
+- ROADMAP.md updated: FA-003 → ✅
+- roadmap.html updated: FA-003 → `s: 'done'`, p: 100
+- **preview-jobs EF:** Keyword search changed from `ilike('title', ...)` to `.or('title.ilike.%kw%,content_tsv.wfts(english).kw')` — aligns with FA-001 dashboard pattern. GIN index used via websearch FTS.
+- **Status filter:** Changed `.neq('status', 'closed')` to `.eq('status', 'open')` for consistency with dashboard + backfill functions.
+- **Landing page:** No client changes needed — landing-app.js sends keyword to preview-jobs, which now returns content-matched results. More accurate job counts for prospects.
+- **Created:**
+  - `tests/fa-003-preview-jobs-content-search.test.js` — 21 validation tests (5 sections)
+- **Modified:**
+  - `supabase/functions/preview-jobs/index.ts` — content_tsv search + status filter fix
+  - `ROADMAP.md` — FA-003 → ✅
+  - `roadmap.html` — FA-003 → done/100
+- **Tests:** 21 FA-003 validation tests (all passing)
+
 **FA-002** — Backfill content_tsv + Enrichment Cron
 - Completed: 2026-03-08
 - Product version bumped: `v7.86` → `v7.87` (JS changes — job-feed.js NULL-safe NOT queries; enrich-jd-ai retry tracking; all HTML surfaces cache-busted)
@@ -850,18 +866,18 @@ None.
 
 ## Next Session
 
-**Feed Accuracy Sprint is ACTIVE.** FA-010 (Phase 0: Instrumentation), FA-001 (Phase 1: Content Search), and FA-002 (Phase 2: Backfill + Enrichment Cron) are complete.
+**Feed Accuracy Sprint is ACTIVE.** FA-010 (Phase 0: Instrumentation), FA-001 (Phase 1: Content Search), FA-002 (Phase 2: Backfill + Enrichment Cron), and FA-003 (preview-jobs Content Search) are complete.
 
-**FA-003: preview-jobs Content Search + Landing Page** — 2-3h
-- **Entry gate:** FA-001 content search deployed. content_tsv column exists (FA-002). preview-jobs EF exists.
-- **Fix:** Extend preview-jobs Edge Function to search content_tsv in addition to title. Ensure landing page job previews benefit from full-text content matching. Align with FA-001 query patterns.
-- **Files:** `supabase/functions/preview-jobs/index.ts`, landing page JS
-- **Exit gate:** preview-jobs returns content-matched results. Landing page search uses content_tsv. Tests passing.
-
-**FA-009: US-Only Filter Leakage Fix** — 3-4h (can run in parallel)
+**FA-009: US-Only Filter Leakage Fix** — 3-4h (independent — parallel with Phase 1)
 - **Entry gate:** FA-010 instrumentation deployed with US-Only leakage tracking.
 - **Fix:** Fix US-Only filter to properly exclude non-US jobs. PostHog data from FA-010 identifies leakage rate.
-- **Exit gate:** Zero US-Only filter leakage in PostHog after fix.
+- **Files:** `js/job-feed.js` (buildFilterQuery US-Only logic)
+- **Exit gate:** Zero US-Only filter leakage in PostHog after fix. Tests passing.
+
+**FA-004: Remove 500-Row Cap + Real Pagination** — 5-7h (requires FA-001)
+- **Entry gate:** FA-001 content search deployed.
+- **Fix:** Remove MAX_FEED_ROWS 500 cap. Implement real server-side pagination with LIMIT/OFFSET.
+- **Exit gate:** Feed returns all matching results across pages. No truncation.
 
 **Phase S is COMPLETE.** All 29 sessions (SA-001 through SA-029) plus SA-023b are done.
 **Phase REM is COMPLETE.** All 5 sessions (REM-001 through REM-005) are done.
