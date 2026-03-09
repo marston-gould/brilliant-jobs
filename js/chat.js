@@ -189,6 +189,9 @@ function initChatMode() {
       // Hide sync banner if visible
       var syncBanner = document.getElementById('chat-sync-banner');
       if (syncBanner) syncBanner.style.display = 'none';
+      // QA-FIX: Hide inline save row on clear
+      var saveRow = document.getElementById('save-prompt-row');
+      if (saveRow) saveRow.classList.add('u-hidden');
     });
   }
 }
@@ -708,6 +711,12 @@ async function sendChatMessage() {
 
   _chatSending = false;
 
+  // QA-FIX: Show inline save prompt row once there's a conversation
+  var savePromptRow = document.getElementById('save-prompt-row');
+  if (savePromptRow && _chatSession.messages.length > 0 && !_currentPromptId) {
+    savePromptRow.classList.remove('u-hidden');
+  }
+
   // Session 6: Remove sending state
   var sendBtnEnd = document.getElementById('chat-send-btn');
   if (sendBtnEnd) sendBtnEnd.classList.remove('sending');
@@ -917,6 +926,77 @@ function initSavedPrompts() {
       }
     }
   });
+
+  // QA-FIX: Inline save prompt button (matches filter save pattern)
+  var inlineSaveBtn = document.getElementById('save-prompt-inline-go');
+  if (inlineSaveBtn) {
+    inlineSaveBtn.addEventListener('click', async function() {
+      var nameInput = document.getElementById('save-prompt-inline-name');
+      var name = nameInput ? nameInput.value.trim() : '';
+      if (!name) {
+        nameInput.style.borderColor = 'var(--red)';
+        nameInput.focus();
+        return;
+      }
+      nameInput.style.borderColor = '';
+      inlineSaveBtn.disabled = true;
+      inlineSaveBtn.textContent = 'Saving...';
+      try {
+        var derivedFilters = {};
+        for (var i = _chatSession.messages.length - 1; i >= 0; i--) {
+          if (_chatSession.messages[i].filters) {
+            derivedFilters = _chatSession.messages[i].filters;
+            break;
+          }
+        }
+        var conversation = _chatSession.getHistory();
+        var session = await sb.auth.getSession();
+        if (!session.data.session) {
+          if (typeof showToast === 'function') showToast('Please sign in', 'error');
+          return;
+        }
+        var token = session.data.session.access_token;
+        var userId = session.data.session.user.id;
+        var resp = await fetch(SUPABASE_URL + '/rest/v1/saved_prompts', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token,
+            'apikey': SUPABASE_KEY,
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify({
+            user_id: userId,
+            name: name,
+            color_index: Math.floor(Math.random() * PROMPT_COLORS.length),
+            conversation: conversation,
+            derived_filters: derivedFilters,
+            is_active: true
+          })
+        });
+        if (!resp.ok) throw new Error('Save failed: ' + resp.status);
+        var saved = await resp.json();
+        if (Array.isArray(saved) && saved.length > 0) {
+          _currentPromptId = saved[0].id;
+        }
+        await loadSavedPromptsFromDB();
+        if (typeof showToast === 'function') showToast('Prompt saved: ' + name, 'success');
+        updateLoadedPromptIndicator();
+        // Hide the save row now that it's saved
+        var row = document.getElementById('save-prompt-row');
+        if (row) row.classList.add('u-hidden');
+        nameInput.value = '';
+        // Re-render saved searches to show new prompt
+        if (typeof renderSavedFilters === 'function') renderSavedFilters();
+      } catch(err) {
+        reportError('chat:inline-save', err);
+        if (typeof showToast === 'function') showToast('Failed to save prompt', 'error');
+      } finally {
+        inlineSaveBtn.disabled = false;
+        inlineSaveBtn.textContent = 'Save';
+      }
+    });
+  }
 
   // Load saved prompts from Supabase
   loadSavedPromptsFromDB();
