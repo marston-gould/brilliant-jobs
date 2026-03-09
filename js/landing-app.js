@@ -655,7 +655,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
           if (window.posthog) posthog.capture('preview_results_shown', {
             total_jobs: data.total, has_salary_data: !!data.median_salary,
-            queries_remaining: data.queries_remaining
+            queries_remaining: data.queries_remaining,
+            content_search_enabled: !!data.content_search_enabled
           });
 
           if (data.queries_remaining === 0) {

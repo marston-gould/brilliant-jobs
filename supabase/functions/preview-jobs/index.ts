@@ -2,6 +2,7 @@
 // Edge Function: public job preview for landing page
 // Rate limited: 2 queries per session token (30-min expiry)
 // Returns obfuscated data — no company names, no IDs, truncated titles
+// FA-003: Keyword search hits both title (ilike) and content_tsv (wfts/GIN index)
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
@@ -78,8 +79,17 @@ serve(async (req: Request) => {
       .select('title, salary_min, salary_max, loc_type, location, company_name')
       .neq('status', 'closed');
 
+    // FA-003: Content search — match title OR content_tsv (aligns with FA-001 dashboard pattern)
+    // Uses websearch full-text search (wfts) against the GIN-indexed content_tsv column.
+    // Falls back to title-only ilike if keyword contains characters that break wfts syntax.
     if (keyword) {
-      q = q.ilike('title', `%${keyword}%`);
+      // Sanitize keyword for wfts: strip quotes and special FTS operators
+      const safeFts = keyword.replace(/['"<>:!&|()\\]/g, ' ').replace(/\s+/g, ' ').trim();
+      if (safeFts) {
+        q = q.or(`title.ilike.%${keyword}%,content_tsv.wfts(english).${safeFts}`);
+      } else {
+        q = q.ilike('title', `%${keyword}%`);
+      }
     }
 
     if (location) {
@@ -145,6 +155,7 @@ serve(async (req: Request) => {
       titles: shuffled,
       queries_remaining: MAX_QUERIES - session.queries,
       session_token: token,
+      content_search_enabled: true, // FA-003: content_tsv search active
     }), { status: 200, headers: CORS_HEADERS });
 
   } catch (e) {
