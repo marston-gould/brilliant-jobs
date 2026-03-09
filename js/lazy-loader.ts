@@ -45,7 +45,7 @@
     'jobs':         ['keywords', 'deferred'],
     'resumes':      ['deferred', 'keywords'],
     'pipeline':     ['pipeline'],
-    'tuning':       ['tuning'],
+    'tuning':       ['tuning', 'keywords'],
     'stats':        ['deferred'],
     'feedback':     ['deferred'],
     'ghost':        ['deferred'],

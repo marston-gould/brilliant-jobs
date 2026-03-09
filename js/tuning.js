@@ -118,6 +118,8 @@ function saveTuning() {
   tuningSettings.industryExcludes = tuningIndExclPills;
   saveUserData('bj_tuning', JSON.stringify(tuningSettings));
   updateTuningStatusDot();
+  // QA-011: Flag that tuning changed — feed will re-search on next tab switch
+  window._tuningDirty = true;
 }
 
 function updateTuningStatusDot() {

@@ -1796,7 +1796,7 @@ window.requiredTierFor = requiredTier;
     'jobs':         ['keywords', 'deferred'],
     'resumes':      ['deferred', 'keywords'],
     'pipeline':     ['pipeline'],
-    'tuning':       ['tuning'],
+    'tuning':       ['tuning', 'keywords'],
     'stats':        ['deferred'],
     'feedback':     ['deferred'],
     'ghost':        ['deferred'],
@@ -2528,6 +2528,13 @@ $$('.nav-item').forEach(item => {
       // Tabs without explicit init get skeleton hidden after a short delay (content is static HTML)
       if (!['stats','feedback','ghost','referrals','resumes'].includes(_tab) && window.bjSkeleton) {
         setTimeout(function() { bjSkeleton.hide(_tab); }, 150);
+      }
+      // QA-011: Re-search feed when tuning changed (e.g. US-Only toggle)
+      if (_tab === 'feed' && window._tuningDirty) {
+        window._tuningDirty = false;
+        if (typeof searchJobs === 'function') {
+          try { searchJobs(0); } catch(e) { if (typeof reportError === 'function') reportError('app:tuning-refresh', e); }
+        }
       }
     };
     // Load required chunks then init
@@ -4352,7 +4359,9 @@ async function searchJobs(page = 0) {
     if (filtersToRun.length === 1 && !_needsServerTrustFilter) {
       // Single filter — FA-004: real server-side pagination via range()
       // FA-006: Only uses PostgREST path when trust/AI filters are NOT active
-      const feedCacheKey = 'feed:' + _filterCacheKey('single', filtersToRun[0]) + ':p' + page;
+      // QA-010: Include sort stack in cache key so sort changes bust the cache
+      const _sortKey = jobSortStack.map(s => s.field + (s.asc ? 'A' : 'D')).join(',');
+      const feedCacheKey = 'feed:' + _filterCacheKey('single', filtersToRun[0]) + ':s' + _sortKey + ':p' + page;
       const feedResult = await cachedQuery(feedCacheKey, async function() {
         let query = sb.from('ats_jobs').select('*', { count: 'exact' });
         query = buildFilterQuery(filtersToRun[0], query, filtersToRun[0]._locationIds);
@@ -5076,14 +5085,23 @@ function cleanLocationPart(part) {
   s = s.replace(/United States of America\s*[-–—]\s*/gi, '');
   s = s.replace(/United States\s*[-–—]\s*/gi, '');
   // "Remote - US" → "remote, us"
-  s = s.replace(/Remote\s*[-–—]\s*/gi, 'remote, ');
+  s = s.replace(/Remote\s*[-–—]\s*/gi, 'Remote, ');
+  // QA-006: "country (remote)" → "Remote, Country" pattern
+  s = s.replace(/^([A-Za-z][A-Za-z\s]+?)\s*\(remote\)$/i, 'Remote, $1');
   // Trailing "United States of America" or "United States"
   s = s.replace(/,?\s*United States of America/gi, '');
   s = s.replace(/,?\s*United States/gi, '');
   // Clean up
   s = s.replace(/^[,\s]+|[,\s]+$/g, '');
-  // If just country code left, normalize
-  if (/^us$/i.test(s)) s = 'us';
+  // QA-006: Normalize "usa" → "US", bare "us" → "US"
+  s = s.replace(/\busa\b/gi, 'US');
+  if (/^us$/i.test(s)) s = 'US';
+  // QA-006: Normalize "remote, us" → "Remote, US" (title-case Remote + uppercase country code)
+  s = s.replace(/^remote,\s*/i, 'Remote, ');
+  // QA-006: Title-case country names after "Remote, " (e.g. "Remote, mexico" → "Remote, Mexico")
+  s = s.replace(/^(Remote, )([a-z])/i, function(m, prefix, first) {
+    return prefix + first.toUpperCase();
+  });
   // Convert full state names to abbreviations: "Pasadena, California" → "Pasadena, CA"
   const commaIdx = s.lastIndexOf(',');
   if (commaIdx > 0) {
@@ -12853,10 +12871,8 @@ function renderPayPills() {
 $('#qb-input-pay-min').addEventListener('keydown', e => {
   if (e.key === 'Enter') {
     e.preventDefault();
-    if ($('#qb-input-pay-min').value && !$('#qb-input-pay-max').value) {
-      // Min only — focus max to let user set a range, or press Enter again to apply as min+
-      $('#qb-input-pay-max').focus();
-    } else if ($('#qb-input-pay-min').value || $('#qb-input-pay-max').value) {
+    // QA-004: Always apply on Enter — min-only becomes "$Xk+", no auto-tab to max
+    if ($('#qb-input-pay-min').value || $('#qb-input-pay-max').value) {
       applyPayFilter();
     }
   }
@@ -15319,6 +15335,8 @@ function saveTuning() {
   tuningSettings.industryExcludes = tuningIndExclPills;
   saveUserData('bj_tuning', JSON.stringify(tuningSettings));
   updateTuningStatusDot();
+  // QA-011: Flag that tuning changed — feed will re-search on next tab switch
+  window._tuningDirty = true;
 }
 
 function updateTuningStatusDot() {

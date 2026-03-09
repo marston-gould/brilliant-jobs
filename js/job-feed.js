@@ -1048,7 +1048,9 @@ async function searchJobs(page = 0) {
     if (filtersToRun.length === 1 && !_needsServerTrustFilter) {
       // Single filter — FA-004: real server-side pagination via range()
       // FA-006: Only uses PostgREST path when trust/AI filters are NOT active
-      const feedCacheKey = 'feed:' + _filterCacheKey('single', filtersToRun[0]) + ':p' + page;
+      // QA-010: Include sort stack in cache key so sort changes bust the cache
+      const _sortKey = jobSortStack.map(s => s.field + (s.asc ? 'A' : 'D')).join(',');
+      const feedCacheKey = 'feed:' + _filterCacheKey('single', filtersToRun[0]) + ':s' + _sortKey + ':p' + page;
       const feedResult = await cachedQuery(feedCacheKey, async function() {
         let query = sb.from('ats_jobs').select('*', { count: 'exact' });
         query = buildFilterQuery(filtersToRun[0], query, filtersToRun[0]._locationIds);
@@ -1772,14 +1774,23 @@ function cleanLocationPart(part) {
   s = s.replace(/United States of America\s*[-–—]\s*/gi, '');
   s = s.replace(/United States\s*[-–—]\s*/gi, '');
   // "Remote - US" → "remote, us"
-  s = s.replace(/Remote\s*[-–—]\s*/gi, 'remote, ');
+  s = s.replace(/Remote\s*[-–—]\s*/gi, 'Remote, ');
+  // QA-006: "country (remote)" → "Remote, Country" pattern
+  s = s.replace(/^([A-Za-z][A-Za-z\s]+?)\s*\(remote\)$/i, 'Remote, $1');
   // Trailing "United States of America" or "United States"
   s = s.replace(/,?\s*United States of America/gi, '');
   s = s.replace(/,?\s*United States/gi, '');
   // Clean up
   s = s.replace(/^[,\s]+|[,\s]+$/g, '');
-  // If just country code left, normalize
-  if (/^us$/i.test(s)) s = 'us';
+  // QA-006: Normalize "usa" → "US", bare "us" → "US"
+  s = s.replace(/\busa\b/gi, 'US');
+  if (/^us$/i.test(s)) s = 'US';
+  // QA-006: Normalize "remote, us" → "Remote, US" (title-case Remote + uppercase country code)
+  s = s.replace(/^remote,\s*/i, 'Remote, ');
+  // QA-006: Title-case country names after "Remote, " (e.g. "Remote, mexico" → "Remote, Mexico")
+  s = s.replace(/^(Remote, )([a-z])/i, function(m, prefix, first) {
+    return prefix + first.toUpperCase();
+  });
   // Convert full state names to abbreviations: "Pasadena, California" → "Pasadena, CA"
   const commaIdx = s.lastIndexOf(',');
   if (commaIdx > 0) {

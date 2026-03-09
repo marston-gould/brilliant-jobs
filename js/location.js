@@ -856,10 +856,8 @@ function renderPayPills() {
 $('#qb-input-pay-min').addEventListener('keydown', e => {
   if (e.key === 'Enter') {
     e.preventDefault();
-    if ($('#qb-input-pay-min').value && !$('#qb-input-pay-max').value) {
-      // Min only — focus max to let user set a range, or press Enter again to apply as min+
-      $('#qb-input-pay-max').focus();
-    } else if ($('#qb-input-pay-min').value || $('#qb-input-pay-max').value) {
+    // QA-004: Always apply on Enter — min-only becomes "$Xk+", no auto-tab to max
+    if ($('#qb-input-pay-min').value || $('#qb-input-pay-max').value) {
       applyPayFilter();
     }
   }

@@ -236,14 +236,17 @@
             <div class="nav-user-plan">Free Plan</div>
           </div>
         </div>
-        <div class="credit-balance" id="credit-balance" onclick="openPricingModal()" title="Click to purchase credits">
-          <svg class="credit-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M8 10h8M8 14h6"/></svg>
+        <!-- QA-017: Theme toggle on same row as credits -->
+        <div style="display:flex;align-items:center;gap:0;margin:0 -4px;">
+        <div class="credit-balance" id="credit-balance" onclick="openPricingModal()" title="Click to purchase credits" style="flex:1;min-width:0;">
+          <svg class="credit-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
           <span class="credit-balance-count credit-green" id="credit-balance-badge" aria-label="Credit balance: 0">0</span>
           <span class="credit-balance-label">credits</span>
         </div>
-        <div class="theme-toggle" onclick="BJ_Theme.cycle()" role="button" aria-label="Toggle theme" tabindex="0">
+        <div class="theme-toggle" onclick="BJ_Theme.cycle()" role="button" aria-label="Toggle theme" tabindex="0" style="flex:0 0 auto;padding:8px 10px;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-toggle-icon"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20V2z"/></svg>
           <span class="theme-toggle-label">Auto</span>
+        </div>
         </div>
         <button class="btn-logout" id="logout-btn">Log Out</button>
         <div class="nav-copyright" style="font-size:10px;color:var(--text-faint);text-align:center;margin-top:8px;">&copy; <span class="bj-year"></span> Brilliant Jobs</div>
@@ -750,7 +753,7 @@
                   </div>
                   <button class="btn btn-sm btn-secondary setup-connect-btn" onclick="disconnectGmail()">Disconnect Gmail</button>
                 </div>
-                <div id="gmail-setup-disconnected" style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                <div id="gmail-setup-disconnected" style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px;">
                   <button class="btn btn-sm btn-primary setup-connect-btn" id="gmail-setup-connect-btn" onclick="connectGmail()">Connect Gmail</button>
                   <span class="u-meta">Read-only access</span>
                 </div>
@@ -781,7 +784,7 @@
                   </div>
                   <button class="btn btn-sm btn-secondary setup-connect-btn" id="gcal-disconnect-btn" onclick="disconnectGoogleCalendar()">Disconnect Calendar</button>
                 </div>
-                <div id="gcal-setup-disconnected" style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                <div id="gcal-setup-disconnected" style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px;">
                   <button class="btn btn-sm btn-primary setup-connect-btn" id="gcal-connect-btn" onclick="connectGoogleCalendar()">Connect Calendar</button>
                   <span class="u-meta">Read-only access</span>
                 </div>
@@ -812,7 +815,7 @@
                   </div>
                   <button class="btn btn-sm btn-secondary setup-connect-btn" id="gdrive-disconnect-btn" onclick="disconnectGoogleDrive()">Disconnect Drive</button>
                 </div>
-                <div id="gdrive-setup-disconnected" style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                <div id="gdrive-setup-disconnected" style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px;">
                   <button class="btn btn-sm btn-primary setup-connect-btn" id="gdrive-connect-btn" onclick="connectGoogleDrive()">Connect Drive</button>
                   <span class="u-meta">Read-only access</span>
                 </div>

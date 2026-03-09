@@ -449,6 +449,13 @@ $$('.nav-item').forEach(item => {
       if (!['stats','feedback','ghost','referrals','resumes'].includes(_tab) && window.bjSkeleton) {
         setTimeout(function() { bjSkeleton.hide(_tab); }, 150);
       }
+      // QA-011: Re-search feed when tuning changed (e.g. US-Only toggle)
+      if (_tab === 'feed' && window._tuningDirty) {
+        window._tuningDirty = false;
+        if (typeof searchJobs === 'function') {
+          try { searchJobs(0); } catch(e) { if (typeof reportError === 'function') reportError('app:tuning-refresh', e); }
+        }
+      }
     };
     // Load required chunks then init
     if (typeof bjEnsureTab === 'function') {

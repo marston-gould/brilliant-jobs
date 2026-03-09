@@ -3358,3 +3358,27 @@ Phase S is complete when ALL of the following are true:
 | FA-005 | Server-Side Multi-Filter Merge — FA-F06. | 6-8h | ✅ | Postgres function search_jobs_multi: UNION ALL + GROUP BY dedup + server-side sort/paginate. _build_filter_where helper mirrors all pill types (What/Where/When/Who/Pay/Skills/Level/JD/Dept + FA-009 US-Only + FA-002 NULL-safe content). Feature flag feed_server_merge with client-side fallback. Client serializeFilterForRPC serializes pill objects → JSONB for RPC. SPA useFeedSearch.ts mirrored. PostHog server_merge_enabled property. 58 tests. v7.92. |
 | FA-006 | Server-Side Trust/AI Filters — FA-F05. | 6-10h | ✅ | v7.93. Trust/AI filters moved server-side via search_jobs_multi. EXISTS-based WHERE clauses + LEFT JOIN LATERAL for badge data. Single-filter routes through RPC when filters active. Feature flag feed_server_trust_filter. content_type bug fixed (job_description → jd). 76 tests. |
 | FA-007 | SPA Feed Parity — FA-F03. | 6-8h | ✅ | Full parity achieved: useFeedSearch.ts buildFilterQuery now matches legacy job-feed.js. Added: status=open filter, What/What NOT content_tsv search (FA-001 parity, NULL-safe FA-002), title excludes content negation, hourly exclusion, staffing exclusion, industry exclusions, skills pills (extracted_skills.cs), department pills (extracted_department), pay pill.min/pill.max with overlap+OR logic, level→extracted_seniority fix, JD→content_tsv+english fix, pill value sanitization, nor-prefix stripping. Content search flag now checked in single-filter path. 43 parity tests. v7.94. |
+
+## QA Bug Tracker (Marston's User Notes)
+
+| ID | Item | Sev | Status | Notes |
+|----|------|-----|--------|-------|
+| QA-HOTFIX-001 | Console Error Cascade Fix — migratePipelineData guard, renderConnectionStatus guard, Get Started stats fix, stale dist rebuild. | P0 | ✅ | 6 console errors resolved. v7.96. 2026-03-08. |
+| QA-001 | Stats show blank (open positions, career pages, companies hiring). | P1 | ✅ | Fixed in QA-HOTFIX-001 — is_active→status=open, get_active_company_count RPC removed. |
+| QA-002 | Blue connect buttons not horizontally centered in Setup cards. | P2 | ✅ | text-align:center added to .setup-int-body. v7.97. |
+| QA-003 | HOW MUCH should be two separate sections (Min and Max). | P2 | 🔲 | Design decision — requires Marston input on visual layout. |
+| QA-004 | Min salary auto-tabs to Max on input — should stay in Min. | P1 | ✅ | Fixed — Enter on pay-min calls applyPayFilter() directly, no auto-tab. |
+| QA-005 | Trust Level and AI Content iconography don't fit the design. | P2 | 🔲 | Design decision — needs SVG icon replacements from Marston. |
+| QA-006 | "remote, us" and "remote, usa" not normalized. | P1 | ✅ | cleanLocationPart() handles all patterns: usa→US, Remote title-case, country (remote) inversion. |
+| QA-007 | International remote locations not normalized. | P1 | ✅ | Same fix as QA-006 — country names title-cased after "Remote, ". |
+| QA-008 | Chat button is unclickable. | P0 | ✅ | Fixed in PR-003 — 'jobs' tab missing from TAB_CHUNKS, chat.js never loaded. |
+| QA-009 | Clicking WHO Browse no longer opens company page. | P1 | ✅ | Fixed in PR-003 — browsers.js in keywords chunk, TAB_CHUNKS added for jobs tab. |
+| QA-010 | Clicking column sorter does not sort. | P1 | ✅ | Feed cache key now includes sort stack — sort changes bust the cache. v7.97. |
+| QA-011 | US-Only toggle doesn't remove foreign jobs. | P0 | ✅ | Fixed in FA-009 (4-tier smart filter) + FA-007 (SPA parity). |
+| QA-012 | Browse buttons (location, industry, company) go to blank area on Tuning. | P1 | ✅ | TAB_CHUNKS: 'keywords' added to tuning tab — browsers.js now loads. v7.97. |
+| QA-013 | Under Title, all career levels are missing on Tuning. | P2 | ✅ | Fixed in QA-HOTFIX-001 — migratePipelineData crash killed tuning.js init before renderLevelTable(). |
+| QA-014 | Under "jobs you've dismissed" — dismissed job missing on Tuning. | P1 | ✅ | Same root cause as QA-013 — init crash before updatePoorMatchSuggestions(). |
+| QA-015 | "YOUR MARKET" banner redundant with stats bar. | P2 | 🔲 | Content decision — Marston wants referral/defer payment messaging. |
+| QA-016 | White merchandising should encourage referrals or defer payment. | P2 | 🔲 | Content decision — requires Marston copy + referral page wireup. |
+| QA-017 | Theme toggle and Credits stacked — should be side by side. | P2 | ✅ | Flex row wrapper applied. Already fixed in prior session. |
+| QA-018 | Unknown icon before the number in Credits. | P3 | ✅ | Replaced coin/token SVG with standard dollar sign icon. v7.97. |

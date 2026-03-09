@@ -52,6 +52,43 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**QA-BUGTRACKER** — QA Bug Tracker Fixes (Marston's User Notes)
+- Completed: 2026-03-08
+- Product version bumped: `v7.96` → `v7.97` (JS/CSS/HTML changes — job-feed.js sort cache key, lazy-loader.ts tuning TAB_CHUNKS, input.css setup-int-body centering, dashboard.html credit icon; all HTML surfaces cache-busted)
+- **18 items total from Marston's QA notes. 14 resolved (2 P0, 7 P1, 3 P2, 2 P3). 4 deferred to Marston for design/content decisions.**
+- **New fixes this session:**
+  - QA-010 (P1, Sort not working): Feed cache key at line 1051 of job-feed.js did not include jobSortStack — sort changes returned cached (stale) results. Added `_sortKey` (field+direction) to feedCacheKey.
+  - QA-012 (P1, Tuning browse buttons blank): TAB_CHUNKS in lazy-loader.ts had `'tuning': ['tuning']` — missing `'keywords'` chunk where browsers.js lives. Browse button click handlers never registered. Fixed to `'tuning': ['tuning', 'keywords']`.
+  - QA-002 (P2, Setup buttons not centered): Added `text-align: center` to `.setup-int-body` in input.css.
+  - QA-018 (P3, Unknown credit icon): Replaced abstract coin/token SVG with standard dollar sign icon in dashboard.html.
+- **Already resolved by prior sessions (verified):**
+  - QA-001 (P1): QA-HOTFIX-001 — is_active→status=open, get_active_company_count RPC replaced
+  - QA-004 (P1): Already fixed — Enter on pay-min calls applyPayFilter(), no auto-tab
+  - QA-006/007 (P1): Already fixed — cleanLocationPart() handles all remote+country normalization
+  - QA-008 (P0): PR-003 — 'jobs' TAB_CHUNKS entry for deferred chunk (chat.js)
+  - QA-009 (P1): PR-003 — 'jobs' TAB_CHUNKS entry for keywords chunk (browsers.js)
+  - QA-011 (P0): FA-009 (4-tier smart filter) + FA-007 (SPA parity)
+  - QA-013 (P2): QA-HOTFIX-001 — migratePipelineData typeof guard unblocked tuning init
+  - QA-014 (P1): QA-HOTFIX-001 — same crash blocked updatePoorMatchSuggestions()
+  - QA-017 (P2): Already fixed — flex row wrapper for theme toggle + credits
+- **Deferred (require Marston design/content input):**
+  - QA-003 (P2): HOW MUCH split into separate Min/Max sections — visual layout decision
+  - QA-005 (P2): Trust/AI iconography — needs replacement SVG icons
+  - QA-015 (P2): YOUR MARKET banner redundant — needs content replacement
+  - QA-016 (P2): White merchandising → referral CTA — needs copy + page wireup
+- **Created:**
+  - `tests/qa-bugtracker-fixes.test.js` — 16 validation tests (3 sections: previously fixed verification, new fixes, build verification)
+- **Modified:**
+  - `js/job-feed.js` — QA-010: _sortKey added to feedCacheKey
+  - `js/lazy-loader.ts` — QA-012: 'keywords' added to tuning TAB_CHUNKS
+  - `src/input.css` — QA-002: text-align:center on .setup-int-body
+  - `dashboard.html` — QA-018: dollar sign SVG replaces coin icon
+  - `styles.css` — Tailwind rebuild
+  - `dist/dashboard.min.js` — rebuilt
+  - `ROADMAP.md` — QA Bug Tracker section added
+  - `roadmap.html` — QA Bug Tracker entry added
+- **Tests:** 16 QA Bug Tracker validation tests (all passing)
+
 **QA-HOTFIX-001** — Console Error Cascade Fix
 - Completed: 2026-03-08
 - Product version bumped: `v7.95` → `v7.96` (JS fixes — migratePipelineData guard, renderConnectionStatus guard, Get Started stats fix; all HTML surfaces cache-busted)
@@ -1040,7 +1077,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.96`** | **QA-HOTFIX-001 — Console Error Cascade Fix** |
+| **Product (BJ_VERSION)** | **`v7.97`** | **QA Bug Tracker Fixes — Sort cache, tuning browse TAB_CHUNKS, button centering, credit icon** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
