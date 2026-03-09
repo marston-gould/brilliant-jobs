@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.08';
+var BJ_VERSION = 'v8.09';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -17220,7 +17220,7 @@ function renderResumes() {
       <!-- AI Analysis Panel (expanded on click) -->
       <div class="ai-panel" id="ai-panel-${i}">
         <div id="ai-panel-content-${i}">
-          ${cachedScore ? buildReadinessSide(i, cachedScore) : (assignedIds.length > 0 && !isPlaceholder
+          ${cachedScore && typeof buildReadinessSide === 'function' ? buildReadinessSide(i, cachedScore) : (assignedIds.length > 0 && !isPlaceholder
             ? '<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:20px 0;"><button class="btn btn-sm" id="rc-score-' + i + '" onclick="event.stopPropagation();handleScoreClick(' + i + ')" style="background:var(--accent);color:#fff;font-weight:600;padding:6px 18px;">Score Resume</button></div>'
             : '<div style="padding:16px 0;text-align:center;">' + (isPlaceholder
               ? '<div style="font-size:12px;color:var(--warm);cursor:pointer;" onclick="event.stopPropagation();replaceResumePlaceholder(' + i + ')">Upload a file to enable scoring</div>'
@@ -22040,8 +22040,7 @@ function refreshStatsCharts() {
 // === js/billing.js ===
 // js/billing.js — Subscription page, credit balance, pricing, checkout flows
 // v3.72: Full subscription tab + credit merchandising
-
-var SUPABASE_FUNCTIONS_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1';
+// QA-FIX: Uses SUPABASE_URL from globals.ts (shell chunk) instead of local var
 
 // ─── State ───
 var _creditBalance = 0;
@@ -22344,7 +22343,7 @@ async function startCheckout(mode, tier, packQty) {
   if (mode === 'subscription') body.tier = tier;
   if (mode === 'credit_pack') body.pack_qty = packQty;
   try {
-    const res = await fetch(SUPABASE_FUNCTIONS_URL + '/create-checkout', {
+    const res = await fetch(SUPABASE_URL + '/functions/v1/create-checkout', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -22362,7 +22361,7 @@ async function openCustomerPortal() {
   const token = session?.data?.session?.access_token;
   if (!token) { window.location.href = '/'; return; }
   try {
-    const res = await fetch(SUPABASE_FUNCTIONS_URL + '/manage-subscription', {
+    const res = await fetch(SUPABASE_URL + '/functions/v1/manage-subscription', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
@@ -22430,7 +22429,7 @@ async function triggerAutoRefill() {
     var token = session?.data?.session?.access_token;
     if (!token) return;
     console.log('[Billing] Triggering auto-refill');
-    var res = await fetch(SUPABASE_FUNCTIONS_URL + '/auto-refill', {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/auto-refill', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ user_id: currentUser.id }),
@@ -22505,7 +22504,7 @@ async function setupHireFee() {
 
   try {
     showToast('Setting up payment authorization...', 'info');
-    var res = await fetch(SUPABASE_FUNCTIONS_URL + '/hire-fee', {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/hire-fee', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'setup' }),
@@ -22591,7 +22590,7 @@ async function loadHireFeeStatus() {
     var session = await sb.auth.getSession();
     var token = session?.data?.session?.access_token;
     if (!token) return;
-    var res = await fetch(SUPABASE_FUNCTIONS_URL + '/hire-fee', {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/hire-fee', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'status' }),
@@ -22628,7 +22627,7 @@ async function confirmHireFee(jobId, jobTitle, salaryEstimate) {
     if (!token) return false;
 
     showToast('Processing hire fee...', 'info');
-    var res = await fetch(SUPABASE_FUNCTIONS_URL + '/hire-fee', {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/hire-fee', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'charge', amount_cents: feeAmountCents, job_id: jobId }),
