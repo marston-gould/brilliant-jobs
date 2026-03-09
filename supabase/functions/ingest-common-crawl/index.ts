@@ -39,11 +39,12 @@ const ATHENA_OUTPUT = "s3://brilliantjobs-athena-results/";
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
-const MAX_URLS_PER_FETCH = 25;        // URLs processed per fetch invocation (EF memory constrained)
+const MAX_URLS_PER_FETCH = 20;         // URLs processed per fetch invocation
 const MAX_WARC_RECORD_SIZE = 512_000;  // 512KB page size cap (memory safety for Deno EFs)
 const ATHENA_POLL_INTERVAL_MS = 2000;
 const ATHENA_MAX_POLLS = 60;           // 2 min max wait for Athena query
-const FETCH_TIMEOUT_MS = 10_000;       // 10s per WARC record fetch
+const FETCH_TIMEOUT_MS = 8_000;        // 8s per page fetch (tight to keep EF responsive)
+const FETCH_CONCURRENCY = 5;           // Concurrent live page fetches (EF memory constrained)
 
 // ─── Clients ─────────────────────────────────────────────────────────────────
 
@@ -97,10 +98,12 @@ serve(withCorrelation("ingest-common-crawl", async (req, logger) => {
         return await handleStatus(body, logger);
       case "run_batch":
         return await handleRunBatch(body, logger);
+      case "drain_queue":
+        return await handleDrainQueue(body, logger);
       default:
         return jsonResponse({
           error: `Unknown action: ${action}`,
-          available: ["discover", "fetch", "status", "run_batch"],
+          available: ["discover", "fetch", "status", "run_batch", "drain_queue"],
         }, 400);
     }
   } catch (error) {
@@ -301,17 +304,13 @@ async function handleFetch(params: FetchParams, logger: ReturnType<typeof import
     return jsonResponse({ batch_id: batchId, message: "No pending URLs", processed: 0 });
   }
 
-  // Process sequentially to control memory usage (web page fetch is memory-variable)
-  const processLimit = Math.min(urls.length, 3); // Cap at 3 per invocation for memory safety
-  logger.info("Processing URLs", { batchId, count: processLimit, queueSize: urls.length });
+  // Process concurrently for throughput — FETCH_CONCURRENCY workers in parallel
+  const processUrls = urls.slice(0, limit);
+  logger.info("Processing URLs concurrently", { batchId, count: processUrls.length, concurrency: FETCH_CONCURRENCY, queueSize: urls.length });
 
-  // Mark as fetching (only the ones we'll process)
-  const processUrls = urls.slice(0, processLimit);
+  // Mark all as fetching upfront
   const urlIds = processUrls.map((u: Record<string, unknown>) => u.id);
-  await supabase
-    .from("cc_url_queue")
-    .update({ status: "fetching" })
-    .in("id", urlIds);
+  await supabase.from("cc_url_queue").update({ status: "fetching" }).in("id", urlIds);
 
   let fetched = 0;
   let parsed = 0;
@@ -319,72 +318,80 @@ async function handleFetch(params: FetchParams, logger: ReturnType<typeof import
   let failed = 0;
   const stagingRecords: Record<string, unknown>[] = [];
 
-  for (const urlRecord of processUrls) {
-    try {
-      // 1. Fetch live web page (lighter than WARC archive)
-      const html = await fetchJobPage(urlRecord.url, logger);
+  // Process in concurrent batches of FETCH_CONCURRENCY
+  for (let i = 0; i < processUrls.length; i += FETCH_CONCURRENCY) {
+    const concurrentBatch = processUrls.slice(i, i + FETCH_CONCURRENCY);
+    const batchResults = await Promise.allSettled(
+      concurrentBatch.map(async (urlRecord: Record<string, unknown>) => {
+        try {
+          const html = await fetchJobPage(urlRecord.url as string, logger);
+          if (!html) {
+            await markUrlFailed(urlRecord.id as string, "Page unavailable (timeout, non-HTML, or error)");
+            return { ok: false };
+          }
 
-      if (!html) {
-        await markUrlFailed(urlRecord.id, "Page unavailable (timeout, non-HTML, or error)");
+          const jobData = parseJobPosting(html, urlRecord.url as string);
+          if (!jobData) {
+            await markUrlFailed(urlRecord.id as string, "No job posting data found in HTML");
+            return { ok: false };
+          }
+
+          const stagingRecord = {
+            batch_id: batchId,
+            ingestion_status: "pending",
+            greenhouse_id: `cc-${hashString(urlRecord.url as string).slice(0, 32)}`,
+            company_name: jobData.company_name,
+            company_slug: slugify(jobData.company_name ?? ""),
+            title: jobData.title,
+            location: jobData.location,
+            url: urlRecord.url,
+            content: jobData.description?.slice(0, 50000),
+            salary_min: jobData.salary_min,
+            salary_max: jobData.salary_max,
+            salary_raw: jobData.salary_raw,
+            salary_currency: jobData.salary_currency ?? "USD",
+            is_remote: jobData.is_remote ?? false,
+            industry: jobData.industry,
+            loc_city: jobData.loc_city,
+            loc_state: jobData.loc_state,
+            loc_country: jobData.loc_country,
+            loc_display: jobData.loc_display,
+            source_url: urlRecord.url,
+            warc_file: urlRecord.warc_filename,
+            warc_offset: urlRecord.warc_offset,
+            warc_length: urlRecord.warc_length,
+            extraction_method: jobData.extraction_method,
+            raw_html_hash: hashString(html),
+            url_hash: urlRecord.url_hash,
+            fetched_at: new Date().toISOString(),
+            parsed_at: new Date().toISOString(),
+          };
+
+          await supabase.from("cc_url_queue")
+            .update({ status: "parsed", processed_at: new Date().toISOString() })
+            .eq("id", urlRecord.id);
+
+          return { ok: true, record: stagingRecord };
+        } catch (error) {
+          logger.warn("URL processing failed", { url: (urlRecord.url as string).slice(0, 100), error: String(error) });
+          await markUrlFailed(urlRecord.id as string, String(error));
+          return { ok: false };
+        }
+      })
+    );
+
+    for (const result of batchResults) {
+      if (result.status === "fulfilled") {
+        if (result.value.ok && result.value.record) {
+          stagingRecords.push(result.value.record);
+          fetched++;
+          parsed++;
+        } else {
+          failed++;
+        }
+      } else {
         failed++;
-        continue;
       }
-      fetched++;
-
-      // 2. Parse HTML for job data
-      const jobData = parseJobPosting(html, urlRecord.url);
-
-      if (!jobData) {
-        await markUrlFailed(urlRecord.id, "No job posting data found in HTML");
-        failed++;
-        continue;
-      }
-      parsed++;
-
-      // 3. Build staging record
-      const stagingRecord = {
-        batch_id: batchId,
-        ingestion_status: "pending",
-        greenhouse_id: `cc-${hashString(urlRecord.url).slice(0, 32)}`,
-        company_name: jobData.company_name,
-        company_slug: slugify(jobData.company_name ?? ""),
-        title: jobData.title,
-        location: jobData.location,
-        url: urlRecord.url,
-        content: jobData.description?.slice(0, 50000), // Cap at 50K chars
-        salary_min: jobData.salary_min,
-        salary_max: jobData.salary_max,
-        salary_raw: jobData.salary_raw,
-        salary_currency: jobData.salary_currency ?? "USD",
-        is_remote: jobData.is_remote ?? false,
-        industry: jobData.industry,
-        loc_city: jobData.loc_city,
-        loc_state: jobData.loc_state,
-        loc_country: jobData.loc_country,
-        loc_display: jobData.loc_display,
-        source_url: urlRecord.url,
-        warc_file: urlRecord.warc_filename,
-        warc_offset: urlRecord.warc_offset,
-        warc_length: urlRecord.warc_length,
-        extraction_method: jobData.extraction_method,
-        raw_html_hash: hashString(html),
-        url_hash: urlRecord.url_hash,
-        fetched_at: new Date().toISOString(),
-        parsed_at: new Date().toISOString(),
-      };
-
-      stagingRecords.push(stagingRecord);
-
-      // Update queue status
-      await supabase
-        .from("cc_url_queue")
-        .update({ status: "parsed", processed_at: new Date().toISOString() })
-        .eq("id", urlRecord.id);
-
-    } catch (error) {
-      logger.warn("URL processing failed", { url: urlRecord.url, error: String(error) });
-      await markUrlFailed(urlRecord.id, String(error));
-      failed++;
     }
   }
 
@@ -528,8 +535,138 @@ async function handleRunBatch(params: RunBatchParams, logger: ReturnType<typeof 
   });
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Web Fetching (live page fetch — replaces WARC archive approach)
+// ─── Action: Drain Queue ──────────────────────────────────────────────────────
+// Process pending URLs across all batches — designed for frequent cron invocation.
+// Each call processes up to MAX_URLS_PER_FETCH URLs from the global pending queue.
+// Cron calls this every 5 minutes to steadily drain the 378K+ URL backlog.
+
+interface DrainQueueParams {
+  limit?: number;   // URLs per invocation (default MAX_URLS_PER_FETCH)
+  us_only?: boolean; // Filter to US domains only (default true)
+}
+
+async function handleDrainQueue(
+  params: DrainQueueParams,
+  logger: ReturnType<typeof import("../_shared/logger.ts").createLogger>
+) {
+  const limit = Math.min(params.limit ?? MAX_URLS_PER_FETCH, 200);
+
+  // Get oldest pending URLs across all batches (FIFO — process newer crawls first)
+  const { data: urls, error: fetchErr } = await supabase
+    .from("cc_url_queue")
+    .select("*")
+    .eq("status", "pending")
+    .order("created_at", { ascending: false }) // newest crawls first
+    .limit(limit);
+
+  if (fetchErr) {
+    return jsonResponse({ error: "Failed to read queue", detail: fetchErr.message }, 500);
+  }
+
+  if (!urls || urls.length === 0) {
+    return jsonResponse({ message: "Queue empty — nothing to process", processed: 0 });
+  }
+
+  // Mark as fetching
+  const urlIds = urls.map((u: Record<string, unknown>) => u.id);
+  await supabase.from("cc_url_queue").update({ status: "fetching" }).in("id", urlIds);
+
+  let fetched = 0, parsed = 0, inserted = 0, failed = 0;
+  const stagingRecords: Record<string, unknown>[] = [];
+
+  // Process concurrently
+  for (let i = 0; i < urls.length; i += FETCH_CONCURRENCY) {
+    const concurrentBatch = urls.slice(i, i + FETCH_CONCURRENCY);
+    const batchResults = await Promise.allSettled(
+      concurrentBatch.map(async (urlRecord: Record<string, unknown>) => {
+        try {
+          const html = await fetchJobPage(urlRecord.url as string, logger);
+          if (!html) {
+            await markUrlFailed(urlRecord.id as string, "Page unavailable");
+            return { ok: false };
+          }
+          const jobData = parseJobPosting(html, urlRecord.url as string);
+          if (!jobData) {
+            await markUrlFailed(urlRecord.id as string, "No job data in HTML");
+            return { ok: false };
+          }
+          await supabase.from("cc_url_queue")
+            .update({ status: "parsed", processed_at: new Date().toISOString() })
+            .eq("id", urlRecord.id);
+          return {
+            ok: true,
+            record: {
+              batch_id: urlRecord.batch_id,
+              ingestion_status: "pending",
+              greenhouse_id: `cc-${hashString(urlRecord.url as string).slice(0, 32)}`,
+              company_name: jobData.company_name,
+              company_slug: slugify(jobData.company_name ?? ""),
+              title: jobData.title,
+              location: jobData.location,
+              url: urlRecord.url,
+              content: jobData.description?.slice(0, 50000),
+              salary_min: jobData.salary_min,
+              salary_max: jobData.salary_max,
+              salary_raw: jobData.salary_raw,
+              salary_currency: jobData.salary_currency ?? "USD",
+              is_remote: jobData.is_remote ?? false,
+              industry: jobData.industry,
+              loc_city: jobData.loc_city,
+              loc_state: jobData.loc_state,
+              loc_country: jobData.loc_country,
+              loc_display: jobData.loc_display,
+              source_url: urlRecord.url,
+              extraction_method: jobData.extraction_method,
+              raw_html_hash: hashString(html),
+              url_hash: urlRecord.url_hash,
+              fetched_at: new Date().toISOString(),
+              parsed_at: new Date().toISOString(),
+            },
+          };
+        } catch (error) {
+          await markUrlFailed(urlRecord.id as string, String(error));
+          return { ok: false };
+        }
+      })
+    );
+
+    for (const result of batchResults) {
+      if (result.status === "fulfilled" && result.value.ok && result.value.record) {
+        stagingRecords.push(result.value.record);
+        fetched++;
+        parsed++;
+      } else {
+        failed++;
+      }
+    }
+  }
+
+  // Batch insert to staging
+  for (let i = 0; i < stagingRecords.length; i += 200) {
+    const chunk = stagingRecords.slice(i, i + 200);
+    const { error: insertErr } = await supabase.from("cc_staging_jobs").upsert(chunk, {
+      onConflict: "url_hash",
+      ignoreDuplicates: true,
+    });
+    if (insertErr) {
+      logger.error("Staging insert failed", { error: insertErr.message });
+    } else {
+      inserted += chunk.length;
+    }
+  }
+
+  // Check remaining
+  const { count: remaining } = await supabase
+    .from("cc_url_queue")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pending");
+
+  logger.info("drain_queue complete", { fetched, parsed, inserted, failed, remaining });
+
+  return jsonResponse({ fetched, parsed, inserted, failed, remaining: remaining ?? 0 });
+}
+
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // ARCHITECTURAL NOTE: Original design used WARC byte-range fetches from S3.
 // However, Supabase EF memory limits (150MB) cannot handle WARC gzip
