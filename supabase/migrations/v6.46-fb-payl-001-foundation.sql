@@ -11,14 +11,13 @@
 -- ============================================================================
 
 -- ── Feature Flag ────────────────────────────────────────────────────────────
-INSERT INTO feature_flags (name, description, status, rollout_percentage, created_by)
+INSERT INTO feature_flags (id, description, enabled, rollout_pct)
 VALUES (
   'payl_tier_enabled',
   'FB-PAYL-001: Pay After You Land pricing tier. Gates PAYL enrollment flow, referral tracking, and LinkedIn PDF upload.',
-  'draft',
-  0,
-  'system'
-) ON CONFLICT (name) DO NOTHING;
+  false,
+  0
+) ON CONFLICT (id) DO NOTHING;
 
 -- ── Table: payl_enrollments ─────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS payl_enrollments (
@@ -505,8 +504,12 @@ SELECT cron.schedule(
 --         payl.activated, payl.converted, payl.expired
 -- Implementation: Edge Functions call fn_publish_event() after state changes
 
--- ── Log migration event ─────────────────────────────────────────────────────
-INSERT INTO agent_action_log (agent_id, action_type, action_payload, result_summary)
-SELECT id, 'migration', '{"migration": "v6.46-fb-payl-001-foundation"}'::jsonb,
-  'FB-PAYL-S1: payl_enrollments + payl_referrals tables, 8 indexes, 4 RLS policies, 8 functions, 1 view, 1 feature flag, 1 pg_cron'
-FROM agent_config WHERE agent_key = 'system' LIMIT 1;
+-- ── Log migration event (conditional — agent_action_log may not exist) ──────
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'agent_action_log') THEN
+    INSERT INTO agent_action_log (agent_id, action_type, action_payload, result_summary)
+    SELECT id, 'migration', '{"migration": "v6.46-fb-payl-001-foundation"}'::jsonb,
+      'FB-PAYL-S1: payl_enrollments + payl_referrals tables, 8 indexes, 4 RLS policies, 8 functions, 1 view, 1 feature flag, 1 pg_cron'
+    FROM agent_config WHERE agent_key = 'system' LIMIT 1;
+  END IF;
+END $$;

@@ -91,3 +91,4 @@
 |---------|-------------|----------------|
 | FB-PAYL-S1 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
 | FB-PAYL-S2 | Frontend + Lead Platform Eng | System Architect—Scalability + Chief Architect |
+| FB-PAYL-S3 | DevOps + Lead Platform Eng | Chief Architect + System Architect—Scalability |

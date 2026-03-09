@@ -4,65 +4,75 @@
 -- Depends on: v6.46-fb-payl-001-foundation (payl_enrollments, payl_referrals)
 
 -- ─── 1. Seed 7 PAYL notification templates ───
-INSERT INTO notification_templates (notification_type, channel, subject, body, category, is_active)
+-- Production schema: notification_type, channel, subject_line, html_body, sms_body, active
+INSERT INTO notification_templates (notification_type, channel, subject_line, html_body, active)
 VALUES
   -- payl_activated: PAYL enrollment confirmed (email only)
   ('payl_activated', 'email',
    'You''re in! Pro features are now unlocked',
    '<h2>Welcome to Pay After You Land</h2><p>Your Pro features are now active. You have {{days_remaining}} days in your PAYL window.</p><p><strong>Next step:</strong> Share your referral link with 3 friends to keep your access.</p><p>Your referral link: <a href="{{referral_url}}">{{referral_url}}</a></p><p>Referral progress: {{referrals_qualified}}/3 qualified</p>',
-   'payl', true),
+   true),
 
-  -- payl_referral_progress: Referral qualified milestone (email + SMS)
+  -- payl_referral_progress: Referral qualified milestone (email)
   ('payl_referral_progress', 'email',
    '{{referrals_qualified}} of 3 referrals qualified!',
-   '<h2>Referral Progress Update</h2><p>Great news — you now have <strong>{{referrals_qualified}} of 3</strong> qualified referrals.</p>{{#if all_qualified}}<p>🎯 All 3 referrals qualified! Your PAYL access is fully secured.</p>{{else}}<p>Keep sharing: <a href="{{referral_url}}">{{referral_url}}</a></p>{{/if}}<p>Days remaining in PAYL window: {{days_remaining}}</p>',
-   'payl', true),
-  ('payl_referral_progress', 'sms',
-   'BrilliantJobs: {{referrals_qualified}}/3 referrals qualified! {{#if all_qualified}}All set!{{else}}Share {{referral_url}}{{/if}}',
-   NULL, 'payl', true),
+   '<h2>Referral Progress Update</h2><p>Great news — you now have <strong>{{referrals_qualified}} of 3</strong> qualified referrals.</p>{{#if all_qualified}}<p>All 3 referrals qualified! Your PAYL access is fully secured.</p>{{else}}<p>Keep sharing: <a href="{{referral_url}}">{{referral_url}}</a></p>{{/if}}<p>Days remaining in PAYL window: {{days_remaining}}</p>',
+   true),
 
   -- payl_referral_revoked: Referral downgraded (email only)
   ('payl_referral_revoked', 'email',
    'Referral credit update',
    '<h2>Referral Update</h2><p>One of your referrals has been revoked (reason: {{revoke_reason}}). Your qualified referral count is now {{referrals_qualified}}/3.</p><p>Keep sharing to maintain your Pro access: <a href="{{referral_url}}">{{referral_url}}</a></p>',
-   'payl', true),
+   true),
 
-  -- payl_employment_nudge: Periodic check-in (email + SMS)
+  -- payl_employment_nudge: Periodic check-in (email)
   ('payl_employment_nudge', 'email',
    'Have you landed a new role?',
    '<h2>Quick Check-In</h2><p>Hi {{display_name}},</p><p>It''s been {{days_since_activation}} days since you activated Pay After You Land. Have you secured a new position?</p><p><a href="{{report_employment_url}}">Yes, I got the job!</a> — We''ll transition you to a standard Pro subscription.</p><p><a href="{{dismiss_url}}">Still looking</a> — We''ll check in again in {{next_nudge_days}} days.</p>{{#if is_final_warning}}<p><strong>Note:</strong> Your PAYL window expires in {{days_remaining}} days. After that, your account will revert to Free unless you convert to Pro.</p>{{/if}}',
-   'payl', true),
-  ('payl_employment_nudge', 'sms',
-   'BrilliantJobs: Landed a job? Tap to report: {{report_employment_url}} ({{days_remaining}}d left in PAYL)',
-   NULL, 'payl', true),
+   true),
 
-  -- payl_expiring_soon: 15 days before window expires (email + SMS)
+  -- payl_expiring_soon: 15 days before window expires (email)
   ('payl_expiring_soon', 'email',
    'Your PAYL window expires in {{days_remaining}} days',
    '<h2>PAYL Window Expiring Soon</h2><p>Your Pay After You Land access expires in <strong>{{days_remaining}} days</strong>.</p>{{#if can_extend}}<p>You have {{referrals_qualified}} qualified referrals (4+ needed for a 90-day extension). Share your link to extend: <a href="{{referral_url}}">{{referral_url}}</a></p>{{/if}}<p><strong>Options:</strong></p><ul><li><a href="{{report_employment_url}}">Report employment</a> — transition to paid Pro</li><li><a href="{{upgrade_url}}">Upgrade to Pro now</a> — keep all your features</li><li>Do nothing — your account will revert to Free on {{expiry_date}}</li></ul>',
-   'payl', true),
-  ('payl_expiring_soon', 'sms',
-   'BrilliantJobs: PAYL expires in {{days_remaining}}d. Upgrade or report employment: {{upgrade_url}}',
-   NULL, 'payl', true),
+   true),
 
   -- payl_expired: Window expired, downgraded to Free (email only)
   ('payl_expired', 'email',
    'Your PAYL access has ended',
    '<h2>PAYL Window Expired</h2><p>Your Pay After You Land window has ended and your account has been moved to the Free tier.</p><p>Your saved filters, resumes, and pipeline data are preserved. <a href="{{upgrade_url}}">Upgrade to Pro</a> to restore full access.</p>',
-   'payl', true),
+   true),
 
   -- payl_converted: Successfully converted to paid Pro (email only)
   ('payl_converted', 'email',
    'Welcome to Pro — your subscription is active',
    '<h2>You''re Now a Pro Subscriber</h2><p>Congratulations on landing your new role! Your Pro subscription is now active at {{price}}/mo.</p><p>Your card ending in {{card_last4}} will be charged on {{next_billing_date}}.</p><p>All your filters, resumes, and pipeline data remain exactly as they were.</p>',
-   'payl', true)
+   true)
+ON CONFLICT DO NOTHING;
+
+-- SMS templates (separate rows, text in sms_body column)
+INSERT INTO notification_templates (notification_type, channel, sms_body, active)
+VALUES
+  ('payl_referral_progress', 'sms',
+   'BrilliantJobs: {{referrals_qualified}}/3 referrals qualified! {{#if all_qualified}}All set!{{else}}Share {{referral_url}}{{/if}}',
+   true),
+  ('payl_employment_nudge', 'sms',
+   'BrilliantJobs: Landed a job? Tap to report: {{report_employment_url}} ({{days_remaining}}d left in PAYL)',
+   true),
+  ('payl_expiring_soon', 'sms',
+   'BrilliantJobs: PAYL expires in {{days_remaining}}d. Upgrade or report employment: {{upgrade_url}}',
+   true)
 ON CONFLICT DO NOTHING;
 
 -- ─── 2. Add PAYL-specific notification overrides row if needed ───
--- (Allows users to control PAYL notification preferences)
-INSERT INTO notification_categories (category, label, description, default_email, default_sms, default_push)
-VALUES ('payl', 'Pay After You Land', 'Enrollment, referral progress, and employment check-ins', true, true, false)
-ON CONFLICT DO NOTHING;
+-- (notification_categories may not exist in all environments — conditional insert)
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'notification_categories') THEN
+    INSERT INTO notification_categories (category, label, description, default_email, default_sms, default_push)
+    VALUES ('payl', 'Pay After You Land', 'Enrollment, referral progress, and employment check-ins', true, true, false)
+    ON CONFLICT DO NOTHING;
+  END IF;
+END $$;
 
 -- ─── 3. PAYL enrollment status tracking view (for admin analytics) ───
 CREATE OR REPLACE VIEW v_payl_analytics AS
