@@ -1077,7 +1077,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority â€
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.18`** | **bjConfirm modal replaces browser confirm() for disconnect dialogs** |
+| **Product (BJ_VERSION)** | **`v8.19`** | **Gmail copy: pipeline tracking is primary value, not ghost monitoring** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

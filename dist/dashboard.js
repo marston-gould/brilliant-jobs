@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.18';
+var BJ_VERSION = 'v8.19';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -3039,7 +3039,7 @@ window.connectGmail = async function() {
 };
 
 window.disconnectGmail = async function() {
-  if (!await bjConfirm('Disconnect Gmail?<br><span style="font-size:12px;color:var(--text-faint);">Ghost Monitor will lose email-based detection.</span>', 'Disconnect')) return;
+  if (!await bjConfirm('Disconnect Gmail?<br><span style="font-size:12px;color:var(--text-faint);">Your pipeline will no longer track application responses automatically.</span>', 'Disconnect')) return;
   try {
     const { data: { session } } = await sb.auth.getSession();
     if (!session) return;
