@@ -61,8 +61,8 @@ window.connectGoogleDrive = function() {
   if (typeof showToast === 'function') showToast('Google Drive connected', 'success');
 };
 
-window.disconnectGoogleDrive = function() {
-  if (!confirm('Disconnect Google Drive? Linked files will be removed.')) return;
+window.disconnectGoogleDrive = async function() {
+  if (!await bjConfirm('Disconnect Google Drive?', 'Disconnect')) return;
   gdriveState = { connected: false, files: [] };
   localStorage.setItem('bj_gdrive', JSON.stringify(gdriveState));
   renderGdriveState();
@@ -156,8 +156,8 @@ window.connectGoogleCalendar = function() {
   if (typeof showToast === 'function') showToast('Google Calendar connected', 'success');
 };
 
-window.disconnectGoogleCalendar = function() {
-  if (!confirm('Disconnect Google Calendar?')) return;
+window.disconnectGoogleCalendar = async function() {
+  if (!await bjConfirm('Disconnect Google Calendar?', 'Disconnect')) return;
   gcalState = { connected: false, email: null };
   localStorage.setItem('bj_gcal', JSON.stringify(gcalState));
   renderGcalState();

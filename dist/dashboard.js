@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.17';
+var BJ_VERSION = 'v8.18';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -2748,6 +2748,36 @@ window.renderConnectionStatus = function() {
 
 var REQUIRED_EXTENSION_VERSION = '2.23.0';
 
+// Reusable confirm modal — replaces all browser confirm() dialogs
+window.bjConfirm = function(message, okLabel, cancelLabel) {
+  return new Promise(function(resolve) {
+    var overlay = document.getElementById('bj-confirm-overlay');
+    var msgEl = document.getElementById('bj-confirm-msg');
+    var okBtn = document.getElementById('bj-confirm-ok');
+    var cancelBtn = document.getElementById('bj-confirm-cancel');
+    if (!overlay || !msgEl || !okBtn || !cancelBtn) { resolve(confirm(message)); return; }
+    msgEl.innerHTML = message;
+    if (okLabel) okBtn.textContent = okLabel;
+    if (cancelLabel) cancelBtn.textContent = cancelLabel;
+    overlay.style.display = 'flex';
+    function cleanup(result) {
+      overlay.style.display = 'none';
+      okBtn.textContent = 'OK';
+      cancelBtn.textContent = 'Cancel';
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      overlay.removeEventListener('click', onOverlay);
+      resolve(result);
+    }
+    function onOk() { cleanup(true); }
+    function onCancel() { cleanup(false); }
+    function onOverlay(e) { if (e.target === overlay) cleanup(false); }
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+    overlay.addEventListener('click', onOverlay);
+  });
+};
+
 function compareVersions(installed, required) {
   if (!installed || !required) return 0;
   var a = installed.split('.').map(Number);
@@ -3009,7 +3039,7 @@ window.connectGmail = async function() {
 };
 
 window.disconnectGmail = async function() {
-  if (!confirm('Disconnect Gmail? Ghost Monitor will lose email-based detection.')) return;
+  if (!await bjConfirm('Disconnect Gmail?<br><span style="font-size:12px;color:var(--text-faint);">Ghost Monitor will lose email-based detection.</span>', 'Disconnect')) return;
   try {
     const { data: { session } } = await sb.auth.getSession();
     if (!session) return;
@@ -18718,8 +18748,8 @@ window.connectGoogleDrive = function() {
   if (typeof showToast === 'function') showToast('Google Drive connected', 'success');
 };
 
-window.disconnectGoogleDrive = function() {
-  if (!confirm('Disconnect Google Drive? Linked files will be removed.')) return;
+window.disconnectGoogleDrive = async function() {
+  if (!await bjConfirm('Disconnect Google Drive?', 'Disconnect')) return;
   gdriveState = { connected: false, files: [] };
   localStorage.setItem('bj_gdrive', JSON.stringify(gdriveState));
   renderGdriveState();
@@ -18813,8 +18843,8 @@ window.connectGoogleCalendar = function() {
   if (typeof showToast === 'function') showToast('Google Calendar connected', 'success');
 };
 
-window.disconnectGoogleCalendar = function() {
-  if (!confirm('Disconnect Google Calendar?')) return;
+window.disconnectGoogleCalendar = async function() {
+  if (!await bjConfirm('Disconnect Google Calendar?', 'Disconnect')) return;
   gcalState = { connected: false, email: null };
   localStorage.setItem('bj_gcal', JSON.stringify(gcalState));
   renderGcalState();
