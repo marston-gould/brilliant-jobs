@@ -81,8 +81,14 @@ serve(async (req: Request) => {
     // FA-003: Search title OR content_tsv (aligns with FA-001 dashboard pattern)
     // content_tsv uses GIN index via websearch full-text search (wfts)
     // NULL-safe: jobs with NULL content_tsv still matched by title ilike
+    // FA-003b: FTS sanitization — strip chars that break wfts syntax
     if (keyword) {
-      q = q.or(`title.ilike.%${keyword}%,content_tsv.wfts(english).${keyword}`);
+      const safeFts = keyword.replace(/['"<>:!&|()\\]/g, ' ').replace(/\s+/g, ' ').trim();
+      if (safeFts) {
+        q = q.or(`title.ilike.%${keyword}%,content_tsv.wfts(english).${safeFts}`);
+      } else {
+        q = q.ilike('title', `%${keyword}%`);
+      }
     }
 
     if (location) {
@@ -148,6 +154,7 @@ serve(async (req: Request) => {
       titles: shuffled,
       queries_remaining: MAX_QUERIES - session.queries,
       session_token: token,
+      content_search_enabled: true, // FA-003b: analytics parity with FA-001
     }), { status: 200, headers: CORS_HEADERS });
 
   } catch (e) {

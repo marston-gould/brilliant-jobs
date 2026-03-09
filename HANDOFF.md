@@ -52,6 +52,23 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**FA-003b** — preview-jobs FTS Sanitization + PostHog Parity
+- Completed: 2026-03-08
+- Product version bumped: `v7.89` → `v7.90` (JS changes — landing-app.js PostHog content_search_enabled; preview-jobs EF FTS sanitization; all HTML surfaces cache-busted)
+- ROADMAP.md updated: FA-003 → ✅ (enhanced with FA-003b notes)
+- roadmap.html updated: FA-003 → enhanced with FA-003b notes
+- **preview-jobs EF enhanced:** FTS input sanitization — strips `'"<>:!&|()\\` from keyword before wfts, collapses whitespace, trims. Falls back to title-only ilike when sanitization leaves empty string (prevents PostgREST errors on keywords like `C++`, `"senior"`, `data & analytics`). Response now includes `content_search_enabled: true` for analytics parity with FA-001.
+- **landing-app.js PostHog:** `preview_results_shown` event now includes `content_search_enabled: !!data.content_search_enabled` property for pre/post segmentation.
+- **Created:**
+  - `tests/fa-003b-fts-sanitization.test.js` — 17 validation tests (4 sections)
+- **Modified:**
+  - `supabase/functions/preview-jobs/index.ts` — safeFts sanitization + title-only fallback + content_search_enabled response field
+  - `js/landing-app.js` — PostHog content_search_enabled property
+  - `dist/dashboard.min.js` — rebuilt
+  - `ROADMAP.md` — FA-003 enhanced with FA-003b
+  - `roadmap.html` — FA-003 enhanced with FA-003b
+- **Tests:** 17 FA-003b validation tests (all passing)
+
 **FA-009** — US-Only Filter Leakage Fix
 - Completed: 2026-03-08
 - Product version bumped: `v7.88` → `v7.89` (JS changes — job-feed.js US-Only filter rewrite; all HTML surfaces cache-busted)
@@ -947,7 +964,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.87`** | **FA-002 — Backfill content_tsv + Enrichment Cron** |
+| **Product (BJ_VERSION)** | **`v7.90`** | **FA-003b — FTS Sanitization + PostHog Parity** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
