@@ -909,37 +909,30 @@ initGmailStatus();
     var heroEl = document.getElementById('gs-hero-pages');
     if (!posEl && !pagesEl && !companiesEl && !heroEl) return; // Not on Get Started page
 
-    // 1. Open positions — use status='open' (matches feed logic, not is_active)
-    var jobsCount = await safeQuery(function() {
-      return sb.from('ats_jobs').select('id', { count: 'exact', head: true }).eq('status', 'open');
-    }, { label: 'app:gs-stats-jobs', fallback: null });
-    if (posEl && jobsCount !== null) {
-      var count = typeof jobsCount === 'number' ? jobsCount : (jobsCount && jobsCount.count != null ? jobsCount.count : null);
-      if (count != null) posEl.textContent = Number(count).toLocaleString() + '+';
-    }
+    // NOTE: head:true causes 400 on partitioned tables (SA-019 ats_jobs).
+    // Use count:'exact' without head, access result.count directly.
+    // safeQuery only returns result.data, so we query raw and handle errors inline.
 
-    // 2. Career pages tracked — total companies (all monitored, no filter)
-    var totalPagesCount = await safeQuery(function() {
-      return sb.from('ats_companies').select('id', { count: 'exact', head: true });
-    }, { label: 'app:gs-stats-total-pages', fallback: null });
-    var totalPages = typeof totalPagesCount === 'number' ? totalPagesCount : (totalPagesCount && totalPagesCount.count != null ? totalPagesCount.count : null);
-    if (totalPages != null) {
-      // Round down to nearest thousand for display consistency
-      var rounded = Math.floor(totalPages / 1000) * 1000;
-      var displayStr = rounded.toLocaleString() + '+';
-      if (pagesEl) pagesEl.textContent = displayStr;
-      if (heroEl) heroEl.textContent = displayStr;
-    }
+    // 1. Open positions — count of status='open' jobs
+    try {
+      var jobsResult = await sb.from('ats_jobs').select('*', { count: 'exact', head: false }).eq('status', 'open').limit(0);
+      if (!jobsResult.error && jobsResult.count != null && posEl) {
+        posEl.textContent = Number(jobsResult.count).toLocaleString() + '+';
+      }
+    } catch(e) { reportError('app:gs-stats-jobs', e); }
 
-    // 3. Companies hiring now — distinct companies with current open jobs
-    // 3. Companies hiring now — count all tracked companies (RPC get_active_company_count removed)
-    var compResult = await safeQuery(function() {
-      return sb.from('ats_companies').select('id', { count: 'exact', head: true });
-    }, { label: 'app:gs-stats-companies', fallback: null });
-    if (companiesEl && compResult != null) {
-      var compCount = typeof compResult === 'number' ? compResult : (compResult && compResult.count != null ? compResult.count : null);
-      if (compCount != null) companiesEl.textContent = Number(compCount).toLocaleString() + '+';
-    }
+    // 2. Career pages tracked — total companies
+    try {
+      var pagesResult = await sb.from('ats_companies').select('*', { count: 'exact', head: false }).limit(0);
+      if (!pagesResult.error && pagesResult.count != null) {
+        var rounded = Math.floor(pagesResult.count / 1000) * 1000;
+        var displayStr = rounded.toLocaleString() + '+';
+        if (pagesEl) pagesEl.textContent = displayStr;
+        if (heroEl) heroEl.textContent = displayStr;
+        // 3. Companies hiring now — reuse same count (all tracked companies)
+        if (companiesEl) companiesEl.textContent = Number(pagesResult.count).toLocaleString() + '+';
+      }
+    } catch(e) { reportError('app:gs-stats-pages', e); }
   } catch(e) { reportError('app:gs-stats', e); }
 })();
 
