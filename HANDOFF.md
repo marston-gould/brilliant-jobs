@@ -54,7 +54,7 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 **FA-001** — Expand What Pills to Content Search (Positive AND Negative)
 - Completed: 2026-03-08
-- Product version bumped: `v7.84` → `v7.85` (JS changes — job-feed.js content search in buildFilterQuery; all HTML surfaces cache-busted)
+- Product version bumped: `v7.85` → `v7.86` (JS changes — job-feed.js content search in buildFilterQuery; all HTML surfaces cache-busted)
 - ROADMAP.md updated: FA-001 → ✅
 - roadmap.html updated: FA-001 → `s: 'done'`, p: 100
 - **Core change:** What pills now generate `title.ilike.%term% OR content_tsv.wfts(english).term` clauses (was title-only)
@@ -885,7 +885,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.85`** | **FA-001 — Content Search in What Pills** |
+| **Product (BJ_VERSION)** | **`v7.86`** | **FA-001 — Content Search in What Pills** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

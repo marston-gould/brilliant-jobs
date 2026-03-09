@@ -1,10 +1,12 @@
-## v7.85 FA-001: Expand What Pills to Content Search (2026-03-08)
+## v7.86 FA-001: Expand What Pills to Content Search (2026-03-08)
 - What pills now search `title.ilike OR content_tsv.wfts(english)` (was title-only)
 - What NOT pills + global exclusions also exclude from content_tsv (atomic with positive)
 - Feature flag `feed_content_search` controls toggle (v6.40 migration, active at 100%)
 - PostHog `content_search_enabled` property added for pre/post segmentation
 - 42 validation tests across 8 sections
 - Uses GIN index on content_tsv — no seq scans
+
+## v7.85 Bug Fixes: getPipelineMeta, resume page, _connectionState (2026-03-08)
 
 ## v7.84 Session NN: TITLE (2026-03-08)
 - DESCRIBE CHANGES HERE
