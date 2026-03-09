@@ -29,6 +29,7 @@ const chunks = {
     'js/app.js',
   ],
   feed: [
+    'js/us-filter.js',
     'js/job-feed.js',
     'js/sort-bar.js',
     'js/query-builder.js',

@@ -16,6 +16,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { Job } from '@providers/types';
 import { ProviderError } from '@providers/types';
+import { buildUSOnlyQuery } from './us-filter';
 
 // ── Types ─────────────────────────────────────────────────
 
@@ -420,14 +421,17 @@ function buildFilterQuery(
     }
   }
 
-  // US-only toggle
+  // US-only toggle — delegated to shared us-filter.ts (single source of truth).
+  // Sync any logic changes with js/us-filter.js (vanilla JS / job-feed.js path).
   if (tuning.usOnly) {
-    query = query.or('location.ilike.%United States%,location.ilike.%USA%,location.ilike.%Remote%');
+    query = buildUSOnlyQuery(query);
   }
 
   // FA-007: Exclude hourly-rate jobs if tuning says so (legacy parity)
+  // Use OR to preserve NULL salary_rate rows — .not() generates NOT (x = 'hr')
+  // which evaluates to NULL (excluded) for NULL rows, silently dropping most jobs.
   if (tuning.excludeHourly) {
-    query = query.not('salary_rate', 'eq', 'hr');
+    query = query.or('salary_rate.neq.hr,salary_rate.is.null');
   }
 
   // FA-007: Exclude staffing agency jobs if tuning says so (legacy parity)

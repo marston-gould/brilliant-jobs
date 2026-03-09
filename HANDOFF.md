@@ -52,6 +52,26 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**FILTER-FIX-001** — US Filter & Hourly Exclusion Bulletproof Rewrite
+- Completed: 2026-03-09
+- Product version bumped: `v8.37` → `v8.38` (JS/TS changes — us-filter.js shared module, job-feed.js delegated to shared module, useFeedSearch.ts broken .or() replaced, excludeHourly NULL bug fixed in both files; all HTML surfaces cache-busted)
+- ROADMAP.md updated: FILTER-FIX-001 → ✅
+- roadmap.html updated: FILTER-FIX-001 → `s: 'done'`, p: 100
+- **4 bugs fixed:**
+  - **Bug 1 (Critical — useFeedSearch.ts):** `location.ilike.%Remote%` passed ALL remote jobs worldwide through US-Only filter. Replaced with `buildUSOnlyQuery(query)` import from shared `us-filter.ts`.
+  - **Bug 2 (job-feed.js Tier 4):** `Remote%US %` (trailing space) missed "Remote, US", "Remote (US)", "Remote - US". Replaced with `buildUSRemoteClauses()` covering all real-world patterns.
+  - **Bug 3 (divergent implementations):** Two files, two different filter logic sets — guaranteed to drift. Fixed via shared module pattern.
+  - **Bug 4 (excludeHourly — both files):** `.not('salary_rate', 'eq', 'hr')` generates `NOT (salary_rate = 'hr')` SQL which is NULL (excluded) for NULL rows — silently dropped most jobs. Fixed: `.or('salary_rate.neq.hr,salary_rate.is.null')` in both files.
+- **Created:**
+  - `js/us-filter.js` — shared vanilla JS module: `buildUSOnlyQuery(query)`, `buildUSRemoteClauses()`, `BJ_US_STATES`, `BJ_NON_US_TEXT_EXCLUSIONS` (47 patterns)
+  - `src/app/pages/dashboard/feed/hooks/us-filter.ts` — TypeScript companion, identical logic
+- **Modified:**
+  - `build.js` — `js/us-filter.js` added to feed bundle before `js/job-feed.js`
+  - `js/job-feed.js` — US filter block replaced with `buildUSOnlyQuery(query)`, includeRemote+usOnly clauses replaced with `buildUSRemoteClauses()`, excludeHourly fixed
+  - `src/app/pages/dashboard/feed/hooks/useFeedSearch.ts` — import added, broken .or() replaced with `buildUSOnlyQuery(query)`, excludeHourly fixed
+  - `ROADMAP.md` — FILTER-FIX-001 → ✅
+  - `roadmap.html` — FILTER-FIX-001 → done/100
+
 **UX-001-S3** — Feed UX Consolidation — Universal Filter Browser
 - Completed: 2026-03-09
 - Product version bumped: `v8.27` → `v8.28` (JS/HTML changes — 6 Browse buttons added, generic filter browser page, openFilterBrowser function, browsers.js extended; all HTML surfaces cache-busted)
@@ -1391,7 +1411,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.37`** | **Fix: includeRemote bypassed US-Only — non-US remote jobs leaked** |
+| **Product (BJ_VERSION)** | **`v8.38`** | **FILTER-FIX-001: US filter shared module + excludeHourly NULL fix** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
