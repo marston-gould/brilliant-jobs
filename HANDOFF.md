@@ -52,31 +52,38 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FA-005** — Server-Side Multi-Filter Merge
+**FA-006** — Server-Side Trust/AI Filters
 - Completed: 2026-03-08
-- Product version bumped: `v7.91` → `v7.92` (JS changes — job-feed.js server merge RPC path + serializeFilterForRPC + feature flag; SPA useFeedSearch.ts mirrored; Postgres function search_jobs_multi + _build_filter_where; all HTML surfaces cache-busted)
-- ROADMAP.md updated: FA-005 → ✅
-- roadmap.html updated: FA-005 → `s: 'done'`, p: 100
-- **Core change:** Multi-filter queries now execute as a single Postgres function call instead of N parallel client → server round trips.
-- **Production deployment fixes (3 schema mismatches discovered and resolved):** (1) Feature flag INSERT adjusted to match actual `feature_flags` schema (`enabled` boolean, `rollout_pct` integer, `metadata` jsonb — table lacks `key`, `name`, `type`, `status`, `rollout_percentage`, `category` columns). (2) Replaced `description_snippet` (nonexistent column) with `content` + `apply_url` (actual ats_jobs columns used by client). (3) Replaced `array_agg(...)[1]` GROUP BY approach with `DISTINCT ON + _filter_tags` CTE to avoid Postgres `cannot accumulate null arrays` error on `extracted_skills text[]` column.
-- **Production verified:** Single filter "engineer" → 61,541 results. Three overlapping filters (engineer + developer + programmer with content_tsv) → 179,833 deduped unique results. Multi-filter jobs correctly show multiple filter indices (e.g., [1, 2]). Feature flag `feed_server_merge` active at 100% rollout.
-- **Postgres function `search_jobs_multi`:** Accepts JSONB array of filter definitions. Builds UNION ALL (one SELECT per filter with `_filter_idx` tag), GROUP BY greenhouse_id for dedup, jsonb_agg(DISTINCT _filter_idx) for filter tag tracking, server-side ORDER BY + LIMIT/OFFSET. Returns `{ data: Job[], count: number }` where count is COUNT(DISTINCT greenhouse_id) — accurate deduped count, not inflated sum.
-- **Helper `_build_filter_where`:** Converts structured filter JSON into SQL WHERE clause. Covers all pill types: What (title ILIKE + content_tsv wfts), What NOT (NULL-safe FA-002), Where (remote-only/IDs/bounding box/inline text/state codes), Where NOT, US-Only (FA-009 tiered), Who/Who NOT, Pay (include_no_salary), Skills (extracted_skills array), Level (extracted_seniority), JD (content_tsv websearch), Department, hidden IDs, hourly/staffing exclusions, global excludes (title/location/company/industry).
-- **SQL injection prevention:** format(%L) for all user input, sort column whitelist, statement_timeout 10s, max 20 filters, per_page 1-200.
-- **Feature flag:** `feed_server_merge` — toggle OFF to revert to client-side merge instantly. Client-side fallback also triggers automatically on RPC error.
-- **Client `serializeFilterForRPC`:** Serializes saved filter pill objects + locationIds + tuning config into flat JSONB for the RPC call. Single round trip replaces N parallel PostgREST queries.
-- **SPA parity:** useFeedSearch.ts has matching isFeatureFlagEnabled helper, serializeFilterForRPC, and server merge path with client-side fallback.
-- **PostHog:** `server_merge_enabled` property on feed_search_completed event for pre/post segmentation.
+- Product version bumped: `v7.92` → `v7.93` (JS changes — job-feed.js server trust/AI filter path + cache population; SPA useFeedSearch.ts mirrored; Postgres function search_jobs_multi updated with p_trust_labels/p_ai_labels + EXISTS clauses + _enriched CTE; feature flag feed_server_trust_filter; all HTML surfaces cache-busted)
+- ROADMAP.md updated: FA-006 → ✅
+- roadmap.html updated: FA-006 → `s: 'done'`, p: 100
+- **Core change:** Trust (fraud_label) and AI content (ai_label) filters now execute as server-side WHERE clauses inside search_jobs_multi instead of client-side post-filtering. Every page shows exactly 50 rows regardless of trust/AI filter settings.
+- **Migration `v6.43-fa006-server-trust-filter.sql`:**
+  - Feature flag `feed_server_trust_filter` (ON at 100% rollout)
+  - `search_jobs_multi` gains `p_trust_labels text[]` and `p_ai_labels text[]` params (NULL = no filter)
+  - Trust: EXISTS subquery on `job_fraud_scores.fraud_label`. When 'unknown' in labels, also includes jobs with NO fraud score row.
+  - AI: EXISTS subquery on `content_ai_scores.ai_label` (content_type='jd'). Maps 'unscored' → 'unknown' + NULL. Handles legacy labels 'human_written', 'mixed_content'.
+  - Badge data: `_enriched` CTE with LEFT JOIN LATERAL to return fraud/AI columns (score, label, confidence, signals, summary, perplexity, burstiness) for client badge rendering.
+- **Client routing logic:**
+  - Single-filter: routes through `search_jobs_multi` RPC when trust/AI filters are active (avoids PostgREST path which can't JOIN)
+  - Multi-filter: same RPC path, now passes trust/AI labels
+  - Populates `_fraudScoreCache` and `_aiJdScoreCache` from returned `_fraud_*` / `_ai_*` fields
+  - Skips `fetchFraudScores()`, `fetchAiJdScores()`, `applyTrustFilter()`, `applyAiContentFilter()` when flag ON
+  - Cleans up internal `_fraud_*` / `_ai_*` fields from job objects before rendering
+- **Bug fix:** `fetchAiJdScores` content_type changed from `'job_description'` to `'jd'` (matches EF write value)
+- **SPA parity:** `useFeedSearch.ts` mirrors all changes — serverTrustEnabled flag, RPC params, cache population, guard on client-side filters
+- **PostHog:** `server_trust_filter_enabled` property on `feed_search_completed` event
+- **Feature flag fallback:** RPC error disables flag and re-runs with client-side path
 - **Created:**
-  - `supabase/migrations/v6.42-fa005-search-jobs-multi.sql` — Postgres function + feature flag
-  - `tests/fa-005-server-merge.test.js` — 58 validation tests (11 sections)
+  - `supabase/migrations/v6.43-fa006-server-trust-filter.sql` — Postgres function update + feature flag
+  - `tests/fa-006-server-trust-filter.test.js` — 76 validation tests (11 sections)
 - **Modified:**
-  - `js/job-feed.js` — _serverMergeEnabled flag, serializeFilterForRPC, server merge RPC path, PostHog property
-  - `src/app/pages/dashboard/feed/hooks/useFeedSearch.ts` — isFeatureFlagEnabled, serializeFilterForRPC, server merge path
+  - `js/job-feed.js` — _serverTrustFilterEnabled flag, RPC routing + params, cache population, guard on fetch/apply, PostHog property, content_type fix
+  - `src/app/pages/dashboard/feed/hooks/useFeedSearch.ts` — SPA parity
   - `dist/dashboard.min.js` — rebuilt
-  - `ROADMAP.md` — FA-005 → ✅
-  - `roadmap.html` — FA-005 → done/100
-- **Tests:** 58 FA-005 validation tests (all passing)
+  - `ROADMAP.md` — FA-006 → ✅
+  - `roadmap.html` — FA-006 → done/100
+- **Tests:** 76 FA-006 validation tests (all passing)
 
 **FA-003b** — preview-jobs FTS Sanitization + PostHog Parity
 - Completed: 2026-03-08
@@ -931,13 +938,13 @@ None.
 
 ## Next Session
 
-**Feed Accuracy Sprint — FA-005 COMPLETE.** FA-010, FA-001, FA-002, FA-003, FA-009, FA-004, and FA-005 are done.
+**Feed Accuracy Sprint — FA-006 COMPLETE.** FA-010, FA-001, FA-002, FA-003, FA-009, FA-004, FA-005, and FA-006 are done.
 
-**FA-006: Move Trust/AI Filters Server-Side** — 4-6h
-- **Entry gate:** FA-005 server merge deployed.
-- **Fix:** Join job_fraud_scores and content_ai_scores in the feed query so trust and AI content filters reduce results before pagination, ensuring every page has the expected number of rows. No client-side post-filtering.
-- **Files:** `js/job-feed.js` (applyTrustFilter, applyAiContentFilter removal), `src/app/pages/dashboard/feed/hooks/useFeedSearch.ts`, possibly migration for view/function update
-- **Exit gate:** Every page shows exactly 50 rows regardless of trust/AI filter settings. No client-side post-filtering of query results. Page load time increase < 200ms.
+**FA-007: SPA useFeedSearch.ts Full Parity** — 6-8h
+- **Entry gate:** FA-006 server trust filter deployed.
+- **Fix:** Bring useFeedSearch.ts to full parity with the production feed. Audit every filter path in legacy buildFilterQuery against SPA buildFilterQuery. Add missing: status="open", staffing exclusion, hourly exclusion, industry exclusions, skills pills, department pills. Fix pay pill parsing: use pill.min/pill.max instead of pill.values[0] string parse. CRITICAL: SPA What NOT pills only negate title — must match legacy FA-001 fix (negate against both title AND content_tsv).
+- **Files:** `src/app/pages/dashboard/feed/hooks/useFeedSearch.ts`, possibly shared module extraction
+- **Exit gate:** All filter types produce identical results between legacy and SPA. Parity test suite passes.
 
 **Phase S is COMPLETE.** All 29 sessions (SA-001 through SA-029) plus SA-023b are done.
 **Phase REM is COMPLETE.** All 5 sessions (REM-001 through REM-005) are done.
@@ -985,7 +992,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.92`** | **FA-005 — Server-Side Multi-Filter Merge** |
+| **Product (BJ_VERSION)** | **`v7.93`** | **FA-006 — Server-Side Trust/AI Filters** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

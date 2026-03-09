@@ -22,6 +22,8 @@ const HIDE_REASONS = [
 var _contentSearchEnabled = false;
 // FA-005: Server-side merge flag — when enabled, multi-filter uses RPC instead of client-side merge
 var _serverMergeEnabled = false;
+// FA-006: Server-side trust/AI filter flag — when enabled, trust/AI filtering happens in DB, not client
+var _serverTrustFilterEnabled = false;
 
 function debouncedSearchJobs() {
   clearTimeout(searchTimeout);
@@ -938,6 +940,9 @@ async function searchJobs(page = 0) {
       // FA-005: Evaluate server merge flag
       try { _serverMergeEnabled = await isFeatureEnabled('feed_server_merge', false); }
       catch (e) { _serverMergeEnabled = false; }
+      // FA-006: Evaluate server trust/AI filter flag
+      try { _serverTrustFilterEnabled = await isFeatureEnabled('feed_server_trust_filter', false); }
+      catch (e) { _serverTrustFilterEnabled = false; }
     }
 
     // FA-010: Capture search start time for latency measurement
@@ -1032,8 +1037,17 @@ async function searchJobs(page = 0) {
     const whatTerms = (filtersToRun[0]?.whatPills || filtersToRun[0]?.pills || []).flatMap(p => p.values).filter(Boolean);
     const searchTerms = [...jdTerms, ...whatTerms].join(' ').trim();
 
-    if (filtersToRun.length === 1) {
+    // FA-006: Determine if server-side trust/AI filtering is needed
+    const _trustFilterNeedsServer = _serverTrustFilterEnabled && isTrustFilterActive();
+    const _aiFilterNeedsServer = _serverTrustFilterEnabled && isAiFilterActive();
+    const _needsServerTrustFilter = _trustFilterNeedsServer || _aiFilterNeedsServer;
+    // Build trust/AI label arrays for RPC (null = no filter = all labels pass)
+    const _rpcTrustLabels = _trustFilterNeedsServer ? Array.from(getActiveTrustLabels()) : null;
+    const _rpcAiLabels = _aiFilterNeedsServer ? Array.from(getActiveAiLabels()) : null;
+
+    if (filtersToRun.length === 1 && !_needsServerTrustFilter) {
       // Single filter — FA-004: real server-side pagination via range()
+      // FA-006: Only uses PostgREST path when trust/AI filters are NOT active
       const feedCacheKey = 'feed:' + _filterCacheKey('single', filtersToRun[0]) + ':p' + page;
       const feedResult = await cachedQuery(feedCacheKey, async function() {
         let query = sb.from('ats_jobs').select('*', { count: 'exact' });
@@ -1057,9 +1071,10 @@ async function searchJobs(page = 0) {
       totalCount = feedResult.count || 0;
       _feedTotalCount = totalCount;
       _feedLoadMoreOffset = (page + 1) * JOBS_PER_PAGE;
-    } else if (_serverMergeEnabled) {
-      // FA-005: Server-side multi-filter merge via Postgres function
-      // Single round trip — dedup, sort, paginate all happen in the DB
+    } else if (_serverMergeEnabled || _needsServerTrustFilter) {
+      // FA-005/FA-006: Server-side RPC path
+      // Handles multi-filter merge AND/OR server-side trust/AI filtering
+      // Single round trip — filter, dedup, sort, paginate all happen in the DB
       const tuning = safeReadLS('bj_tuning', {});
       const rpcFilters = filtersToRun.map(sf => serializeFilterForRPC(sf, sf._locationIds, tuning));
 
@@ -1073,7 +1088,10 @@ async function searchJobs(page = 0) {
         break;
       }
 
-      console.log('[BJ] FA-005: Server-side merge — %d filters, page %d, sort=%s %s', rpcFilters.length, page, sortCol, sortAsc ? 'ASC' : 'DESC');
+      console.log('[BJ] FA-005/FA-006: Server-side RPC — %d filters, page %d, sort=%s %s, trust=%s, ai=%s',
+        rpcFilters.length, page, sortCol, sortAsc ? 'ASC' : 'DESC',
+        _rpcTrustLabels ? _rpcTrustLabels.join(',') : 'off',
+        _rpcAiLabels ? _rpcAiLabels.join(',') : 'off');
 
       const { data: rpcResult, error: rpcError } = await sb.rpc('search_jobs_multi', {
         p_filters: rpcFilters,
@@ -1083,18 +1101,44 @@ async function searchJobs(page = 0) {
         p_per_page: JOBS_PER_PAGE,
         p_hidden_ids: hiddenIds,
         p_content_search: _contentSearchEnabled,
+        p_trust_labels: _rpcTrustLabels,   // FA-006: server-side trust filter (null = no filter)
+        p_ai_labels: _rpcAiLabels,         // FA-006: server-side AI filter (null = no filter)
       });
 
       if (rpcError) {
-        console.error('[BJ] FA-005 RPC error, falling back to client-side merge:', rpcError);
+        console.error('[BJ] FA-005/FA-006 RPC error, falling back to client-side:', rpcError);
         // Fall through to client-side merge below
         _serverMergeEnabled = false;
+        _serverTrustFilterEnabled = false;
         // Re-run searchJobs to use fallback path
         return searchJobs();
       }
 
       const resultData = rpcResult || { data: [], count: 0 };
       const serverJobs = resultData.data || [];
+
+      // FA-006: Populate fraud/AI caches from server-returned data for badge rendering
+      serverJobs.forEach(function(job) {
+        if (job._fraud_label != null) {
+          _fraudScoreCache[job.greenhouse_id] = {
+            score: job._fraud_score,
+            label: job._fraud_label,
+            signals: job._fraud_signals || [],
+            confidence: job._fraud_confidence,
+          };
+        }
+        if (job._ai_label != null) {
+          _aiJdScoreCache[job.greenhouse_id] = {
+            label: job._ai_label,
+            score: job._ai_score,
+            confidence: job._ai_confidence,
+            summary: job._ai_summary,
+            perplexity: job._ai_perplexity,
+            burstiness: job._ai_burstiness,
+            topSignals: job._ai_signals || [],
+          };
+        }
+      });
 
       // Re-attach _filterNums from the _filter_idxs array returned by the function
       // _filter_idxs contains the 1-based filter indices that matched each job
@@ -1104,7 +1148,11 @@ async function searchJobs(page = 0) {
           const sf = filtersToRun[idx - 1]; // 1-based → 0-based
           return sf ? { num: sf._filterNum || '', color: sf._filterColor || '' } : { num: '', color: '' };
         });
+        // Clean up server-internal fields
         delete job._filter_idxs;
+        delete job._fraud_score; delete job._fraud_label; delete job._fraud_confidence; delete job._fraud_signals;
+        delete job._ai_label; delete job._ai_score; delete job._ai_confidence;
+        delete job._ai_summary; delete job._ai_perplexity; delete job._ai_burstiness; delete job._ai_signals;
         return { ...job, _filterNums: filterNums };
       });
 
@@ -1249,23 +1297,31 @@ async function searchJobs(page = 0) {
     }
 
     // Fetch fraud scores for visible jobs
-    await fetchFraudScores(currentJobs);
+    // FA-006: Skip when server-side trust filter is on (caches populated from RPC results)
+    if (!_serverTrustFilterEnabled) {
+      await fetchFraudScores(currentJobs);
+    }
 
     // Fetch AI JD scores for visible jobs (v6.41)
-    await fetchAiJdScores(currentJobs);
+    // FA-006: Skip when server-side trust filter is on (caches populated from RPC results)
+    if (!_serverTrustFilterEnabled) {
+      await fetchAiJdScores(currentJobs);
+    }
 
     // Phase 4: Apply trust level filter (client-side post-filter)
     // ⚠️ RISK R4 (Pill Pipeline Audit v7.69): Client-side filters (trust, AI content) reduce
     // results AFTER the DB query returns. Pagination is DB-side (LIMIT 50), so a page may show
     // fewer than 50 visible rows after client-side filtering. "Load More" might even load pages
     // with 0 visible rows. Long-term fix: move trust/AI filtering server-side.
-    if (isTrustFilterActive()) {
+    // FA-006: When _serverTrustFilterEnabled, filtering happens in the DB — skip client-side
+    if (!_serverTrustFilterEnabled && isTrustFilterActive()) {
       currentJobs = applyTrustFilter(currentJobs);
       totalCount = currentJobs.length;
     }
 
     // Phase 72 Session 3.3: Apply AI content filter (client-side post-filter)
-    if (isAiFilterActive()) {
+    // FA-006: When _serverTrustFilterEnabled, filtering happens in the DB — skip client-side
+    if (!_serverTrustFilterEnabled && isAiFilterActive()) {
       currentJobs = applyAiContentFilter(currentJobs);
       totalCount = currentJobs.length;
       if (typeof posthog !== 'undefined') {
@@ -1405,7 +1461,8 @@ async function searchJobs(page = 0) {
         content_match_count: _faContentMatchCount,
         content_search_enabled: _contentSearchEnabled,  // FA-001: segment pre/post content search
         pagination_uncapped: true,  // FA-004: segment pre/post 500-row cap removal
-        server_merge_enabled: _serverMergeEnabled  // FA-005: segment pre/post server-side merge
+        server_merge_enabled: _serverMergeEnabled,  // FA-005: segment pre/post server-side merge
+        server_trust_filter_enabled: _serverTrustFilterEnabled  // FA-006: segment pre/post server-side trust/AI filter
       });
 
       // Distinct zero-results event (alert trigger)
@@ -2114,7 +2171,7 @@ async function fetchAiJdScores(jobs) {
     var { data, error } = await sb
       .from('content_ai_scores')
       .select('content_id,ai_label,ai_generated_score,confidence,summary,perplexity_score,burstiness_score,top_signals')
-      .eq('content_type', 'job_description')
+      .eq('content_type', 'jd')
       .in('content_id', ids);
     if (error) { console.warn('[BJ] AI JD score fetch error:', error); return; }
     if (data) {

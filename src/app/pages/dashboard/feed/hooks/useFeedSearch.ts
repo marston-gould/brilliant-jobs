@@ -543,7 +543,15 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
       let allJobs: FeedJob[] = [];
       let totalCount = 0;
 
-      if (checkedFilters.length === 1) {
+      // FA-006: Check if server-side trust/AI filtering is needed
+      const serverTrustEnabled = await isFeatureFlagEnabled('feed_server_trust_filter', false);
+      const trustActive = state.trustFilters.size < ALL_TRUST.size;
+      const aiActive = state.aiFilters.size < ALL_AI.size;
+      const needsServerTrustFilter = serverTrustEnabled && (trustActive || aiActive);
+      const rpcTrustLabels = (serverTrustEnabled && trustActive) ? Array.from(state.trustFilters) : null;
+      const rpcAiLabels = (serverTrustEnabled && aiActive) ? Array.from(state.aiFilters) : null;
+
+      if (checkedFilters.length === 1 && !needsServerTrustFilter) {
         // Single filter path
         const sf = checkedFilters[0]!;
         let query = sb.from('ats_jobs').select('*', { count: 'planned' });
@@ -578,8 +586,8 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
         const serverMergeEnabled = await isFeatureFlagEnabled('feed_server_merge', false);
         const contentSearchEnabled = await isFeatureFlagEnabled('feed_content_search', false);
 
-        if (serverMergeEnabled) {
-          // FA-005: Server-side multi-filter merge via Postgres function
+        if (serverMergeEnabled || needsServerTrustFilter) {
+          // FA-005/FA-006: Server-side RPC path (merge + trust/AI filtering)
           const rpcFilters = checkedFilters.map(sf => serializeFilterForRPC(sf, tuning));
           let sortCol = 'updated_at';
           let sortAsc = false;
@@ -599,6 +607,8 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
             p_per_page: JOBS_PER_PAGE,
             p_hidden_ids: hiddenIds,
             p_content_search: contentSearchEnabled,
+            p_trust_labels: rpcTrustLabels,   // FA-006
+            p_ai_labels: rpcAiLabels,         // FA-006
           });
 
           if (controller.signal.aborted) return;
@@ -608,13 +618,37 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
           const resultData = (rpcResult as any) || { data: [], count: 0 };
           const serverJobs = resultData.data || [];
 
+          // FA-006: Populate legacy caches from server-returned data for badge rendering
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const fraudCache = (window as any)._fraudScoreCache = (window as any)._fraudScoreCache || {};
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const aiCache = (window as any)._aiJdCache = (window as any)._aiJdCache || {};
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          serverJobs.forEach((job: any) => {
+            if (job._fraud_label != null) {
+              fraudCache[job.greenhouse_id] = {
+                score: job._fraud_score, label: job._fraud_label,
+                signals: job._fraud_signals || [], confidence: job._fraud_confidence,
+              };
+            }
+            if (job._ai_label != null) {
+              aiCache[job.greenhouse_id] = {
+                label: job._ai_label, score: job._ai_score,
+                confidence: job._ai_confidence, summary: job._ai_summary,
+                perplexity: job._ai_perplexity, burstiness: job._ai_burstiness,
+                topSignals: job._ai_signals || [],
+              };
+            }
+          });
+
           allJobs = serverJobs.map((job: FeedJob & { _filter_idxs?: number[] }) => {
             const filterIdxs = job._filter_idxs || [];
             const filterNums = filterIdxs.map((idx: number) => {
               const sf = checkedFilters[idx - 1];
               return sf ? { num: sf._filterNum || '', color: sf._filterColor || '' } : { num: '', color: '' };
             });
-            const { _filter_idxs, ...rest } = job;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { _filter_idxs, _fraud_score, _fraud_label, _fraud_confidence, _fraud_signals, _ai_label, _ai_score, _ai_confidence, _ai_summary, _ai_perplexity, _ai_burstiness, _ai_signals, ...rest } = job as any;
             return { ...rest, _filterNums: filterNums } as FeedJob;
           });
           totalCount = resultData.count || 0;
@@ -685,8 +719,8 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
       if (controller.signal.aborted) return;
 
       // Apply trust filter
-      const trustActive = state.trustFilters.size < ALL_TRUST.size;
-      if (trustActive) {
+      // FA-006: Skip when server-side trust filter handled filtering in the DB
+      if (!serverTrustEnabled && state.trustFilters.size < ALL_TRUST.size) {
         const cache = getLegacyFraudCache();
         allJobs = allJobs.filter(j => {
           const info = cache[j.greenhouse_id];
@@ -696,8 +730,8 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
       }
 
       // Apply AI content filter
-      const aiActive = state.aiFilters.size < ALL_AI.size;
-      if (aiActive) {
+      // FA-006: Skip when server-side trust filter handled filtering in the DB
+      if (!serverTrustEnabled && state.aiFilters.size < ALL_AI.size) {
         const cache = getLegacyAiJdCache();
         allJobs = allJobs.filter(j => {
           const info = cache[j.greenhouse_id];
