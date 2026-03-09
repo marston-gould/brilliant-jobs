@@ -52,7 +52,37 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**UX-001-S2** — Feed UX Consolidation — Pagination
+**UX-001-S3** — Feed UX Consolidation — Universal Filter Browser
+- Completed: 2026-03-09
+- Product version bumped: `v8.27` → `v8.28` (JS/HTML changes — 6 Browse buttons added, generic filter browser page, openFilterBrowser function, browsers.js extended; all HTML surfaces cache-busted)
+- ROADMAP.md updated: UX-001-S3 → ✅
+- roadmap.html updated: UX-001-S3 → `s: 'done'`, p: 100
+- **UX-007 resolved: Universal Filter Browser**
+  - **Migration v6.48:** `mv_filter_browser_data` materialized view — 5 dimensions (title from ats_jobs.title, skill from unnest(extracted_skills), dept from extracted_department, level from extracted_seniority, jd_keyword from ts_stat on content_tsv). All filtered to status='open'. Top 200 per dimension (LEVEL/DEPT natural ~10-50). UNIQUE index on (dimension, value) for REFRESH CONCURRENTLY. pg_cron every 15 minutes. GRANT to authenticated + anon. Registered in mv_refresh_log.
+  - **Dashboard HTML:** 6 new Browse buttons added to filter rows: `#browse-what-btn` (WHAT), `#browse-what-not-btn` (WHAT NOT), `#browse-skills-btn` (SKILLS), `#browse-dept-btn` (DEPT), `#browse-level-btn` (LEVEL), `#browse-jd-btn` (JD CONTAINS). All use existing `.browse-companies-btn` class. Inputs given `u-pr-70` for spacing.
+  - **Generic filter browser page:** `#page-filter-browser` with dynamic title (`#fb-title`), subtitle (`#fb-subtitle`), search (`#fb-search`), alpha nav (`#fb-alpha-nav`), total count (`#fb-total-count`), list container (`#fb-list`), back button (`#fb-back-btn`).
+  - **`openFilterBrowser(dimension, mode)` function:** `FB_DIMENSIONS` config maps 5 dimensions to labels, MV dimension keys, and pill targets (whatPills, skillsPills, deptPills, levelPills, jdPills + whatNotPills for exclude mode). Shows browser page, sets header text, loads data.
+  - **`loadFilterBrowserData()`:** Queries `mv_filter_browser_data` via Supabase, 10-minute client cache (`_fbCache`).
+  - **`renderFilterBrowserList()`:** Filters by dimension + search query. Alpha nav (auto-hidden for ≤20 items). Letter-grouped rows with value + job_count badge. Click to toggle selection checkbox.
+  - **`_toggleFbItem(el)`:** Toggles selection visual (checkbox, border, background). Updates back button text with selection count ("← Apply 3 selections").
+  - **Back button pill injection:** Reads `_fbSelections`, determines target pill array from config (include → pillTarget, exclude → pillNotTarget). Pushes pills with `source: 'browser'`. Calls `renderAllPills()` + `invalidateCache()` + `searchJobs(0)`. Navigates back to Jobs page.
+  - **Event listeners:** 6 browse buttons wired to `openFilterBrowser()` with correct dimension + mode. Search input debounced at 150ms.
+  - **SPA parity:** `window.openFilterBrowser` exported for SPA bridge. FilterBuilder.tsx can call legacy browser via window.
+- **Pod team:** Lead Platform Eng + Forward-Looking Dev (primary), Chief Architect + System Architect—Scalability (reviewers)
+- **Created:**
+  - `supabase/migrations/v6.48-ux007-filter-browser-data.sql` — MV + indexes + grants + pg_cron
+  - `tests/ux-001-s3-filter-browser.test.js` — 69 validation tests (10 sections)
+- **Modified:**
+  - `dashboard.html` — 6 Browse buttons + #page-filter-browser page
+  - `js/browsers.js` — openFilterBrowser, loadFilterBrowserData, renderFilterBrowserList, _toggleFbItem, back button handler, browse button listeners (~200 lines added)
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt (includes browsers.js)
+  - `styles.css` — Tailwind rebuild
+  - `docs/scaling/pod-team-manifest.md` — UX-001-S3 pairing
+  - `ROADMAP.md` — UX-001-S3 → ✅
+  - `roadmap.html` — UX-001-S3 → done/100
+- **Tests:** 69 UX-001-S3 validation tests (all passing)
+- **UX-001 FEATURE BUILD COMPLETE** — All 3 sessions done. Full feed UX consolidation: unified save/load, merchandising placement, resume generation, spacing fix, pagination, universal filter browser.
 - Completed: 2026-03-09
 - Product version bumped: `v8.26` → `v8.27` (JS/CSS/HTML changes — Load More removed, renderPagination added, #feed-pagination container, pagination CSS, SPA PaginationControls rewrite; all HTML surfaces cache-busted)
 - ROADMAP.md updated: UX-001-S2 → ✅
@@ -1316,7 +1346,8 @@ No specific session queued. FB-PAYL feature build is COMPLETE (S1 ✅, S2 ✅, S
 **Phase REM is COMPLETE.** All 5 sessions (REM-001 through REM-005) are done.
 **FB-PAYL is COMPLETE.** All 4 sessions (FB-PAYL-S1 through FB-PAYL-S4) are done. PAYL operational in production with Stripe integration.
 **UX-001-S1 is COMPLETE.** Save/Load unification + layout fixes done. 
-**UX-001-S2 is COMPLETE.** Pagination done. UX-001-S3 (Universal Browser) remains.
+**UX-001-S2 is COMPLETE.** Pagination done.
+**UX-001-S3 is COMPLETE.** Universal Filter Browser done. UX-001 FEATURE BUILD COMPLETE.
 
 Pending work streams (Marston to prioritize):
 - **Stripe configuration:** Create PAYL product in Stripe dashboard, configure setup_intent flow with PAYL-specific metadata. Requires Marston Stripe access.
@@ -1360,7 +1391,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.27`** | **UX-001-S2: Feed UX Pagination** |
+| **Product (BJ_VERSION)** | **`v8.28`** | **UX-001-S3: Feed UX Universal Filter Browser** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

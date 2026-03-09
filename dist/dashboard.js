@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.27';
+var BJ_VERSION = 'v8.28';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -12259,10 +12259,216 @@ document.addEventListener('DOMContentLoaded', function() {
       const hidden = body.style.display === 'none';
       body.style.display = hidden ? 'grid' : 'none';
       if (labels) labels.style.display = hidden ? 'flex' : 'none';
-      toggleBtn.textContent = hidden ? 'Hide' : 'Show';
+      toggleBtn.textContent = hidden ? 'Show' : 'Hide';
     });
   }
 });
+
+// ============================================================
+// UX-007: Generic Filter Browser
+// ============================================================
+// Reusable browser for WHAT, SKILLS, DEPT, LEVEL, JD CONTAINS
+// Data sourced from mv_filter_browser_data materialized view
+// ============================================================
+
+let _fbCache = null; // { data: [...], ts: number }
+let _fbCacheTTL = 10 * 60 * 1000; // 10 min
+let _fbConfig = null; // current browser config
+let _fbSelections = {}; // { value: true }
+let _fbSearchTimeout = null;
+
+const FB_DIMENSIONS = {
+  title:      { label: 'Title Browser',      subtitle: 'Popular job titles from live listings',     mvDim: 'title',      pillTarget: 'whatPills',    pillNotTarget: 'whatNotPills' },
+  skill:      { label: 'Skills Browser',      subtitle: 'Most in-demand skills across open jobs',   mvDim: 'skill',      pillTarget: 'skillsPills',  pillNotTarget: null },
+  dept:       { label: 'Department Browser',  subtitle: 'Departments hiring now',                   mvDim: 'dept',       pillTarget: 'deptPills',    pillNotTarget: null },
+  level:      { label: 'Level Browser',       subtitle: 'Career levels in current openings',        mvDim: 'level',      pillTarget: 'levelPills',   pillNotTarget: null },
+  jd_keyword: { label: 'JD Keyword Browser',  subtitle: 'Most common terms in job descriptions',   mvDim: 'jd_keyword', pillTarget: 'jdPills',      pillNotTarget: null },
+};
+
+function openFilterBrowser(dimension, mode) {
+  const dimConfig = FB_DIMENSIONS[dimension];
+  if (!dimConfig) { console.warn('[BJ] Unknown filter browser dimension:', dimension); return; }
+
+  _fbConfig = { ...dimConfig, dimension, mode: mode || 'include' };
+  _fbSelections = {};
+
+  // Show browser page
+  $$('.page').forEach(p => p.classList.remove('active'));
+  $('#page-filter-browser').classList.add('active');
+  $$('.nav-item').forEach(n => n.classList.remove('active'));
+
+  // Update header
+  $('#fb-title').textContent = dimConfig.label;
+  $('#fb-subtitle').textContent = dimConfig.subtitle;
+  $('#fb-search').value = '';
+  $('#fb-search').placeholder = 'Search ' + dimConfig.label.replace(' Browser', '').toLowerCase() + '…';
+
+  loadFilterBrowserData();
+}
+
+async function loadFilterBrowserData() {
+  const list = $('#fb-list');
+  if (!list) return;
+
+  // Check cache
+  if (_fbCache && Date.now() - _fbCache.ts < _fbCacheTTL) {
+    renderFilterBrowserList();
+    return;
+  }
+
+  list.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-faint);">Loading…</div>';
+
+  try {
+    const resp = await sb.from('mv_filter_browser_data')
+      .select('dimension, value, job_count')
+      .order('job_count', { ascending: false });
+
+    if (resp.error) throw resp.error;
+    _fbCache = { data: resp.data || [], ts: Date.now() };
+    renderFilterBrowserList();
+  } catch (err) {
+    reportError('filter-browser', err);
+    list.innerHTML = '<div style="text-align:center;padding:32px;color:var(--red);">Failed to load browser data. The materialized view may not be deployed yet.</div>';
+  }
+}
+
+function renderFilterBrowserList() {
+  const list = $('#fb-list');
+  const nav = $('#fb-alpha-nav');
+  const countEl = $('#fb-total-count');
+  if (!list || !_fbCache || !_fbConfig) return;
+
+  const query = ($('#fb-search')?.value || '').toLowerCase();
+  const dim = _fbConfig.mvDim;
+
+  // Filter to current dimension
+  let items = _fbCache.data.filter(d => d.dimension === dim);
+  if (query) {
+    items = items.filter(d => d.value.toLowerCase().includes(query));
+  }
+
+  if (countEl) countEl.textContent = items.length + ' value' + (items.length !== 1 ? 's' : '');
+
+  if (items.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-faint);">' +
+      (query ? 'No matches for "' + escapeHtml(query) + '"' : 'No data available for this dimension') + '</div>';
+    if (nav) nav.innerHTML = '';
+    return;
+  }
+
+  // Build alpha nav (hide for small sets like LEVEL)
+  if (nav) {
+    if (items.length <= 20) {
+      nav.innerHTML = '';
+    } else {
+      const letters = [...new Set(items.map(d => (d.value[0] || '').toUpperCase()))].sort();
+      nav.innerHTML = letters.map(l =>
+        `<span class="cb-alpha-letter" data-fb-letter="${l}" style="cursor:pointer;padding:2px 6px;font-size:11px;font-weight:600;color:var(--text-faint);border-radius:4px;" onmouseenter="this.style.background='var(--accent-dim)';this.style.color='var(--accent)'" onmouseleave="this.style.background='';this.style.color='var(--text-faint)'" onclick="document.getElementById('fb-letter-' + this.dataset.fbLetter)?.scrollIntoView({behavior:'smooth',block:'start'})">${l}</span>`
+      ).join('');
+    }
+  }
+
+  // Render rows grouped by first letter
+  let html = '';
+  let lastLetter = '';
+  for (const item of items) {
+    const letter = (item.value[0] || '').toUpperCase();
+    if (letter !== lastLetter) {
+      html += `<div id="fb-letter-${letter}" style="font-size:11px;font-weight:700;color:var(--text-faint);padding:10px 0 4px;border-bottom:1px solid var(--border);margin-top:8px;">${letter}</div>`;
+      lastLetter = letter;
+    }
+    const selected = _fbSelections[item.value];
+    const selectedClass = selected ? ' style="background:hsla(var(--accent-hsl),0.08);border-color:var(--accent);"' : '';
+    html += `<div class="fb-item" data-value="${escapeHtml(item.value)}"${selectedClass} onclick="_toggleFbItem(this)" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;margin:2px 0;border-radius:8px;border:1px solid var(--border);cursor:pointer;transition:all 0.1s;">
+      <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+        <span style="width:18px;height:18px;border-radius:4px;border:1.5px solid ${selected ? 'var(--accent)' : 'var(--border)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;color:var(--accent);transition:all 0.1s;">${selected ? '✓' : ''}</span>
+        <span style="font-size:13px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(item.value)}</span>
+      </div>
+      <span style="font-size:11px;font-weight:600;color:var(--text-faint);background:var(--bg-input);padding:2px 8px;border-radius:4px;flex-shrink:0;">${item.job_count.toLocaleString()}</span>
+    </div>`;
+  }
+
+  list.innerHTML = html;
+}
+
+function _toggleFbItem(el) {
+  const value = el.dataset.value;
+  if (_fbSelections[value]) {
+    delete _fbSelections[value];
+  } else {
+    _fbSelections[value] = true;
+  }
+  // Update visual
+  const checkbox = el.querySelector('span');
+  const isSelected = !!_fbSelections[value];
+  if (checkbox) {
+    checkbox.textContent = isSelected ? '✓' : '';
+    checkbox.style.borderColor = isSelected ? 'var(--accent)' : 'var(--border)';
+  }
+  el.style.background = isSelected ? 'hsla(var(--accent-hsl),0.08)' : '';
+  el.style.borderColor = isSelected ? 'var(--accent)' : 'var(--border)';
+
+  // Update count in back button
+  const count = Object.keys(_fbSelections).length;
+  const backBtn = $('#fb-back-btn');
+  if (backBtn) {
+    backBtn.textContent = count > 0
+      ? '← Apply ' + count + ' selection' + (count > 1 ? 's' : '')
+      : '← Back to Jobs';
+  }
+}
+window._toggleFbItem = _toggleFbItem;
+
+// Back button — inject pills and return to Jobs
+if ($('#fb-back-btn')) {
+  $('#fb-back-btn').addEventListener('click', function() {
+    const selected = Object.keys(_fbSelections);
+
+    if (selected.length > 0 && _fbConfig) {
+      const isExclude = _fbConfig.mode === 'exclude';
+      const targetName = isExclude && _fbConfig.pillNotTarget
+        ? _fbConfig.pillNotTarget
+        : _fbConfig.pillTarget;
+      const target = window[targetName];
+
+      if (Array.isArray(target)) {
+        selected.forEach(function(val) {
+          // Avoid duplicates
+          if (!target.find(p => (p.values || [])[0]?.toLowerCase() === val.toLowerCase())) {
+            target.push({ values: [val], source: 'browser' });
+          }
+        });
+        if (typeof renderAllPills === 'function') renderAllPills();
+        if (typeof invalidateCache === 'function') invalidateCache();
+        if (typeof searchJobs === 'function') searchJobs(0);
+      }
+    }
+
+    // Navigate back to Jobs
+    $$('.page').forEach(p => p.classList.remove('active'));
+    $('#page-jobs').classList.add('active');
+    $$('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === 'jobs'));
+  });
+}
+
+// Search handler
+if ($('#fb-search')) {
+  $('#fb-search').addEventListener('input', function() {
+    clearTimeout(_fbSearchTimeout);
+    _fbSearchTimeout = setTimeout(renderFilterBrowserList, 150);
+  });
+}
+
+// Wire Browse buttons to openFilterBrowser
+if ($('#browse-what-btn'))     $('#browse-what-btn').addEventListener('click', () => openFilterBrowser('title', 'include'));
+if ($('#browse-what-not-btn')) $('#browse-what-not-btn').addEventListener('click', () => openFilterBrowser('title', 'exclude'));
+if ($('#browse-skills-btn'))   $('#browse-skills-btn').addEventListener('click', () => openFilterBrowser('skill', 'include'));
+if ($('#browse-dept-btn'))     $('#browse-dept-btn').addEventListener('click', () => openFilterBrowser('dept', 'include'));
+if ($('#browse-level-btn'))    $('#browse-level-btn').addEventListener('click', () => openFilterBrowser('level', 'include'));
+if ($('#browse-jd-btn'))       $('#browse-jd-btn').addEventListener('click', () => openFilterBrowser('jd_keyword', 'include'));
+
+// Export for SPA bridge
+window.openFilterBrowser = openFilterBrowser;
 
 
 // === js/location.js ===
