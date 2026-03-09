@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.05';
+var BJ_VERSION = 'v8.06';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -25081,6 +25081,27 @@ function setSearchMode(mode) {
           chatPanel.style.opacity = '1';
           chatPanel.style.pointerEvents = 'auto';
         });
+        // QA-FIX: Keep saved searches visible in chat mode
+        // They're inside filter-panel-wrap so we clone/move them temporarily
+        var sfToggle = document.getElementById('sf-toggle');
+        var sfBody = document.getElementById('sf-collapse-body');
+        if (sfToggle) sfToggle.style.cssText = 'display:flex !important';
+        if (sfBody) sfBody.style.cssText = 'display:block !important';
+        // Re-show the filter-panel-wrap but only the saved searches part
+        filterPanel.style.display = 'block';
+        // Hide everything except saved searches inside filter-panel-wrap
+        Array.from(filterPanel.children).forEach(function(child) {
+          if (child.id === 'sf-toggle' || child.id === 'sf-collapse-body') {
+            child.style.display = '';
+          } else if (child.classList && child.classList.contains('sf-collapse-header')) {
+            child.style.display = '';
+          } else {
+            child.style.display = 'none';
+          }
+        });
+        filterPanel.style.opacity = '1';
+        filterPanel.style.pointerEvents = 'auto';
+
         var chatInput = document.getElementById('chat-input');
         if (chatInput) chatInput.focus();
       }, 200);
@@ -25094,6 +25115,10 @@ function setSearchMode(mode) {
       chatPanel.style.pointerEvents = 'none';
       setTimeout(function() {
         chatPanel.style.display = 'none';
+        // QA-FIX: Restore all filter-panel-wrap children when switching back
+        Array.from(filterPanel.children).forEach(function(child) {
+          child.style.display = '';
+        });
         filterPanel.style.display = 'block';
         requestAnimationFrame(function() {
           filterPanel.style.opacity = '1';
