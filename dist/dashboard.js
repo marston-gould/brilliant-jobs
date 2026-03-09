@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.06';
+var BJ_VERSION = 'v8.07';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -13659,6 +13659,17 @@ async function _doAiFilterAnalysis() {
       // Try to extract text from stored file
       if (typeof window._bjFileStore !== 'undefined' && typeof window._extractTextFromFile === 'function') {
         var fileBlob = await window._bjFileStore.get(resume.id);
+        // QA-FIX: Fall back to Supabase Storage if IndexedDB doesn't have the file
+        if (!fileBlob && resume.storagePath && typeof sb !== 'undefined') {
+          try {
+            var dlResult = await sb.storage.from('resumes').download(resume.storagePath);
+            if (!dlResult.error && dlResult.data) {
+              fileBlob = dlResult.data;
+              // Re-cache in IndexedDB for next time
+              window._bjFileStore.put(resume.id, dlResult.data).catch(function(){});
+            }
+          } catch(dlErr) { reportError('location:storage-download', dlErr); }
+        }
         if (fileBlob) {
           var file = new File([fileBlob], resume.name || 'resume.pdf', { type: fileBlob.type || 'application/pdf' });
           var text = await window._extractTextFromFile(file);
@@ -16747,7 +16758,12 @@ async function analyzeHiddenJob(jobId, btn) {
     
     if (!resp.ok) {
       var err = await resp.json().catch(function() { return { error: 'Request failed' }; });
-      body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">' + (err.error || 'AI analysis failed') + '</div>';
+      var statusMsg = resp.status === 404 ? 'Edge function not deployed. Run: supabase functions deploy analyze-hidden-job'
+        : resp.status === 500 ? 'Server error — check ANTHROPIC_API_KEY in Supabase Edge Function secrets'
+        : resp.status === 401 ? 'Please sign in again — your session may have expired'
+        : (err.error || 'AI analysis failed (status ' + resp.status + ')');
+      body.innerHTML = '<div style="text-align:center;padding:40px;"><div style="color:var(--red);font-weight:600;margin-bottom:8px;">' + statusMsg + '</div>' +
+        '<button class="btn btn-sm btn-primary" style="margin-top:12px;" onclick="document.getElementById(\'ai-filter-modal\').style.display=\'none\';document.body.style.overflow=\'\';">OK</button></div>';
       return;
     }
     

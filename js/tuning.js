@@ -1350,7 +1350,12 @@ async function analyzeHiddenJob(jobId, btn) {
     
     if (!resp.ok) {
       var err = await resp.json().catch(function() { return { error: 'Request failed' }; });
-      body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">' + (err.error || 'AI analysis failed') + '</div>';
+      var statusMsg = resp.status === 404 ? 'Edge function not deployed. Run: supabase functions deploy analyze-hidden-job'
+        : resp.status === 500 ? 'Server error — check ANTHROPIC_API_KEY in Supabase Edge Function secrets'
+        : resp.status === 401 ? 'Please sign in again — your session may have expired'
+        : (err.error || 'AI analysis failed (status ' + resp.status + ')');
+      body.innerHTML = '<div style="text-align:center;padding:40px;"><div style="color:var(--red);font-weight:600;margin-bottom:8px;">' + statusMsg + '</div>' +
+        '<button class="btn btn-sm btn-primary" style="margin-top:12px;" onclick="document.getElementById(\'ai-filter-modal\').style.display=\'none\';document.body.style.overflow=\'\';">OK</button></div>';
       return;
     }
     

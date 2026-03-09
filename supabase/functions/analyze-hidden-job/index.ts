@@ -87,8 +87,8 @@ serve(async (req) => {
     const body = await req.json();
     const { job_id, resume_text, filter_pills } = body;
 
-    if (!job_id || !resume_text) {
-      return new Response(JSON.stringify({ error: 'Missing job_id or resume_text' }),
+    if (!job_id) {
+      return new Response(JSON.stringify({ error: 'Missing job_id' }),
         { status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
     }
 
@@ -119,7 +119,7 @@ ${filter_pills ? JSON.stringify(filter_pills) : 'No filter context available'}
 </current_filter_pills>
 
 <resume>
-${resume_text.slice(0, 6000)}
+${resume_text ? resume_text.slice(0, 6000) : 'No resume provided — analyze based on job content and filter context only'}
 </resume>
 
 Analyze why this job was a poor match for this person and suggest specific negative filter terms. Return ONLY JSON.`;

@@ -1616,6 +1616,17 @@ async function _doAiFilterAnalysis() {
       // Try to extract text from stored file
       if (typeof window._bjFileStore !== 'undefined' && typeof window._extractTextFromFile === 'function') {
         var fileBlob = await window._bjFileStore.get(resume.id);
+        // QA-FIX: Fall back to Supabase Storage if IndexedDB doesn't have the file
+        if (!fileBlob && resume.storagePath && typeof sb !== 'undefined') {
+          try {
+            var dlResult = await sb.storage.from('resumes').download(resume.storagePath);
+            if (!dlResult.error && dlResult.data) {
+              fileBlob = dlResult.data;
+              // Re-cache in IndexedDB for next time
+              window._bjFileStore.put(resume.id, dlResult.data).catch(function(){});
+            }
+          } catch(dlErr) { reportError('location:storage-download', dlErr); }
+        }
         if (fileBlob) {
           var file = new File([fileBlob], resume.name || 'resume.pdf', { type: fileBlob.type || 'application/pdf' });
           var text = await window._extractTextFromFile(file);
