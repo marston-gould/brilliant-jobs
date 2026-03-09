@@ -182,6 +182,124 @@ function getLegacyAiJdCache(): Record<string, { label: AiLabel; ai_probability: 
   return (window as any)._aiJdCache || {};
 }
 
+// ── Helper: check feature flags from legacy bridge ──────────
+
+async function isFeatureFlagEnabled(key: string, fallback: boolean): Promise<boolean> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fn = (window as any).isFeatureEnabled;
+  if (typeof fn !== 'function') return fallback;
+  try { return await fn(key, fallback); } catch { return fallback; }
+}
+
+// ── FA-005: Serialize filter for server-side merge RPC ──────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function serializeFilterForRPC(sf: SavedFilter, tuning: Record<string, any>): Record<string, unknown> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const filter: Record<string, any> = {};
+
+  // WHAT
+  const w = sf.whatPills || sf.pills || [];
+  const whatVals = w.flatMap(p => p.values.map(v => v.replace(/[,()]/g, '').trim())).filter(Boolean);
+  if (whatVals.length > 0) filter.what = whatVals;
+
+  // WHAT NOT
+  const wnot = sf.whatNotPills || [];
+  const whatNotVals = wnot.flatMap(p => p.values.map(v => v.trim().replace(/^nor\s+/i, ''))).filter(Boolean);
+  if (whatNotVals.length > 0) filter.what_not = whatNotVals;
+
+  // Global title excludes
+  const titleExcl = ((tuning.titleExcludes as FilterPill[]) || []).flatMap(p => p.values.map(v => v.trim())).filter(Boolean);
+  if (titleExcl.length > 0) filter.title_excludes = titleExcl;
+
+  // WHERE — location IDs come pre-attached to the filter
+  const locationIds = sf._locationIds || null;
+  if (locationIds === null) {
+    const wh = sf.wherePills || [];
+    const whereVals = wh.flatMap(p => p.values).filter(Boolean);
+    if (whereVals.length > 0) {
+      filter.where_mode = 'inline';
+      filter.where_text = whereVals;
+    }
+  } else if (Array.isArray(locationIds)) {
+    filter.where_mode = 'ids';
+    filter.where_ids = locationIds;
+  }
+
+  // WHERE NOT + location excludes
+  const whnot = sf.whereNotPills || [];
+  const whereNotVals = whnot.flatMap(p => p.values.map(v => v.trim().replace(/^nor\s+/i, ''))).filter(Boolean);
+  if (whereNotVals.length > 0) filter.where_not = whereNotVals;
+
+  const locExcl = ((tuning.locationExcludes as FilterPill[]) || []).flatMap(p => p.values.map(v => v.trim())).filter(Boolean);
+  if (locExcl.length > 0) filter.location_excludes = locExcl;
+
+  if (tuning.usOnly) filter.us_only = true;
+  if (tuning.excludeHourly) filter.exclude_hourly = true;
+  if (tuning.excludeStaffing) filter.exclude_staffing = true;
+  if (sf.includeRemote) filter.include_remote = true;
+
+  // WHO
+  const wo = sf.whoPills || [];
+  const whoVals = wo.flatMap(p => p.values).filter(Boolean);
+  if (whoVals.length > 0) filter.who = whoVals;
+
+  const wonot = sf.whoNotPills || [];
+  const whoNotVals = wonot.flatMap(p => p.values.map(v => v.trim().replace(/^nor\s+/i, ''))).filter(Boolean);
+  if (whoNotVals.length > 0) filter.who_not = whoNotVals;
+
+  const compExcl = ((tuning.companyExcludes as FilterPill[]) || []).flatMap(p => p.values.map(v => v.trim())).filter(Boolean);
+  if (compExcl.length > 0) filter.company_excludes = compExcl;
+
+  const indExcl = ((tuning.industryExcludes as FilterPill[]) || [])
+    .map(p => typeof p === 'string' ? p : (p.values ? p.values[0] : p)).filter(Boolean);
+  if (indExcl.length > 0) filter.industry_excludes = indExcl;
+
+  // WHEN
+  const wn = sf.whenPills || [];
+  for (const pill of wn) {
+    for (const v of pill.values) {
+      const since = parseWhenValue(v);
+      if (since) { filter.when_since = since.toISOString(); break; }
+    }
+    if (filter.when_since) break;
+  }
+
+  // PAY
+  const pay = sf.payPills || [];
+  if (pay.length > 0) {
+    const pill = pay[0]!;
+    if (pill.min) filter.pay_min = pill.min;
+    if (pill.max) filter.pay_max = pill.max;
+    filter.include_no_salary = sf.includeNoSalary !== false;
+  }
+
+  // SKILLS
+  const sk = sf.skillsPills || [];
+  const skillVals = sk.flatMap(p => p.values.map(v => v.trim().toLowerCase())).filter(Boolean);
+  if (skillVals.length > 0) filter.skills = skillVals;
+
+  // LEVEL
+  const lv = sf.levelPills || [];
+  const levelVals = lv.flatMap(p => p.values.map(v => v.trim().toLowerCase())).filter(Boolean);
+  if (levelVals.length > 0) filter.levels = levelVals;
+
+  // JD
+  const jd = sf.jdPills || [];
+  const jdVals = jd.flatMap(p => p.values.map(v => v.replace(/[,()]/g, '').trim())).filter(Boolean);
+  if (jdVals.length > 0) filter.jd_terms = jdVals;
+
+  // DEPARTMENT
+  const dp = sf.deptPills || [];
+  const deptVals = dp.flatMap(p => p.values.map(v => v.trim().toLowerCase())).filter(Boolean);
+  if (deptVals.length > 0) filter.depts = deptVals;
+
+  filter.filter_num = sf._filterNum || '';
+  filter.filter_color = sf._filterColor || '';
+
+  return filter;
+}
+
 // ── Helper: normalize "when" filter values ────────────────
 
 function parseWhenValue(raw: string): Date | null {
@@ -456,69 +574,112 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
         }));
         totalCount = count || 0;
       } else {
-        // Multi-filter path: parallel queries, merge, dedup
-        // FA-004: raised per-filter limit. FA-005 replaces with server-side UNION.
-        const perFilter = Math.min(Math.ceil(2000 / checkedFilters.length), 500);
-        const seenIds = new Set<string>();
-        const jobFilterMap = new Map<string, Array<{ num: string; color: string }>>();
+        // FA-005: Check server merge flag
+        const serverMergeEnabled = await isFeatureFlagEnabled('feed_server_merge', false);
+        const contentSearchEnabled = await isFeatureFlagEnabled('feed_content_search', false);
 
-        const promises = checkedFilters.map(sf => {
-          let q = sb.from('ats_jobs').select('*', { count: 'planned' });
-          q = buildFilterQuery(sf, q, sf._locationIds || null, tuning);
-          if (hiddenIds.length > 0) {
-            q = q.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
-          }
+        if (serverMergeEnabled) {
+          // FA-005: Server-side multi-filter merge via Postgres function
+          const rpcFilters = checkedFilters.map(sf => serializeFilterForRPC(sf, tuning));
+          let sortCol = 'updated_at';
+          let sortAsc = false;
           for (const s of state.sortStack) {
             if (['level', 'match', 'relevance'].includes(s.field)) continue;
-            q = q.order(s.field, { ascending: s.asc });
+            sortCol = s.field;
+            sortAsc = s.asc;
+            break;
           }
-          q = q.range(0, perFilter - 1);
-          return q;
-        });
 
-        const results = await Promise.all(promises);
-        if (controller.signal.aborted) return;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: rpcResult, error: rpcError } = await sb.rpc('search_jobs_multi', {
+            p_filters: rpcFilters,
+            p_sort_col: sortCol,
+            p_sort_asc: sortAsc,
+            p_page: page,
+            p_per_page: JOBS_PER_PAGE,
+            p_hidden_ids: hiddenIds,
+            p_content_search: contentSearchEnabled,
+          });
 
-        for (let i = 0; i < results.length; i++) {
-          const r = results[i]!;
-          if (r.error) throw new ProviderError(r.error.message, 'SEARCH_FAILED', undefined, r.error);
-          totalCount += r.count || 0;
-          const fm = { num: checkedFilters[i]!._filterNum || '', color: checkedFilters[i]!._filterColor || '' };
-          for (const job of (r.data || [])) {
-            const existing = jobFilterMap.get(job.greenhouse_id);
-            if (existing) {
-              existing.push(fm);
-            } else {
-              jobFilterMap.set(job.greenhouse_id, [fm]);
+          if (controller.signal.aborted) return;
+          if (rpcError) throw new ProviderError(rpcError.message, 'SEARCH_FAILED', undefined, rpcError);
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const resultData = (rpcResult as any) || { data: [], count: 0 };
+          const serverJobs = resultData.data || [];
+
+          allJobs = serverJobs.map((job: FeedJob & { _filter_idxs?: number[] }) => {
+            const filterIdxs = job._filter_idxs || [];
+            const filterNums = filterIdxs.map((idx: number) => {
+              const sf = checkedFilters[idx - 1];
+              return sf ? { num: sf._filterNum || '', color: sf._filterColor || '' } : { num: '', color: '' };
+            });
+            const { _filter_idxs, ...rest } = job;
+            return { ...rest, _filterNums: filterNums } as FeedJob;
+          });
+          totalCount = resultData.count || 0;
+
+        } else {
+          // Client-side merge fallback (pre-FA-005)
+          const perFilter = Math.min(Math.ceil(2000 / checkedFilters.length), 500);
+          const seenIds = new Set<string>();
+          const jobFilterMap = new Map<string, Array<{ num: string; color: string }>>();
+
+          const promises = checkedFilters.map(sf => {
+            let q = sb.from('ats_jobs').select('*', { count: 'planned' });
+            q = buildFilterQuery(sf, q, sf._locationIds || null, tuning);
+            if (hiddenIds.length > 0) {
+              q = q.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
             }
-            if (!seenIds.has(job.greenhouse_id)) {
-              seenIds.add(job.greenhouse_id);
-              allJobs.push(job as FeedJob);
+            for (const s of state.sortStack) {
+              if (['level', 'match', 'relevance'].includes(s.field)) continue;
+              q = q.order(s.field, { ascending: s.asc });
+            }
+            q = q.range(0, perFilter - 1);
+            return q;
+          });
+
+          const results = await Promise.all(promises);
+          if (controller.signal.aborted) return;
+
+          for (let i = 0; i < results.length; i++) {
+            const r = results[i]!;
+            if (r.error) throw new ProviderError(r.error.message, 'SEARCH_FAILED', undefined, r.error);
+            totalCount += r.count || 0;
+            const fm = { num: checkedFilters[i]!._filterNum || '', color: checkedFilters[i]!._filterColor || '' };
+            for (const job of (r.data || [])) {
+              const existing = jobFilterMap.get(job.greenhouse_id);
+              if (existing) {
+                existing.push(fm);
+              } else {
+                jobFilterMap.set(job.greenhouse_id, [fm]);
+              }
+              if (!seenIds.has(job.greenhouse_id)) {
+                seenIds.add(job.greenhouse_id);
+                allJobs.push(job as FeedJob);
+              }
             }
           }
+
+          allJobs.forEach(j => {
+            j._filterNums = jobFilterMap.get(j.greenhouse_id) || [];
+          });
+
+          allJobs.sort((a, b) => {
+            for (const s of state.sortStack) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const va = (a as any)[s.field] || '';
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const vb = (b as any)[s.field] || '';
+              const cmp = va < vb ? -1 : va > vb ? 1 : 0;
+              if (cmp !== 0) return s.asc ? cmp : -cmp;
+            }
+            return 0;
+          });
+
+          const from = page * JOBS_PER_PAGE;
+          allJobs = allJobs.slice(from, from + JOBS_PER_PAGE);
         }
-
-        // Attach filter tags
-        allJobs.forEach(j => {
-          j._filterNums = jobFilterMap.get(j.greenhouse_id) || [];
-        });
-
-        // Client-side sort merged results
-        allJobs.sort((a, b) => {
-          for (const s of state.sortStack) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const va = (a as any)[s.field] || '';
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const vb = (b as any)[s.field] || '';
-            const cmp = va < vb ? -1 : va > vb ? 1 : 0;
-            if (cmp !== 0) return s.asc ? cmp : -cmp;
-          }
-          return 0;
-        });
-
-        // Client-side paginate
-        const from = page * JOBS_PER_PAGE;
-        allJobs = allJobs.slice(from, from + JOBS_PER_PAGE);
       }
 
       if (controller.signal.aborted) return;

@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v7.91';
+var BJ_VERSION = 'v7.92';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -3323,6 +3323,8 @@ const HIDE_REASONS = [
 
 // FA-001: Content search flag — evaluated once per searchJobs() call
 var _contentSearchEnabled = false;
+// FA-005: Server-side merge flag — when enabled, multi-filter uses RPC instead of client-side merge
+var _serverMergeEnabled = false;
 
 function debouncedSearchJobs() {
   clearTimeout(searchTimeout);
@@ -3915,6 +3917,150 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
   return query;
 }
 
+// FA-005: Serialize a saved filter + location context + tuning into the JSONB
+// format expected by the search_jobs_multi Postgres function.
+// Maps client-side pill data structures into flat arrays for SQL WHERE building.
+function serializeFilterForRPC(sf, locationIds, tuning) {
+  const filter = {};
+
+  // WHAT pills → flat string array
+  const w = sf.whatPills || sf.pills || [];
+  const whatVals = w.flatMap(p => p.values.map(v => v.replace(/[,()]/g, '').trim())).filter(Boolean);
+  if (whatVals.length > 0) filter.what = whatVals;
+
+  // WHAT NOT pills
+  const wnot = sf.whatNotPills || [];
+  const whatNotVals = wnot.flatMap(p => p.values.map(v => v.trim().replace(/^nor\s+/i, ''))).filter(Boolean);
+  if (whatNotVals.length > 0) filter.what_not = whatNotVals;
+
+  // Global title excludes
+  const titleExcl = (tuning.titleExcludes || []).flatMap(p => (p.values || []).map(v => v.trim())).filter(Boolean);
+  if (titleExcl.length > 0) filter.title_excludes = titleExcl;
+
+  // WHERE — determine mode from locationIds
+  if (locationIds && locationIds.isRemoteOnly) {
+    filter.where_mode = 'remote_only';
+  } else if (locationIds && locationIds.includeIds !== null) {
+    filter.where_mode = 'ids';
+    filter.where_ids = locationIds.includeIds;
+    if (locationIds.boundingBox) {
+      filter.where_bbox = locationIds.boundingBox;
+    }
+    if (locationIds._stateCodes && locationIds._stateCodes.length > 0) {
+      filter.where_state_codes = locationIds._stateCodes;
+    }
+    if (locationIds._radiusPills && locationIds._radiusPills.length > 0) {
+      filter.where_radius_bboxes = locationIds._radiusPills.map(rp => {
+        const latD = rp.radius_mi / 69;
+        const lngD = rp.radius_mi / (69 * Math.cos(rp.lat * Math.PI / 180));
+        return {
+          min_lat: (rp.lat - latD).toFixed(4),
+          max_lat: (rp.lat + latD).toFixed(4),
+          min_lng: (rp.lng - lngD).toFixed(4),
+          max_lng: (rp.lng + lngD).toFixed(4),
+        };
+      });
+    }
+    filter.where_has_remote = locationIds._hasRemote || false;
+    filter.where_is_us_search = locationIds.isUSSearch || false;
+  } else {
+    // Inline text-based location search
+    const wh = sf.wherePills || [];
+    const whereVals = wh.flatMap(p => p.values).filter(Boolean);
+    if (whereVals.length > 0) {
+      filter.where_mode = 'inline';
+      filter.where_text = whereVals;
+    }
+  }
+
+  // WHERE NOT pills + global location excludes
+  const whnot = sf.whereNotPills || [];
+  const whereNotVals = whnot.flatMap(p => p.values.map(v => v.trim().replace(/^nor\s+/i, ''))).filter(Boolean);
+  if (whereNotVals.length > 0) filter.where_not = whereNotVals;
+
+  const locExcl = (tuning.locationExcludes || []).flatMap(p => (p.values || []).map(v => v.trim())).filter(Boolean);
+  if (locExcl.length > 0) filter.location_excludes = locExcl;
+
+  // US-Only
+  if (tuning.usOnly) filter.us_only = true;
+
+  // Remote exclusion logic
+  const hasExplicitRemote = (sf.wherePills || []).some(p => p.locType === 'remote' || (p.values && p.values[0]?.toLowerCase() === 'remote'));
+  const hasExplicitNotRemote = (sf.whereNotPills || []).some(p => p.values && p.values[0]?.toLowerCase() === 'remote');
+  const hasLocationFilter = (sf.wherePills || []).length > 0 || (locationIds && locationIds.includeIds !== null) || (locationIds && locationIds.isRemoteOnly);
+  const includeRemote = sf.includeRemote === true;
+  if (hasExplicitNotRemote || (!hasExplicitRemote && hasLocationFilter && !includeRemote)) {
+    filter.exclude_remote = true;
+  }
+  if (includeRemote) filter.include_remote = true;
+
+  // Exclude hourly / staffing
+  if (tuning.excludeHourly) filter.exclude_hourly = true;
+  if (tuning.excludeStaffing) filter.exclude_staffing = true;
+
+  // WHO pills
+  const wo = sf.whoPills || [];
+  const whoVals = wo.flatMap(p => p.values).filter(Boolean);
+  if (whoVals.length > 0) filter.who = whoVals;
+
+  // WHO NOT pills + global company excludes
+  const wonot = sf.whoNotPills || [];
+  const whoNotVals = wonot.flatMap(p => p.values.map(v => v.trim().replace(/^nor\s+/i, ''))).filter(Boolean);
+  if (whoNotVals.length > 0) filter.who_not = whoNotVals;
+
+  const compExcl = (tuning.companyExcludes || []).flatMap(p => (p.values || []).map(v => v.trim())).filter(Boolean);
+  if (compExcl.length > 0) filter.company_excludes = compExcl;
+
+  // Global industry excludes
+  const indExcl = (tuning.industryExcludes || []).map(p => typeof p === 'string' ? p : (p.values ? p.values[0] : p)).filter(Boolean);
+  if (indExcl.length > 0) filter.industry_excludes = indExcl;
+
+  // WHEN pills
+  const wn = sf.whenPills || [];
+  for (const pill of wn) {
+    for (const v of pill.values) {
+      const since = parseWhenValue(v);
+      if (since) { filter.when_since = since.toISOString(); break; }
+    }
+    if (filter.when_since) break;
+  }
+
+  // PAY pills
+  const pay = sf.payPills || [];
+  if (pay.length > 0) {
+    const pill = pay[0];
+    if (pill.min) filter.pay_min = pill.min;
+    if (pill.max) filter.pay_max = pill.max;
+    filter.include_no_salary = sf.includeNoSalary !== false;
+  }
+
+  // SKILLS pills
+  const sk = sf.skillsPills || [];
+  const skillVals = sk.flatMap(p => p.values.map(v => v.trim().toLowerCase())).filter(Boolean);
+  if (skillVals.length > 0) filter.skills = skillVals;
+
+  // LEVEL pills
+  const lv = sf.levelPills || [];
+  const levelVals = lv.flatMap(p => p.values.map(v => v.trim().toLowerCase())).filter(Boolean);
+  if (levelVals.length > 0) filter.levels = levelVals;
+
+  // JD pills
+  const jd = sf.jdPills || [];
+  const jdVals = jd.flatMap(p => p.values.map(v => v.replace(/[,()]/g, '').trim())).filter(Boolean);
+  if (jdVals.length > 0) filter.jd_terms = jdVals;
+
+  // DEPARTMENT pills
+  const dp = sf.deptPills || [];
+  const deptVals = dp.flatMap(p => p.values.map(v => v.trim().toLowerCase())).filter(Boolean);
+  if (deptVals.length > 0) filter.depts = deptVals;
+
+  // Filter identity (for filter tag badges)
+  filter.filter_num = sf._filterNum || '';
+  filter.filter_color = sf._filterColor || '';
+
+  return filter;
+}
+
 /**
  * Normalize free-text WHEN input to a canonical label.
  * Returns { label: string, days: number } or null if unrecognizable.
@@ -4092,6 +4238,9 @@ async function searchJobs(page = 0) {
     if (typeof isFeatureEnabled === 'function') {
       try { _contentSearchEnabled = await isFeatureEnabled('feed_content_search', false); }
       catch (e) { _contentSearchEnabled = false; }
+      // FA-005: Evaluate server merge flag
+      try { _serverMergeEnabled = await isFeatureEnabled('feed_server_merge', false); }
+      catch (e) { _serverMergeEnabled = false; }
     }
 
     // FA-010: Capture search start time for latency measurement
@@ -4211,9 +4360,64 @@ async function searchJobs(page = 0) {
       totalCount = feedResult.count || 0;
       _feedTotalCount = totalCount;
       _feedLoadMoreOffset = (page + 1) * JOBS_PER_PAGE;
+    } else if (_serverMergeEnabled) {
+      // FA-005: Server-side multi-filter merge via Postgres function
+      // Single round trip — dedup, sort, paginate all happen in the DB
+      const tuning = safeReadLS('bj_tuning', {});
+      const rpcFilters = filtersToRun.map(sf => serializeFilterForRPC(sf, sf._locationIds, tuning));
+
+      // Determine sort column (skip client-only sorts)
+      let sortCol = 'updated_at';
+      let sortAsc = false;
+      for (const s of jobSortStack) {
+        if (s.field === 'level' || s.field === 'match' || s.field === 'relevance') continue;
+        sortCol = s.field;
+        sortAsc = s.asc;
+        break;
+      }
+
+      console.log('[BJ] FA-005: Server-side merge — %d filters, page %d, sort=%s %s', rpcFilters.length, page, sortCol, sortAsc ? 'ASC' : 'DESC');
+
+      const { data: rpcResult, error: rpcError } = await sb.rpc('search_jobs_multi', {
+        p_filters: rpcFilters,
+        p_sort_col: sortCol,
+        p_sort_asc: sortAsc,
+        p_page: page,
+        p_per_page: JOBS_PER_PAGE,
+        p_hidden_ids: hiddenIds,
+        p_content_search: _contentSearchEnabled,
+      });
+
+      if (rpcError) {
+        console.error('[BJ] FA-005 RPC error, falling back to client-side merge:', rpcError);
+        // Fall through to client-side merge below
+        _serverMergeEnabled = false;
+        // Re-run searchJobs to use fallback path
+        return searchJobs();
+      }
+
+      const resultData = rpcResult || { data: [], count: 0 };
+      const serverJobs = resultData.data || [];
+
+      // Re-attach _filterNums from the _filter_idxs array returned by the function
+      // _filter_idxs contains the 1-based filter indices that matched each job
+      allJobs = serverJobs.map(job => {
+        const filterIdxs = job._filter_idxs || [];
+        const filterNums = filterIdxs.map(idx => {
+          const sf = filtersToRun[idx - 1]; // 1-based → 0-based
+          return sf ? { num: sf._filterNum || '', color: sf._filterColor || '' } : { num: '', color: '' };
+        });
+        delete job._filter_idxs;
+        return { ...job, _filterNums: filterNums };
+      });
+
+      totalCount = resultData.count || 0;
+      _feedTotalCount = totalCount;
+      _feedLoadMoreOffset = (page + 1) * JOBS_PER_PAGE;
+
     } else {
-      // Multiple filters — fetch up to limit per filter, merge, dedupe
-      // FA-004: raised per-filter limit. FA-005 replaces this with server-side UNION.
+      // Multiple filters — client-side merge (pre-FA-005 fallback)
+      // FA-004: raised per-filter limit. FA-005 server-side UNION is preferred.
       const perFilter = Math.min(Math.ceil(2000 / filtersToRun.length), 500);
       const promises = filtersToRun.map(sf => {
         let q = sb.from('ats_jobs').select('*', { count: 'exact' });
@@ -4503,7 +4707,8 @@ async function searchJobs(page = 0) {
         null_loc_country_count: _faNullLocCountry,
         content_match_count: _faContentMatchCount,
         content_search_enabled: _contentSearchEnabled,  // FA-001: segment pre/post content search
-        pagination_uncapped: true  // FA-004: segment pre/post 500-row cap removal
+        pagination_uncapped: true,  // FA-004: segment pre/post 500-row cap removal
+        server_merge_enabled: _serverMergeEnabled  // FA-005: segment pre/post server-side merge
       });
 
       // Distinct zero-results event (alert trigger)

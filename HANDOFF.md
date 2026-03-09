@@ -52,28 +52,29 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FA-004** — Remove 500-Row Cap + Real Pagination
+**FA-005** — Server-Side Multi-Filter Merge
 - Completed: 2026-03-08
-- Product version bumped: `v7.90` → `v7.91` (JS changes — globals.ts MAX_FEED_ROWS removed, job-feed.js uncapped pagination + raised multi-filter limit + UI cleanup; SPA useFeedSearch.ts mirrored; all HTML surfaces cache-busted)
-- ROADMAP.md updated: FA-004 → ✅
-- roadmap.html updated: FA-004 → `s: 'done'`, p: 100
-- **Core change:** Removed `MAX_FEED_ROWS = 500` hard cap from `globals.ts`. Feed now returns all matching results across pages with no artificial truncation.
-- **Single-filter path:** `range(from, to)` pagination unchanged but cap removed — `to = from + JOBS_PER_PAGE - 1` (was `Math.min(from + JOBS_PER_PAGE - 1, MAX_FEED_ROWS - 1)`). Removed early bail-out `if (from >= MAX_FEED_ROWS) return`. Each page turn is one lightweight DB query. `count: 'exact'` provides accurate totals.
-- **Multi-filter path:** Per-filter limit raised from `Math.ceil(500/N), 250` to `Math.ceil(2000/N), 500`. FA-005 replaces this with server-side UNION.
-- **Pagination UI:** Removed "(limited to 500)" message. Removed `capped` and `reachedCap` variables. `moreAvailable = showing < total || gotFullPage`. Load More button always shown when results remain.
-- **SPA useFeedSearch.ts:** All changes mirrored — MAX_FEED_ROWS removed, single-filter uncapped, multi-filter raised.
-- **PostHog:** `pagination_uncapped: true` property added to `feed_search_completed` event for pre/post segmentation.
+- Product version bumped: `v7.91` → `v7.92` (JS changes — job-feed.js server merge RPC path + serializeFilterForRPC + feature flag; SPA useFeedSearch.ts mirrored; Postgres function search_jobs_multi + _build_filter_where; all HTML surfaces cache-busted)
+- ROADMAP.md updated: FA-005 → ✅
+- roadmap.html updated: FA-005 → `s: 'done'`, p: 100
+- **Core change:** Multi-filter queries now execute as a single Postgres function call instead of N parallel client → server round trips.
+- **Postgres function `search_jobs_multi`:** Accepts JSONB array of filter definitions. Builds UNION ALL (one SELECT per filter with `_filter_idx` tag), GROUP BY greenhouse_id for dedup, jsonb_agg(DISTINCT _filter_idx) for filter tag tracking, server-side ORDER BY + LIMIT/OFFSET. Returns `{ data: Job[], count: number }` where count is COUNT(DISTINCT greenhouse_id) — accurate deduped count, not inflated sum.
+- **Helper `_build_filter_where`:** Converts structured filter JSON into SQL WHERE clause. Covers all pill types: What (title ILIKE + content_tsv wfts), What NOT (NULL-safe FA-002), Where (remote-only/IDs/bounding box/inline text/state codes), Where NOT, US-Only (FA-009 tiered), Who/Who NOT, Pay (include_no_salary), Skills (extracted_skills array), Level (extracted_seniority), JD (content_tsv websearch), Department, hidden IDs, hourly/staffing exclusions, global excludes (title/location/company/industry).
+- **SQL injection prevention:** format(%L) for all user input, sort column whitelist, statement_timeout 10s, max 20 filters, per_page 1-200.
+- **Feature flag:** `feed_server_merge` — toggle OFF to revert to client-side merge instantly. Client-side fallback also triggers automatically on RPC error.
+- **Client `serializeFilterForRPC`:** Serializes saved filter pill objects + locationIds + tuning config into flat JSONB for the RPC call. Single round trip replaces N parallel PostgREST queries.
+- **SPA parity:** useFeedSearch.ts has matching isFeatureFlagEnabled helper, serializeFilterForRPC, and server merge path with client-side fallback.
+- **PostHog:** `server_merge_enabled` property on feed_search_completed event for pre/post segmentation.
 - **Created:**
-  - `tests/fa-004-pagination-uncapped.test.js` — 35 validation tests (9 sections)
+  - `supabase/migrations/v6.42-fa005-search-jobs-multi.sql` — Postgres function + feature flag
+  - `tests/fa-005-server-merge.test.js` — 58 validation tests (11 sections)
 - **Modified:**
-  - `js/globals.ts` — MAX_FEED_ROWS removed
-  - `js/globals.js` — rebuilt (MAX_FEED_ROWS gone)
-  - `js/job-feed.js` — single-filter uncapped range(), multi-filter perFilter raised, pagination UI cleaned, PostHog property
-  - `src/app/pages/dashboard/feed/hooks/useFeedSearch.ts` — mirrored all changes
+  - `js/job-feed.js` — _serverMergeEnabled flag, serializeFilterForRPC, server merge RPC path, PostHog property
+  - `src/app/pages/dashboard/feed/hooks/useFeedSearch.ts` — isFeatureFlagEnabled, serializeFilterForRPC, server merge path
   - `dist/dashboard.min.js` — rebuilt
-  - `ROADMAP.md` — FA-004 → ✅
-  - `roadmap.html` — FA-004 → done/100
-- **Tests:** 35 FA-004 validation tests (all passing)
+  - `ROADMAP.md` — FA-005 → ✅
+  - `roadmap.html` — FA-005 → done/100
+- **Tests:** 58 FA-005 validation tests (all passing)
 
 **FA-003b** — preview-jobs FTS Sanitization + PostHog Parity
 - Completed: 2026-03-08
@@ -928,13 +929,13 @@ None.
 
 ## Next Session
 
-**Feed Accuracy Sprint — FA-004 COMPLETE.** FA-010, FA-001, FA-002, FA-003, FA-009, and FA-004 are done.
+**Feed Accuracy Sprint — FA-005 COMPLETE.** FA-010, FA-001, FA-002, FA-003, FA-009, FA-004, and FA-005 are done.
 
-**FA-005: Server-Side Multi-Filter Merge** — 6-8h
-- **Entry gate:** FA-004 pagination deployed.
-- **Fix:** Replace client-side merge of multiple filter results with server-side UNION via Postgres function. Single round trip, server-side sort, no client-side merge.
-- **Files:** `js/job-feed.js` (multi-filter path), new RPC function in migration, possibly `src/app/pages/dashboard/feed/hooks/useFeedSearch.ts`
-- **Exit gate:** Multi-filter queries return correct deduped results from server. No client-side merge. Page load < 1s. Tests passing.
+**FA-006: Move Trust/AI Filters Server-Side** — 4-6h
+- **Entry gate:** FA-005 server merge deployed.
+- **Fix:** Join job_fraud_scores and content_ai_scores in the feed query so trust and AI content filters reduce results before pagination, ensuring every page has the expected number of rows. No client-side post-filtering.
+- **Files:** `js/job-feed.js` (applyTrustFilter, applyAiContentFilter removal), `src/app/pages/dashboard/feed/hooks/useFeedSearch.ts`, possibly migration for view/function update
+- **Exit gate:** Every page shows exactly 50 rows regardless of trust/AI filter settings. No client-side post-filtering of query results. Page load time increase < 200ms.
 
 **Phase S is COMPLETE.** All 29 sessions (SA-001 through SA-029) plus SA-023b are done.
 **Phase REM is COMPLETE.** All 5 sessions (REM-001 through REM-005) are done.
@@ -982,7 +983,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.91`** | **FA-004 — Remove 500-Row Cap + Real Pagination** |
+| **Product (BJ_VERSION)** | **`v7.92`** | **FA-005 — Server-Side Multi-Filter Merge** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
