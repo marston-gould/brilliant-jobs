@@ -646,7 +646,8 @@ async function checkExtensionStatus() {
       if (isActive) {
         if (extConnDiv) extConnDiv.style.display = '';
         if (extDiscDiv) extDiscDiv.style.display = 'none';
-        // QA-FIX: Only show version if we have one, hide "v—" entirely
+        // Show the action zone that contains the connected state
+        if (extConnDiv && extConnDiv.parentElement) extConnDiv.parentElement.style.display = '';
         if (extInstanceLabel) {
           extInstanceLabel.textContent = profile.extension_version ? 'v' + profile.extension_version : '';
         }
@@ -657,6 +658,8 @@ async function checkExtensionStatus() {
       } else {
         if (extConnDiv) extConnDiv.style.display = 'none';
         if (extDiscDiv) extDiscDiv.style.display = '';
+        // Hide the action zone when disconnected (empty)
+        if (extConnDiv && extConnDiv.parentElement) extConnDiv.parentElement.style.display = 'none';
       }
 
       // Setup page status text (inside disconnected container)
@@ -1252,4 +1255,26 @@ async function processReferralAttribution(user) {
       window.BJ._registry[name] = { module: 'app', registered: Date.now() };
     }
   });
+})();
+
+// Dashboard version check — shows banner if server has newer version
+(async function checkDashboardVersion() {
+  try {
+    var resp = await fetch('/js/version.js?_t=' + Date.now(), { cache: 'no-store' });
+    if (!resp.ok) return;
+    var text = await resp.text();
+    var match = text.match(/BJ_VERSION\s*=\s*['"]([^'"]+)['"]/);
+    if (!match) return;
+    var serverVersion = match[1];
+    var loadedVersion = typeof BJ_VERSION !== 'undefined' ? BJ_VERSION : '';
+    if (serverVersion && loadedVersion && serverVersion !== loadedVersion) {
+      var banner = document.createElement('div');
+      banner.id = 'version-update-banner';
+      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;padding:10px 20px;display:flex;align-items:center;justify-content:center;gap:12px;font-size:13px;font-weight:500;box-shadow:0 2px 8px rgba(0,0,0,0.2);';
+      banner.innerHTML = 'Dashboard update available: <strong>' + loadedVersion + '</strong> → <strong>' + serverVersion + '</strong>' +
+        '<button onclick="location.reload(true)" style="background:#fff;color:#3b82f6;border:none;border-radius:6px;padding:4px 14px;font-size:12px;font-weight:600;cursor:pointer;margin-left:8px;">Refresh Now</button>' +
+        '<button onclick="this.parentElement.remove()" style="background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;font-size:16px;margin-left:auto;">✕</button>';
+      document.body.prepend(banner);
+    }
+  } catch(e) { /* silent — version check is best-effort */ }
 })();

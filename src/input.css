@@ -913,13 +913,13 @@
       width: 40px; height: 40px; border-radius: 10px;
       display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
-    .setup-int-body { padding: 20px 22px; flex: 1; text-align: center; display: flex; flex-direction: column; }
-    .setup-int-body .setup-action-zone {
-      min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center;
-      margin-top: auto; padding-top: 12px;
-    }
+    .setup-int-body { padding: 20px 22px; flex: 1; display: flex; flex-direction: column; }
     .setup-int-body .setup-desc {
-      font-size: 12px; color: var(--text-dim); line-height: 1.6;
+      font-size: 12px; color: var(--text-dim); line-height: 1.6; text-align: center;
+    }
+    .setup-int-body .setup-action-zone {
+      margin-top: auto; padding-top: 16px; border-top: 1px solid var(--border);
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
     }
     /* POD3-GS: BUG-9 — uniform button sizing across all integration cards */
     .setup-connect-btn { min-width: 140px; padding: 6px 16px; font-size: 11px; text-align: center; }
