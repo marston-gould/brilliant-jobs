@@ -547,11 +547,12 @@ document.addEventListener('DOMContentLoaded', function() {
           const { data, error } = await sb.rpc('get_landing_stats');
           if (error) throw new Error('stats fetch failed');
           // Also fetch total companies tracked (all in ats_companies, not just with open jobs)
+          // Uses RPC with SECURITY DEFINER to bypass RLS (anon can't query ats_companies directly)
           var totalCo = null;
           try {
-            var tcResult = await sb.from('ats_companies').select('id', { count: 'exact', head: true });
-            if (tcResult && tcResult.count != null) totalCo = tcResult.count;
-          } catch(e) { /* fallback: totalCompanies will be null, hero keeps placeholder */ }
+            var tcResult = await sb.rpc('get_total_company_count');
+            if (tcResult && !tcResult.error && tcResult.data != null) totalCo = tcResult.data;
+          } catch(e) { /* fallback: totalCompanies will be null, spans keep placeholder */ }
           const stats = { jobs: data.jobs, companies: data.companies, totalCompanies: totalCo, metros: data.metros, ts: Date.now() };
           localStorage.setItem(CACHE_KEY, JSON.stringify(stats));
           applyStats(stats);
