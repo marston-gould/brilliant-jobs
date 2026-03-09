@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v7.95';
+var BJ_VERSION = 'v7.96';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -2722,7 +2722,7 @@ async function checkExtensionStatus() {
 
       // POD3-GS: BUG-6 — Update shared connection state
       window._connectionState.ext = isActive && !needsUpdate;
-      window.renderConnectionStatus();
+      if (typeof window.renderConnectionStatus === 'function') window.renderConnectionStatus();
 
       // POD3-GS: BUG-7 — Toggle unified connected/disconnected containers
       if (isActive && !needsUpdate) {
@@ -2877,7 +2877,7 @@ async function initGmailStatus() {
 function updateGmailUI(connected, email) {
   // POD3-GS: BUG-6 — Update shared connection state
   window._connectionState.gmail = connected;
-  window.renderConnectionStatus();
+  if (typeof window.renderConnectionStatus === 'function') window.renderConnectionStatus();
   // Setup page
   const setupConn = $('#gmail-setup-connected');
   const setupDisc = $('#gmail-setup-disconnected');
@@ -3012,18 +3012,13 @@ initGmailStatus();
     }
 
     // 3. Companies hiring now — distinct companies with current open jobs
+    // 3. Companies hiring now — count all tracked companies (RPC get_active_company_count removed)
     var compResult = await safeQuery(function() {
-      return sb.rpc('get_active_company_count');
+      return sb.from('ats_companies').select('id', { count: 'exact', head: true });
     }, { label: 'app:gs-stats-companies', fallback: null });
     if (companiesEl && compResult != null) {
-      companiesEl.textContent = Number(compResult).toLocaleString() + '+';
-    } else if (companiesEl) {
-      // Fallback: count active companies if RPC not available
-      var activeCo = await safeQuery(function() {
-        return sb.from('ats_companies').select('id', { count: 'exact', head: true }).eq('is_active', true);
-      }, { label: 'app:gs-stats-active-companies', fallback: null });
-      var activeCount = typeof activeCo === 'number' ? activeCo : (activeCo && activeCo.count != null ? activeCo.count : null);
-      if (activeCount != null) companiesEl.textContent = Number(activeCount).toLocaleString() + '+';
+      var compCount = typeof compResult === 'number' ? compResult : (compResult && compResult.count != null ? compResult.count : null);
+      if (compCount != null) companiesEl.textContent = Number(compCount).toLocaleString() + '+';
     }
   } catch(e) { reportError('app:gs-stats', e); }
 })();
@@ -15280,10 +15275,10 @@ function closeResumePicker(skip) {
   _rpCallback = null;
 }
 
-// Init pipeline
-migratePipelineData();
-buildPipelineFilterTags();
-setTimeout(() => renderPipeline(), 800);
+// Init pipeline — guard calls since pipeline.js is in a separate chunk and may load later
+if (typeof migratePipelineData === 'function') migratePipelineData();
+if (typeof buildPipelineFilterTags === 'function') buildPipelineFilterTags();
+setTimeout(() => { if (typeof renderPipeline === 'function') renderPipeline(); }, 800);
 
 
 // ============================================================

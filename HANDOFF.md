@@ -52,6 +52,26 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**QA-HOTFIX-001** — Console Error Cascade Fix
+- Completed: 2026-03-08
+- Product version bumped: `v7.95` → `v7.96` (JS fixes — migratePipelineData guard, renderConnectionStatus guard, Get Started stats fix; all HTML surfaces cache-busted)
+- **Root cause analysis from Marston's console log:**
+  1. `ats_jobs?is_active=eq.true` → 400: `is_active` column doesn't exist on `ats_jobs` (uses `status`). Source already fixed but dist was stale.
+  2. `get_active_company_count` → 404: RPC never created. Removed, replaced with direct `ats_companies` count query.
+  3. `renderConnectionStatus is not a function` × 5: Load order — function defined in `integrations.js` (deferred bundle) but called from `app.js` (shell bundle). Added `typeof` guards on both call sites.
+  4. `migratePipelineData is not defined`: Function in `pipeline.js` (pipeline chunk) called from `tuning.js` (tuning chunk). **This was crashing tuning page init, causing Title Rules / levels to disappear.** Added `typeof` guard.
+  5. `pipeline_tracking_settings` → 406: Table schema mismatch (pre-existing, not fixed this session).
+  6. `globals failed: null .id`: Auth race condition — `currentUser` null at startup (pre-existing, not fixed this session).
+- **Fixes applied:**
+  - `js/tuning.js` — Guard `migratePipelineData()`, `buildPipelineFilterTags()`, `renderPipeline()` with `typeof` checks
+  - `js/app.js` — Guard both `window.renderConnectionStatus()` calls with `typeof` check
+  - `js/app.js` — Remove `get_active_company_count` RPC call, replace with direct `ats_companies` count
+  - All dist bundles rebuilt (`node build.js && node build-admin.js && npm run bundle:css`)
+- **Not fixed (pre-existing, lower priority):**
+  - `globals failed: null .id` — Auth race condition; resolves after session established
+  - `pipeline_tracking_settings` → 406 — Table may not exist or schema mismatch
+- **18 QA findings** cataloged from Marston's user_notes.pdf into QA_Bug_Tracker_Marston_Notes.docx
+
 **FA-007** — SPA useFeedSearch.ts Full Parity
 - Completed: 2026-03-08
 - Product version bumped: `v7.93` → `v7.94` (JS changes — useFeedSearch.ts full buildFilterQuery parity; all HTML surfaces cache-busted)
@@ -1020,7 +1040,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v7.94`** | **FA-007 — SPA Feed Parity** |
+| **Product (BJ_VERSION)** | **`v7.96`** | **QA-HOTFIX-001 — Console Error Cascade Fix** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

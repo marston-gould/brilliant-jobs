@@ -67,10 +67,10 @@ function closeResumePicker(skip) {
   _rpCallback = null;
 }
 
-// Init pipeline
-migratePipelineData();
-buildPipelineFilterTags();
-setTimeout(() => renderPipeline(), 800);
+// Init pipeline — guard calls since pipeline.js is in a separate chunk and may load later
+if (typeof migratePipelineData === 'function') migratePipelineData();
+if (typeof buildPipelineFilterTags === 'function') buildPipelineFilterTags();
+setTimeout(() => { if (typeof renderPipeline === 'function') renderPipeline(); }, 800);
 
 
 // ============================================================
