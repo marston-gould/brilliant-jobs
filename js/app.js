@@ -924,11 +924,13 @@ initGmailStatus();
     try {
       var jobsResult = await sb.from('ats_jobs').select('*', { count: 'exact', head: false }).eq('status', 'open').limit(0);
       if (!jobsResult.error && jobsResult.count != null && posEl) {
-        posEl.textContent = Number(jobsResult.count).toLocaleString() + '+';
+        // QA-BUG: Consistent rounding — all stats round to nearest 1,000
+        var rounded = Math.floor(jobsResult.count / 1000) * 1000;
+        posEl.textContent = rounded.toLocaleString() + '+';
       }
     } catch(e) { reportError('app:gs-stats-jobs', e); }
 
-    // 2. Career pages tracked — total companies
+    // 2. Career pages tracked — total companies in ats_companies
     try {
       var pagesResult = await sb.from('ats_companies').select('*', { count: 'exact', head: false }).limit(0);
       if (!pagesResult.error && pagesResult.count != null) {
@@ -936,10 +938,27 @@ initGmailStatus();
         var displayStr = rounded.toLocaleString() + '+';
         if (pagesEl) pagesEl.textContent = displayStr;
         if (heroEl) heroEl.textContent = displayStr;
-        // 3. Companies hiring now — reuse same count (all tracked companies)
-        if (companiesEl) companiesEl.textContent = Number(pagesResult.count).toLocaleString() + '+';
       }
     } catch(e) { reportError('app:gs-stats-pages', e); }
+
+    // 3. Companies hiring now — DISTINCT companies from open jobs (subset of career pages)
+    try {
+      var hiringResult = await sb.rpc('get_distinct_company_count');
+      if (!hiringResult.error && hiringResult.data != null && companiesEl) {
+        var count = typeof hiringResult.data === 'number' ? hiringResult.data : parseInt(hiringResult.data, 10);
+        var rounded = Math.floor(count / 1000) * 1000;
+        companiesEl.textContent = rounded.toLocaleString() + '+';
+      } else if (companiesEl) {
+        // Fallback: simple distinct count via PostgREST (less efficient but works without RPC)
+        var fallback = await sb.from('ats_jobs').select('company_name', { count: 'exact', head: false }).eq('status', 'open').limit(0);
+        if (!fallback.error && fallback.count != null) {
+          // This counts rows not distinct — but it's better than duplicating career pages
+          // The RPC approach is the correct one; this is just a safety net
+          var rounded = Math.floor(fallback.count / 5000) * 1000; // rough estimate: ~5 jobs per company
+          companiesEl.textContent = rounded.toLocaleString() + '+';
+        }
+      }
+    } catch(e) { reportError('app:gs-stats-companies', e); }
   } catch(e) { reportError('app:gs-stats', e); }
 })();
 

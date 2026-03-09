@@ -909,7 +909,7 @@ async function searchJobs(page = 0) {
 
   // If nothing is driving the search, show prompt but with global stats
   if (checked.length === 0 && checkedPrompts.length === 0 && !hasBuilderPills) {
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
       <div style="margin-bottom:12px;color:var(--text-faint);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25;"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div>
       <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Select saved searches or add filters to search jobs</div>
       <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">Check one or more saved searches above, or use the filter builder.</div>
@@ -998,7 +998,7 @@ async function searchJobs(page = 0) {
     });
 
     if (!hasRealCriteria) {
-      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
         <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No filter criteria set</div>
         <div style="font-size:12px;">Add at least one What, Where, When, or Who filter.</div>
       </td></tr>`;
@@ -1232,7 +1232,7 @@ async function searchJobs(page = 0) {
     await updateJobStatsFromFilters(filtersToRun);
 
     if (currentJobs.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
         <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No jobs match — try broadening your search or adjusting your filters</div>
         <div style="font-size:12px;">Try broader terms or fewer filters.</div>
       </td></tr>`;
@@ -1508,7 +1508,7 @@ async function searchJobs(page = 0) {
     }
 
     if (typeof toastError === 'function') toastError('Job search failed. Please try again.');
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--red);padding:32px 12px;">
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--red);padding:32px 12px;">
       <div style="font-size:13px;">Search failed: ${escapeHtml(e.message)}</div>
     </td></tr>`;
   }
@@ -2645,7 +2645,6 @@ function renderJobRows(jobs, total, page, filtersToRun) {
     const aiJdBadge = aiJdBadgeHtml(job.greenhouse_id);
 
     html += `<tr class="job-data-row" data-jobid="${escapeHtml(job.greenhouse_id)}" data-level-rank="${levelInfo ? levelInfo.rank : 999}">
-      <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${escapeHtml(job.greenhouse_id)}', this)" style="padding:2px 6px;font-size:9px;" title="Hide this job — trains your exclusion filters to remove similar listings">✕</button></td>
       <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${escapeHtml(job.greenhouse_id)}" title="${escapeHtml(job.title||'')}">${truncate(job.title, 55)}</span>${newBadge}${fraudBadge}${aiJdBadge}</td>
       <td class="jt-level">${levelCell}</td>
       <td class="jt-company">${truncate(cleanCompanyName(job.company_name), 30)}</td>
@@ -2654,10 +2653,10 @@ function renderJobRows(jobs, total, page, filtersToRun) {
       <td class="jt-days" style="${daysClass}">${daysStr}</td>
       <td class="jt-match"${job._aiScoringExcluded ? ' style="opacity:0.3;" title="Match score excluded per your AI content preferences"' : ''}>${typeof matchBadgeWithBoost==='function'?matchBadgeWithBoost(jobMatchScores[job.greenhouse_id],job.greenhouse_id,job.title,job.company_name):matchBadge(jobMatchScores[job.greenhouse_id])}</td>
       <td><div style="white-space:nowrap;display:flex;gap:4px;align-items:center;">
-        ${saveBtn}${applyBtn}
+        ${saveBtn}${applyBtn}<span class="sf-del" onclick="hideJob('${escapeHtml(job.greenhouse_id)}', this)" title="Hide this job">✕</span>
       </div></td>
     </tr>
-    <tr class="job-snippet-row"><td></td><td colspan="7">${trustBannerHtml(job.greenhouse_id)}${aiContentBannerHtml(job.greenhouse_id)}<span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td><td></td></tr>`;
+    <tr class="job-snippet-row"><td colspan="8">${trustBannerHtml(job.greenhouse_id)}${aiContentBannerHtml(job.greenhouse_id)}<span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td></tr>`;
   }
 
   // FA-004: Showing X of Y + Load More (no cap)
@@ -2665,7 +2664,7 @@ function renderJobRows(jobs, total, page, filtersToRun) {
   // v7.68: Always show Load More if we got a full page — count may be wrong or stale
   const gotFullPage = jobs.length >= JOBS_PER_PAGE;
   const moreAvailable = showing < total || gotFullPage;
-  html += `<tr><td colspan="9" style="text-align:center;padding:16px;">
+  html += `<tr><td colspan="8" style="text-align:center;padding:16px;">
     <div style="display:flex;flex-direction:column;justify-content:center;align-items:center;gap:8px;">
       <span style="font-size:12px;color:var(--text-faint);">Showing ${showing.toLocaleString()} of ${total.toLocaleString()} jobs</span>
       <div style="display:flex;gap:8px;align-items:center;">

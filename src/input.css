@@ -1274,6 +1274,14 @@
     .sf-item:hover .sf-levels-btn { opacity: 0.7; }
     .sf-item .sf-levels-btn:hover { opacity: 1; color: var(--accent); }
     .sf-item .sf-del:hover { color: var(--red); background: var(--red-dim); }
+    /* QA-FIX: Consistent dismiss pattern — job rows use same hover-reveal ✕ as saved searches */
+    .job-data-row .sf-del {
+      opacity: 0; font-size: 11px; color: var(--text-faint); cursor: pointer;
+      width: 20px; text-align: center; flex-shrink: 0; border-radius: 4px;
+      transition: opacity 0.15s;
+    }
+    .job-data-row:hover .sf-del { opacity: 0.6; }
+    .job-data-row .sf-del:hover { opacity: 1; color: var(--red); background: var(--red-dim); }
 
     .sf-item-pills {
       display: flex; flex-wrap: wrap; gap: 4px; flex-shrink: 1; overflow: hidden; max-width: 50%;

@@ -977,27 +977,33 @@ function renderSavedFilters() {
     const meta = ago ? `created ${ago}` : '';
 
     // Build mini pill HTML from saved filter criteria
+    // QA-FIX: Group "incl. no salary" with pay pills and "incl. remote" with where pills
     let miniPills = '';
+
+    // Build where pills + incl. remote (grouped together)
+    const _wherePills = (sf.wherePills || []).map(p => ({ ...p, row: 'where' }));
+    const hasLocPills = _wherePills.length > 0;
+    const hasExplicitRemotePill = (sf.wherePills || []).some(p => p.locType === 'remote' || (p.values && p.values[0]?.toLowerCase() === 'remote'));
+    if (hasLocPills && !hasExplicitRemotePill && sf.includeRemote === true) {
+      _wherePills.push({ values: ['incl. remote'], row: 'where', _isRemoteToggle: true });
+    }
+
+    // Build pay pills + incl. no salary (grouped together)
+    const _payPills = (sf.payPills || []).map(p => ({ ...p, row: 'pay' }));
+    if (_payPills.length > 0 && sf.includeNoSalary !== false) {
+      _payPills.push({ values: ['incl. no salary'], row: 'pay', _isNoSalary: true });
+    }
+
     const allSfPills = [
       ...(sf.whatPills || sf.pills || []).map(p => ({ ...p, row: 'what' })),
-      ...(sf.wherePills || []).map(p => ({ ...p, row: 'where' })),
+      ..._wherePills,
       ...(sf.whenPills || []).map(p => ({ ...p, row: 'when' })),
+      ..._payPills,
       ...(sf.whoPills || []).map(p => ({ ...p, row: 'who' })),
-      ...(sf.payPills || []).map(p => ({ ...p, row: 'pay' })),
       ...(sf.whatNotPills || []).map(p => ({ ...p, row: 'not', notSource: 'what' })),
       ...(sf.whereNotPills || []).map(p => ({ ...p, row: 'not', notSource: 'where' })),
       ...(sf.whoNotPills || []).map(p => ({ ...p, row: 'not', notSource: 'who' })),
     ];
-    // Show "incl. no salary" pill when pay filter exists and includeNoSalary is on
-    if ((sf.payPills || []).length > 0 && sf.includeNoSalary !== false) {
-      allSfPills.push({ values: ['incl. no salary'], row: 'pay', _isNoSalary: true });
-    }
-    // Show "incl. remote" pill when location filter exists and includeRemote is on
-    const hasLocPills = (sf.wherePills || []).length > 0;
-    const hasExplicitRemotePill = (sf.wherePills || []).some(p => p.locType === 'remote' || (p.values && p.values[0]?.toLowerCase() === 'remote'));
-    if (hasLocPills && !hasExplicitRemotePill && sf.includeRemote === true) {
-      allSfPills.push({ values: ['incl. remote'], row: 'where', _isRemoteToggle: true });
-    }
     // Legacy: convert old salaryMin/Max to pay pill
     if (!sf.payPills && (sf.salaryMin || sf.salaryMax)) {
       function fmtSalary(v) {

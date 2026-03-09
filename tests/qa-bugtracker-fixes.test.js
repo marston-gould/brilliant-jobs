@@ -108,9 +108,9 @@ describe('QA Bug Tracker — New Fixes (This Session)', () => {
 });
 
 describe('QA Bug Tracker — Build Verification', () => {
-  test('Product version is v7.97', () => {
+  test('Product version is v7.98', () => {
     const version = read('js/version.js');
-    expect(version).toContain('7.97');
+    expect(version).toContain('7.98');
   });
 
   test('Dashboard bundle exists and is rebuilt', () => {
@@ -119,5 +119,70 @@ describe('QA Bug Tracker — Build Verification', () => {
 
   test('Styles rebuilt', () => {
     expect(fs.existsSync(path.join(ROOT, 'styles.css'))).toBe(true);
+  });
+});
+
+describe('QA Bug Tracker — Round 2 Fixes (Marston Screenshot Review)', () => {
+  test('Stats: Companies hiring now uses distinct RPC, not same count as career pages', () => {
+    const app = read('js/app.js');
+    // Should call get_distinct_company_count RPC
+    expect(app).toContain('get_distinct_company_count');
+    // Should NOT reuse pagesResult for companies
+    expect(app).not.toMatch(/companiesEl.*pagesResult/);
+  });
+
+  test('Stats: All three numbers use consistent rounding (floor to 1000)', () => {
+    const app = read('js/app.js');
+    // Open positions should also round
+    const jobsBlock = app.match(/Open positions[\s\S]*?catch/);
+    expect(jobsBlock[0]).toContain('Math.floor');
+    expect(jobsBlock[0]).toContain('/ 1000');
+  });
+
+  test('Stats: RPC migration exists for distinct company count', () => {
+    const sql = read('supabase/migrations/v6.44-distinct-company-count.sql');
+    expect(sql).toContain('COUNT(DISTINCT company_name)');
+    expect(sql).toContain("status = 'open'");
+  });
+
+  test('Pill grouping: incl. remote placed after where pills, not at end', () => {
+    const loc = read('js/location.js');
+    // _wherePills should include incl. remote before allSfPills is assembled
+    expect(loc).toMatch(/_wherePills\.push.*incl\. remote/);
+    // allSfPills should use _wherePills (pre-grouped)
+    expect(loc).toContain('..._wherePills');
+  });
+
+  test('Pill grouping: incl. no salary placed after pay pills, not at end', () => {
+    const loc = read('js/location.js');
+    // _payPills should include incl. no salary before allSfPills is assembled
+    expect(loc).toMatch(/_payPills\.push.*incl\. no salary/);
+    expect(loc).toContain('..._payPills');
+  });
+
+  test('Delete consistency: Job dismiss uses sf-del class (same as saved search)', () => {
+    const feed = read('js/job-feed.js');
+    // Job row should use sf-del span, not job-action-btn hide-btn
+    expect(feed).toMatch(/class="sf-del".*hideJob/);
+    expect(feed).not.toMatch(/class="job-action-btn hide-btn"/);
+  });
+
+  test('Delete consistency: No dedicated hide button column in table', () => {
+    const html = read('dashboard.html');
+    // Should NOT have the 30px empty header for hide column
+    expect(html).not.toContain('width:30px;cursor:default;');
+  });
+
+  test('Delete consistency: sf-del hover works on job-data-row', () => {
+    const css = read('src/input.css');
+    expect(css).toContain('.job-data-row .sf-del');
+    expect(css).toContain('.job-data-row:hover .sf-del');
+  });
+
+  test('Colspans updated to 8 (hide column removed)', () => {
+    const feed = read('js/job-feed.js');
+    // No colspan="9" should remain
+    expect(feed).not.toMatch(/colspan="9"/);
+    expect(feed).toMatch(/colspan="8"/);
   });
 });

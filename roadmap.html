@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.97"></script>
+  <script src="/js/version.js?v=v7.98"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2167,6 +2167,7 @@ const features = [
 
 // QA Bug Tracker (Marston's User Notes) — 18 items, 14 resolved, 4 deferred (design/content decisions)
 { s: 'done', b: 'post-launch', n: 'QA Bug Tracker Fixes', d: 'QA Bug Tracker from Marston User Notes. 18 items (2 P0, 8 P1, 6 P2, 2 P3). 14 resolved: QA-001 stats (QA-HOTFIX-001), QA-002 button centering (CSS), QA-004 min salary tab (already fixed), QA-006/007 location normalization (already fixed), QA-008 chat button (PR-003), QA-009 company browser (PR-003), QA-010 sort cache key (new), QA-011 US-Only (FA-009), QA-012 tuning browse TAB_CHUNKS (new), QA-013 levels (QA-HOTFIX-001), QA-014 dismissed jobs (QA-HOTFIX-001), QA-017 nav layout (already fixed), QA-018 credit icon (new). 4 deferred: QA-003 (HOW MUCH split), QA-005 (icons), QA-015/016 (merchandising content). 16 validation tests. v7.97.', p: 100, e: '3h' },
+{ s: 'done', b: 'post-launch', n: 'QA Bug Tracker Round 2 — Screenshot Review', d: 'Marston screenshot review fixes. (1) Stats: career pages and companies hiring were same query — companies now uses get_distinct_company_count RPC (v6.44 migration). (2) Rounding: all 3 stats now floor to nearest 1000 for consistency. (3) Pill grouping: incl. no salary grouped with pay pills, incl. remote grouped with where pills instead of floating at end. (4) Delete consistency: job dismiss moved from dedicated left column to right-side actions area, uses sf-del hover-reveal pattern matching saved search delete. Table colspans 9→8. 25 validation tests. v7.98.', p: 100, e: '2h' },
 
 ];
 

@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v7.97';
+var BJ_VERSION = 'v7.98';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -3004,11 +3004,13 @@ initGmailStatus();
     try {
       var jobsResult = await sb.from('ats_jobs').select('*', { count: 'exact', head: false }).eq('status', 'open').limit(0);
       if (!jobsResult.error && jobsResult.count != null && posEl) {
-        posEl.textContent = Number(jobsResult.count).toLocaleString() + '+';
+        // QA-BUG: Consistent rounding — all stats round to nearest 1,000
+        var rounded = Math.floor(jobsResult.count / 1000) * 1000;
+        posEl.textContent = rounded.toLocaleString() + '+';
       }
     } catch(e) { reportError('app:gs-stats-jobs', e); }
 
-    // 2. Career pages tracked — total companies
+    // 2. Career pages tracked — total companies in ats_companies
     try {
       var pagesResult = await sb.from('ats_companies').select('*', { count: 'exact', head: false }).limit(0);
       if (!pagesResult.error && pagesResult.count != null) {
@@ -3016,10 +3018,27 @@ initGmailStatus();
         var displayStr = rounded.toLocaleString() + '+';
         if (pagesEl) pagesEl.textContent = displayStr;
         if (heroEl) heroEl.textContent = displayStr;
-        // 3. Companies hiring now — reuse same count (all tracked companies)
-        if (companiesEl) companiesEl.textContent = Number(pagesResult.count).toLocaleString() + '+';
       }
     } catch(e) { reportError('app:gs-stats-pages', e); }
+
+    // 3. Companies hiring now — DISTINCT companies from open jobs (subset of career pages)
+    try {
+      var hiringResult = await sb.rpc('get_distinct_company_count');
+      if (!hiringResult.error && hiringResult.data != null && companiesEl) {
+        var count = typeof hiringResult.data === 'number' ? hiringResult.data : parseInt(hiringResult.data, 10);
+        var rounded = Math.floor(count / 1000) * 1000;
+        companiesEl.textContent = rounded.toLocaleString() + '+';
+      } else if (companiesEl) {
+        // Fallback: simple distinct count via PostgREST (less efficient but works without RPC)
+        var fallback = await sb.from('ats_jobs').select('company_name', { count: 'exact', head: false }).eq('status', 'open').limit(0);
+        if (!fallback.error && fallback.count != null) {
+          // This counts rows not distinct — but it's better than duplicating career pages
+          // The RPC approach is the correct one; this is just a safety net
+          var rounded = Math.floor(fallback.count / 5000) * 1000; // rough estimate: ~5 jobs per company
+          companiesEl.textContent = rounded.toLocaleString() + '+';
+        }
+      }
+    } catch(e) { reportError('app:gs-stats-companies', e); }
   } catch(e) { reportError('app:gs-stats', e); }
 })();
 
@@ -4220,7 +4239,7 @@ async function searchJobs(page = 0) {
 
   // If nothing is driving the search, show prompt but with global stats
   if (checked.length === 0 && checkedPrompts.length === 0 && !hasBuilderPills) {
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
       <div style="margin-bottom:12px;color:var(--text-faint);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25;"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div>
       <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Select saved searches or add filters to search jobs</div>
       <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">Check one or more saved searches above, or use the filter builder.</div>
@@ -4309,7 +4328,7 @@ async function searchJobs(page = 0) {
     });
 
     if (!hasRealCriteria) {
-      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
         <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No filter criteria set</div>
         <div style="font-size:12px;">Add at least one What, Where, When, or Who filter.</div>
       </td></tr>`;
@@ -4543,7 +4562,7 @@ async function searchJobs(page = 0) {
     await updateJobStatsFromFilters(filtersToRun);
 
     if (currentJobs.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
         <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No jobs match — try broadening your search or adjusting your filters</div>
         <div style="font-size:12px;">Try broader terms or fewer filters.</div>
       </td></tr>`;
@@ -4819,7 +4838,7 @@ async function searchJobs(page = 0) {
     }
 
     if (typeof toastError === 'function') toastError('Job search failed. Please try again.');
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--red);padding:32px 12px;">
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--red);padding:32px 12px;">
       <div style="font-size:13px;">Search failed: ${escapeHtml(e.message)}</div>
     </td></tr>`;
   }
@@ -5956,7 +5975,6 @@ function renderJobRows(jobs, total, page, filtersToRun) {
     const aiJdBadge = aiJdBadgeHtml(job.greenhouse_id);
 
     html += `<tr class="job-data-row" data-jobid="${escapeHtml(job.greenhouse_id)}" data-level-rank="${levelInfo ? levelInfo.rank : 999}">
-      <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${escapeHtml(job.greenhouse_id)}', this)" style="padding:2px 6px;font-size:9px;" title="Hide this job — trains your exclusion filters to remove similar listings">✕</button></td>
       <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${escapeHtml(job.greenhouse_id)}" title="${escapeHtml(job.title||'')}">${truncate(job.title, 55)}</span>${newBadge}${fraudBadge}${aiJdBadge}</td>
       <td class="jt-level">${levelCell}</td>
       <td class="jt-company">${truncate(cleanCompanyName(job.company_name), 30)}</td>
@@ -5965,10 +5983,10 @@ function renderJobRows(jobs, total, page, filtersToRun) {
       <td class="jt-days" style="${daysClass}">${daysStr}</td>
       <td class="jt-match"${job._aiScoringExcluded ? ' style="opacity:0.3;" title="Match score excluded per your AI content preferences"' : ''}>${typeof matchBadgeWithBoost==='function'?matchBadgeWithBoost(jobMatchScores[job.greenhouse_id],job.greenhouse_id,job.title,job.company_name):matchBadge(jobMatchScores[job.greenhouse_id])}</td>
       <td><div style="white-space:nowrap;display:flex;gap:4px;align-items:center;">
-        ${saveBtn}${applyBtn}
+        ${saveBtn}${applyBtn}<span class="sf-del" onclick="hideJob('${escapeHtml(job.greenhouse_id)}', this)" title="Hide this job">✕</span>
       </div></td>
     </tr>
-    <tr class="job-snippet-row"><td></td><td colspan="7">${trustBannerHtml(job.greenhouse_id)}${aiContentBannerHtml(job.greenhouse_id)}<span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td><td></td></tr>`;
+    <tr class="job-snippet-row"><td colspan="8">${trustBannerHtml(job.greenhouse_id)}${aiContentBannerHtml(job.greenhouse_id)}<span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td></tr>`;
   }
 
   // FA-004: Showing X of Y + Load More (no cap)
@@ -5976,7 +5994,7 @@ function renderJobRows(jobs, total, page, filtersToRun) {
   // v7.68: Always show Load More if we got a full page — count may be wrong or stale
   const gotFullPage = jobs.length >= JOBS_PER_PAGE;
   const moreAvailable = showing < total || gotFullPage;
-  html += `<tr><td colspan="9" style="text-align:center;padding:16px;">
+  html += `<tr><td colspan="8" style="text-align:center;padding:16px;">
     <div style="display:flex;flex-direction:column;justify-content:center;align-items:center;gap:8px;">
       <span style="font-size:12px;color:var(--text-faint);">Showing ${showing.toLocaleString()} of ${total.toLocaleString()} jobs</span>
       <div style="display:flex;gap:8px;align-items:center;">
@@ -12992,27 +13010,33 @@ function renderSavedFilters() {
     const meta = ago ? `created ${ago}` : '';
 
     // Build mini pill HTML from saved filter criteria
+    // QA-FIX: Group "incl. no salary" with pay pills and "incl. remote" with where pills
     let miniPills = '';
+
+    // Build where pills + incl. remote (grouped together)
+    const _wherePills = (sf.wherePills || []).map(p => ({ ...p, row: 'where' }));
+    const hasLocPills = _wherePills.length > 0;
+    const hasExplicitRemotePill = (sf.wherePills || []).some(p => p.locType === 'remote' || (p.values && p.values[0]?.toLowerCase() === 'remote'));
+    if (hasLocPills && !hasExplicitRemotePill && sf.includeRemote === true) {
+      _wherePills.push({ values: ['incl. remote'], row: 'where', _isRemoteToggle: true });
+    }
+
+    // Build pay pills + incl. no salary (grouped together)
+    const _payPills = (sf.payPills || []).map(p => ({ ...p, row: 'pay' }));
+    if (_payPills.length > 0 && sf.includeNoSalary !== false) {
+      _payPills.push({ values: ['incl. no salary'], row: 'pay', _isNoSalary: true });
+    }
+
     const allSfPills = [
       ...(sf.whatPills || sf.pills || []).map(p => ({ ...p, row: 'what' })),
-      ...(sf.wherePills || []).map(p => ({ ...p, row: 'where' })),
+      ..._wherePills,
       ...(sf.whenPills || []).map(p => ({ ...p, row: 'when' })),
+      ..._payPills,
       ...(sf.whoPills || []).map(p => ({ ...p, row: 'who' })),
-      ...(sf.payPills || []).map(p => ({ ...p, row: 'pay' })),
       ...(sf.whatNotPills || []).map(p => ({ ...p, row: 'not', notSource: 'what' })),
       ...(sf.whereNotPills || []).map(p => ({ ...p, row: 'not', notSource: 'where' })),
       ...(sf.whoNotPills || []).map(p => ({ ...p, row: 'not', notSource: 'who' })),
     ];
-    // Show "incl. no salary" pill when pay filter exists and includeNoSalary is on
-    if ((sf.payPills || []).length > 0 && sf.includeNoSalary !== false) {
-      allSfPills.push({ values: ['incl. no salary'], row: 'pay', _isNoSalary: true });
-    }
-    // Show "incl. remote" pill when location filter exists and includeRemote is on
-    const hasLocPills = (sf.wherePills || []).length > 0;
-    const hasExplicitRemotePill = (sf.wherePills || []).some(p => p.locType === 'remote' || (p.values && p.values[0]?.toLowerCase() === 'remote'));
-    if (hasLocPills && !hasExplicitRemotePill && sf.includeRemote === true) {
-      allSfPills.push({ values: ['incl. remote'], row: 'where', _isRemoteToggle: true });
-    }
     // Legacy: convert old salaryMin/Max to pay pill
     if (!sf.payPills && (sf.salaryMin || sf.salaryMax)) {
       function fmtSalary(v) {

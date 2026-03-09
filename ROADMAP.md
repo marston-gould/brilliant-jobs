@@ -3382,3 +3382,12 @@ Phase S is complete when ALL of the following are true:
 | QA-016 | White merchandising should encourage referrals or defer payment. | P2 | 🔲 | Content decision — requires Marston copy + referral page wireup. |
 | QA-017 | Theme toggle and Credits stacked — should be side by side. | P2 | ✅ | Flex row wrapper applied. Already fixed in prior session. |
 | QA-018 | Unknown icon before the number in Credits. | P3 | ✅ | Replaced coin/token SVG with standard dollar sign icon. v7.97. |
+
+## QA Bug Tracker — Round 2 (Marston Screenshot Review)
+
+| ID | Item | Status | Notes |
+|----|------|--------|-------|
+| QA-STATS-1 | Stats can't both be correct — career pages and companies hiring showing near-identical numbers from same table | ✅ | Companies hiring now uses new get_distinct_company_count RPC (COUNT DISTINCT company_name WHERE status=open). Career pages = total ats_companies. Different queries, different numbers. v6.44 migration. |
+| QA-STATS-2 | Rounding inconsistency — mixed precise and rounded numbers | ✅ | All three stats now floor to nearest 1,000: 413,000+ / 65,000+ / X,000+. Consistent format. |
+| QA-PILLS | incl. no salary and incl. remote should be grouped with related pills | ✅ | _wherePills array includes incl. remote after where pills. _payPills array includes incl. no salary after pay pills. Both grouped before allSfPills assembly. |
+| QA-DELETE | Inconsistent delete pattern — job dismiss vs saved search delete | ✅ | Removed dedicated left-column hide button. Job dismiss now uses sf-del class in right-side actions area. Hover-reveal ✕ pattern matches saved search delete. Table colspans updated (9→8). |
