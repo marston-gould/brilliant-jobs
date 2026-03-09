@@ -597,7 +597,7 @@ document.addEventListener('click', e => {
 
 // Extension detection — check if extension has updated the profile recently
 // Required extension version — bump this when a new extension release ships
-var REQUIRED_EXTENSION_VERSION = '2.17.0';
+var REQUIRED_EXTENSION_VERSION = '2.23.0';
 
 function compareVersions(installed, required) {
   if (!installed || !required) return 0;
@@ -629,23 +629,13 @@ async function checkExtensionStatus() {
     if (profile?.last_scan_at) {
       const lastScan = new Date(profile.last_scan_at);
       const hoursSince = (Date.now() - lastScan.getTime()) / 3600000;
-      const isActive = hoursSince < 24 || profile.scanner_running;
+      // QA-FIX: Tighter active detection — running=true OR scanned within 2h (was 24h)
+      // 24h was too generous and showed green for turned-off extensions
+      const isActive = profile.scanner_running || hoursSince < 2;
 
-      // Nav dot
-      if (navDot) {
-        if (isActive) { navDot.classList.add('connected'); navDot.title = 'Extension active'; }
-        else { navDot.classList.remove('connected'); navDot.title = 'Extension not detected'; }
-      }
-
-      // Version mismatch detection
+      // Nav dot — now driven by renderConnectionStatus aggregate (see integrations.js)
+      // No direct manipulation here; just update _connectionState
       var needsUpdate = profile.extension_version && compareVersions(profile.extension_version, REQUIRED_EXTENSION_VERSION) < 0;
-
-      // Nav dot amber for version mismatch
-      if (navDot && isActive && needsUpdate) {
-        navDot.classList.remove('connected');
-        navDot.classList.add('warning');
-        navDot.title = 'Extension update available (v' + REQUIRED_EXTENSION_VERSION + ')';
-      }
 
       // POD3-GS: BUG-6 — Update shared connection state
       window._connectionState.ext = isActive && !needsUpdate;

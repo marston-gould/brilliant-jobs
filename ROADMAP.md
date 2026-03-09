@@ -3411,3 +3411,13 @@ Phase S is complete when ALL of the following are true:
 | QA-BROWSE | Company browse button doesn't open picker, should filter US companies | ✅ | Added null guards to all browse event listeners. Added US-Only banner in company browser when tuning.usOnly is active. |
 | QA-GENERATE | Generate button shows browser alert() instead of proper modal | ✅ | alert() replaced with modal for all cases. When no resumes exist: modal with "Go to Resumes" button. When resumes exist but no text extracted: shows all resumes with "extraction pending" note. Falls back gracefully. |
 | QA-HOWMUCH | HOW MUCH still one big row — should be split into Min/Max parallel columns | ✅ | Restructured from grid-column:1/-1 span to qb-row-pair with "Min $" and "Max $" as separate columns. Matches WHAT/NOT, WHERE/NOT, WHO/NOT pattern. |
+
+## QA Bug Tracker — Round 5 (Marston Screenshot Review 4)
+
+| ID | Item | Status | Notes |
+|----|------|--------|-------|
+| QA-404 | /app shows plain 404 instead of SPA | ✅ | Added `/app` exact rewrite to vercel.json (was only `/app/:path*` which requires a sub-path). |
+| QA-SAVE-PROMPT | No way to save/name a prompt from chat | ✅ | Save button (💾) and Load button (📥) were missing from chat-header-actions HTML. JS handlers existed since Session 4 but had no trigger elements. Both buttons added. Save dialog, naming, color picker, and Supabase persistence all already wired. |
+| QA-SETUP-DOT | Setup nav dot green when only extension connected (and it's off) | ✅ | Two fixes: (1) Extension isActive threshold tightened from 24h to 2h when scanner_running=false. (2) Setup nav dot now driven by renderConnectionStatus aggregate — green only if all 4 connected, amber if partial, grey if none. No longer just mirrors extension state. |
+| QA-EXT-VERSION | Extension version check outdated (2.17.0 vs current 2.23.0) | ✅ | REQUIRED_EXTENSION_VERSION bumped from 2.17.0 to 2.23.0. This will trigger the update banner for users on older extension versions. |
+| QA-EXT-TOKEN | Token refresh failed, 0 pending 0 visited | ⚠️ | Runtime issue — extension needs re-authentication. The cron is working but the auth token expired. Marston needs to: (1) Click extension popup, (2) Sign out and sign back in, (3) Extension will re-sync auth token. |

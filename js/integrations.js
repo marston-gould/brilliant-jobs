@@ -26,6 +26,22 @@ window.renderConnectionStatus = function() {
   if (cardGmail) cardGmail.className = 'setup-dot' + (cs.gmail ? ' connected' : '');
   if (cardGcal) cardGcal.className = 'setup-dot' + (cs.gcal ? ' connected' : '');
   if (cardGdrive) cardGdrive.className = 'setup-dot' + (cs.gdrive ? ' connected' : '');
+  // QA-FIX: Setup nav dot = aggregate of ALL connections
+  // Green only if at least one connected, amber if some but extension off
+  var navDot = document.getElementById('ext-status-dot');
+  if (navDot) {
+    var connCount = (cs.ext ? 1 : 0) + (cs.gmail ? 1 : 0) + (cs.gcal ? 1 : 0) + (cs.gdrive ? 1 : 0);
+    navDot.classList.remove('connected', 'warning', 'stale');
+    if (connCount === 4) {
+      navDot.classList.add('connected');
+      navDot.title = 'All integrations connected';
+    } else if (connCount > 0) {
+      navDot.classList.add('warning');
+      navDot.title = connCount + ' of 4 integrations connected';
+    } else {
+      navDot.title = 'No integrations connected';
+    }
+  }
 };
 
 // ============================================================

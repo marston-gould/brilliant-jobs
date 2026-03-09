@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.00';
+var BJ_VERSION = 'v8.01';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -2677,7 +2677,7 @@ document.addEventListener('click', e => {
 
 // Extension detection — check if extension has updated the profile recently
 // Required extension version — bump this when a new extension release ships
-var REQUIRED_EXTENSION_VERSION = '2.17.0';
+var REQUIRED_EXTENSION_VERSION = '2.23.0';
 
 function compareVersions(installed, required) {
   if (!installed || !required) return 0;
@@ -2709,23 +2709,13 @@ async function checkExtensionStatus() {
     if (profile?.last_scan_at) {
       const lastScan = new Date(profile.last_scan_at);
       const hoursSince = (Date.now() - lastScan.getTime()) / 3600000;
-      const isActive = hoursSince < 24 || profile.scanner_running;
+      // QA-FIX: Tighter active detection — running=true OR scanned within 2h (was 24h)
+      // 24h was too generous and showed green for turned-off extensions
+      const isActive = profile.scanner_running || hoursSince < 2;
 
-      // Nav dot
-      if (navDot) {
-        if (isActive) { navDot.classList.add('connected'); navDot.title = 'Extension active'; }
-        else { navDot.classList.remove('connected'); navDot.title = 'Extension not detected'; }
-      }
-
-      // Version mismatch detection
+      // Nav dot — now driven by renderConnectionStatus aggregate (see integrations.js)
+      // No direct manipulation here; just update _connectionState
       var needsUpdate = profile.extension_version && compareVersions(profile.extension_version, REQUIRED_EXTENSION_VERSION) < 0;
-
-      // Nav dot amber for version mismatch
-      if (navDot && isActive && needsUpdate) {
-        navDot.classList.remove('connected');
-        navDot.classList.add('warning');
-        navDot.title = 'Extension update available (v' + REQUIRED_EXTENSION_VERSION + ')';
-      }
 
       // POD3-GS: BUG-6 — Update shared connection state
       window._connectionState.ext = isActive && !needsUpdate;
@@ -18527,6 +18517,22 @@ window.renderConnectionStatus = function() {
   if (cardGmail) cardGmail.className = 'setup-dot' + (cs.gmail ? ' connected' : '');
   if (cardGcal) cardGcal.className = 'setup-dot' + (cs.gcal ? ' connected' : '');
   if (cardGdrive) cardGdrive.className = 'setup-dot' + (cs.gdrive ? ' connected' : '');
+  // QA-FIX: Setup nav dot = aggregate of ALL connections
+  // Green only if at least one connected, amber if some but extension off
+  var navDot = document.getElementById('ext-status-dot');
+  if (navDot) {
+    var connCount = (cs.ext ? 1 : 0) + (cs.gmail ? 1 : 0) + (cs.gcal ? 1 : 0) + (cs.gdrive ? 1 : 0);
+    navDot.classList.remove('connected', 'warning', 'stale');
+    if (connCount === 4) {
+      navDot.classList.add('connected');
+      navDot.title = 'All integrations connected';
+    } else if (connCount > 0) {
+      navDot.classList.add('warning');
+      navDot.title = connCount + ' of 4 integrations connected';
+    } else {
+      navDot.title = 'No integrations connected';
+    }
+  }
 };
 
 // ============================================================

@@ -1077,7 +1077,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.00`** | **QA Bug Tracker Round 4 — Resume delete, survey tab-aware, HOW MUCH split, Generate modal, Browse guards** |
+| **Product (BJ_VERSION)** | **`v8.01`** | **QA Bug Tracker Round 5 — /app 404, chat save/load buttons, setup dot aggregate, ext version** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

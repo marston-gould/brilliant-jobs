@@ -101,6 +101,10 @@
   ],
   "rewrites": [
     {
+      "source": "/app",
+      "destination": "/src/app/index.html"
+    },
+    {
       "source": "/app/:path*",
       "destination": "/src/app/index.html"
     },
