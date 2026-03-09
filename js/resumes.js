@@ -227,9 +227,7 @@ function renderResumes() {
       // Always render the slot div so auto-analysis can populate it
       const hasCache = readinessCache && readinessCache.scores && readinessCache.scores[i];
       if (hasCache) {
-        gradeHtml = typeof buildInlineGrade === 'function'
-          ? `<div class="rc-grade-slot" id="rc-grade-${i}">${buildInlineGrade(i, readinessCache.scores[i])}</div>`
-          : `<div class="rc-grade-slot" id="rc-grade-${i}"></div>`;
+        gradeHtml = `<div class="rc-grade-slot" id="rc-grade-${i}">${buildInlineGrade(i, readinessCache.scores[i])}</div>`;
       } else if (r.textStatus === 'no-text' && r.fileName && /\.docx?$/i.test(r.fileName)) {
         gradeHtml = `<div class="rc-grade-slot" id="rc-grade-${i}"><div style="font-size:11px;color:var(--red);cursor:pointer;" onclick="reUploadResume(${i})" title="File needs re-upload for text extraction">⚠ Re-upload file to enable scoring <span style="text-decoration:underline;">Click here</span></div></div>`;
       } else if (r.textStatus === 'ready' && r.keywords && r.keywords.length > 0 && assignedIds.length > 0) {
@@ -297,7 +295,7 @@ function renderResumes() {
       <!-- AI Analysis Panel (expanded on click) -->
       <div class="ai-panel" id="ai-panel-${i}">
         <div id="ai-panel-content-${i}">
-          ${cachedScore && typeof buildReadinessSide === 'function' ? buildReadinessSide(i, cachedScore) : (assignedIds.length > 0 && !isPlaceholder
+          ${cachedScore ? buildReadinessSide(i, cachedScore) : (assignedIds.length > 0 && !isPlaceholder
             ? '<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:20px 0;"><button class="btn btn-sm" id="rc-score-' + i + '" onclick="event.stopPropagation();handleScoreClick(' + i + ')" style="background:var(--accent);color:#fff;font-weight:600;padding:6px 18px;">Score Resume</button></div>'
             : '<div style="padding:16px 0;text-align:center;">' + (isPlaceholder
               ? '<div style="font-size:12px;color:var(--warm);cursor:pointer;" onclick="event.stopPropagation();replaceResumePlaceholder(' + i + ')">Upload a file to enable scoring</div>'

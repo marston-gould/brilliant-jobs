@@ -30,34 +30,55 @@
     _loading[chunkName] = promise;
     return promise;
   }
+  var CHUNK_DEPS = {
+    "deferred": ["keywords"]
+    // resumes.js calls buildInlineGrade, buildReadinessSide, tokenize from keywords.js
+  };
   var TAB_CHUNKS = {
     "brilliant": ["keywords"],
     "jobs": ["keywords", "deferred"],
-    "resumes": ["deferred", "keywords"],
+    "resumes": ["keywords", "deferred"],
+    // keywords MUST load before deferred
     "pipeline": ["pipeline"],
-    "tuning": ["tuning", "keywords"],
-    "stats": ["deferred"],
-    "feedback": ["deferred"],
-    "ghost": ["deferred"],
-    "referrals": ["deferred"],
-    "applications": ["deferred"],
-    "settings": ["deferred"],
-    "billing": ["deferred"],
-    "rewrite": ["deferred"],
-    "apply": ["deferred"],
-    "chat": ["deferred"],
-    "merch": ["deferred"],
-    "surveys": ["deferred"]
+    "tuning": ["keywords", "tuning"],
+    // keywords before tuning (uses shared fns)
+    "stats": ["keywords", "deferred"],
+    // ensure keywords available
+    "feedback": ["keywords", "deferred"],
+    "ghost": ["keywords", "deferred"],
+    "referrals": ["keywords", "deferred"],
+    "applications": ["keywords", "deferred"],
+    "settings": ["keywords", "deferred"],
+    "billing": ["keywords", "deferred"],
+    "rewrite": ["keywords", "deferred"],
+    "apply": ["keywords", "deferred"],
+    "chat": ["keywords", "deferred"],
+    "merch": ["keywords", "deferred"],
+    "surveys": ["keywords", "deferred"]
   };
   function bjEnsureTab(tabName) {
     var chunks = TAB_CHUNKS[tabName] || [];
     if (chunks.length === 0) return Promise.resolve([]);
-    var promises = [];
+    var seen = {};
+    var ordered = [];
     for (var i = 0; i < chunks.length; i++) {
-      var chunk = chunks[i];
-      if (chunk) promises.push(bjLoadChunk(chunk));
+      var c = chunks[i];
+      if (c && !seen[c]) {
+        seen[c] = true;
+        ordered.push(c);
+      }
     }
-    return Promise.all(promises);
+    var chain = Promise.resolve();
+    var results = [];
+    for (var j = 0; j < ordered.length; j++) {
+      (function(chunk) {
+        chain = chain.then(function() {
+          return bjLoadChunk(chunk);
+        });
+        results.push(chain);
+      })(ordered[j]);
+    }
+    return Promise.all(results);
   }
   function bjPreloadChunks(chunkNames) {
     var doPreload = function() {

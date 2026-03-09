@@ -1077,7 +1077,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.09`** | **QA Round 13 — buildReadinessSide guard, SUPABASE_FUNCTIONS_URL→SUPABASE_URL fix** |
+| **Product (BJ_VERSION)** | **`v8.10`** | **Sequential chunk loading — keywords guaranteed before deferred, no silent failovers** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

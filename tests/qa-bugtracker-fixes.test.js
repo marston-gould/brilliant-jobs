@@ -108,9 +108,9 @@ describe('QA Bug Tracker — New Fixes (This Session)', () => {
 });
 
 describe('QA Bug Tracker — Build Verification', () => {
-  test('Product version is v8.00', () => {
+  test('Product version is v8.xx', () => {
     const version = read('js/version.js');
-    expect(version).toContain('8.00');
+    expect(version).toMatch(/8\.\d\d/);
   });
 
   test('Dashboard bundle exists and is rebuilt', () => {
@@ -252,11 +252,12 @@ describe('QA Bug Tracker — Round 3 Fixes (Screenshot Review 2)', () => {
 });
 
 describe('QA Bug Tracker — Round 4 Fixes (Screenshot Review 3)', () => {
-  test('Resume delete: no "Delete" text, just ✕ symbol', () => {
+  test('Resume delete: uses sf-del ✕ pattern on left side', () => {
     const res = read('js/resumes.js');
-    // Active resume card should have ✕ only, not "✕ Delete"
-    expect(res).not.toMatch(/onclick="confirmDeleteResume.*>.*Delete<\/button>/);
-    expect(res).toMatch(/confirmDeleteResume.*>✕<\/button>/);
+    // Active resume card should use sf-del class with ✕
+    expect(res).toMatch(/sf-del.*confirmDeleteResume.*>✕<\/span>/);
+    // Should NOT have a <button> with "Delete" text
+    expect(res).not.toMatch(/>.*Delete<\/button>/);
   });
 
   test('Survey only shows on Jobs Feed tab (not Get Started)', () => {
@@ -304,8 +305,55 @@ describe('QA Bug Tracker — Round 4 Fixes (Screenshot Review 3)', () => {
     expect(br).toContain('US-Only filter active');
   });
 
-  test('Product version is v8.00', () => {
+  test('Product version is v8.xx', () => {
     const version = read('js/version.js');
-    expect(version).toContain('8.00');
+    expect(version).toMatch(/8\.\d\d/);
+  });
+});
+
+describe('Architecture: Chunk Dependency Ordering', () => {
+  test('Lazy loader uses sequential loading, not Promise.all', () => {
+    const loader = read('js/lazy-loader.ts');
+    // Should chain promises sequentially
+    expect(loader).toContain('chain = chain.then');
+    // Should NOT use parallel Promise.all for chunk loading
+    expect(loader).not.toMatch(/promises\.push\(bjLoadChunk/);
+  });
+
+  test('Every tab using deferred also loads keywords first', () => {
+    const loader = read('js/lazy-loader.ts');
+    // Extract TAB_CHUNKS entries
+    const matches = loader.match(/'(\w+)':\s*\[([^\]]+)\]/g) || [];
+    matches.forEach(m => {
+      if (m.includes("'deferred'")) {
+        // If deferred is in the list, keywords must come before it
+        const chunks = m.match(/\[([^\]]+)\]/)[1];
+        const parts = chunks.split(',').map(s => s.trim().replace(/'/g, ''));
+        const kwIdx = parts.indexOf('keywords');
+        const defIdx = parts.indexOf('deferred');
+        if (defIdx >= 0) {
+          expect(kwIdx).toBeGreaterThanOrEqual(0);
+          expect(kwIdx).toBeLessThan(defIdx);
+        }
+      }
+    });
+  });
+
+  test('CHUNK_DEPS declares deferred depends on keywords', () => {
+    const loader = read('js/lazy-loader.ts');
+    expect(loader).toContain("'deferred': ['keywords']");
+  });
+
+  test('No typeof guards for cross-chunk functions in resumes.js', () => {
+    const res = read('js/resumes.js');
+    // These should be direct calls now, not typeof-guarded
+    expect(res).not.toMatch(/typeof buildInlineGrade/);
+    expect(res).not.toMatch(/typeof buildReadinessSide/);
+  });
+
+  test('billing.js uses SUPABASE_URL not SUPABASE_FUNCTIONS_URL', () => {
+    const billing = read('js/billing.js');
+    expect(billing).toContain("SUPABASE_URL + '/functions/v1");
+    expect(billing).not.toMatch(/SUPABASE_FUNCTIONS_URL\s*\+/);
   });
 });

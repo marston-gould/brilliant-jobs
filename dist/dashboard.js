@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.09';
+var BJ_VERSION = 'v8.10';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -1791,36 +1791,62 @@ window.requiredTierFor = requiredTier;
     return promise;
   }
 
+  // Chunk dependency map: if chunk A depends on chunk B,
+  // B must finish loading before A starts executing.
+  // This prevents cross-chunk ReferenceErrors (e.g. deferred
+  // calling buildReadinessSide from keywords before it loads).
+  var CHUNK_DEPS: Record<string, string[]> = {
+    'deferred': ['keywords'],  // resumes.js calls buildInlineGrade, buildReadinessSide, tokenize from keywords.js
+  };
+
   var TAB_CHUNKS: Record<TabName, ChunkName[]> = {
     'brilliant':    ['keywords'],
     'jobs':         ['keywords', 'deferred'],
-    'resumes':      ['deferred', 'keywords'],
+    'resumes':      ['keywords', 'deferred'],  // keywords MUST load before deferred
     'pipeline':     ['pipeline'],
-    'tuning':       ['tuning', 'keywords'],
-    'stats':        ['deferred'],
-    'feedback':     ['deferred'],
-    'ghost':        ['deferred'],
-    'referrals':    ['deferred'],
-    'applications': ['deferred'],
-    'settings':     ['deferred'],
-    'billing':      ['deferred'],
-    'rewrite':      ['deferred'],
-    'apply':        ['deferred'],
-    'chat':         ['deferred'],
-    'merch':        ['deferred'],
-    'surveys':      ['deferred'],
+    'tuning':       ['keywords', 'tuning'],    // keywords before tuning (uses shared fns)
+    'stats':        ['keywords', 'deferred'],  // ensure keywords available
+    'feedback':     ['keywords', 'deferred'],
+    'ghost':        ['keywords', 'deferred'],
+    'referrals':    ['keywords', 'deferred'],
+    'applications': ['keywords', 'deferred'],
+    'settings':     ['keywords', 'deferred'],
+    'billing':      ['keywords', 'deferred'],
+    'rewrite':      ['keywords', 'deferred'],
+    'apply':        ['keywords', 'deferred'],
+    'chat':         ['keywords', 'deferred'],
+    'merch':        ['keywords', 'deferred'],
+    'surveys':      ['keywords', 'deferred'],
   };
 
+  // Sequential chunk loader: respects dependency ordering.
+  // Chunks listed in TAB_CHUNKS are loaded in order — each chunk
+  // waits for the previous one to finish before starting.
+  // This guarantees cross-chunk functions are available when called.
   function bjEnsureTab(tabName: TabName): Promise<void[]> {
     var chunks = TAB_CHUNKS[tabName] || [];
     if (chunks.length === 0) return Promise.resolve([]);
 
-    var promises: Promise<void>[] = [];
+    // Deduplicate while preserving order
+    var seen: Record<string, boolean> = {};
+    var ordered: ChunkName[] = [];
     for (var i = 0; i < chunks.length; i++) {
-      var chunk = chunks[i];
-      if (chunk) promises.push(bjLoadChunk(chunk));
+      var c = chunks[i];
+      if (c && !seen[c]) { seen[c] = true; ordered.push(c); }
     }
-    return Promise.all(promises);
+
+    // Load sequentially: each chunk waits for its predecessor
+    var chain: Promise<void> = Promise.resolve();
+    var results: Promise<void>[] = [];
+    for (var j = 0; j < ordered.length; j++) {
+      (function(chunk: ChunkName) {
+        chain = chain.then(function() {
+          return bjLoadChunk(chunk);
+        });
+        results.push(chain);
+      })(ordered[j]);
+    }
+    return Promise.all(results);
   }
 
   function bjPreloadChunks(chunkNames: ChunkName[]): void {
@@ -17150,9 +17176,7 @@ function renderResumes() {
       // Always render the slot div so auto-analysis can populate it
       const hasCache = readinessCache && readinessCache.scores && readinessCache.scores[i];
       if (hasCache) {
-        gradeHtml = typeof buildInlineGrade === 'function'
-          ? `<div class="rc-grade-slot" id="rc-grade-${i}">${buildInlineGrade(i, readinessCache.scores[i])}</div>`
-          : `<div class="rc-grade-slot" id="rc-grade-${i}"></div>`;
+        gradeHtml = `<div class="rc-grade-slot" id="rc-grade-${i}">${buildInlineGrade(i, readinessCache.scores[i])}</div>`;
       } else if (r.textStatus === 'no-text' && r.fileName && /\.docx?$/i.test(r.fileName)) {
         gradeHtml = `<div class="rc-grade-slot" id="rc-grade-${i}"><div style="font-size:11px;color:var(--red);cursor:pointer;" onclick="reUploadResume(${i})" title="File needs re-upload for text extraction">⚠ Re-upload file to enable scoring <span style="text-decoration:underline;">Click here</span></div></div>`;
       } else if (r.textStatus === 'ready' && r.keywords && r.keywords.length > 0 && assignedIds.length > 0) {
@@ -17220,7 +17244,7 @@ function renderResumes() {
       <!-- AI Analysis Panel (expanded on click) -->
       <div class="ai-panel" id="ai-panel-${i}">
         <div id="ai-panel-content-${i}">
-          ${cachedScore && typeof buildReadinessSide === 'function' ? buildReadinessSide(i, cachedScore) : (assignedIds.length > 0 && !isPlaceholder
+          ${cachedScore ? buildReadinessSide(i, cachedScore) : (assignedIds.length > 0 && !isPlaceholder
             ? '<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:20px 0;"><button class="btn btn-sm" id="rc-score-' + i + '" onclick="event.stopPropagation();handleScoreClick(' + i + ')" style="background:var(--accent);color:#fff;font-weight:600;padding:6px 18px;">Score Resume</button></div>'
             : '<div style="padding:16px 0;text-align:center;">' + (isPlaceholder
               ? '<div style="font-size:12px;color:var(--warm);cursor:pointer;" onclick="event.stopPropagation();replaceResumePlaceholder(' + i + ')">Upload a file to enable scoring</div>'
