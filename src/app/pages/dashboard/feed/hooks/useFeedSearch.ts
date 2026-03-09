@@ -16,7 +16,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { Job } from '@providers/types';
 import { ProviderError } from '@providers/types';
-import { buildUSOnlyQuery } from './us-filter';
+import { buildUSOnlyQuery, buildUSRemoteClauses } from './us-filter';
 
 // ── Types ─────────────────────────────────────────────────
 
@@ -386,18 +386,53 @@ function buildFilterQuery(
   }
 
   // Where pills (location) — if we have pre-fetched IDs, use them
+  // FEED-FIX-002 (v8.39): includeRemote handling added to single-filter (ue) path.
+  // Previously, remote locType pills were silently skipped with no fallback, leaving
+  // zero location constraints on the query — ALL 500k+ jobs returned unfiltered.
+  // Fix: Build explicit OR clauses combining any text location filters with
+  // US-scoped remote clauses when includeRemote is true.
+  const includeRemote = sf.includeRemote === true;
   if (locationIds && locationIds.length > 0) {
-    query = query.in('greenhouse_id', locationIds);
+    // Pre-fetched IDs path: apply IDs, then OR in US remote if toggled
+    if (includeRemote) {
+      const remoteClauses = buildUSRemoteClauses().join(',');
+      query = query.or(`greenhouse_id.in.(${locationIds.join(',')}),${remoteClauses}`);
+    } else {
+      query = query.in('greenhouse_id', locationIds);
+    }
   } else {
     const wherePills = sf.wherePills || [];
+    // Collect text-based location terms (skip 'remote' locType — handled below)
+    const textClauses: string[] = [];
     for (const pill of wherePills) {
       if (pill.locType === 'remote') continue;
       for (const v of pill.values) {
         if (v.trim()) {
-          query = query.ilike('location', `%${v.trim()}%`);
+          textClauses.push(`location.ilike.%${v.trim()}%`);
         }
       }
     }
+    const hasTextLocation = textClauses.length > 0;
+    const hasRemotePill = wherePills.some(p => p.locType === 'remote');
+
+    if (includeRemote) {
+      // OR text location with US-scoped remote clauses
+      const remoteClauses = buildUSRemoteClauses();
+      const allClauses = [...textClauses, ...remoteClauses];
+      query = query.or(allClauses.join(','));
+    } else if (hasTextLocation) {
+      // Text-only location filter (no remote toggle) — apply each ilike directly
+      for (const pill of wherePills) {
+        if (pill.locType === 'remote') continue;
+        for (const v of pill.values) {
+          if (v.trim()) query = query.ilike('location', `%${v.trim()}%`);
+        }
+      }
+    } else if (hasRemotePill && !includeRemote) {
+      // Remote pill present but toggle off — show only explicitly remote
+      query = query.or('is_remote.eq.true,loc_type.eq.remote,location.ilike.Remote%');
+    }
+    // If no location pills and no remote toggle: no location constraint (show all)
   }
 
   // Where NOT pills
