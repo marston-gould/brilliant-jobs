@@ -441,29 +441,43 @@ document.addEventListener('DOMContentLoaded', function() {
           const heroJobs = document.getElementById('lp-hero-jobs');
           if (heroJobs) heroJobs.textContent = (Math.floor(stats.jobs / 1000) * 1000).toLocaleString() + '+';
         }
+        // "companies hiring now" = distinct companies with open jobs (~8.5K)
         if (stats.companies != null) {
           document.getElementById('lp-companies').textContent = stats.companies.toLocaleString();
-          const heroComp = document.getElementById('lp-hero-companies');
-          if (heroComp) heroComp.textContent = stats.companies.toLocaleString() + '+';
           const stepComp = document.getElementById('lp-step-companies');
           if (stepComp) stepComp.textContent = stats.companies.toLocaleString() + '+';
+        }
+        // "career pages tracked" = total companies in database (~39K)
+        // This is the number used in hero text and marketing copy
+        var totalDisplay = stats.totalCompanies != null
+          ? (Math.floor(stats.totalCompanies / 1000) * 1000).toLocaleString() + '+'
+          : null;
+        if (totalDisplay) {
+          var heroComp = document.getElementById('lp-hero-companies');
+          if (heroComp) heroComp.textContent = totalDisplay;
+          // Hydrate all elements with data-stat="total-pages"
+          document.querySelectorAll('[data-stat="total-pages"]').forEach(function(el) {
+            el.textContent = totalDisplay;
+          });
+          var miComp = document.getElementById('lp-mi-companies');
+          if (miComp) miComp.textContent = totalDisplay;
         }
         // Hydrate merchandising placeholders
         document.querySelectorAll('[data-merch-stat="jobs"]').forEach(function(el) {
           el.textContent = (Math.floor(stats.jobs / 1000) * 1000).toLocaleString() + '+';
         });
         document.querySelectorAll('[data-merch-stat="companies"]').forEach(function(el) {
-          el.textContent = stats.companies.toLocaleString() + '+';
+          el.textContent = totalDisplay || stats.companies.toLocaleString() + '+';
         });
         // Market Intelligence cards
         var miJobs = document.getElementById('lp-mi-jobs');
         if (miJobs) miJobs.textContent = (Math.floor(stats.jobs / 1000)).toLocaleString() + 'K+';
-        var miComp = document.getElementById('lp-mi-companies');
-        if (miComp) miComp.textContent = stats.companies.toLocaleString() + '+';
         if (stats.metros != null) {
           document.getElementById('lp-metros').textContent = stats.metros.toLocaleString();
         }
         // CS-P1-008 (LS1-10): Sync JSON-LD structured data with live counts
+        // Uses totalCompanies for "career pages" references, jobs for job count references
+        var tcDisplay = stats.totalCompanies != null ? (Math.floor(stats.totalCompanies / 1000) * 1000).toLocaleString() + '+' : null;
         try {
           var ldScripts = document.querySelectorAll('script[type="application/ld+json"]');
           ldScripts.forEach(function(script) {
@@ -475,19 +489,19 @@ document.addEventListener('DOMContentLoaded', function() {
                   if (node['@type'] === 'SoftwareApplication' && stats.jobs != null) {
                     var rounded = (Math.floor(stats.jobs / 1000) * 1000).toLocaleString() + '+';
                     node.description = node.description.replace(/[\d,]+\+?\s*jobs/, rounded + ' jobs');
-                    if (stats.companies != null) {
-                      node.description = node.description.replace(/[\d,]+\+?\s*company/, stats.companies.toLocaleString() + '+ company');
+                    if (tcDisplay) {
+                      node.description = node.description.replace(/[\d,]+\+?\s*company/, tcDisplay + ' company');
                       var featureList = node.featureList;
                       if (featureList) {
                         for (var i = 0; i < featureList.length; i++) {
-                          featureList[i] = featureList[i].replace(/[\d,]+\+?\s*company/, stats.companies.toLocaleString() + '+ company');
+                          featureList[i] = featureList[i].replace(/[\d,]+\+?\s*company/, tcDisplay + ' company');
                         }
                       }
                     }
                     changed = true;
                   }
-                  if (node['@type'] === 'Organization' && stats.companies != null) {
-                    node.description = node.description.replace(/[\d,]+\+?\s*company/, stats.companies.toLocaleString() + '+ company');
+                  if (node['@type'] === 'Organization' && tcDisplay) {
+                    node.description = node.description.replace(/[\d,]+\+?\s*company/, tcDisplay + ' company');
                     changed = true;
                   }
                   if (node['@type'] === 'FAQPage' && node.mainEntity) {
@@ -496,8 +510,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (stats.jobs != null) {
                           q.acceptedAnswer.text = q.acceptedAnswer.text.replace(/[\d,]+\+?\s*open jobs/, (Math.floor(stats.jobs / 1000) * 1000).toLocaleString() + '+ open jobs');
                         }
-                        if (stats.companies != null) {
-                          q.acceptedAnswer.text = q.acceptedAnswer.text.replace(/[\d,]+\+?\s*company career/, stats.companies.toLocaleString() + '+ company career');
+                        if (tcDisplay) {
+                          q.acceptedAnswer.text = q.acceptedAnswer.text.replace(/[\d,]+\+?\s*company career/, tcDisplay + ' company career');
                         }
                       }
                     });
@@ -532,7 +546,13 @@ document.addEventListener('DOMContentLoaded', function() {
           await loadSupabase();
           const { data, error } = await sb.rpc('get_landing_stats');
           if (error) throw new Error('stats fetch failed');
-          const stats = { jobs: data.jobs, companies: data.companies, metros: data.metros, ts: Date.now() };
+          // Also fetch total companies tracked (all in ats_companies, not just with open jobs)
+          var totalCo = null;
+          try {
+            var tcResult = await sb.from('ats_companies').select('id', { count: 'exact', head: true });
+            if (tcResult && tcResult.count != null) totalCo = tcResult.count;
+          } catch(e) { /* fallback: totalCompanies will be null, hero keeps placeholder */ }
+          const stats = { jobs: data.jobs, companies: data.companies, totalCompanies: totalCo, metros: data.metros, ts: Date.now() };
           localStorage.setItem(CACHE_KEY, JSON.stringify(stats));
           applyStats(stats);
           var badge = document.getElementById('stats-stale-badge');

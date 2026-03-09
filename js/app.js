@@ -896,41 +896,54 @@ window.disconnectGmail = async function() {
 // Init Gmail status on load
 initGmailStatus();
 
-// POD3-GS: BUG-4 + BUG-5 — Fetch live community stats for Get Started data advantage section
+// POD3-GS: BUG-4 + BUG-5 + QA-001 — Fetch live community stats for Get Started data advantage section
+// All numbers are live from Supabase — nothing hardcoded. Three distinct metrics:
+//   1. "open positions" = ats_jobs WHERE status='open' (consistent with feed logic)
+//   2. "career pages tracked" = total ats_companies (all companies being monitored)
+//   3. "companies hiring now" = distinct companies with current open jobs (subset of #2)
 (async function fetchGetStartedStats() {
   try {
-    // Open positions (active jobs count)
     var posEl = document.getElementById('gs-stat-positions');
     var pagesEl = document.getElementById('gs-stat-pages');
     var companiesEl = document.getElementById('gs-stat-companies');
-    if (!posEl && !pagesEl && !companiesEl) return; // Not on Get Started page
+    var heroEl = document.getElementById('gs-hero-pages');
+    if (!posEl && !pagesEl && !companiesEl && !heroEl) return; // Not on Get Started page
 
+    // 1. Open positions — use status='open' (matches feed logic, not is_active)
     var jobsCount = await safeQuery(function() {
-      return sb.from('ats_jobs').select('id', { count: 'exact', head: true }).eq('is_active', true);
+      return sb.from('ats_jobs').select('id', { count: 'exact', head: true }).eq('status', 'open');
     }, { label: 'app:gs-stats-jobs', fallback: null });
     if (posEl && jobsCount !== null) {
       var count = typeof jobsCount === 'number' ? jobsCount : (jobsCount && jobsCount.count != null ? jobsCount.count : null);
       if (count != null) posEl.textContent = Number(count).toLocaleString() + '+';
     }
 
-    var pagesCount = await safeQuery(function() {
-      return sb.from('ats_companies').select('id', { count: 'exact', head: true }).eq('is_active', true);
-    }, { label: 'app:gs-stats-pages', fallback: null });
-    if (pagesEl && pagesCount !== null) {
-      var pCount = typeof pagesCount === 'number' ? pagesCount : (pagesCount && pagesCount.count != null ? pagesCount.count : null);
-      if (pCount != null) pagesEl.textContent = Number(pCount).toLocaleString() + '+';
+    // 2. Career pages tracked — total companies (all monitored, no filter)
+    var totalPagesCount = await safeQuery(function() {
+      return sb.from('ats_companies').select('id', { count: 'exact', head: true });
+    }, { label: 'app:gs-stats-total-pages', fallback: null });
+    var totalPages = typeof totalPagesCount === 'number' ? totalPagesCount : (totalPagesCount && totalPagesCount.count != null ? totalPagesCount.count : null);
+    if (totalPages != null) {
+      // Round down to nearest thousand for display consistency
+      var rounded = Math.floor(totalPages / 1000) * 1000;
+      var displayStr = rounded.toLocaleString() + '+';
+      if (pagesEl) pagesEl.textContent = displayStr;
+      if (heroEl) heroEl.textContent = displayStr;
     }
 
-    // Companies hiring now: distinct company count from active jobs
+    // 3. Companies hiring now — distinct companies with current open jobs
     var compResult = await safeQuery(function() {
       return sb.rpc('get_active_company_count');
     }, { label: 'app:gs-stats-companies', fallback: null });
     if (companiesEl && compResult != null) {
       companiesEl.textContent = Number(compResult).toLocaleString() + '+';
     } else if (companiesEl) {
-      // Fallback: use ats_companies count if RPC not available
-      var cCount = typeof pagesCount === 'number' ? pagesCount : (pagesCount && pagesCount.count != null ? pagesCount.count : null);
-      if (cCount != null) companiesEl.textContent = Number(cCount).toLocaleString() + '+';
+      // Fallback: count active companies if RPC not available
+      var activeCo = await safeQuery(function() {
+        return sb.from('ats_companies').select('id', { count: 'exact', head: true }).eq('is_active', true);
+      }, { label: 'app:gs-stats-active-companies', fallback: null });
+      var activeCount = typeof activeCo === 'number' ? activeCo : (activeCo && activeCo.count != null ? activeCo.count : null);
+      if (activeCount != null) companiesEl.textContent = Number(activeCount).toLocaleString() + '+';
     }
   } catch(e) { reportError('app:gs-stats', e); }
 })();
