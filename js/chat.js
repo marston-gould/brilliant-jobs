@@ -775,6 +775,66 @@ function applyChatFilters(filters) {
     setTimeout(function() { banner.style.display = 'none'; }, 5000);
   }
 
+  // UX-001: Populate filter builder pills from chat-extracted filters
+  // This ensures the same filters are visible in Filters mode and the save-filter-row shows
+  if (typeof window.whatPills !== 'undefined') {
+    // Clear existing pills before populating from chat
+    window.whatPills.length = 0;
+    window.wherePills.length = 0;
+    window.whoPills.length = 0;
+    window.payPills.length = 0;
+    window.whatNotPills.length = 0;
+    window.whereNotPills.length = 0;
+    window.whoNotPills.length = 0;
+
+    // Keywords → What pills
+    if (filters.keywords && filters.keywords.length > 0) {
+      filters.keywords.forEach(function(kw) {
+        window.whatPills.push({ values: [kw], source: 'chat' });
+      });
+    }
+    // Locations → Where pills
+    if (filters.locations && filters.locations.length > 0) {
+      filters.locations.forEach(function(loc) {
+        window.wherePills.push({ values: [loc], locType: 'city', source: 'chat' });
+      });
+    }
+    // Remote → Where pill
+    if (filters.remote) {
+      window.wherePills.push({ values: ['Remote'], locType: 'remote', source: 'chat' });
+    }
+    // Level → Level pill
+    if (filters.level && typeof window.levelPills !== 'undefined') {
+      window.levelPills.length = 0;
+      window.levelPills.push({ values: [filters.level], source: 'chat' });
+    }
+    // Salary → Pay pill
+    if (filters.salary_min || filters.salary_max) {
+      window.payPills.push({
+        values: [(filters.salary_min || 0) + '-' + (filters.salary_max || '')],
+        min: filters.salary_min || 0,
+        max: filters.salary_max || null,
+        source: 'chat'
+      });
+    }
+    // Companies → Who pills
+    if (filters.companies && filters.companies.length > 0) {
+      filters.companies.forEach(function(co) {
+        window.whoPills.push({ values: [co], source: 'chat' });
+      });
+    }
+    // Exclude companies → Who NOT pills
+    if (filters.excludeCompanies && filters.excludeCompanies.length > 0) {
+      filters.excludeCompanies.forEach(function(co) {
+        window.whoNotPills.push({ values: [co], source: 'chat' });
+      });
+    }
+    // Re-render pills in the filter builder (visible when user switches to Filters mode)
+    if (typeof renderAllPills === 'function') {
+      renderAllPills();
+    }
+  }
+
   // Build a temporary search config and trigger job feed refresh
   // This integrates with the existing searchJobs() pipeline
   if (typeof window._chatFilterOverride === 'undefined') {
@@ -929,30 +989,14 @@ var PROMPT_COLORS = [
 
 // --- Init Save/Load buttons ---
 function initSavedPrompts() {
-  // Save button in header
-  var saveBtn = document.getElementById('chat-save-btn');
-  if (saveBtn) {
-    saveBtn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      openSaveDialog();
-    });
-  }
+  // UX-001: Header Load/Save buttons removed — saves through inline save-prompt-row,
+  // loads through Saved Searches & Prompts list exclusively
 
-  // Load button in header
-  var loadBtn = document.getElementById('chat-load-btn');
-  if (loadBtn) {
-    loadBtn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      toggleLoadDropdown();
-    });
-  }
-
-  // Close load dropdown on outside click
+  // Close load dropdown on outside click (legacy — keep for safety)
   document.addEventListener('click', function(e) {
     if (_loadDropdownOpen) {
       var dropdown = document.getElementById('chat-load-dropdown');
-      var loadBtn = document.getElementById('chat-load-btn');
-      if (dropdown && !dropdown.contains(e.target) && loadBtn && !loadBtn.contains(e.target)) {
+      if (dropdown && !dropdown.contains(e.target)) {
         closeLoadDropdown();
       }
     }
@@ -1034,75 +1078,18 @@ function initSavedPrompts() {
 }
 
 // --- Save Dialog ---
+// UX-001: Save dialog removed — inline save-prompt-row handles all prompt saving
 function openSaveDialog() {
-  if (_chatSession.messages.length === 0) {
-    if (typeof showToast === 'function') showToast('Start a conversation first', 'info');
-    return;
-  }
-
-  var dialog = document.getElementById('chat-save-dialog');
-  if (!dialog) return;
-
-  // Pre-fill name if editing existing
-  var nameInput = dialog.querySelector('#save-prompt-name');
-  if (nameInput) {
-    if (_currentPromptId) {
-      var existing = _savedPrompts.find(function(p) { return p.id === _currentPromptId; });
-      if (existing) nameInput.value = existing.name;
-    } else {
-      nameInput.value = '';
-    }
-  }
-
-  // Render color palette
-  var paletteEl = dialog.querySelector('#save-prompt-palette');
-  if (paletteEl) {
-    paletteEl.innerHTML = '';
-    var selectedIdx = 0;
-    if (_currentPromptId) {
-      var existing = _savedPrompts.find(function(p) { return p.id === _currentPromptId; });
-      if (existing) selectedIdx = existing.color_index || 0;
-    }
-    PROMPT_COLORS.forEach(function(color, idx) {
-      var swatch = document.createElement('button');
-      swatch.className = 'save-color-swatch' + (idx === selectedIdx ? ' active' : '');
-      swatch.style.background = color;
-      swatch.setAttribute('data-color-idx', idx);
-      swatch.addEventListener('click', function() {
-        paletteEl.querySelectorAll('.save-color-swatch').forEach(function(s) { s.classList.remove('active'); });
-        swatch.classList.add('active');
-      });
-      paletteEl.appendChild(swatch);
-    });
-  }
-
-  // Show derived filters preview
-  renderDerivedFiltersPreview(dialog);
-
-  dialog.style.display = 'flex';
-  _saveDialogOpen = true;
-  if (nameInput) nameInput.focus();
-
-  // Bind save action
-  var confirmBtn = dialog.querySelector('#save-prompt-confirm');
-  var cancelBtn = dialog.querySelector('#save-prompt-cancel');
-
-  // Clone and replace to remove old listeners
-  if (confirmBtn) {
-    var newConfirm = confirmBtn.cloneNode(true);
-    confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
-    newConfirm.addEventListener('click', executeSavePrompt);
-  }
-  if (cancelBtn) {
-    var newCancel = cancelBtn.cloneNode(true);
-    cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
-    newCancel.addEventListener('click', closeSaveDialog);
+  // Redirect to inline save row
+  var saveRow = document.getElementById('save-prompt-row');
+  if (saveRow) {
+    saveRow.classList.remove('u-hidden');
+    var nameInput = document.getElementById('save-prompt-inline-name');
+    if (nameInput) nameInput.focus();
   }
 }
 
 function closeSaveDialog() {
-  var dialog = document.getElementById('chat-save-dialog');
-  if (dialog) dialog.style.display = 'none';
   _saveDialogOpen = false;
 }
 

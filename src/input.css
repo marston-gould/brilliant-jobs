@@ -1277,8 +1277,8 @@
     .sf-item-meta { font-size: 10px; color: var(--text-faint); margin-block-start: 1px; }
     .sf-item .sf-del {
       opacity: 0.4; font-size: 11px; color: var(--text-faint); cursor: pointer;
-      width: 20px; min-width: 20px; text-align: center; flex-shrink: 0; border-radius: 4px;
-      margin-right: 2px;
+      width: 28px; min-width: 28px; text-align: center; flex-shrink: 0; border-radius: 4px;
+      margin-right: 8px;
     }
     .sf-item:hover .sf-del { opacity: 1; }
     .sf-item:hover .sf-dup { opacity: 0.7; }

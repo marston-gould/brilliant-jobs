@@ -734,6 +734,14 @@ async function commitSaveFilter() {
     lastUsed: Date.now(),
     useCount: 1
   };
+  // UX-001: Detect if pills originated from chat and tag the filter
+  var hasChatPills = whatPills.some(function(p) { return p.source === 'chat'; }) ||
+    wherePills.some(function(p) { return p.source === 'chat'; }) ||
+    whoPills.some(function(p) { return p.source === 'chat'; }) ||
+    payPills.some(function(p) { return p.source === 'chat'; });
+  if (hasChatPills) {
+    filterData.source = 'chat';
+  }
   // Preserve existing per-filter level hierarchy if updating, otherwise inherit global default
   // POD3-SF: Use _editingFilterIdx as primary lookup (more reliable), fall back to name match
   var existingIdx = window._editingFilterIdx != null ? window._editingFilterIdx : -1;
@@ -1049,7 +1057,7 @@ function renderSavedFilters() {
       <input type="checkbox" class="sf-item-check" data-idx="${sf._idx}" data-filternum="${filterNum}" data-filtercolor="${filterColor}">
       <span class="sf-num" style="background:${filterColor};">${filterNum}</span>
       <div class="sf-item-info">
-        <div class="sf-item-name">${escapeHtml(sf.name)}</div>
+        <div class="sf-item-name">${escapeHtml(sf.name)}${sf.source === 'chat' ? ' <span style="font-size:8px;padding:1px 5px;border-radius:3px;background:var(--accent-dim);color:var(--accent);font-weight:600;vertical-align:1px;margin-left:4px;">via Chat</span>' : ''}</div>
         ${meta ? `<div class="sf-item-meta">${meta}</div>` : ''}
       </div>
       ${miniPills}
@@ -1064,7 +1072,7 @@ function renderSavedFilters() {
         const otherLabel = sf.includeOtherLevels ? ' <span style="font-size:9px;padding:1px 5px;border-radius:4px;background:var(--bg-input);color:var(--text-faint);border:1px solid var(--border);">+Other</span>' : '';
         return `<div style="display:flex;gap:3px;flex-wrap:wrap;align-items:center;">${badges}${otherLabel}</div>`;
       })()}
-      <div class="sf-right" style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0;">
+      <div class="sf-right" style="display:flex;align-items:center;gap:6px;margin-left:auto;padding-left:8px;flex-shrink:0;">
         <span class="sf-dup" data-dupidx="${sf._idx}" title="Duplicate filter" style="font-size:11px;color:var(--text-faint);cursor:pointer;padding:2px 4px;opacity:0;transition:opacity 0.1s;">⧉</span>
         <span class="sf-health-btn" data-idx="${sf._idx}" title="Filter health & suggestions" style="font-size:10px;color:var(--text-faint);cursor:pointer;padding:2px 4px;opacity:0;transition:opacity 0.1s;"><i data-lucide="lightbulb" class="icon-xs icon-stroke"></i></span>
         <span class="sf-levels-btn" data-idx="${sf._idx}" title="${sf.assignedLevels?.length ? sf.assignedLevels.length + ' levels assigned — click to edit' : sf.levelHierarchy ? 'Custom levels — click to edit' : 'Assign levels to this filter'}" style="font-size:10px;color:${sf.assignedLevels?.length ? 'var(--green)' : sf.levelHierarchy ? 'var(--accent)' : 'var(--text-faint)'};cursor:pointer;padding:2px 4px;opacity:${sf.assignedLevels?.length || sf.levelHierarchy ? '0.8' : '0'};transition:opacity 0.1s;">⚙</span>

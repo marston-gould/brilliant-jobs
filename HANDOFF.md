@@ -52,7 +52,32 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FB-PAYL-S4** — Pay After You Land — Stripe Integration + Feature Flag Activation
+**UX-001-S1** — Feed UX Consolidation — Save/Load Unification + Layout Fixes
+- Completed: 2026-03-09
+- Product version bumped: `v8.25` → `v8.26` (JS/CSS/HTML changes — chat header buttons removed, save dialog removed, intel-section moved, applyChatFilters pill population, source:chat metadata, via Chat badge, sf-del spacing; all HTML surfaces cache-busted)
+- ROADMAP.md updated: UX-001-S1 → ✅
+- roadmap.html updated: UX-001-S1 → `s: 'done'`, p: 100
+- **5 defects resolved (UX-001 through UX-005):**
+  - **UX-001 + UX-002 (Unified Save/Load):** Removed Load and Save buttons from chat-header-actions (kept Clear button with Lucide trash-2 icon and visible label). Removed chat-save-dialog modal (overlay, color palette, confirm/cancel). openSaveDialog() now redirects to inline save-prompt-row. Inline save-prompt-row remains the sole chat save mechanism. Chat prompts continue rendering in Saved Searches list with "Chat Prompts" separator.
+  - **UX-001 (Chat→Filter Builder pill population):** applyChatFilters() now populates filter builder pills from extracted chat filters — keywords→whatPills, locations→wherePills, remote→wherePills, salary→payPills, level→levelPills, companies→whoPills, excludeCompanies→whoNotPills. All pills tagged with `source: 'chat'`. renderAllPills() called after population. Pills visible when user switches to Filters mode.
+  - **UX-001 (Via Chat badge):** commitSaveFilter() detects chat-sourced pills (hasChatPills). Sets `filterData.source = 'chat'`. renderSavedFilters() shows "via Chat" badge (8px font, accent background, inline) next to filter name for chat-originated filters.
+  - **UX-003 (Merchandising Placement):** intel-section (Your Market + Pro Tip cards) moved from inside filter-panel-wrap to above search-mode-bar. Cards now persist across Filters/Chat mode toggle.
+  - **UX-004 (Resume Generation):** Already fixed by prior QA-FIX — modal picker with resume selection and upload zone instead of bare alert(). Verified functional.
+  - **UX-005 (Spacing Fix):** sf-del width 20→28px, margin-right 2→8px in input.css. sf-right padding-left: 8px in location.js. Prevents accidental deletion when targeting match score.
+- **Pod team:** Lead Platform Eng + Forward-Looking Dev (primary), Chief Architect + Evolvability Strategist (reviewers)
+- **Created:**
+  - `tests/ux-001-s1-feed-ux.test.js` — 46 validation tests (8 sections)
+- **Modified:**
+  - `dashboard.html` — Chat header buttons removed, save dialog removed, intel-section moved above toggle
+  - `js/chat.js` — Header button handlers removed, openSaveDialog redirects to inline row, applyChatFilters populates pills
+  - `js/location.js` — commitSaveFilter detects source:chat, renderSavedFilters shows via Chat badge, sf-right padding
+  - `src/input.css` — sf-del spacing (28px min-width, 8px margin-right)
+  - `styles.css` — Tailwind rebuild
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `ROADMAP.md` — UX-001 section added, UX-001-S1 → ✅
+  - `roadmap.html` — UX-001-S1 done, UX-001-S2/S3 todo
+- **Tests:** 46 UX-001-S1 validation tests (all passing)
 - Completed: 2026-03-09
 - Product version bumped: `v8.24` → `v8.25` (JS changes — payl.js Stripe.js lazy-load + Elements mount; all HTML surfaces cache-busted)
 - ROADMAP.md updated: FB-PAYL-S4 → ✅
@@ -1262,6 +1287,7 @@ No specific session queued. FB-PAYL feature build is COMPLETE (S1 ✅, S2 ✅, S
 **Phase S is COMPLETE.** All 29 sessions (SA-001 through SA-029) plus SA-023b are done.
 **Phase REM is COMPLETE.** All 5 sessions (REM-001 through REM-005) are done.
 **FB-PAYL is COMPLETE.** All 4 sessions (FB-PAYL-S1 through FB-PAYL-S4) are done. PAYL operational in production with Stripe integration.
+**UX-001-S1 is COMPLETE.** Save/Load unification + layout fixes done. UX-001-S2 (Pagination) and UX-001-S3 (Universal Browser) remain.
 
 Pending work streams (Marston to prioritize):
 - **Stripe configuration:** Create PAYL product in Stripe dashboard, configure setup_intent flow with PAYL-specific metadata. Requires Marston Stripe access.
@@ -1305,7 +1331,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.25`** | **FB-PAYL-S4: Stripe integration + feature flag activation** |
+| **Product (BJ_VERSION)** | **`v8.26`** | **UX-001-S1: Feed UX Save/Load Unification + Layout Fixes** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

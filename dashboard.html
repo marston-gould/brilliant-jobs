@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v8.25 -->
+<!-- Brilliant Jobs Dashboard v8.26 -->
 <html lang="en">
 <head>
   <!-- CS-P1-009: Theme flash prevention — must be first script -->
@@ -19,22 +19,22 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="/js/vendor/supabase.min.js" defer></script>
-  <script src="/js/pipeline-migration.js?v=v8.25" defer></script>
-  <script src="/js/notification-center.js?v=v8.25" defer></script>
+  <script src="/js/pipeline-migration.js?v=v8.26" defer></script>
+  <script src="/js/notification-center.js?v=v8.26" defer></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" integrity="sha384-nFoSjZIoH3CCp8W639jJyQkuPHinJ2NHe7on1xvlUA7SuGfJAfvMldrsoAVm6ECz" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" integrity="sha384-eEu5CTj3qGvu9PdJuS+YlkNi7d2XxQROAFYOr59zgObtlcux1ae1Il3u7jvdCSWu" crossorigin="anonymous"></script>
   <!-- CS-014: CX-09 — ECharts lazy-loaded by stats.js when Stats tab opens -->
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js" integrity="sha384-TcLTgu6flPhnZ5dfHnHimsxNFjYWN0povfGgnOvgPJKbZe6IbuoC2ociiatSHl9E" crossorigin="anonymous"></script>
   <!-- CS-016 FIX-10: Code-split chunks — shell (globals+routing) + feed (job list) loaded eagerly; all other chunks lazy-loaded on tab switch -->
-  <script src="dist/dashboard-shell.min.js?v=v8.25" defer></script>
-  <script src="dist/dashboard-feed.min.js?v=v8.25" defer></script>
+  <script src="dist/dashboard-shell.min.js?v=v8.26" defer></script>
+  <script src="dist/dashboard-feed.min.js?v=v8.26" defer></script>
   <!-- CS-P1-002: dashboard inline scripts externalized (pdfjs, preload, feedback, insights, a11y) -->
-  <script src="js/dashboard-inline.js?v=v8.25" defer></script>
-  <script src="js/canny.js?v=v8.25" defer></script>
+  <script src="js/dashboard-inline.js?v=v8.26" defer></script>
+  <script src="js/canny.js?v=v8.26" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=v8.25">
+  <link rel="stylesheet" href="styles.css?v=v8.26">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -109,11 +109,11 @@
     </style>
   <!-- CSS extracted to styles.css in v3.28 -->
   <!-- A13: PostHog analytics — CS-P1-002: externalized for CSP compliance -->
-  <script src="js/posthog-dashboard.js?v=v8.25" defer></script>
-  <script src="js/posthog-perf.js?v=v8.25" defer></script>
-  <script src="js/feature-flags.js?v=v8.25" defer></script>
-  <script src="js/structured-logger.js?v=v8.25" defer></script>
-  <script src="js/theme.js?v=v8.25" defer></script>
+  <script src="js/posthog-dashboard.js?v=v8.26" defer></script>
+  <script src="js/posthog-perf.js?v=v8.26" defer></script>
+  <script src="js/feature-flags.js?v=v8.26" defer></script>
+  <script src="js/structured-logger.js?v=v8.26" defer></script>
+  <script src="js/theme.js?v=v8.26" defer></script>
 </head>
 <body>
 
@@ -859,6 +859,29 @@
             <!-- feed-source-chips removed v7.17 (user request) -->
             <div id="feed-source-chips" class="u-hidden"></div>
           </div>
+          <!-- UX-003: Intelligence / Merch slot (above toggle — persists across Filters/Chat modes) -->
+          <div class="feed-intel" id="intel-section">
+            <div class="intel-card" id="intel-card-insight">
+              <div class="intel-icon" style="background:rgba(34,197,94,0.08);">💰</div>
+              <div class="intel-card-body">
+                <span class="intel-card-type" style="background:rgba(34,197,94,0.1);color:var(--green);">Your Market</span>
+                <div class="intel-card-title" id="intel-insight-title">Loading market data…</div>
+                <div class="intel-card-sub" id="intel-insight-sub"></div>
+                <a class="intel-card-cta u-hidden" id="intel-insight-cta" href="#">See details →</a>
+              </div>
+              <button class="intel-dismiss" onclick="this.closest('.intel-card').style.display='none'">&times;</button>
+            </div>
+            <div class="intel-card" id="intel-card-merch" data-merch-slot="feed-intel">
+              <div class="intel-icon" style="background:var(--accent-dim);">⚡</div>
+              <div class="intel-card-body">
+                <span class="intel-card-type" style="background:var(--accent-dim);color:var(--accent);">Pro Tip</span>
+                <div class="intel-card-title" id="intel-merch-title">Score your resume against these jobs</div>
+                <div class="intel-card-sub" id="intel-merch-sub">See how well your resume matches before you apply</div>
+                <a class="intel-card-cta" href="#" onclick="event.preventDefault();document.querySelector('[data-page=resumes]').click()">Score my resume →</a>
+              </div>
+              <button class="intel-dismiss" onclick="this.closest('.intel-card').style.display='none'">&times;</button>
+            </div>
+          </div>
           <!-- Search Mode Toggle (Chat Mode Session 2) -->
           <div class="search-mode-bar" id="search-mode-bar">
             <div class="search-mode-toggle" id="search-mode-toggle">
@@ -881,17 +904,13 @@
                 <span class="chat-msg-counter" id="chat-msg-counter">0/10</span>
                 <span class="chat-remaining u-hidden" id="chat-remaining"></span>
               </div>
+              <!-- UX-001: Unified save/load — Load/Save removed, use Saved Searches list -->
               <div class="chat-header-actions">
                 <span class="chat-loaded-prompt u-hidden" id="chat-loaded-prompt"></span>
-                <button class="chat-load-btn" id="chat-load-btn" title="Load saved prompt" style="width:auto;padding:4px 10px;gap:4px;font-size:10px;font-weight:600;">
-                  <i data-lucide="download" class="icon-xs icon-stroke"></i>
-                  Load
+                <button class="chat-clear-btn" id="chat-clear-btn" title="Clear conversation" style="padding:4px 10px;font-size:10px;font-weight:600;display:flex;align-items:center;gap:4px;">
+                  <i data-lucide="trash-2" class="icon-xs icon-stroke"></i>
+                  Clear
                 </button>
-                <button class="chat-save-btn" id="chat-save-btn" title="Name and save this prompt" style="width:auto;padding:4px 10px;gap:4px;font-size:10px;font-weight:600;">
-                  <i data-lucide="save" class="icon-xs icon-stroke"></i>
-                  Save
-                </button>
-                <button class="chat-clear-btn" id="chat-clear-btn" title="Clear conversation">✕</button>
               </div>
             </div>
             <div class="chat-filter-banner u-hidden" id="chat-filter-banner"></div>
@@ -921,57 +940,13 @@
               <button class="btn btn-primary btn-sm" id="save-prompt-inline-go">Save</button>
             </div>
 
-            <!-- Save Prompt Dialog (Session 4) -->
-            <div class="chat-save-dialog u-hidden" id="chat-save-dialog">
-              <div class="csd-overlay" onclick="closeSaveDialog()"></div>
-              <div class="csd-content">
-                <div class="csd-title">Save Prompt</div>
-                <div class="csd-field">
-                  <label class="csd-label">Name</label>
-                  <input type="text" id="save-prompt-name" class="csd-input" placeholder="e.g. Senior PM in Austin" maxlength="60">
-                </div>
-                <div class="csd-field">
-                  <label class="csd-label">Color</label>
-                  <div class="csd-palette" id="save-prompt-palette"></div>
-                </div>
-                <div class="csd-field">
-                  <label class="csd-label">Derived Filters</label>
-                  <div class="csd-filters-preview" id="save-prompt-filters-preview"></div>
-                </div>
-                <div class="csd-actions">
-                  <button class="csd-btn csd-btn-cancel" id="save-prompt-cancel">Cancel</button>
-                  <button class="csd-btn csd-btn-save" id="save-prompt-confirm">Save</button>
-                </div>
-              </div>
-            </div>
+            <!-- UX-001: Save dialog removed — inline save-prompt-row handles all prompt saving -->
           </div>
 
           <!-- filter-panel-wrap: visible in Filters mode, hidden in Chat mode -->
           <div id="filter-panel-wrap" style="transition:opacity 0.2s;">
 
-          <!-- Intelligence / Merch slot (2-card grid, dismissible, merch-client rotatable) -->
-          <div class="feed-intel" id="intel-section">
-            <div class="intel-card" id="intel-card-insight">
-              <div class="intel-icon" style="background:rgba(34,197,94,0.08);">💰</div>
-              <div class="intel-card-body">
-                <span class="intel-card-type" style="background:rgba(34,197,94,0.1);color:var(--green);">Your Market</span>
-                <div class="intel-card-title" id="intel-insight-title">Loading market data…</div>
-                <div class="intel-card-sub" id="intel-insight-sub"></div>
-                <a class="intel-card-cta u-hidden" id="intel-insight-cta" href="#">See details →</a>
-              </div>
-              <button class="intel-dismiss" onclick="this.closest('.intel-card').style.display='none'">&times;</button>
-            </div>
-            <div class="intel-card" id="intel-card-merch" data-merch-slot="feed-intel">
-              <div class="intel-icon" style="background:var(--accent-dim);">⚡</div>
-              <div class="intel-card-body">
-                <span class="intel-card-type" style="background:var(--accent-dim);color:var(--accent);">Pro Tip</span>
-                <div class="intel-card-title" id="intel-merch-title">Score your resume against these jobs</div>
-                <div class="intel-card-sub" id="intel-merch-sub">See how well your resume matches before you apply</div>
-                <a class="intel-card-cta" href="#" onclick="event.preventDefault();document.querySelector('[data-page=resumes]').click()">Score my resume →</a>
-              </div>
-              <button class="intel-dismiss" onclick="this.closest('.intel-card').style.display='none'">&times;</button>
-            </div>
-          </div>
+          <!-- UX-003: Intelligence/Merch slot moved above search-mode-toggle (persists across modes) -->
 
           <!-- Q23: Global Rules crosslink -->
           <div id="global-rules-banner" style="display:none;margin:0 0 8px;padding:8px 12px;background:linear-gradient(135deg,rgba(77,142,255,0.05),rgba(167,139,250,0.05));border:1px solid rgba(77,142,255,0.12);border-radius:8px;font-size:11px;color:var(--text-dim);cursor:pointer;" onclick="document.querySelector('[data-page=tuning]').click()">
