@@ -758,8 +758,8 @@ async function prewarmRefCaches() {
         return sb.from("ref_industries").select("name, category").order("name");
       }, { ttl: 36e5 }),
       // 1 hour TTL — rarely changes
-      cachedQuery("ref:companies:list", function() {
-        return sb.from("ats_companies").select("slug, name, job_count, source").order("name");
+      cachedQuery("ref:companies:active", function() {
+        return sb.from("ats_companies").select("slug, name, job_count, source").gt("job_count", 0).order("name").limit(5e4);
       }, { ttl: 6e5 })
       // 10 min TTL — job_count updates periodically
     ]);

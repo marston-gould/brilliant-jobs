@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.32';
+var BJ_VERSION = 'v8.33';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -1020,8 +1020,8 @@ async function prewarmRefCaches(): Promise<void> {
       cachedQuery('ref:industries', function() {
         return sb.from('ref_industries').select('name, category').order('name');
       }, { ttl: 3600000 }), // 1 hour TTL — rarely changes
-      cachedQuery('ref:companies:list', function() {
-        return sb.from('ats_companies').select('slug, name, job_count, source').order('name');
+      cachedQuery('ref:companies:active', function() {
+        return sb.from('ats_companies').select('slug, name, job_count, source').gt('job_count', 0).order('name').limit(50000);
       }, { ttl: 600000 }), // 10 min TTL — job_count updates periodically
     ]);
     console.log('[BJ] Ref caches pre-warmed');

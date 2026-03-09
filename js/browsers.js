@@ -584,7 +584,7 @@ async function loadCompanyBrowser() {
   try {
     // Load companies with active jobs — filter to job_count > 0 to stay within Supabase row limits
     // (ats_companies has 65K+ rows but only ~5-10K have open jobs)
-    let cacheResult = await cachedQuery('ref:companies:list', function() {
+    let cacheResult = await cachedQuery('ref:companies:active', function() {
       return sb.from('ats_companies').select('slug, name, job_count, source, ai_jd_rate').gt('job_count', 0).order('name').limit(50000);
     }, { ttl: 600000 });
     let allData = (cacheResult && cacheResult.data) || [];
