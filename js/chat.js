@@ -1189,9 +1189,7 @@ function renderLoadDropdownItems(dropdown) {
         '<div class="cld-item-meta">' + filterCount + ' filter' + (filterCount !== 1 ? 's' : '') + ' · ' + timeAgo + '</div>' +
       '</div>' +
       '<div class="cld-item-actions">' +
-        '<button class="cld-delete-btn" data-prompt-id="' + prompt.id + '" title="Delete">' +
-          '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg>' +
-        '</button>' +
+        '<button class="cld-delete-btn" data-prompt-id="' + prompt.id + '" title="Delete">✕</button>' +
       '</div>' +
     '</div>';
   });
@@ -1530,6 +1528,10 @@ loadSavedPromptsFromDB = async function() {
 // The auto-apply system checks both saved filters and saved prompts
 window._getPromptAutoApplyConfigs = getPromptAutoApplyConfigs;
 window._assignResumeToPrompt = assignResumeToPrompt;
+// QA-FIX: Expose prompts for unified saved search list (getter survives internal reassignment)
+window._getSavedPrompts = function() { return _savedPrompts; };
+window._loadPrompt = loadPrompt;
+window._deletePrompt = deletePrompt;
 
 // --- Initialize on page load ---
 if (document.readyState === 'loading') {

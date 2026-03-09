@@ -293,7 +293,8 @@
       version: 'micro_search_v1',
       featureContext: JSON.stringify({ filter: filterName, result_count: resultCount }),
       displayMode: 'inline',
-      target: document.getElementById('job-feed-container') || document.getElementById('main-content') || document.body
+      // QA-FIX: Target the feed section specifically so survey doesn't appear between feed and tuning
+      target: document.getElementById('job-table') || document.getElementById('page-jobs') || document.body
     });
   };
 

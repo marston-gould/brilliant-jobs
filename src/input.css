@@ -1274,6 +1274,11 @@
     .sf-item:hover .sf-levels-btn { opacity: 0.7; }
     .sf-item .sf-levels-btn:hover { opacity: 1; color: var(--accent); }
     .sf-item .sf-del:hover { color: var(--red); background: var(--red-dim); }
+    /* QA-FIX: Prompt separator in unified saved searches list */
+    .sf-prompt-separator {
+      padding: 10px 14px 6px; border-top: 1px solid var(--border); margin-top: 4px;
+      display: flex; align-items: center; gap: 6px;
+    }
     /* QA-FIX: Consistent dismiss pattern — job rows use same hover-reveal ✕ as saved searches */
     .job-data-row .sf-del {
       opacity: 0; font-size: 11px; color: var(--text-faint); cursor: pointer;
@@ -1683,6 +1688,7 @@
     }
     .hero-stat-val.hs-accent { color: var(--warm); }
     .hero-stat-val.hs-green { color: var(--green); }
+    .hero-stat-val.hs-blue { color: var(--accent); }
     .hero-stat-val.hs-dim { color: rgba(255,255,255,0.45); }
 
     /* Intelligence / Merch slot */

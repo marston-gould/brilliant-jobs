@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v7.98';
+var BJ_VERSION = 'v7.99';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -5923,7 +5923,8 @@ function renderJobRows(jobs, total, page, filtersToRun) {
     const jobDate = job.first_seen_at || job.updated_at;
     const daysAgo = jobDate ? Math.floor((now - new Date(jobDate)) / 86400000) : '—';
     const daysStr = typeof daysAgo === 'number' ? (daysAgo === 0 ? 'today' : daysAgo + 'd') : '—';
-    const daysClass = typeof daysAgo === 'number' && daysAgo <= 3 ? 'color:var(--green);' : '';
+    // QA-FIX: Only today (0d) and 1d are green — 3d is not "new"
+    const daysClass = typeof daysAgo === 'number' && daysAgo <= 1 ? 'color:var(--green);' : '';
 
     const isSaved = savedJobIds.includes(job.greenhouse_id);
     const isApplied = appliedJobIds.includes(job.greenhouse_id);
@@ -13105,7 +13106,70 @@ function renderSavedFilters() {
     </div>`;
   }).join('');
 
-  // Bind load (skip if clicking checkbox)
+  // QA-FIX: Render saved prompts in the same list as saved searches
+  const prompts = typeof window._getSavedPrompts === 'function' ? window._getSavedPrompts() : [];
+  const promptsWithFilters = prompts.filter(p => p.derived_filters && Object.keys(p.derived_filters).length > 0);
+  if (promptsWithFilters.length > 0) {
+    list.innerHTML += '<div class="sf-prompt-separator"><span style="font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">💬 Chat Prompts</span></div>';
+    list.innerHTML += promptsWithFilters.map((prompt, pi) => {
+      const promptNum = sorted.length + pi + 1;
+      const promptColor = filterColors[(promptNum - 1) % filterColors.length];
+      const d = prompt.derived_filters;
+      // Build mini pills from derived_filters
+      let pills = '';
+      const miniParts = [];
+      if (d.keywords) d.keywords.forEach(kw => miniParts.push(`<span class="sf-mini-pill">${escapeHtml(kw)}</span>`));
+      if (d.locations) d.locations.forEach(loc => miniParts.push(`<span class="sf-mini-pill location-pill">${escapeHtml(loc)}</span>`));
+      if (d.salary_min || d.salary_max) {
+        const sal = d.salary_min && d.salary_max ? '$' + Math.round(d.salary_min/1000) + 'k–$' + Math.round(d.salary_max/1000) + 'k'
+          : d.salary_min ? '$' + Math.round(d.salary_min/1000) + 'k+' : 'Up to $' + Math.round(d.salary_max/1000) + 'k';
+        miniParts.push(`<span class="sf-mini-pill pay-pill">${sal}</span>`);
+      }
+      if (d.companies) d.companies.forEach(co => miniParts.push(`<span class="sf-mini-pill who-pill">${escapeHtml(co)}</span>`));
+      if (d.excludeCompanies) d.excludeCompanies.forEach(co => miniParts.push(`<span class="sf-mini-pill not-pill not-who">${escapeHtml(co)}</span>`));
+      if (d.remote) miniParts.push(`<span class="sf-mini-pill location-pill no-salary-pill">incl. remote</span>`);
+      pills = miniParts.length > 0 ? '<div class="sf-item-pills">' + miniParts.join('') + '</div>' : '';
+
+      return `<div class="sf-item sf-item-prompt" data-prompt-id="${prompt.id}" data-filternum="${promptNum}">
+        <span class="sf-del" data-prompt-del="${prompt.id}" title="Delete prompt">✕</span>
+        <input type="checkbox" class="sf-prompt-check" data-prompt-id="${prompt.id}" data-filternum="${promptNum}" data-filtercolor="${promptColor}">
+        <span class="sf-num" style="background:${promptColor};">${promptNum}</span>
+        <div class="sf-item-info">
+          <div class="sf-item-name">💬 ${escapeHtml(prompt.name || 'Chat Prompt')}</div>
+          <div class="sf-item-meta">chat prompt</div>
+        </div>
+        ${pills}
+      </div>`;
+    }).join('');
+  }
+
+  // Bind prompt click → load in chat
+  list.querySelectorAll('.sf-item-prompt').forEach(el => {
+    el.addEventListener('click', e => {
+      if (e.target.classList.contains('sf-del')) return;
+      if (e.target.classList.contains('sf-prompt-check')) return;
+      // Load prompt in chat mode
+      const promptId = el.dataset.promptId;
+      if (typeof window._loadPrompt === 'function') window._loadPrompt(promptId);
+    });
+  });
+  // Bind prompt delete
+  list.querySelectorAll('[data-prompt-del]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const promptId = el.dataset.promptDel;
+      if (typeof window._deletePrompt === 'function') {
+        if (confirm('Delete this chat prompt?')) window._deletePrompt(promptId);
+      }
+    });
+  });
+  // Bind prompt checkbox → trigger search
+  list.querySelectorAll('.sf-prompt-check').forEach(cb => {
+    cb.addEventListener('change', () => {
+      invalidateCache();
+      searchJobs(0);
+    });
+  });
   list.querySelectorAll('.sf-item').forEach(el => {
     el.addEventListener('click', e => {
       if (e.target.classList.contains('sf-del')) return;
@@ -22822,7 +22886,8 @@ function _initTierChangeListener() {
       version: 'micro_search_v1',
       featureContext: JSON.stringify({ filter: filterName, result_count: resultCount }),
       displayMode: 'inline',
-      target: document.getElementById('job-feed-container') || document.getElementById('main-content') || document.body
+      // QA-FIX: Target the feed section specifically so survey doesn't appear between feed and tuning
+      target: document.getElementById('job-table') || document.getElementById('page-jobs') || document.body
     });
   };
 
@@ -25865,9 +25930,7 @@ function renderLoadDropdownItems(dropdown) {
         '<div class="cld-item-meta">' + filterCount + ' filter' + (filterCount !== 1 ? 's' : '') + ' · ' + timeAgo + '</div>' +
       '</div>' +
       '<div class="cld-item-actions">' +
-        '<button class="cld-delete-btn" data-prompt-id="' + prompt.id + '" title="Delete">' +
-          '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg>' +
-        '</button>' +
+        '<button class="cld-delete-btn" data-prompt-id="' + prompt.id + '" title="Delete">✕</button>' +
       '</div>' +
     '</div>';
   });
@@ -26206,6 +26269,10 @@ loadSavedPromptsFromDB = async function() {
 // The auto-apply system checks both saved filters and saved prompts
 window._getPromptAutoApplyConfigs = getPromptAutoApplyConfigs;
 window._assignResumeToPrompt = assignResumeToPrompt;
+// QA-FIX: Expose prompts for unified saved search list (getter survives internal reassignment)
+window._getSavedPrompts = function() { return _savedPrompts; };
+window._loadPrompt = loadPrompt;
+window._deletePrompt = deletePrompt;
 
 // --- Initialize on page load ---
 if (document.readyState === 'loading') {

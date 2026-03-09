@@ -2593,7 +2593,8 @@ function renderJobRows(jobs, total, page, filtersToRun) {
     const jobDate = job.first_seen_at || job.updated_at;
     const daysAgo = jobDate ? Math.floor((now - new Date(jobDate)) / 86400000) : '—';
     const daysStr = typeof daysAgo === 'number' ? (daysAgo === 0 ? 'today' : daysAgo + 'd') : '—';
-    const daysClass = typeof daysAgo === 'number' && daysAgo <= 3 ? 'color:var(--green);' : '';
+    // QA-FIX: Only today (0d) and 1d are green — 3d is not "new"
+    const daysClass = typeof daysAgo === 'number' && daysAgo <= 1 ? 'color:var(--green);' : '';
 
     const isSaved = savedJobIds.includes(job.greenhouse_id);
     const isApplied = appliedJobIds.includes(job.greenhouse_id);

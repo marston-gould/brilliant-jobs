@@ -1072,7 +1072,70 @@ function renderSavedFilters() {
     </div>`;
   }).join('');
 
-  // Bind load (skip if clicking checkbox)
+  // QA-FIX: Render saved prompts in the same list as saved searches
+  const prompts = typeof window._getSavedPrompts === 'function' ? window._getSavedPrompts() : [];
+  const promptsWithFilters = prompts.filter(p => p.derived_filters && Object.keys(p.derived_filters).length > 0);
+  if (promptsWithFilters.length > 0) {
+    list.innerHTML += '<div class="sf-prompt-separator"><span style="font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">💬 Chat Prompts</span></div>';
+    list.innerHTML += promptsWithFilters.map((prompt, pi) => {
+      const promptNum = sorted.length + pi + 1;
+      const promptColor = filterColors[(promptNum - 1) % filterColors.length];
+      const d = prompt.derived_filters;
+      // Build mini pills from derived_filters
+      let pills = '';
+      const miniParts = [];
+      if (d.keywords) d.keywords.forEach(kw => miniParts.push(`<span class="sf-mini-pill">${escapeHtml(kw)}</span>`));
+      if (d.locations) d.locations.forEach(loc => miniParts.push(`<span class="sf-mini-pill location-pill">${escapeHtml(loc)}</span>`));
+      if (d.salary_min || d.salary_max) {
+        const sal = d.salary_min && d.salary_max ? '$' + Math.round(d.salary_min/1000) + 'k–$' + Math.round(d.salary_max/1000) + 'k'
+          : d.salary_min ? '$' + Math.round(d.salary_min/1000) + 'k+' : 'Up to $' + Math.round(d.salary_max/1000) + 'k';
+        miniParts.push(`<span class="sf-mini-pill pay-pill">${sal}</span>`);
+      }
+      if (d.companies) d.companies.forEach(co => miniParts.push(`<span class="sf-mini-pill who-pill">${escapeHtml(co)}</span>`));
+      if (d.excludeCompanies) d.excludeCompanies.forEach(co => miniParts.push(`<span class="sf-mini-pill not-pill not-who">${escapeHtml(co)}</span>`));
+      if (d.remote) miniParts.push(`<span class="sf-mini-pill location-pill no-salary-pill">incl. remote</span>`);
+      pills = miniParts.length > 0 ? '<div class="sf-item-pills">' + miniParts.join('') + '</div>' : '';
+
+      return `<div class="sf-item sf-item-prompt" data-prompt-id="${prompt.id}" data-filternum="${promptNum}">
+        <span class="sf-del" data-prompt-del="${prompt.id}" title="Delete prompt">✕</span>
+        <input type="checkbox" class="sf-prompt-check" data-prompt-id="${prompt.id}" data-filternum="${promptNum}" data-filtercolor="${promptColor}">
+        <span class="sf-num" style="background:${promptColor};">${promptNum}</span>
+        <div class="sf-item-info">
+          <div class="sf-item-name">💬 ${escapeHtml(prompt.name || 'Chat Prompt')}</div>
+          <div class="sf-item-meta">chat prompt</div>
+        </div>
+        ${pills}
+      </div>`;
+    }).join('');
+  }
+
+  // Bind prompt click → load in chat
+  list.querySelectorAll('.sf-item-prompt').forEach(el => {
+    el.addEventListener('click', e => {
+      if (e.target.classList.contains('sf-del')) return;
+      if (e.target.classList.contains('sf-prompt-check')) return;
+      // Load prompt in chat mode
+      const promptId = el.dataset.promptId;
+      if (typeof window._loadPrompt === 'function') window._loadPrompt(promptId);
+    });
+  });
+  // Bind prompt delete
+  list.querySelectorAll('[data-prompt-del]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const promptId = el.dataset.promptDel;
+      if (typeof window._deletePrompt === 'function') {
+        if (confirm('Delete this chat prompt?')) window._deletePrompt(promptId);
+      }
+    });
+  });
+  // Bind prompt checkbox → trigger search
+  list.querySelectorAll('.sf-prompt-check').forEach(cb => {
+    cb.addEventListener('change', () => {
+      invalidateCache();
+      searchJobs(0);
+    });
+  });
   list.querySelectorAll('.sf-item').forEach(el => {
     el.addEventListener('click', e => {
       if (e.target.classList.contains('sf-del')) return;

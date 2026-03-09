@@ -108,9 +108,9 @@ describe('QA Bug Tracker — New Fixes (This Session)', () => {
 });
 
 describe('QA Bug Tracker — Build Verification', () => {
-  test('Product version is v7.98', () => {
+  test('Product version is v7.99', () => {
     const version = read('js/version.js');
-    expect(version).toContain('7.98');
+    expect(version).toContain('7.99');
   });
 
   test('Dashboard bundle exists and is rebuilt', () => {
@@ -184,5 +184,69 @@ describe('QA Bug Tracker — Round 2 Fixes (Marston Screenshot Review)', () => {
     // No colspan="9" should remain
     expect(feed).not.toMatch(/colspan="9"/);
     expect(feed).toMatch(/colspan="8"/);
+  });
+});
+
+describe('QA Bug Tracker — Round 3 Fixes (Screenshot Review 2)', () => {
+  test('Chat clear button uses ✕ not trashcan SVG', () => {
+    const html = read('dashboard.html');
+    const clearBtn = html.match(/chat-clear-btn.*?<\/button>/s);
+    expect(clearBtn).toBeTruthy();
+    expect(clearBtn[0]).not.toContain('<svg');
+    expect(clearBtn[0]).toContain('✕');
+  });
+
+  test('Prompt delete uses ✕ not trashcan SVG', () => {
+    const chat = read('js/chat.js');
+    // The delete button line should have ✕ text content
+    expect(chat).toContain('title="Delete">✕</button>');
+  });
+
+  test('Days column: only 0d and 1d are green (not 3d)', () => {
+    const feed = read('js/job-feed.js');
+    expect(feed).toMatch(/daysAgo <= 1.*color:var\(--green\)/);
+    expect(feed).not.toMatch(/daysAgo <= 3.*color:var\(--green\)/);
+  });
+
+  test('Hero stats: New Today is green, Pipeline is blue', () => {
+    const html = read('dashboard.html');
+    // New Today should have hs-green
+    expect(html).toMatch(/id="j-new".*hs-green|hs-green.*id="j-new"/s);
+    // Pipeline should have hs-blue
+    expect(html).toMatch(/id="j-saved".*hs-blue|hs-blue.*id="j-saved"/s);
+    // Pipeline should NOT have hs-green
+    expect(html).not.toMatch(/j-saved.*hs-green/);
+  });
+
+  test('hs-blue CSS class exists', () => {
+    const css = read('src/input.css');
+    expect(css).toContain('.hero-stat-val.hs-blue');
+    expect(css).toContain('var(--accent)');
+  });
+
+  test('Relevancy survey targets job-table, not generic container', () => {
+    const ms = read('js/micro-surveys.js');
+    expect(ms).toContain("getElementById('job-table')");
+    expect(ms).not.toContain("getElementById('job-feed-container')");
+  });
+
+  test('Saved prompts exposed to window for unified list', () => {
+    const chat = read('js/chat.js');
+    expect(chat).toContain('window._getSavedPrompts');
+    expect(chat).toContain('window._loadPrompt');
+    expect(chat).toContain('window._deletePrompt');
+  });
+
+  test('Saved prompts rendered in saved searches list', () => {
+    const loc = read('js/location.js');
+    expect(loc).toContain('_getSavedPrompts');
+    expect(loc).toContain('sf-prompt-check');
+    expect(loc).toContain('sf-prompt-separator');
+    expect(loc).toContain('Chat Prompts');
+  });
+
+  test('Prompt separator CSS exists', () => {
+    const css = read('src/input.css');
+    expect(css).toContain('.sf-prompt-separator');
   });
 });

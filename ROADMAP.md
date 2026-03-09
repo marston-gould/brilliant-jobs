@@ -3391,3 +3391,13 @@ Phase S is complete when ALL of the following are true:
 | QA-STATS-2 | Rounding inconsistency — mixed precise and rounded numbers | ✅ | All three stats now floor to nearest 1,000: 413,000+ / 65,000+ / X,000+. Consistent format. |
 | QA-PILLS | incl. no salary and incl. remote should be grouped with related pills | ✅ | _wherePills array includes incl. remote after where pills. _payPills array includes incl. no salary after pay pills. Both grouped before allSfPills assembly. |
 | QA-DELETE | Inconsistent delete pattern — job dismiss vs saved search delete | ✅ | Removed dedicated left-column hide button. Job dismiss now uses sf-del class in right-side actions area. Hover-reveal ✕ pattern matches saved search delete. Table colspans updated (9→8). |
+
+## QA Bug Tracker — Round 3 (Marston Screenshot Review 2)
+
+| ID | Item | Status | Notes |
+|----|------|--------|-------|
+| QA-DELETE-2 | Chat clear and prompt delete use trashcan, making 3 different deletion patterns | ✅ | Chat clear and prompt delete both changed from trashcan SVG to ✕. All deletion surfaces now use the same hover-reveal ✕ pattern. |
+| QA-DAYS | 3d is green — only 1d and today should be green | ✅ | daysAgo threshold changed from <=3 to <=1. Only today and 1d show green. |
+| QA-HERO-COLORS | New Today should be green, Pipeline should be blue | ✅ | New Today: changed from inline blue to hs-green. Pipeline: changed from hs-green to new hs-blue class (var(--accent)). |
+| QA-SURVEY | Relevancy question appears between feed and tuning — belongs on feed | ✅ | Survey target changed from nonexistent job-feed-container (fell through to body) to job-table element. Survey now appears within feed area. |
+| QA-PROMPTS | Named prompts should be in saved searches list with number and color | ✅ | Saved prompts now appear in the unified saved searches list with 💬 Chat Prompts separator, continuing filter numbering and colors. Prompt checkboxes trigger search using derived_filters (existing promptDerivedToFilterObj). Click loads prompt in chat, ✕ deletes. |
