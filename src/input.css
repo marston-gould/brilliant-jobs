@@ -1145,8 +1145,8 @@
     .cb-toggle.included { background: var(--green); border-color: var(--green); color: #fff; }
     .cb-toggle.excluded { background: var(--red); border-color: var(--red); color: #fff; }
     .cb-alpha-nav { display: flex; flex-wrap: wrap; gap: 3px; margin-block-end: 4px; }
-    .cb-alpha-link { font-size: 11px; font-weight: 700; color: var(--accent); cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: all 0.12s; }
-    .cb-alpha-link:hover { background: var(--accent-glow); }
+    .cb-alpha-link { font-size: 11px; font-weight: 700; color: var(--text-dim); cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: all 0.12s; }
+    .cb-alpha-link:hover { background: var(--accent-glow); color: var(--accent); }
     .cb-alpha-link.active { background: var(--accent); color: #fff; }
     .cb-alpha-link.dim { color: var(--text-faint); opacity: 0.35; cursor: default; }
     .cb-alpha-link.dim:hover { background: none; }

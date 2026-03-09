@@ -686,7 +686,12 @@ function renderCompanyBrowserList() {
         } else {
           cbActiveFirstLetter = letter;
           renderAlphaNav1();
-          renderAlphaNav2(letter);
+          // UX: No second-row drill-down for # (number-prefixed companies)
+          if (letter === '#') {
+            $('#cb-alpha-nav-2').innerHTML = '';
+          } else {
+            renderAlphaNav2(letter);
+          }
           // Also scroll to that letter group
           const el = document.getElementById('cb-letter-' + letter);
           if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -991,9 +996,12 @@ async function loadAiAggregationHealth() {
   const panel = document.getElementById('cb-ai-health-panel');
   if (!panel) return;
 
-  // Only show for admin users (check for admin UI elements)
-  const isAdmin = !!document.getElementById('admin-panel') || !!document.querySelector('[data-admin]');
-  // Always show in company browser for transparency
+  // Only show for admin users
+  const isAdmin = typeof getUserTier === 'function' && getUserTier() === 'admin';
+  if (!isAdmin) {
+    panel.style.display = 'none';
+    return;
+  }
   panel.style.display = '';
 
   try {
