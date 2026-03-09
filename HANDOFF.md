@@ -52,6 +52,34 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**FB-PAYL-S1** — Pay After You Land — Foundation
+- Completed: 2026-03-09
+- Product version bumped: `v8.22` → `v8.23` (JS changes — tier-gating.ts/js PAYL→Pro mapping + isPaylUser; all HTML surfaces cache-busted)
+- ROADMAP.md updated: FB-PAYL-S1 → ✅
+- roadmap.html updated: FB-PAYL-S1 → `s: 'done'`, p: 100
+- **Core changes:**
+  - **Migration v6.46-fb-payl-001-foundation.sql:** payl_enrollments table (13 columns: user_id FK, status 6-state CHECK, linkedin_pdf_path, linkedin_pdf_hash UNIQUE, parsed_profile JSONB, referral_code UNIQUE, referrals_qualified, activated_at, expires_at, converted_at, stripe_setup_intent_id, scar_meta JSONB). payl_referrals table (12 columns: payl_enrollment_id FK, referred_user_id FK, status 4-state CHECK, subscribed_at, qualified_at, revoked_at, revoke_reason, signup_ip, signup_device_hash, payment_method_hash, scar_meta JSONB). 9 indexes (user_id, status, referral_code, expires_at partial, pdf_hash partial, enrollment_id, referred_user, referral status). 4 RLS policies (user read own, service all × 2 tables). 2 updated_at triggers. 9 functions (fn_payl_generate_referral_code, fn_payl_enroll, fn_payl_activate, fn_payl_record_pdf, fn_payl_qualify_referral, fn_payl_revoke_referral, fn_payl_expiry_check, fn_payl_convert, fn_payl_summary). v_payl_dashboard view with days_remaining. pg_cron daily at 6 AM UTC. payl_tier_enabled feature flag (draft, 0% rollout).
+  - **parse-linkedin-pdf EF:** 3 actions (parse, validate, status). PDF text extraction via BT/ET blocks + Tj/TJ operators. LinkedIn section parsing (name, headline, location, experience, skills, education, connections) via regex+heuristic. SHA-256 hash computation for dedup. Fraud signal detection (low_connections < 50, no_experience, low_confidence < 30). Calls fn_payl_record_pdf RPC. H-02 event bus: payl.pdf_uploaded.
+  - **payl-referral-webhook EF:** 6 actions (signup, subscribed, qualify_check, revoke, status, anti_gaming_check). Anti-gaming engine: self-referral detection, repeated IP (≥2), same device fingerprint, same payment method hash, circular PAYL enrollment check. 30-day qualification window. Referral code lookup. Calls fn_payl_qualify_referral and fn_payl_revoke_referral RPCs. H-02 event bus: payl.referral_signup, payl.referral_qualified.
+  - **payl-expiry-check EF:** 5 actions (check, nudge, convert, extend, summary). Employment nudge schedule: day 90/120/150/175 (final_warning at 175). Extension requires 4+ qualified referrals (3 base + 1 for 90-day extension). Admin summary via fn_payl_summary. H-02 event bus: payl.expired, payl.converted, payl.employment_nudge.
+  - **Gateway:** 3 routes added (parse-linkedin-pdf #111, payl-referral-webhook #112, payl-expiry-check #113). Total: 113 routes.
+  - **Feature gating:** tier-gating.ts + tier-gating.js updated. getUserTier() maps 'payl' → 'pro' for all feature gates. New isPaylUser() function for PAYL-specific UI (referral widget, enrollment flow). Exported to window + BJ namespace.
+  - **Pod team manifest:** FB-PAYL-S1 pairing (Lead Platform Eng + Forward-Looking Dev; Chief Architect + Evolvability Strategist reviewers). FB-PAYL-S2 pairing assigned.
+- **Created:**
+  - `supabase/migrations/v6.46-fb-payl-001-foundation.sql`
+  - `supabase/functions/parse-linkedin-pdf/index.ts`
+  - `supabase/functions/payl-referral-webhook/index.ts`
+  - `supabase/functions/payl-expiry-check/index.ts`
+  - `tests/fb-payl-s1-foundation.test.js` — 81 validation tests
+- **Modified:**
+  - `supabase/functions/api-gateway/index.ts` — 3 FB-PAYL routes (113 total)
+  - `js/tier-gating.ts` — getUserTier PAYL→Pro mapping + isPaylUser()
+  - `js/tier-gating.js` — compiled output matches .ts source
+  - `docs/scaling/pod-team-manifest.md` — FB-PAYL pairing assignments
+  - `ROADMAP.md` — FB-PAYL section added
+  - `roadmap.html` — FB-PAYL-S1 done, FB-PAYL-S2 todo
+- **Tests:** 81 FB-PAYL-S1 validation tests (all passing)
+
 **POD3-LUCIDE-S3** — Admin Cleanup + Remaining Emoji + Testing
 - Completed: 2026-03-09
 - Product version bumped: `v8.21` → `v8.22` (JS/HTML changes — admin Lucide integration, admin sidebar chevron, MFA lock, tier-gating lock, 8 remaining emoji eliminated; all HTML surfaces cache-busted)
@@ -1123,6 +1151,19 @@ None.
 
 ## Next Session
 
+**FB-PAYL-S2** — Pay After You Land — Dashboard UI
+- **Entry gate:** FB-PAYL-S1 ✅ (migration, EFs, gateway, feature gating all in place)
+- **Scope:**
+  - Dashboard PAYL enrollment flow (pricing page tier card, modal, step-by-step)
+  - LinkedIn PDF upload widget (drag-and-drop, file picker, preview, confirm)
+  - Referral progress dashboard widget (progress bar, per-referral status, CTA)
+  - Employment self-report flow (nudge UI, confirmation modal)
+  - 7 notification templates (payl_activated, payl_referral_progress, payl_referral_revoked, payl_employment_nudge, payl_expiring_soon, payl_expired, payl_converted)
+  - Stripe setup_intent integration (card on file without charge)
+  - PostHog event instrumentation (12 events per FB-PAYL-001 Section 6.4)
+  - Admin PAYL analytics panel (enrollment funnel, referral metrics, conversion rates)
+- **Exit gate:** All UI flows functional, notifications queued, PostHog events firing, Stripe setup_intent creates without charge
+
 **Feed Accuracy Sprint — FA-007 COMPLETE.** FA-010, FA-001, FA-002, FA-003, FA-009, FA-004, FA-005, FA-006, and FA-007 are done.
 
 **FA-007: SPA useFeedSearch.ts Full Parity** — ✅ COMPLETE (see Last Completed Session above)
@@ -1173,7 +1214,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.22`** | **POD3-LUCIDE-S3: Admin cleanup + remaining emoji + testing** |
+| **Product (BJ_VERSION)** | **`v8.23`** | **FB-PAYL-S1: Pay After You Land foundation** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
@@ -1181,7 +1222,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 | **SPA Scaffold** | **`spa@1.0.0-scaffold`** | **SA-013** |
 | **Feature Flags** | **`infra@feature-flags-v1.0.0`** | **SA-025** |
 | **Event Bus** | **`infra@event-bus-v1.0.0`** | **SA-024** |
-| **API Gateway** | `infra@gateway-v1.0.0` | BI-01 (110 routes) |
+| **API Gateway** | `infra@gateway-v1.0.0` | FB-PAYL-S1 (113 routes) |
 | **Capacity Model** | **`infra@capacity-model-v1.0.0`** | **SA-028** |
 | **Deploy Tracker** | **`infra@deploy-tracker-v1.0.0`** | **BI-01** |
 | **Build Analytics** | **`infra@build-analytics-v1.0.0`** | **BI-02** |

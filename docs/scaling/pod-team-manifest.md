@@ -84,3 +84,10 @@
 | BI-04 | DevOps + Lead Platform Engineer | Chief Architect + Evolvability Strategist |
 | BI-05 | DevOps + Lead Platform Engineer | Chief Architect + Evolvability Strategist |
 | BI-06 | DevOps + Lead Platform Engineer | Chief Architect + Evolvability Strategist + System Architect—Scalability |
+
+## Pairing Assignments (Feature Build: Pay After You Land)
+
+| Session | Primary Pair | Pod 4 Reviewer |
+|---------|-------------|----------------|
+| FB-PAYL-S1 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
+| FB-PAYL-S2 | Frontend + Lead Platform Eng | System Architect—Scalability + Chief Architect |

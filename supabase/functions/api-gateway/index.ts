@@ -215,8 +215,13 @@ const ROUTE_REGISTRY: Record<string, string> = {
   // ── Build Instrumentation (BI-01) ─────────────────────────────────────────
   "deploy-tracker":           "deploy-tracker",           // BI-01: summary/list/record/complete/record-build-step/health
 
+  // ── Pay After You Land (FB-PAYL-S1) ─────────────────────────────────────
+  "parse-linkedin-pdf":       "parse-linkedin-pdf",       // FB-PAYL-S1: parse/validate/status — LinkedIn PDF upload + parsing
+  "payl-referral-webhook":    "payl-referral-webhook",    // FB-PAYL-S1: signup/subscribed/qualify_check/revoke/status/anti_gaming_check
+  "payl-expiry-check":        "payl-expiry-check",        // FB-PAYL-S1: check/nudge/convert/extend/summary
+
   // ═══════════════════════════════════════════════════════════════════════════
-  // TOTAL: 110 routes (93 SA-005 + 1 SA-007 + 1 SA-008 + 1 SA-009 + 2 SA-010 + 2 SA-011 + 2 SA-012 + 1 SA-018 + 2 SA-020 + 1 SA-021 + 1 SA-024 + 1 SA-028 + 1 BI-01). Direct paths deprecated.
+  // TOTAL: 113 routes (93 SA-005 + 1 SA-007 + 1 SA-008 + 1 SA-009 + 2 SA-010 + 2 SA-011 + 2 SA-012 + 1 SA-018 + 2 SA-020 + 1 SA-021 + 1 SA-024 + 1 SA-028 + 1 BI-01 + 3 FB-PAYL). Direct paths deprecated.
   // HOOK: Future EFs register here. Future: load from DB table for
   //       runtime updates without redeploy (api_consumers integration).
   // ═══════════════════════════════════════════════════════════════════════════

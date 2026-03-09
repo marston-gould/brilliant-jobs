@@ -17,12 +17,27 @@ var TIER_GATES: Record<TierFeature, TierGateConfig> = {
 
 function getUserTier(): TierName {
   if (typeof _userPricing !== 'undefined' && _userPricing && _userPricing.tier) {
+    // FB-PAYL-S1: PAYL tier grants full Pro feature access
+    if (_userPricing.tier === 'payl') return 'pro';
     return _userPricing.tier;
   }
   if (typeof currentUser !== 'undefined' && currentUser?.user_metadata?.plan) {
-    return currentUser.user_metadata.plan as TierName;
+    var plan = currentUser.user_metadata.plan as TierName;
+    if (plan === ('payl' as TierName)) return 'pro';
+    return plan;
   }
   return 'free';
+}
+
+// FB-PAYL-S1: Check if user is on PAYL tier (not just Pro)
+function isPaylUser(): boolean {
+  if (typeof _userPricing !== 'undefined' && _userPricing && _userPricing.tier) {
+    return _userPricing.tier === 'payl';
+  }
+  if (typeof currentUser !== 'undefined' && currentUser?.user_metadata?.plan) {
+    return currentUser.user_metadata.plan === 'payl';
+  }
+  return false;
 }
 
 function canAccess(feature: TierFeature): TierGateValue {
@@ -113,11 +128,12 @@ if (_origLoadResumeMetrics) {
 
 window.canAccessFeature = canAccess;
 window.getUserTier = getUserTier;
+window.isPaylUser = isPaylUser;
 window.requiredTierFor = requiredTier;
 
 // CS-P1-004 FE-005: Register tier-gating exports with BJ namespace
 (function(): void {
-  (['canAccessFeature', 'getUserTier', 'removeTierGate', 'requiredTierFor', 'showTierGate'] as const).forEach(function(name) {
+  (['canAccessFeature', 'getUserTier', 'isPaylUser', 'removeTierGate', 'requiredTierFor', 'showTierGate'] as const).forEach(function(name) {
     var fn = (window as Record<string, unknown>)[name];
     if (typeof fn === 'function') {
       (window.BJ as Record<string, unknown>)[name] = fn;

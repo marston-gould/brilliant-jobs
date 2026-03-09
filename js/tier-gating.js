@@ -11,12 +11,24 @@ var TIER_GATES = {
 };
 function getUserTier() {
   if (typeof _userPricing !== "undefined" && _userPricing && _userPricing.tier) {
+    if (_userPricing.tier === "payl") return "pro";
     return _userPricing.tier;
   }
   if (typeof currentUser !== "undefined" && currentUser?.user_metadata?.plan) {
-    return currentUser.user_metadata.plan;
+    var plan = currentUser.user_metadata.plan;
+    if (plan === "payl") return "pro";
+    return plan;
   }
   return "free";
+}
+function isPaylUser() {
+  if (typeof _userPricing !== "undefined" && _userPricing && _userPricing.tier) {
+    return _userPricing.tier === "payl";
+  }
+  if (typeof currentUser !== "undefined" && currentUser?.user_metadata?.plan) {
+    return currentUser.user_metadata.plan === "payl";
+  }
+  return false;
 }
 function canAccess(feature) {
   var tier = getUserTier();
@@ -92,9 +104,10 @@ if (_origLoadResumeMetrics) {
 }
 window.canAccessFeature = canAccess;
 window.getUserTier = getUserTier;
+window.isPaylUser = isPaylUser;
 window.requiredTierFor = requiredTier;
 (function() {
-  ["canAccessFeature", "getUserTier", "removeTierGate", "requiredTierFor", "showTierGate"].forEach(function(name) {
+  ["canAccessFeature", "getUserTier", "isPaylUser", "removeTierGate", "requiredTierFor", "showTierGate"].forEach(function(name) {
     var fn = window[name];
     if (typeof fn === "function") {
       window.BJ[name] = fn;
