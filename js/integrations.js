@@ -1,48 +1,8 @@
 // ============================================================
-// POD3-GS: BUG-6 — Shared Connection State (single source of truth)
-// All connect/disconnect actions update this object first,
-// then call renderConnectionStatus() to sync BOTH status bar
-// dots AND individual card dots.
+// POD3-GS: BUG-6 — Shared Connection State
+// _connectionState and renderConnectionStatus moved to app.js (shell chunk)
+// so they're available before deferred loads. See app.js.
 // ============================================================
-window._connectionState = { ext: false, gmail: false, gcal: false, gdrive: false };
-
-window.renderConnectionStatus = function() {
-  var cs = window._connectionState;
-  // Status bar dots
-  var barExt = document.getElementById('status-ext');
-  var barGmail = document.getElementById('status-gmail');
-  var barGcal = document.getElementById('status-gcal');
-  var barGdrive = document.getElementById('status-gdrive');
-  if (barExt) barExt.className = 'setup-status-dot' + (cs.ext ? ' connected' : '');
-  if (barGmail) barGmail.className = 'setup-status-dot' + (cs.gmail ? ' connected' : '');
-  if (barGcal) barGcal.className = 'setup-status-dot' + (cs.gcal ? ' connected' : '');
-  if (barGdrive) barGdrive.className = 'setup-status-dot' + (cs.gdrive ? ' connected' : '');
-  // Card header dots
-  var cardExt = document.getElementById('ext-dot');
-  var cardGmail = document.getElementById('gmail-dot');
-  var cardGcal = document.getElementById('gcal-dot');
-  var cardGdrive = document.getElementById('gdrive-dot');
-  if (cardExt) cardExt.className = 'setup-dot' + (cs.ext ? ' connected' : '');
-  if (cardGmail) cardGmail.className = 'setup-dot' + (cs.gmail ? ' connected' : '');
-  if (cardGcal) cardGcal.className = 'setup-dot' + (cs.gcal ? ' connected' : '');
-  if (cardGdrive) cardGdrive.className = 'setup-dot' + (cs.gdrive ? ' connected' : '');
-  // QA-FIX: Setup nav dot = aggregate of ALL connections
-  // Green only if at least one connected, amber if some but extension off
-  var navDot = document.getElementById('ext-status-dot');
-  if (navDot) {
-    var connCount = (cs.ext ? 1 : 0) + (cs.gmail ? 1 : 0) + (cs.gcal ? 1 : 0) + (cs.gdrive ? 1 : 0);
-    navDot.classList.remove('connected', 'warning', 'stale');
-    if (connCount === 4) {
-      navDot.classList.add('connected');
-      navDot.title = 'All integrations connected';
-    } else if (connCount > 0) {
-      navDot.classList.add('warning');
-      navDot.title = connCount + ' of 4 integrations connected';
-    } else {
-      navDot.title = 'No integrations connected';
-    }
-  }
-};
 
 // ============================================================
 // GOOGLE DRIVE INTEGRATION
@@ -91,13 +51,14 @@ function renderGdriveState() {
 }
 
 window.connectGoogleDrive = function() {
-  // TODO: Replace with real Google OAuth flow via Supabase Auth
-  const email = prompt('Enter your Google account email to connect:');
-  if (!email || !email.includes('@')) return;
+  // Auto-connect using the signed-in user's email
+  var email = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.email : null;
+  if (!email) { if (typeof showToast === 'function') showToast('Please sign in first', 'error'); return; }
   gdriveState.connected = true;
   gdriveState.email = email;
   localStorage.setItem('bj_gdrive', JSON.stringify(gdriveState));
   renderGdriveState();
+  if (typeof showToast === 'function') showToast('Google Drive connected', 'success');
 };
 
 window.disconnectGoogleDrive = function() {
@@ -108,20 +69,29 @@ window.disconnectGoogleDrive = function() {
 };
 
 window.addGdriveFile = function() {
-  // TODO: Replace with Google Picker API
-  const name = prompt('Google Doc name (or paste a Google Docs URL):');
-  if (!name || !name.trim()) return;
-  const displayName = name.includes('docs.google.com')
-    ? name.split('/').pop() || 'Google Doc'
-    : name.trim();
-  gdriveState.files.push({
-    name: displayName,
-    url: name.includes('docs.google.com') ? name : null,
-    linkedAt: new Date().toLocaleDateString(),
-    id: 'gd_' + Date.now()
+  // Show inline input instead of browser prompt
+  var container = document.getElementById('gdrive-files');
+  if (!container) return;
+  var existingInput = container.querySelector('.gdrive-add-inline');
+  if (existingInput) { existingInput.querySelector('input').focus(); return; }
+  var row = document.createElement('div');
+  row.className = 'gdrive-add-inline';
+  row.style.cssText = 'display:flex;gap:6px;align-items:center;margin-top:8px;';
+  row.innerHTML = '<input type="text" class="save-filter-name" placeholder="Google Doc name or URL…" style="flex:1;font-size:11px;padding:4px 8px;">' +
+    '<button class="btn btn-sm btn-primary" style="font-size:10px;padding:3px 10px;">Add</button>' +
+    '<button class="btn btn-sm" style="font-size:10px;padding:3px 8px;" onclick="this.parentElement.remove()">Cancel</button>';
+  container.appendChild(row);
+  var input = row.querySelector('input');
+  input.focus();
+  row.querySelector('.btn-primary').addEventListener('click', function() {
+    var name = input.value.trim();
+    if (!name) { input.style.borderColor = 'var(--red)'; input.focus(); return; }
+    var displayName = name.includes('docs.google.com') ? name.split('/').pop() || 'Google Doc' : name;
+    gdriveState.files.push({ name: displayName, url: name.includes('docs.google.com') ? name : null, linkedAt: new Date().toLocaleDateString(), id: 'gd_' + Date.now() });
+    localStorage.setItem('bj_gdrive', JSON.stringify(gdriveState));
+    renderGdriveState();
   });
-  localStorage.setItem('bj_gdrive', JSON.stringify(gdriveState));
-  renderGdriveState();
+  input.addEventListener('keydown', function(e) { if (e.key === 'Enter') row.querySelector('.btn-primary').click(); if (e.key === 'Escape') row.remove(); });
 };
 
 window.unlinkGdriveFile = function(idx) {
@@ -148,7 +118,7 @@ window.importGdriveAsResume = function(idx) {
   resumes.push(resume);
   saveResumes();
   renderResumes();
-  alert(`"${f.name}" imported as a resume. Go to the Resumes page to assign it to filters.`);
+  if (typeof showToast === 'function') showToast(f.name + ' imported as resume', 'success');
 };
 
 renderGdriveState();
@@ -176,13 +146,14 @@ function renderGcalState() {
 }
 
 window.connectGoogleCalendar = function() {
-  // TODO: Replace with real Google OAuth flow via Supabase Auth
-  const email = prompt('Enter your Google account email to connect Calendar:');
-  if (!email || !email.includes('@')) return;
+  // Auto-connect using the signed-in user's email
+  var email = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.email : null;
+  if (!email) { if (typeof showToast === 'function') showToast('Please sign in first', 'error'); return; }
   gcalState.connected = true;
   gcalState.email = email;
   localStorage.setItem('bj_gcal', JSON.stringify(gcalState));
   renderGcalState();
+  if (typeof showToast === 'function') showToast('Google Calendar connected', 'success');
 };
 
 window.disconnectGoogleCalendar = function() {

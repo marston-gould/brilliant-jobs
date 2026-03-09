@@ -597,6 +597,48 @@ document.addEventListener('click', e => {
 
 // Extension detection — check if extension has updated the profile recently
 // Required extension version — bump this when a new extension release ships
+// ============================================================
+// Shared Connection State — MUST be in shell chunk (app.js) so
+// it's available before deferred chunk loads. Previously in
+// integrations.js (deferred) which meant Gmail/Extension status
+// couldn't update dots during shell init.
+// ============================================================
+window._connectionState = { ext: false, gmail: false, gcal: false, gdrive: false };
+
+window.renderConnectionStatus = function() {
+  var cs = window._connectionState;
+  var dots = [
+    ['status-ext', 'ext-dot', cs.ext],
+    ['status-gmail', 'gmail-dot', cs.gmail],
+    ['status-gcal', 'gcal-dot', cs.gcal],
+    ['status-gdrive', 'gdrive-dot', cs.gdrive]
+  ];
+  dots.forEach(function(d) {
+    var bar = document.getElementById(d[0]);
+    var card = document.getElementById(d[1]);
+    if (bar) bar.className = 'setup-status-dot' + (d[2] ? ' connected' : '');
+    if (card) card.className = 'setup-dot' + (d[2] ? ' connected' : '');
+  });
+  var navDot = document.getElementById('ext-status-dot');
+  if (navDot) {
+    var connCount = (cs.ext ? 1 : 0) + (cs.gmail ? 1 : 0) + (cs.gcal ? 1 : 0) + (cs.gdrive ? 1 : 0);
+    navDot.classList.remove('connected', 'warning', 'stale');
+    if (connCount === 4) { navDot.classList.add('connected'); navDot.title = 'All integrations connected'; }
+    else if (connCount > 0) { navDot.classList.add('warning'); navDot.title = connCount + ' of 4 integrations connected'; }
+    else { navDot.title = 'No integrations connected'; }
+  }
+};
+
+// Pre-load connection state from localStorage (full init in deferred chunk)
+(function() {
+  try {
+    var gd = JSON.parse(localStorage.getItem('bj_gdrive') || '{}');
+    if (gd.connected) window._connectionState.gdrive = true;
+    var gc = JSON.parse(localStorage.getItem('bj_gcal') || '{}');
+    if (gc.connected) window._connectionState.gcal = true;
+  } catch(e) {}
+})();
+
 var REQUIRED_EXTENSION_VERSION = '2.23.0';
 
 function compareVersions(installed, required) {
@@ -640,7 +682,7 @@ async function checkExtensionStatus() {
 
       // Connection state = is the extension active. Update status is a separate UI concern.
       window._connectionState.ext = isActive;
-      if (typeof window.renderConnectionStatus === 'function') window.renderConnectionStatus();
+      window.renderConnectionStatus();
 
       // POD3-GS: BUG-7 — Toggle unified connected/disconnected containers
       if (isActive) {
@@ -803,7 +845,7 @@ async function initGmailStatus() {
 function updateGmailUI(connected, email) {
   // POD3-GS: BUG-6 — Update shared connection state
   window._connectionState.gmail = connected;
-  if (typeof window.renderConnectionStatus === 'function') window.renderConnectionStatus();
+  window.renderConnectionStatus();
   // Setup page
   const setupConn = $('#gmail-setup-connected');
   const setupDisc = $('#gmail-setup-disconnected');
@@ -901,18 +943,6 @@ window.disconnectGmail = async function() {
 
 // Init Gmail status on load
 initGmailStatus();
-
-// Pre-load Google Drive and Calendar connection state from localStorage
-// (full init happens in integrations.js/deferred chunk, but dots need state now)
-(function() {
-  try {
-    var gd = JSON.parse(localStorage.getItem('bj_gdrive') || '{}');
-    if (gd.connected) window._connectionState.gdrive = true;
-    var gc = JSON.parse(localStorage.getItem('bj_gcal') || '{}');
-    if (gc.connected) window._connectionState.gcal = true;
-    if (typeof window.renderConnectionStatus === 'function') window.renderConnectionStatus();
-  } catch(e) {}
-})();
 
 // POD3-GS: BUG-4 + BUG-5 + QA-001 — Fetch live community stats for Get Started data advantage section
 // All numbers are live from Supabase — nothing hardcoded. Three distinct metrics:

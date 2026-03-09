@@ -918,8 +918,9 @@
       font-size: 12px; color: var(--text-dim); line-height: 1.6; text-align: center;
     }
     .setup-int-body .setup-action-zone {
-      margin-top: auto; padding-top: 16px; border-top: 1px solid var(--border);
+      margin-top: auto; padding: 16px 0 0; border-top: 1px solid var(--border);
       display: flex; flex-direction: column; align-items: center; gap: 8px;
+      min-height: 80px; justify-content: center;
     }
     /* POD3-GS: BUG-9 — uniform button sizing across all integration cards */
     .setup-connect-btn { min-width: 140px; padding: 6px 16px; font-size: 11px; text-align: center; }
