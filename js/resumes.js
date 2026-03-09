@@ -227,7 +227,9 @@ function renderResumes() {
       // Always render the slot div so auto-analysis can populate it
       const hasCache = readinessCache && readinessCache.scores && readinessCache.scores[i];
       if (hasCache) {
-        gradeHtml = `<div class="rc-grade-slot" id="rc-grade-${i}">${buildInlineGrade(i, readinessCache.scores[i])}</div>`;
+        gradeHtml = typeof buildInlineGrade === 'function'
+          ? `<div class="rc-grade-slot" id="rc-grade-${i}">${buildInlineGrade(i, readinessCache.scores[i])}</div>`
+          : `<div class="rc-grade-slot" id="rc-grade-${i}"></div>`;
       } else if (r.textStatus === 'no-text' && r.fileName && /\.docx?$/i.test(r.fileName)) {
         gradeHtml = `<div class="rc-grade-slot" id="rc-grade-${i}"><div style="font-size:11px;color:var(--red);cursor:pointer;" onclick="reUploadResume(${i})" title="File needs re-upload for text extraction">⚠ Re-upload file to enable scoring <span style="text-decoration:underline;">Click here</span></div></div>`;
       } else if (r.textStatus === 'ready' && r.keywords && r.keywords.length > 0 && assignedIds.length > 0) {

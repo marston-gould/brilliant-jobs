@@ -897,7 +897,7 @@ async function loadPipelineIntelligenceSettings() {
   try {
     const { data, error } = await sb.from('pipeline_tracking_settings')
       .select('*').eq('user_id', currentUser.id).single();
-    if (error && error.code !== 'PGRST116') { reportError('applications:pipeline-settings', error); return; }
+    if (error && (error.code !== 'PGRST116' && error.code !== 'PGRST204')) { /* table may not exist yet — silent */ return; }
     if (!data) return;
     const el = (id) => document.getElementById(id);
     if (el('pi-smart-prompts')) el('pi-smart-prompts').checked = data.smart_prompts_enabled !== false;

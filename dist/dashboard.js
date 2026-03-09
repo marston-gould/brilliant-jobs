@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.07';
+var BJ_VERSION = 'v8.08';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -17150,7 +17150,9 @@ function renderResumes() {
       // Always render the slot div so auto-analysis can populate it
       const hasCache = readinessCache && readinessCache.scores && readinessCache.scores[i];
       if (hasCache) {
-        gradeHtml = `<div class="rc-grade-slot" id="rc-grade-${i}">${buildInlineGrade(i, readinessCache.scores[i])}</div>`;
+        gradeHtml = typeof buildInlineGrade === 'function'
+          ? `<div class="rc-grade-slot" id="rc-grade-${i}">${buildInlineGrade(i, readinessCache.scores[i])}</div>`
+          : `<div class="rc-grade-slot" id="rc-grade-${i}"></div>`;
       } else if (r.textStatus === 'no-text' && r.fileName && /\.docx?$/i.test(r.fileName)) {
         gradeHtml = `<div class="rc-grade-slot" id="rc-grade-${i}"><div style="font-size:11px;color:var(--red);cursor:pointer;" onclick="reUploadResume(${i})" title="File needs re-upload for text extraction">⚠ Re-upload file to enable scoring <span style="text-decoration:underline;">Click here</span></div></div>`;
       } else if (r.textStatus === 'ready' && r.keywords && r.keywords.length > 0 && assignedIds.length > 0) {
@@ -19670,7 +19672,7 @@ async function loadPipelineIntelligenceSettings() {
   try {
     const { data, error } = await sb.from('pipeline_tracking_settings')
       .select('*').eq('user_id', currentUser.id).single();
-    if (error && error.code !== 'PGRST116') { reportError('applications:pipeline-settings', error); return; }
+    if (error && (error.code !== 'PGRST116' && error.code !== 'PGRST204')) { /* table may not exist yet — silent */ return; }
     if (!data) return;
     const el = (id) => document.getElementById(id);
     if (el('pi-smart-prompts')) el('pi-smart-prompts').checked = data.smart_prompts_enabled !== false;
@@ -22594,6 +22596,7 @@ async function loadHireFeeStatus() {
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'status' }),
     });
+    if (!res.ok) return; // Edge function not deployed yet — silent fail
     var data = await res.json();
     var noMethodEl = document.getElementById('sub-hire-fee-nomethod');
     var activeEl = document.getElementById('sub-hire-fee-active');

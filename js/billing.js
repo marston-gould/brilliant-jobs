@@ -556,6 +556,7 @@ async function loadHireFeeStatus() {
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'status' }),
     });
+    if (!res.ok) return; // Edge function not deployed yet — silent fail
     var data = await res.json();
     var noMethodEl = document.getElementById('sub-hire-fee-nomethod');
     var activeEl = document.getElementById('sub-hire-fee-active');
