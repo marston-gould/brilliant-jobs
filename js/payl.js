@@ -180,6 +180,8 @@ function _renderEnrollmentStep() {
     body.innerHTML = _renderPdfUploadStep();
   } else if (_paylStep === 2) {
     body.innerHTML = _renderCardAuthStep();
+    // Lazy-load Stripe.js and mount card element
+    _mountPaylCardElement();
   } else if (_paylStep === 3) {
     body.innerHTML = _renderConfirmationStep();
   }
@@ -352,6 +354,39 @@ function _renderCardAuthStep() {
     </div>`;
 }
 
+// ─── Stripe.js lazy-load + Elements mount ───
+var _stripeInstance = null;
+var _cardElement = null;
+
+function _loadStripeJs() {
+  return new Promise(function(resolve) {
+    if (typeof Stripe !== 'undefined') return resolve(Stripe);
+    var script = document.createElement('script');
+    script.src = 'https://js.stripe.com/v3/';
+    script.onload = function() { resolve(Stripe); };
+    script.onerror = function() { resolve(null); };
+    document.head.appendChild(script);
+  });
+}
+
+async function _mountPaylCardElement() {
+  var StripeClass = await _loadStripeJs();
+  if (!StripeClass) return;
+  _stripeInstance = StripeClass('pk_live_51T3TKnPKzCZbw3KzvE3xlxz8Yt9Hx9PTIRewh21Pks8YQt6TgV5urss7w93Hd27vfnZQlMiAvMP9WAgRSHM3dFFz00ufrYmhyI');
+  var elements = _stripeInstance.elements();
+  _cardElement = elements.create('card', {
+    style: {
+      base: { fontSize: '14px', color: 'var(--text)', '::placeholder': { color: 'var(--text-dim)' } },
+      invalid: { color: 'var(--warm)' }
+    }
+  });
+  var container = document.getElementById('payl-card-element');
+  if (container) {
+    container.innerHTML = '';
+    _cardElement.mount('#payl-card-element');
+  }
+}
+
 async function authorizePaylCard() {
   var btn = document.getElementById('payl-authorize-btn');
   var errorEl = document.getElementById('payl-card-error');
@@ -361,6 +396,11 @@ async function authorizePaylCard() {
   try {
     var sb = window.BJ?.sb || window.supabase;
     if (!sb) throw new Error('No Supabase client');
+
+    // Ensure Stripe.js + card element mounted
+    if (!_stripeInstance || !_cardElement) {
+      await _mountPaylCardElement();
+    }
 
     // Call backend to create Stripe setup_intent
     var { data, error } = await sb.functions.invoke('api-gateway', {
@@ -381,10 +421,11 @@ async function authorizePaylCard() {
       return;
     }
 
-    // If Stripe.js is loaded, confirm the setup intent
-    if (typeof Stripe !== 'undefined' && result.client_secret) {
-      var stripe = Stripe(result.publishable_key || window.BJ?.stripeKey);
-      var { error: stripeError } = await stripe.confirmCardSetup(result.client_secret);
+    // Confirm setup intent with card element
+    if (_stripeInstance && _cardElement && result.client_secret) {
+      var { error: stripeError } = await _stripeInstance.confirmCardSetup(result.client_secret, {
+        payment_method: { card: _cardElement }
+      });
       if (stripeError) {
         if (errorEl) errorEl.textContent = stripeError.message;
         if (btn) { btn.disabled = false; btn.textContent = 'Authorize Card — No Charge'; }

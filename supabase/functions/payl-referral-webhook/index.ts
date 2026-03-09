@@ -14,6 +14,8 @@
  *     → Get referral progress for enrollment
  *   POST { action: "anti_gaming_check", enrollment_id, referred_user_id, ip, device_hash, payment_method_hash }
  *     → Check for self-referral / gaming signals
+ *   POST { action: "setup_intent", pdf_path }
+ *     → Create Stripe SetupIntent for card authorization (no charge)
  *
  * Auth: Service role (webhook) or authenticated user (status).
  *
@@ -26,6 +28,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY") || "";
+const STRIPE_PUBLISHABLE_KEY = Deno.env.get("STRIPE_PUBLISHABLE_KEY") || "";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "https://brilliantjobs.app",
@@ -37,6 +41,23 @@ const CORS_HEADERS = {
 interface AntiGamingResult {
   pass: boolean;
   signals: string[];
+}
+
+// ── Stripe API helper ───────────────────────────────────────────────────────
+async function stripeRequest(method: string, endpoint: string, params?: Record<string, string>) {
+  const url = `https://api.stripe.com/v1${endpoint}`;
+  const opts: RequestInit = {
+    method,
+    headers: {
+      "Authorization": `Bearer ${STRIPE_SECRET_KEY}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+  };
+  if (params && (method === "POST" || method === "PUT")) {
+    opts.body = new URLSearchParams(params).toString();
+  }
+  const res = await fetch(url, opts);
+  return res.json();
 }
 
 async function checkAntiGaming(
@@ -352,6 +373,88 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify(data), {
         headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
       });
+    }
+
+    // ── Action: setup_intent ────────────────────────────────────────
+    // Creates a Stripe SetupIntent for card authorization (no charge)
+    if (action === "setup_intent") {
+      const { pdf_path } = body;
+
+      // Get auth user from JWT
+      const authHeader = req.headers.get("Authorization") || "";
+      const token = authHeader.replace("Bearer ", "");
+      const { data: { user }, error: authError } = await sb.auth.getUser(token);
+
+      if (authError || !user) {
+        return new Response(
+          JSON.stringify({ error: "Authentication required" }),
+          { status: 401, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Verify user has a PAYL enrollment
+      const { data: enrollment, error: enrollError } = await sb
+        .from("payl_enrollments")
+        .select("id, status, stripe_setup_intent_id")
+        .eq("user_id", user.id)
+        .in("status", ["pending_pdf", "pending_referrals"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (enrollError || !enrollment) {
+        return new Response(
+          JSON.stringify({ error: "No active PAYL enrollment found" }),
+          { status: 404, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
+        );
+      }
+
+      // If already has a SetupIntent, return that
+      if (enrollment.stripe_setup_intent_id) {
+        const existing = await stripeRequest("GET", `/setup_intents/${enrollment.stripe_setup_intent_id}`);
+        if (existing && existing.status !== "canceled") {
+          return new Response(
+            JSON.stringify({
+              client_secret: existing.client_secret,
+              publishable_key: STRIPE_PUBLISHABLE_KEY || "pk_live_51T3TKnPKzCZbw3KzvE3xlxz8Yt9Hx9PTIRewh21Pks8YQt6TgV5urss7w93Hd27vfnZQlMiAvMP9WAgRSHM3dFFz00ufrYmhyI",
+              setup_intent_id: existing.id,
+            }),
+            { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
+          );
+        }
+      }
+
+      // Create new SetupIntent
+      const si = await stripeRequest("POST", "/setup_intents", {
+        "payment_method_types[]": "card",
+        "metadata[user_id]": user.id,
+        "metadata[enrollment_id]": enrollment.id,
+        "metadata[tier]": "payl",
+        "metadata[pdf_path]": pdf_path || "",
+        "usage": "off_session",
+      });
+
+      if (si.error) {
+        return new Response(
+          JSON.stringify({ error: si.error.message || "Stripe error" }),
+          { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Store setup_intent_id on enrollment
+      await sb
+        .from("payl_enrollments")
+        .update({ stripe_setup_intent_id: si.id })
+        .eq("id", enrollment.id);
+
+      return new Response(
+        JSON.stringify({
+          client_secret: si.client_secret,
+          publishable_key: STRIPE_PUBLISHABLE_KEY || "pk_live_51T3TKnPKzCZbw3KzvE3xlxz8Yt9Hx9PTIRewh21Pks8YQt6TgV5urss7w93Hd27vfnZQlMiAvMP9WAgRSHM3dFFz00ufrYmhyI",
+          setup_intent_id: si.id,
+        }),
+        { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
+      );
     }
 
     // ── Action: anti_gaming_check ─────────────────────────────────────

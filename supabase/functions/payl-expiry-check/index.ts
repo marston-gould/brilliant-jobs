@@ -19,6 +19,25 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY") || "";
+const PAYL_STRIPE_PRICE_ID = Deno.env.get("PAYL_STRIPE_PRICE_ID") || "price_1T95nwPKzCZbw3KzKto7tVkJ";
+
+// ── Stripe API helper ───────────────────────────────────────────────────────
+async function stripeRequest(method: string, endpoint: string, params?: Record<string, string>) {
+  const url = `https://api.stripe.com/v1${endpoint}`;
+  const opts: RequestInit = {
+    method,
+    headers: {
+      "Authorization": `Bearer ${STRIPE_SECRET_KEY}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+  };
+  if (params && (method === "POST" || method === "PUT")) {
+    opts.body = new URLSearchParams(params).toString();
+  }
+  const res = await fetch(url, opts);
+  return res.json();
+}
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "https://brilliantjobs.app",
@@ -157,6 +176,73 @@ serve(async (req: Request) => {
         );
       }
 
+      // Create Stripe subscription using saved payment method from SetupIntent
+      let stripeSubscription = null;
+      if (result?.success && STRIPE_SECRET_KEY) {
+        try {
+          // Get enrollment to find SetupIntent
+          const { data: enrollment } = await sb
+            .from("payl_enrollments")
+            .select("user_id, stripe_setup_intent_id")
+            .eq("id", enrollment_id)
+            .single();
+
+          if (enrollment?.stripe_setup_intent_id) {
+            // Get payment method from SetupIntent
+            const si = await stripeRequest("GET", `/setup_intents/${enrollment.stripe_setup_intent_id}`);
+            const paymentMethodId = si?.payment_method;
+
+            if (paymentMethodId) {
+              // Get or create Stripe customer
+              const { data: profile } = await sb
+                .from("profiles")
+                .select("stripe_customer_id, email")
+                .eq("id", enrollment.user_id)
+                .single();
+
+              let customerId = profile?.stripe_customer_id;
+              if (!customerId) {
+                const customer = await stripeRequest("POST", "/customers", {
+                  "email": profile?.email || "",
+                  "metadata[user_id]": enrollment.user_id,
+                  "metadata[source]": "payl_conversion",
+                });
+                customerId = customer.id;
+                // Store customer ID
+                await sb
+                  .from("profiles")
+                  .update({ stripe_customer_id: customerId })
+                  .eq("id", enrollment.user_id);
+              }
+
+              // Attach payment method to customer
+              await stripeRequest("POST", `/payment_methods/${paymentMethodId}/attach`, {
+                "customer": customerId,
+              });
+
+              // Set as default payment method
+              await stripeRequest("POST", `/customers/${customerId}`, {
+                "invoice_settings[default_payment_method]": paymentMethodId,
+              });
+
+              // Create subscription
+              const sub = await stripeRequest("POST", "/subscriptions", {
+                "customer": customerId,
+                "items[0][price]": PAYL_STRIPE_PRICE_ID,
+                "metadata[enrollment_id]": enrollment_id,
+                "metadata[tier]": "payl_converted",
+                "metadata[user_id]": enrollment.user_id,
+              });
+
+              stripeSubscription = { id: sub.id, status: sub.status };
+            }
+          }
+        } catch (stripeErr) {
+          console.warn("[payl-expiry-check] Stripe subscription creation failed:", stripeErr);
+          // DB conversion succeeded — Stripe can be retried manually
+        }
+      }
+
       // Publish conversion event
       if (result?.success) {
         try {
@@ -173,7 +259,7 @@ serve(async (req: Request) => {
         }
       }
 
-      return new Response(JSON.stringify(result), {
+      return new Response(JSON.stringify({ ...result, stripe_subscription: stripeSubscription }), {
         headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
       });
     }
