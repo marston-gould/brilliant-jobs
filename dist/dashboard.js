@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.13';
+var BJ_VERSION = 'v8.14';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -1802,6 +1802,7 @@ window.requiredTierFor = requiredTier;
   var TAB_CHUNKS: Record<TabName, ChunkName[]> = {
     'brilliant':    ['keywords'],
     'jobs':         ['keywords', 'deferred'],
+    'setup':        ['keywords', 'deferred'],  // connectGoogleDrive, connectGoogleCalendar in integrations.js (deferred)
     'resumes':      ['keywords', 'deferred'],  // keywords MUST load before deferred
     'pipeline':     ['pipeline'],
     'tuning':       ['keywords', 'tuning'],    // keywords before tuning (uses shared fns)
@@ -2737,16 +2738,15 @@ async function checkExtensionStatus() {
     if (profile?.last_scan_at) {
       const lastScan = new Date(profile.last_scan_at);
       const hoursSince = (Date.now() - lastScan.getTime()) / 3600000;
-      // QA-FIX: Tighter active detection — running=true OR scanned within 2h (was 24h)
-      // 24h was too generous and showed green for turned-off extensions
-      const isActive = profile.scanner_running || hoursSince < 2;
+      // Connected if scanner is running OR scanned within 12h
+      const isActive = profile.scanner_running || hoursSince < 12;
 
       // Nav dot — now driven by renderConnectionStatus aggregate (see integrations.js)
       // No direct manipulation here; just update _connectionState
       var needsUpdate = profile.extension_version && compareVersions(profile.extension_version, REQUIRED_EXTENSION_VERSION) < 0;
 
-      // POD3-GS: BUG-6 — Update shared connection state
-      window._connectionState.ext = isActive && !needsUpdate;
+      // Connection state = is the extension active. Update status is a separate UI concern.
+      window._connectionState.ext = isActive;
       if (typeof window.renderConnectionStatus === 'function') window.renderConnectionStatus();
 
       // POD3-GS: BUG-7 — Toggle unified connected/disconnected containers
@@ -2896,7 +2896,7 @@ async function initGmailStatus() {
     if (!session) return;
     const conn = await safeQuery(() => sb.from('gmail_connections').select('gmail_address, sync_status')
       .eq('user_id', session.user.id)
-      .maybeSingle(), { label: 'app:gmail_connections', fallback: [] });
+      .maybeSingle(), { label: 'app:gmail_connections', fallback: null });
 
     const isConnected = conn && conn.sync_status === 'active';
     updateGmailUI(isConnected, conn?.gmail_address || '');
@@ -3005,6 +3005,18 @@ window.disconnectGmail = async function() {
 
 // Init Gmail status on load
 initGmailStatus();
+
+// Pre-load Google Drive and Calendar connection state from localStorage
+// (full init happens in integrations.js/deferred chunk, but dots need state now)
+(function() {
+  try {
+    var gd = JSON.parse(localStorage.getItem('bj_gdrive') || '{}');
+    if (gd.connected) window._connectionState.gdrive = true;
+    var gc = JSON.parse(localStorage.getItem('bj_gcal') || '{}');
+    if (gc.connected) window._connectionState.gcal = true;
+    if (typeof window.renderConnectionStatus === 'function') window.renderConnectionStatus();
+  } catch(e) {}
+})();
 
 // POD3-GS: BUG-4 + BUG-5 + QA-001 — Fetch live community stats for Get Started data advantage section
 // All numbers are live from Supabase — nothing hardcoded. Three distinct metrics:

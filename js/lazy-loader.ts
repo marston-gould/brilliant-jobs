@@ -51,6 +51,7 @@
   var TAB_CHUNKS: Record<TabName, ChunkName[]> = {
     'brilliant':    ['keywords'],
     'jobs':         ['keywords', 'deferred'],
+    'setup':        ['keywords', 'deferred'],  // connectGoogleDrive, connectGoogleCalendar in integrations.js (deferred)
     'resumes':      ['keywords', 'deferred'],  // keywords MUST load before deferred
     'pipeline':     ['pipeline'],
     'tuning':       ['keywords', 'tuning'],    // keywords before tuning (uses shared fns)
