@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.04';
+var BJ_VERSION = 'v8.05';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -5973,7 +5973,7 @@ function renderJobRows(jobs, total, page, filtersToRun) {
     const aiJdBadge = aiJdBadgeHtml(job.greenhouse_id);
 
     html += `<tr class="job-data-row" data-jobid="${escapeHtml(job.greenhouse_id)}" data-level-rank="${levelInfo ? levelInfo.rank : 999}">
-      <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${escapeHtml(job.greenhouse_id)}" title="${escapeHtml(job.title||'')}">${truncate(job.title, 55)}</span>${newBadge}${fraudBadge}${aiJdBadge}</td>
+      <td class="jt-title"><span class="sf-del" onclick="hideJob('${escapeHtml(job.greenhouse_id)}', this)" title="Hide this job">✕</span>${filterBadges}<span class="job-title-link" data-jobid="${escapeHtml(job.greenhouse_id)}" title="${escapeHtml(job.title||'')}">${truncate(job.title, 55)}</span>${newBadge}${fraudBadge}${aiJdBadge}</td>
       <td class="jt-level">${levelCell}</td>
       <td class="jt-company">${truncate(cleanCompanyName(job.company_name), 30)}</td>
       <td class="jt-loc" title="${escapeHtml(job.location||'')}">${truncate(formatLocation(job.location, job.loc_display, activeNegLocs), 35)}</td>
@@ -5981,7 +5981,7 @@ function renderJobRows(jobs, total, page, filtersToRun) {
       <td class="jt-days" style="${daysClass}">${daysStr}</td>
       <td class="jt-match"${job._aiScoringExcluded ? ' style="opacity:0.3;" title="Match score excluded per your AI content preferences"' : ''}>${typeof matchBadgeWithBoost==='function'?matchBadgeWithBoost(jobMatchScores[job.greenhouse_id],job.greenhouse_id,job.title,job.company_name):matchBadge(jobMatchScores[job.greenhouse_id])}</td>
       <td><div style="white-space:nowrap;display:flex;gap:4px;align-items:center;">
-        ${saveBtn}${applyBtn}<span class="sf-del" onclick="hideJob('${escapeHtml(job.greenhouse_id)}', this)" title="Hide this job">✕</span>
+        ${saveBtn}${applyBtn}
       </div></td>
     </tr>
     <tr class="job-snippet-row"><td colspan="8">${trustBannerHtml(job.greenhouse_id)}${aiContentBannerHtml(job.greenhouse_id)}<span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td></tr>`;
@@ -17184,6 +17184,7 @@ function renderResumes() {
     return `
     <div class="new-resume-item ${isPlaceholder ? 'is-placeholder' : ''}" id="nri-${i}" onclick="toggleResumePanel(${i}, event)">
       <div class="nri-row">
+        <span class="sf-del" onclick="event.stopPropagation();confirmDeleteResume(${i})" title="Delete">✕</span>
         <div class="nri-icon ${icon.cls}">${isPlaceholder ? '?' : icon.text}</div>
         <div class="nri-info">
           <div class="nri-name" title="${escapeHtml(r.name||'')}">${escapeHtml(r.name)}${gdriveIcon}${tierBadge}${aiBadge}${scoreHistory}${rescoreBtn}</div>
@@ -17195,7 +17196,6 @@ function renderResumes() {
           <button onclick="downloadResume(${i})" title="Download">\u2b07</button>
           <button onclick="renameResume(${i})" title="Rename">\u270e</button>
           <button onclick="archiveResume(${i})" title="Archive">\ud83d\udce6</button>
-          <button class="danger" onclick="confirmDeleteResume(${i})" title="Delete">\u2715</button>
         </div>
       </div>
       <div class="rc-grade-slot" id="rc-grade-${i}" style="display:none;"></div>
@@ -17319,13 +17319,13 @@ function renderResumeArchive(archivedResumes) {
     }).filter(Boolean).join(' ') || '';
 
     return `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--bg-input);">
+      <span class="sf-del" onclick="confirmDeleteResume(${i})" title="Delete" style="opacity:0.4;font-size:11px;color:var(--text-faint);cursor:pointer;width:20px;text-align:center;flex-shrink:0;border-radius:4px;">✕</span>
       <div style="flex:1;min-width:0;">
         <div style="font-size:12px;font-weight:600;color:var(--text-dim);display:flex;align-items:center;gap:6px;">${filterBadges} ${r.name} ${levelBadge}</div>
         <div style="font-size:10px;color:var(--text-faint);">Uploaded ${r.uploadedAt || '—'} · Archived ${r.archivedAt || '—'}</div>
       </div>
       <div style="font-family:var(--mono);font-size:10px;color:var(--text-faint);white-space:nowrap;">${jobsApplied} apps · ${rate} rate</div>
       <button class="rc-btn rc-download" onclick="unarchiveResume(${i})">Restore</button>
-      <button class="rc-btn rc-delete" onclick="confirmDeleteResume(${i})" title="Delete">✕</button>
     </div>`;
   }).join('');
 

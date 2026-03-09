@@ -1265,7 +1265,7 @@
     .sf-item-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .sf-item-meta { font-size: 10px; color: var(--text-faint); margin-block-start: 1px; }
     .sf-item .sf-del {
-      opacity: 0; font-size: 11px; color: var(--text-faint); cursor: pointer;
+      opacity: 0.4; font-size: 11px; color: var(--text-faint); cursor: pointer;
       width: 20px; text-align: center; flex-shrink: 0; border-radius: 4px;
     }
     .sf-item:hover .sf-del { opacity: 1; }
@@ -1279,14 +1279,22 @@
       padding: 10px 14px 6px; border-top: 1px solid var(--border); margin-top: 4px;
       display: flex; align-items: center; gap: 6px;
     }
-    /* QA-FIX: Consistent dismiss pattern — job rows use same hover-reveal ✕ as saved searches */
+    /* QA-FIX: Consistent dismiss — all ✕ always visible, left side, all surfaces */
     .job-data-row .sf-del {
-      opacity: 0; font-size: 11px; color: var(--text-faint); cursor: pointer;
+      opacity: 0.4; font-size: 11px; color: var(--text-faint); cursor: pointer;
       width: 20px; text-align: center; flex-shrink: 0; border-radius: 4px;
       transition: opacity 0.15s;
     }
-    .job-data-row:hover .sf-del { opacity: 0.6; }
-    .job-data-row .sf-del:hover { opacity: 1; color: var(--red); background: var(--red-dim); }
+    .job-data-row:hover .sf-del { opacity: 1; }
+    .job-data-row .sf-del:hover { color: var(--red); background: var(--red-dim); }
+    /* Resume cards: ✕ on left, always visible */
+    .new-resume-item .sf-del {
+      opacity: 0.4; font-size: 11px; color: var(--text-faint); cursor: pointer;
+      width: 20px; text-align: center; flex-shrink: 0; border-radius: 4px;
+      transition: opacity 0.15s;
+    }
+    .new-resume-item:hover .sf-del { opacity: 1; }
+    .new-resume-item .sf-del:hover { color: var(--red); background: var(--red-dim); }
 
     .sf-item-pills {
       display: flex; flex-wrap: wrap; gap: 4px; flex-shrink: 1; overflow: hidden; max-width: 50%;

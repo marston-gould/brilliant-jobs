@@ -277,6 +277,7 @@ function renderResumes() {
     return `
     <div class="new-resume-item ${isPlaceholder ? 'is-placeholder' : ''}" id="nri-${i}" onclick="toggleResumePanel(${i}, event)">
       <div class="nri-row">
+        <span class="sf-del" onclick="event.stopPropagation();confirmDeleteResume(${i})" title="Delete">✕</span>
         <div class="nri-icon ${icon.cls}">${isPlaceholder ? '?' : icon.text}</div>
         <div class="nri-info">
           <div class="nri-name" title="${escapeHtml(r.name||'')}">${escapeHtml(r.name)}${gdriveIcon}${tierBadge}${aiBadge}${scoreHistory}${rescoreBtn}</div>
@@ -288,7 +289,6 @@ function renderResumes() {
           <button onclick="downloadResume(${i})" title="Download">\u2b07</button>
           <button onclick="renameResume(${i})" title="Rename">\u270e</button>
           <button onclick="archiveResume(${i})" title="Archive">\ud83d\udce6</button>
-          <button class="danger" onclick="confirmDeleteResume(${i})" title="Delete">\u2715</button>
         </div>
       </div>
       <div class="rc-grade-slot" id="rc-grade-${i}" style="display:none;"></div>
@@ -412,13 +412,13 @@ function renderResumeArchive(archivedResumes) {
     }).filter(Boolean).join(' ') || '';
 
     return `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--bg-input);">
+      <span class="sf-del" onclick="confirmDeleteResume(${i})" title="Delete" style="opacity:0.4;font-size:11px;color:var(--text-faint);cursor:pointer;width:20px;text-align:center;flex-shrink:0;border-radius:4px;">✕</span>
       <div style="flex:1;min-width:0;">
         <div style="font-size:12px;font-weight:600;color:var(--text-dim);display:flex;align-items:center;gap:6px;">${filterBadges} ${r.name} ${levelBadge}</div>
         <div style="font-size:10px;color:var(--text-faint);">Uploaded ${r.uploadedAt || '—'} · Archived ${r.archivedAt || '—'}</div>
       </div>
       <div style="font-family:var(--mono);font-size:10px;color:var(--text-faint);white-space:nowrap;">${jobsApplied} apps · ${rate} rate</div>
       <button class="rc-btn rc-download" onclick="unarchiveResume(${i})">Restore</button>
-      <button class="rc-btn rc-delete" onclick="confirmDeleteResume(${i})" title="Delete">✕</button>
     </div>`;
   }).join('');
 
