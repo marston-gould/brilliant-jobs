@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.47';
+var BJ_VERSION = 'v8.48';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -2226,6 +2226,8 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   }
   // Sync user data from Supabase → localStorage on login
   await loadUserData(currentUser.id);
+  // Backfill extractedText for any resumes loaded from localStorage that are missing it
+  backfillResumeTextFromDB(currentUser.id).catch(e => console.warn('[resume-backfill]', e.message));
   // Session analytics — Phase B
   const bjSessionId = await initSession();
   if (bjSessionId && window.posthog) {
@@ -17617,6 +17619,43 @@ function persistResumeTextToDB(resumeId, text) {
     });
 }
 
+// On every login, patch any resumes in localStorage that are missing extractedText
+// by fetching from resume_archive.extracted_text. Runs once per session, silently.
+async function backfillResumeTextFromDB(userId) {
+  if (!userId || typeof sb === 'undefined') return;
+  var needsText = resumes.filter(function(r) {
+    return !r.archived && (!r.extractedText || r.extractedText.length < 100);
+  });
+  if (needsText.length === 0) return;
+
+  var archiveIds = needsText.map(function(r) { return r.archiveId; }).filter(Boolean);
+  // Also match by storage_path for resumes without archiveId yet
+  var storageQuery = sb.from('resume_archive')
+    .select('resume_id, storage_path, extracted_text')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .not('extracted_text', 'is', null);
+
+  var { data: rows, error } = await storageQuery;
+  if (error || !rows || rows.length === 0) return;
+
+  var dirty = false;
+  rows.forEach(function(row) {
+    if (!row.extracted_text || row.extracted_text.length < 100) return;
+    var idx = resumes.findIndex(function(r) {
+      return r.archiveId === row.resume_id || (r.storagePath && r.storagePath === row.storage_path);
+    });
+    if (idx >= 0 && (!resumes[idx].extractedText || resumes[idx].extractedText.length < 100)) {
+      resumes[idx].extractedText = row.extracted_text;
+      resumes[idx].textStatus = 'ok';
+      if (!resumes[idx].archiveId) resumes[idx].archiveId = row.resume_id;
+      dirty = true;
+      console.log('[resume-backfill] Restored extracted_text for:', resumes[idx].name);
+    }
+  });
+  if (dirty) saveResumes();
+}
+
 
 function getFileIcon(fileName) {
   if (/\.pdf$/i.test(fileName)) return { cls: 'pdf', text: 'PDF' };
@@ -17659,8 +17698,19 @@ function renderResumes() {
         var dirty = false;
         archiveRows.forEach(function(row) {
           // Check if already exists in resumes array
-          var exists = resumes.some(function(r) { return r.archiveId === row.resume_id || (r.storagePath && r.storagePath === row.storage_path); });
-          if (exists) return;
+          var existingIdx = resumes.findIndex(function(r) { return r.archiveId === row.resume_id || (r.storagePath && r.storagePath === row.storage_path); });
+          if (existingIdx >= 0) {
+            // Patch missing extractedText from DB if we have it
+            var existing = resumes[existingIdx];
+            if ((!existing.extractedText || existing.extractedText.length < 100) && row.extracted_text && row.extracted_text.length > 100) {
+              resumes[existingIdx].extractedText = row.extracted_text;
+              resumes[existingIdx].textStatus = 'ok';
+              if (!resumes[existingIdx].archiveId) resumes[existingIdx].archiveId = row.resume_id;
+              dirty = true;
+              console.log('[resume-render] Patched extractedText from DB for:', existing.name);
+            }
+            return;
+          }
           var stub = {
             id: 'res_sync_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5),
             name: row.display_name || 'Synced Resume',

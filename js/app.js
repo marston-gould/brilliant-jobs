@@ -101,6 +101,8 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   }
   // Sync user data from Supabase → localStorage on login
   await loadUserData(currentUser.id);
+  // Backfill extractedText for any resumes loaded from localStorage that are missing it
+  backfillResumeTextFromDB(currentUser.id).catch(e => console.warn('[resume-backfill]', e.message));
   // Session analytics — Phase B
   const bjSessionId = await initSession();
   if (bjSessionId && window.posthog) {
