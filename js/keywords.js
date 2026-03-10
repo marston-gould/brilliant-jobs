@@ -3507,9 +3507,43 @@ function toggleSaveJob(jobId, btn) {
       atsSource: feedJob.ats_source || 'greenhouse',
       companySlug: (feedJob.company_name || '').toLowerCase().replace(/[^a-z0-9]/g, '-') || jobId
     };
-    // Persist to Supabase
-    if (typeof savePipelineEntry === 'function') {
-      savePipelineEntry(jobId, meta[jobId]);
+    // Persist to Supabase directly (pipeline chunk may not be loaded yet)
+    if (typeof sb !== 'undefined' && typeof currentUser !== 'undefined' && currentUser?.id) {
+      var entry = meta[jobId];
+      sb.from('user_pipeline')
+        .upsert({
+          user_id: currentUser.id,
+          job_id: jobId,
+          ats_source: entry.atsSource || 'greenhouse',
+          company_slug: entry.companySlug || entry.company || jobId,
+          company_domain: null,
+          job_title: entry.title || 'Untitled',
+          job_url: entry.jobUrl || null,
+          stage: entry.stage || 'saved',
+          saved_at: entry.savedAt || new Date().toISOString(),
+          applied_at: null,
+          responded_at: null,
+          interview_at: null,
+          offer_at: null,
+          hired_at: null,
+          rejected_at: null,
+          archived_at: null,
+          auto_advanced: false,
+          auto_advanced_source: null,
+          notes: null,
+          filter_tags: entry.filterTags || [],
+          resume_used: null,
+          match_score: null,
+          company_name: entry.companyName || entry.company || null,
+          salary_estimate: null
+        }, { onConflict: 'user_id, job_id, ats_source' })
+        .select('id')
+        .single()
+        .then(function(res) {
+          if (res.error) { reportError('keywords:pipeline-save', res.error); console.error('[BJ] Pipeline save error:', res.error); }
+          else { console.log('[BJ] Pipeline entry saved:', jobId); }
+        })
+        .catch(function(e) { reportError('keywords:pipeline-save', e); });
     }
   }
   savePipelineMeta(meta);

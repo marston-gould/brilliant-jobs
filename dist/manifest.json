@@ -11,8 +11,8 @@
   },
   "keywords": {
     "file": "dashboard-keywords.min.js",
-    "hash": "59a020b2",
-    "size": 265405
+    "hash": "5d918bb6",
+    "size": 266349
   },
   "pipeline": {
     "file": "dashboard-pipeline.min.js",
@@ -31,13 +31,13 @@
   },
   "full": {
     "file": "dashboard.min.js",
-    "hash": "e4f4034e",
-    "size": 946332
+    "hash": "31e51d6e",
+    "size": 947276
   },
   "styles": {
     "file": "styles.css",
     "hash": "564c5982",
     "size": 128113
   },
-  "_buildHash": "66a0b5c6"
+  "_buildHash": "922745e5"
 }
