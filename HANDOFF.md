@@ -52,6 +52,32 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**TAB-TEST-S2** — Tuning Tab — Structural QA Validation
+- Completed: 2026-03-10
+- No product version bump (test-only session — no JS/CSS/HTML user-facing changes)
+- ROADMAP.md updated: TAB-TEST-S2 → ✅
+- roadmap.html updated: TAB-TEST-S2 → `s: 'done'`, p: 100
+- **85 automated validation tests covering all 14 TU test cases (TU-001 through TU-014)** from Tab_Test_Sequence_v3_AllUsers.docx, Section 2: Tuning Tab
+- **11 test sections:**
+  - 2.1 Tab Load (TU-001–002): Tab nav, page container, all 5 tuning cards, lazy-loader TAB_CHUNKS, build chunk, typeof guards (migratePipelineData/buildPipelineFilterTags/renderPipeline), safeReadLS fallback, pill array defaults, reportError compliance, status dot
+  - 2.2 Keyword Weights (TU-003–004): DEFAULT_LEVELS, saveLevels persistence, renderLevelTable, level table body, level-add-btn, click listener, deep copy fallback
+  - 2.3 Location and Seniority (TU-005–006): US-Only/Hourly/Staffing checkboxes, saveTuning reads states, change event handlers, location exclusion builder, checkbox state restore, _tuningDirty flag
+  - 2.4 Career Levels (TU-007): Level table HTML, renderLevelTable top-level call, DEFAULT_LEVELS ≥3 entries, getJobLevel function, editFilterLevelHierarchy export, updateTuningBadges after save
+  - 2.5 Browse Links (TU-008–010): Location/Industry/Company browse buttons in HTML, click listeners wired in browsers.js, openLocationBrowser/openIndustryBrowser/openCompanyBrowser functions, QA-012 regression (browsers.js in keywords chunk)
+  - 2.6 Dismissed Jobs (TU-011–012): tuning-poor-matches/tuning-suggestions containers, updatePoorMatchSuggestions function + top-level call, empty state message, backfill for orphaned IDs, max 20 cap, unhideJob export, save after unhide, refresh after unhide
+  - 2.7 Exclusions (TU-013): Title/Company/Industry exclusion inputs, addSuggestedExclusion export, saveTuning persists all 4 arrays, type safety for string/object pills, propagation to buildFilterQuery, SPA useFeedSearch.ts parity
+  - 2.8 Error States (TU-014): Global error handler, toastWarning, PostHog reporting, offline detection, card collapse state persistence
+  - Regression Prevention: QA-011 (_tuningDirty flag), QA-012 (keywords chunk in TAB_CHUNKS), QA-013 (DEFAULT_LEVELS non-empty), QA-014 (empty dismissed list message), QA-HOTFIX-001 (typeof migratePipelineData)
+  - User Profile Edge Cases: U-01 (empty object default, DEFAULT_LEVELS fallback), U-03 (collapse state, max 20 dismissed), U-04 (safeReadLS), U-06 (typeof pill checks, empty weight entry)
+  - Build & Version + File Inventory
+- **Pod 4 team members already present** in pod-team-manifest.md since SA-006 (Chief Architect, Lead Platform Engineer, System Architect—Scalability, Forward-Looking Developer(s), Evolvability Strategist) — no additions needed
+- **Created:**
+  - `tests/tab-test-s2-tuning.test.js` — 85 validation tests
+- **Modified:**
+  - `ROADMAP.md` — TAB-TEST-S2 → ✅
+  - `roadmap.html` — TAB-TEST-S2 → done/100
+- **Tests:** 85 TAB-TEST-S2 validation tests (all passing)
+
 **TAB-TEST-S1** — Job Feed Tab — Structural QA Validation
 - Completed: 2026-03-10
 - No product version bump (test-only session — no JS/CSS/HTML user-facing changes)
