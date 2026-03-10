@@ -137,27 +137,32 @@ function buildUSOnlyQuery(query) {
  * @returns {string[]} array of PostgREST OR clause strings
  */
 function buildUSRemoteClauses() {
+  // IMPORTANT: These clauses are embedded inside PostgREST and() expressions.
+  // Rules for safe and() embedding:
+  //   1. Use * as the ilike wildcard, NOT %. The Supabase JS client passes the
+  //      .or() string through without re-encoding, so % in ilike values gets
+  //      double-encoded to %25 (literal text) by the HTTP layer. * is safe.
+  //   2. No parens ( ) inside ilike values — PostgREST uses them as logic delimiters.
+  //      Pattern "Remote*(US)*" would break the parser. Omitted: 0 jobs in DB use it.
+  //   3. No commas inside ilike values — commas are clause separators.
+  //      Patterns like "Remote*, US" omitted: 0 jobs in DB use them (2026-03-10).
+  //   4. Spaces are fine as-is inside and() — PostgREST handles them correctly.
   return [
-    // Resolved US + remote flag
+    // Tier 1: Resolved US country code + remote flag
     'and(loc_country.eq.US,is_remote.eq.true)',
     'and(loc_country.eq.US,loc_type.eq.remote)',
 
-    // NULL country + US state code
+    // Tier 2: NULL country + US state code + is_remote
     'and(loc_country.is.null,loc_state.in.(' + BJ_US_STATES + '),is_remote.eq.true)',
 
-    // NULL country + explicit US text
-    'and(loc_country.is.null,location.ilike.Remote%United States%)',
-    'and(loc_country.is.null,location.ilike.Remote%USA%)',
-    'and(loc_country.is.null,location.ilike.Remote%, US)',
-    'and(loc_country.is.null,location.ilike.Remote%, US %)',
-    'and(loc_country.is.null,location.ilike.Remote%(US)%)',
-    'and(loc_country.is.null,location.ilike.Remote%- US)',
-    'and(loc_country.is.null,location.ilike.Remote%- US %)',
+    // Tier 3: NULL country + explicit US text in location string (* wildcard)
+    'and(loc_country.is.null,location.ilike.*United States*)',
+    'and(loc_country.is.null,location.ilike.*USA*)',
 
-    // Bare Remote — benefit of doubt
+    // Tier 4: NULL country + bare/generic remote strings (benefit of doubt)
     'and(loc_country.is.null,location.eq.Remote)',
     'and(loc_country.is.null,location.eq.Anywhere)',
-    'and(loc_country.is.null,location.ilike.Work From Home%)',
-    'and(loc_country.is.null,location.ilike.Remote Work%)',
+    'and(loc_country.is.null,location.ilike.Work From Home*)',
+    'and(loc_country.is.null,location.ilike.Remote Work*)',
   ];
 }

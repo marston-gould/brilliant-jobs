@@ -1352,7 +1352,7 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Session In Progress
 
-None.
+None. FEED-FIX-006 complete.
 
 ---
 
@@ -1411,7 +1411,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority â€
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.39`** | **FEED-FIX-002: include_remote worldwide leak fix + pipeline_tracking_settings 406** |
+| **Product (BJ_VERSION)** | **`v8.44`** | **FEED-FIX-006: Fix buildUSRemoteClauses * wildcard + test harness** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
