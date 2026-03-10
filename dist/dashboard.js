@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.50';
+var BJ_VERSION = 'v8.51';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -2393,22 +2393,22 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
       }
     } catch(e) { reportError('app', e); console.warn('[sync] Resume recovery failed:', e.message); }
   }
-  // Backfill extractedText from resume_archive for any resumes missing it (v8.50)
-  // Must run here — resumes[] is now decrypted and populated
+  // Backfill extractedText from resume_archive for any resumes missing it (v8.51)
+  // await so it completes before any user interaction, then write directly to cloud
   if (resumes.length > 0 && currentUser) {
     var resumesNeedingText = resumes.filter(function(r) {
       return !r.archived && (!r.extractedText || r.extractedText.length < 100);
     });
     if (resumesNeedingText.length > 0) {
-      sb.from('resume_archive')
-        .select('resume_id, storage_path, extracted_text')
-        .eq('user_id', currentUser.id)
-        .eq('is_active', true)
-        .not('extracted_text', 'is', null)
-        .then(function(result) {
-          if (result.error || !result.data || result.data.length === 0) return;
-          var dirty = false;
-          result.data.forEach(function(row) {
+      try {
+        var archiveResult = await sb.from('resume_archive')
+          .select('resume_id, storage_path, extracted_text')
+          .eq('user_id', currentUser.id)
+          .eq('is_active', true)
+          .not('extracted_text', 'is', null);
+        if (!archiveResult.error && archiveResult.data && archiveResult.data.length > 0) {
+          var backfillDirty = false;
+          archiveResult.data.forEach(function(row) {
             if (!row.extracted_text || row.extracted_text.length < 100) return;
             var idx = resumes.findIndex(function(r) {
               return r.archiveId === row.resume_id || (r.storagePath && r.storagePath === row.storage_path);
@@ -2417,12 +2417,35 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
               resumes[idx].extractedText = row.extracted_text;
               resumes[idx].textStatus = 'ok';
               if (!resumes[idx].archiveId) resumes[idx].archiveId = row.resume_id;
-              dirty = true;
+              backfillDirty = true;
               console.log('[resume-backfill] Patched extractedText for:', resumes[idx].name);
             }
           });
-          if (dirty) saveUserData('bj_resumes', JSON.stringify(resumes));
-        });
+          if (backfillDirty) {
+            // Save to localStorage
+            saveUserData('bj_resumes', JSON.stringify(resumes));
+            // Also directly PATCH profiles.user_data so it persists across sessions
+            // (can't rely on the async saveUserData→_flushUserData chain for reliability)
+            const _udCache = safeReadLS('_bj_ud_cache', {});
+            _udCache.resumes = resumes;
+            const _session = await sb.auth.getSession();
+            const _token = _session?.data?.session?.access_token || SUPABASE_KEY;
+            fetch(SUPABASE_URL + '/rest/v1/profiles?id=eq.' + currentUser.id, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + _token,
+                'apikey': SUPABASE_KEY,
+                'Prefer': 'return=minimal'
+              },
+              body: JSON.stringify({ user_data: _udCache })
+            }).then(function() {
+              localStorage.setItem('_bj_ud_cache', JSON.stringify(_udCache));
+              console.log('[resume-backfill] Persisted to cloud');
+            }).catch(function(e) { reportError('app:backfill-persist', e); });
+          }
+        }
+      } catch(backfillErr) { reportError('app:silent', backfillErr); console.warn('[resume-backfill]', backfillErr.message); }
     }
   }
   // Check for resumes missing storagePath and attempt upload from IndexedDB (v4.46)
