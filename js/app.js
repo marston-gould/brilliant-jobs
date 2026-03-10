@@ -1344,7 +1344,7 @@ async function processReferralAttribution(user) {
       banner.id = 'version-update-banner';
       banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;padding:10px 20px;display:flex;align-items:center;justify-content:center;gap:12px;font-size:13px;font-weight:500;box-shadow:0 2px 8px rgba(0,0,0,0.2);';
       banner.innerHTML = 'Dashboard update available: <strong>' + loadedVersion + '</strong> → <strong>' + serverVersion + '</strong>' +
-        '<button onclick="location.reload(true)" style="background:#fff;color:#3b82f6;border:none;border-radius:6px;padding:4px 14px;font-size:12px;font-weight:600;cursor:pointer;margin-left:8px;">Refresh Now</button>' +
+        '<button onclick="window.location.href=window.location.pathname+\'?v=\'+Date.now()" style="background:#fff;color:#3b82f6;border:none;border-radius:6px;padding:4px 14px;font-size:12px;font-weight:600;cursor:pointer;margin-left:8px;">Refresh Now</button>' +
         '<button onclick="this.parentElement.remove()" style="background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;font-size:16px;margin-left:auto;">✕</button>';
       document.body.prepend(banner);
     }
