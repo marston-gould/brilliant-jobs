@@ -1,4 +1,4 @@
-// refresh-jobs Edge Function v15
+// refresh-jobs Edge Function v16
 // Multi-ATS job scraper with TIERED REFRESH.
 // Boards are prioritized by activity:
 //   HOT  (job_count > 0):              ~9K boards — refresh every 6h
@@ -10,6 +10,14 @@
 //
 // pg_cron fires every 3 minutes, batch=150 → full HOT cycle in ~6h,
 // WARM in ~3 days, COLD weekly. ~310 invocations/day.
+//
+// v16 changes:
+//   - FIX: WARM tier .neq("last_http_status", 404) excluded NULL values (PostgreSQL
+//     semantics: NULL != 404 → NULL → falsy). 15K+ Athena-discovered boards with
+//     null http_status were stuck in a dead zone — not HOT (0 jobs), not WARM
+//     (null status excluded), not COLD (active + not 404). Changed to
+//     .or("last_http_status.is.null,last_http_status.neq.404") so never-scraped
+//     boards enter the WARM queue immediately.
 //
 // v15 changes:
 //   - Salary extraction for Lever (salaryRange: min/max/currency/interval)
@@ -574,7 +582,7 @@ Deno.serve(async (req: Request) => {
   const limit = Math.min(parseInt(url.searchParams.get("limit") || "150") || 150, 300);
   const forceTier = url.searchParams.get("tier") || null; // override: hot|warm|cold|all
 
-  console.log(`[refresh-jobs] v15 Starting: source=${sourceFilter || "all"}, limit=${limit}, tier=${forceTier || "auto"}`);
+  console.log(`[refresh-jobs] v16 Starting: source=${sourceFilter || "all"}, limit=${limit}, tier=${forceTier || "auto"}`);
 
   // ── Tiered board selection ──
   // Priority: HOT boards due for refresh > WARM boards due > COLD boards due
@@ -616,6 +624,8 @@ Deno.serve(async (req: Request) => {
     }
 
     // WARM: boards with no jobs, active, not 404 — stale > 3 days
+    // NOTE: .neq() excludes NULL values in PostgreSQL (NULL != 404 → NULL → falsy).
+    // Use .or() to include both NULL (never-scraped) and non-404 boards.
     if (remaining > 0 && (!forceTier || forceTier === "warm")) {
       const warmCutoff = new Date(now - TIER_THRESHOLDS.warm).toISOString();
       let q = sb
@@ -623,7 +633,7 @@ Deno.serve(async (req: Request) => {
         .select("slug, source, name")
         .eq("job_count", 0)
         .eq("is_active", true)
-        .neq("last_http_status", 404)
+        .or("last_http_status.is.null,last_http_status.neq.404")
         .or(`last_checked.is.null,last_checked.lt.${warmCutoff}`)
         .order("last_checked", { ascending: true, nullsFirst: true })
         .limit(remaining);
