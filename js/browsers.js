@@ -516,7 +516,6 @@ document.querySelectorAll('#cb-sort-bar .cb-sort-btn').forEach(btn => {
       b.style.background = b.dataset.sort === cbSortField ? 'var(--bg-card-hover)' : 'none';
     });
     // PostHog tracking
-    if (typeof posthog !== 'undefined') posthog.capture('ai_jd_rate_column_sorted', { direction: cbSortDir, field: cbSortField, company_count: cbAllCompanies.length });
     renderCompanyBrowserList();
   });
 });
@@ -582,10 +581,24 @@ async function loadCompanyBrowser() {
   usOnlyBanner.style.display = tuning.usOnly ? '' : 'none';
 
   try {
-    // Load companies with active jobs — filter to job_count > 0 to stay within Supabase row limits
+    // Load companies with active jobs — paginate to get all (PostgREST caps single requests)
     // (ats_companies has 65K+ rows but only ~5-10K have open jobs)
-    let cacheResult = await cachedQuery('ref:companies:active', function() {
-      return sb.from('ats_companies').select('slug, name, job_count, source, ai_jd_rate').gt('job_count', 0).order('name').limit(50000);
+    let cacheResult = await cachedQuery('ref:companies:active', async function() {
+      let allRows = [];
+      let page = 0;
+      const pageSize = 1000;
+      while (true) {
+        const { data, error } = await sb.from('ats_companies')
+          .select('slug, name, job_count, source')
+          .gt('job_count', 0)
+          .order('name')
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+        if (error) throw error;
+        allRows = allRows.concat(data || []);
+        if (!data || data.length < pageSize) break;
+        page++;
+      }
+      return { data: allRows };
     }, { ttl: 600000 });
     let allData = (cacheResult && cacheResult.data) || [];
 
@@ -603,13 +616,12 @@ async function loadCompanyBrowser() {
       source: c.source || 'greenhouse',
       ghostRate: ghostStats[c.slug]?.ghost_rate || null,
       avgResponseDays: ghostStats[c.slug]?.avg_response_days || null,
-      ghostApps: ghostStats[c.slug]?.total_applications || 0,
-      aiJdRate: c.ai_jd_rate != null ? c.ai_jd_rate : null
+      ghostApps: ghostStats[c.slug]?.total_applications || 0
     })).sort((a, b) => a.name.localeCompare(b.name));
 
     renderCompanyBrowserList();
     updateCbSelectedCount();
-    loadAiAggregationHealth();
+
   } catch (e) {
     list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">Failed to load companies</div>';
   }
@@ -635,12 +647,6 @@ function renderCompanyBrowserList() {
   const dir = cbSortDir === 'asc' ? 1 : -1;
   if (cbSortField === 'jobs') {
     filtered = [...filtered].sort((a, b) => (a.jobs - b.jobs) * dir);
-  } else if (cbSortField === 'ai_jd_rate') {
-    filtered = [...filtered].sort((a, b) => {
-      const aVal = a.aiJdRate != null ? a.aiJdRate : -1;
-      const bVal = b.aiJdRate != null ? b.aiJdRate : -1;
-      return (aVal - bVal) * dir;
-    });
   } else {
     filtered = [...filtered].sort((a, b) => a.name.localeCompare(b.name) * dir);
   }
@@ -749,7 +755,6 @@ function renderCompanyBrowserList() {
           <div class="cb-name">${c.name}</div>
           <div class="cb-jobs">${c.jobs > 0 ? c.jobs + ' jobs' : ''}</div>
           ${c.ghostRate !== null && c.ghostApps >= 5 ? `<div class="cb-ghost-rate" title="Ghost rate: ${Math.round(c.ghostRate * 100)}% (${c.ghostApps} applications tracked)" style="font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px;${c.ghostRate >= 0.5 ? 'background:rgba(245,101,101,0.15);color:#f56565;' : c.ghostRate >= 0.25 ? 'background:rgba(245,158,11,0.15);color:#f59e0b;' : 'background:rgba(72,187,120,0.15);color:#48bb78;'}">${Math.round(c.ghostRate * 100)}% ghost</div>` : ''}
-          ${c.aiJdRate !== null ? `<div class="cb-ai-jd-rate" title="${Math.round(c.aiJdRate * 100)}% of this company's JDs appear AI-generated" style="font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px;cursor:default;${c.aiJdRate > 0.5 ? 'background:rgba(245,101,101,0.15);color:#f56565;' : c.aiJdRate >= 0.2 ? 'background:rgba(245,158,11,0.15);color:#f59e0b;' : 'background:rgba(72,187,120,0.15);color:#48bb78;'}">${Math.round(c.aiJdRate * 100)}% AI</div>` : ''}
           <div class="cb-source-badge" style="background:rgba(99,102,241,0.1);color:#6366f1;">${c.source}</div>
         </div>`;
       }).join('')}
@@ -1128,7 +1133,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Data sourced from mv_filter_browser_data materialized view
 // ============================================================
 
-let _fbCache = null; // { data: [...], ts: number }
+let _fbCache = {}; // { [dim]: { data: [...], ts: number, _usOnly: bool } }
 let _fbCacheTTL = 10 * 60 * 1000; // 10 min
 let _fbConfig = null; // current browser config
 let _fbSelections = {}; // { value: true }
@@ -1152,8 +1157,9 @@ function openFilterBrowser(dimension, mode) {
   // Invalidate cache if US-Only changed since last load
   var tuning = safeReadLS('bj_tuning', {});
   var currentUsOnly = !!tuning.usOnly;
-  if (_fbCache && _fbCache._usOnly !== currentUsOnly) {
-    _fbCache = null; // force reload with new filter
+  // Clear all dimension caches if usOnly changed
+  if (Object.values(_fbCache).some(c => c._usOnly !== currentUsOnly)) {
+    _fbCache = {};
   }
 
   // Show browser page
@@ -1178,17 +1184,18 @@ async function loadFilterBrowserData() {
   const list = $('#fb-list');
   if (!list) return;
 
-  // Check cache
-  if (_fbCache && Date.now() - _fbCache.ts < _fbCacheTTL) {
+  const dim = _fbConfig?.mvDim;
+  const tuning = safeReadLS('bj_tuning', {});
+  const usOnly = !!tuning.usOnly;
+
+  // Check dimension-specific cache
+  const dimCache = _fbCache[dim];
+  if (dimCache && Date.now() - dimCache.ts < _fbCacheTTL) {
     renderFilterBrowserList();
     return;
   }
 
   list.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-faint);">Loading…</div>';
-
-  const dim = _fbConfig?.mvDim;
-  const tuning = safeReadLS('bj_tuning', {});
-  const usOnly = !!tuning.usOnly;
 
   try {
     // Use server-side function (does GROUP BY + ORDER BY on DB — accurate counts)
@@ -1201,7 +1208,7 @@ async function loadFilterBrowserData() {
     if (error) throw error;
 
     const items = (data || []).map(d => ({ dimension: dim, value: d.value, job_count: d.job_count }));
-    _fbCache = { data: items, ts: Date.now(), _usOnly: usOnly };
+    _fbCache[dim] = { data: items, ts: Date.now(), _usOnly: usOnly };
     renderFilterBrowserList();
   } catch (err) {
     reportError('filter-browser', err);
@@ -1213,13 +1220,13 @@ function renderFilterBrowserList() {
   const list = $('#fb-list');
   const nav = $('#fb-alpha-nav');
   const countEl = $('#fb-total-count');
-  if (!list || !_fbCache || !_fbConfig) return;
+  const dim = _fbConfig?.mvDim;
+  if (!list || !_fbCache[dim] || !_fbConfig) return;
 
   const query = ($('#fb-search')?.value || '').toLowerCase();
-  const dim = _fbConfig.mvDim;
 
-  // Filter to current dimension
-  let items = _fbCache.data.filter(d => d.dimension === dim);
+  // Get data for current dimension from dimension-keyed cache
+  let items = _fbCache[dim].data || [];
   if (query) {
     items = items.filter(d => d.value.toLowerCase().includes(query));
   }

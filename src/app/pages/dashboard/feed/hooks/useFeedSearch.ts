@@ -402,12 +402,25 @@ function buildFilterQuery(
     }
   } else {
     const wherePills = sf.wherePills || [];
-    // Collect text-based location terms (skip 'remote' locType — handled below)
+    // FEED-FIX-003: Map country names to loc_country codes (same as RPC inline mode).
+    // Previously used location.ilike.%united states% which (a) missed jobs where
+    // location = 'US' or 'New York, NY', and (b) did not block non-US jobs.
+    // Now maps 'united states' → loc_country.eq.US etc., matching RPC behavior exactly.
     const textClauses: string[] = [];
+    let isUSPill = false;
     for (const pill of wherePills) {
       if (pill.locType === 'remote') continue;
       for (const v of pill.values) {
-        if (v.trim()) {
+        const norm = v.trim().toLowerCase();
+        if (!norm) continue;
+        if (['united states', 'usa', 'us', 'u.s.', 'america'].includes(norm)) {
+          textClauses.push('loc_country.eq.US');
+          isUSPill = true;
+        } else if (['canada'].includes(norm)) {
+          textClauses.push('loc_country.eq.CA');
+        } else if (['united kingdom', 'uk', 'england'].includes(norm)) {
+          textClauses.push('loc_country.eq.GB');
+        } else {
           textClauses.push(`location.ilike.%${v.trim()}%`);
         }
       }
@@ -416,16 +429,25 @@ function buildFilterQuery(
     const hasRemotePill = wherePills.some(p => p.locType === 'remote');
 
     if (includeRemote) {
-      // OR text location with US-scoped remote clauses
+      // OR loc_country/text location clauses with US-scoped remote clauses
       const remoteClauses = buildUSRemoteClauses();
       const allClauses = [...textClauses, ...remoteClauses];
       query = query.or(allClauses.join(','));
+      // For US searches: also apply US-only filter to block loc_country non-US onsite jobs
+      if (isUSPill) {
+        query = buildUSOnlyQuery(query);
+      }
     } else if (hasTextLocation) {
-      // Text-only location filter (no remote toggle) — apply each ilike directly
-      for (const pill of wherePills) {
-        if (pill.locType === 'remote') continue;
-        for (const v of pill.values) {
-          if (v.trim()) query = query.ilike('location', `%${v.trim()}%`);
+      if (isUSPill) {
+        // US pill without remote: use the full US-only filter
+        query = buildUSOnlyQuery(query);
+      } else {
+        // Text-only location filter (non-country) — apply each ilike directly
+        for (const pill of wherePills) {
+          if (pill.locType === 'remote') continue;
+          for (const v of pill.values) {
+            if (v.trim()) query = query.ilike('location', `%${v.trim()}%`);
+          }
         }
       }
     } else if (hasRemotePill && !includeRemote) {
