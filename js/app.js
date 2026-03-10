@@ -516,8 +516,15 @@ $$('.nav-item').forEach(item => {
           }
         }
       }
+      if (_tab === 'pipeline') {
+        if (typeof initPipeline === 'function') {
+          initPipeline().then(function() {
+            if (typeof renderPipeline === 'function') renderPipeline();
+          }).catch(function(e) { if (typeof reportError === 'function') reportError('app:pipeline-init', e); });
+        }
+      }
       // Tabs without explicit init get skeleton hidden after a short delay (content is static HTML)
-      if (!['stats','feedback','ghost','referrals','resumes'].includes(_tab) && window.bjSkeleton) {
+      if (!['stats','feedback','ghost','referrals','resumes','pipeline'].includes(_tab) && window.bjSkeleton) {
         setTimeout(function() { bjSkeleton.hide(_tab); }, 150);
       }
       // QA-011: Re-search feed when tuning changed (e.g. US-Only toggle)
@@ -561,6 +568,11 @@ if (lastTab && $(`#page-${lastTab}`)) {
     if (lastTab === 'feedback' && typeof initCannyFeedback === 'function') { if (window.bjTabGuard) bjTabGuard('feedback', initCannyFeedback); else initCannyFeedback(); }
     if (lastTab === 'referrals' && typeof initReferralHub === 'function') { if (window.bjTabGuard) bjTabGuard('referrals', initReferralHub); else initReferralHub(); }
     if (lastTab === 'ghost' && typeof renderGhostMonitor === 'function') { if (window.bjTabGuard) bjTabGuard('ghost', renderGhostMonitor); else renderGhostMonitor(); }
+    if (lastTab === 'pipeline' && typeof initPipeline === 'function') {
+      initPipeline().then(function() {
+        if (typeof renderPipeline === 'function') renderPipeline();
+      }).catch(function(e) { if (typeof reportError === 'function') reportError('app:pipeline-restore', e); });
+    }
   };
   if (typeof bjEnsureTab === 'function') {
     bjEnsureTab(lastTab).then(_restoreInit).catch(function(err) {
