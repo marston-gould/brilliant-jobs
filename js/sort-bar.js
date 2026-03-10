@@ -123,9 +123,22 @@ async function searchCompanies(query) {
   renderCompanyDropdown(results, query);
 }
 
-function commitPill(input, pillArray, makePill) {
+function commitPill(input, pillArray, makePill, conflictArray) {
   const raw = input.value.trim().toLowerCase();
   if (!raw) return false;
+  // Duplicate check — same value already in this array
+  if (pillArray.some(p => (p.values || []).some(v => v.toLowerCase() === raw))) {
+    input.value = '';
+    return false;
+  }
+  // Conflict check — same value already in the opposite array (e.g. WHAT vs NOT)
+  if (conflictArray && conflictArray.some(p => (p.values || []).some(v => v.toLowerCase() === raw))) {
+    input.style.borderColor = 'var(--red)';
+    input.title = '"' + raw + '" is already in the opposite filter';
+    setTimeout(() => { input.style.borderColor = ''; input.title = ''; }, 2500);
+    input.value = '';
+    return false;
+  }
   pillArray.push(makePill(raw));
   input.value = '';
   renderAllPills();
@@ -246,11 +259,11 @@ const qbInputOrder = ['qb-input-what', 'qb-input-where', 'qb-input-when', 'qb-in
 qbInputWhat.addEventListener('keydown', e => {
   if (e.key === 'Enter' || e.key === ',') {
     e.preventDefault();
-    commitPill(qbInputWhat, whatPills, raw => ({ values: [raw], type: classifyTerm(raw) }));
+    commitPill(qbInputWhat, whatPills, raw => ({ values: [raw], type: classifyTerm(raw) }), whatNotPills);
   } else if (e.key === 'Tab') {
     if (qbInputWhat.value.trim()) {
       e.preventDefault();
-      commitPill(qbInputWhat, whatPills, raw => ({ values: [raw], type: classifyTerm(raw) }));
+      commitPill(qbInputWhat, whatPills, raw => ({ values: [raw], type: classifyTerm(raw) }), whatNotPills);
       focusNextInput('qb-input-what');
     }
   } else if (e.key === 'Backspace' && qbInputWhat.value === '' && whatPills.length > 0) {
@@ -259,7 +272,7 @@ qbInputWhat.addEventListener('keydown', e => {
   }
 });
 qbInputWhat.addEventListener('blur', () => {
-  commitPill(qbInputWhat, whatPills, raw => ({ values: [raw], type: classifyTerm(raw) }));
+  commitPill(qbInputWhat, whatPills, raw => ({ values: [raw], type: classifyTerm(raw) }), whatNotPills);
 });
 
 // Input handling — Where row (handled by location autocomplete section below)

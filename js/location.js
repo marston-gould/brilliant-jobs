@@ -303,13 +303,13 @@ const qbInputWhatNot = $('#qb-input-what-not');
 qbInputWhatNot.addEventListener('keydown', e => {
   if (e.key === 'Enter' || e.key === ',') {
     e.preventDefault();
-    commitPill(qbInputWhatNot, whatNotPills, raw => ({ values: [raw], type: 'not' }));
+    commitPill(qbInputWhatNot, whatNotPills, raw => ({ values: [raw], type: 'not' }), whatPills);
   } else if (e.key === 'Backspace' && qbInputWhatNot.value === '' && whatNotPills.length > 0) {
     whatNotPills.pop(); renderAllPills();
   }
 });
 qbInputWhatNot.addEventListener('blur', () => {
-  commitPill(qbInputWhatNot, whatNotPills, raw => ({ values: [raw], type: 'not' }));
+  commitPill(qbInputWhatNot, whatNotPills, raw => ({ values: [raw], type: 'not' }), whatPills);
 });
 $('#query-builder-what-not').addEventListener('click', e => {
   if (!e.target.closest('.qb-pill')) qbInputWhatNot.focus();

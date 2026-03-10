@@ -1256,11 +1256,19 @@ function renderFilterBrowserList() {
   }
 
   // Render as alphabetical pill wall
+  // Display label overrides — raw DB values → human-readable labels
+  const DISPLAY_LABELS = {
+    'entry': 'Entry Level', 'mid': 'Mid Level', 'senior': 'Senior',
+    'manager': 'Manager', 'director': 'Director', 'executive': 'Executive',
+    'intern': 'Intern', 'junior': 'Junior', 'hr': 'HR',
+  };
+
   let html = '';
   let lastLetter = '';
   let pillsOpen = false;
   for (const item of items) {
-    const letter = (item.value[0] || '').toUpperCase();
+    const displayLabel = DISPLAY_LABELS[item.value] || item.value;
+    const letter = (displayLabel[0] || '').toUpperCase();
     if (letter !== lastLetter) {
       if (pillsOpen) html += '</div>'; // close previous pill group
       html += `<div id="fb-letter-${letter}" style="font-size:11px;font-weight:700;color:var(--text-faint);padding:10px 0 4px;margin-top:4px;">${letter}</div>`;
@@ -1272,7 +1280,7 @@ function renderFilterBrowserList() {
     const bg = selected ? 'var(--accent)' : 'var(--bg-input)';
     const color = selected ? '#fff' : 'var(--text)';
     const border = selected ? 'var(--accent)' : 'var(--border)';
-    html += `<span class="fb-pill" data-value="${escapeHtml(item.value)}" onclick="_toggleFbItem(this)" style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:20px;border:1px solid ${border};background:${bg};color:${color};font-size:12px;font-weight:500;cursor:pointer;transition:all 0.12s;white-space:nowrap;user-select:none;">${escapeHtml(item.value)}<span style="font-size:10px;opacity:0.6;font-weight:600;">${item.job_count.toLocaleString()}</span></span>`;
+    html += `<span class="fb-pill" data-value="${escapeHtml(item.value)}" onclick="_toggleFbItem(this)" style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:20px;border:1px solid ${border};background:${bg};color:${color};font-size:12px;font-weight:500;cursor:pointer;transition:all 0.12s;white-space:nowrap;user-select:none;">${escapeHtml(displayLabel)}<span style="font-size:10px;opacity:0.6;font-weight:600;">${item.job_count.toLocaleString()}</span></span>`;
   }
   if (pillsOpen) html += '</div>';
 
