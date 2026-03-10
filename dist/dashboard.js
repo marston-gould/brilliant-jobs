@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.51';
+var BJ_VERSION = 'v8.52';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -2415,7 +2415,11 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
             });
             if (idx >= 0 && (!resumes[idx].extractedText || resumes[idx].extractedText.length < 100)) {
               resumes[idx].extractedText = row.extracted_text;
-              resumes[idx].textStatus = 'ok';
+              // keywords bundle is deferred — use it if loaded, else leave empty for renderResumes to fill
+              if (typeof extractResumeKeywords === 'function') {
+                resumes[idx].keywords = extractResumeKeywords(row.extracted_text);
+              }
+              resumes[idx].textStatus = 'ready';
               if (!resumes[idx].archiveId) resumes[idx].archiveId = row.resume_id;
               backfillDirty = true;
               console.log('[resume-backfill] Patched extractedText for:', resumes[idx].name);
@@ -17722,7 +17726,10 @@ function renderResumes() {
             var existing = resumes[existingIdx];
             if ((!existing.extractedText || existing.extractedText.length < 100) && row.extracted_text && row.extracted_text.length > 100) {
               resumes[existingIdx].extractedText = row.extracted_text;
-              resumes[existingIdx].textStatus = 'ok';
+              if (typeof extractResumeKeywords === 'function') {
+                resumes[existingIdx].keywords = extractResumeKeywords(row.extracted_text);
+              }
+              resumes[existingIdx].textStatus = 'ready';
               if (!resumes[existingIdx].archiveId) resumes[existingIdx].archiveId = row.resume_id;
               dirty = true;
               console.log('[resume-render] Patched extractedText from DB for:', existing.name);
@@ -17740,8 +17747,9 @@ function renderResumes() {
             levelColor: (row.metadata_snapshot && row.metadata_snapshot.level_color) || '',
             archived: false,
             extractedText: row.extracted_text || '',
-            keywords: [],
-            textStatus: row.extracted_text && row.extracted_text.length > 100 ? 'ok' : 'needs-reextract',
+            keywords: row.extracted_text && row.extracted_text.length > 100 && typeof extractResumeKeywords === 'function'
+              ? extractResumeKeywords(row.extracted_text) : [],
+            textStatus: row.extracted_text && row.extracted_text.length > 100 ? 'ready' : 'needs-reextract',
             storagePath: row.storage_path,
             archiveId: row.resume_id
           };

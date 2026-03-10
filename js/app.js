@@ -290,7 +290,11 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
             });
             if (idx >= 0 && (!resumes[idx].extractedText || resumes[idx].extractedText.length < 100)) {
               resumes[idx].extractedText = row.extracted_text;
-              resumes[idx].textStatus = 'ok';
+              // keywords bundle is deferred — use it if loaded, else leave empty for renderResumes to fill
+              if (typeof extractResumeKeywords === 'function') {
+                resumes[idx].keywords = extractResumeKeywords(row.extracted_text);
+              }
+              resumes[idx].textStatus = 'ready';
               if (!resumes[idx].archiveId) resumes[idx].archiveId = row.resume_id;
               backfillDirty = true;
               console.log('[resume-backfill] Patched extractedText for:', resumes[idx].name);
