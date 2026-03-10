@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.48';
+var BJ_VERSION = 'v8.49';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -579,6 +579,39 @@ async function loadUserData(userId: string): Promise<void> {
     if (needsSync) {
       console.log('[sync] Local data needs upload:', [..._udPendingKeys].join(', '));
       _flushUserData();
+    }
+    // Backfill extractedText for resumes missing it in localStorage but present in resume_archive
+    try {
+      const resumesNeedingText = (resumes as any[]).filter((r: any) =>
+        !r.archived && (!r.extractedText || r.extractedText.length < 100)
+      );
+      if (resumesNeedingText.length > 0) {
+        sb.from('resume_archive')
+          .select('resume_id, storage_path, extracted_text')
+          .eq('user_id', userId)
+          .eq('is_active', true)
+          .not('extracted_text', 'is', null)
+          .then((result: any) => {
+            if (result.error || !result.data || result.data.length === 0) return;
+            let dirty = false;
+            result.data.forEach((row: any) => {
+              if (!row.extracted_text || row.extracted_text.length < 100) return;
+              const idx = (resumes as any[]).findIndex((r: any) =>
+                r.archiveId === row.resume_id || (r.storagePath && r.storagePath === row.storage_path)
+              );
+              if (idx >= 0 && (!(resumes as any[])[idx].extractedText || (resumes as any[])[idx].extractedText.length < 100)) {
+                (resumes as any[])[idx].extractedText = row.extracted_text;
+                (resumes as any[])[idx].textStatus = 'ok';
+                if (!(resumes as any[])[idx].archiveId) (resumes as any[])[idx].archiveId = row.resume_id;
+                dirty = true;
+                console.log('[resume-backfill] Restored extracted_text for:', (resumes as any[])[idx].name);
+              }
+            });
+            if (dirty) saveUserData('bj_resumes', JSON.stringify(resumes));
+          });
+      }
+    } catch (backfillErr: unknown) {
+      console.warn('[resume-backfill] Error:', (backfillErr as Error).message);
     }
   } catch (e: unknown) {
     reportError('globals', e);
@@ -2226,8 +2259,6 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   }
   // Sync user data from Supabase → localStorage on login
   await loadUserData(currentUser.id);
-  // Backfill extractedText for any resumes loaded from localStorage that are missing it
-  backfillResumeTextFromDB(currentUser.id).catch(e => console.warn('[resume-backfill]', e.message));
   // Session analytics — Phase B
   const bjSessionId = await initSession();
   if (bjSessionId && window.posthog) {
@@ -17621,41 +17652,6 @@ function persistResumeTextToDB(resumeId, text) {
 
 // On every login, patch any resumes in localStorage that are missing extractedText
 // by fetching from resume_archive.extracted_text. Runs once per session, silently.
-async function backfillResumeTextFromDB(userId) {
-  if (!userId || typeof sb === 'undefined') return;
-  var needsText = resumes.filter(function(r) {
-    return !r.archived && (!r.extractedText || r.extractedText.length < 100);
-  });
-  if (needsText.length === 0) return;
-
-  var archiveIds = needsText.map(function(r) { return r.archiveId; }).filter(Boolean);
-  // Also match by storage_path for resumes without archiveId yet
-  var storageQuery = sb.from('resume_archive')
-    .select('resume_id, storage_path, extracted_text')
-    .eq('user_id', userId)
-    .eq('is_active', true)
-    .not('extracted_text', 'is', null);
-
-  var { data: rows, error } = await storageQuery;
-  if (error || !rows || rows.length === 0) return;
-
-  var dirty = false;
-  rows.forEach(function(row) {
-    if (!row.extracted_text || row.extracted_text.length < 100) return;
-    var idx = resumes.findIndex(function(r) {
-      return r.archiveId === row.resume_id || (r.storagePath && r.storagePath === row.storage_path);
-    });
-    if (idx >= 0 && (!resumes[idx].extractedText || resumes[idx].extractedText.length < 100)) {
-      resumes[idx].extractedText = row.extracted_text;
-      resumes[idx].textStatus = 'ok';
-      if (!resumes[idx].archiveId) resumes[idx].archiveId = row.resume_id;
-      dirty = true;
-      console.log('[resume-backfill] Restored extracted_text for:', resumes[idx].name);
-    }
-  });
-  if (dirty) saveResumes();
-}
-
 
 function getFileIcon(fileName) {
   if (/\.pdf$/i.test(fileName)) return { cls: 'pdf', text: 'PDF' };
