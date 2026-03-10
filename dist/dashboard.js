@@ -14346,9 +14346,9 @@ async function _doAiFilterAnalysis() {
           }
         } else {
           body.innerHTML = '<div style="text-align:center;padding:40px 20px;">' +
-            '<div style="font-size:14px;font-weight:600;color:var(--red);margin-bottom:8px;">Resume file not found</div>' +
+            '<div style="font-size:14px;font-weight:600;color:var(--red);margin-bottom:8px;">Could not read resume file</div>' +
             '<div style="font-size:12px;color:var(--text-faint);max-width:320px;margin:0 auto;line-height:1.5;">' +
-            'The original file may have been cleared from browser storage. Try re-uploading the resume.</div>' +
+            'The resume file is no longer accessible. Re-upload the resume from the Resumes tab to use this feature.</div>' +
             '<button class="btn btn-sm btn-primary" style="margin-top:16px;" onclick="document.getElementById(\'ai-filter-modal\').style.display=\'none\';document.body.style.overflow=\'\';">OK</button></div>';
           return;
         }
@@ -17351,12 +17351,28 @@ async function analyzeHiddenJob(jobId, btn) {
   // Find the hidden job record
   var hidden = hiddenJobIds.find(function(h) { return h.id === jobId; });
   if (!hidden) return;
-  
-  // Get resume text if available (optional — not required for block similar)
-  var resumesWithText = (typeof resumes !== 'undefined' ? resumes : []).filter(function(r) {
-    return r.extractedText && r.extractedText.length > 100 && !r.archived;
+
+  // Get resume text — prefer the resume linked to the source filter, fall back to any
+  var allResumes = (typeof resumes !== 'undefined' ? resumes : []).filter(function(r) {
+    return !r.archived;
   });
-  var resume = resumesWithText.length > 0 ? resumesWithText[resumesWithText.length - 1] : null;
+  var resumesWithText = allResumes.filter(function(r) {
+    return r.extractedText && r.extractedText.length > 100;
+  });
+
+  // Try to find the resume linked to the source filter
+  var resume = null;
+  if (hidden.filterIdxs && hidden.filterIdxs.length > 0 && typeof savedFilters !== 'undefined') {
+    var srcFilter = savedFilters[hidden.filterIdxs[0]];
+    if (srcFilter && srcFilter.name) {
+      var linkedResume = resumesWithText.find(function(r) {
+        return (r.filterIds || []).includes(srcFilter.name);
+      });
+      if (linkedResume) resume = linkedResume;
+    }
+  }
+  // Fall back to most recent resume with text
+  if (!resume) resume = resumesWithText.length > 0 ? resumesWithText[resumesWithText.length - 1] : null;
 
   // Get the source filter's pills if available
   var filterPills = null;
@@ -17586,6 +17602,22 @@ function saveResumes() {
   saveUserData('bj_resumes', JSON.stringify(resumes));
 }
 
+// Persist extracted resume text back to resume_archive so it survives
+// across devices and browser storage clears
+function persistResumeTextToDB(resumeId, text) {
+  if (!text || text.length < 100 || typeof sb === 'undefined') return;
+  var r = resumes.find(function(x) { return x.id === resumeId; });
+  if (!r || !r.archiveId) return;
+  sb.from('resume_archive')
+    .update({ extracted_text: text.slice(0, 50000) })
+    .eq('resume_id', r.archiveId)
+    .then(function(res) {
+      if (res.error) console.warn('[resume-text] Failed to persist extracted_text:', res.error.message);
+      else console.log('[resume-text] Persisted extracted_text to DB for', r.name);
+    });
+}
+
+
 function getFileIcon(fileName) {
   if (/\.pdf$/i.test(fileName)) return { cls: 'pdf', text: 'PDF' };
   return { cls: 'doc', text: 'DOC' };
@@ -17614,7 +17646,7 @@ function renderResumes() {
       try {
         var userId = currentUser.id;
         var { data: archiveRows, error } = await sb.from('resume_archive')
-          .select('resume_id, display_name, storage_path, is_active, is_archived, file_size_bytes, file_type, created_at, metadata_snapshot')
+          .select('resume_id, display_name, storage_path, is_active, is_archived, file_size_bytes, file_type, created_at, metadata_snapshot, extracted_text')
           .eq('user_id', userId)
           .eq('is_active', true);
         if (error || !archiveRows || archiveRows.length === 0) {
@@ -17639,9 +17671,9 @@ function renderResumes() {
             levelLabel: (row.metadata_snapshot && row.metadata_snapshot.level_label) || '',
             levelColor: (row.metadata_snapshot && row.metadata_snapshot.level_color) || '',
             archived: false,
-            extractedText: '',
+            extractedText: row.extracted_text || '',
             keywords: [],
-            textStatus: 'needs-reextract',
+            textStatus: row.extracted_text && row.extracted_text.length > 100 ? 'ok' : 'needs-reextract',
             storagePath: row.storage_path,
             archiveId: row.resume_id
           };
@@ -18424,8 +18456,9 @@ async function addResume(file) {
     resumes[idx].textStatus = text ? 'ready' : 'no-text';
     saveResumes();
     renderResumes();
-    // v6.38: Trigger AI content scoring after successful text extraction
+    // Persist extracted text to DB so it survives browser storage clears
     if (text && text.length >= 100) {
+      persistResumeTextToDB(id, text);
       scoreResumeAI(id, text);
     }
   });

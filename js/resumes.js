@@ -9,6 +9,22 @@ function saveResumes() {
   saveUserData('bj_resumes', JSON.stringify(resumes));
 }
 
+// Persist extracted resume text back to resume_archive so it survives
+// across devices and browser storage clears
+function persistResumeTextToDB(resumeId, text) {
+  if (!text || text.length < 100 || typeof sb === 'undefined') return;
+  var r = resumes.find(function(x) { return x.id === resumeId; });
+  if (!r || !r.archiveId) return;
+  sb.from('resume_archive')
+    .update({ extracted_text: text.slice(0, 50000) })
+    .eq('resume_id', r.archiveId)
+    .then(function(res) {
+      if (res.error) console.warn('[resume-text] Failed to persist extracted_text:', res.error.message);
+      else console.log('[resume-text] Persisted extracted_text to DB for', r.name);
+    });
+}
+
+
 function getFileIcon(fileName) {
   if (/\.pdf$/i.test(fileName)) return { cls: 'pdf', text: 'PDF' };
   return { cls: 'doc', text: 'DOC' };
@@ -37,7 +53,7 @@ function renderResumes() {
       try {
         var userId = currentUser.id;
         var { data: archiveRows, error } = await sb.from('resume_archive')
-          .select('resume_id, display_name, storage_path, is_active, is_archived, file_size_bytes, file_type, created_at, metadata_snapshot')
+          .select('resume_id, display_name, storage_path, is_active, is_archived, file_size_bytes, file_type, created_at, metadata_snapshot, extracted_text')
           .eq('user_id', userId)
           .eq('is_active', true);
         if (error || !archiveRows || archiveRows.length === 0) {
@@ -62,9 +78,9 @@ function renderResumes() {
             levelLabel: (row.metadata_snapshot && row.metadata_snapshot.level_label) || '',
             levelColor: (row.metadata_snapshot && row.metadata_snapshot.level_color) || '',
             archived: false,
-            extractedText: '',
+            extractedText: row.extracted_text || '',
             keywords: [],
-            textStatus: 'needs-reextract',
+            textStatus: row.extracted_text && row.extracted_text.length > 100 ? 'ok' : 'needs-reextract',
             storagePath: row.storage_path,
             archiveId: row.resume_id
           };
@@ -847,8 +863,9 @@ async function addResume(file) {
     resumes[idx].textStatus = text ? 'ready' : 'no-text';
     saveResumes();
     renderResumes();
-    // v6.38: Trigger AI content scoring after successful text extraction
+    // Persist extracted text to DB so it survives browser storage clears
     if (text && text.length >= 100) {
+      persistResumeTextToDB(id, text);
       scoreResumeAI(id, text);
     }
   });

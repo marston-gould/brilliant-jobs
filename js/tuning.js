@@ -1289,12 +1289,28 @@ async function analyzeHiddenJob(jobId, btn) {
   // Find the hidden job record
   var hidden = hiddenJobIds.find(function(h) { return h.id === jobId; });
   if (!hidden) return;
-  
-  // Get resume text if available (optional — not required for block similar)
-  var resumesWithText = (typeof resumes !== 'undefined' ? resumes : []).filter(function(r) {
-    return r.extractedText && r.extractedText.length > 100 && !r.archived;
+
+  // Get resume text — prefer the resume linked to the source filter, fall back to any
+  var allResumes = (typeof resumes !== 'undefined' ? resumes : []).filter(function(r) {
+    return !r.archived;
   });
-  var resume = resumesWithText.length > 0 ? resumesWithText[resumesWithText.length - 1] : null;
+  var resumesWithText = allResumes.filter(function(r) {
+    return r.extractedText && r.extractedText.length > 100;
+  });
+
+  // Try to find the resume linked to the source filter
+  var resume = null;
+  if (hidden.filterIdxs && hidden.filterIdxs.length > 0 && typeof savedFilters !== 'undefined') {
+    var srcFilter = savedFilters[hidden.filterIdxs[0]];
+    if (srcFilter && srcFilter.name) {
+      var linkedResume = resumesWithText.find(function(r) {
+        return (r.filterIds || []).includes(srcFilter.name);
+      });
+      if (linkedResume) resume = linkedResume;
+    }
+  }
+  // Fall back to most recent resume with text
+  if (!resume) resume = resumesWithText.length > 0 ? resumesWithText[resumesWithText.length - 1] : null;
 
   // Get the source filter's pills if available
   var filterPills = null;

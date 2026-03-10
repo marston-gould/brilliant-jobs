@@ -1657,9 +1657,9 @@ async function _doAiFilterAnalysis() {
           }
         } else {
           body.innerHTML = '<div style="text-align:center;padding:40px 20px;">' +
-            '<div style="font-size:14px;font-weight:600;color:var(--red);margin-bottom:8px;">Resume file not found</div>' +
+            '<div style="font-size:14px;font-weight:600;color:var(--red);margin-bottom:8px;">Could not read resume file</div>' +
             '<div style="font-size:12px;color:var(--text-faint);max-width:320px;margin:0 auto;line-height:1.5;">' +
-            'The original file may have been cleared from browser storage. Try re-uploading the resume.</div>' +
+            'The resume file is no longer accessible. Re-upload the resume from the Resumes tab to use this feature.</div>' +
             '<button class="btn btn-sm btn-primary" style="margin-top:16px;" onclick="document.getElementById(\'ai-filter-modal\').style.display=\'none\';document.body.style.overflow=\'\';">OK</button></div>';
           return;
         }
