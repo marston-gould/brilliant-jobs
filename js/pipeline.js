@@ -737,7 +737,7 @@ async function renderPipeline() {
       // Apply CTA
       var applyUrl = m.jobUrl || (j ? (j.url && j.url.startsWith('http') ? j.url : j.url ? 'https://boards.greenhouse.io' + j.url : '') : '');
       if (applyUrl && stage === 'saved') {
-        html += '<td><a href="' + applyUrl + '" target="_blank" rel="noopener" class="job-action-btn" style="text-decoration:none;font-size:10px;padding:3px 8px;" onclick="event.stopPropagation();movePipelineStage(\'' + item.id + '\',\'applied\')">Apply →</a></td>';
+        html += '<td><a href="' + applyUrl + '" target="_blank" rel="noopener" style="display:inline-block;text-decoration:none;font-size:10px;font-weight:600;padding:4px 10px;border-radius:6px;background:var(--accent);color:#fff;white-space:nowrap;" onclick="event.stopPropagation();movePipelineStage(\'' + item.id + '\',\'applied\')">Apply →</a></td>';
       } else if (applyUrl) {
         html += '<td><a href="' + applyUrl + '" target="_blank" rel="noopener" style="font-size:10px;color:var(--accent);text-decoration:none;" onclick="event.stopPropagation()">View →</a></td>';
       } else {

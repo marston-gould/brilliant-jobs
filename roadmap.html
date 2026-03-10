@@ -11,7 +11,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v8.59"></script>
+  <script src="/js/version.js?v=v8.60"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2192,7 +2192,7 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'QA Bug Tracker Round 4 — Screenshot Review 3', d: 'Third screenshot review. (1) Resume delete: removed Delete text, ✕ only — all surfaces now unified. (2) Survey: tab-aware guard, only shows on Jobs Feed. (3) HOW MUCH: split from one wide row into Min$/Max$ parallel columns matching WHAT/NOT pattern. (4) Generate filters: alert() replaced with modal for all cases (no resumes → Go to Resumes button, resumes without text → extraction pending note). (5) Company browser: null guards + US-Only banner when tuning active. 42 tests. v8.00.', p: 100, e: '2h' },
 { s: 'done', b: 'post-launch', n: 'QA Bug Tracker Round 5 — Screenshot Review 4', d: 'Fourth screenshot review. (1) /app 404: added exact /app rewrite to vercel.json (was only /app/:path*). (2) Chat save/load buttons: Save (floppy) and Load (download) buttons added to chat header — JS handlers existed since Session 4 but trigger elements were missing from HTML. (3) Setup nav dot: aggregate of all 4 connections (was extension-only). Green=all 4, amber=partial, grey=none. Extension active threshold tightened 24h→2h. (4) REQUIRED_EXTENSION_VERSION bumped 2.17.0→2.23.0. (5) Extension token: runtime issue, needs re-auth. v8.01.', p: 100, e: '2h' },
 { s: 'done', b: 'post-launch', n: 'QA Bug Tracker Round 6 — Auth Race Root Cause', d: 'Console error root cause fix. (1) checkExtensionStatus guard for null currentUser + 3s retry — was crashing on every page load, preventing extension state from being set, causing gray dot and v— display. (2) Extension version display hides when null instead of showing v—. Connected container shows even when update needed. (3) Preview column 130px→100px, label shortened. (4) Setup card flex alignment. (5) Header renamed to Saved Searches and Prompts. Extension auto-submit and token refresh code confirmed intact — runtime auth expiry. v8.02.', p: 100, e: '1h' },
-{ s: 'done', b: 'post-launch', n: 'UX-FIX-001 Pipeline Save Bug + Notification Reorder', d: 'Two fixes: (1) toggleSaveJob was calling savePipelineMeta (no-op for Supabase) instead of savePipelineEntry — jobs saved from feed never persisted to user_pipeline table. Fixed: savePipelineEntry on add with title/company/URL from _feedJobMap, sb.from(user_pipeline).delete() on unsave. (2) Notifications nav-item moved from Tracking section to Account section, below Subscription settings. v8.59. 2026-03-10.', p: 100, e: '1h' },
+{ s: 'done', b: 'post-launch', n: 'UX-FIX-001 Pipeline Save Bug + Notification Reorder', d: 'Two fixes: (1) toggleSaveJob was calling savePipelineMeta (no-op for Supabase) instead of savePipelineEntry — jobs saved from feed never persisted to user_pipeline table. Fixed: savePipelineEntry on add with title/company/URL from _feedJobMap, sb.from(user_pipeline).delete() on unsave. (2) Notifications nav-item moved from Tracking section to Account section, below Subscription settings. v8.60. 2026-03-10.', p: 100, e: '1h' },
 
 ];
 

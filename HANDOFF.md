@@ -54,7 +54,7 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 **UX-FIX-001** — Pipeline Save Bug + Sidebar Notification Reorder
 - Completed: 2026-03-10
-- Product version bumped: `v8.54` → `v8.59` (JS/HTML changes — keywords.js toggleSaveJob rewrite, job-feed.js _feedJobMap, dashboard.html sidebar reorder; all HTML surfaces cache-busted)
+- Product version bumped: `v8.54` → `v8.60` (JS/HTML changes — keywords.js toggleSaveJob rewrite, job-feed.js _feedJobMap, dashboard.html sidebar reorder; all HTML surfaces cache-busted)
 - ROADMAP.md updated: UX-FIX-001 → ✅
 - roadmap.html updated: UX-FIX-001 → `s: 'done'`, p: 100
 - **2 fixes:**
@@ -1517,7 +1517,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.59`** | **UX-FIX-001: Pipeline save bug + sidebar notification reorder** |
+| **Product (BJ_VERSION)** | **`v8.60`** | **UX-FIX-001: Pipeline save bug + sidebar notification reorder** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
