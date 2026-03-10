@@ -3476,8 +3476,7 @@ function toggleSaveJob(jobId, btn) {
   if (idx >= 0) {
     // Remove from pipeline
     savedJobIds.splice(idx, 1);
-    btn.textContent = 'Pipeline';
-    btn.classList.remove('saved-btn');
+    if (btn) { btn.textContent = 'Pipeline'; btn.classList.remove('saved-btn'); }
     delete meta[jobId];
     // Remove from Supabase
     if (typeof sb !== 'undefined' && typeof currentUser !== 'undefined' && currentUser?.id) {
@@ -3490,8 +3489,7 @@ function toggleSaveJob(jobId, btn) {
   } else {
     // Add to pipeline
     savedJobIds.push(jobId);
-    btn.textContent = 'Pipeline ✓';
-    btn.classList.add('saved-btn');
+    if (btn) { btn.textContent = 'Pipeline ✓'; btn.classList.add('saved-btn'); }
     // Log save signal
     if (typeof sb !== 'undefined' && sb.auth) {
       Promise.resolve(sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'save' })).catch(e => reportError('keywords:signal-save', e));
@@ -3516,7 +3514,8 @@ function toggleSaveJob(jobId, btn) {
   }
   savePipelineMeta(meta);
   saveUserData('bj_saved_jobs', JSON.stringify(savedJobIds));
-  $('#j-saved').textContent = savedJobIds.length.toLocaleString();
+  var savedEl = $('#j-saved');
+  if (savedEl) savedEl.textContent = savedJobIds.length.toLocaleString();
 }
 
 
@@ -4119,7 +4118,7 @@ function _startClRescoreCooldown(clId) {
 // CS-P1-004 FE-005: Register keywords.js exports with BJ namespace
 (function() {
   var exports = [
-    'handleScoreClick', '_selectScoreMode', 'addResume', 'bjRescoreCoverLetter'
+    'handleScoreClick', '_selectScoreMode', 'addResume', 'bjRescoreCoverLetter', 'toggleSaveJob'
   ];
   exports.forEach(function(name) {
     if (typeof window[name] === 'function') {
