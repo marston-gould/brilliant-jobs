@@ -520,7 +520,13 @@ $$('.nav-item').forEach(item => {
         if (typeof initPipeline === 'function') {
           initPipeline().then(function() {
             if (typeof renderPipeline === 'function') renderPipeline();
-          }).catch(function(e) { if (typeof reportError === 'function') reportError('app:pipeline-init', e); });
+            if (window.bjSkeleton) bjSkeleton.hide('pipeline');
+          }).catch(function(e) {
+            if (typeof reportError === 'function') reportError('app:pipeline-init', e);
+            if (window.bjSkeleton) bjSkeleton.hide('pipeline');
+          });
+        } else {
+          if (window.bjSkeleton) setTimeout(function() { bjSkeleton.hide('pipeline'); }, 150);
         }
       }
       // Tabs without explicit init get skeleton hidden after a short delay (content is static HTML)
@@ -571,7 +577,11 @@ if (lastTab && $(`#page-${lastTab}`)) {
     if (lastTab === 'pipeline' && typeof initPipeline === 'function') {
       initPipeline().then(function() {
         if (typeof renderPipeline === 'function') renderPipeline();
-      }).catch(function(e) { if (typeof reportError === 'function') reportError('app:pipeline-restore', e); });
+        if (window.bjSkeleton) bjSkeleton.hide('pipeline');
+      }).catch(function(e) {
+        if (typeof reportError === 'function') reportError('app:pipeline-restore', e);
+        if (window.bjSkeleton) bjSkeleton.hide('pipeline');
+      });
     }
   };
   if (typeof bjEnsureTab === 'function') {
