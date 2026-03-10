@@ -3496,10 +3496,21 @@ function toggleSaveJob(jobId, btn) {
     }
     // Look up job data from feed for title/company
     var feedJob = (window._feedJobMap || {})[jobId] || {};
+    // Determine which saved filters matched this job
+    var _filterTags = [];
+    var _filterNums = feedJob._filterNums || [];
+    if (_filterNums.length > 0 && typeof savedFilters !== 'undefined') {
+      _filterNums.forEach(function(fn) {
+        var idx = typeof fn.num === 'number' ? fn.num - 1 : parseInt(fn.num) - 1;
+        if (idx >= 0 && savedFilters[idx] && savedFilters[idx].name) {
+          _filterTags.push(savedFilters[idx].name);
+        }
+      });
+    }
     if (!meta[jobId]) meta[jobId] = {
       stage: 'saved',
       savedAt: new Date().toISOString(),
-      filterTags: [],
+      filterTags: _filterTags,
       title: feedJob.title || '',
       companyName: feedJob.company_name || '',
       company: feedJob.company_name || '',

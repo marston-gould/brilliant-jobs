@@ -653,9 +653,8 @@ async function renderPipeline() {
     }
 
     let html = '<table class="pl-table"><thead><tr>';
-    html += '<th></th><th>Title</th><th>Company</th><th>Resume</th><th>Filters</th>';
-    html += '<th>Discovered</th><th>Day Applied</th><th>Days In Stage</th>';
-    html += '<th>Last Activity</th><th>Match</th><th>Move</th><th></th>';
+    html += '<th></th><th>Title</th><th>Company</th><th>Discovered</th><th>Days In Stage</th>';
+    html += '<th>Filter</th><th>Resume</th><th>Match</th><th></th><th>Move</th><th></th>';
     html += '</tr></thead><tbody>';
 
     for (const item of jobs) {
@@ -729,23 +728,22 @@ async function renderPipeline() {
       html += '<td style="width:16px;text-align:center;padding:4px 2px;">' + staleDot + '</td>';
       html += '<td class="pl-title" onclick="openJobModal(\'' + item.id + '\')" title="' + title.replace(/"/g, '&quot;') + '">' + (title.length > 35 ? title.slice(0,35) + '…' : title) + '</td>';
       html += '<td class="pl-company" title="' + company.replace(/"/g, '&quot;') + '">' + (company.length > 20 ? company.slice(0,20) + '…' : company) + '</td>';
-      html += '<td>' + (resumeName !== '—' ? '<span class="pl-resume-badge" title="' + resumeName + '">' + resumeName + '</span>' : '<span style="color:var(--text-faint);font-size:11px;">—</span>') + '</td>';
-      html += '<td>' + (filterBadges || '<span style="color:var(--text-faint);font-size:10px;">—</span>') + '</td>';
       html += '<td class="pl-date">' + discovered + '</td>';
-      html += '<td class="pl-date">' + dayApplied + '</td>';
       html += '<td class="pl-days">' + daysInStage + (typeof daysInStage === 'number' ? 'd' : '') + '</td>';
-
-      // Last Activity column
-      const lastActivity = pendingSig
-        ? (pendingSig.signal_source === 'time_based'
-            ? 'Prompt ' + _relTime(pendingSig.created_at)
-            : 'Signal ' + _relTime(pendingSig.created_at))
-        : (m.stage_changed_at || m.lastPromptedAt
-            ? _relTime(m.stage_changed_at || m.lastPromptedAt)
-            : '—');
-      html += '<td class="pl-date" style="font-size:11px;color:var(--text-dim);">' + lastActivity + '</td>';
-
+      html += '<td>' + (filterBadges || '<span style="color:var(--text-faint);font-size:10px;">—</span>') + '</td>';
+      html += '<td>' + (resumeName !== '—' ? '<span class="pl-resume-badge" title="' + resumeName + '">' + resumeName + '</span>' : '<span style="color:var(--text-faint);font-size:11px;">—</span>') + '</td>';
       html += '<td class="pl-match" style="' + matchColor + '">' + matchScore + '</td>';
+
+      // Apply CTA
+      var applyUrl = m.jobUrl || (j ? (j.url && j.url.startsWith('http') ? j.url : j.url ? 'https://boards.greenhouse.io' + j.url : '') : '');
+      if (applyUrl && stage === 'saved') {
+        html += '<td><a href="' + applyUrl + '" target="_blank" rel="noopener" class="job-action-btn" style="text-decoration:none;font-size:10px;padding:3px 8px;" onclick="event.stopPropagation();movePipelineStage(\'' + item.id + '\',\'applied\')">Apply →</a></td>';
+      } else if (applyUrl) {
+        html += '<td><a href="' + applyUrl + '" target="_blank" rel="noopener" style="font-size:10px;color:var(--accent);text-decoration:none;" onclick="event.stopPropagation()">View →</a></td>';
+      } else {
+        html += '<td></td>';
+      }
+
       html += '<td><select class="pl-move-select" onchange="movePipelineStage(\'' + item.id + '\', this.value)"><option value="">Move…</option>' + moveOpts + '</select></td>';
       html += '<td style="position:relative;">';
       html += '<button class="job-action-btn hide-btn pl-menu-trigger" onclick="togglePlMenu(this,\'' + item.id + '\')" style="padding:2px 8px;font-size:12px;" title="Actions">⋮</button>';
@@ -781,7 +779,7 @@ async function renderPipeline() {
           : null;
 
         html += '<tr class="pl-signal-row" id="signal-card-' + pendingSig.id + '" style="display:none;">';
-        html += '<td colspan="12" style="padding:0;">';
+        html += '<td colspan="11" style="padding:0;">';
         html += '<div class="pl-signal-card" style="border-left:3px solid ' + borderColor + ';">';
         html += '<div class="pl-signal-header"><span class="pl-signal-icon">' + icon + '</span> ' + headerText + '</div>';
         if (evidence) html += '<div class="pl-signal-evidence">' + evidence + '</div>';
