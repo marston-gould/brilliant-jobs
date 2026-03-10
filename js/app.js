@@ -268,6 +268,38 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
       }
     } catch(e) { reportError('app', e); console.warn('[sync] Resume recovery failed:', e.message); }
   }
+  // Backfill extractedText from resume_archive for any resumes missing it (v8.50)
+  // Must run here — resumes[] is now decrypted and populated
+  if (resumes.length > 0 && currentUser) {
+    var resumesNeedingText = resumes.filter(function(r) {
+      return !r.archived && (!r.extractedText || r.extractedText.length < 100);
+    });
+    if (resumesNeedingText.length > 0) {
+      sb.from('resume_archive')
+        .select('resume_id, storage_path, extracted_text')
+        .eq('user_id', currentUser.id)
+        .eq('is_active', true)
+        .not('extracted_text', 'is', null)
+        .then(function(result) {
+          if (result.error || !result.data || result.data.length === 0) return;
+          var dirty = false;
+          result.data.forEach(function(row) {
+            if (!row.extracted_text || row.extracted_text.length < 100) return;
+            var idx = resumes.findIndex(function(r) {
+              return r.archiveId === row.resume_id || (r.storagePath && r.storagePath === row.storage_path);
+            });
+            if (idx >= 0 && (!resumes[idx].extractedText || resumes[idx].extractedText.length < 100)) {
+              resumes[idx].extractedText = row.extracted_text;
+              resumes[idx].textStatus = 'ok';
+              if (!resumes[idx].archiveId) resumes[idx].archiveId = row.resume_id;
+              dirty = true;
+              console.log('[resume-backfill] Patched extractedText for:', resumes[idx].name);
+            }
+          });
+          if (dirty) saveUserData('bj_resumes', JSON.stringify(resumes));
+        });
+    }
+  }
   // Check for resumes missing storagePath and attempt upload from IndexedDB (v4.46)
   if (resumes.length > 0 && currentUser) {
     var needsStorageSync = resumes.filter(function(r) { return !r.storagePath && !r.archived; });

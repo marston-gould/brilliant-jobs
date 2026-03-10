@@ -411,33 +411,6 @@ async function loadUserData(userId) {
       console.log("[sync] Local data needs upload:", [..._udPendingKeys].join(", "));
       _flushUserData();
     }
-    try {
-      const resumesNeedingText = resumes.filter(
-        (r) => !r.archived && (!r.extractedText || r.extractedText.length < 100)
-      );
-      if (resumesNeedingText.length > 0) {
-        sb.from("resume_archive").select("resume_id, storage_path, extracted_text").eq("user_id", userId).eq("is_active", true).not("extracted_text", "is", null).then((result) => {
-          if (result.error || !result.data || result.data.length === 0) return;
-          let dirty = false;
-          result.data.forEach((row) => {
-            if (!row.extracted_text || row.extracted_text.length < 100) return;
-            const idx = resumes.findIndex(
-              (r) => r.archiveId === row.resume_id || r.storagePath && r.storagePath === row.storage_path
-            );
-            if (idx >= 0 && (!resumes[idx].extractedText || resumes[idx].extractedText.length < 100)) {
-              resumes[idx].extractedText = row.extracted_text;
-              resumes[idx].textStatus = "ok";
-              if (!resumes[idx].archiveId) resumes[idx].archiveId = row.resume_id;
-              dirty = true;
-              console.log("[resume-backfill] Restored extracted_text for:", resumes[idx].name);
-            }
-          });
-          if (dirty) saveUserData("bj_resumes", JSON.stringify(resumes));
-        });
-      }
-    } catch (backfillErr) {
-      console.warn("[resume-backfill] Error:", backfillErr.message);
-    }
   } catch (e) {
     reportError("globals", e);
     console.warn("[sync] Load error:", e.message);
