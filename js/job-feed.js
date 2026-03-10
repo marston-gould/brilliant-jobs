@@ -2581,6 +2581,10 @@ function renderJobRows(jobs, total, page, filtersToRun) {
   const lastFeedView = localStorage.getItem('bj_last_feed_view');
   const lastViewDate = lastFeedView ? new Date(lastFeedView) : null;
 
+  // Populate global job map so toggleSaveJob can look up title/company
+  window._feedJobMap = {};
+  for (const j of jobs) { window._feedJobMap[j.greenhouse_id] = j; }
+
   let html = '';
   let newCount = 0;
   for (const job of jobs) {

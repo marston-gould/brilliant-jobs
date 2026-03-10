@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.54';
+var BJ_VERSION = 'v8.55';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -6293,6 +6293,10 @@ function renderJobRows(jobs, total, page, filtersToRun) {
   const lastFeedView = localStorage.getItem('bj_last_feed_view');
   const lastViewDate = lastFeedView ? new Date(lastFeedView) : null;
 
+  // Populate global job map so toggleSaveJob can look up title/company
+  window._feedJobMap = {};
+  for (const j of jobs) { window._feedJobMap[j.greenhouse_id] = j; }
+
   let html = '';
   let newCount = 0;
   for (const job of jobs) {
@@ -10761,11 +10765,21 @@ function toggleSaveJob(jobId, btn) {
   const idx = savedJobIds.indexOf(jobId);
   const meta = getPipelineMeta();
   if (idx >= 0) {
+    // Remove from pipeline
     savedJobIds.splice(idx, 1);
     btn.textContent = 'Pipeline';
     btn.classList.remove('saved-btn');
     delete meta[jobId];
+    // Remove from Supabase
+    if (typeof sb !== 'undefined' && typeof currentUser !== 'undefined' && currentUser?.id) {
+      sb.from('user_pipeline').delete()
+        .eq('user_id', currentUser.id)
+        .eq('job_id', jobId)
+        .then(() => {})
+        .catch(e => reportError('keywords:pipeline-delete', e));
+    }
   } else {
+    // Add to pipeline
     savedJobIds.push(jobId);
     btn.textContent = 'Pipeline ✓';
     btn.classList.add('saved-btn');
@@ -10773,7 +10787,23 @@ function toggleSaveJob(jobId, btn) {
     if (typeof sb !== 'undefined' && sb.auth) {
       Promise.resolve(sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'save' })).catch(e => reportError('keywords:signal-save', e));
     }
-    if (!meta[jobId]) meta[jobId] = { stage: 'saved', savedAt: new Date().toISOString(), filterTags: [] };
+    // Look up job data from feed for title/company
+    var feedJob = (window._feedJobMap || {})[jobId] || {};
+    if (!meta[jobId]) meta[jobId] = {
+      stage: 'saved',
+      savedAt: new Date().toISOString(),
+      filterTags: [],
+      title: feedJob.title || '',
+      companyName: feedJob.company_name || '',
+      company: feedJob.company_name || '',
+      jobUrl: feedJob.apply_url || feedJob.url || '',
+      atsSource: feedJob.ats_source || 'greenhouse',
+      companySlug: (feedJob.company_name || '').toLowerCase().replace(/[^a-z0-9]/g, '-') || jobId
+    };
+    // Persist to Supabase
+    if (typeof savePipelineEntry === 'function') {
+      savePipelineEntry(jobId, meta[jobId]);
+    }
   }
   savePipelineMeta(meta);
   saveUserData('bj_saved_jobs', JSON.stringify(savedJobIds));

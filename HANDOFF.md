@@ -52,6 +52,27 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**UX-FIX-001** — Pipeline Save Bug + Sidebar Notification Reorder
+- Completed: 2026-03-10
+- Product version bumped: `v8.54` → `v8.55` (JS/HTML changes — keywords.js toggleSaveJob rewrite, job-feed.js _feedJobMap, dashboard.html sidebar reorder; all HTML surfaces cache-busted)
+- ROADMAP.md updated: UX-FIX-001 → ✅
+- roadmap.html updated: UX-FIX-001 → `s: 'done'`, p: 100
+- **2 fixes:**
+  - **Pipeline save bug (critical):** `toggleSaveJob()` in keywords.js was calling `savePipelineMeta()` which is a legacy no-op — it only sets the in-memory cache, never writes to Supabase. Jobs selected for pipeline from the feed never appeared on the Pipeline page. Fixed: on add, calls `savePipelineEntry(jobId, meta)` with job title/company/URL/atsSource looked up from `window._feedJobMap`. On remove, calls `sb.from('user_pipeline').delete()`. `window._feedJobMap` populated in `renderJobRows()` (job-feed.js) before the render loop.
+  - **Notification sidebar reorder:** Moved Notifications nav-item from after Applications (Tracking section) to after Subscription (Account section) per Marston request.
+- **Overlay pipeline:** Confirmed blank-by-design — reads from `pipeline` table populated by extension toolbar. Pod 1 activity.
+- **Legacy pipeline:** Confirmed blank-by-design when no data — now fixed so jobs saved from feed will persist.
+- **Team manifest:** All 5 hook-and-scar roles (Chief Architect, Lead Platform Engineer, System Architect—Scalability, Forward-Looking Developer(s), Evolvability Strategist) already present in pod-team-manifest.md since SA-006. No additions needed.
+- **Modified:**
+  - `js/keywords.js` — toggleSaveJob rewritten with savePipelineEntry + Supabase delete + _feedJobMap lookup
+  - `js/job-feed.js` — window._feedJobMap populated in renderJobRows
+  - `dashboard.html` — Notifications nav-item moved to Account section after Subscription
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — UX-FIX-001 → ✅
+  - `roadmap.html` — UX-FIX-001 → done/100
+
 **TAB-TEST-S3 + TAB-TEST-S4** — Résumés Tab + Cross-Tab Validation — Structural QA
 - Completed: 2026-03-10
 - No product version bump (test-only sessions — no JS/CSS/HTML user-facing changes)
@@ -1496,7 +1517,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.44`** | **FEED-FIX-006: Fix buildUSRemoteClauses * wildcard + test harness** |
+| **Product (BJ_VERSION)** | **`v8.55`** | **UX-FIX-001: Pipeline save bug + sidebar notification reorder** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
