@@ -594,9 +594,19 @@ async function runReadinessAnalysis(opts) {
   if (readinessRunning) return;
   readinessRunning = true;
 
-  if (!silent && btn) { btn.disabled = true; btn.textContent = 'Scoring2026'; }
+  if (!silent && btn) { btn.disabled = true; btn.textContent = 'Scoring…'; }
 
   var sf = safeReadLS('bj_saved_filters', []);
+
+  // Extract keywords now if missing (e.g. backfilled resumes that loaded before keywords bundle)
+  for (var ki = 0; ki < resumes.length; ki++) {
+    var kr = resumes[ki];
+    if (!kr.archived && kr.extractedText && kr.extractedText.length > 100 &&
+        typeof extractResumeKeywords === 'function' && (!kr.keywords || kr.keywords.length === 0)) {
+      resumes[ki].keywords = extractResumeKeywords(kr.extractedText);
+      resumes[ki].textStatus = 'ready';
+    }
+  }
 
   var hasEligible = false;
   for (var i = 0; i < resumes.length; i++) {
@@ -607,7 +617,7 @@ async function runReadinessAnalysis(opts) {
 
   if (!hasEligible) {
     if (resultsEl) resultsEl.innerHTML = '<div style="font-size:13px;color:var(--text-faint);padding:16px 0;">Upload a resume and wait for keyword extraction to complete before analyzing readiness.</div>';
-    if (!silent && btn) { btn.disabled = false; btn.textContent = 'Analyze'; }
+    if (!silent && btn) { btn.disabled = false; btn.textContent = 'Score Resume'; }
     readinessRunning = false;
     return;
   }

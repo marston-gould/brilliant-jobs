@@ -298,7 +298,7 @@ function renderResumes() {
     const scoreVal = cachedScore ? cachedScore.overallScore : null;
     const scoreClass = scoreVal >= 75 ? 'high' : scoreVal >= 50 ? 'mid' : scoreVal !== null ? 'low' : 'none';
     const scoreLabel = scoreVal >= 75 ? 'Strong' : scoreVal >= 50 ? 'Partial' : scoreVal !== null ? 'Weak' : '';
-    const scoreDisplay = scoreVal !== null ? `${scoreVal}<div class="nri-score-label">${scoreLabel}</div>` : (isPlaceholder ? '—' : (assignedIds.length > 0 ? '…' : '—'));
+    const scoreDisplay = scoreVal !== null ? `${scoreVal}<div class="nri-score-label">${scoreLabel}</div>` : (isPlaceholder ? '—' : (assignedIds.length > 0 ? '<div class="nri-score-label" style="font-size:9px;">Score</div>' : '—'));
 
     // Filter dots (compact representation for row)
     const filterDots = sf.map((f, fi) => {
@@ -319,9 +319,9 @@ function renderResumes() {
         <div class="nri-filters">${filterDots}</div>
         <div class="nri-score ${scoreClass}">${scoreDisplay}</div>
         <div class="nri-actions" onclick="event.stopPropagation()">
-          <button onclick="downloadResume(${i})" title="Download">\u2b07</button>
-          <button onclick="renameResume(${i})" title="Rename">\u270e</button>
-          <button onclick="archiveResume(${i})" title="Archive">\ud83d\udce6</button>
+          <button onclick="downloadResume(${i})" title="Download">⬇</button>
+          <button onclick="renameResume(${i})" title="Rename">✎</button>
+          <button onclick="archiveResume(${i})" title="Archive">📦</button>
         </div>
       </div>
       <div class="rc-grade-slot" id="rc-grade-${i}" style="display:none;"></div>
@@ -329,7 +329,7 @@ function renderResumes() {
       <div class="ai-panel" id="ai-panel-${i}">
         <div id="ai-panel-content-${i}">
           ${cachedScore ? buildReadinessSide(i, cachedScore) : (assignedIds.length > 0 && !isPlaceholder
-            ? '<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:20px 0;"><button class="btn btn-sm" id="rc-score-' + i + '" onclick="event.stopPropagation();handleScoreClick(' + i + ')" style="background:var(--accent);color:#fff;font-weight:600;padding:6px 18px;">Score Resume</button></div>'
+            ? '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:20px 0;"><button class="btn btn-sm" id="rc-score-' + i + '" onclick="event.stopPropagation();handleScoreClick(' + i + ')" style="background:var(--accent);color:#fff;font-weight:600;padding:6px 18px;">Analyze Resume</button><div style="font-size:10px;color:var(--text-faint);">Scores readiness against your assigned filter</div></div>'
             : '<div style="padding:16px 0;text-align:center;">' + (isPlaceholder
               ? '<div style="font-size:12px;color:var(--warm);cursor:pointer;" onclick="event.stopPropagation();replaceResumePlaceholder(' + i + ')">Upload a file to enable scoring</div>'
               : '<div style="font-size:12px;color:var(--text-faint);">Assign a filter to see readiness analysis</div>') + '</div>')}

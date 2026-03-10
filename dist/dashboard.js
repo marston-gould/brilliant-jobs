@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.53';
+var BJ_VERSION = 'v8.54';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -7881,9 +7881,19 @@ async function runReadinessAnalysis(opts) {
   if (readinessRunning) return;
   readinessRunning = true;
 
-  if (!silent && btn) { btn.disabled = true; btn.textContent = 'Scoring2026'; }
+  if (!silent && btn) { btn.disabled = true; btn.textContent = 'Scoring…'; }
 
   var sf = safeReadLS('bj_saved_filters', []);
+
+  // Extract keywords now if missing (e.g. backfilled resumes that loaded before keywords bundle)
+  for (var ki = 0; ki < resumes.length; ki++) {
+    var kr = resumes[ki];
+    if (!kr.archived && kr.extractedText && kr.extractedText.length > 100 &&
+        typeof extractResumeKeywords === 'function' && (!kr.keywords || kr.keywords.length === 0)) {
+      resumes[ki].keywords = extractResumeKeywords(kr.extractedText);
+      resumes[ki].textStatus = 'ready';
+    }
+  }
 
   var hasEligible = false;
   for (var i = 0; i < resumes.length; i++) {
@@ -7894,7 +7904,7 @@ async function runReadinessAnalysis(opts) {
 
   if (!hasEligible) {
     if (resultsEl) resultsEl.innerHTML = '<div style="font-size:13px;color:var(--text-faint);padding:16px 0;">Upload a resume and wait for keyword extraction to complete before analyzing readiness.</div>';
-    if (!silent && btn) { btn.disabled = false; btn.textContent = 'Analyze'; }
+    if (!silent && btn) { btn.disabled = false; btn.textContent = 'Score Resume'; }
     readinessRunning = false;
     return;
   }
@@ -17952,7 +17962,7 @@ function renderResumes() {
     const scoreVal = cachedScore ? cachedScore.overallScore : null;
     const scoreClass = scoreVal >= 75 ? 'high' : scoreVal >= 50 ? 'mid' : scoreVal !== null ? 'low' : 'none';
     const scoreLabel = scoreVal >= 75 ? 'Strong' : scoreVal >= 50 ? 'Partial' : scoreVal !== null ? 'Weak' : '';
-    const scoreDisplay = scoreVal !== null ? `${scoreVal}<div class="nri-score-label">${scoreLabel}</div>` : (isPlaceholder ? '—' : (assignedIds.length > 0 ? '…' : '—'));
+    const scoreDisplay = scoreVal !== null ? `${scoreVal}<div class="nri-score-label">${scoreLabel}</div>` : (isPlaceholder ? '—' : (assignedIds.length > 0 ? '<div class="nri-score-label" style="font-size:9px;">Score</div>' : '—'));
 
     // Filter dots (compact representation for row)
     const filterDots = sf.map((f, fi) => {
@@ -17973,9 +17983,9 @@ function renderResumes() {
         <div class="nri-filters">${filterDots}</div>
         <div class="nri-score ${scoreClass}">${scoreDisplay}</div>
         <div class="nri-actions" onclick="event.stopPropagation()">
-          <button onclick="downloadResume(${i})" title="Download">\u2b07</button>
-          <button onclick="renameResume(${i})" title="Rename">\u270e</button>
-          <button onclick="archiveResume(${i})" title="Archive">\ud83d\udce6</button>
+          <button onclick="downloadResume(${i})" title="Download">⬇</button>
+          <button onclick="renameResume(${i})" title="Rename">✎</button>
+          <button onclick="archiveResume(${i})" title="Archive">📦</button>
         </div>
       </div>
       <div class="rc-grade-slot" id="rc-grade-${i}" style="display:none;"></div>
@@ -17983,7 +17993,7 @@ function renderResumes() {
       <div class="ai-panel" id="ai-panel-${i}">
         <div id="ai-panel-content-${i}">
           ${cachedScore ? buildReadinessSide(i, cachedScore) : (assignedIds.length > 0 && !isPlaceholder
-            ? '<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:20px 0;"><button class="btn btn-sm" id="rc-score-' + i + '" onclick="event.stopPropagation();handleScoreClick(' + i + ')" style="background:var(--accent);color:#fff;font-weight:600;padding:6px 18px;">Score Resume</button></div>'
+            ? '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:20px 0;"><button class="btn btn-sm" id="rc-score-' + i + '" onclick="event.stopPropagation();handleScoreClick(' + i + ')" style="background:var(--accent);color:#fff;font-weight:600;padding:6px 18px;">Analyze Resume</button><div style="font-size:10px;color:var(--text-faint);">Scores readiness against your assigned filter</div></div>'
             : '<div style="padding:16px 0;text-align:center;">' + (isPlaceholder
               ? '<div style="font-size:12px;color:var(--warm);cursor:pointer;" onclick="event.stopPropagation();replaceResumePlaceholder(' + i + ')">Upload a file to enable scoring</div>'
               : '<div style="font-size:12px;color:var(--text-faint);">Assign a filter to see readiness analysis</div>') + '</div>')}
