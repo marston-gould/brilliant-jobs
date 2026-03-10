@@ -52,6 +52,41 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**TAB-TEST-S3 + TAB-TEST-S4** — Résumés Tab + Cross-Tab Validation — Structural QA
+- Completed: 2026-03-10
+- No product version bump (test-only sessions — no JS/CSS/HTML user-facing changes)
+- ROADMAP.md updated: TAB-TEST-S3 → ✅, TAB-TEST-S4 → ✅
+- roadmap.html updated: TAB-TEST-S3 → `s: 'done'`, p: 100; TAB-TEST-S4 → `s: 'done'`, p: 100
+- **TAB-TEST-S3: 61 automated validation tests covering all 16 RE test cases (RE-001 through RE-016)** from Tab_Test_Sequence_v3_AllUsers.docx, Section 3: Résumés Tab
+- **11 test sections:**
+  - 3.1 Tab Load (RE-001–002): Tab nav, page container, lazy-loader TAB_CHUNKS (keywords+deferred), deferred build chunk, renderResumes top-level call, empty state upload prompt, cloud recovery, reportError compliance, buildResumeCard, filter associations, filter grouping
+  - 3.2 Upload (RE-003–005): Upload zone HTML, accept=.pdf/.doc/.docx, addResume function, Supabase Storage upload, first upload record creation, entitlement check, file type restriction, 5MB limit text, drag-and-drop support
+  - 3.3 Parse (RE-006–007): extractTextFromFile, textStatus transitions (extracting→ready/no-text), failed parse handling, extractResumeKeywords, per-resume pipeline isolation
+  - 3.4 AI Scoring (RE-008): handleRescore export, readinessCache in globals, score display per-resume index, buildInlineGrade per-resume
+  - 3.5 AI Rewrite (RE-009–010): launchRewriteInterview export, rewrite button, showResumePicker, resume picker overlay, UX-004 no alert()
+  - 3.6 Gap Analysis (RE-011): readiness analysis via keywords.js, readinessCache persistence
+  - 3.7 Archive (RE-012–013): archiveResume/unarchiveResume exports, archived flag, renderResumeArchive, active/archived separation, restore button
+  - 3.8 Error States (RE-014–016): no-text parse failure, reportError on upload failure, drag-and-drop error handling, updateResumeNavDot, safeReadLS null fallback
+  - Regression Prevention: UX-004 (no alert), POD3-SF (readinessCache in globals), PR-003 (keywords before deferred)
+  - User Profile Edge Cases: U-01 (empty upload prompt), U-03 (entitlement check), U-04 (cloud recovery), U-05 (filter grouping), U-06 (PII encryption)
+  - Build & Version + File Inventory
+- **TAB-TEST-S4: 35 automated validation tests covering all 5 XT test cases (XT-001 through XT-005)** from Tab_Test_Sequence_v3_AllUsers.docx, Section 4: Cross-Tab Validation
+- **6 test sections:**
+  - 4.1 Dismiss→Tuning (XT-001): hiddenJobIds in globals, feed dismiss writes+saves, tuning reads hiddenJobIds, shared localStorage key, empty array default, string→object migration
+  - 4.2 Tuning→Feed (XT-002): saveTuning persistence, _tuningDirty flag, feed tab checks+resets flag, buildFilterQuery reads tuning, US-Only/hourly propagation
+  - 4.3 Résumé→Filters (XT-003): showResumePicker, picker overlay, UX-004 no alert, resumes global access, picker renders names, chat accesses resumes
+  - 4.4 Score Consistency (XT-004): readinessCache in globals (shared), resumes tab reads cache, buildInlineGrade in keywords, bj_readiness persistence, per-resume index isolation
+  - 4.5 Profile Isolation (XT-005): RLS policies, currentUser scoping, PII encryption, user_filters scoping, saveUserData per-user, logout clears state
+  - Exit Criteria: All 3 tabs loadable, zero alert() for resumes, shared state in globals, all 4 test files exist, pod team manifest verified
+- **TAB TEST SEQUENCE COMPLETE** — All 4 sections done. 57 test cases × 6 profiles = 342 execution paths covered by 273 automated structural validation tests.
+- **Created:**
+  - `tests/tab-test-s3-resumes.test.js` — 61 validation tests
+  - `tests/tab-test-s4-cross-tab.test.js` — 35 validation tests
+- **Modified:**
+  - `ROADMAP.md` — TAB-TEST-S3 → ✅, TAB-TEST-S4 → ✅
+  - `roadmap.html` — TAB-TEST-S3 → done/100, TAB-TEST-S4 → done/100
+- **Tests:** 96 validation tests (61 S3 + 35 S4, all passing)
+
 **TAB-TEST-S2** — Tuning Tab — Structural QA Validation
 - Completed: 2026-03-10
 - No product version bump (test-only session — no JS/CSS/HTML user-facing changes)
