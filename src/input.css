@@ -1295,7 +1295,7 @@
     .job-data-row .sf-del {
       opacity: 0.4; font-size: 11px; color: var(--text-faint); cursor: pointer;
       width: 20px; text-align: center; flex-shrink: 0; border-radius: 4px;
-      transition: opacity 0.15s;
+      transition: opacity 0.15s; margin-right: 6px;
     }
     .job-data-row:hover .sf-del { opacity: 1; }
     .job-data-row .sf-del:hover { color: var(--red); background: var(--red-dim); }
