@@ -522,6 +522,15 @@ async function unsaveFromPipeline(jobId) {
   renderPipeline();
 }
 
+// ── Assign a resume to a pipeline entry ──────────────────────
+function setPipelineResume(jobId, resumeName) {
+  const meta = _pipelineCache[jobId];
+  if (!meta) return;
+  meta.resumeUsed = resumeName;
+  savePipelineEntry(jobId, meta);
+  renderPipeline();
+}
+
 // ── Collapse toggle ──────────────────────────────────────────
 function togglePipelineStage(headerEl) {
   const section = headerEl.closest('.pl-stage-section');
@@ -653,7 +662,7 @@ async function renderPipeline() {
     }
 
     let html = '<table class="pl-table"><thead><tr>';
-    html += '<th></th><th>Title</th><th>Company</th><th>Discovered</th><th>Days In Stage</th>';
+    html += '<th></th><th>Title</th><th>Company</th><th>Level</th><th>Discovered</th><th>Days In Stage</th>';
     html += '<th>Filter</th><th>Resume</th><th>Match</th><th></th><th>Move</th><th></th>';
     html += '</tr></thead><tbody>';
 
@@ -666,9 +675,33 @@ async function renderPipeline() {
       if (j && !m.title) { m.title = title; m.company = company; }
       if (j && j.salary_max && !m.salaryEstimate) { m.salaryEstimate = j.salary_max; }
       const discovered = j?.first_seen_at ? new Date(j.first_seen_at).toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '—';
-      const appliedDate = m.appliedAt ? new Date(m.appliedAt) : null;
-      const dayApplied = appliedDate ? appliedDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '—';
-      const resumeName = m.resumeUsed || '—';
+
+      // Job level detection
+      const levelInfo = typeof getJobLevel === 'function' ? getJobLevel(title, window._activeLevelHierarchy || levelHierarchy || []) : null;
+      const levelCell = levelInfo
+        ? '<span class="level-badge" style="background:' + levelInfo.color + '20;color:' + levelInfo.color + ';">' + levelInfo.label + '</span>'
+        : '—';
+
+      // Auto-match resume: find a resume with matching filter + level
+      let resumeName = m.resumeUsed || '';
+      if (!resumeName && typeof resumes !== 'undefined') {
+        var _filterTags = m.filterTags || [];
+        var _levelLabel = levelInfo ? levelInfo.label : '';
+        // Try filter+level match first, then filter-only, then level-only
+        var bestResume = null;
+        for (var ri = 0; ri < resumes.length; ri++) {
+          var _r = resumes[ri];
+          if (_r.archived) continue;
+          var _rFilters = _r.filterIds || [];
+          var _rLevels = _r.levelLabels || (_r.levelLabel ? [_r.levelLabel] : []);
+          var filterMatch = _filterTags.length > 0 && _filterTags.some(function(t) { return _rFilters.includes(t); });
+          var levelMatch = _levelLabel && _rLevels.includes(_levelLabel);
+          if (filterMatch && levelMatch) { bestResume = _r; break; }
+          if (filterMatch && !bestResume) bestResume = _r;
+          if (levelMatch && !bestResume) bestResume = _r;
+        }
+        if (bestResume) resumeName = bestResume.name;
+      }
 
       const stageDate = m.respondedAt ? new Date(m.respondedAt) :
                         m.appliedAt ? new Date(m.appliedAt) :
@@ -728,10 +761,27 @@ async function renderPipeline() {
       html += '<td style="width:16px;text-align:center;padding:4px 2px;">' + staleDot + '</td>';
       html += '<td class="pl-title" onclick="openJobModal(\'' + item.id + '\')" title="' + title.replace(/"/g, '&quot;') + '">' + (title.length > 35 ? title.slice(0,35) + '…' : title) + '</td>';
       html += '<td class="pl-company" title="' + company.replace(/"/g, '&quot;') + '">' + (company.length > 20 ? company.slice(0,20) + '…' : company) + '</td>';
+      html += '<td>' + levelCell + '</td>';
       html += '<td class="pl-date">' + discovered + '</td>';
       html += '<td class="pl-days">' + daysInStage + (typeof daysInStage === 'number' ? 'd' : '') + '</td>';
       html += '<td>' + (filterBadges || '<span style="color:var(--text-faint);font-size:10px;">—</span>') + '</td>';
-      html += '<td>' + (resumeName !== '—' ? '<span class="pl-resume-badge" title="' + resumeName + '">' + resumeName + '</span>' : '<span style="color:var(--text-faint);font-size:11px;">—</span>') + '</td>';
+
+      // Resume cell — auto-matched name with picker override
+      var resumeOpts = '<option value="">— Pick —</option>';
+      if (typeof resumes !== 'undefined') {
+        for (var _ri2 = 0; _ri2 < resumes.length; _ri2++) {
+          if (resumes[_ri2].archived) continue;
+          var _sel = resumes[_ri2].name === resumeName ? ' selected' : '';
+          resumeOpts += '<option value="' + resumes[_ri2].name.replace(/"/g, '&quot;') + '"' + _sel + '>' + resumes[_ri2].name + '</option>';
+        }
+      }
+      if (resumeName) {
+        html += '<td><span class="pl-resume-badge" title="' + resumeName + '" style="cursor:pointer;" onclick="this.style.display=\'none\';this.nextElementSibling.style.display=\'inline-block\'">' + (resumeName.length > 15 ? resumeName.slice(0,15) + '…' : resumeName) + '</span>';
+        html += '<select class="pl-move-select" style="display:none;font-size:10px;" onchange="setPipelineResume(\'' + item.id + '\',this.value)">' + resumeOpts + '</select></td>';
+      } else {
+        html += '<td><select class="pl-move-select" style="font-size:10px;" onchange="setPipelineResume(\'' + item.id + '\',this.value)">' + resumeOpts + '</select></td>';
+      }
+
       html += '<td class="pl-match" style="' + matchColor + '">' + matchScore + '</td>';
 
       // Apply CTA
@@ -779,7 +829,7 @@ async function renderPipeline() {
           : null;
 
         html += '<tr class="pl-signal-row" id="signal-card-' + pendingSig.id + '" style="display:none;">';
-        html += '<td colspan="11" style="padding:0;">';
+        html += '<td colspan="12" style="padding:0;">';
         html += '<div class="pl-signal-card" style="border-left:3px solid ' + borderColor + ';">';
         html += '<div class="pl-signal-header"><span class="pl-signal-icon">' + icon + '</span> ' + headerText + '</div>';
         if (evidence) html += '<div class="pl-signal-evidence">' + evidence + '</div>';

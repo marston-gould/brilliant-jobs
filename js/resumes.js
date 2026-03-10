@@ -197,16 +197,20 @@ function renderResumes() {
     const assignedIds = r.filterIds || [];
     const isPlaceholder = r.needsUpload;
 
-    // Level selector
+    // Level selector — multi-select pills (like filter pills)
     const levels = (safeReadLS('bj_tuning', {}).levelHierarchy || []).filter(l => l.label);
-    const levelOpts = levels.map(l => {
-      const sel = r.levelLabel === l.label ? ' selected' : '';
-      return `<option value="${l.label}" data-color="${l.color || '#94a3b8'}"${sel}>${l.label}</option>`;
-    }).join('');
-    const levelSelect = `<select class="pl-move-select" onchange="setResumeLevel(${i}, this)" style="min-width:100px;">
-      <option value="">— Level —</option>
-      ${levelOpts}
-    </select>`;
+    // Backward compat: r.levelLabel (string) → r.levelLabels (array)
+    const assignedLevels = r.levelLabels || (r.levelLabel ? [r.levelLabel] : []);
+    const levelPills = levels.length > 0
+      ? levels.map(l => {
+          const isActive = assignedLevels.includes(l.label);
+          const color = l.color || '#94a3b8';
+          return `<span class="rc-filter-pill ${isActive ? 'active' : 'inactive'}"
+            style="background:${color}${isActive ? '22' : '10'};color:${color};border:1px solid ${color}${isActive ? '44' : '15'};cursor:pointer;"
+            onclick="event.stopPropagation();toggleResumeLevel(${i}, '${l.label.replace(/'/g, "\\\\'")}')"
+            title="Click to ${isActive ? 'remove' : 'add'} level">${l.label}</span>`;
+        }).join('')
+      : '<span style="font-size:11px;color:var(--text-faint);font-style:italic;">Set levels in Search Tuning first</span>';
 
     const gdriveIcon = r.source === 'gdrive'
       ? '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(66,133,244,0.1);color:#4285F4;">Drive</span>'
@@ -278,8 +282,8 @@ function renderResumes() {
           const color = filterColors[fi % filterColors.length];
           const isActive = assignedIds.includes(f.name);
           return `<span class="rc-filter-pill ${isActive ? 'active' : 'inactive'}"
-            style="background:${color}${isActive ? '22' : '10'};color:${color};border:1px solid ${color}${isActive ? '44' : '15'};"
-            data-resume="${i}" data-filter="${f.name}" onclick="toggleResumeFilter(${i}, '${f.name.replace(/'/g, "\\\\'")}')"
+            style="background:${color}${isActive ? '22' : '10'};color:${color};border:1px solid ${color}${isActive ? '44' : '15'};cursor:pointer;"
+            data-resume="${i}" data-filter="${f.name}" onclick="event.stopPropagation();toggleResumeFilter(${i}, '${f.name.replace(/'/g, "\\\\'")}')"
             title="Click to ${isActive ? 'unassign' : 'assign'}">${f.name}</span>`;
         }).join('')
       : '<span style="font-size:11px;color:var(--text-faint);font-style:italic;">Save a filter first to assign</span>';
@@ -314,7 +318,7 @@ function renderResumes() {
         <div class="nri-icon ${icon.cls}">${isPlaceholder ? '?' : icon.text}</div>
         <div class="nri-info">
           <div class="nri-name" title="${escapeHtml(r.name||'')}">${escapeHtml(r.name)}${gdriveIcon}${tierBadge}${aiBadge}${scoreHistory}${rescoreBtn}</div>
-          <div class="nri-meta">${!isPlaceholder ? r.size + ' \u00b7 ' + r.uploadedAt : 'Placeholder'} \u00b7 ${assignedIds.length} filter${assignedIds.length !== 1 ? 's' : ''}${r.levelLabel ? ' \u00b7 ' + r.levelLabel : ''}${jobsApplied > 0 ? ' \u00b7 ' + jobsApplied + ' applied' : ''}</div>
+          <div class="nri-meta">${!isPlaceholder ? r.size + ' \u00b7 ' + r.uploadedAt : 'Placeholder'} \u00b7 ${assignedIds.length} filter${assignedIds.length !== 1 ? 's' : ''}${assignedLevels.length > 0 ? ' \u00b7 ' + assignedLevels.join(', ') : ''}${jobsApplied > 0 ? ' \u00b7 ' + jobsApplied + ' applied' : ''}</div>
         </div>
         <div class="nri-filters">${filterDots}</div>
         <div class="nri-score ${scoreClass}">${scoreDisplay}</div>
@@ -339,7 +343,10 @@ function renderResumes() {
           <span style="font-size:10px;font-weight:600;color:var(--text-faint);margin-right:4px;line-height:22px;">Filters:</span>
           ${filterPills}
         </div>
-        <div style="margin-top:8px;">${levelSelect}</div>` : ''}
+        <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:flex;gap:4px;flex-wrap:wrap;">
+          <span style="font-size:10px;font-weight:600;color:var(--text-faint);margin-right:4px;line-height:22px;">Levels:</span>
+          ${levelPills}
+        </div>` : ''}
         <!-- Rewrite Interview Promo -->
         ${cachedScore && cachedScore.overallScore < 85 && !isPlaceholder ? `
         <div class="ai-rewrite-promo">
@@ -532,16 +539,45 @@ window.toggleResumeFilter = function(resumeIdx, filterName) {
   jobMatchScores = {};
   saveResumes();
   renderResumes();
+  // Re-open the panel that was active before re-render
+  if (_activeResumePanel >= 0) {
+    var panel = document.getElementById('ai-panel-' + _activeResumePanel);
+    var row = document.getElementById('nri-' + _activeResumePanel);
+    if (panel) panel.classList.add('open');
+    if (row) row.classList.add('selected');
+  }
 };
 
-window.setResumeLevel = function(idx, selectEl) {
-  const val = selectEl.value;
+window.toggleResumeLevel = function(idx, levelLabel) {
+  const r = resumes[idx];
+  // Migrate from old single levelLabel to new levelLabels array
+  if (!r.levelLabels) r.levelLabels = r.levelLabel ? [r.levelLabel] : [];
+  const pos = r.levelLabels.indexOf(levelLabel);
+  if (pos >= 0) {
+    r.levelLabels.splice(pos, 1);
+  } else {
+    r.levelLabels.push(levelLabel);
+  }
+  // Keep backward compat: levelLabel = first assigned or empty
+  r.levelLabel = r.levelLabels[0] || '';
   const levels = (safeReadLS('bj_tuning', {}).levelHierarchy || []);
-  const lvl = levels.find(l => l.label === val);
-  resumes[idx].levelLabel = val || '';
-  resumes[idx].levelColor = lvl?.color || '#94a3b8';
+  const lvl = levels.find(l => l.label === r.levelLabel);
+  r.levelColor = lvl?.color || '#94a3b8';
   saveResumes();
   renderResumes();
+  // Re-open panel
+  if (_activeResumePanel >= 0) {
+    var panel = document.getElementById('ai-panel-' + _activeResumePanel);
+    var row = document.getElementById('nri-' + _activeResumePanel);
+    if (panel) panel.classList.add('open');
+    if (row) row.classList.add('selected');
+  }
+};
+
+// Backward compat alias
+window.setResumeLevel = function(idx, selectEl) {
+  var val = selectEl.value;
+  toggleResumeLevel(idx, val);
 };
 
 window.archiveResume = async function(idx) {
@@ -1658,7 +1694,7 @@ window._bjFileStore = bjFileStore;
 // CS-P1-004 FE-005: Register resumes.js exports with BJ namespace
 (function() {
   var exports = [
-    'toggleResumeFilter', 'setResumeLevel', 'archiveResume', 'unarchiveResume',
+    'toggleResumeFilter', 'setResumeLevel', 'toggleResumeLevel', 'archiveResume', 'unarchiveResume',
     'rescoreResumeAI', 'handleRescore', 'toggleResumeKeywords', 'toggleResumePanel',
     'renameResume', 'confirmDeleteResume', 'removeResume', 'downloadResume',
     'replaceResumePlaceholder', 'reUploadResume', 'launchRewriteInterview',
