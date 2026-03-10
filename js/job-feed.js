@@ -414,11 +414,14 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
         }
       }
       // v7.68: When includeRemote is ON, add remote to the location OR clause.
-      // UX-001: When US-Only is active, only include US-based remote jobs.
-      // Without US constraint, is_remote=true/loc_type=remote matches worldwide remote jobs,
-      // and Tier 4 of the US-Only filter trusts bare "Remote" with NULL country.
+      // UX-001: When US-Only is active OR the pill is a US country pill, only include
+      // US-scoped remote jobs. Bare is_remote=true / loc_type=remote matches worldwide.
       if (sf.includeRemote === true) {
-        if (tuning.usOnly) {
+        const pillIsUS = pill.values.some(v => {
+          const code = COUNTRY_MAP[v.toLowerCase().trim()];
+          return code === 'US';
+        });
+        if (tuning.usOnly || pillIsUS) {
           // Only remote jobs with US evidence — use shared us-filter.js clauses
           allClauses.push.apply(allClauses, buildUSRemoteClauses());
         } else {
