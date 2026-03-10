@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.52';
+var BJ_VERSION = 'v8.53';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -1416,6 +1416,8 @@ async function syncHealthCheck(): Promise<void> {
     var lsKey = UD_KEYS[_shortKey]!;
     try {
       var raw = localStorage.getItem(lsKey);
+      // Encrypted PII values (enc: prefix) are present — do not treat as missing
+      if (raw && raw.startsWith('enc:')) continue;
       var parsed: unknown = raw ? JSON.parse(raw) : null;
       var empty = parsed == null ||
         (Array.isArray(parsed) && parsed.length === 0) ||

@@ -39,6 +39,8 @@ async function syncHealthCheck(): Promise<void> {
     var lsKey = UD_KEYS[_shortKey]!;
     try {
       var raw = localStorage.getItem(lsKey);
+      // Encrypted PII values (enc: prefix) are present — do not treat as missing
+      if (raw && raw.startsWith('enc:')) continue;
       var parsed: unknown = raw ? JSON.parse(raw) : null;
       var empty = parsed == null ||
         (Array.isArray(parsed) && parsed.length === 0) ||

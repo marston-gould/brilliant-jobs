@@ -31,6 +31,7 @@ async function syncHealthCheck() {
     var lsKey = UD_KEYS[_shortKey];
     try {
       var raw = localStorage.getItem(lsKey);
+      if (raw && raw.startsWith("enc:")) continue;
       var parsed = raw ? JSON.parse(raw) : null;
       var empty = parsed == null || Array.isArray(parsed) && parsed.length === 0 || typeof parsed === "object" && !Array.isArray(parsed) && Object.keys(parsed).length === 0;
       if (empty) missing.push(_shortKey);
