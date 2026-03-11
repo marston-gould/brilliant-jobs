@@ -52,6 +52,66 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**EXT-AS-6** — Auto Modes + Autopilot + Limits (Handoff Phase 6)
+- Completed: 2026-03-11
+- Product version bumped: `v8.67` → `v8.68` (Extension background.ts auto mode routing + daily limit + overlay auto toasts + contentScript bridge; all HTML surfaces cache-busted)
+- Extension manifest: 2.26.0 → 2.27.0
+- ROADMAP.md updated: EXT-AS-6 → ✅
+- roadmap.html updated: EXT-AS-6 → `s: 'done'`, p: 100
+- **Daily Apply Limit Enforcement:**
+  - `_checkDailyApplyLimit()` reads `dailyApplyCount` from chrome.storage.local, returns `{ allowed, count, limit }`
+  - Date-based reset: counter resets when date string (YYYY-MM-DD) changes
+  - Default limit: 25 (configurable via `applySettings.dailyApplyLimit`)
+  - `_incrementDailyApplyCount()` increments counter and persists
+- **Auto-Apply Mode (`auto-apply`):**
+  - Bypasses scoring and rewriting — immediate `ats:fill`
+  - Checks daily limit before proceeding
+  - Sends `bj:toolbar:autoApplyStatus` with step='filling' to overlay
+  - Sends `bj:toolbar:applyStatus` with action='auto_apply' to trigger native apply
+  - PostHog `auto_apply_submitted` event with platform, mode, daily_count
+- **Auto-Rewrite Mode (`auto-rewrite`):**
+  - Score → Rewrite → Auto-submit (no review popup)
+  - Checks daily limit before proceeding
+  - 3-step progress: scoring → rewriting → filling via `bj:toolbar:autoApplyStatus`
+  - If rewrite fails, falls back to submitting original resume (`auto_rewrite_fallback`)
+  - PostHog `auto_rewrite_submitted` event with platform, score, rewrite_succeeded, estimated_new_score, daily_count
+- **Full-Autopilot Mode (`full-autopilot`):**
+  - Rewrite ALL → Submit ALL (skips scoring entirely)
+  - Checks daily limit before proceeding
+  - Passes score: 0 and empty gaps to rewrite function
+  - If rewrite fails, still submits with original resume (`autopilot_fallback`)
+  - PostHog `full_autopilot_submitted` event with platform, rewrite_succeeded, daily_count
+- **Limit Reached Handling:**
+  - All 3 auto modes check `_checkDailyApplyLimit()` before processing
+  - When limit exceeded: sends `bj:toolbar:limitReached` with count/limit to overlay
+  - Overlay shows toast: "Daily apply limit reached (X/Y). Resets tomorrow."
+  - PostHog `daily_apply_limit_reached` event with count, limit, mode
+- **Overlay Updates (job-site-overlay.ts):**
+  - `showAutoApplyToast(step, message, mode)`: Mode-labeled toasts for auto progress steps
+  - `showLimitReachedToast(count, limit)`: Limit warning toast
+  - Both functions exported to `window._bjJobSiteOverlay`
+  - Window message listener handles `bj:toolbar:autoApplyStatus` and `bj:toolbar:limitReached`
+- **ContentScript Bridge Extended (contentScript.ts):**
+  - Now bridges 6 message types: scoreGate, applyStatus, rewriteProgress, rewriteResult, autoApplyStatus, limitReached
+  - Comment updated to EXT-AS-4/5/6
+- **Pod Team Manifest:**
+  - EXT-AS-6 pairing: Lead Platform Eng + Forward-Looking Dev (primary), Chief Architect + Evolvability Strategist (reviewers)
+  - All 5 hook-and-scar roles confirmed present since SA-006
+- **Modified:**
+  - `extension/background.ts` — _checkDailyApplyLimit, _incrementDailyApplyCount, auto-apply/auto-rewrite/full-autopilot mode routing in APPLY_INTERCEPTED
+  - `extension/contentScript.ts` — Bridge extended for autoApplyStatus + limitReached
+  - `extension/job-site-overlay.ts` — showAutoApplyToast + showLimitReachedToast + message handlers + exports
+  - `extension/manifest.json` — v2.26.0 → v2.27.0
+  - `docs/scaling/pod-team-manifest.md` — EXT-AS-6 pairing
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — EXT-AS-6 → ✅
+  - `roadmap.html` — EXT-AS-6 → done/100
+- **Created:**
+  - `tests/ext-as-6-auto-modes.test.js` — 66 validation tests (13 sections)
+- **Tests:** 66 validation tests (all passing)
+
 **EXT-AS-5** — AI Resume Rewrite Flow (Handoff Phase 5)
 - Completed: 2026-03-11
 - Product version bumped: `v8.66` → `v8.67` (Extension job-site-overlay.ts rewrite progress + review popups, background.ts _rewriteResumeForJob + rewriteDecision handler, contentScript.ts bridge extension, rewrite-resume-extension EF; all HTML surfaces cache-busted)
@@ -1769,13 +1829,14 @@ None. FEED-FIX-006 complete.
 
 No specific session queued. EXT-AS-5 complete.
 
-**EXT-AS series (9 sessions total, 5 done):**
+**EXT-AS series (9 sessions total, 6 done):**
 - EXT-AS-1 ✅ — Applicant Profile + Settings Sync
 - EXT-AS-2 ✅ — Consumer Popup UI + Mode Persistence
 - EXT-AS-3 ✅ — Content Script: Save Button + Apply Interception
 - EXT-AS-4 ✅ — Score Gate Popup + Resume Scoring
 - EXT-AS-5 ✅ — AI Resume Rewrite Flow
-- EXT-AS-6 through EXT-AS-9 — Auto modes, dashboard routing, settings panel, PostHog QA
+- EXT-AS-6 ✅ — Auto Modes + Autopilot + Limits
+- EXT-AS-7 through EXT-AS-9 — Dashboard routing, settings panel, PostHog QA
 
 **Pending from EXT-AS spec (Marston to prioritize):**
 - EXT-AS-2 requires extension-ux-prototype.html designs
@@ -1837,7 +1898,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.67`** | **EXT-AS-5: AI Resume Rewrite Flow** |
+| **Product (BJ_VERSION)** | **`v8.68`** | **EXT-AS-6: Auto Modes + Autopilot + Limits** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

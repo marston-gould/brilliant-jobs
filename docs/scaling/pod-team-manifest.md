@@ -106,3 +106,4 @@
 | EXT-AS-3 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + System Architect—Scalability |
 | EXT-AS-4 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
 | EXT-AS-5 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
+| EXT-AS-6 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |

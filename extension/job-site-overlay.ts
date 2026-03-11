@@ -928,6 +928,18 @@
       hideRewriteProgressPopup();
       showRewriteReviewPopup(rr);
     }
+
+    // EXT-AS-6: Auto mode status updates (scoring, rewriting, filling)
+    if (evt.data.type === 'bj:toolbar:autoApplyStatus') {
+      var aa = evt.data.payload || {};
+      showAutoApplyToast(aa.step, aa.message || '', aa.mode || '');
+    }
+
+    // EXT-AS-6: Daily apply limit reached
+    if (evt.data.type === 'bj:toolbar:limitReached') {
+      var lr = evt.data.payload || {};
+      showLimitReachedToast(lr.count || 0, lr.limit || 25);
+    }
   });
 
   // ── EXT-AS-5: Rewrite Progress Popup ──────────────────────────
@@ -1205,6 +1217,47 @@
     });
   }
 
+  // ── EXT-AS-6: Auto Mode Toast ────────────────────────────────
+  var _autoApplyToastTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function showAutoApplyToast(step: string, message: string, mode: string) {
+    // Clear any previous auto toast timer
+    if (_autoApplyToastTimer) {
+      clearTimeout(_autoApplyToastTimer);
+      _autoApplyToastTimer = null;
+    }
+
+    var modeLabel: Record<string, string> = {
+      'auto-apply': 'Auto Apply',
+      'auto-rewrite': 'Auto Rewrite',
+      'full-autopilot': 'Full Autopilot',
+    };
+
+    var stepIcons: Record<string, string> = {
+      'scoring': '🔍',
+      'rewriting': '✍️',
+      'filling': '📤',
+    };
+
+    var prefix = modeLabel[mode] || 'Auto';
+    var icon = stepIcons[step] || '⚡';
+    var toastText = icon + ' ' + prefix + ': ' + (message || step);
+
+    showToast(toastText);
+
+    // Auto-dismiss filling toast after 5 seconds
+    if (step === 'filling') {
+      _autoApplyToastTimer = setTimeout(function () {
+        // Toast auto-dismisses (showToast handles its own timer)
+        _autoApplyToastTimer = null;
+      }, 5000);
+    }
+  }
+
+  function showLimitReachedToast(count: number, limit: number) {
+    showToast('⚠️ Daily apply limit reached (' + count + '/' + limit + '). Resets tomorrow.');
+  }
+
   // ── Exports for testing ───────────────────────────────────────
   window._bjJobSiteOverlay = {
     currentSite: currentSite,
@@ -1225,6 +1278,8 @@
     hideRewriteReviewPopup: hideRewriteReviewPopup,
     isRewriteProgressActive: function () { return _rewriteProgressActive; },
     isRewriteReviewActive: function () { return _rewriteReviewActive; },
+    showAutoApplyToast: showAutoApplyToast,
+    showLimitReachedToast: showLimitReachedToast,
   };
 
 })();

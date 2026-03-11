@@ -11,7 +11,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v8.67"></script>
+  <script src="/js/version.js?v=v8.68"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2203,7 +2203,7 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'EXT-AS-3 Content Script: Save + Apply Interception', d: 'Handoff Phases 2+3: job-site-overlay.ts, per-site DOM selectors (9 sites), Save-to-BJ-Pipeline branded button (Shadow DOM), apply button interception via MutationObserver.', p: 100, e: '5h' },
 { s: 'done', b: 'post-launch', n: 'EXT-AS-4 Score Gate Popup + Resume Scoring', d: 'Handoff Phase 4: Shadow DOM popup on job page with score ring, gap analysis, threshold comparison, rewrite CTA. 75 validation tests.', p: 100, e: '5h' },
 { s: 'done', b: 'post-launch', n: 'EXT-AS-5 AI Resume Rewrite Flow', d: 'Handoff Phase 5: Rewrite-in-progress UI, rewrite review diff view, submit rewritten resume via ats:fill.', p: 100, e: '5h' },
-{ s: 'todo', b: 'post-launch', n: 'EXT-AS-6 Auto Modes + Autopilot + Limits', d: 'Handoff Phase 6: Auto Apply, Auto+Score Gate, Auto Rewrite, Full Autopilot, daily apply limit enforcement.', p: 0, e: '4h' },
+{ s: 'done', b: 'post-launch', n: 'EXT-AS-6 Auto Modes + Autopilot + Limits', d: 'Auto-apply, auto-rewrite, full-autopilot mode routing. Daily apply limit enforcement (25 default). Limit toast. 4 PostHog events. 66 tests. v8.68.', p: 100, e: '4h' },
 { s: 'todo', b: 'post-launch', n: 'EXT-AS-7 Dashboard Worker Routing', d: 'apply-workflow.js queues to pending_applications, dashboard polls status, bulk apply from Pipeline.', p: 0, e: '4h' },
 { s: 'todo', b: 'post-launch', n: 'EXT-AS-8 Settings + Activity Feed + Pipeline View', d: 'Handoff Phase 7: Extension settings panel, activity feed (50 items), pipeline summary from Supabase.', p: 0, e: '3h' },
 { s: 'todo', b: 'post-launch', n: 'EXT-AS-9 PostHog Instrumentation + QA', d: 'Handoff Phase 8: 14 PostHog events, extension submission_attempts logging, admin method breakdown, edge case QA.', p: 0, e: '3h' },

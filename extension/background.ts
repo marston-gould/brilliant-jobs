@@ -1595,9 +1595,35 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return rewriteResult;
   }
 
-  // ── EXT-AS-3: APPLY_INTERCEPTED — Apply button click intercepted by overlay ──
-  // Routes to appropriate flow based on application mode (EXT-AS-4/5/6 will extend).
-  // For now: acknowledge receipt, log event, store pending interception.
+  // ── EXT-AS-6: Daily apply limit helpers ──
+  // Checks and increments the daily apply counter in chrome.storage.local.
+  async function _checkDailyApplyLimit(): Promise<{ allowed: boolean; count: number; limit: number }> {
+    const data = await chrome.storage.local.get(['dailyApplyCount', 'applySettings']);
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const counter = data.dailyApplyCount || { date: '', count: 0 };
+    const limit = data.applySettings?.dailyApplyLimit || 25;
+
+    // Reset counter if date changed
+    if (counter.date !== today) {
+      await chrome.storage.local.set({ dailyApplyCount: { date: today, count: 0 } });
+      return { allowed: true, count: 0, limit };
+    }
+
+    return { allowed: counter.count < limit, count: counter.count, limit };
+  }
+
+  async function _incrementDailyApplyCount(): Promise<number> {
+    const data = await chrome.storage.local.get('dailyApplyCount');
+    const today = new Date().toISOString().slice(0, 10);
+    const counter = data.dailyApplyCount || { date: '', count: 0 };
+    const newCount = (counter.date === today) ? counter.count + 1 : 1;
+    await chrome.storage.local.set({ dailyApplyCount: { date: today, count: newCount } });
+    return newCount;
+  }
+
+  // ── EXT-AS-3/4/5/6: APPLY_INTERCEPTED — Apply button click intercepted by overlay ──
+  // Routes to appropriate flow based on application mode.
+  // EXT-AS-4: score-gated + auto-score-gate. EXT-AS-5: rewrite flow. EXT-AS-6: auto modes + limits.
   if (msg.type === 'APPLY_INTERCEPTED') {
     (async () => {
       try {
@@ -1674,11 +1700,210 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           });
 
           sendResponse({ status: 'scoring_complete', score: score, isAboveThreshold: isAboveThreshold, mode: mode });
+        } else if (mode === 'auto-apply') {
+          // ── EXT-AS-6: Auto Apply — bypass popup, immediate ats:fill ──
+          const tabId = sender?.tab?.id;
+          if (!tabId) {
+            sendResponse({ status: 'error', error: 'no_tab_id' });
+            return;
+          }
+
+          // Check daily apply limit
+          const limitCheck = await _checkDailyApplyLimit();
+          if (!limitCheck.allowed) {
+            chrome.tabs.sendMessage(tabId, {
+              type: 'bj:toolbar:limitReached',
+              payload: { count: limitCheck.count, limit: limitCheck.limit, mode },
+            });
+            captureEvent('daily_apply_limit_reached', { count: limitCheck.count, limit: limitCheck.limit, mode });
+            sendResponse({ status: 'limit_reached', count: limitCheck.count, limit: limitCheck.limit });
+            return;
+          }
+
+          // Send auto-apply status to overlay
+          chrome.tabs.sendMessage(tabId, {
+            type: 'bj:toolbar:autoApplyStatus',
+            payload: { step: 'filling', mode, message: 'Auto-applying...' },
+          });
+
+          // Proceed with filling immediately (no scoring, no rewriting)
+          chrome.tabs.sendMessage(tabId, {
+            type: 'bj:toolbar:applyStatus',
+            payload: { status: 'filling', action: 'auto_apply' },
+          });
+
+          const newCount = await _incrementDailyApplyCount();
+          captureEvent('auto_apply_submitted', {
+            platform: p.platform,
+            mode,
+            daily_count: newCount,
+          });
+          sendResponse({ status: 'auto_applying', mode, daily_count: newCount });
+
+        } else if (mode === 'auto-rewrite') {
+          // ── EXT-AS-6: Auto Rewrite — score → rewrite → auto-submit (no review popup) ──
+          const tabId = sender?.tab?.id;
+          if (!tabId) {
+            sendResponse({ status: 'error', error: 'no_tab_id' });
+            return;
+          }
+
+          // Check daily apply limit
+          const limitCheck = await _checkDailyApplyLimit();
+          if (!limitCheck.allowed) {
+            chrome.tabs.sendMessage(tabId, {
+              type: 'bj:toolbar:limitReached',
+              payload: { count: limitCheck.count, limit: limitCheck.limit, mode },
+            });
+            captureEvent('daily_apply_limit_reached', { count: limitCheck.count, limit: limitCheck.limit, mode });
+            sendResponse({ status: 'limit_reached', count: limitCheck.count, limit: limitCheck.limit });
+            return;
+          }
+
+          // Step 1: Send scoring progress
+          chrome.tabs.sendMessage(tabId, {
+            type: 'bj:toolbar:autoApplyStatus',
+            payload: { step: 'scoring', mode, message: 'Scoring resume...' },
+          });
+
+          // Step 2: Score resume
+          const scoreResult = await _scoreResumeForJob(tabId, p);
+          if (!scoreResult) {
+            chrome.tabs.sendMessage(tabId, {
+              type: 'bj:toolbar:applyStatus',
+              payload: { status: 'error', error: 'scoring_failed', action: 'auto_rewrite' },
+            });
+            sendResponse({ status: 'error', error: 'scoring_failed' });
+            return;
+          }
+
+          const arScore = scoreResult.match_score ?? scoreResult.overall_score ?? 0;
+          const arThreshold = p.scoreThreshold || 75;
+
+          // Step 3: Send rewriting progress
+          chrome.tabs.sendMessage(tabId, {
+            type: 'bj:toolbar:autoApplyStatus',
+            payload: { step: 'rewriting', mode, message: 'Rewriting resume...' },
+          });
+
+          // Step 4: Rewrite resume (no review popup)
+          const rewriteResult = await _rewriteResumeForJob(tabId, p, {
+            score: arScore,
+            gaps: scoreResult.gap_analysis || scoreResult.gaps || [],
+            gap_analysis: scoreResult.gap_analysis || scoreResult.gaps || [],
+          });
+
+          if (!rewriteResult) {
+            // Rewrite failed — fall back to submitting with original resume
+            chrome.tabs.sendMessage(tabId, {
+              type: 'bj:toolbar:autoApplyStatus',
+              payload: { step: 'filling', mode, message: 'Rewrite failed — submitting original...' },
+            });
+            chrome.tabs.sendMessage(tabId, {
+              type: 'bj:toolbar:applyStatus',
+              payload: { status: 'filling', action: 'auto_rewrite_fallback' },
+            });
+          } else {
+            // Auto-submit rewritten resume (no review)
+            chrome.tabs.sendMessage(tabId, {
+              type: 'bj:toolbar:autoApplyStatus',
+              payload: { step: 'filling', mode, message: 'Submitting rewritten resume...' },
+            });
+            chrome.tabs.sendMessage(tabId, {
+              type: 'bj:toolbar:applyStatus',
+              payload: {
+                status: 'filling',
+                action: 'auto_rewrite',
+                use_rewrite: true,
+                rewritten_text: rewriteResult.rewritten_text || '',
+              },
+            });
+          }
+
+          const arNewCount = await _incrementDailyApplyCount();
+          captureEvent('auto_rewrite_submitted', {
+            platform: p.platform,
+            mode,
+            score: arScore,
+            threshold: arThreshold,
+            rewrite_succeeded: !!rewriteResult,
+            estimated_new_score: rewriteResult?.estimated_new_score || arScore,
+            daily_count: arNewCount,
+          });
+          sendResponse({ status: 'auto_rewrite_complete', mode, daily_count: arNewCount });
+
+        } else if (mode === 'full-autopilot') {
+          // ── EXT-AS-6: Full Autopilot — rewrite ALL → submit ALL ──
+          const tabId = sender?.tab?.id;
+          if (!tabId) {
+            sendResponse({ status: 'error', error: 'no_tab_id' });
+            return;
+          }
+
+          // Check daily apply limit
+          const limitCheck = await _checkDailyApplyLimit();
+          if (!limitCheck.allowed) {
+            chrome.tabs.sendMessage(tabId, {
+              type: 'bj:toolbar:limitReached',
+              payload: { count: limitCheck.count, limit: limitCheck.limit, mode },
+            });
+            captureEvent('daily_apply_limit_reached', { count: limitCheck.count, limit: limitCheck.limit, mode });
+            sendResponse({ status: 'limit_reached', count: limitCheck.count, limit: limitCheck.limit });
+            return;
+          }
+
+          // Step 1: Send rewriting progress (skip scoring — autopilot rewrites everything)
+          chrome.tabs.sendMessage(tabId, {
+            type: 'bj:toolbar:autoApplyStatus',
+            payload: { step: 'rewriting', mode, message: 'Full autopilot — rewriting resume...' },
+          });
+
+          // Step 2: Rewrite resume (no scoring, no review)
+          const rewriteResult = await _rewriteResumeForJob(tabId, p, {
+            score: 0,
+            gaps: [],
+            gap_analysis: [],
+          });
+
+          if (!rewriteResult) {
+            // Rewrite failed — still submit with original (autopilot never stops)
+            chrome.tabs.sendMessage(tabId, {
+              type: 'bj:toolbar:autoApplyStatus',
+              payload: { step: 'filling', mode, message: 'Rewrite failed — submitting original...' },
+            });
+            chrome.tabs.sendMessage(tabId, {
+              type: 'bj:toolbar:applyStatus',
+              payload: { status: 'filling', action: 'autopilot_fallback' },
+            });
+          } else {
+            // Auto-submit rewritten resume
+            chrome.tabs.sendMessage(tabId, {
+              type: 'bj:toolbar:autoApplyStatus',
+              payload: { step: 'filling', mode, message: 'Submitting rewritten resume...' },
+            });
+            chrome.tabs.sendMessage(tabId, {
+              type: 'bj:toolbar:applyStatus',
+              payload: {
+                status: 'filling',
+                action: 'full_autopilot',
+                use_rewrite: true,
+                rewritten_text: rewriteResult.rewritten_text || '',
+              },
+            });
+          }
+
+          const fpNewCount = await _incrementDailyApplyCount();
+          captureEvent('full_autopilot_submitted', {
+            platform: p.platform,
+            mode,
+            rewrite_succeeded: !!rewriteResult,
+            estimated_new_score: rewriteResult?.estimated_new_score || 0,
+            daily_count: fpNewCount,
+          });
+          sendResponse({ status: 'autopilot_complete', mode, daily_count: fpNewCount });
+
         } else {
-          // Other modes (auto-apply, auto-rewrite, full-autopilot) — EXT-AS-5/6
-          //   auto-apply → ats:fill immediately (EXT-AS-6)
-          //   auto-rewrite → SCORE_RESUME → REWRITE_RESUME → ats:fill (EXT-AS-5/6)
-          //   full-autopilot → REWRITE_RESUME → ats:fill (EXT-AS-6)
+          // Unknown or manual mode — just acknowledge
           sendResponse({ status: 'received', mode: mode });
         }
       } catch (e) {
