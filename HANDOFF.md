@@ -52,6 +52,60 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**AS-INSTR + AS-1 + AS-2 + AS-3** — Submission Failure Instrumentation + Headless Browser Worker (96% ATS Coverage)
+- Completed: 2026-03-11
+- Product version bumped: `v8.61` → `v8.62` (JS/HTML changes — admin-autosubmit.js, admin.js ADMIN_SUBPAGE_MAP, admin.html container + script, submit-application EF timing + instrumentation; all HTML surfaces cache-busted)
+- ROADMAP.md updated: AS-INSTR → ✅, AS-1 → ✅, AS-2 → ✅, AS-3 → ✅
+- roadmap.html updated: AS-INSTR → `s: 'done'`, p: 100; AS-1 → `s: 'done'`, p: 100; AS-2 → `s: 'done'`, p: 100; AS-3 → `s: 'done'`, p: 100
+- **Team:** All 5 hook-and-scar roles confirmed present in pod-team-manifest.md since SA-006 (Chief Architect, Lead Platform Engineer, System Architect—Scalability, Forward-Looking Developer(s), Evolvability Strategist).
+- **AS-INSTR (Failure Instrumentation):**
+  - Migration v6.50: `submission_attempts` table (user_id, pending_app_id, job_id, job_title, company_name, job_url, ats_source, resume_id, resume_filename, resume_version, submission_method, status, error_type, error_detail, http_status, duration_ms, confirmation_id, response_body, scar_meta JSONB). 5 indexes (user+created, ats+status, status+created, created, company+created). 2 RLS policies. `v_submission_dashboard` view (24h + 7d overview stats, failure by ATS, error type breakdown). `fn_submission_summary()` RPC (overview, recent_failures with user_email join, recent_successes, 30d daily_trend).
+  - submit-application EF: `startTime = Date.now()` after validation. `submission_attempts` INSERT with `duration_ms = Date.now() - startTime` on all paths. Timeout early-return path also instrumented. `job_title`/`company_name` enriched from `pending_applications` fallback. `SubmitRequest` interface extended with optional `job_title?` and `company_name?`. `SubmitResult.submission_method` extended with `"headless"`.
+  - admin-autosubmit.js: 8 overview cards (total/success/failures/fail rate 24h, p95 duration, total/fail rate 7d). ATS failure rate table (7d). Error type breakdown table (7d). 30d daily trend sparkline (SVG polyline, success + failed lines). Recent failures table (50 rows: time, ATS, customer email, company, job title, resume filename + version, error type, duration ms, job URL link). Recent successes table (20 rows). 2min auto-refresh. ADMIN_SUBPAGE_MAP 'auto-submit' in operations.
+- **AS-1 (Worker Infrastructure + Greenhouse Handler):**
+  - worker/Dockerfile: Playwright v1.42.1 base image, Node 20, health check on :8080.
+  - worker/fly.toml: brilliant-jobs-worker, iad region, shared 1 CPU, 2GB RAM, auto_stop_machines + auto_start_machines, min_machines_running=0 (scale-to-zero).
+  - worker/index.js: Main process. pollForApproved() every 30s. processApplication(): fetch applicant_profile from profiles.user_data, download resume to /tmp, launch chromium (headless, no-sandbox), create context with random viewport + UA, dispatch via routeSubmission(), log to submission_attempts with method='headless', update pending_applications status. failApplication() helper. Health server /health + /metrics on :8080. Graceful shutdown (SIGTERM, wait for active=0, 60s timeout). User agent rotation (5 agents).
+  - worker/ats-router.js: 11 ATS_PATTERNS (greenhouse, lever, workable, ashby, recruitee, workday, indeed, linkedin, taleo, icims, smartrecruiters). 5 with handlers (greenhouse, lever, workable, ashby, generic). 6 Phase 2 placeholders (handler: null). detectAts(url), routeSubmission(page, url, profile, resumePath, opts), getSupportedAts().
+  - worker/handlers/greenhouse.js: fillGreenhouse — Navigate, click Apply, detect React/Legacy, fill first_name/last_name/email/phone/linkedin, resume upload with fallback, answerCommonQuestions (select + radio work auth/sponsorship), humanScroll, click submit, detectOutcome (success text, URL redirect, CAPTCHA, validation errors). Screenshot on failure.
+  - worker/utils/human-sim.js: humanType (40–120ms per keystroke, change+blur events), humanClick, humanSelect (value then label fallback), humanFileUpload, humanScroll, randomDelay, randomInt.
+  - worker/utils/screenshot.js: captureFailureScreenshot (full page PNG → Supabase Storage submission-screenshots bucket), capturePageState (url, title, visible text for error context).
+- **AS-2 (User Profile + Custom Questions):**
+  - Integrated into AS-1 worker. processApplication reads applicant_profile from profiles.user_data.applicant_profile. Extracts: name, email, phone, linkedin, location, workAuth, needsSponsorship. Validates completeness (name + email required). All 4 handlers answer work auth + sponsorship questions via select options, radio buttons, and fieldset text analysis.
+- **AS-3 (Lever + Workable + Ashby Handlers):**
+  - worker/handlers/lever.js: fillLever — Construct /apply URL, single name field, email, phone, resume upload with upload confirmation wait, answerLeverQuestions (custom question divs, work auth/sponsorship/location), detectLeverOutcome (/thanks redirect, success text, errors, CAPTCHA).
+  - worker/handlers/workable.js: fillWorkable — data-ui selectors (data-ui="firstname", "lastname", "email", "phone", "resume", "submit-application"), answerWorkableQuestions (custom-field divs), detectWorkableOutcome (URL redirect, data-ui="application-success", errors, CAPTCHA).
+  - worker/handlers/ashby.js: fillAshby — _systemfield_ prefix selectors (_systemfield_name, _systemfield_email, _systemfield_phone, _systemfield_resume), networkidle wait for React rendering, answerAshbyQuestions (_customfield_ prefix), detectAshbyOutcome.
+  - worker/handlers/generic.js: fillGeneric — heuristicFill searches inputs by name/placeholder/id/ariaLabel regex patterns (first.?name, email, phone, linkedin). Last-resort handler for unknown ATS.
+  - **Combined coverage: Greenhouse 40% + Workable 28% + Lever 13% + Ashby 8% + Recruitee API 7% = 96% of 440K open jobs.**
+- **Created:**
+  - `supabase/migrations/v6.50-submission-instrumentation.sql` — submission_attempts table + view + function
+  - `js/admin-autosubmit.js` — Admin auto-submit instrumentation dashboard
+  - `worker/Dockerfile` — Playwright + Chromium container
+  - `worker/fly.toml` — Fly.io deployment config
+  - `worker/package.json` — Worker dependencies
+  - `worker/index.js` — Main worker process
+  - `worker/ats-router.js` — ATS detection + dispatch
+  - `worker/utils/human-sim.js` — Human simulation typing/clicks
+  - `worker/utils/screenshot.js` — Failure screenshot capture
+  - `worker/handlers/greenhouse.js` — Greenhouse handler
+  - `worker/handlers/lever.js` — Lever handler
+  - `worker/handlers/workable.js` — Workable handler
+  - `worker/handlers/ashby.js` — Ashby handler
+  - `worker/handlers/generic.js` — Generic fallback handler
+  - `tests/as-instr-submission-instrumentation.test.js` — 33 validation tests
+  - `tests/as-worker-headless-browser.test.js` — 60 validation tests
+- **Modified:**
+  - `supabase/functions/submit-application/index.ts` — Timing + instrumentation logging + SubmitRequest/SubmitResult type extensions
+  - `js/admin.js` — ADMIN_SUBPAGE_MAP 'auto-submit' entry
+  - `admin.html` — auto-submit panel container + admin-autosubmit.js script tag
+  - `dist/admin.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — AS-INSTR, AS-1, AS-2, AS-3 → ✅
+  - `roadmap.html` — AS-INSTR, AS-1, AS-2, AS-3 → done/100
+- **Tests:** 93 validation tests (33 instrumentation + 60 worker)
+- **Deployment note:** Worker requires `flyctl deploy` from `worker/` directory after setting SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY secrets. Migration v6.50 needs `supabase db push`. submit-application EF needs `supabase functions deploy submit-application`.
+
 **UX-FIX-001** — Pipeline Save Bug + Sidebar Notification Reorder
 - Completed: 2026-03-10
 - Product version bumped: `v8.54` → `v8.61` (JS/HTML changes — keywords.js toggleSaveJob rewrite, job-feed.js _feedJobMap, dashboard.html sidebar reorder; all HTML surfaces cache-busted)
@@ -1464,7 +1518,7 @@ None. FEED-FIX-006 complete.
 
 ## Next Session
 
-No specific session queued. FB-PAYL feature build is COMPLETE (S1 ✅, S2 ✅, S3 ✅, S4 ✅).
+No specific session queued. FB-PAYL feature build is COMPLETE (S1 ✅, S2 ✅, S3 ✅, S4 ✅). AS-INSTR + AS-1 + AS-2 + AS-3 COMPLETE.
 
 **Feed Accuracy Sprint — FA-007 COMPLETE.** FA-010, FA-001, FA-002, FA-003, FA-009, FA-004, FA-005, FA-006, and FA-007 are done.
 
@@ -1476,6 +1530,8 @@ No specific session queued. FB-PAYL feature build is COMPLETE (S1 ✅, S2 ✅, S
 **UX-001-S3 is COMPLETE.** Universal Filter Browser done. UX-001 FEATURE BUILD COMPLETE.
 
 Pending work streams (Marston to prioritize):
+- **Worker deployment:** `cd worker && flyctl deploy` after setting secrets (`flyctl secrets set SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=...`). Migration v6.50 needs `supabase db push`. submit-application EF needs redeploy. Create `submission-screenshots` storage bucket (private, image/png only).
+- **Applicant profile UI:** Settings tab needs applicant_profile form (name, email, phone, LinkedIn, location, work authorization, sponsorship) to populate `profiles.user_data.applicant_profile` for the worker to read.
 - **Stripe configuration:** Create PAYL product in Stripe dashboard, configure setup_intent flow with PAYL-specific metadata. Requires Marston Stripe access.
 - **Phase 69.5: Vonage 10DLC campaign design + setup** — 7 cards: SMS use case taxonomy, campaign description + samples, privacy policy page, terms page, opt-in CTAs, campaign submission, external vetting. Requires Marston to define SMS use cases first.
 - **BI-07 follow-up: ESLint enforcement** — Remove `|| true` from ci.yml line 56 after triaging 2,106 errors (config vs real bugs). Makes Gate 1 fully blocking.
@@ -1517,7 +1573,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.61`** | **UX-FIX-001: Pipeline save bug + sidebar notification reorder** |
+| **Product (BJ_VERSION)** | **`v8.62`** | **AS-INSTR + AS-1/AS-2/AS-3: Submission instrumentation + headless worker** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

@@ -1,0 +1,27 @@
+# worker/fly.toml — Fly.io deployment config
+# AS-1: Headless browser worker for auto-submit
+# Scales to zero when idle
+
+app = "brilliant-jobs-worker"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  WORKER_POLL_INTERVAL_MS = "30000"
+  MAX_CONCURRENT_BROWSERS = "5"
+  SUBMISSION_DELAY_MS = "30000"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 2048

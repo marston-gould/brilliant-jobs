@@ -47,6 +47,8 @@ interface SubmitRequest {
   filter_id?: number | null;
   pending_application_id: string;
   idempotency_key: string;
+  job_title?: string;
+  company_name?: string;
 }
 
 interface SubmitResult {
@@ -56,7 +58,7 @@ interface SubmitResult {
   submitted_at?: string;
   error?: string;
   detail?: string;
-  submission_method: "api" | "mock";
+  submission_method: "api" | "mock" | "headless";
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -473,6 +475,9 @@ serve(async (req) => {
       );
     }
 
+    // ── Timing start ──
+    const startTime = Date.now();
+
     // ── Route by ATS source ──
     let result: SubmitResult | undefined;
 
@@ -578,6 +583,18 @@ serve(async (req) => {
           payload: body, response_type: "timeout",
           response_body: mockResult, idempotency_key: body.idempotency_key,
         });
+        // Instrumentation for timeout path
+        const timeoutDurationMs = Date.now() - startTime;
+        await sb.from("submission_attempts").insert({
+          user_id: userId, pending_app_id: body.pending_application_id,
+          job_id: body.job_id, job_title: body.job_title || null,
+          company_name: body.company_name || null, job_url: body.ats_job_url,
+          ats_source: body.ats_source, resume_filename: body.resume_filename,
+          submission_method: "mock", status: "timeout",
+          error_type: "timeout", error_detail: "Mock timeout simulation",
+          http_status: 504, duration_ms: timeoutDurationMs,
+          response_body: mockResult,
+        }).then(() => {}).catch(() => {});
         await sb.from("pending_applications")
           .update({ status: "failed", submitted_at: new Date().toISOString() })
           .eq("id", body.pending_application_id);
@@ -619,6 +636,53 @@ serve(async (req) => {
 
     if (insertError) {
       logger.error("Failed to insert submission record", { error: insertError.message, userId });
+    }
+
+    // ── Instrumentation: log to submission_attempts with timing ──
+    const durationMs = Date.now() - startTime;
+    const httpStatus = result.status === "submitted" ? 200
+      : result.status === "rejected" ? 422
+      : result.status === "timeout" ? 504 : 500;
+
+    // Enrich job_title / company_name from pending_applications if not on request body
+    let instrJobTitle = body.job_title || null;
+    let instrCompanyName = body.company_name || null;
+    if (!instrJobTitle || !instrCompanyName) {
+      try {
+        const { data: paRow } = await sb.from("pending_applications")
+          .select("job_title, company_name")
+          .eq("id", body.pending_application_id)
+          .maybeSingle();
+        if (paRow) {
+          instrJobTitle = instrJobTitle || paRow.job_title || null;
+          instrCompanyName = instrCompanyName || paRow.company_name || null;
+        }
+      } catch (_e) { /* non-fatal */ }
+    }
+
+    const { error: instrError } = await sb.from("submission_attempts").insert({
+      user_id: userId,
+      pending_app_id: body.pending_application_id,
+      job_id: body.job_id,
+      job_title: instrJobTitle,
+      company_name: instrCompanyName,
+      job_url: body.ats_job_url,
+      ats_source: body.ats_source,
+      resume_id: body.resume_file_id || null,
+      resume_filename: body.resume_filename,
+      resume_version: body.resume_version || null,
+      submission_method: result.submission_method,
+      status: result.status,
+      error_type: result.error || null,
+      error_detail: result.detail || null,
+      http_status: httpStatus,
+      duration_ms: durationMs,
+      confirmation_id: result.confirmation_id || null,
+      response_body: result,
+    });
+
+    if (instrError) {
+      logger.warn("[Instrumentation] Failed to log submission attempt", { error: instrError.message });
     }
 
     // ── Update pending_application status ──

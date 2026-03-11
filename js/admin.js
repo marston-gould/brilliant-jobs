@@ -76,6 +76,7 @@ var ADMIN_SUBPAGE_MAP = {
   'deploy-alerting': { section: 'operations',  label: 'Deploy Alerting',   init: function(){ loadDeployAlertingPanel(); } },
   'command-center':  { section: 'operations',  label: 'Command Center',    init: function(){ loadCommandCenterPanel(); } },
   'deploy-reports':  { section: 'operations',  label: 'DORA Reports',      init: function(){ loadDeployReportsPanel(); } },
+  'auto-submit':     { section: 'operations',  label: 'Auto-Submit',       init: function(){ loadAutoSubmitPanel(); } },
   // ── Growth ──
   'seo':            { section: 'growth',      label: 'SEO',            init: function(){ loadSeoTab(); } },
   'content':        { section: 'growth',      label: 'Content',        init: function(){ loadContentTab(); } },
