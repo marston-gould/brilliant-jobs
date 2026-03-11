@@ -52,6 +52,47 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**AF-004** — Pipeline Process Queue Mode Routing
+- Completed: 2026-03-11
+- Product version bumped: `v8.73` → `v8.74` (JS changes — apply-workflow.js processApplyQueueByMode + _batchScorePendingApps + _renderBatchScoreResults + window export; applications.js Process Queue button updated; all HTML surfaces cache-busted)
+- ROADMAP.md updated: AF-004 → ✅
+- roadmap.html updated: AF-004 → `s: 'done'`, p: 100
+- **processApplyQueueByMode():**
+  - Entry point for Pipeline Process Queue button (replaces direct processApplyQueue call)
+  - AF-002 setup gate check first
+  - Reads default_apply_mode from userApplySettings
+  - Manual: delegates to existing processApplyQueue (individual review flow)
+  - Auto: approve all + _routeToWorker immediately. Toast with count. PostHog pipeline_queue_auto_approved.
+  - Score-Gated: _batchScorePendingApps → _renderBatchScoreResults → toast showing above/below threshold counts. User reviews manually.
+  - Score-Gated+Auto: batch score → auto-approve above threshold + route to worker, leave below for review. PostHog pipeline_queue_auto_approved.
+  - Auto Rewrite: batch score → above threshold routed directly, below threshold set to approval_mode='rewrite_review' for rewrite flow.
+  - Full Autopilot: approve all + route all to worker. Toast with count. PostHog pipeline_queue_auto_approved.
+  - Fallback: delegates to processApplyQueue.
+- **_batchScorePendingApps(apps):**
+  - Gets auth token + active resume text (resume_archive Supabase or localStorage fallback)
+  - Parallel scores in chunks of 5 to avoid EF rate limits
+  - Calls score-resume EF in batch mode with job_ids array
+  - Returns map of app.id → score result object
+- **_renderBatchScoreResults(apps, scores, threshold):**
+  - Updates .pa-score element in each pending app row with score + class (high/mid/low)
+  - Updates .pa-badge with ✓ Above threshold / ✗ Below threshold + color
+- **PostHog Events:**
+  - `pipeline_queue_mode`: mode, pipeline_queue_batch_size
+  - `pipeline_queue_auto_approved`: count, mode, below_threshold (where applicable)
+- **applications.js:**
+  - Process Queue button click now calls processApplyQueueByMode (with processApplyQueue fallback)
+- **Pod Team Manifest:**
+  - AF-004 pairing: Lead Platform Eng + Forward-Looking Dev (primary), Chief Architect + System Architect—Scalability (reviewers)
+- **Modified:**
+  - `js/apply-workflow.js` — processApplyQueueByMode + _batchScorePendingApps + _renderBatchScoreResults + window.processApplyQueueByMode export
+  - `js/applications.js` — Process Queue button routes to processApplyQueueByMode
+  - `docs/scaling/pod-team-manifest.md` — AF-004 pairing + last-updated
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — AF-004 → ✅
+  - `roadmap.html` — AF-004 → done/100
+
 **AF-003** — Job Feed Apply Mode Routing
 - Completed: 2026-03-11
 - Product version bumped: `v8.72` → `v8.73` (JS changes — apply-workflow.js handleFeedApply + _scoreAndAutoRoute + _trackFeedApplyComplete + window exports; location.js applyButton mode routing; all HTML surfaces cache-busted)
@@ -2172,7 +2213,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.73`** | **AF-003: Job Feed Apply Mode Routing** |
+| **Product (BJ_VERSION)** | **`v8.74`** | **AF-004: Pipeline Process Queue Mode Routing** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.28.0-settings-pipeline-activity` | EXT-AS-8 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

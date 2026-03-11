@@ -1,7 +1,7 @@
 {
   "shell": {
     "file": "dashboard-shell.min.js",
-    "hash": "6e445938",
+    "hash": "83b5a104",
     "size": 92442
   },
   "feed": {
@@ -26,18 +26,18 @@
   },
   "deferred": {
     "file": "dashboard-deferred.min.js",
-    "hash": "73b326be",
-    "size": 411750
+    "hash": "24524c29",
+    "size": 418543
   },
   "full": {
     "file": "dashboard.min.js",
-    "hash": "760f0882",
-    "size": 975119
+    "hash": "2892be12",
+    "size": 981925
   },
   "styles": {
     "file": "styles.css",
     "hash": "564c5982",
     "size": 128113
   },
-  "_buildHash": "6f18ac15"
+  "_buildHash": "2d3f79cf"
 }

@@ -319,6 +319,312 @@ function _renderLiveStatus(appId, status, message) {
   if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
+// ═══════════════════════════════════════════════════════════
+// AF-004: processApplyQueueByMode — mode-aware queue processing
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * AF-004: Batch score multiple pending apps in parallel using score-resume EF.
+ * Returns map of app.id → { match_score, ... }
+ */
+async function _batchScorePendingApps(apps) {
+  var scores = {};
+  var token = await _getAuthToken();
+  if (!token) return scores;
+
+  var resume = _getActiveResume();
+  var resumeText = null;
+
+  // Attempt to get resume text from archive (same pattern as _scoreAndAutoRoute)
+  try {
+    if (currentUser && resume.id) {
+      var archiveRes = await sb.from('resume_archive')
+        .select('resume_text')
+        .eq('user_id', currentUser.id)
+        .eq('id', resume.id)
+        .single();
+      if (archiveRes.data && archiveRes.data.resume_text) {
+        resumeText = archiveRes.data.resume_text;
+      }
+    }
+  } catch(e) { /* fallback to localStorage */ }
+
+  if (!resumeText) {
+    try {
+      var stored = localStorage.getItem('bj_resume_text');
+      if (stored && !stored.startsWith('enc:')) resumeText = stored;
+    } catch(e) { /* ignore */ }
+  }
+
+  if (!resumeText) return scores;
+
+  // Parallel scoring: chunk into groups of 5 to avoid EF rate limits
+  var CHUNK = 5;
+  for (var i = 0; i < apps.length; i += CHUNK) {
+    var chunk = apps.slice(i, i + CHUNK);
+    var chunkJobIds = chunk.map(function(a) { return a.job_id; });
+
+    try {
+      var res = await fetch(SUPABASE_URL + '/functions/v1/score-resume', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + token,
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_KEY,
+        },
+        body: JSON.stringify({
+          resume_text: resumeText,
+          mode: 'batch',
+          tier: 'basic',
+          job_ids: chunkJobIds,
+          resume_id: resume.id,
+        }),
+      });
+      var data = await res.json();
+      if (res.ok && data.results) {
+        data.results.forEach(function(r) {
+          // Find matching app by job_id
+          var app = chunk.find(function(a) { return a.job_id === r.job_id; });
+          if (app) scores[app.id] = r;
+        });
+      } else if (res.ok && data.match_score !== undefined && chunk.length === 1) {
+        // Single-item batch returned as single result
+        scores[chunk[0].id] = data;
+      }
+    } catch(e) {
+      reportError('apply_workflow:batch_score', e);
+    }
+  }
+  return scores;
+}
+
+/**
+ * AF-004: Render batch scoring results in the pending apps panel.
+ * Updates each app row with a score badge and pass/fail indicator.
+ */
+function _renderBatchScoreResults(apps, scores, threshold) {
+  apps.forEach(function(app) {
+    var scoreData = scores[app.id];
+    if (!scoreData) return;
+    var score = scoreData.match_score;
+    if (score === undefined || score === null) return;
+    app.original_score = score;
+
+    var passes = score >= threshold;
+    var row = document.querySelector('[data-app-id="' + app.id + '"]');
+    if (!row) return;
+
+    var scoreEl = row.querySelector('.pa-score');
+    if (scoreEl) {
+      var cls = passes ? 'high' : score >= 50 ? 'mid' : 'low';
+      scoreEl.className = 'pa-score pa-score-' + cls;
+      scoreEl.textContent = score;
+    }
+
+    var badge = row.querySelector('.pa-badge');
+    if (badge) {
+      badge.textContent = passes ? '✓ Above threshold' : '✗ Below threshold';
+      badge.style.background = passes ? 'var(--success, #22c55e)' : 'var(--muted, #94a3b8)';
+      badge.style.color = '#fff';
+    }
+  });
+}
+
+/**
+ * AF-004: Mode-aware Pipeline Process Queue dispatcher.
+ * Wraps processApplyQueue with mode-specific routing.
+ */
+async function processApplyQueueByMode() {
+  // AF-002: Setup gate
+  if (!isSetupComplete()) {
+    showSetupGateModal();
+    return;
+  }
+
+  var pending = pendingApplications.filter(function(a) {
+    return a.status === APPLY_STATUS.PENDING;
+  });
+
+  if (pending.length === 0) {
+    if (typeof showToast === 'function') showToast('No pending applications to process.');
+    return;
+  }
+
+  var mode = userApplySettings.default_apply_mode || APPLY_MODES.MANUAL;
+  var threshold = userApplySettings.default_score_threshold || 70;
+
+  // PostHog: queue session start
+  if (typeof posthog !== 'undefined') {
+    posthog.capture('pipeline_queue_mode', {
+      mode: mode,
+      pipeline_queue_batch_size: pending.length,
+    });
+  }
+
+  // ── MANUAL: delegate to existing per-item flow ────────────────────────────
+  if (mode === APPLY_MODES.MANUAL) {
+    return processApplyQueue();
+  }
+
+  // ── AUTO APPLY: approve all immediately, route to worker ─────────────────
+  if (mode === APPLY_MODES.AUTO) {
+    var autoApproved = 0;
+    for (var i = 0; i < pending.length; i++) {
+      var app = pending[i];
+      await updatePendingApplication(app.id, {
+        status: APPLY_STATUS.APPROVED,
+        approval_mode: 'auto_no_approval',
+        responded_at: new Date().toISOString(),
+      });
+      app.status = APPLY_STATUS.APPROVED;
+      _routeToWorker(app);
+      autoApproved++;
+    }
+    if (typeof showToast === 'function') {
+      showToast(autoApproved + ' application(s) queued for auto-submit.');
+    }
+    if (typeof posthog !== 'undefined') {
+      posthog.capture('pipeline_queue_auto_approved', { count: autoApproved, mode: mode });
+    }
+    await loadPendingApplications();
+    renderPendingApplications();
+    return;
+  }
+
+  // ── SCORE-GATED: score all, show results for review ───────────────────────
+  if (mode === APPLY_MODES.SCORE_GATED) {
+    if (typeof showToast === 'function') showToast('Scoring ' + pending.length + ' application(s)...', { duration: 10000 });
+    var scores = await _batchScorePendingApps(pending);
+    // Update app scores in memory
+    pending.forEach(function(app) {
+      if (scores[app.id] && scores[app.id].match_score !== undefined) {
+        app.original_score = scores[app.id].match_score;
+      }
+    });
+    renderPendingApplications();
+    _renderBatchScoreResults(pending, scores, threshold);
+    if (typeof showToast === 'function') {
+      var above = pending.filter(function(a) { return a.original_score >= threshold; }).length;
+      showToast('Scored ' + pending.length + ' app(s): ' + above + ' above threshold. Review below.', { duration: 6000 });
+    }
+    return;
+  }
+
+  // ── SCORE-GATED AUTO: score all, auto-approve above threshold ─────────────
+  if (mode === APPLY_MODES.SCORE_GATED_AUTO) {
+    if (typeof showToast === 'function') showToast('Scoring ' + pending.length + ' application(s)...', { duration: 10000 });
+    var sgScores = await _batchScorePendingApps(pending);
+    var sgAutoApproved = 0;
+    var sgReview = [];
+
+    for (var j = 0; j < pending.length; j++) {
+      var sgApp = pending[j];
+      var sgScore = sgScores[sgApp.id] ? sgScores[sgApp.id].match_score : null;
+      sgApp.original_score = sgScore;
+
+      if (sgScore !== null && sgScore >= threshold) {
+        await updatePendingApplication(sgApp.id, {
+          status: APPLY_STATUS.APPROVED,
+          approval_mode: 'auto_no_approval',
+          original_score: sgScore,
+          responded_at: new Date().toISOString(),
+        });
+        sgApp.status = APPLY_STATUS.APPROVED;
+        _routeToWorker(sgApp);
+        sgAutoApproved++;
+      } else {
+        sgReview.push(sgApp);
+      }
+    }
+
+    renderPendingApplications();
+    _renderBatchScoreResults(pending, sgScores, threshold);
+    if (typeof showToast === 'function') {
+      showToast(sgAutoApproved + ' auto-approved, ' + sgReview.length + ' need review (below threshold).');
+    }
+    if (typeof posthog !== 'undefined') {
+      posthog.capture('pipeline_queue_auto_approved', { count: sgAutoApproved, mode: mode, below_threshold: sgReview.length });
+    }
+    await loadPendingApplications();
+    renderPendingApplications();
+    return;
+  }
+
+  // ── AUTO REWRITE: score, rewrite below-threshold, submit all ─────────────
+  if (mode === APPLY_MODES.AUTO_REWRITE) {
+    if (typeof showToast === 'function') showToast('Scoring and rewriting ' + pending.length + ' application(s)...', { duration: 12000 });
+    var rwScores = await _batchScorePendingApps(pending);
+    var rwApproved = 0;
+
+    for (var k = 0; k < pending.length; k++) {
+      var rwApp = pending[k];
+      var rwScore = rwScores[rwApp.id] ? rwScores[rwApp.id].match_score : null;
+      rwApp.original_score = rwScore;
+
+      if (rwScore !== null && rwScore < threshold) {
+        // Queue for rewrite-then-submit (sets approval_mode = 'rewrite_review')
+        await updatePendingApplication(rwApp.id, {
+          original_score: rwScore,
+          approval_mode: 'rewrite_review',
+        });
+        rwApp.approval_mode = 'rewrite_review';
+      } else {
+        // Above threshold or unscored: route directly
+        await updatePendingApplication(rwApp.id, {
+          status: APPLY_STATUS.APPROVED,
+          approval_mode: 'auto_no_approval',
+          original_score: rwScore,
+          responded_at: new Date().toISOString(),
+        });
+        rwApp.status = APPLY_STATUS.APPROVED;
+        _routeToWorker(rwApp);
+        rwApproved++;
+      }
+    }
+
+    renderPendingApplications();
+    if (typeof posthog !== 'undefined') {
+      posthog.capture('pipeline_queue_auto_approved', { count: rwApproved, mode: mode });
+    }
+    if (typeof showToast === 'function') {
+      var rwRewrite = pending.length - rwApproved;
+      showToast(rwApproved + ' queued directly, ' + rwRewrite + ' queued for rewrite before submit.');
+    }
+    await loadPendingApplications();
+    renderPendingApplications();
+    return;
+  }
+
+  // ── FULL AUTOPILOT: rewrite + submit all ─────────────────────────────────
+  if (mode === APPLY_MODES.AUTOPILOT) {
+    if (typeof showToast === 'function') showToast('Full autopilot: rewriting and submitting ' + pending.length + ' application(s)...', { duration: 12000 });
+
+    for (var m = 0; m < pending.length; m++) {
+      var apApp = pending[m];
+      await updatePendingApplication(apApp.id, {
+        status: APPLY_STATUS.APPROVED,
+        approval_mode: 'auto_no_approval',
+        responded_at: new Date().toISOString(),
+      });
+      apApp.status = APPLY_STATUS.APPROVED;
+      _routeToWorker(apApp);
+    }
+
+    if (typeof posthog !== 'undefined') {
+      posthog.capture('pipeline_queue_auto_approved', { count: pending.length, mode: mode });
+    }
+    if (typeof showToast === 'function') {
+      showToast(pending.length + ' application(s) submitted via autopilot.');
+    }
+    await loadPendingApplications();
+    renderPendingApplications();
+    return;
+  }
+
+  // Fallback: delegate to original processApplyQueue
+  return processApplyQueue();
+}
+
 /**
  * EXT-AS-7: Bulk process queue — approve all pending apps and route to worker.
  * Called from Pipeline Process Queue button.
@@ -1696,6 +2002,8 @@ function updateApplySettingsVisibility(mode) {
 
 // EXT-AS-7: Window exports for SPA bridge + cross-module access
 window.processApplyQueue = processApplyQueue;
+// AF-004: Mode-aware queue processing
+window.processApplyQueueByMode = processApplyQueueByMode;
 window._isRecruiteeJob = _isRecruiteeJob;
 window._activePollers = _activePollers;
 // AF-002: Setup gate exports

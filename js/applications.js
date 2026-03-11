@@ -216,7 +216,12 @@ $('#a-process-queue').addEventListener('click', () => {
     else if (typeof showToast === 'function') showToast('Complete your application profile before submitting.', { type: 'warning' });
     return;
   }
-  // Use Supabase-backed processApplyQueue from apply-workflow.js
+  // Use Supabase-backed processApplyQueueByMode from apply-workflow.js (AF-004)
+  if (typeof processApplyQueueByMode === 'function') {
+    processApplyQueueByMode();
+    return;
+  }
+  // Fallback: legacy processApplyQueue (EXT-AS-7)
   if (typeof processApplyQueue === 'function') {
     processApplyQueue();
     return;
