@@ -52,6 +52,56 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**AF-003** — Job Feed Apply Mode Routing
+- Completed: 2026-03-11
+- Product version bumped: `v8.72` → `v8.73` (JS changes — apply-workflow.js handleFeedApply + _scoreAndAutoRoute + _trackFeedApplyComplete + window exports; location.js applyButton mode routing; all HTML surfaces cache-busted)
+- ROADMAP.md updated: AF-003 → ✅
+- roadmap.html updated: AF-003 → `s: 'done'`, p: 100
+- **handleFeedApply(jobId, jobUrl, jobData):**
+  - Entry point for all feed Apply button clicks (replaces direct URL navigation)
+  - Checks isSetupComplete() first (AF-002 gate)
+  - Reads applicationMode via getApplyModeForJob(jobId)
+  - Manual mode: window.open(jobUrl) + markApplied (existing behavior)
+  - Score-Gated: uses cached score or calls scoreAndRecheck → shows score gate modal
+  - Auto Apply: calls proceedToApply directly → creates pending_application + routes to worker
+  - Score-Gated + Auto: cached score check or _scoreAndAutoRoute → auto-proceed if above threshold, gate modal if below
+  - Auto Rewrite: score first, then triggerRewrite (opens rewrite panel)
+  - Full Autopilot: proceedToApply with autopilot mode → worker routing
+  - Fallback: manual (open URL)
+- **_scoreAndAutoRoute(jobId, jobTitle, companyName, jobUrl):**
+  - Dedicated function for score_gated_auto mode when no cached score
+  - Checks entitlement + credit balance (1 credit for scoring)
+  - Gets active resume text from resume_archive (Supabase) or localStorage fallback
+  - Calls score-resume EF in single mode
+  - Caches result in jobMatchScores
+  - If score >= threshold: auto-calls proceedToApply (no user intervention)
+  - If score < threshold: shows showScoreGateModal for user decision
+  - Error handling with reportError
+- **PostHog Events:**
+  - `feed_apply_initiated`: mode, job_id, has_cached_score
+  - `feed_apply_complete`: job_id, mode, outcome, surface='feed'
+- **applyButton() updated (location.js):**
+  - Non-fraud path: href="#" with onclick calling handleFeedApply
+  - Passes _feedJobMap[jobId] for job context (title, company_name)
+  - typeof guard for handleFeedApply (falls back to window.open)
+  - Fraud interstitial path unchanged
+- **Window Exports (AF-003):**
+  - handleFeedApply, showScoreGateModal, closeScoreGateModal, scoreAndRecheck, triggerRewrite, proceedToApply
+- **Pod Team Manifest:**
+  - AF-003 pairing: Lead Platform Eng + Forward-Looking Dev (primary), Chief Architect + System Architect—Scalability (reviewers)
+- **Modified:**
+  - `js/apply-workflow.js` — handleFeedApply, _scoreAndAutoRoute, _trackFeedApplyComplete, _updateFeedCardApplied, AF-003 window exports
+  - `js/location.js` — applyButton routes through handleFeedApply
+  - `docs/scaling/pod-team-manifest.md` — AF-003 pairing
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — AF-003 → ✅
+  - `roadmap.html` — AF-003 → done/100
+- **Created:**
+  - `tests/af-003-feed-apply-mode.test.js` — 51 validation tests (10 sections)
+- **Tests:** 51 validation tests (all passing)
+
 **AF-002** — First-Time Setup Gate
 - Completed: 2026-03-11
 - Product version bumped: `v8.71` → `v8.72` (JS/HTML changes — apply-workflow.js isSetupComplete + gate modal + checkAndSetSetupComplete, location.js applyButton gate, applications.js Process Queue gate, settings.js localStorage caching + setup triggers, dashboard.html setup-gate-overlay modal, extension background.ts setup gate in APPLY_INTERCEPTED, contentScript.ts setupRequired bridge, job-site-overlay.ts showSetupRequiredOverlay; all HTML surfaces cache-busted)
@@ -2122,7 +2172,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.72`** | **AF-002: First-Time Setup Gate** |
+| **Product (BJ_VERSION)** | **`v8.73`** | **AF-003: Job Feed Apply Mode Routing** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.28.0-settings-pipeline-activity` | EXT-AS-8 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

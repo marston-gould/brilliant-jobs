@@ -1433,7 +1433,9 @@ function applyButton(sources, urls, jobId) {
     return `<a href="#" class="${cls}" onclick="event.preventDefault(); event.stopPropagation(); if(typeof isSetupComplete==='function'&&!isSetupComplete()){showSetupGateModal();return;} showFraudInterstitial('${jobId}', '${bestUrl.replace(/'/g, "\\'")}')">${label}</a>`;
   }
 
-  return `<a href="${bestUrl}" target="_blank" rel="noopener" class="${cls}" onclick="event.stopPropagation(); if(typeof isSetupComplete==='function'&&!isSetupComplete()){event.preventDefault();showSetupGateModal();return;} markApplied('${jobId}', this)">${label}</a>`;
+  // AF-003: Route through handleFeedApply for mode-aware apply
+  var safeUrl = bestUrl.replace(/'/g, "\\'");
+  return `<a href="#" class="${cls}" onclick="event.preventDefault(); event.stopPropagation(); if(typeof handleFeedApply==='function'){var _jd=typeof window._feedJobMap!=='undefined'?window._feedJobMap['${jobId}']:null;handleFeedApply('${jobId}','${safeUrl}',_jd);}else{window.open('${safeUrl}','_blank');}">${label}</a>`;
 }
 
 

@@ -116,3 +116,4 @@
 |---------|-------------|----------------|
 | AF-001 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
 | AF-002 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
+| AF-003 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + System Architect—Scalability |

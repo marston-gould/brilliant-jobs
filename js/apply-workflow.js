@@ -1080,6 +1080,208 @@ function getScoreForJob(jobId) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// AF-003: Feed Apply Mode Routing
+// ═══════════════════════════════════════════════════════════
+
+async function handleFeedApply(jobId, jobUrl, jobData) {
+  // AF-002: Setup gate
+  if (!isSetupComplete()) {
+    showSetupGateModal();
+    return;
+  }
+
+  var mode = getApplyModeForJob(jobId);
+  var jobTitle = (jobData && jobData.title) || '';
+  var companyName = (jobData && jobData.company_name) || '';
+
+  // PostHog: track feed apply initiation
+  if (typeof posthog !== 'undefined') {
+    posthog.capture('feed_apply_initiated', {
+      mode: mode,
+      job_id: jobId,
+      has_cached_score: !!(typeof jobMatchScores !== 'undefined' && jobMatchScores[jobId])
+    });
+  }
+
+  // ── Manual: open external link (existing behavior) ──
+  if (mode === APPLY_MODES.MANUAL) {
+    if (jobUrl && jobUrl !== '#') window.open(jobUrl, '_blank');
+    if (typeof markApplied === 'function') markApplied(jobId, null);
+    _trackFeedApplyComplete(jobId, mode, 'direct');
+    return;
+  }
+
+  // ── Score-Gated: score first, show gate modal ──
+  if (mode === APPLY_MODES.SCORE_GATED) {
+    var cached = getScoreForJob(jobId);
+    if (cached) {
+      showScoreGateModal(jobId, jobTitle, companyName, jobUrl, cached);
+    } else {
+      scoreAndRecheck(jobId, jobTitle, companyName, jobUrl);
+    }
+    _trackFeedApplyComplete(jobId, mode, 'score_gate');
+    return;
+  }
+
+  // ── Auto Apply: straight to worker, no scoring ──
+  if (mode === APPLY_MODES.AUTO) {
+    if (typeof showToast === 'function') showToast('Auto-applying to ' + (companyName || 'this job') + '...', { duration: 5000 });
+    await proceedToApply(jobId, jobTitle, companyName, jobUrl);
+    _trackFeedApplyComplete(jobId, mode, 'auto_worker');
+    return;
+  }
+
+  // ── Score-Gated + Auto: score first; above threshold → auto submit, below → gate modal ──
+  if (mode === APPLY_MODES.SCORE_GATED_AUTO) {
+    var cachedScore = getScoreForJob(jobId);
+    if (cachedScore && typeof cachedScore.match_score === 'number') {
+      var threshold = userApplySettings.default_score_threshold;
+      if (cachedScore.match_score >= threshold) {
+        if (typeof showToast === 'function') showToast('Score ' + cachedScore.match_score + ' ≥ ' + threshold + ' — auto-applying...', { duration: 4000 });
+        await proceedToApply(jobId, jobTitle, companyName, jobUrl);
+        _trackFeedApplyComplete(jobId, mode, 'auto_above_threshold');
+      } else {
+        showScoreGateModal(jobId, jobTitle, companyName, jobUrl, cachedScore);
+        _trackFeedApplyComplete(jobId, mode, 'gate_below_threshold');
+      }
+    } else {
+      // Score not cached — score first, then auto-route or show gate
+      await _scoreAndAutoRoute(jobId, jobTitle, companyName, jobUrl);
+    }
+    return;
+  }
+
+  // ── Auto Rewrite: score → rewrite → submit ──
+  if (mode === APPLY_MODES.AUTO_REWRITE) {
+    var cachedRw = getScoreForJob(jobId);
+    if (cachedRw && typeof cachedRw.match_score === 'number') {
+      // Already scored — go to rewrite
+      if (typeof showToast === 'function') showToast('Rewriting resume for ' + (companyName || 'this job') + '...', { duration: 5000 });
+      triggerRewrite(jobId, jobTitle, companyName);
+      _trackFeedApplyComplete(jobId, mode, 'rewrite');
+    } else {
+      // Score first, then rewrite
+      if (typeof showToast === 'function') showToast('Scoring resume before rewrite...', { duration: 5000 });
+      await scoreAndRecheck(jobId, jobTitle, companyName, jobUrl);
+      // scoreAndRecheck shows the gate modal which has a Rewrite button
+      _trackFeedApplyComplete(jobId, mode, 'score_then_rewrite');
+    }
+    return;
+  }
+
+  // ── Full Autopilot: rewrite + submit, no UI interruption ──
+  if (mode === APPLY_MODES.AUTOPILOT) {
+    if (typeof showToast === 'function') showToast('Full autopilot: rewriting & submitting to ' + (companyName || 'this job') + '...', { duration: 8000 });
+    await proceedToApply(jobId, jobTitle, companyName, jobUrl);
+    _trackFeedApplyComplete(jobId, mode, 'autopilot');
+    return;
+  }
+
+  // Fallback: manual
+  if (jobUrl && jobUrl !== '#') window.open(jobUrl, '_blank');
+  if (typeof markApplied === 'function') markApplied(jobId, null);
+}
+
+// AF-003: Score then auto-route (for score_gated_auto mode)
+async function _scoreAndAutoRoute(jobId, jobTitle, companyName, jobUrl) {
+  if (!currentUser) {
+    if (typeof showToast === 'function') showToast('Please log in first.', { type: 'error' });
+    return;
+  }
+
+  var ent = await checkEntitlement('resume_grading', 0);
+  if (!ent.allowed) {
+    if (typeof showUpgradePrompt === 'function') showUpgradePrompt('Resume Scoring', ent);
+    else if (typeof showToast === 'function') showToast('Upgrade required for resume scoring.', { type: 'error' });
+    return;
+  }
+
+  var { data: balance } = await sb.rpc('get_credit_balance', { p_user_id: currentUser.id });
+  if (balance < 1) {
+    if (typeof showToast === 'function') showToast('Scoring costs 1 credit. You have ' + (balance || 0) + '.', { type: 'error', duration: 5000 });
+    return;
+  }
+
+  var resume = _getActiveResume();
+  var resumeText = '';
+  try {
+    var { data: archiveData } = await sb.from('resume_archive').select('parsed_text').eq('id', resume.id).single();
+    resumeText = archiveData?.parsed_text || '';
+  } catch(e) { reportError('apply-workflow:_scoreAndAutoRoute', e); }
+
+  if (!resumeText) {
+    try {
+      var raw = localStorage.getItem('bj_resumes'); if (raw && raw.startsWith('enc:')) raw = null;
+      if (raw) { var resumes = JSON.parse(raw); if (resumes.length > 0) resumeText = resumes[0].text || ''; }
+    } catch(e) { reportError('apply-workflow:_scoreAndAutoRoute', e); }
+  }
+
+  if (!resumeText) {
+    if (typeof showToast === 'function') showToast('No resume text found. Upload a resume first.', { type: 'error', duration: 5000 });
+    return;
+  }
+
+  if (typeof showToast === 'function') showToast('Scoring your resume... (1 credit)', { duration: 8000 });
+
+  var token = await _getAuthToken();
+  if (!token) {
+    if (typeof showToast === 'function') showToast('Session expired. Please log in again.', { type: 'error' });
+    return;
+  }
+
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/score-resume', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+      body: JSON.stringify({ resume_text: resumeText, mode: 'single', tier: 'basic', job_ids: [jobId], resume_id: resume.id }),
+    });
+    var data = await res.json();
+
+    if (!res.ok || data.error) {
+      if (typeof showToast === 'function') showToast('Scoring failed: ' + (data.error || 'Unknown error'), { type: 'error' });
+      return;
+    }
+
+    if (typeof jobMatchScores === 'undefined') window.jobMatchScores = {};
+    jobMatchScores[jobId] = data;
+
+    var threshold = userApplySettings.default_score_threshold;
+    var score = data.match_score || 0;
+
+    if (score >= threshold) {
+      if (typeof showToast === 'function') showToast('Score ' + score + ' ≥ ' + threshold + ' — auto-applying!', { type: 'success', duration: 3000 });
+      await proceedToApply(jobId, jobTitle, companyName, jobUrl);
+      _trackFeedApplyComplete(jobId, 'score_gated_auto', 'auto_above_threshold');
+    } else {
+      if (typeof showToast === 'function') showToast('Score: ' + score + '/' + threshold + ' — below threshold.', { duration: 3000 });
+      showScoreGateModal(jobId, jobTitle, companyName, jobUrl, data);
+      _trackFeedApplyComplete(jobId, 'score_gated_auto', 'gate_below_threshold');
+    }
+  } catch (e) {
+    reportError('apply-workflow:_scoreAndAutoRoute', e);
+    if (typeof showToast === 'function') showToast('Scoring failed. Please try again.', { type: 'error' });
+  }
+}
+
+// AF-003: PostHog tracking helper
+function _trackFeedApplyComplete(jobId, mode, outcome) {
+  if (typeof posthog !== 'undefined') {
+    posthog.capture('feed_apply_complete', { job_id: jobId, mode: mode, outcome: outcome, surface: 'feed' });
+  }
+}
+
+// AF-003: Update job card UI after apply action
+function _updateFeedCardApplied(jobId) {
+  var row = document.querySelector('tr[data-jobid="' + jobId + '"]');
+  if (!row) return;
+  var actionsCell = row.querySelector('td:last-child');
+  if (actionsCell) {
+    var div = actionsCell.querySelector('div');
+    if (div) div.innerHTML = '<span class="job-action-btn applied-btn">Applied ✓</span>';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
 // PENDING APPLICATIONS PANEL
 // ═══════════════════════════════════════════════════════════
 
@@ -1502,6 +1704,13 @@ window.showSetupGateModal = showSetupGateModal;
 window.hideSetupGateModal = hideSetupGateModal;
 window.navigateToSetup = navigateToSetup;
 window.checkAndSetSetupComplete = checkAndSetSetupComplete;
+// AF-003: Feed apply mode routing exports
+window.handleFeedApply = handleFeedApply;
+window.showScoreGateModal = showScoreGateModal;
+window.closeScoreGateModal = closeScoreGateModal;
+window.scoreAndRecheck = scoreAndRecheck;
+window.triggerRewrite = triggerRewrite;
+window.proceedToApply = proceedToApply;
 
 // CS-P1-004 FE-005: Register apply-workflow exports with BJ namespace
 (function() {
