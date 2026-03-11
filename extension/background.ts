@@ -1360,6 +1360,109 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     })();
     return true;
   }
+  // ── EXT-AS-3: SAVE_TO_PIPELINE — Save job to pipeline via pipeline-write EF ──
+  if (msg.type === 'SAVE_TO_PIPELINE') {
+    (async () => {
+      try {
+        const authSession = await getAuth();
+        if (!authSession?.user_id || !authSession?.access_token) {
+          sendResponse({ success: false, error: 'no_auth' });
+          return;
+        }
+        const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+        const p = msg.payload || {};
+        const resp = await fetchWithRetry(`${SB_URL}/functions/v1/pipeline-write`, {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + authSession.access_token,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            source_url: p.url,
+            source_platform: p.platform || 'unknown',
+            job_title: p.title || 'Unknown Title',
+            company_name: p.company || '',
+            stage: 'saved',
+            entry_source: 'job_site_overlay',
+            location: p.location || '',
+          }),
+        }, { timeout: 15000, retries: 2 });
+        if (resp.ok) {
+          const result = await resp.json();
+          captureEvent('job_site_overlay_saved', {
+            platform: p.platform,
+            has_title: !!p.title,
+            has_company: !!p.company,
+            entry_source: 'job_site_overlay',
+          });
+          sendResponse({ success: true, ...result });
+        } else {
+          const err = await resp.text();
+          console.warn('[BJ] SAVE_TO_PIPELINE failed:', resp.status, err);
+          sendResponse({ success: false, error: err });
+        }
+      } catch (e) {
+        console.warn('[BJ] SAVE_TO_PIPELINE error:', (e as Error).message);
+        captureEvent('extension_catch_error', { context: 'SAVE_TO_PIPELINE', error: (e as Error).message });
+        sendResponse({ success: false, error: (e as Error).message });
+      }
+    })();
+    return true;
+  }
+
+  // ── EXT-AS-3: APPLY_INTERCEPTED — Apply button click intercepted by overlay ──
+  // Routes to appropriate flow based on application mode (EXT-AS-4/5/6 will extend).
+  // For now: acknowledge receipt, log event, store pending interception.
+  if (msg.type === 'APPLY_INTERCEPTED') {
+    (async () => {
+      try {
+        const p = msg.payload || {};
+        const mode = p.mode || 'manual';
+
+        // Log the interception event
+        captureEvent('apply_intercepted', {
+          platform: p.platform,
+          mode: mode,
+          score_threshold: p.scoreThreshold,
+          has_resume: !!p.resumeId,
+          daily_limit: p.dailyApplyLimit,
+        });
+
+        // Store interception in chrome.storage for activity feed
+        const activityItem = {
+          type: 'apply_intercepted',
+          url: p.url,
+          title: p.title,
+          company: p.company,
+          platform: p.platform,
+          mode: mode,
+          timestamp: new Date().toISOString(),
+        };
+        chrome.storage.local.get('activityFeed', (data) => {
+          const feed = Array.isArray(data.activityFeed) ? data.activityFeed : [];
+          feed.unshift(activityItem);
+          // Prune to 50 items max
+          if (feed.length > 50) feed.length = 50;
+          chrome.storage.local.set({ activityFeed: feed });
+        });
+
+        // Mode routing (EXT-AS-4/5/6 will implement the full flows)
+        // For now, acknowledge receipt. Future sessions wire:
+        //   score-gated → SCORE_RESUME → score gate popup
+        //   auto-apply → ats:fill immediately
+        //   auto-score-gate → SCORE_RESUME → conditional auto-fill
+        //   auto-rewrite → SCORE_RESUME → REWRITE_RESUME → ats:fill
+        //   full-autopilot → REWRITE_RESUME → ats:fill
+        sendResponse({ status: 'received', mode: mode });
+      } catch (e) {
+        console.warn('[BJ] APPLY_INTERCEPTED error:', (e as Error).message);
+        captureEvent('extension_catch_error', { context: 'APPLY_INTERCEPTED', error: (e as Error).message });
+        sendResponse({ status: 'error', error: (e as Error).message });
+      }
+    })();
+    return true;
+  }
+
   if (msg.type === 'startScanner') {
     // Phase 5 RBAC: Only admin users can start the scanner
     chrome.storage.local.get('userRole').then(data => {

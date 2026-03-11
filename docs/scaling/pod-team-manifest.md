@@ -96,3 +96,11 @@
 | UX-001-S1 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
 | UX-001-S2 | Lead Platform Eng + System Architect—Scalability | Chief Architect + Evolvability Strategist |
 | UX-001-S3 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + System Architect—Scalability |
+
+## Pairing Assignments (Feature Build: Extension Auto-Submit)
+
+| Session | Primary Pair | Pod 4 Reviewer |
+|---------|-------------|----------------|
+| EXT-AS-1 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
+| EXT-AS-2 | Frontend + Lead Platform Eng | Chief Architect + System Architect—Scalability |
+| EXT-AS-3 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + System Architect—Scalability |

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Brilliant Jobs",
-  "version": "2.23.0",
+  "version": "2.24.0",
   "description": "Discover jobs through your professional network",
   "homepage_url": "https://brilliantjobs.app/privacy",
   "permissions": [
@@ -37,7 +37,11 @@
     "https://careers.smartrecruiters.com/*",
     "https://*.avature.net/*",
     "https://*.bamboohr.com/*",
-    "https://*.applytojob.com/*"
+    "https://*.applytojob.com/*",
+    "https://www.glassdoor.com/*",
+    "https://www.glassdoor.co.uk/*",
+    "https://*.joinhandshake.com/*",
+    "https://www.indeed.com/*"
   ],
   "optional_host_permissions": [
     "https://*/*"
@@ -85,7 +89,11 @@
         "https://careers.smartrecruiters.com/*",
         "https://*.avature.net/*",
         "https://*.bamboohr.com/*",
-        "https://*.applytojob.com/*"
+        "https://*.applytojob.com/*",
+        "https://www.glassdoor.com/*",
+        "https://www.glassdoor.co.uk/*",
+        "https://*.joinhandshake.com/*",
+        "https://www.indeed.com/*"
       ],
       "js": [
         "contentScript.js"
@@ -125,7 +133,8 @@
         "utils/fillMetrics.js",
         "inject-overlay.js",
         "toolbar-overlay.js",
-        "inject.css"
+        "inject.css",
+        "job-site-overlay.js"
       ],
       "matches": [
         "https://www.linkedin.com/*",
@@ -148,7 +157,11 @@
         "https://careers.smartrecruiters.com/*",
         "https://*.avature.net/*",
         "https://*.bamboohr.com/*",
-        "https://*.applytojob.com/*"
+        "https://*.applytojob.com/*",
+        "https://www.glassdoor.com/*",
+        "https://www.glassdoor.co.uk/*",
+        "https://*.joinhandshake.com/*",
+        "https://www.indeed.com/*"
       ]
     }
   ],

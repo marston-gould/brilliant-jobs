@@ -31,6 +31,20 @@
     }
   })();
 
+  // ── EXT-AS-3: Inject job-site-overlay for Save button + Apply interception ──
+  // job-site-overlay.js manages its own site detection, Save button injection,
+  // and Apply button interception based on user's application mode.
+  (function injectJobSiteOverlay() {
+    try {
+      const script = document.createElement('script');
+      script.src = chrome.runtime.getURL('job-site-overlay.js');
+      script.onload = function() { this.remove(); };
+      (document.head || document.documentElement).appendChild(script);
+    } catch (e) {
+      console.warn('[BJ] Job site overlay inject error:', e.message);
+    }
+  })();
+
   // ============================================================
   // ATS DETECTION
   // ============================================================

@@ -52,6 +52,60 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**EXT-AS-3** — Content Script: Save Button + Apply Interception
+- Completed: 2026-03-11
+- Product version bumped: `v8.64` → `v8.65` (Extension job-site-overlay.ts + background.ts handlers + manifest v2.24.0; all HTML surfaces cache-busted)
+- ROADMAP.md updated: EXT-AS-3 → ✅
+- roadmap.html updated: EXT-AS-3 → `s: 'done'`, p: 100
+- **Job Site Registry:**
+  - `selectors/job-site-registry.ts`: 9 sites (LinkedIn, Indeed, Greenhouse, Lever, Glassdoor, Ashby, Workable, Recruitee, Handshake) with applyButtonSelectors, saveButtonTarget, jobMetaSelectors
+  - `detectJobSite()` + `queryWithFallback()` exports
+  - Per-site selector fallback chains from EXT-AS spec Section 7
+- **Job Site Overlay Content Script:**
+  - `job-site-overlay.ts`: Self-contained IIFE (no module imports — runs in MAIN world)
+  - Inline copy of 9-site registry (mirrors job-site-registry.ts)
+  - Auto-detects current job site via hostname + URL pattern matching
+  - **Save-to-Pipeline button:** Injected adjacent to native Apply button using per-site position strategy (before/after/adjacent). Branded "Save to BJ" with gradient purple style. Shadow DOM host for toast notifications. Click sends SAVE_TO_PIPELINE message to background.ts. Updates to green "Saved" state on success.
+  - **Apply button interception:** MutationObserver watches DOM for dynamically-loaded apply buttons. Click listener attached in capture phase (fires before site handlers). Manual mode = no interception (passthrough). All other modes: preventDefault + stopImmediatePropagation + APPLY_INTERCEPTED message.
+  - Mode-specific toast labels (Scoring resume / Auto-applying / Rewriting + applying / Full autopilot)
+  - Fallback: if background doesn't respond, lets native apply proceed
+  - **SPA support:** MutationObserver for DOM changes + history.pushState/replaceState interception + popstate listener. Save button re-injected and apply buttons re-intercepted on navigation.
+  - Settings loaded from chrome.storage.sync (applicationMode, scoreThreshold) + chrome.storage.local (applySettings with activeResumeId, dailyApplyLimit)
+  - chrome.storage.onChanged listener for live settings updates from popup/dashboard
+  - `window._bjJobSiteOverlay` exports for testing
+- **Background.ts Message Handlers:**
+  - SAVE_TO_PIPELINE: Calls pipeline-write EF with entry_source='job_site_overlay'. PostHog `job_site_overlay_saved` event. Auth required. Error reporting via captureEvent.
+  - APPLY_INTERCEPTED: Logs PostHog `apply_intercepted` event with platform/mode/threshold. Stores activity item in chrome.storage.local activityFeed (50-item cap, LIFO). Returns `{status: 'received', mode}`. Mode routing stubs for EXT-AS-4/5/6.
+- **ContentScript.ts Updated:**
+  - `injectJobSiteOverlay()` IIFE added after `injectToolbar()` — injects job-site-overlay.js via `chrome.runtime.getURL()`
+- **Manifest.json Updated:**
+  - Version: 2.23.0 → 2.24.0
+  - content_scripts: Added Glassdoor (`https://www.glassdoor.com/*`, `https://www.glassdoor.co.uk/*`), Handshake (`https://*.joinhandshake.com/*`), Indeed listings (`https://www.indeed.com/*`)
+  - host_permissions: Same 4 new patterns added
+  - web_accessible_resources: `job-site-overlay.js` added + new site matches
+- **Build Configuration:**
+  - `build-extension.js`: `job-site-overlay.ts` added to JS_FILES
+- **Pod Team Manifest:**
+  - EXT-AS section added with pairing assignments for EXT-AS-1, EXT-AS-2, EXT-AS-3
+  - EXT-AS-3: Lead Platform Eng + Forward-Looking Dev (primary), Chief Architect + System Architect—Scalability (reviewers)
+  - All 5 hook-and-scar roles confirmed present since SA-006
+- **Created:**
+  - `extension/selectors/job-site-registry.ts` — 9-site per-platform selector registry
+  - `extension/job-site-overlay.ts` — Content script: Save button + Apply interception
+  - `tests/ext-as-3-job-site-overlay.test.js` — 84 validation tests (10 sections)
+- **Modified:**
+  - `extension/background.ts` — SAVE_TO_PIPELINE + APPLY_INTERCEPTED message handlers
+  - `extension/contentScript.ts` — injectJobSiteOverlay() IIFE
+  - `extension/build-extension.js` — job-site-overlay.ts in JS_FILES
+  - `extension/manifest.json` — v2.24.0, new site matches, web_accessible_resources
+  - `docs/scaling/pod-team-manifest.md` — EXT-AS pairing section
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — EXT-AS-3 → ✅
+  - `roadmap.html` — EXT-AS-3 → done/100
+- **Tests:** 84 validation tests (all passing)
+
 **EXT-AS-2** — Consumer Popup UI + Mode Persistence
 - Completed: 2026-03-11
 - Product version bumped: `v8.63` → `v8.64` (Extension popup.html consumer view + popup-consumer.ts logic + background.ts sync handler; all HTML surfaces cache-busted)
@@ -1592,12 +1646,13 @@ None. FEED-FIX-006 complete.
 
 ## Next Session
 
-No specific session queued. EXT-AS-2 complete.
+No specific session queued. EXT-AS-3 complete.
 
-**EXT-AS series (9 sessions total, 2 done):**
+**EXT-AS series (9 sessions total, 3 done):**
 - EXT-AS-1 ✅ — Applicant Profile + Settings Sync
 - EXT-AS-2 ✅ — Consumer Popup UI + Mode Persistence
-- EXT-AS-3 through EXT-AS-9 — Content script injection, score gate, AI rewrite, auto modes, dashboard routing, settings panel, PostHog QA
+- EXT-AS-3 ✅ — Content Script: Save Button + Apply Interception
+- EXT-AS-4 through EXT-AS-9 — Score gate popup, AI rewrite, auto modes, dashboard routing, settings panel, PostHog QA
 
 **Pending from EXT-AS spec (Marston to prioritize):**
 - EXT-AS-2 requires extension-ux-prototype.html designs
@@ -1659,7 +1714,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.64`** | **EXT-AS-2: Consumer Popup UI + Mode Persistence** |
+| **Product (BJ_VERSION)** | **`v8.65`** | **EXT-AS-3: Content Script Save Button + Apply Interception** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

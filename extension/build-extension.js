@@ -41,6 +41,7 @@ const JS_FILES = [
   'human-sim.ts',
   'interceptor.ts',
   'interceptor-bridge.ts',
+  'job-site-overlay.ts',
   'popup.ts',
   'popup-bridge.ts',
   'popup-consumer.ts',
