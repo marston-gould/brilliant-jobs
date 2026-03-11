@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Brilliant Jobs",
-  "version": "2.24.0",
+  "version": "2.25.0",
   "description": "Discover jobs through your professional network",
   "homepage_url": "https://brilliantjobs.app/privacy",
   "permissions": [

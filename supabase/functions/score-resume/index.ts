@@ -594,7 +594,7 @@ serve(async (req) => {
 
     // Parse body
     const body = await req.json();
-    const { resume_text, resume_keywords, mode, tier: requestedTier, filter_name, job_ids, max_jds } = body;
+    const { resume_text, resume_keywords, mode, tier: requestedTier, filter_name, job_ids, max_jds, job_description_text, job_title: directJobTitle, company_name: directCompanyName } = body;
 
     if (!mode) {
       return new Response(JSON.stringify({ error: 'Missing mode' }), { status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
@@ -703,7 +703,18 @@ Assess. Return ONLY JSON.`;
 
     // Fetch JD content
     let jds: unknown[] = [];
-    if (mode === 'corpus' && job_ids?.length > 0) {
+    // EXT-AS-4: Direct JD text from extension (no ats_jobs lookup needed)
+    if (job_description_text && mode === 'single') {
+      jds = [{
+        greenhouse_id: 'ext-direct',
+        title: directJobTitle || 'Unknown Title',
+        content: job_description_text,
+        company_name: directCompanyName || 'Unknown',
+        location: '',
+        salary_min: null,
+        salary_max: null,
+      }];
+    } else if (mode === 'corpus' && job_ids?.length > 0) {
       const limit = Math.min(max_jds || 20, 30);
       const { data } = await sb.from('ats_jobs')
         .select('greenhouse_id, title, content, company_name, location, salary_min, salary_max')

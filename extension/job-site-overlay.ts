@@ -350,6 +350,116 @@
     '  text-transform: uppercase;',
     '  letter-spacing: 0.5px;',
     '}',
+    // ── EXT-AS-4: Score Gate Popup CSS ──
+    '.bj-score-gate-overlay {',
+    '  position: fixed;',
+    '  top: 0; left: 0; right: 0; bottom: 0;',
+    '  background: rgba(0,0,0,0.5);',
+    '  z-index: 2147483647;',
+    '  display: flex;',
+    '  align-items: center;',
+    '  justify-content: center;',
+    '  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;',
+    '}',
+    '.bj-score-gate {',
+    '  background: #fff;',
+    '  border-radius: 12px;',
+    '  box-shadow: 0 20px 60px rgba(0,0,0,0.3);',
+    '  width: 380px;',
+    '  max-height: 90vh;',
+    '  overflow-y: auto;',
+    '  animation: bjFadeIn 0.2s ease;',
+    '}',
+    '@keyframes bjFadeIn { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }',
+    '.bj-sg-header {',
+    '  padding: 16px 20px 12px;',
+    '  border-bottom: 1px solid #e5e7eb;',
+    '  display: flex;',
+    '  align-items: center;',
+    '  justify-content: space-between;',
+    '}',
+    '.bj-sg-header-left {',
+    '  display: flex;',
+    '  align-items: center;',
+    '  gap: 8px;',
+    '}',
+    '.bj-sg-logo {',
+    '  width: 24px; height: 24px;',
+    '  background: linear-gradient(135deg, #6366f1, #8b5cf6);',
+    '  border-radius: 6px;',
+    '  display: flex; align-items: center; justify-content: center;',
+    '  color: #fff; font-weight: 700; font-size: 12px;',
+    '}',
+    '.bj-sg-title {',
+    '  font-size: 14px; font-weight: 600; color: #111827;',
+    '}',
+    '.bj-sg-close {',
+    '  background: none; border: none; cursor: pointer;',
+    '  color: #9ca3af; font-size: 18px; line-height: 1;',
+    '  padding: 4px; border-radius: 4px;',
+    '}',
+    '.bj-sg-close:hover { background: #f3f4f6; color: #374151; }',
+    '.bj-sg-body { padding: 20px; text-align: center; }',
+    '.bj-sg-job {',
+    '  font-size: 12px; color: #6b7280; margin-bottom: 16px;',
+    '  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;',
+    '}',
+    '.bj-sg-ring-wrap { margin: 0 auto 16px; width: 88px; height: 88px; position: relative; }',
+    '.bj-sg-score-num {',
+    '  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);',
+    '  font-size: 22px; font-weight: 700; line-height: 1;',
+    '}',
+    '.bj-sg-score-label {',
+    '  position: absolute; top: 60%; left: 50%; transform: translate(-50%, 4px);',
+    '  font-size: 9px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px;',
+    '}',
+    '.bj-sg-verdict {',
+    '  font-size: 15px; font-weight: 600; margin-bottom: 4px;',
+    '}',
+    '.bj-sg-detail { font-size: 12px; color: #6b7280; margin-bottom: 12px; }',
+    '.bj-sg-badge {',
+    '  display: inline-block; padding: 3px 8px; border-radius: 10px;',
+    '  font-size: 11px; font-weight: 600; margin-bottom: 16px;',
+    '}',
+    '.bj-sg-badge.below { background: #fef2f2; color: #dc2626; }',
+    '.bj-sg-badge.above { background: #f0fdf4; color: #16a34a; }',
+    '.bj-sg-gaps { text-align: left; margin-bottom: 16px; }',
+    '.bj-sg-gaps-title { font-size: 11px; font-weight: 600; color: #374151; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }',
+    '.bj-sg-gap {',
+    '  display: flex; align-items: flex-start; gap: 6px;',
+    '  font-size: 12px; color: #4b5563; margin-bottom: 6px;',
+    '}',
+    '.bj-sg-gap-icon { flex-shrink: 0; margin-top: 1px; }',
+    '.bj-sg-actions { display: flex; flex-direction: column; gap: 8px; }',
+    '.bj-sg-btn {',
+    '  width: 100%; padding: 10px 16px; border-radius: 8px;',
+    '  font-size: 13px; font-weight: 600; cursor: pointer;',
+    '  border: none; transition: all 0.15s ease;',
+    '}',
+    '.bj-sg-btn.primary {',
+    '  background: linear-gradient(135deg, #1e1b4b, #312e81);',
+    '  color: #fff;',
+    '}',
+    '.bj-sg-btn.primary:hover { box-shadow: 0 2px 8px rgba(30,27,75,0.4); }',
+    '.bj-sg-btn.secondary {',
+    '  background: #f3f4f6; color: #374151;',
+    '}',
+    '.bj-sg-btn.secondary:hover { background: #e5e7eb; }',
+    '.bj-sg-btn.ghost {',
+    '  background: transparent; color: #9ca3af;',
+    '}',
+    '.bj-sg-btn.ghost:hover { color: #6b7280; }',
+    // Above-threshold green header
+    '.bj-sg-header.above {',
+    '  background: linear-gradient(135deg, #16a34a, #22c55e);',
+    '  border-bottom: none; border-radius: 12px 12px 0 0;',
+    '}',
+    '.bj-sg-header.above .bj-sg-title { color: #fff; }',
+    '.bj-sg-header.above .bj-sg-close { color: rgba(255,255,255,0.7); }',
+    '.bj-sg-header.above .bj-sg-close:hover { color: #fff; background: rgba(255,255,255,0.15); }',
+    '.bj-sg-auto-dismiss {',
+    '  font-size: 11px; color: #6b7280; margin-top: 12px;',
+    '}',
   ].join('\n');
 
   // ── Lucide-style SVG icons (inline, no CDN dependency) ────────
@@ -587,6 +697,219 @@
     setTimeout(init, 500);
   }
 
+  // ── EXT-AS-4: Score Ring SVG ──────────────────────────────────
+  function buildScoreRingSVG(score, size) {
+    size = size || 80;
+    var r = (size - 8) / 2;
+    var circumference = 2 * Math.PI * r;
+    var pct = Math.max(0, Math.min(100, score)) / 100;
+    var dashOffset = circumference * (1 - pct);
+    var color = score >= 75 ? '#16a34a' : score >= 60 ? '#f59e0b' : '#dc2626';
+    var bgColor = score >= 75 ? '#dcfce7' : score >= 60 ? '#fef3c7' : '#fef2f2';
+    return [
+      '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '">',
+      '  <circle cx="' + (size/2) + '" cy="' + (size/2) + '" r="' + r + '" fill="none" stroke="' + bgColor + '" stroke-width="6"/>',
+      '  <circle cx="' + (size/2) + '" cy="' + (size/2) + '" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="6"',
+      '    stroke-linecap="round" stroke-dasharray="' + circumference + '" stroke-dashoffset="' + dashOffset + '"',
+      '    transform="rotate(-90 ' + (size/2) + ' ' + (size/2) + ')"/>',
+      '</svg>'
+    ].join('');
+  }
+
+  // ── EXT-AS-4: Score Gate Popup ──────────────────────────────
+  var _scoreGateActive = false;
+  var _autoDismissTimer = null;
+
+  function showScoreGatePopup(data) {
+    hideScoreGatePopup(); // Remove any existing
+    _scoreGateActive = true;
+
+    var shadow = getShadowRoot();
+    var score = data.score || 0;
+    var threshold = data.threshold || 75;
+    var isAbove = data.isAboveThreshold;
+    var gaps = data.gaps || [];
+    var scoreColor = score >= 75 ? '#16a34a' : score >= 60 ? '#f59e0b' : '#dc2626';
+    var diff = Math.abs(score - threshold);
+
+    var overlay = document.createElement('div');
+    overlay.className = 'bj-score-gate-overlay';
+    overlay.id = 'bj-score-gate-overlay';
+
+    var popup = document.createElement('div');
+    popup.className = 'bj-score-gate';
+
+    // Header
+    var headerClass = isAbove ? 'bj-sg-header above' : 'bj-sg-header';
+    var headerIcon = isAbove
+      ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+      : '';
+    var headerTitle = isAbove ? 'Score Passed — Submitting' : 'Resume Score Check';
+
+    var html = [
+      '<div class="' + headerClass + '">',
+      '  <div class="bj-sg-header-left">',
+      '    <div class="bj-sg-logo">' + (isAbove ? headerIcon : 'BJ') + '</div>',
+      '    <span class="bj-sg-title">' + headerTitle + '</span>',
+      '  </div>',
+      '  <button class="bj-sg-close" id="bj-sg-close-btn">&times;</button>',
+      '</div>',
+      '<div class="bj-sg-body">',
+    ];
+
+    // Job info
+    if (data.jobTitle || data.company) {
+      var jobInfo = (data.jobTitle || 'Job') + (data.company ? ' at ' + data.company : '');
+      html.push('  <div class="bj-sg-job">' + _escText(jobInfo) + '</div>');
+    }
+
+    // Score ring
+    html.push('  <div class="bj-sg-ring-wrap">');
+    html.push('    ' + buildScoreRingSVG(score, 88));
+    html.push('    <div class="bj-sg-score-num" style="color:' + scoreColor + '">' + Math.round(score) + '</div>');
+    html.push('    <div class="bj-sg-score-label">of 100</div>');
+    html.push('  </div>');
+
+    // Verdict
+    if (isAbove) {
+      html.push('  <div class="bj-sg-verdict" style="color:#16a34a">Above Threshold</div>');
+      html.push('  <div class="bj-sg-detail">Your resume scores well for this role.</div>');
+      html.push('  <div class="bj-sg-badge above">' + diff + ' points above threshold</div>');
+      html.push('  <div class="bj-sg-auto-dismiss">Auto-submitting in 3 seconds...</div>');
+    } else {
+      html.push('  <div class="bj-sg-verdict" style="color:#dc2626">Below Your Threshold</div>');
+      html.push('  <div class="bj-sg-detail">Score ' + Math.round(score) + ' is below your ' + threshold + ' threshold.</div>');
+      html.push('  <div class="bj-sg-badge below">' + diff + ' points below threshold</div>');
+    }
+
+    // Gap analysis (below-threshold only, max 3)
+    if (!isAbove && gaps.length > 0) {
+      html.push('  <div class="bj-sg-gaps">');
+      html.push('    <div class="bj-sg-gaps-title">Key Gaps</div>');
+      var displayGaps = gaps.slice(0, 3);
+      for (var g = 0; g < displayGaps.length; g++) {
+        var gap = displayGaps[g];
+        var gapText = typeof gap === 'string' ? gap : (gap.gap || gap.skill || gap.area || gap.description || JSON.stringify(gap));
+        var gapIcon = '<span class="bj-sg-gap-icon" style="color:#dc2626">✗</span>';
+        html.push('    <div class="bj-sg-gap">' + gapIcon + '<span>' + _escText(gapText) + '</span></div>');
+      }
+      html.push('  </div>');
+    }
+
+    // Action buttons
+    html.push('  <div class="bj-sg-actions">');
+    if (!isAbove) {
+      html.push('    <button class="bj-sg-btn primary" id="bj-sg-rewrite-btn">Rewrite Resume for This Job</button>');
+      html.push('    <button class="bj-sg-btn secondary" id="bj-sg-submit-btn">Submit Anyway (score: ' + Math.round(score) + ')</button>');
+      html.push('    <button class="bj-sg-btn ghost" id="bj-sg-cancel-btn">Cancel — Don\'t Apply</button>');
+    }
+    html.push('  </div>');
+
+    html.push('</div>');
+    popup.innerHTML = html.join('\n');
+    overlay.appendChild(popup);
+    shadow.appendChild(overlay);
+
+    // Wire close button
+    var closeBtn = shadow.querySelector('#bj-sg-close-btn');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function () {
+        hideScoreGatePopup();
+        _sendConfirm('cancel', data);
+      });
+    }
+
+    // Wire action buttons (below-threshold)
+    if (!isAbove) {
+      var rewriteBtn = shadow.querySelector('#bj-sg-rewrite-btn');
+      var submitBtn = shadow.querySelector('#bj-sg-submit-btn');
+      var cancelBtn = shadow.querySelector('#bj-sg-cancel-btn');
+
+      if (rewriteBtn) rewriteBtn.addEventListener('click', function () {
+        hideScoreGatePopup();
+        showToast('Rewrite queued — EXT-AS-5 will implement full flow');
+        _sendConfirm('rewrite', data);
+      });
+      if (submitBtn) submitBtn.addEventListener('click', function () {
+        hideScoreGatePopup();
+        showToast('Submitting with current resume...');
+        _sendConfirm('submit_anyway', data);
+      });
+      if (cancelBtn) cancelBtn.addEventListener('click', function () {
+        hideScoreGatePopup();
+        _sendConfirm('cancel', data);
+      });
+    }
+
+    // Above-threshold: auto-dismiss after 3 seconds
+    if (isAbove) {
+      _autoDismissTimer = setTimeout(function () {
+        hideScoreGatePopup();
+        showToast('Score passed — proceeding with application');
+        _sendConfirm('submit_anyway', data);
+      }, 3000);
+    }
+
+    // Click outside to cancel
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) {
+        hideScoreGatePopup();
+        _sendConfirm('cancel', data);
+      }
+    });
+  }
+
+  function hideScoreGatePopup() {
+    _scoreGateActive = false;
+    if (_autoDismissTimer) {
+      clearTimeout(_autoDismissTimer);
+      _autoDismissTimer = null;
+    }
+    var shadow = getShadowRoot();
+    var existing = shadow.querySelector('#bj-score-gate-overlay');
+    if (existing) existing.remove();
+  }
+
+  function _sendConfirm(action, data) {
+    sendMsg('bj:toolbar:applyConfirm', {
+      action: action,
+      score: data.score,
+      threshold: data.threshold,
+      platform: currentSite.platform,
+      mode: data.mode || _applicationMode,
+    });
+  }
+
+  function _escText(str) {
+    var d = document.createElement('div');
+    d.textContent = str || '';
+    return d.innerHTML;
+  }
+
+  // ── EXT-AS-4: Listen for score gate messages from background (via contentScript bridge) ──
+  window.addEventListener('message', function (evt) {
+    if (!evt.data || evt.data.source !== 'bj-extension') return;
+
+    if (evt.data.type === 'bj:toolbar:scoreGate') {
+      var p = evt.data.payload || {};
+      showScoreGatePopup(p);
+    }
+
+    if (evt.data.type === 'bj:toolbar:applyStatus') {
+      var s = evt.data.payload || {};
+      if (s.status === 'error') {
+        hideScoreGatePopup();
+        showToast('Score check failed — you can apply natively');
+      }
+      if (s.status === 'filling') {
+        showToast('Submitting application...');
+      }
+      if (s.status === 'rewrite_pending') {
+        showToast('Resume rewrite in progress...');
+      }
+    }
+  });
+
   // ── Exports for testing ───────────────────────────────────────
   window._bjJobSiteOverlay = {
     currentSite: currentSite,
@@ -596,6 +919,10 @@
     getMode: function () { return _applicationMode; },
     getThreshold: function () { return _scoreThreshold; },
     isSaved: function () { return _saved; },
+    showScoreGatePopup: showScoreGatePopup,
+    hideScoreGatePopup: hideScoreGatePopup,
+    buildScoreRingSVG: buildScoreRingSVG,
+    isScoreGateActive: function () { return _scoreGateActive; },
   };
 
 })();

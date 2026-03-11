@@ -52,6 +52,58 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**EXT-AS-4** — Score Gate Popup + Resume Scoring (Handoff Phase 4)
+- Completed: 2026-03-11
+- Product version bumped: `v8.65` → `v8.66` (Extension job-site-overlay.ts score gate popup + background.ts SCORE_RESUME handler + contentScript.ts bridge + score-resume EF direct JD text; all HTML surfaces cache-busted)
+- Extension manifest: 2.24.0 → 2.25.0
+- ROADMAP.md updated: EXT-AS-4 → ✅
+- roadmap.html updated: EXT-AS-4 → `s: 'done'`, p: 100
+- **Score-resume EF Updated:**
+  - New `job_description_text` parameter for direct JD text from extension (bypasses ats_jobs lookup)
+  - Also accepts `job_title` and `company_name` for extension path
+  - Only activates for `mode: 'single'` with `job_description_text` present
+  - Uses `greenhouse_id: 'ext-direct'` placeholder for extension-sourced JDs
+- **Background.ts SCORE_RESUME Flow:**
+  - `_scoreResumeForJob(tabId, payload)` function: Gets activeResumeId from chrome.storage.local, fetches resume extracted_text from resume_archive via REST, gets JD from content script via ats:extractJD message, calls score-resume EF via api-gateway with direct JD text
+  - APPLY_INTERCEPTED mode routing: `score-gated` and `auto-score-gate` modes trigger _scoreResumeForJob, score result sent to tab via `bj:toolbar:scoreGate` message with score, threshold, isAboveThreshold, gaps, recommendation, fitStatus, analysisSummary
+  - Scoring failure sends `bj:toolbar:applyStatus` error to tab
+  - PostHog `score_resume_extension` event with platform, score, mode, has_gap_analysis
+- **bj:toolbar:applyConfirm Handler:**
+  - Handles 3 actions: `submit_anyway` (sends filling status to tab), `cancel` (no-op), `rewrite` (sends rewrite_pending — EXT-AS-5 stub)
+  - PostHog `score_gate_decision` event with action, score, threshold, platform, mode
+- **ContentScript.ts Bridge:**
+  - Handles `bj:toolbar:scoreGate` and `bj:toolbar:applyStatus` messages from background
+  - Relays to overlay via `window.postMessage` with `source: 'bj-extension'` tag
+  - Required because overlay runs as web_accessible_resource (MAIN world — no direct chrome.runtime.onMessage)
+- **Score Gate Popup (job-site-overlay.ts):**
+  - Shadow DOM overlay with full CSS (fade-in animation, responsive 380px width)
+  - Score Ring SVG: 88px circular progress, 3-tier color (green ≥75, amber 60-74, red <60), dash-offset animation
+  - Below-threshold popup: "Resume Score Check" header, score ring, "Below Your Threshold" verdict, "X points below threshold" badge, Key Gaps list (max 3 from gap_analysis), 3 action buttons (Rewrite Resume primary, Submit Anyway secondary, Cancel ghost)
+  - Above-threshold popup: Green gradient header, checkmark icon, "Score Passed — Submitting", "X points above threshold" badge, auto-dismiss after 3 seconds
+  - Close button + click-outside-to-cancel
+  - `_escText()` helper for XSS prevention in dynamic text
+  - `_sendConfirm()` sends `bj:toolbar:applyConfirm` message to background with action + score context
+  - `window.addEventListener('message')` listener filters by `bj-extension` source, handles scoreGate + applyStatus messages
+  - 4 new window exports: showScoreGatePopup, hideScoreGatePopup, buildScoreRingSVG, isScoreGateActive
+- **Pod Team Manifest:**
+  - EXT-AS-4 pairing: Lead Platform Eng + Forward-Looking Dev (primary), Chief Architect + Evolvability Strategist (reviewers)
+  - All 5 hook-and-scar roles confirmed present since SA-006
+- **Created:**
+  - `tests/ext-as-4-score-gate.test.js` — 75 validation tests (14 sections)
+- **Modified:**
+  - `supabase/functions/score-resume/index.ts` — job_description_text direct JD text support for extension path
+  - `extension/background.ts` — _scoreResumeForJob function, APPLY_INTERCEPTED score-gated/auto-score-gate routing, bj:toolbar:applyConfirm handler
+  - `extension/contentScript.ts` — bj:toolbar:scoreGate + bj:toolbar:applyStatus bridge via window.postMessage
+  - `extension/job-site-overlay.ts` — Score gate popup CSS + score ring SVG + showScoreGatePopup + hideScoreGatePopup + window message listener + exports
+  - `extension/manifest.json` — v2.24.0 → v2.25.0
+  - `docs/scaling/pod-team-manifest.md` — EXT-AS-4 pairing
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — EXT-AS-4 → ✅
+  - `roadmap.html` — EXT-AS-4 → done/100
+- **Tests:** 75 validation tests (all passing)
+
 **EXT-AS-3** — Content Script: Save Button + Apply Interception
 - Completed: 2026-03-11
 - Product version bumped: `v8.64` → `v8.65` (Extension job-site-overlay.ts + background.ts handlers + manifest v2.24.0; all HTML surfaces cache-busted)
@@ -1646,13 +1698,14 @@ None. FEED-FIX-006 complete.
 
 ## Next Session
 
-No specific session queued. EXT-AS-3 complete.
+No specific session queued. EXT-AS-4 complete.
 
-**EXT-AS series (9 sessions total, 3 done):**
+**EXT-AS series (9 sessions total, 4 done):**
 - EXT-AS-1 ✅ — Applicant Profile + Settings Sync
 - EXT-AS-2 ✅ — Consumer Popup UI + Mode Persistence
 - EXT-AS-3 ✅ — Content Script: Save Button + Apply Interception
-- EXT-AS-4 through EXT-AS-9 — Score gate popup, AI rewrite, auto modes, dashboard routing, settings panel, PostHog QA
+- EXT-AS-4 ✅ — Score Gate Popup + Resume Scoring
+- EXT-AS-5 through EXT-AS-9 — AI rewrite, auto modes, dashboard routing, settings panel, PostHog QA
 
 **Pending from EXT-AS spec (Marston to prioritize):**
 - EXT-AS-2 requires extension-ux-prototype.html designs
@@ -1714,7 +1767,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.65`** | **EXT-AS-3: Content Script Save Button + Apply Interception** |
+| **Product (BJ_VERSION)** | **`v8.66`** | **EXT-AS-4: Score Gate Popup + Resume Scoring** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

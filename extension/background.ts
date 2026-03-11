@@ -1410,6 +1410,88 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 
+  // ── EXT-AS-4: Score resume for job via score-resume EF ──
+  // Called by mode routing when apply is intercepted in a scoring mode.
+  // Gets resume text from Supabase, JD from content script, calls score-resume EF.
+  async function _scoreResumeForJob(tabId: number, payload: Record<string, unknown>): Promise<Record<string, unknown> | null> {
+    const authSession = await getAuth();
+    if (!authSession?.access_token) return null;
+
+    const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+
+    // 1. Get active resume ID from storage
+    const storageData = await chrome.storage.local.get('applySettings');
+    const resumeId = storageData.applySettings?.activeResumeId || null;
+    if (!resumeId) {
+      console.warn('[BJ] SCORE_RESUME: No active resume selected');
+      return null;
+    }
+
+    // 2. Fetch resume text from resume_archive
+    const resumeResp = await fetchWithRetry(`${SB_URL}/rest/v1/resume_archive?id=eq.${resumeId}&select=extracted_text,name`, {
+      headers: {
+        'apikey': authSession.access_token,
+        'Authorization': 'Bearer ' + authSession.access_token,
+      },
+    }, { timeout: 10000, retries: 1 });
+    if (!resumeResp.ok) {
+      console.warn('[BJ] SCORE_RESUME: Failed to fetch resume:', resumeResp.status);
+      return null;
+    }
+    const resumeRows = await resumeResp.json();
+    const resumeText = resumeRows?.[0]?.extracted_text;
+    if (!resumeText) {
+      console.warn('[BJ] SCORE_RESUME: No extracted text for resume', resumeId);
+      return null;
+    }
+
+    // 3. Get JD from content script via ats:extractJD
+    let jobDescription = '';
+    try {
+      const jdResp = await chrome.tabs.sendMessage(tabId, { type: 'ats:extractJD' });
+      jobDescription = jdResp?.jd || '';
+    } catch (e) {
+      console.warn('[BJ] SCORE_RESUME: JD extraction failed:', (e as Error).message);
+    }
+    if (!jobDescription) {
+      // Fallback: use the page title + company as minimal context
+      jobDescription = `Job: ${payload.title || 'Unknown'} at ${payload.company || 'Unknown'}`;
+    }
+
+    // 4. Call score-resume EF via gateway with direct JD text
+    const scoreResp = await fetchWithRetry(`${SB_URL}/functions/v1/api-gateway/score-resume`, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + authSession.access_token,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        resume_text: resumeText,
+        mode: 'single',
+        tier: 'basic',
+        job_description_text: jobDescription,
+        job_title: payload.title || '',
+        company_name: payload.company || '',
+      }),
+    }, { timeout: 30000, retries: 1 });
+
+    if (!scoreResp.ok) {
+      const errText = await scoreResp.text();
+      console.warn('[BJ] SCORE_RESUME: EF error', scoreResp.status, errText);
+      return null;
+    }
+
+    const scoreResult = await scoreResp.json();
+    captureEvent('score_resume_extension', {
+      platform: payload.platform,
+      score: scoreResult.match_score || scoreResult.overall_score,
+      mode: payload.mode,
+      has_gap_analysis: !!scoreResult.gap_analysis,
+    });
+
+    return scoreResult;
+  }
+
   // ── EXT-AS-3: APPLY_INTERCEPTED — Apply button click intercepted by overlay ──
   // Routes to appropriate flow based on application mode (EXT-AS-4/5/6 will extend).
   // For now: acknowledge receipt, log event, store pending interception.
@@ -1446,17 +1528,119 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           chrome.storage.local.set({ activityFeed: feed });
         });
 
-        // Mode routing (EXT-AS-4/5/6 will implement the full flows)
-        // For now, acknowledge receipt. Future sessions wire:
-        //   score-gated → SCORE_RESUME → score gate popup
-        //   auto-apply → ats:fill immediately
-        //   auto-score-gate → SCORE_RESUME → conditional auto-fill
-        //   auto-rewrite → SCORE_RESUME → REWRITE_RESUME → ats:fill
-        //   full-autopilot → REWRITE_RESUME → ats:fill
-        sendResponse({ status: 'received', mode: mode });
+        // Mode routing (EXT-AS-4: score-gated and auto-score-gate flows)
+        if (mode === 'score-gated' || mode === 'auto-score-gate') {
+          // Get the sender tab ID for message routing
+          const tabId = sender?.tab?.id;
+          if (!tabId) {
+            sendResponse({ status: 'error', error: 'no_tab_id' });
+            return;
+          }
+
+          // Score the resume against the job
+          const scoreResult = await _scoreResumeForJob(tabId, p);
+          if (!scoreResult) {
+            // Scoring failed — notify overlay to let native apply proceed
+            chrome.tabs.sendMessage(tabId, {
+              type: 'bj:toolbar:applyStatus',
+              payload: { status: 'error', error: 'scoring_failed' },
+            });
+            sendResponse({ status: 'error', error: 'scoring_failed' });
+            return;
+          }
+
+          const score = scoreResult.match_score ?? scoreResult.overall_score ?? 0;
+          const threshold = p.scoreThreshold || 75;
+          const isAboveThreshold = score >= threshold;
+
+          // Send score gate data to content script
+          chrome.tabs.sendMessage(tabId, {
+            type: 'bj:toolbar:scoreGate',
+            payload: {
+              score: score,
+              threshold: threshold,
+              isAboveThreshold: isAboveThreshold,
+              gaps: scoreResult.gap_analysis || scoreResult.gaps || [],
+              recommendation: isAboveThreshold ? 'submit' : 'review',
+              fitStatus: scoreResult.fit_status || '',
+              analysisSummary: scoreResult.analysis_summary || '',
+              jobTitle: p.title || '',
+              company: p.company || '',
+              mode: mode,
+            },
+          });
+
+          sendResponse({ status: 'scoring_complete', score: score, isAboveThreshold: isAboveThreshold, mode: mode });
+        } else {
+          // Other modes (auto-apply, auto-rewrite, full-autopilot) — EXT-AS-5/6
+          //   auto-apply → ats:fill immediately (EXT-AS-6)
+          //   auto-rewrite → SCORE_RESUME → REWRITE_RESUME → ats:fill (EXT-AS-5/6)
+          //   full-autopilot → REWRITE_RESUME → ats:fill (EXT-AS-6)
+          sendResponse({ status: 'received', mode: mode });
+        }
       } catch (e) {
         console.warn('[BJ] APPLY_INTERCEPTED error:', (e as Error).message);
         captureEvent('extension_catch_error', { context: 'APPLY_INTERCEPTED', error: (e as Error).message });
+        sendResponse({ status: 'error', error: (e as Error).message });
+      }
+    })();
+    return true;
+  }
+
+  // ── EXT-AS-4: bj:toolbar:applyConfirm — User decision from score gate popup ──
+  // Handles Submit Anyway, Cancel, and Rewrite requests from the overlay.
+  if (msg.type === 'bj:toolbar:applyConfirm') {
+    (async () => {
+      try {
+        const p = msg.payload || {};
+        const action = p.action; // 'submit_anyway', 'cancel', 'rewrite'
+
+        captureEvent('score_gate_decision', {
+          action: action,
+          score: p.score,
+          threshold: p.threshold,
+          platform: p.platform,
+          mode: p.mode,
+        });
+
+        if (action === 'cancel') {
+          // User chose not to apply — nothing to do
+          sendResponse({ status: 'cancelled' });
+          return;
+        }
+
+        if (action === 'submit_anyway') {
+          // User wants to submit with current (below-threshold) resume
+          // Send ats:fill to the content script tab to proceed with native apply
+          const tabId = sender?.tab?.id;
+          if (tabId) {
+            chrome.tabs.sendMessage(tabId, {
+              type: 'bj:toolbar:applyStatus',
+              payload: { status: 'filling', action: 'submit_anyway' },
+            });
+          }
+          sendResponse({ status: 'submitting' });
+          return;
+        }
+
+        if (action === 'rewrite') {
+          // User wants AI rewrite — EXT-AS-5 will implement full flow
+          // For now, acknowledge and stub the rewrite request
+          const tabId = sender?.tab?.id;
+          if (tabId) {
+            chrome.tabs.sendMessage(tabId, {
+              type: 'bj:toolbar:applyStatus',
+              payload: { status: 'rewrite_pending', action: 'rewrite' },
+            });
+          }
+          sendResponse({ status: 'rewrite_queued' });
+          return;
+        }
+
+        sendResponse({ status: 'unknown_action' });
+      } catch (e) {
+        console.warn('[BJ] applyConfirm error:', (e as Error).message);
+        captureEvent('extension_catch_error', { context: 'applyConfirm', error: (e as Error).message });
         sendResponse({ status: 'error', error: (e as Error).message });
       }
     })();
