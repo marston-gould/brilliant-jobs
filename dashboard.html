@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v8.71 -->
+<!-- Brilliant Jobs Dashboard v8.72 -->
 <html lang="en">
 <head>
   <!-- CS-P1-009: Theme flash prevention — must be first script -->
@@ -19,22 +19,22 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="/js/vendor/supabase.min.js" defer></script>
-  <script src="/js/pipeline-migration.js?v=v8.71" defer></script>
-  <script src="/js/notification-center.js?v=v8.71" defer></script>
+  <script src="/js/pipeline-migration.js?v=v8.72" defer></script>
+  <script src="/js/notification-center.js?v=v8.72" defer></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" integrity="sha384-nFoSjZIoH3CCp8W639jJyQkuPHinJ2NHe7on1xvlUA7SuGfJAfvMldrsoAVm6ECz" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" integrity="sha384-eEu5CTj3qGvu9PdJuS+YlkNi7d2XxQROAFYOr59zgObtlcux1ae1Il3u7jvdCSWu" crossorigin="anonymous"></script>
   <!-- CS-014: CX-09 — ECharts lazy-loaded by stats.js when Stats tab opens -->
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js" integrity="sha384-TcLTgu6flPhnZ5dfHnHimsxNFjYWN0povfGgnOvgPJKbZe6IbuoC2ociiatSHl9E" crossorigin="anonymous"></script>
   <!-- CS-016 FIX-10: Code-split chunks — shell (globals+routing) + feed (job list) loaded eagerly; all other chunks lazy-loaded on tab switch -->
-  <script src="dist/dashboard-shell.min.js?v=v8.71" defer></script>
-  <script src="dist/dashboard-feed.min.js?v=v8.71" defer></script>
+  <script src="dist/dashboard-shell.min.js?v=v8.72" defer></script>
+  <script src="dist/dashboard-feed.min.js?v=v8.72" defer></script>
   <!-- CS-P1-002: dashboard inline scripts externalized (pdfjs, preload, feedback, insights, a11y) -->
-  <script src="js/dashboard-inline.js?v=v8.71" defer></script>
-  <script src="js/canny.js?v=v8.71" defer></script>
+  <script src="js/dashboard-inline.js?v=v8.72" defer></script>
+  <script src="js/canny.js?v=v8.72" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=v8.71">
+  <link rel="stylesheet" href="styles.css?v=v8.72">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -109,11 +109,11 @@
     </style>
   <!-- CSS extracted to styles.css in v3.28 -->
   <!-- A13: PostHog analytics — CS-P1-002: externalized for CSP compliance -->
-  <script src="js/posthog-dashboard.js?v=v8.71" defer></script>
-  <script src="js/posthog-perf.js?v=v8.71" defer></script>
-  <script src="js/feature-flags.js?v=v8.71" defer></script>
-  <script src="js/structured-logger.js?v=v8.71" defer></script>
-  <script src="js/theme.js?v=v8.71" defer></script>
+  <script src="js/posthog-dashboard.js?v=v8.72" defer></script>
+  <script src="js/posthog-perf.js?v=v8.72" defer></script>
+  <script src="js/feature-flags.js?v=v8.72" defer></script>
+  <script src="js/structured-logger.js?v=v8.72" defer></script>
+  <script src="js/theme.js?v=v8.72" defer></script>
 </head>
 <body>
 
@@ -3891,6 +3891,33 @@
         <button id="bj-confirm-cancel" class="btn btn-sm btn-secondary" style="min-width:90px;padding:8px 16px;">Cancel</button>
         <button id="bj-confirm-ok" class="btn btn-sm btn-primary" style="min-width:90px;padding:8px 16px;">OK</button>
       </div>
+    </div>
+  </div>
+
+  <!-- AF-002: First-Time Setup Gate Modal -->
+  <div id="setup-gate-overlay" class="u-hidden" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.55);align-items:center;justify-content:center;" onclick="if(event.target===this)hideSetupGateModal()">
+    <div style="background:var(--bg-card);border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,0.35);max-width:440px;width:90%;padding:32px 28px 24px;text-align:center;position:relative;">
+      <button onclick="hideSetupGateModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer;line-height:1;">&times;</button>
+      <div style="margin-bottom:16px;">
+        <i data-lucide="shield-alert" style="width:48px;height:48px;color:var(--accent);"></i>
+      </div>
+      <h3 style="font-size:18px;font-weight:700;color:var(--text);margin:0 0 8px;">Set Up My Application First</h3>
+      <p style="font-size:13px;color:var(--text-dim);line-height:1.6;margin:0 0 20px;">Before applying to jobs, please complete your application profile. This ensures your information is ready for every application.</p>
+      <div style="background:var(--bg-input);border-radius:10px;padding:14px 16px;margin-bottom:20px;text-align:left;">
+        <div id="sg-check-profile" style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-dim);margin-bottom:6px;">
+          <span id="sg-icon-profile" style="width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;">○</span>
+          Name &amp; email in My Application
+        </div>
+        <div id="sg-check-mode" style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-dim);margin-bottom:6px;">
+          <span id="sg-icon-mode" style="width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;">○</span>
+          Application mode selected
+        </div>
+        <div id="sg-check-resume" style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-dim);">
+          <span id="sg-icon-resume" style="width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;">○</span>
+          Active resume selected
+        </div>
+      </div>
+      <button onclick="navigateToSetup()" class="btn btn-primary" style="width:100%;padding:10px 0;font-size:14px;font-weight:600;border-radius:8px;">Go to Settings</button>
     </div>
   </div>
 

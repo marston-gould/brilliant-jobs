@@ -1426,13 +1426,14 @@ function applyButton(sources, urls, jobId) {
   const cls = isLI ? 'apply-btn apply-btn-linkedin' : 'apply-btn apply-btn-default';
   const label = isLI ? 'Apply on LI' : 'Apply →';
 
+  // AF-002: Setup gate — intercept all apply clicks to check setup completion
   // Phase 3 fraud interstitial: intercept apply for caution/suspicious jobs
   var fraudInfo = typeof _fraudScoreCache !== 'undefined' ? _fraudScoreCache[jobId] : null;
   if (fraudInfo && (fraudInfo.label === 'caution' || fraudInfo.label === 'suspicious')) {
-    return `<a href="#" class="${cls}" onclick="event.preventDefault(); event.stopPropagation(); showFraudInterstitial('${jobId}', '${bestUrl.replace(/'/g, "\\'")}')">${label}</a>`;
+    return `<a href="#" class="${cls}" onclick="event.preventDefault(); event.stopPropagation(); if(typeof isSetupComplete==='function'&&!isSetupComplete()){showSetupGateModal();return;} showFraudInterstitial('${jobId}', '${bestUrl.replace(/'/g, "\\'")}')">${label}</a>`;
   }
 
-  return `<a href="${bestUrl}" target="_blank" rel="noopener" class="${cls}" onclick="event.stopPropagation(); markApplied('${jobId}', this)">${label}</a>`;
+  return `<a href="${bestUrl}" target="_blank" rel="noopener" class="${cls}" onclick="event.stopPropagation(); if(typeof isSetupComplete==='function'&&!isSetupComplete()){event.preventDefault();showSetupGateModal();return;} markApplied('${jobId}', this)">${label}</a>`;
 }
 
 

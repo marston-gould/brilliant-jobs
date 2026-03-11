@@ -115,3 +115,4 @@
 | Session | Primary Pair | Pod 4 Reviewer |
 |---------|-------------|----------------|
 | AF-001 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
+| AF-002 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |

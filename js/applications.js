@@ -210,6 +210,12 @@ $('#a-add-manual').addEventListener('click', () => {
 
 // Process queue — EXT-AS-7: Route through headless worker
 $('#a-process-queue').addEventListener('click', () => {
+  // AF-002: Setup gate — block if setup not complete
+  if (typeof isSetupComplete === 'function' && !isSetupComplete()) {
+    if (typeof showSetupGateModal === 'function') showSetupGateModal();
+    else if (typeof showToast === 'function') showToast('Complete your application profile before submitting.', { type: 'warning' });
+    return;
+  }
   // Use Supabase-backed processApplyQueue from apply-workflow.js
   if (typeof processApplyQueue === 'function') {
     processApplyQueue();

@@ -1694,6 +1694,32 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           chrome.storage.local.set({ activityFeed: feed });
         });
 
+        // AF-002: Setup gate — check if user has completed setup before proceeding
+        const setupData = await new Promise<Record<string, unknown>>((resolve) => {
+          chrome.storage.local.get(['applySettings', 'applicantProfile'], (data) => resolve(data as Record<string, unknown>));
+        });
+        const applySettings = (setupData.applySettings || {}) as Record<string, unknown>;
+        const applicantProfile = (setupData.applicantProfile || {}) as Record<string, unknown>;
+        const hasProfile = applicantProfile && typeof applicantProfile.name === 'string' && applicantProfile.name.trim().length > 0 &&
+                          typeof applicantProfile.email === 'string' && applicantProfile.email.trim().length > 0;
+        const hasMode = applySettings && typeof applySettings.applicationMode === 'string' && applySettings.applicationMode !== '';
+        const hasResume = applySettings && applySettings.activeResumeId;
+        const isSetupDone = (applySettings.setup_complete === true) || (hasProfile && hasMode && hasResume);
+
+        if (!isSetupDone) {
+          // Send setupRequired message to overlay
+          const tabId = sender?.tab?.id;
+          if (tabId) {
+            chrome.tabs.sendMessage(tabId, {
+              type: 'bj:toolbar:setupRequired',
+              payload: { dashboardUrl: 'https://brilliantjobs.app/dashboard#settings' },
+            });
+          }
+          captureEvent('setup_gate_shown', { surface: 'extension', platform: p.platform, mode: mode });
+          sendResponse({ status: 'setup_required' });
+          return;
+        }
+
         // Mode routing (EXT-AS-4: score-gated and auto-score-gate flows)
         if (mode === 'score-gated' || mode === 'auto-score-gate') {
           // Get the sender tab ID for message routing

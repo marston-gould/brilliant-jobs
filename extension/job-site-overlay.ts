@@ -940,6 +940,12 @@
       var lr = evt.data.payload || {};
       showLimitReachedToast(lr.count || 0, lr.limit || 25);
     }
+
+    // AF-002: Setup gate — show overlay telling user to complete setup on dashboard
+    if (evt.data.type === 'bj:toolbar:setupRequired') {
+      var sr = evt.data.payload || {};
+      showSetupRequiredOverlay(sr.dashboardUrl || 'https://brilliantjobs.app/dashboard#settings');
+    }
   });
 
   // ── EXT-AS-5: Rewrite Progress Popup ──────────────────────────
@@ -1258,6 +1264,41 @@
     showToast('⚠️ Daily apply limit reached (' + count + '/' + limit + '). Resets tomorrow.');
   }
 
+  // AF-002: Setup gate overlay — tells user to complete setup on dashboard
+  function showSetupRequiredOverlay(dashboardUrl: string) {
+    // Remove any existing setup overlay
+    var existing = _shadowRoot ? _shadowRoot.querySelector('.bj-setup-overlay') : null;
+    if (existing) existing.remove();
+
+    if (!_shadowRoot) return;
+
+    var overlay = document.createElement('div');
+    overlay.className = 'bj-setup-overlay';
+    overlay.innerHTML = '<div class="bj-setup-card">' +
+      '<div style="font-size:24px;margin-bottom:8px;">⚙️</div>' +
+      '<div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:6px;">Complete Setup First</div>' +
+      '<div style="font-size:12px;color:rgba(255,255,255,0.7);line-height:1.5;margin-bottom:14px;">' +
+        'Set up your application profile on the Brilliant Jobs dashboard before applying to jobs.' +
+      '</div>' +
+      '<a href="' + _escText(dashboardUrl) + '" target="_blank" rel="noopener" ' +
+        'style="display:inline-block;padding:8px 20px;background:#fff;color:#7c3aed;font-size:13px;font-weight:600;border-radius:6px;text-decoration:none;cursor:pointer;">' +
+        'Open Dashboard Settings →' +
+      '</a>' +
+      '<button class="bj-setup-close" style="position:absolute;top:8px;right:10px;background:none;border:none;color:rgba(255,255,255,0.5);font-size:18px;cursor:pointer;line-height:1;">&times;</button>' +
+    '</div>';
+
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;';
+    var card = overlay.querySelector('.bj-setup-card') as HTMLElement;
+    if (card) card.style.cssText = 'background:linear-gradient(135deg,#7c3aed,#6d28d9);border-radius:14px;padding:24px;max-width:360px;width:90%;text-align:center;position:relative;box-shadow:0 8px 32px rgba(0,0,0,0.3);';
+
+    overlay.addEventListener('click', function(e: Event) { if (e.target === overlay) overlay.remove(); });
+    var closeBtn = overlay.querySelector('.bj-setup-close');
+    if (closeBtn) closeBtn.addEventListener('click', function() { overlay.remove(); });
+
+    _shadowRoot.appendChild(overlay);
+    setTimeout(function() { if (overlay.parentNode) overlay.remove(); }, 15000);
+  }
+
   // ── Exports for testing ───────────────────────────────────────
   window._bjJobSiteOverlay = {
     currentSite: currentSite,
@@ -1280,6 +1321,7 @@
     isRewriteReviewActive: function () { return _rewriteReviewActive; },
     showAutoApplyToast: showAutoApplyToast,
     showLimitReachedToast: showLimitReachedToast,
+    showSetupRequiredOverlay: showSetupRequiredOverlay,
   };
 
 })();

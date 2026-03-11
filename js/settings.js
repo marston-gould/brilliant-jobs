@@ -977,10 +977,14 @@ async function loadApplicantProfile() {
     }, { label: 'settings:load-profile', fallback: null });
     var ud = (res && res.user_data) || {};
     _applicantProfile = ud.applicant_profile || {};
+    // AF-002: Cache profile in localStorage for isSetupComplete()
+    try { localStorage.setItem('bj_applicant_profile', JSON.stringify(_applicantProfile)); } catch (e) { /* ignore */ }
     _populateApplicantProfileForm(_applicantProfile);
     // Also load apply_settings from Supabase into local
     if (ud.apply_settings) {
       Object.assign(userApplySettings, ud.apply_settings);
+      // AF-002: Cache apply_settings for isSetupComplete()
+      try { localStorage.setItem('bj_apply_settings', JSON.stringify(ud.apply_settings)); } catch (e) { /* ignore */ }
       saveApplySettings(); // sync to localStorage
     }
     _updateApplySettingsDisplay();
@@ -1057,10 +1061,14 @@ async function saveApplicantProfile() {
     ud.applicant_profile = profile;
     await sb.from('profiles').update({ user_data: ud }).eq('id', currentUser.id);
     _applicantProfile = profile;
+    // AF-002: Cache profile in localStorage for isSetupComplete() checks
+    try { localStorage.setItem('bj_applicant_profile', JSON.stringify(profile)); } catch (e) { /* ignore */ }
     if (status) { status.style.display = 'inline'; status.textContent = 'Saved'; status.style.color = 'var(--green)'; }
     setTimeout(function() { if (status) status.style.display = 'none'; }, 3000);
     showToast('Applicant profile saved.', { type: 'success' });
     if (typeof posthog !== 'undefined') posthog.capture('applicant_profile_saved', { has_phone: !!profile.phone, has_linkedin: !!profile.linkedin, has_location: !!profile.location, has_eeo: !!(profile.eeo_preferences && (profile.eeo_preferences.gender || profile.eeo_preferences.ethnicity || profile.eeo_preferences.veteranStatus || profile.eeo_preferences.disabilityStatus)) });
+    // AF-002: Check if setup is now complete after profile save
+    if (typeof checkAndSetSetupComplete === 'function') checkAndSetSetupComplete();
   } catch (e) {
     reportError('settings:save-applicant-profile', e);
     showToast('Failed to save profile: ' + (e.message || e), { type: 'error' });
@@ -1088,9 +1096,13 @@ async function syncApplySettingsToSupabase() {
       auto_expire_hours: userApplySettings.auto_expire_hours || 48
     };
     await sb.from('profiles').update({ user_data: ud }).eq('id', currentUser.id);
+    // AF-002: Cache apply_settings in localStorage for isSetupComplete()
+    try { localStorage.setItem('bj_apply_settings', JSON.stringify(ud.apply_settings)); } catch (e) { /* ignore */ }
     if (status) { status.textContent = 'Synced'; status.style.color = 'var(--green)'; }
     setTimeout(function() { if (status) status.style.display = 'none'; }, 3000);
     if (typeof posthog !== 'undefined') posthog.capture('apply_settings_synced', { mode: ud.apply_settings.default_apply_mode });
+    // AF-002: Check if setup is now complete after settings sync
+    if (typeof checkAndSetSetupComplete === 'function') checkAndSetSetupComplete();
   } catch (e) {
     reportError('settings:sync-apply-settings', e);
     if (status) { status.textContent = 'Error'; status.style.color = 'var(--red)'; }

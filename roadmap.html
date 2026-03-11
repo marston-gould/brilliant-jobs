@@ -11,7 +11,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v8.71"></script>
+  <script src="/js/version.js?v=v8.72"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2208,6 +2208,7 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'EXT-AS-8 Settings + Activity Feed + Pipeline View', d: 'Handoff Phase 7: In-extension page views with bottom nav routing. Settings (daily limit, rewrite prefs, threshold mirror). Pipeline (stage counts + recent items from Supabase). Full activity feed (50 items, clear all). Extension v2.28.0.', p: 100, e: '3h' },
 { s: 'todo', b: 'post-launch', n: 'EXT-AS-9 PostHog Instrumentation + QA', d: 'Handoff Phase 8: 14 PostHog events, extension submission_attempts logging, admin method breakdown, edge case QA.', p: 0, e: '3h' },
 { s: 'done', b: 'post-launch', n: 'AF-001 EEOC/OFCCP Profile Extension', d: 'Extend applicant profile with voluntary self-identification fields (gender, race/ethnicity, veteran status, disability status). Dashboard settings form + Supabase persistence + extension sync + worker handler EEO question answering across all 5 ATS handlers. 55 validation tests. v8.71. 2026-03-11.', p: 100, e: '2h' },
+{ s: 'done', b: 'post-launch', n: 'AF-002 First-Time Setup Gate', d: 'Block all apply actions (feed, pipeline, extension) until user completes initial setup: applicant profile (name + email), application mode selected, active resume set. isSetupComplete() + dashboard gate modal + feed/pipeline/extension interception + setup_complete flag persistence. 56 validation tests. v8.72. 2026-03-11.', p: 100, e: '2h' },
 
 ];
 

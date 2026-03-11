@@ -58,6 +58,118 @@ var _applySubmitting = false; // Prevent double-submit
 var _activePollers = {}; // EXT-AS-7: Track active status pollers by appId
 
 // ═══════════════════════════════════════════════════════════
+// AF-002: FIRST-TIME SETUP GATE
+// Blocks all apply actions until user completes initial setup:
+//   1. applicant_profile with first_name, last_name, email
+//   2. applicationMode explicitly set (not null/undefined)
+//   3. activeResumeId is set
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Check if user has completed the first-time setup requirements.
+ * Reads from localStorage applySettings and applicantProfile cache.
+ * @returns {boolean} true if all setup criteria met
+ */
+function isSetupComplete() {
+  try {
+    // Fast path: check cached flag first
+    var settings = null;
+    try { settings = JSON.parse(localStorage.getItem('bj_apply_settings') || 'null'); } catch (e) { /* ignore */ }
+    if (settings && settings.setup_complete === true) return true;
+
+    // Check criteria individually
+    var profile = null;
+    try { profile = JSON.parse(localStorage.getItem('bj_applicant_profile') || 'null'); } catch (e) { /* ignore */ }
+
+    var hasProfile = profile && profile.name && profile.name.trim().length > 0 && profile.email && profile.email.trim().length > 0;
+    var hasMode = settings && settings.default_apply_mode && settings.default_apply_mode !== 'null' && settings.default_apply_mode !== '';
+    var hasResume = (settings && settings.active_resume_id) || (typeof window._activeResumeId !== 'undefined' && window._activeResumeId);
+
+    return !!(hasProfile && hasMode && hasResume);
+  } catch (e) {
+    reportError('apply-workflow:isSetupComplete', e);
+    return false;
+  }
+}
+
+/**
+ * Show the setup gate modal — blocks apply actions until setup is complete.
+ * Reusable across job feed and pipeline surfaces.
+ */
+function showSetupGateModal() {
+  var overlay = document.getElementById('setup-gate-overlay');
+  if (overlay) {
+    overlay.classList.remove('u-hidden');
+    overlay.style.display = 'flex';
+  }
+  if (typeof posthog !== 'undefined') posthog.capture('setup_gate_shown', { surface: 'dashboard' });
+}
+
+/**
+ * Hide the setup gate modal.
+ */
+function hideSetupGateModal() {
+  var overlay = document.getElementById('setup-gate-overlay');
+  if (overlay) {
+    overlay.classList.add('u-hidden');
+    overlay.style.display = 'none';
+  }
+}
+
+/**
+ * Navigate to Settings tab to complete setup. Called from gate modal button.
+ */
+function navigateToSetup() {
+  hideSetupGateModal();
+  // Navigate to settings page
+  var settingsNav = document.querySelector('[data-page="settings"]') || document.querySelector('.nav-item[data-page="settings"]');
+  if (settingsNav) settingsNav.click();
+  if (typeof posthog !== 'undefined') posthog.capture('setup_gate_navigate', { target: 'settings' });
+}
+
+/**
+ * After profile/settings save, check if all setup criteria are now met.
+ * If so, set setup_complete flag in Supabase and localStorage.
+ * @returns {Promise<boolean>} true if setup is now complete
+ */
+async function checkAndSetSetupComplete() {
+  if (!currentUser) return false;
+  try {
+    var profile = null;
+    try { profile = JSON.parse(localStorage.getItem('bj_applicant_profile') || 'null'); } catch (e) { /* ignore */ }
+    var settings = null;
+    try { settings = JSON.parse(localStorage.getItem('bj_apply_settings') || 'null'); } catch (e) { /* ignore */ }
+
+    var hasProfile = profile && profile.name && profile.name.trim().length > 0 && profile.email && profile.email.trim().length > 0;
+    var hasMode = settings && settings.default_apply_mode && settings.default_apply_mode !== 'null' && settings.default_apply_mode !== '';
+    var hasResume = (settings && settings.active_resume_id) || (typeof window._activeResumeId !== 'undefined' && window._activeResumeId);
+
+    if (hasProfile && hasMode && hasResume) {
+      // Set flag in localStorage
+      if (!settings) settings = {};
+      settings.setup_complete = true;
+      localStorage.setItem('bj_apply_settings', JSON.stringify(settings));
+
+      // Persist to Supabase
+      var res = await safeQuery(function() {
+        return sb.from('profiles').select('user_data').eq('id', currentUser.id).maybeSingle();
+      }, { label: 'apply-workflow:check-setup-complete', fallback: null });
+      var ud = (res && res.user_data) || {};
+      if (!ud.apply_settings) ud.apply_settings = {};
+      ud.apply_settings.setup_complete = true;
+      await sb.from('profiles').update({ user_data: ud }).eq('id', currentUser.id);
+
+      if (typeof posthog !== 'undefined') posthog.capture('setup_complete', { has_eeo: !!(profile.eeo_preferences && (profile.eeo_preferences.gender || profile.eeo_preferences.ethnicity)) });
+      return true;
+    }
+    return false;
+  } catch (e) {
+    reportError('apply-workflow:checkAndSetSetupComplete', e);
+    return false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
 // EXT-AS-7: DASHBOARD → WORKER ROUTING
 // Recruitee stays on direct API. All other ATS route through
 // headless worker (AS-1/2/3) via pending_applications polling.
@@ -212,6 +324,11 @@ function _renderLiveStatus(appId, status, message) {
  * Called from Pipeline Process Queue button.
  */
 async function processApplyQueue() {
+  // AF-002: Setup gate — block if setup not complete
+  if (!isSetupComplete()) {
+    showSetupGateModal();
+    return;
+  }
   var pending = pendingApplications.filter(function(a) {
     return a.status === APPLY_STATUS.PENDING;
   });
@@ -755,6 +872,11 @@ async function triggerRewrite(jobId, jobTitle, companyName) {
 // ═══════════════════════════════════════════════════════════
 
 async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
+  // AF-002: Setup gate — block if setup not complete
+  if (!isSetupComplete()) {
+    showSetupGateModal();
+    return;
+  }
   closeScoreGateModal();
 
   if (_applySubmitting) return;
@@ -1051,6 +1173,11 @@ function renderPendingApplications() {
 // ═══════════════════════════════════════════════════════════
 
 async function approvePendingApp(appId) {
+  // AF-002: Setup gate — block if setup not complete
+  if (!isSetupComplete()) {
+    showSetupGateModal();
+    return;
+  }
   var app = pendingApplications.find(function(a) { return a.id === appId; });
   if (!app) return;
 
@@ -1369,6 +1496,12 @@ function updateApplySettingsVisibility(mode) {
 window.processApplyQueue = processApplyQueue;
 window._isRecruiteeJob = _isRecruiteeJob;
 window._activePollers = _activePollers;
+// AF-002: Setup gate exports
+window.isSetupComplete = isSetupComplete;
+window.showSetupGateModal = showSetupGateModal;
+window.hideSetupGateModal = hideSetupGateModal;
+window.navigateToSetup = navigateToSetup;
+window.checkAndSetSetupComplete = checkAndSetSetupComplete;
 
 // CS-P1-004 FE-005: Register apply-workflow exports with BJ namespace
 (function() {

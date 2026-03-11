@@ -52,6 +52,74 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**AF-002** — First-Time Setup Gate
+- Completed: 2026-03-11
+- Product version bumped: `v8.71` → `v8.72` (JS/HTML changes — apply-workflow.js isSetupComplete + gate modal + checkAndSetSetupComplete, location.js applyButton gate, applications.js Process Queue gate, settings.js localStorage caching + setup triggers, dashboard.html setup-gate-overlay modal, extension background.ts setup gate in APPLY_INTERCEPTED, contentScript.ts setupRequired bridge, job-site-overlay.ts showSetupRequiredOverlay; all HTML surfaces cache-busted)
+- ROADMAP.md updated: AF-002 → ✅
+- roadmap.html updated: AF-002 → `s: 'done'`, p: 100
+- **isSetupComplete() function (apply-workflow.js):**
+  - Checks 3 criteria: (1) applicant_profile name + email present, (2) applicationMode explicitly set, (3) activeResumeId set
+  - Fast path: reads cached `setup_complete` flag from localStorage `bj_apply_settings`
+  - Fallback: checks criteria individually from `bj_applicant_profile` and `bj_apply_settings` localStorage keys
+  - Returns boolean. Error-safe with try/catch + reportError.
+- **Dashboard Gate Modal (dashboard.html):**
+  - `#setup-gate-overlay` fixed overlay with centered card
+  - 3-item checklist: Name & email, Application mode, Active resume
+  - "Go to Settings" primary button navigates to settings page
+  - Close button + click-outside-to-close
+  - Lucide shield-alert icon header
+- **Feed Apply Gate (location.js):**
+  - `applyButton()` inline onclick checks `isSetupComplete()` before allowing navigation
+  - Both normal apply and fraud interstitial paths gated
+  - `event.preventDefault()` + `showSetupGateModal()` on failed check
+- **Pipeline Gate (applications.js + apply-workflow.js):**
+  - Process Queue button click handler checks `isSetupComplete()`
+  - Shows gate modal or toast fallback
+  - `processApplyQueue()`, `proceedToApply()`, `approvePendingApp()` all check gate
+- **Extension Gate (background.ts):**
+  - APPLY_INTERCEPTED handler reads `applySettings` + `applicantProfile` from chrome.storage.local
+  - Checks name, email, applicationMode, activeResumeId, setup_complete flag
+  - On failed check: sends `bj:toolbar:setupRequired` to tab, responds `setup_required`
+  - PostHog `setup_gate_shown` event with surface='extension'
+- **ContentScript Bridge (contentScript.ts):**
+  - `bj:toolbar:setupRequired` added to bridge relay list
+  - Comment updated to EXT-AS-4/5/6 + AF-002
+- **Job Site Overlay (job-site-overlay.ts):**
+  - `showSetupRequiredOverlay(dashboardUrl)`: gradient overlay with dashboard link
+  - Handles `bj:toolbar:setupRequired` message from bridge
+  - Close button + click-outside + 15s auto-dismiss
+  - Exported to `window._bjJobSiteOverlay`
+- **setup_complete Flag Persistence:**
+  - `checkAndSetSetupComplete()` checks criteria, sets flag in localStorage + Supabase
+  - Triggered after `saveApplicantProfile()` and `syncApplySettingsToSupabase()`
+  - PostHog `setup_complete` event on first-time completion
+- **Settings Caching (settings.js):**
+  - `loadApplicantProfile()` caches profile to `bj_applicant_profile` localStorage
+  - `loadApplicantProfile()` caches apply_settings to `bj_apply_settings` localStorage
+  - `saveApplicantProfile()` updates cache after save
+  - `syncApplySettingsToSupabase()` updates cache after sync
+- **Pod Team Manifest:**
+  - AF-002 pairing: Lead Platform Eng + Forward-Looking Dev (primary), Chief Architect + Evolvability Strategist (reviewers)
+  - All 5 hook-and-scar roles confirmed present since SA-006
+- **Modified:**
+  - `js/apply-workflow.js` — isSetupComplete, showSetupGateModal, hideSetupGateModal, navigateToSetup, checkAndSetSetupComplete, gate checks on processApplyQueue/proceedToApply/approvePendingApp, window exports
+  - `js/location.js` — applyButton gate check (normal + fraud interstitial paths)
+  - `js/applications.js` — Process Queue button gate check
+  - `js/settings.js` — localStorage caching on load/save/sync, checkAndSetSetupComplete triggers
+  - `dashboard.html` — setup-gate-overlay modal
+  - `extension/background.ts` — setup gate in APPLY_INTERCEPTED handler
+  - `extension/contentScript.ts` — bj:toolbar:setupRequired bridge
+  - `extension/job-site-overlay.ts` — showSetupRequiredOverlay function + message handler + export
+  - `docs/scaling/pod-team-manifest.md` — AF-002 pairing
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — AF-002 → ✅
+  - `roadmap.html` — AF-002 → done/100
+- **Created:**
+  - `tests/af-002-setup-gate.test.js` — 56 validation tests (10 sections)
+- **Tests:** 56 validation tests (all passing)
+
 **AF-001** — EEOC/OFCCP Profile Extension
 - Completed: 2026-03-11
 - Product version bumped: `v8.70` → `v8.71` (JS/HTML changes — dashboard.html EEOC section, settings.js eeo_preferences populate/read, worker EEO profile extraction, 5 worker handlers EEO answering; all HTML surfaces cache-busted)
@@ -2054,7 +2122,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.71`** | **AF-001: EEOC/OFCCP Profile Extension** |
+| **Product (BJ_VERSION)** | **`v8.72`** | **AF-002: First-Time Setup Gate** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.28.0-settings-pipeline-activity` | EXT-AS-8 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
