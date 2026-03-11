@@ -41,7 +41,6 @@ const chunks = {
   ],
   pipeline: [
     'js/pipeline.js',
-    'js/pipeline-overlay-tab.js',
   ],
   tuning: [
     'js/tuning.js',

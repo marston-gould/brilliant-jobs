@@ -22,9 +22,9 @@ let _pipelineLoaded = false;
 // Overlay Pipeline S2: new pipeline table cache, keyed by source_url
 // Dual-write: all pipeline mutations write to both user_pipeline and pipeline tables
 let _newPipelineCache = {};   // { [source_url]: { id, stage, entry_source, activity_log, ... } }
-window._newPipelineCache = _newPipelineCache; // S10: expose for pipeline-overlay-tab
+window._newPipelineCache = _newPipelineCache; // PC-001: expose for Board view + SPA bridge
 let _newPipelineLoaded = false;
-window._newPipelineLoaded = false; // S10: expose for pipeline-overlay-tab
+window._newPipelineLoaded = false; // PC-001: expose for Board view + SPA bridge
 
 // ── Pipeline Signals (Phase A) ─────────────────────────────────
 // Pending signals keyed by pipeline_entry_id

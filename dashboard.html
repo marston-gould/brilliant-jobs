@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v8.76 -->
+<!-- Brilliant Jobs Dashboard v8.77 -->
 <html lang="en">
 <head>
   <!-- CS-P1-009: Theme flash prevention — must be first script -->
@@ -19,22 +19,22 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="/js/vendor/supabase.min.js" defer></script>
-  <script src="/js/pipeline-migration.js?v=v8.76" defer></script>
-  <script src="/js/notification-center.js?v=v8.76" defer></script>
+  <script src="/js/pipeline-migration.js?v=v8.77" defer></script>
+  <script src="/js/notification-center.js?v=v8.77" defer></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" integrity="sha384-nFoSjZIoH3CCp8W639jJyQkuPHinJ2NHe7on1xvlUA7SuGfJAfvMldrsoAVm6ECz" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" integrity="sha384-eEu5CTj3qGvu9PdJuS+YlkNi7d2XxQROAFYOr59zgObtlcux1ae1Il3u7jvdCSWu" crossorigin="anonymous"></script>
   <!-- CS-014: CX-09 — ECharts lazy-loaded by stats.js when Stats tab opens -->
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js" integrity="sha384-TcLTgu6flPhnZ5dfHnHimsxNFjYWN0povfGgnOvgPJKbZe6IbuoC2ociiatSHl9E" crossorigin="anonymous"></script>
   <!-- CS-016 FIX-10: Code-split chunks — shell (globals+routing) + feed (job list) loaded eagerly; all other chunks lazy-loaded on tab switch -->
-  <script src="dist/dashboard-shell.min.js?v=v8.76" defer></script>
-  <script src="dist/dashboard-feed.min.js?v=v8.76" defer></script>
+  <script src="dist/dashboard-shell.min.js?v=v8.77" defer></script>
+  <script src="dist/dashboard-feed.min.js?v=v8.77" defer></script>
   <!-- CS-P1-002: dashboard inline scripts externalized (pdfjs, preload, feedback, insights, a11y) -->
-  <script src="js/dashboard-inline.js?v=v8.76" defer></script>
-  <script src="js/canny.js?v=v8.76" defer></script>
+  <script src="js/dashboard-inline.js?v=v8.77" defer></script>
+  <script src="js/canny.js?v=v8.77" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=v8.76">
+  <link rel="stylesheet" href="styles.css?v=v8.77">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -109,11 +109,11 @@
     </style>
   <!-- CSS extracted to styles.css in v3.28 -->
   <!-- A13: PostHog analytics — CS-P1-002: externalized for CSP compliance -->
-  <script src="js/posthog-dashboard.js?v=v8.76" defer></script>
-  <script src="js/posthog-perf.js?v=v8.76" defer></script>
-  <script src="js/feature-flags.js?v=v8.76" defer></script>
-  <script src="js/structured-logger.js?v=v8.76" defer></script>
-  <script src="js/theme.js?v=v8.76" defer></script>
+  <script src="js/posthog-dashboard.js?v=v8.77" defer></script>
+  <script src="js/posthog-perf.js?v=v8.77" defer></script>
+  <script src="js/feature-flags.js?v=v8.77" defer></script>
+  <script src="js/structured-logger.js?v=v8.77" defer></script>
+  <script src="js/theme.js?v=v8.77" defer></script>
 </head>
 <body>
 
@@ -175,10 +175,7 @@
         </div>
 
         <div class="nav-section-label">Tracking</div>
-        <div class="nav-item" data-page="pipeline">
-          <div class="nav-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg></div>
-          <span>Pipeline</span>
-        </div>
+
         <div class="nav-item" data-page="applications">
           <div class="nav-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
           <span>My Applications</span>
@@ -1395,153 +1392,6 @@
         </div>
       </div>
 
-      <!-- ============ PIPELINE ============ -->
-      <div class="page" id="page-pipeline">
-        <div class="page-header">
-          <h2>Pipeline</h2>
-          <p>Track your applications from saved through offer <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('pipeline')">How this works →</a></p>
-        </div>
-        <div class="page-body">
-          <!-- S10: Pipeline view toggle -->
-          <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;">
-            <button class="btn btn-secondary btn-sm stats-tab-toggle active u-btn-pill" id="pl-view-btn-legacy" onclick="switchPipelineView('legacy')">Legacy Pipeline</button>
-            <button class="btn btn-secondary btn-sm stats-tab-toggle u-btn-pill" id="pl-view-btn-overlay" onclick="switchPipelineView('overlay')">Overlay Pipeline</button>
-          </div>
-          <!-- Legacy view (user_pipeline table) -->
-          <div id="pl-view-legacy">
-          <div class="stat-grid">
-            <div class="stat-card"><div class="stat-val" id="p-total">0</div><div class="stat-label">Total Tracked</div></div>
-            <div class="stat-card"><div class="stat-val" id="p-active">0</div><div class="stat-label">Active</div></div>
-            <div class="stat-card"><div class="stat-val" id="p-response">—</div><div class="stat-label">Response Rate</div></div>
-            <div class="stat-card"><div class="stat-val" id="p-avg-days">—</div><div class="stat-label">Avg Days to Response</div></div>
-          </div>
-
-          <!-- Filter by saved filter tags -->
-          <div class="pl-filter-bar" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-            <label class="u-label-sm">Filter:</label>
-            <select class="pl-filter-select" id="pl-filter-select" onchange="filterPipeline(this.value)">
-              <option value="all">All Filters</option>
-            </select>
-            <button class="btn btn-secondary btn-sm" onclick="showManualPipelineAdd()" style="margin-inline-start:auto;font-size:11px;padding:4px 12px;">+ Add Job Manually</button>
-          </div>
-
-          <!-- Manual add form (hidden by default) -->
-          <div id="pl-manual-add" class="card" style="display:none;margin-block-end:12px;">
-            <div class="card-title" style="font-size:13px;">Add External Application</div>
-            <div class="card-sub" style="margin-block-end:10px;">Track a job you applied to outside Brilliant Jobs</div>
-            <div class="u-grid-2">
-              <input class="save-filter-name u-fs-12" type="text" id="pl-man-title" placeholder="Job title (e.g., Senior Engineer)">
-              <input class="save-filter-name u-fs-12" type="text" id="pl-man-company" placeholder="Company name">
-              <input class="save-filter-name u-fs-12" type="url" id="pl-man-url" placeholder="Job URL (optional)">
-              <select id="pl-man-stage" class="u-select-base">
-                <option value="saved">Saved</option>
-                <option value="applied" selected>Applied</option>
-                <option value="responded">Responded</option>
-                <option value="interview">Interview</option>
-                <option value="offer">Offer</option>
-              </select>
-            </div>
-            <div style="display:flex;gap:8px;margin-block-start:10px;justify-content:flex-end;">
-              <button class="btn btn-secondary btn-sm u-fs-11" onclick="hideManualPipelineAdd()">Cancel</button>
-              <button class="btn btn-primary btn-sm u-fs-11" onclick="saveManualPipelineEntry()">Add to Pipeline</button>
-            </div>
-          </div>
-
-          <!-- Stage sections -->
-          <div id="pl-stages-container">
-            <div class="pl-stage-section" data-stage="saved">
-              <div class="pl-stage-header" onclick="togglePipelineStage(this)">
-                <i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>
-                <span class="pl-stage-name">Saved</span>
-                <span class="pl-stage-count" id="pc-saved">0</span>
-                <span class="pl-stage-match-summary" id="pm-saved"></span><span class="pl-signal-badge u-hidden" id="psig-saved"></span>
-              </div>
-              <div class="pl-stage-body" id="pb-saved"></div>
-            </div>
-            <div class="pl-stage-section" data-stage="applied">
-              <div class="pl-stage-header" onclick="togglePipelineStage(this)">
-                <i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>
-                <span class="pl-stage-name">Applied</span>
-                <span class="pl-stage-count" id="pc-applied">0</span>
-                <span class="pl-stage-match-summary" id="pm-applied"></span><span class="pl-signal-badge u-hidden" id="psig-applied"></span>
-              </div>
-              <div class="pl-stage-body" id="pb-applied"></div>
-            </div>
-            <div class="pl-stage-section" data-stage="posting_closed">
-              <div class="pl-stage-header" onclick="togglePipelineStage(this)">
-                <i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>
-                <span class="pl-stage-name">Posting Closed</span>
-                <span class="pl-stage-count" id="pc-posting_closed">0</span>
-                <span class="pl-stage-match-summary" id="pm-posting_closed"></span><span class="pl-signal-badge u-hidden" id="psig-posting_closed"></span>
-              </div>
-              <div class="pl-stage-body" id="pb-posting_closed"></div>
-            </div>
-            <div class="pl-stage-section" data-stage="responded">
-              <div class="pl-stage-header" onclick="togglePipelineStage(this)">
-                <i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>
-                <span class="pl-stage-name">Responded</span>
-                <span class="pl-stage-count" id="pc-responded">0</span>
-                <span class="pl-stage-match-summary" id="pm-responded"></span><span class="pl-signal-badge u-hidden" id="psig-responded"></span>
-              </div>
-              <div class="pl-stage-body" id="pb-responded"></div>
-            </div>
-            <div class="pl-stage-section" data-stage="interview">
-              <div class="pl-stage-header" onclick="togglePipelineStage(this)">
-                <i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>
-                <span class="pl-stage-name">Interview</span>
-                <span class="pl-stage-count" id="pc-interview">0</span>
-                <span class="pl-stage-match-summary" id="pm-interview"></span><span class="pl-signal-badge u-hidden" id="psig-interview"></span>
-              </div>
-              <div class="pl-stage-body" id="pb-interview"></div>
-            </div>
-            <div class="pl-stage-section" data-stage="offer">
-              <div class="pl-stage-header" onclick="togglePipelineStage(this)">
-                <i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>
-                <span class="pl-stage-name">Offer</span>
-                <span class="pl-stage-count" id="pc-offer">0</span>
-                <span class="pl-stage-match-summary" id="pm-offer"></span><span class="pl-signal-badge u-hidden" id="psig-offer"></span>
-              </div>
-              <div class="pl-stage-body" id="pb-offer"></div>
-            </div>
-            <div class="pl-stage-section" data-stage="rejected">
-              <div class="pl-stage-header" onclick="togglePipelineStage(this)">
-                <i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>
-                <span class="pl-stage-name">Rejected / Ghosted</span>
-                <span class="pl-stage-count" id="pc-rejected">0</span>
-                <span class="pl-stage-match-summary" id="pm-rejected"></span><span class="pl-signal-badge u-hidden" id="psig-rejected"></span>
-              </div>
-              <div class="pl-stage-body" id="pb-rejected"></div>
-            </div>
-            <div class="pl-stage-section" data-stage="hired">
-              <div class="pl-stage-header" onclick="togglePipelineStage(this)">
-                <i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>
-                <span class="pl-stage-name" style="color:hsl(142,70%,35%);">Hired!</span>
-                <span class="pl-stage-count" id="pc-hired">0</span>
-                <span class="pl-stage-match-summary" id="pm-hired"></span>
-              </div>
-              <div class="pl-stage-body" id="pb-hired"></div>
-            </div>
-            <div class="pl-stage-section" data-stage="archived">
-              <div class="pl-stage-header" onclick="togglePipelineStage(this)">
-                <i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>
-                <span class="pl-stage-name u-text-faint">Archived</span>
-                <span class="pl-stage-count" id="pc-archived">0</span>
-                <span class="pl-stage-match-summary" id="pm-archived"></span>
-              </div>
-              <div class="pl-stage-body" id="pb-archived"></div>
-            </div>
-          </div>
-          </div><!-- /pl-view-legacy -->
-
-          <!-- Overlay Pipeline view (pipeline table, S10) -->
-          <div id="pl-view-overlay" class="u-hidden">
-            <div class="stat-grid u-mb-16" id="pl-overlay-stats"></div>
-            <div id="pl-overlay-stages"></div>
-          </div><!-- /pl-view-overlay -->
-
-        </div>
-      </div>
-
       <!-- ============ RESUMES ============ -->
       <div class="page" id="page-resumes">
         <div class="page-header">
@@ -1716,36 +1566,9 @@
           <p>Track and manage your job applications <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('applications')">How this works →</a></p>
         </div>
         <div class="page-body">
-          <!-- List / Board toggle -->
-          <div class="u-tab-bar">
-            <button class="btn btn-sm app-view-toggle active u-btn-pill" id="app-view-list" data-view="list" onclick="switchAppView('list')">
-              <i data-lucide="list" class="icon-xs icon-stroke" style="margin-right:4px;"></i>
-              List
-            </button>
-            <button class="btn btn-sm app-view-toggle u-btn-pill" id="app-view-board" data-view="board" onclick="switchAppView('board')">
-              <i data-lucide="layout-grid" class="icon-xs icon-stroke" style="margin-right:4px;"></i>
-              Board
-            </button>
-          </div>
-
-          <!-- LIST VIEW (existing application queue) -->
-          <div id="app-view-list-panel" class="app-view-panel active">
-          <div class="stat-grid">
-            <div class="stat-card"><div class="stat-val" id="a-queued">0</div><div class="stat-label">Queued</div></div>
-            <div class="stat-card"><div class="stat-val" id="a-pending">0</div><div class="stat-label">Pending Approval</div></div>
-            <div class="stat-card"><div class="stat-val" id="a-submitted">0</div><div class="stat-label">Submitted</div></div>
-            <div class="stat-card"><div class="stat-val" id="a-failed">0</div><div class="stat-label">Failed</div></div>
-          </div>
 
           <!-- Application mode tabs -->
-          <div class="app-flow-tabs">
-            <div class="app-flow-tab active" data-panel="queue">Queue</div>
-            <div class="app-flow-tab" data-panel="rules">Rules &amp; Settings</div>
-            <div class="app-flow-tab" data-panel="notifications" onclick="event.preventDefault();document.querySelector('[data-page=notifications]').click();">Notifications ↗</div>
-            <div class="app-flow-tab" data-panel="history">History</div>
-          </div>
-
-          <!-- PENDING APPLICATIONS (auto-apply approvals + rewrite reviews) -->
+          <!-- PENDING APPLICATIONS (shown above all sub-tabs) -->
           <div id="pending-apps-panel" class="card" style="display:none;margin-bottom:16px;border-left:3px solid var(--warm);">
             <div class="pending-apps-header">
               <div style="display:flex;align-items:center;">
@@ -1759,8 +1582,144 @@
             </div>
           </div>
 
+          <!-- Sub-tabs: Board | Queue | History | Settings -->
+          <div class="app-flow-tabs">
+            <div class="app-flow-tab active" data-panel="board">Board</div>
+            <div class="app-flow-tab" data-panel="queue">Queue</div>
+            <div class="app-flow-tab" data-panel="history">History</div>
+            <div class="app-flow-tab" data-panel="settings">Settings</div>
+          </div>
+
+          <!-- BOARD PANEL (default) — Pipeline stages view -->
+          <div class="app-flow-panel active" id="panel-board">
+            <div class="stat-grid">
+              <div class="stat-card"><div class="stat-val" id="p-total">0</div><div class="stat-label">Total Tracked</div></div>
+              <div class="stat-card"><div class="stat-val" id="p-active">0</div><div class="stat-label">Active</div></div>
+              <div class="stat-card"><div class="stat-val" id="p-response">—</div><div class="stat-label">Response Rate</div></div>
+              <div class="stat-card"><div class="stat-val" id="p-avg-days">—</div><div class="stat-label">Avg Days to Response</div></div>
+            </div>
+            <div class="pl-filter-bar" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+              <label class="u-label-sm">Filter:</label>
+              <select class="pl-filter-select" id="pl-filter-select" onchange="filterPipeline(this.value)">
+                <option value="all">All Filters</option>
+              </select>
+              <button class="btn btn-secondary btn-sm" onclick="showManualPipelineAdd()" style="margin-inline-start:auto;font-size:11px;padding:4px 12px;">+ Add Job Manually</button>
+            </div>
+            <div id="pl-manual-add" class="card" style="display:none;margin-block-end:12px;">
+              <div class="card-title" style="font-size:13px;">Add External Application</div>
+              <div class="card-sub" style="margin-block-end:10px;">Track a job you applied to outside Brilliant Jobs</div>
+              <div class="u-grid-2">
+                <input class="save-filter-name u-fs-12" type="text" id="pl-man-title" placeholder="Job title (e.g., Senior Engineer)">
+                <input class="save-filter-name u-fs-12" type="text" id="pl-man-company" placeholder="Company name">
+                <input class="save-filter-name u-fs-12" type="url" id="pl-man-url" placeholder="Job URL (optional)">
+                <select id="pl-man-stage" class="u-select-base">
+                  <option value="saved">Saved</option>
+                  <option value="applied" selected>Applied</option>
+                  <option value="responded">Responded</option>
+                  <option value="interview">Interview</option>
+                  <option value="offer">Offer</option>
+                </select>
+              </div>
+              <div style="display:flex;gap:8px;margin-block-start:10px;justify-content:flex-end;">
+                <button class="btn btn-secondary btn-sm u-fs-11" onclick="hideManualPipelineAdd()">Cancel</button>
+                <button class="btn btn-primary btn-sm u-fs-11" onclick="saveManualPipelineEntry()">Add to Pipeline</button>
+              </div>
+            </div>
+            <div id="pl-stages-container">
+              <div class="pl-stage-section" data-stage="saved">
+                <div class="pl-stage-header" onclick="togglePipelineStage(this)">
+                  <i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>
+                  <span class="pl-stage-name">Saved</span>
+                  <span class="pl-stage-count" id="pc-saved">0</span>
+                  <span class="pl-stage-match-summary" id="pm-saved"></span><span class="pl-signal-badge u-hidden" id="psig-saved"></span>
+                </div>
+                <div class="pl-stage-body" id="pb-saved"></div>
+              </div>
+              <div class="pl-stage-section" data-stage="applied">
+                <div class="pl-stage-header" onclick="togglePipelineStage(this)">
+                  <i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>
+                  <span class="pl-stage-name">Applied</span>
+                  <span class="pl-stage-count" id="pc-applied">0</span>
+                  <span class="pl-stage-match-summary" id="pm-applied"></span><span class="pl-signal-badge u-hidden" id="psig-applied"></span>
+                </div>
+                <div class="pl-stage-body" id="pb-applied"></div>
+              </div>
+              <div class="pl-stage-section" data-stage="posting_closed">
+                <div class="pl-stage-header" onclick="togglePipelineStage(this)">
+                  <i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>
+                  <span class="pl-stage-name">Posting Closed</span>
+                  <span class="pl-stage-count" id="pc-posting_closed">0</span>
+                  <span class="pl-stage-match-summary" id="pm-posting_closed"></span><span class="pl-signal-badge u-hidden" id="psig-posting_closed"></span>
+                </div>
+                <div class="pl-stage-body" id="pb-posting_closed"></div>
+              </div>
+              <div class="pl-stage-section" data-stage="responded">
+                <div class="pl-stage-header" onclick="togglePipelineStage(this)">
+                  <i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>
+                  <span class="pl-stage-name">Responded</span>
+                  <span class="pl-stage-count" id="pc-responded">0</span>
+                  <span class="pl-stage-match-summary" id="pm-responded"></span><span class="pl-signal-badge u-hidden" id="psig-responded"></span>
+                </div>
+                <div class="pl-stage-body" id="pb-responded"></div>
+              </div>
+              <div class="pl-stage-section" data-stage="interview">
+                <div class="pl-stage-header" onclick="togglePipelineStage(this)">
+                  <i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>
+                  <span class="pl-stage-name">Interview</span>
+                  <span class="pl-stage-count" id="pc-interview">0</span>
+                  <span class="pl-stage-match-summary" id="pm-interview"></span><span class="pl-signal-badge u-hidden" id="psig-interview"></span>
+                </div>
+                <div class="pl-stage-body" id="pb-interview"></div>
+              </div>
+              <div class="pl-stage-section" data-stage="offer">
+                <div class="pl-stage-header" onclick="togglePipelineStage(this)">
+                  <i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>
+                  <span class="pl-stage-name">Offer</span>
+                  <span class="pl-stage-count" id="pc-offer">0</span>
+                  <span class="pl-stage-match-summary" id="pm-offer"></span><span class="pl-signal-badge u-hidden" id="psig-offer"></span>
+                </div>
+                <div class="pl-stage-body" id="pb-offer"></div>
+              </div>
+              <div class="pl-stage-section" data-stage="rejected">
+                <div class="pl-stage-header" onclick="togglePipelineStage(this)">
+                  <i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>
+                  <span class="pl-stage-name">Rejected / Ghosted</span>
+                  <span class="pl-stage-count" id="pc-rejected">0</span>
+                  <span class="pl-stage-match-summary" id="pm-rejected"></span><span class="pl-signal-badge u-hidden" id="psig-rejected"></span>
+                </div>
+                <div class="pl-stage-body" id="pb-rejected"></div>
+              </div>
+              <div class="pl-stage-section" data-stage="hired">
+                <div class="pl-stage-header" onclick="togglePipelineStage(this)">
+                  <i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>
+                  <span class="pl-stage-name" style="color:hsl(142,70%,35%);">Hired!</span>
+                  <span class="pl-stage-count" id="pc-hired">0</span>
+                  <span class="pl-stage-match-summary" id="pm-hired"></span>
+                </div>
+                <div class="pl-stage-body" id="pb-hired"></div>
+              </div>
+              <div class="pl-stage-section" data-stage="archived">
+                <div class="pl-stage-header" onclick="togglePipelineStage(this)">
+                  <i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>
+                  <span class="pl-stage-name u-text-faint">Archived</span>
+                  <span class="pl-stage-count" id="pc-archived">0</span>
+                  <span class="pl-stage-match-summary" id="pm-archived"></span>
+                </div>
+                <div class="pl-stage-body" id="pb-archived"></div>
+              </div>
+            </div>
+          </div>
+
+
+
           <!-- QUEUE PANEL -->
-          <div class="app-flow-panel active" id="panel-queue">
+          <div class="app-flow-panel" id="panel-queue">
+            <div class="stat-grid">
+              <div class="stat-card"><div class="stat-val" id="a-queued">0</div><div class="stat-label">Queued</div></div>
+              <div class="stat-card"><div class="stat-val" id="a-pending">0</div><div class="stat-label">Pending Approval</div></div>
+              <div class="stat-card"><div class="stat-val" id="a-submitted">0</div><div class="stat-label">Submitted</div></div>
+              <div class="stat-card"><div class="stat-val" id="a-failed">0</div><div class="stat-label">Failed</div></div>
+            </div>
             <div class="u-flex-between-mb16">
               <div class="card-title">Application Queue</div>
               <div style="display:flex;gap:8px;">
@@ -1798,7 +1757,7 @@
           </div>
 
           <!-- RULES PANEL -->
-          <div class="app-flow-panel" id="panel-rules">
+          <div class="app-flow-panel" id="panel-settings">
             <div class="card">
               <div class="card-title">Default Application Mode</div>
               <div class="card-sub">Controls how saved/matched jobs get processed. Can be overridden per filter.</div>
@@ -2085,15 +2044,6 @@
           </div>
 
           <!-- NOTIFICATIONS PANEL -->
-          <div class="app-flow-panel" id="panel-notifications">
-            <div style="text-align:center;padding:48px 20px;">
-              <div class="u-mb-12 u-text-faint"><i data-lucide="bell" class="icon-xl icon-stroke-lg" style="opacity:0.3;"></i></div>
-              <div style="font-size:15px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Notification Center has moved</div>
-              <div style="font-size:13px;color:var(--text-faint);margin-bottom:16px;">Manage all notification preferences from the dedicated Notifications page.</div>
-              <button class="btn btn-primary btn-sm" onclick="document.querySelector('[data-page=notifications]').click();">Open Notification Center →</button>
-            </div>
-          </div>
-          <!-- HISTORY PANEL -->
           <div class="app-flow-panel" id="panel-history">
             <div class="u-overflow-x">
               <table class="app-queue-table">
@@ -2185,24 +2135,9 @@
               <div id="notif-log-pagination" style="display:flex;justify-content:center;gap:8px;margin-top:16px;"></div>
             </div>
           </div>
-          </div><!-- end app-view-list-panel -->
 
-          <!-- BOARD VIEW (pipeline stages) -->
-          <div id="app-view-board-panel" class="app-view-panel">
-            <div class="stat-grid">
-              <div class="stat-card"><div class="stat-val" id="p-total">0</div><div class="stat-label">Total Tracked</div></div>
-              <div class="stat-card"><div class="stat-val" id="p-active">0</div><div class="stat-label">Active</div></div>
-              <div class="stat-card"><div class="stat-val" id="p-response">—</div><div class="stat-label">Response Rate</div></div>
-              <div class="stat-card"><div class="stat-val" id="p-avg-days">—</div><div class="stat-label">Avg Days to Response</div></div>
-            </div>
-            <div class="pl-filter-bar">
-              <label class="u-label-sm">Filter:</label>
-              <select class="pl-filter-select" id="pl-filter-select" onchange="filterPipeline(this.value)">
-                <option value="all">All Searches</option>
-              </select>
-            </div>
-            <div id="pl-stages-container-board"></div>
-          </div>
+
+
 
         </div>
       </div>

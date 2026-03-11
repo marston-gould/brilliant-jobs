@@ -52,6 +52,52 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**PC-001** — Pipeline + My Applications Consolidation (Phase 1 + Phase 2)
+- Completed: 2026-03-11
+- Product version bumped: `v8.76` → `v8.77` (HTML/JS changes — dashboard.html page-pipeline deleted + My Applications restructured; app.js switchAppTab + hero card navigation; pipeline-overlay-tab.js deleted; build.js pipeline chunk updated; all HTML surfaces cache-busted)
+- ROADMAP.md updated: PC-001 → ✅
+- roadmap.html updated: PC-001 → `s: 'done'`, p: 100
+- **Phase 1: Dead Code Removal:**
+  - Deleted entire page-pipeline div (~150 lines dead DOM)
+  - Deleted pipeline sidebar nav item (data-page="pipeline")
+  - Deleted `js/pipeline-overlay-tab.js` (only served page-pipeline, not the Board view)
+  - Removed `pipeline-overlay-tab.js` from build.js pipeline chunk
+  - Removed Legacy Pipeline / Overlay Pipeline toggle buttons and switchPipelineView()
+  - Removed pl-view-legacy and pl-view-overlay container divs
+  - Updated pipeline.js comments (S10 overlay references → PC-001 Board view)
+- **Phase 2: Sub-Tab Restructure:**
+  - Removed List/Board toggle (app-view-list/app-view-board buttons)
+  - Removed app-view-list-panel and app-view-board-panel wrappers
+  - Replaced sub-tabs: Queue|Rules & Settings|Notifications|History → Board|Queue|History|Settings
+  - Created panel-board as default active sub-tab with: pipeline stat cards (p-total, p-active, p-response, p-avg-days), filter bar (pl-filter-select), manual add form (pl-manual-add), all 9 pipeline stage sections (saved → archived)
+  - Moved queue stat cards (a-queued, a-pending, a-submitted, a-failed) into panel-queue
+  - Renamed panel-rules → panel-settings
+  - Removed panel-notifications (was just a redirect)
+  - Moved pending-apps-panel above sub-tabs (visible on all views)
+  - Board panel is default (localStorage bj_app_tab, fallback 'board')
+- **JS Changes:**
+  - `switchAppView()` replaced by `switchAppTab()` — toggles panel-board|queue|history|settings, triggers renderPipeline on board, persists to localStorage bj_app_tab
+  - BJ namespace export updated: switchAppView → switchAppTab
+  - Hero card (j-saved-card) navigates to My Applications > Board (was Pipeline page)
+  - Tab click handlers wired via addEventListener (no inline onclick)
+- **Pod Team Manifest:** All 5 hook-and-scar roles already present since SA-006
+- **Modified:**
+  - `dashboard.html` — page-pipeline deleted, pipeline nav deleted, My Applications restructured (Board|Queue|History|Settings)
+  - `js/app.js` — switchAppTab, hero card navigation, BJ namespace export
+  - `js/pipeline.js` — S10 comments updated
+  - `build.js` — pipeline-overlay-tab.js removed from pipeline chunk
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `dist/dashboard-pipeline.min.js` — rebuilt (single file now)
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — PC-001 → ✅
+  - `roadmap.html` — PC-001 → done/100
+- **Deleted:**
+  - `js/pipeline-overlay-tab.js` — Only served deleted Pipeline page
+- **Created:**
+  - `tests/pc-001-pipeline-consolidation.test.js` — 41 validation tests (10 sections)
+- **Tests:** 41 validation tests (all passing)
+
 **AF-006** — Extension Activity Sync to Supabase
 - Completed: 2026-03-11
 - Product version bumped: `v8.75` → `v8.76` (JS changes — apply-workflow.js logDashboardActivity + _flushDashboardActivity, keywords.js toggleSaveJob activity logging, extension popup-consumer.ts client_id + synced + SYNC_ACTIVITY, extension background.ts _syncActivityToSupabase + SYNC_ACTIVITY handler + startup sync; all HTML surfaces cache-busted)
@@ -2295,7 +2341,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.76`** | **AF-006: Extension Activity Sync to Supabase** |
+| **Product (BJ_VERSION)** | **`v8.77`** | **PC-001: Pipeline + My Applications Consolidation** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.28.0-settings-pipeline-activity` | EXT-AS-8 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

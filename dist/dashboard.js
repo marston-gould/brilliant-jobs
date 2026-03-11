@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.76';
+var BJ_VERSION = 'v8.77';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -2994,19 +2994,20 @@ checkExtensionStatus();
 setTimeout(checkExtensionStatus, 3000);
 setInterval(checkExtensionStatus, 60000);
 
-// Saved Jobs card → navigate to Pipeline
+// Saved Jobs card → navigate to My Applications > Board
 $('#j-saved-card').addEventListener('click', () => {
   $$('.nav-item').forEach(n => n.classList.remove('active'));
-  const pipelineNav = $('[data-page="pipeline"]');
-  if (pipelineNav) {
-    pipelineNav.classList.add('active');
-    pipelineNav.classList.remove('tab-flash');
-    void pipelineNav.offsetWidth;
-    pipelineNav.classList.add('tab-flash');
-    setTimeout(() => pipelineNav.classList.remove('tab-flash'), 1000);
+  const appNav = $('[data-page="applications"]');
+  if (appNav) {
+    appNav.classList.add('active');
+    appNav.classList.remove('tab-flash');
+    void appNav.offsetWidth;
+    appNav.classList.add('tab-flash');
+    setTimeout(() => appNav.classList.remove('tab-flash'), 1000);
   }
   $$('.page').forEach(p => p.classList.remove('active'));
-  $('#page-pipeline').classList.add('active');
+  $('#page-applications').classList.add('active');
+  if (typeof switchAppTab === 'function') switchAppTab('board');
 });
 
 // Download
@@ -3253,38 +3254,39 @@ initGmailStatus();
   } catch(e) { reportError('app:gs-stats', e); }
 })();
 
-// Q22: Switch between Queue, Pipeline, and History views in My Applications
-window.switchAppView = function(view) {
-  // Toggle active on view toggle buttons
-  document.querySelectorAll('.app-view-toggle-bar .app-view-toggle').forEach(function(btn) {
-    btn.classList.toggle('active', btn.dataset.view === view);
+// PC-001: Switch between Board, Queue, History, Settings sub-tabs in My Applications
+window.switchAppTab = function(panel) {
+  // Toggle active on sub-tab buttons
+  document.querySelectorAll('#page-applications .app-flow-tab').forEach(function(tab) {
+    tab.classList.toggle('active', tab.dataset.panel === panel);
   });
 
-  // Toggle view panels
-  document.querySelectorAll('.app-view-panel').forEach(function(panel) {
-    panel.classList.remove('active');
+  // Toggle sub-tab panels
+  document.querySelectorAll('#page-applications .app-flow-panel').forEach(function(p) {
+    p.classList.remove('active');
   });
-  var target = document.getElementById('app-view-' + view + '-panel');
+  var target = document.getElementById('panel-' + panel);
   if (target) target.classList.add('active');
 
-  // Close settings panel when switching views
-  var settingsPanel = document.getElementById('app-settings-panel');
-  if (settingsPanel) settingsPanel.style.display = 'none';
-  var settingsBtn = document.getElementById('app-settings-toggle');
-  if (settingsBtn) settingsBtn.classList.remove('active');
-
-  // Trigger pipeline render if switching to pipeline view
-  if (view === 'pipeline' && typeof renderPipeline === 'function') {
+  // Trigger pipeline render when switching to Board view
+  if (panel === 'board' && typeof renderPipeline === 'function') {
     renderPipeline();
   }
 
-  localStorage.setItem('bj_app_view', view);
+  localStorage.setItem('bj_app_tab', panel);
 };
 
-// Restore last app view on init
+// PC-001: Wire sub-tab click handlers
 (function() {
-  var saved = localStorage.getItem('bj_app_view') || 'queue';
-  if (typeof switchAppView === 'function') switchAppView(saved);
+  document.querySelectorAll('#page-applications .app-flow-tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      var panel = this.dataset.panel;
+      if (panel) switchAppTab(panel);
+    });
+  });
+  // Restore last sub-tab or default to Board
+  var saved = localStorage.getItem('bj_app_tab') || 'board';
+  if (typeof switchAppTab === 'function') switchAppTab(saved);
 })();
 
 // Q16-Q19: Resume-First Onboarding
@@ -3528,7 +3530,7 @@ async function processReferralAttribution(user) {
 
 // CS-P1-004 FE-005: Register app.js exports with BJ namespace
 (function() {
-  ['togglePageHelp', 'connectGmail', 'disconnectGmail', 'switchAppView',
+  ['togglePageHelp', 'connectGmail', 'disconnectGmail', 'switchAppTab',
    'handleOnboardResume', 'createFilterFromProfile'].forEach(function(name) {
     if (typeof window[name] === 'function') {
       window.BJ[name] = window[name];
@@ -14811,9 +14813,9 @@ let _pipelineLoaded = false;
 // Overlay Pipeline S2: new pipeline table cache, keyed by source_url
 // Dual-write: all pipeline mutations write to both user_pipeline and pipeline tables
 let _newPipelineCache = {};   // { [source_url]: { id, stage, entry_source, activity_log, ... } }
-window._newPipelineCache = _newPipelineCache; // S10: expose for pipeline-overlay-tab
+window._newPipelineCache = _newPipelineCache; // PC-001: expose for Board view + SPA bridge
 let _newPipelineLoaded = false;
-window._newPipelineLoaded = false; // S10: expose for pipeline-overlay-tab
+window._newPipelineLoaded = false; // PC-001: expose for Board view + SPA bridge
 
 // ── Pipeline Signals (Phase A) ─────────────────────────────────
 // Pending signals keyed by pipeline_entry_id
@@ -16116,171 +16118,6 @@ async function loadRecruiterContacts() {
     if (typeof window[name] === 'function') {
       window.BJ[name] = window[name];
       window.BJ._registry[name] = { module: 'pipeline', registered: Date.now() };
-    }
-  });
-})();
-
-
-// === js/pipeline-overlay-tab.js ===
-// === js/pipeline-overlay-tab.js ===
-// Overlay Pipeline S10: Overlay entries tab in Pipeline page
-// Reads from _newPipelineCache (pipeline table, keyed by source_url)
-// Rendered inside #page-pipeline as a second view alongside legacy user_pipeline entries
-// v7.04
-
-(function() {
-
-var _overlayTabInit = false;
-
-// ── Expose toggle function ────────────────────────────────────
-window.switchPipelineView = function(view) {
-  var legacyEl = document.getElementById('pl-view-legacy');
-  var overlayEl = document.getElementById('pl-view-overlay');
-  var btnLegacy = document.getElementById('pl-view-btn-legacy');
-  var btnOverlay = document.getElementById('pl-view-btn-overlay');
-  if (!legacyEl || !overlayEl) return;
-  if (view === 'overlay') {
-    legacyEl.style.display = 'none';
-    overlayEl.style.display = '';
-    if (btnLegacy) { btnLegacy.classList.remove('active'); }
-    if (btnOverlay) { btnOverlay.classList.add('active'); }
-    renderOverlayPipelineTab();
-  } else {
-    overlayEl.style.display = 'none';
-    legacyEl.style.display = '';
-    if (btnLegacy) { btnLegacy.classList.add('active'); }
-    if (btnOverlay) { btnOverlay.classList.remove('active'); }
-  }
-};
-
-// ── Main render ───────────────────────────────────────────────
-window.renderOverlayPipelineTab = async function() {
-  var container = document.getElementById('pl-overlay-stages');
-  if (!container) return;
-
-  // Ensure data is loaded
-  if (typeof loadNewPipelineFromSupabase === 'function' && !window._newPipelineLoaded) {
-    await loadNewPipelineFromSupabase();
-  }
-
-  var cache = window._newPipelineCache || {};
-  var entries = Object.values(cache);
-
-  if (entries.length === 0) {
-    container.innerHTML = '<div class="pl-stage-empty" style="padding:32px 0;text-align:center;color:var(--text-faint);font-size:13px;">No overlay pipeline entries yet.<br><span style="font-size:12px;margin-top:6px;display:block;">Save jobs using the Brilliant Jobs toolbar extension to populate this view.</span></div>';
-    _renderOverlayStats([], container);
-    return;
-  }
-
-  // Sort: most recently updated first
-  entries.sort(function(a, b) {
-    return new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at);
-  });
-
-  // Group by stage
-  var PL_OV_STAGES = ['saved','applied','interview','offer','rejected','archived'];
-  var PL_OV_LABELS = { saved:'Saved', applied:'Applied', interview:'Interview', offer:'Offer', rejected:'Rejected/Ghosted', archived:'Archived' };
-  var stageMap = {};
-  PL_OV_STAGES.forEach(function(s) { stageMap[s] = []; });
-  entries.forEach(function(e) {
-    var s = e.stage || 'saved';
-    if (!stageMap[s]) stageMap[s] = [];
-    stageMap[s].push(e);
-  });
-
-  _renderOverlayStats(entries, container);
-
-  var html = '';
-  PL_OV_STAGES.forEach(function(stage) {
-    var jobs = stageMap[stage];
-    if (jobs.length === 0) return;
-    html += '<div class="pl-stage-section" data-stage="' + stage + '">';
-    html += '<div class="pl-stage-header" onclick="this.closest(\'.pl-stage-section\').classList.toggle(\'collapsed\')">';
-    html += '<i data-lucide="chevron-down" class="pl-stage-chevron icon-stroke"></i>';
-    html += '<span class="pl-stage-name">' + (PL_OV_LABELS[stage] || stage) + '</span>';
-    html += '<span class="pl-stage-count">' + jobs.length + '</span>';
-    html += '</div>';
-    html += '<div class="pl-stage-body">';
-    html += '<table class="pl-table"><thead><tr>';
-    html += '<th>Title</th><th>Company</th><th>Platform</th><th>Source</th><th>Match</th><th>Fraud</th><th>AI</th><th>Saved</th><th>Applied</th><th>Activity</th>';
-    html += '</tr></thead><tbody>';
-    jobs.forEach(function(e) {
-      var title = e.job_title || 'Unknown';
-      var company = e.company_name || '';
-      var platform = e.source_platform || '—';
-      var entrySource = e.entry_source || '—';
-      var matchScore = typeof e.match_score === 'number' ? e.match_score + '%' : '—';
-      var matchColor = typeof e.match_score === 'number' ? (e.match_score >= 70 ? 'color:var(--green);' : e.match_score >= 40 ? 'color:var(--warm);' : 'color:var(--red);') : '';
-      var fraudScore = typeof e.fraud_score === 'number' ? e.fraud_score : null;
-      var fraudHtml = fraudScore !== null ? (fraudScore >= 60 ? '<span style="color:var(--red);font-weight:600;"><i data-lucide="shield-check" class="icon-xs icon-stroke"></i> ' + fraudScore + '</span>' : '<span style="color:var(--text-faint);">' + fraudScore + '</span>') : '<span style="color:var(--text-faint);">—</span>';
-      var aiScore = typeof e.ai_content_score === 'number' ? e.ai_content_score : null;
-      var aiHtml = aiScore !== null ? (aiScore >= 0.7 ? '<span style="color:var(--warm);font-weight:600;">⚠ ' + Math.round(aiScore * 100) + '%</span>' : '<span style="color:var(--text-faint);">' + Math.round(aiScore * 100) + '%</span>') : '<span style="color:var(--text-faint);">—</span>';
-      var savedAt = e.created_at ? new Date(e.created_at).toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '—';
-      var appliedAt = e.applied_at ? new Date(e.applied_at).toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '—';
-      var lastActivity = e.updated_at ? _ovRelTime(e.updated_at) : '—';
-      var sourceUrl = e.source_url || '';
-      var titleLink = sourceUrl ? '<a href="' + sourceUrl + '" target="_blank" rel="noopener" class="pl-title" style="color:var(--accent);text-decoration:none;" title="' + title + '">' + (title.length > 35 ? title.slice(0,35) + '…' : title) + '</a>' : '<span class="pl-title" title="' + title + '">' + (title.length > 35 ? title.slice(0,35) + '…' : title) + '</span>';
-      html += '<tr>';
-      html += '<td>' + titleLink + '</td>';
-      html += '<td class="pl-company" title="' + company + '">' + (company.length > 20 ? company.slice(0,20) + '…' : company) + '</td>';
-      html += '<td><span style="font-size:11px;background:var(--accent-dim);color:var(--accent);padding:2px 6px;border-radius:4px;">' + platform + '</span></td>';
-      html += '<td style="font-size:11px;color:var(--text-dim);">' + entrySource + '</td>';
-      html += '<td class="pl-match" style="' + matchColor + '">' + matchScore + '</td>';
-      html += '<td>' + fraudHtml + '</td>';
-      html += '<td>' + aiHtml + '</td>';
-      html += '<td class="pl-date">' + savedAt + '</td>';
-      html += '<td class="pl-date">' + appliedAt + '</td>';
-      html += '<td class="pl-date" style="font-size:11px;color:var(--text-dim);">' + lastActivity + '</td>';
-      html += '</tr>';
-    });
-    html += '</tbody></table>';
-    html += '</div></div>';
-  });
-
-  container.innerHTML = html;
-};
-
-// ── Stat cards ────────────────────────────────────────────────
-function _renderOverlayStats(entries, container) {
-  var statsEl = document.getElementById('pl-overlay-stats');
-  if (!statsEl) return;
-  var total = entries.length;
-  var applied = entries.filter(function(e) { return ['applied','interview','offer'].includes(e.stage); }).length;
-  var withScore = entries.filter(function(e) { return typeof e.match_score === 'number'; });
-  var avgScore = withScore.length ? Math.round(withScore.reduce(function(a,e) { return a + e.match_score; }, 0) / withScore.length) : null;
-  var flagged = entries.filter(function(e) { return e.fraud_score >= 60 || e.ai_content_score >= 0.7; }).length;
-  statsEl.innerHTML =
-    '<div class="stat-card"><div class="stat-val">' + total + '</div><div class="stat-label">Overlay Entries</div></div>' +
-    '<div class="stat-card"><div class="stat-val">' + applied + '</div><div class="stat-label">Applied+</div></div>' +
-    '<div class="stat-card"><div class="stat-val">' + (avgScore !== null ? avgScore + '%' : '—') + '</div><div class="stat-label">Avg Match</div></div>' +
-    '<div class="stat-card"><div class="stat-val">' + flagged + '</div><div class="stat-label">Flagged Jobs</div></div>';
-}
-
-// ── Relative time helper ──────────────────────────────────────
-function _ovRelTime(iso) {
-  var diff = Date.now() - new Date(iso).getTime();
-  if (diff < 60000) return 'just now';
-  if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
-  if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
-  return Math.floor(diff / 86400000) + 'd ago';
-}
-
-// ── Drill-down from overlay analytics → pipeline overlay tab ─
-window.drillDownToOverlayPipeline = function() {
-  if (typeof showPage === 'function') showPage('pipeline');
-  setTimeout(function() {
-    if (typeof switchPipelineView === 'function') switchPipelineView('overlay');
-  }, 150);
-};
-
-})();
-
-// CS-P1-004 FE-005: Register pipeline-overlay-tab exports with BJ namespace
-(function() {
-  ['drillDownToOverlayPipeline','renderOverlayPipelineTab','switchPipelineView'].forEach(function(name) {
-    if (typeof window[name] === 'function') {
-      window.BJ[name] = window[name];
-      window.BJ._registry[name] = { module: 'pipeline-overlay-tab', registered: Date.now() };
     }
   });
 })();

@@ -867,19 +867,20 @@ checkExtensionStatus();
 setTimeout(checkExtensionStatus, 3000);
 setInterval(checkExtensionStatus, 60000);
 
-// Saved Jobs card → navigate to Pipeline
+// Saved Jobs card → navigate to My Applications > Board
 $('#j-saved-card').addEventListener('click', () => {
   $$('.nav-item').forEach(n => n.classList.remove('active'));
-  const pipelineNav = $('[data-page="pipeline"]');
-  if (pipelineNav) {
-    pipelineNav.classList.add('active');
-    pipelineNav.classList.remove('tab-flash');
-    void pipelineNav.offsetWidth;
-    pipelineNav.classList.add('tab-flash');
-    setTimeout(() => pipelineNav.classList.remove('tab-flash'), 1000);
+  const appNav = $('[data-page="applications"]');
+  if (appNav) {
+    appNav.classList.add('active');
+    appNav.classList.remove('tab-flash');
+    void appNav.offsetWidth;
+    appNav.classList.add('tab-flash');
+    setTimeout(() => appNav.classList.remove('tab-flash'), 1000);
   }
   $$('.page').forEach(p => p.classList.remove('active'));
-  $('#page-pipeline').classList.add('active');
+  $('#page-applications').classList.add('active');
+  if (typeof switchAppTab === 'function') switchAppTab('board');
 });
 
 // Download
@@ -1126,38 +1127,39 @@ initGmailStatus();
   } catch(e) { reportError('app:gs-stats', e); }
 })();
 
-// Q22: Switch between Queue, Pipeline, and History views in My Applications
-window.switchAppView = function(view) {
-  // Toggle active on view toggle buttons
-  document.querySelectorAll('.app-view-toggle-bar .app-view-toggle').forEach(function(btn) {
-    btn.classList.toggle('active', btn.dataset.view === view);
+// PC-001: Switch between Board, Queue, History, Settings sub-tabs in My Applications
+window.switchAppTab = function(panel) {
+  // Toggle active on sub-tab buttons
+  document.querySelectorAll('#page-applications .app-flow-tab').forEach(function(tab) {
+    tab.classList.toggle('active', tab.dataset.panel === panel);
   });
 
-  // Toggle view panels
-  document.querySelectorAll('.app-view-panel').forEach(function(panel) {
-    panel.classList.remove('active');
+  // Toggle sub-tab panels
+  document.querySelectorAll('#page-applications .app-flow-panel').forEach(function(p) {
+    p.classList.remove('active');
   });
-  var target = document.getElementById('app-view-' + view + '-panel');
+  var target = document.getElementById('panel-' + panel);
   if (target) target.classList.add('active');
 
-  // Close settings panel when switching views
-  var settingsPanel = document.getElementById('app-settings-panel');
-  if (settingsPanel) settingsPanel.style.display = 'none';
-  var settingsBtn = document.getElementById('app-settings-toggle');
-  if (settingsBtn) settingsBtn.classList.remove('active');
-
-  // Trigger pipeline render if switching to pipeline view
-  if (view === 'pipeline' && typeof renderPipeline === 'function') {
+  // Trigger pipeline render when switching to Board view
+  if (panel === 'board' && typeof renderPipeline === 'function') {
     renderPipeline();
   }
 
-  localStorage.setItem('bj_app_view', view);
+  localStorage.setItem('bj_app_tab', panel);
 };
 
-// Restore last app view on init
+// PC-001: Wire sub-tab click handlers
 (function() {
-  var saved = localStorage.getItem('bj_app_view') || 'queue';
-  if (typeof switchAppView === 'function') switchAppView(saved);
+  document.querySelectorAll('#page-applications .app-flow-tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      var panel = this.dataset.panel;
+      if (panel) switchAppTab(panel);
+    });
+  });
+  // Restore last sub-tab or default to Board
+  var saved = localStorage.getItem('bj_app_tab') || 'board';
+  if (typeof switchAppTab === 'function') switchAppTab(saved);
 })();
 
 // Q16-Q19: Resume-First Onboarding
@@ -1401,7 +1403,7 @@ async function processReferralAttribution(user) {
 
 // CS-P1-004 FE-005: Register app.js exports with BJ namespace
 (function() {
-  ['togglePageHelp', 'connectGmail', 'disconnectGmail', 'switchAppView',
+  ['togglePageHelp', 'connectGmail', 'disconnectGmail', 'switchAppTab',
    'handleOnboardResume', 'createFilterFromProfile'].forEach(function(name) {
     if (typeof window[name] === 'function') {
       window.BJ[name] = window[name];
