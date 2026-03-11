@@ -5,6 +5,7 @@
 
 import { humanType, humanClick, humanSelect, humanFileUpload, humanScroll, randomDelay } from '../utils/human-sim.js';
 import { captureFailureScreenshot, capturePageState } from '../utils/screenshot.js';
+import { fillEeoQuestions } from '../utils/eeoc-filler.js';
 
 /**
  * Fill and submit a Greenhouse application form.
@@ -85,7 +86,7 @@ export async function fillGreenhouse(page, jobUrl, profile, resumePath, opts = {
     }
 
     // ── Answer common custom questions ──
-    await answerCommonQuestions(page, profile, log);
+    await answerCommonQuestions(page, profile, log, opts);
 
     // ── Scroll to bottom to reveal submit button ──
     await humanScroll(page, 500);
@@ -143,7 +144,7 @@ async function tryFill(page, selectors, value, log) {
  * Answer common Greenhouse custom questions.
  * Work authorization, sponsorship, start date, salary, etc.
  */
-async function answerCommonQuestions(page, profile, log) {
+async function answerCommonQuestions(page, profile, log, opts = {}) {
   // Work authorization
   const authSelectors = [
     'select[name*="authorized"], select[id*="authorized"]',
@@ -207,44 +208,8 @@ async function answerCommonQuestions(page, profile, log) {
     } catch { /* skip group */ }
   }
 
-  // AF-001: EEOC/OFCCP voluntary self-identification (selects + radios)
-  const eeoFields = [
-    { patterns: ['gender', 'sex'], value: profile.gender },
-    { patterns: ['race', 'ethnic'], value: profile.ethnicity },
-    { patterns: ['veteran', 'military'], value: profile.veteranStatus },
-    { patterns: ['disabilit'], value: profile.disabilityStatus },
-  ];
-  for (const eeo of eeoFields) {
-    if (!eeo.value) continue;
-    try {
-      // Try select dropdowns
-      const allSelects = await page.$$('select');
-      for (const sel of allSelects) {
-        const label = await sel.evaluate(el => {
-          const lbl = el.closest('.field, .question, fieldset, .form-group');
-          return (lbl ? lbl.textContent : el.getAttribute('aria-label') || '').toLowerCase();
-        });
-        if (eeo.patterns.some(p => label.includes(p))) {
-          await humanSelect(page, sel, eeo.value);
-          log(`Answered EEO ${eeo.patterns[0]}`, { value: eeo.value });
-          break;
-        }
-      }
-      // Try radio groups
-      for (const group of radioGroups) {
-        const labelText = await group.evaluate(el => el.textContent?.toLowerCase() || '');
-        if (eeo.patterns.some(p => labelText.includes(p))) {
-          const targetRadio = await group.$(`input[type="radio"][value*="${eeo.value}" i], label:has-text("${eeo.value}") input[type="radio"]`);
-          if (targetRadio) {
-            await targetRadio.click();
-            await randomDelay(200, 400);
-            log(`Clicked EEO ${eeo.patterns[0]} radio`, { value: eeo.value });
-          }
-          break;
-        }
-      }
-    } catch { /* skip eeo field */ }
-  }
+  // AF-005: EEOC/OFCCP auto-fill via shared eeoc-filler utility
+  await fillEeoQuestions(page, profile, log, opts?.capturePostHog);
 }
 
 /**

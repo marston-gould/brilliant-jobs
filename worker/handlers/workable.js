@@ -5,6 +5,7 @@
 
 import { humanType, humanClick, humanSelect, humanScroll, randomDelay } from '../utils/human-sim.js';
 import { captureFailureScreenshot } from '../utils/screenshot.js';
+import { fillEeoQuestions } from '../utils/eeoc-filler.js';
 
 /**
  * Fill and submit a Workable application form.
@@ -62,7 +63,7 @@ export async function fillWorkable(page, jobUrl, profile, resumePath, opts = {})
     }
 
     // Common custom questions
-    await answerWorkableQuestions(page, profile, log);
+    await answerWorkableQuestions(page, profile, log, opts);
 
     // ── Submit ──
     await humanScroll(page, 400);
@@ -99,7 +100,7 @@ async function tryFill(page, selectors, value, log) {
   }
 }
 
-async function answerWorkableQuestions(page, profile, log) {
+async function answerWorkableQuestions(page, profile, log, opts = {}) {
   const questions = await page.$$('[data-ui="custom-field"], .custom-field, .form-group');
   for (const q of questions) {
     try {
@@ -112,23 +113,11 @@ async function answerWorkableQuestions(page, profile, log) {
         const sel = await q.$('select');
         if (sel) { await humanSelect(page, 'select', profile.needsSponsorship ? 'Yes' : 'No'); log('Sponsorship answered'); }
       }
-      // AF-001: EEOC/OFCCP voluntary self-identification
-      const eeoMap = [
-        { patterns: ['gender', 'sex'], value: profile.gender },
-        { patterns: ['race', 'ethnic'], value: profile.ethnicity },
-        { patterns: ['veteran', 'military'], value: profile.veteranStatus },
-        { patterns: ['disabilit'], value: profile.disabilityStatus },
-      ];
-      for (const eeo of eeoMap) {
-        if (!eeo.value) continue;
-        if (eeo.patterns.some(p => labelText.includes(p))) {
-          const sel = await q.$('select');
-          if (sel) { await humanSelect(page, 'select', eeo.value); log(`EEO ${eeo.patterns[0]} answered`, { value: eeo.value }); }
-          break;
-        }
-      }
     } catch { /* skip */ }
   }
+
+  // AF-005: EEOC/OFCCP auto-fill via shared eeoc-filler utility
+  await fillEeoQuestions(page, profile, log, opts?.capturePostHog);
 }
 
 async function detectWorkableOutcome(page, log, sb, userId, jobId) {

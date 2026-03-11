@@ -52,7 +52,35 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**AF-004** — Pipeline Process Queue Mode Routing
+**AF-005** — Worker + Extension Handler EEOC Auto-Fill
+- Completed: 2026-03-11
+- Product version bumped: `v8.74` → `v8.75` (JS changes — eeoc-filler.js new utility; greenhouse/lever/workable/ashby/generic handlers refactored; worker/index.js citizenshipStatus; extension job-site-overlay.ts _eeoPreferences; all HTML surfaces cache-busted)
+- ROADMAP.md updated: AF-005 → ✅
+- roadmap.html updated: AF-005 → `s: 'done'`, p: 100
+- **worker/utils/eeoc-filler.js (NEW):**
+  - `fillEeoQuestions(page, profile, log, capturePostHog)` — centralized EEOC auto-fill
+  - EEO_FIELDS: 5 fields (gender, ethnicity, veteranStatus, disabilityStatus, citizenshipStatus)
+  - PREFER_NOT_TO_SAY_VALUES: Set of skip strings (case-insensitive)
+  - Strategy 1: select dropdowns — exact → partial → value attr match via `trySelectValue()`
+  - Strategy 2: radio groups — label text match + click via `tryRadioValue()`
+  - "Prefer not to say" → skip with reason, increments `result.skipped`
+  - null value → silent skip, not counted
+  - PostHog `eeoc_autofill_complete` emitted when filled > 0 OR skipped > 0
+  - Returns `{ filled, skipped, skipReasons }`
+- **All 5 handlers refactored:**
+  - greenhouse.js: removed inline eeoFields loop; imports + calls `fillEeoQuestions` at end of `answerCommonQuestions`. `opts` threaded through.
+  - lever.js: removed inline eeoMap loop; `fillEeoQuestions` as post-pass after per-question loop. `opts` threaded through.
+  - workable.js: removed inline eeoMap loop; `fillEeoQuestions` at end of `answerWorkableQuestions`. `opts` threaded through.
+  - ashby.js: removed inline eeoMap loop; `fillEeoQuestions` at end of `answerAshbyQuestions`. `opts` threaded through.
+  - generic.js: removed inline eeoFields loop; replaced with `fillEeoQuestions` call.
+- **worker/index.js:** Added `citizenshipStatus: (applicantProfile.eeo_preferences || {}).citizenshipStatus || null` to profile object
+- **extension/job-site-overlay.ts:**
+  - `var _eeoPreferences = null` state variable
+  - `chrome.storage.local.get(['applySettings', 'eeoPreferences'])` — loads on init
+  - storage change listener updated for `changes.eeoPreferences`
+  - APPLY_INTERCEPTED payload includes `eeoPreferences: _eeoPreferences || null`
+- **pod-team-manifest.md:** AF-005 pairing row added; 5 Pod 4 team member descriptions confirmed (Chief Architect, Lead Platform Eng, System Architect—Scalability, Forward-Looking Developer, Evolvability Strategist)
+- **Tests:** 31 passing (af-005-eeoc-autofill.test.js)
 - Completed: 2026-03-11
 - Product version bumped: `v8.73` → `v8.74` (JS changes — apply-workflow.js processApplyQueueByMode + _batchScorePendingApps + _renderBatchScoreResults + window export; applications.js Process Queue button updated; all HTML surfaces cache-busted)
 - ROADMAP.md updated: AF-004 → ✅
@@ -2213,7 +2241,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.74`** | **AF-004: Pipeline Process Queue Mode Routing** |
+| **Product (BJ_VERSION)** | **`v8.75`** | **AF-005: Worker + Extension Handler EEOC Auto-Fill** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.28.0-settings-pipeline-activity` | EXT-AS-8 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

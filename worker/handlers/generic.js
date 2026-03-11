@@ -5,6 +5,7 @@
 
 import { humanType, humanScroll, randomDelay } from '../utils/human-sim.js';
 import { captureFailureScreenshot } from '../utils/screenshot.js';
+import { fillEeoQuestions } from '../utils/eeoc-filler.js';
 
 /**
  * Generic form filler — attempts heuristic field detection.
@@ -50,30 +51,8 @@ export async function fillGeneric(page, jobUrl, profile, resumePath, opts = {}) 
       await heuristicFill(page, ['linkedin'], profile.linkedin, log);
     }
 
-    // AF-001: EEOC/OFCCP voluntary self-identification (heuristic select matching)
-    const eeoFields = [
-      { patterns: ['gender', 'sex'], value: profile.gender },
-      { patterns: ['race', 'ethnic'], value: profile.ethnicity },
-      { patterns: ['veteran', 'military'], value: profile.veteranStatus },
-      { patterns: ['disabilit'], value: profile.disabilityStatus },
-    ];
-    for (const eeo of eeoFields) {
-      if (!eeo.value) continue;
-      try {
-        const allSelects = await page.$$('select');
-        for (const sel of allSelects) {
-          const context = await sel.evaluate(el => {
-            const parent = el.closest('.field, .question, fieldset, .form-group, label');
-            return (parent ? parent.textContent : el.getAttribute('name') || el.getAttribute('aria-label') || '').toLowerCase();
-          });
-          if (eeo.patterns.some(p => context.includes(p))) {
-            await humanSelect(page, sel, eeo.value);
-            log(`Answered EEO ${eeo.patterns[0]}`, { value: eeo.value });
-            break;
-          }
-        }
-      } catch { /* skip */ }
-    }
+    // AF-005: EEOC/OFCCP auto-fill via shared eeoc-filler utility
+    await fillEeoQuestions(page, profile, log, opts?.capturePostHog);
 
     // Resume
     if (resumePath) {

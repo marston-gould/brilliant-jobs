@@ -5,6 +5,7 @@
 
 import { humanType, humanSelect, humanScroll, randomDelay } from '../utils/human-sim.js';
 import { captureFailureScreenshot } from '../utils/screenshot.js';
+import { fillEeoQuestions } from '../utils/eeoc-filler.js';
 
 /**
  * Fill and submit an Ashby application form.
@@ -58,7 +59,7 @@ export async function fillAshby(page, jobUrl, profile, resumePath, opts = {}) {
     }
 
     // Custom questions
-    await answerAshbyQuestions(page, profile, log);
+    await answerAshbyQuestions(page, profile, log, opts);
 
     // ── Submit ──
     await humanScroll(page, 400);
@@ -94,7 +95,7 @@ async function tryFill(page, selectors, value, log) {
   }
 }
 
-async function answerAshbyQuestions(page, profile, log) {
+async function answerAshbyQuestions(page, profile, log, opts = {}) {
   // Ashby custom fields use _customfield_ prefix
   const customFields = await page.$$('[class*="custom-field"], [data-field-type], .ashby-application-form-field');
   for (const field of customFields) {
@@ -108,23 +109,11 @@ async function answerAshbyQuestions(page, profile, log) {
         const select = await field.$('select');
         if (select) { await humanSelect(page, 'select', profile.needsSponsorship ? 'Yes' : 'No'); log('Sponsorship'); }
       }
-      // AF-001: EEOC/OFCCP voluntary self-identification
-      const eeoMap = [
-        { patterns: ['gender', 'sex'], value: profile.gender },
-        { patterns: ['race', 'ethnic'], value: profile.ethnicity },
-        { patterns: ['veteran', 'military'], value: profile.veteranStatus },
-        { patterns: ['disabilit'], value: profile.disabilityStatus },
-      ];
-      for (const eeo of eeoMap) {
-        if (!eeo.value) continue;
-        if (eeo.patterns.some(p => label.includes(p))) {
-          const select = await field.$('select');
-          if (select) { await humanSelect(page, 'select', eeo.value); log(`EEO ${eeo.patterns[0]}`, { value: eeo.value }); }
-          break;
-        }
-      }
     } catch { /* skip */ }
   }
+
+  // AF-005: EEOC/OFCCP auto-fill via shared eeoc-filler utility
+  await fillEeoQuestions(page, profile, log, opts?.capturePostHog);
 }
 
 async function detectAshbyOutcome(page, log, sb, userId, jobId) {

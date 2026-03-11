@@ -178,6 +178,8 @@ async function processApplication(app) {
       ethnicity: (applicantProfile.eeo_preferences || {}).ethnicity || null,
       veteranStatus: (applicantProfile.eeo_preferences || {}).veteranStatus || null,
       disabilityStatus: (applicantProfile.eeo_preferences || {}).disabilityStatus || null,
+      // AF-005: citizenship status (separate from work_authorization boolean)
+      citizenshipStatus: (applicantProfile.eeo_preferences || {}).citizenshipStatus || null,
     };
 
     if (!profile.name || !profile.email) {

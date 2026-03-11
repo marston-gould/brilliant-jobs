@@ -168,6 +168,7 @@
   var _scoreThreshold = 75;
   var _activeResumeId = null;
   var _dailyApplyLimit = 25;
+  var _eeoPreferences = null; // AF-005: EEOC profile fields from chrome.storage.local
   var _saved = false; // Track if current job is already saved
 
   // Load settings from chrome.storage
@@ -178,7 +179,7 @@
         if (syncData.applicationMode) _applicationMode = syncData.applicationMode;
         if (syncData.scoreThreshold) _scoreThreshold = syncData.scoreThreshold;
       });
-      chrome.storage.local.get(['applySettings'], function (localData) {
+      chrome.storage.local.get(['applySettings', 'eeoPreferences'], function (localData) {
         if (localData.applySettings) {
           var s = localData.applySettings;
           if (s.applicationMode) _applicationMode = s.applicationMode;
@@ -186,6 +187,8 @@
           if (s.activeResumeId) _activeResumeId = s.activeResumeId;
           if (s.dailyApplyLimit) _dailyApplyLimit = s.dailyApplyLimit;
         }
+        // AF-005: load EEOC preferences for APPLY_INTERCEPTED payload
+        if (localData.eeoPreferences) _eeoPreferences = localData.eeoPreferences;
       });
     } catch (e) {
       console.warn('[BJ Overlay] Settings load error:', e.message);
@@ -206,6 +209,10 @@
         if (s.scoreThreshold) _scoreThreshold = s.scoreThreshold;
         if (s.activeResumeId) _activeResumeId = s.activeResumeId;
         if (s.dailyApplyLimit) _dailyApplyLimit = s.dailyApplyLimit;
+      }
+      // AF-005: sync EEOC preferences when background updates them
+      if (area === 'local' && changes.eeoPreferences) {
+        _eeoPreferences = changes.eeoPreferences.newValue || null;
       }
     });
   }
@@ -600,6 +607,8 @@
         scoreThreshold: _scoreThreshold,
         resumeId: _activeResumeId,
         dailyApplyLimit: _dailyApplyLimit,
+        // AF-005: pass EEOC preferences so background/worker can auto-fill
+        eeoPreferences: _eeoPreferences || null,
       };
 
       // Show mode-specific feedback

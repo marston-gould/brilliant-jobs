@@ -5,6 +5,7 @@
 
 import { humanType, humanClick, humanSelect, humanFileUpload, humanScroll, randomDelay } from '../utils/human-sim.js';
 import { captureFailureScreenshot, capturePageState } from '../utils/screenshot.js';
+import { fillEeoQuestions } from '../utils/eeoc-filler.js';
 
 /**
  * Fill and submit a Lever application form.
@@ -64,7 +65,7 @@ export async function fillLever(page, jobUrl, profile, resumePath, opts = {}) {
     }
 
     // ── Custom questions (text inputs, textareas, selects) ──
-    await answerLeverQuestions(page, profile, log);
+    await answerLeverQuestions(page, profile, log, opts);
 
     // ── Submit ──
     await humanScroll(page, 400);
@@ -105,7 +106,7 @@ async function tryFill(page, selectors, value, log) {
   }
 }
 
-async function answerLeverQuestions(page, profile, log) {
+async function answerLeverQuestions(page, profile, log, opts = {}) {
   // Lever custom questions are typically in .custom-questions or individual .application-question divs
   const questions = await page.$$('.application-question, .custom-question, .additional-field');
 
@@ -150,26 +151,13 @@ async function answerLeverQuestions(page, profile, log) {
         }
       }
 
-      // AF-001: EEOC/OFCCP voluntary self-identification
-      const eeoMap = [
-        { patterns: ['gender', 'sex'], value: profile.gender },
-        { patterns: ['race', 'ethnic'], value: profile.ethnicity },
-        { patterns: ['veteran', 'military'], value: profile.veteranStatus },
-        { patterns: ['disabilit'], value: profile.disabilityStatus },
-      ];
-      for (const eeo of eeoMap) {
-        if (!eeo.value) continue;
-        if (eeo.patterns.some(p => labelText.includes(p))) {
-          const select = await q.$('select');
-          if (select) {
-            await humanSelect(page, 'select', eeo.value);
-            log(`Answered EEO ${eeo.patterns[0]}`, { value: eeo.value });
-          }
-          break;
-        }
-      }
+      // AF-005: EEOC/OFCCP auto-fill via shared eeoc-filler utility
+      // (handled after per-question loop via post-pass below)
     } catch { /* skip question */ }
   }
+
+  // AF-005: run shared EEOC filler as a post-pass over the full page
+  await fillEeoQuestions(page, profile, log, opts?.capturePostHog);
 }
 
 async function detectLeverOutcome(page, log, sb, userId, jobId) {
