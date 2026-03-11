@@ -1243,6 +1243,107 @@ async function _syncProfileAndSettingsFromSupabase(userId: string, accessToken: 
   }
 }
 
+// ============================================================
+// AF-006: ACTIVITY SYNC TO SUPABASE
+// ============================================================
+// 30s debounce batching. Max 10 items per sync.
+// Fire-and-forget — failures silently ignored. Local copy is primary.
+
+let _activitySyncTimer: ReturnType<typeof setTimeout> | null = null;
+const ACTIVITY_SYNC_DEBOUNCE_MS = 30000; // 30 seconds
+
+function _debouncedActivitySync(): void {
+  if (_activitySyncTimer) clearTimeout(_activitySyncTimer);
+  _activitySyncTimer = setTimeout(() => {
+    _activitySyncTimer = null;
+    _syncActivityToSupabase();
+  }, ACTIVITY_SYNC_DEBOUNCE_MS);
+}
+
+async function _syncActivityToSupabase(): Promise<void> {
+  try {
+    const authSession = await getAuth();
+    if (!authSession?.access_token) return;
+
+    const stored = await chrome.storage.local.get('activityFeed');
+    const feed: Array<Record<string, unknown>> = stored.activityFeed || [];
+
+    // Find unsynced items (max 10 per batch)
+    const unsynced = feed.filter((item: Record<string, unknown>) => !item.synced && item.client_id);
+    if (unsynced.length === 0) return;
+
+    const batch = unsynced.slice(0, 10);
+    const items = batch.map((item: Record<string, unknown>) => ({
+      client_id: item.client_id,
+      activity_type: item.type || 'saved',
+      source: 'extension',
+      job_title: item.jobTitle || null,
+      company: item.company || null,
+      job_url: item.jobUrl || null,
+      score: typeof item.score === 'number' ? item.score : null,
+      mode: item.mode || null,
+      metadata: { threshold: item.threshold || null },
+      created_at: item.timestamp || new Date().toISOString(),
+    }));
+
+    const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+    const resp = await fetch(`${SB_URL}/functions/v1/api-gateway/log-user-activity`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authSession.access_token}`,
+      },
+      body: JSON.stringify({ action: 'batch', items }),
+    });
+
+    if (resp.ok) {
+      // Mark synced items in local storage
+      const syncedIds = new Set(batch.map((item: Record<string, unknown>) => item.client_id));
+      const updatedFeed = feed.map((item: Record<string, unknown>) => {
+        if (syncedIds.has(item.client_id as string)) {
+          return { ...item, synced: true };
+        }
+        return item;
+      });
+      await chrome.storage.local.set({ activityFeed: updatedFeed });
+
+      try {
+        captureEvent('activity_sync_batch', { count: batch.length, success: true });
+      } catch {}
+
+      // If more unsynced remain, schedule another batch
+      const remaining = updatedFeed.filter((item: Record<string, unknown>) => !item.synced && item.client_id);
+      if (remaining.length > 0) {
+        _debouncedActivitySync();
+      }
+    } else {
+      try {
+        captureEvent('activity_sync_failed', { status: resp.status });
+      } catch {}
+    }
+  } catch (e) {
+    try {
+      captureEvent('activity_sync_failed', { error: (e as Error).message });
+    } catch {}
+  }
+}
+
+// AF-006: Startup sync — check for unsynced items on extension wake
+async function _startupActivitySync(): Promise<void> {
+  try {
+    const stored = await chrome.storage.local.get('activityFeed');
+    const feed: Array<Record<string, unknown>> = stored.activityFeed || [];
+    const unsynced = feed.filter((item: Record<string, unknown>) => !item.synced && item.client_id);
+    if (unsynced.length > 0) {
+      // Delay startup sync by 5s to let auth settle
+      setTimeout(() => _syncActivityToSupabase(), 5000);
+    }
+  } catch {}
+}
+
+// Trigger startup sync
+_startupActivitySync();
+
 // MESSAGE HANDLER
 // ============================================================
 
@@ -1445,6 +1546,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       }
     })();
     return true;
+  }
+
+  // ── AF-006: SYNC_ACTIVITY — Batch sync unsynced activity items to Supabase ──
+  // 30s debounce. Fire-and-forget. Failures silently ignored.
+  if (msg.type === 'SYNC_ACTIVITY') {
+    _debouncedActivitySync();
+    return false;
   }
 
   // ── EXT-AS-4: Score resume for job via score-resume EF ──
@@ -1679,12 +1787,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         // Store interception in chrome.storage for activity feed
         const activityItem = {
           type: 'apply_intercepted',
+          client_id: 'af-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8),
           url: p.url,
           title: p.title,
           company: p.company,
           platform: p.platform,
           mode: mode,
           timestamp: new Date().toISOString(),
+          synced: false,
         };
         chrome.storage.local.get('activityFeed', (data) => {
           const feed = Array.isArray(data.activityFeed) ? data.activityFeed : [];
@@ -1692,6 +1802,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           // Prune to 50 items max
           if (feed.length > 50) feed.length = 50;
           chrome.storage.local.set({ activityFeed: feed });
+          // AF-006: Trigger activity sync
+          _debouncedActivitySync();
         });
 
         // AF-002: Setup gate — check if user has completed setup before proceeding

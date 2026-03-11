@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.75';
+var BJ_VERSION = 'v8.76';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -10868,6 +10868,15 @@ function toggleSaveJob(jobId, btn) {
           else { console.log('[BJ] Pipeline entry saved:', jobId); }
         })
         .catch(function(e) { reportError('keywords:pipeline-save', e); });
+    }
+    // AF-006: Log save to activity log
+    if (typeof logDashboardActivity === 'function') {
+      logDashboardActivity('saved', {
+        jobTitle: feedJob.title || '',
+        company: feedJob.company_name || '',
+        jobUrl: feedJob.apply_url || feedJob.url || '',
+        metadata: { surface: 'feed' }
+      });
     }
   }
   savePipelineMeta(meta);
@@ -27717,6 +27726,66 @@ var _applySubmitting = false; // Prevent double-submit
 var _activePollers = {}; // EXT-AS-7: Track active status pollers by appId
 
 // ═══════════════════════════════════════════════════════════
+// AF-006: DASHBOARD ACTIVITY LOGGING
+// Fire-and-forget writes to user_activity_log via log-user-activity EF.
+// ═══════════════════════════════════════════════════════════
+
+var _dashActivityQueue = [];
+var _dashActivityTimer = null;
+
+function logDashboardActivity(activityType, data) {
+  try {
+    var item = {
+      client_id: 'db-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8),
+      activity_type: activityType,
+      source: 'dashboard',
+      job_title: data.jobTitle || null,
+      company: data.company || null,
+      job_url: data.jobUrl || null,
+      score: typeof data.score === 'number' ? data.score : null,
+      mode: data.mode || null,
+      metadata: data.metadata || {},
+      created_at: new Date().toISOString()
+    };
+    _dashActivityQueue.push(item);
+
+    // 5s debounce flush
+    if (_dashActivityTimer) clearTimeout(_dashActivityTimer);
+    _dashActivityTimer = setTimeout(_flushDashboardActivity, 5000);
+  } catch (e) {
+    if (typeof reportError === 'function') reportError('af006_log', e);
+  }
+}
+
+async function _flushDashboardActivity() {
+  _dashActivityTimer = null;
+  if (_dashActivityQueue.length === 0) return;
+
+  var batch = _dashActivityQueue.splice(0, 50);
+  try {
+    var token = (typeof currentUser !== 'undefined' && currentUser && currentUser.access_token)
+      ? currentUser.access_token : null;
+    if (!token && typeof sb !== 'undefined' && sb.auth) {
+      var sess = await sb.auth.getSession();
+      token = sess && sess.data && sess.data.session ? sess.data.session.access_token : null;
+    }
+    if (!token) return;
+
+    var gatewayBase = 'https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/api-gateway';
+    fetch(gatewayBase + '/log-user-activity', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ action: 'batch', items: batch })
+    }).catch(function() {}); // fire-and-forget
+  } catch (e) {
+    if (typeof reportError === 'function') reportError('af006_flush', e);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
 // AF-002: FIRST-TIME SETUP GATE
 // Blocks all apply actions until user completes initial setup:
 //   1. applicant_profile with first_name, last_name, email
@@ -28117,6 +28186,17 @@ async function processApplyQueueByMode() {
     posthog.capture('pipeline_queue_mode', {
       mode: mode,
       pipeline_queue_batch_size: pending.length,
+    });
+  }
+
+  // AF-006: Log pipeline queue processing to activity log
+  for (var qi = 0; qi < pending.length; qi++) {
+    logDashboardActivity('pipeline-queued', {
+      jobTitle: pending[qi].job_title || '',
+      company: pending[qi].company_name || '',
+      jobUrl: pending[qi].job_url || '',
+      mode: mode,
+      metadata: { batch_size: pending.length, surface: 'pipeline' }
     });
   }
 
@@ -29233,6 +29313,16 @@ function _trackFeedApplyComplete(jobId, mode, outcome) {
   if (typeof posthog !== 'undefined') {
     posthog.capture('feed_apply_complete', { job_id: jobId, mode: mode, outcome: outcome, surface: 'feed' });
   }
+  // AF-006: Log to user_activity_log
+  var feedMap = typeof window._feedJobMap !== 'undefined' ? window._feedJobMap : {};
+  var jobInfo = feedMap[jobId] || {};
+  logDashboardActivity('applied', {
+    jobTitle: jobInfo.title || '',
+    company: jobInfo.company_name || '',
+    jobUrl: jobInfo.url || '',
+    mode: mode,
+    metadata: { outcome: outcome, surface: 'feed' }
+  });
 }
 
 // AF-003: Update job card UI after apply action
@@ -29678,6 +29768,8 @@ window.closeScoreGateModal = closeScoreGateModal;
 window.scoreAndRecheck = scoreAndRecheck;
 window.triggerRewrite = triggerRewrite;
 window.proceedToApply = proceedToApply;
+// AF-006: Dashboard activity logging export
+window.logDashboardActivity = logDashboardActivity;
 
 // CS-P1-004 FE-005: Register apply-workflow exports with BJ namespace
 (function() {

@@ -11,7 +11,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v8.75"></script>
+  <script src="/js/version.js?v=v8.76"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2212,6 +2212,7 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'AF-003 Job Feed Apply Mode Routing', d: 'Feed Apply button routes through mode-based logic: Manual (open URL), Score-Gated (score first + gate modal), Auto Apply (worker), Score-Gated+Auto (auto if above threshold, gate if below), Auto Rewrite (score+rewrite), Autopilot (auto-rewrite+submit). handleFeedApply + _scoreAndAutoRoute. 51 validation tests. v8.73. 2026-03-11.', p: 100, e: '3h' },
 { s: 'done', b: 'post-launch', n: 'AF-004 Pipeline Process Queue Mode Routing', d: 'Process Queue dispatches across all 6 APPLY_MODES. processApplyQueueByMode: Manual→existing flow, Auto→approve all+worker, Score-Gated→batch score+show results, Score-Gated-Auto→auto-approve above threshold+review below, Auto-Rewrite→score+rewrite below threshold, Autopilot→route all to worker. _batchScorePendingApps (chunks of 5). _renderBatchScoreResults (inline badges). applications.js updated. PostHog events. v8.74. 2026-03-11.', p: 100, e: '3h' },
 { s: 'done', b: 'post-launch', n: 'AF-005 Worker + Extension Handler EEOC Auto-Fill', d: 'Centralized eeoc-filler.js utility: fillEeoQuestions() with 5 fields (gender, ethnicity, veteranStatus, disabilityStatus, citizenshipStatus), prefer-not-to-say skip logic, select+radio fill strategies, PostHog eeoc_autofill_complete. All 5 handlers (greenhouse, lever, workable, ashby, generic) use shared utility. worker/index.js adds citizenshipStatus. Extension overlay: _eeoPreferences loaded from chrome.storage.local, synced on changes, included in APPLY_INTERCEPTED. 5 Pod 4 team members documented in pod-team-manifest.md. 31 tests. v8.75. 2026-03-11.', p: 100, e: '2h' },
+{ s: 'done', b: 'post-launch', n: 'AF-006 Extension Activity Sync to Supabase', d: 'Extension activity feed synced to user_activity_log via log-user-activity EF (batch/recent/summary). 30s debounce in background.ts, max 10 items/batch, fire-and-forget. Dashboard logDashboardActivity() also writes to same table. Gateway route #115. Migration v6.51: table + unique client_id index + RLS + 90-day cleanup cron + v_user_activity_summary view. popup-consumer.ts: client_id + synced fields + SYNC_ACTIVITY trigger. Startup sync on extension wake. 57 tests. v8.76. 2026-03-11.', p: 100, e: '2h' },
 
 ];
 

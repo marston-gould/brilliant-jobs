@@ -52,6 +52,60 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**AF-006** — Extension Activity Sync to Supabase
+- Completed: 2026-03-11
+- Product version bumped: `v8.75` → `v8.76` (JS changes — apply-workflow.js logDashboardActivity + _flushDashboardActivity, keywords.js toggleSaveJob activity logging, extension popup-consumer.ts client_id + synced + SYNC_ACTIVITY, extension background.ts _syncActivityToSupabase + SYNC_ACTIVITY handler + startup sync; all HTML surfaces cache-busted)
+- ROADMAP.md updated: AF-006 → ✅
+- roadmap.html updated: AF-006 → `s: 'done'`, p: 100
+- **Migration v6.51-user-activity-log.sql:**
+  - `user_activity_log` table (user_id FK, client_id UNIQUE, activity_type CHECK 9 types, source CHECK extension/dashboard, job_title, company, job_url, score, mode, metadata JSONB, created_at)
+  - `idx_ual_client_id` unique index (dedup), `idx_ual_user_created` (query), `idx_ual_activity_type`, `idx_ual_source`
+  - 2 RLS policies (user reads own, service role full)
+  - `cleanup-user-activity-log` pg_cron daily — 90-day retention
+  - `v_user_activity_summary` view (count_24h, count_7d, applied_24h, auto_submitted_24h, saved_24h, from_extension, from_dashboard)
+- **log-user-activity EF (new):**
+  - `batch` action: accepts array of items, validates activity_type + source, upserts with ON CONFLICT client_id DO NOTHING, max 50 per batch
+  - `recent` action: fetch recent activity for current user (limit configurable, max 100)
+  - `summary` action: reads v_user_activity_summary for current user
+  - Auth required (JWT). CORS. Structured error responses.
+- **Gateway route #115:** `log-user-activity` → `log-user-activity` (AF-006). Total: 115 routes.
+- **Extension popup-consumer.ts:**
+  - `ActivityItem` interface: added `client_id: string` (dedup key) + `synced?: boolean`
+  - `addActivityItem()`: generates `client_id` with `af-` prefix, sets `synced: false`, sends `SYNC_ACTIVITY` message to background.ts
+- **Extension background.ts:**
+  - `SYNC_ACTIVITY` message handler: calls `_debouncedActivitySync()`
+  - `_debouncedActivitySync()`: 30s debounce timer
+  - `_syncActivityToSupabase()`: reads unsynced items from chrome.storage.local, batches max 10, POSTs to log-user-activity EF via api-gateway, marks items synced=true on success, schedules follow-up if more remain
+  - `_startupActivitySync()`: on extension wake, checks for unsynced items, triggers sync after 5s delay
+  - `APPLY_INTERCEPTED` activity item: now includes `client_id` + `synced: false` + triggers `_debouncedActivitySync()`
+  - PostHog: `activity_sync_batch` (count, success), `activity_sync_failed` (status/error)
+- **Dashboard apply-workflow.js:**
+  - `logDashboardActivity(activityType, data)`: builds activity item with `db-` prefix client_id, source='dashboard', queues in `_dashActivityQueue`
+  - `_flushDashboardActivity()`: 5s debounce, batch POSTs to log-user-activity EF, fire-and-forget
+  - `_trackFeedApplyComplete()`: logs 'applied' activity with job info from `_feedJobMap`
+  - `processApplyQueueByMode()`: logs 'pipeline-queued' for each pending app
+  - `window.logDashboardActivity` exported for SPA bridge
+- **Dashboard keywords.js:**
+  - `toggleSaveJob()`: logs 'saved' activity on add path with typeof guard
+- **Pod Team Manifest:** AF-006 pairing (Lead Platform Eng + Forward-Looking Dev, Chief Architect + System Architect—Scalability reviewers)
+- **Modified:**
+  - `supabase/functions/api-gateway/index.ts` — Route #115 (log-user-activity). Total: 115 routes.
+  - `extension/popup-consumer.ts` — ActivityItem client_id + synced, addActivityItem SYNC_ACTIVITY
+  - `extension/background.ts` — _debouncedActivitySync + _syncActivityToSupabase + _startupActivitySync + SYNC_ACTIVITY handler + APPLY_INTERCEPTED client_id
+  - `js/apply-workflow.js` — logDashboardActivity + _flushDashboardActivity + _trackFeedApplyComplete logging + processApplyQueueByMode logging + window export
+  - `js/keywords.js` — toggleSaveJob activity logging
+  - `docs/scaling/pod-team-manifest.md` — AF-006 pairing
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — AF-006 → ✅
+  - `roadmap.html` — AF-006 → done/100
+- **Created:**
+  - `supabase/migrations/v6.51-user-activity-log.sql` — user_activity_log table + indexes + RLS + cron + view
+  - `supabase/functions/log-user-activity/index.ts` — batch/recent/summary EF
+  - `tests/af-006-activity-sync.test.js` — 57 validation tests
+- **Tests:** 57 validation tests (all passing)
+
 **AF-005** — Worker + Extension Handler EEOC Auto-Fill
 - Completed: 2026-03-11
 - Product version bumped: `v8.74` → `v8.75` (JS changes — eeoc-filler.js new utility; greenhouse/lever/workable/ashby/generic handlers refactored; worker/index.js citizenshipStatus; extension job-site-overlay.ts _eeoPreferences; all HTML surfaces cache-busted)
@@ -2241,7 +2295,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.75`** | **AF-005: Worker + Extension Handler EEOC Auto-Fill** |
+| **Product (BJ_VERSION)** | **`v8.76`** | **AF-006: Extension Activity Sync to Supabase** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.28.0-settings-pipeline-activity` | EXT-AS-8 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
@@ -2249,7 +2303,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 | **SPA Scaffold** | **`spa@1.0.0-scaffold`** | **SA-013** |
 | **Feature Flags** | **`infra@feature-flags-v1.0.0`** | **SA-025** |
 | **Event Bus** | **`infra@event-bus-v1.0.0`** | **SA-024** |
-| **API Gateway** | `infra@gateway-v1.0.0` | EXT-AS-5 (114 routes) |
+| **API Gateway** | `infra@gateway-v1.0.0` | AF-006 (115 routes) |
 | **Capacity Model** | **`infra@capacity-model-v1.0.0`** | **SA-028** |
 | **Deploy Tracker** | **`infra@deploy-tracker-v1.0.0`** | **BI-01** |
 | **Build Analytics** | **`infra@build-analytics-v1.0.0`** | **BI-02** |

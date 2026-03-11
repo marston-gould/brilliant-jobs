@@ -10,12 +10,14 @@ const MODES_USING_SCORING = ['score-gated', 'auto-score-gate', 'auto-rewrite', '
 
 interface ActivityItem {
   id: string;
+  client_id: string; // AF-006: unique dedup key for Supabase sync
   type: 'saved' | 'applied' | 'rewrite-offered' | 'rewrite-submitted' | 'auto-submitted';
   jobTitle: string;
   company: string;
   score?: number;
   threshold?: number;
   timestamp: string; // ISO
+  synced?: boolean;  // AF-006: true once synced to user_activity_log
 }
 
 // ============================================================
@@ -340,7 +342,7 @@ function _relativeTime(isoString: string): string {
  * Add an activity item to the feed (called by other extension components).
  * Stored in chrome.storage.local, max 50 entries.
  */
-async function addActivityItem(item: Omit<ActivityItem, 'id'>): Promise<void> {
+async function addActivityItem(item: Omit<ActivityItem, 'id' | 'client_id'>): Promise<void> {
   try {
     const stored = await chrome.storage.local.get('activityFeed');
     const feed: ActivityItem[] = stored.activityFeed || [];
@@ -348,6 +350,8 @@ async function addActivityItem(item: Omit<ActivityItem, 'id'>): Promise<void> {
     const newItem: ActivityItem = {
       ...item,
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      client_id: 'af-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8),
+      synced: false,
     };
 
     feed.push(newItem);
@@ -356,6 +360,11 @@ async function addActivityItem(item: Omit<ActivityItem, 'id'>): Promise<void> {
     while (feed.length > 50) feed.shift();
 
     await chrome.storage.local.set({ activityFeed: feed });
+
+    // AF-006: Fire-and-forget sync trigger to background.ts
+    try {
+      chrome.runtime.sendMessage({ type: 'SYNC_ACTIVITY' });
+    } catch {}
 
     // Refresh display if consumer view is active
     const consumerView = document.getElementById('consumer-view');

@@ -3556,6 +3556,15 @@ function toggleSaveJob(jobId, btn) {
         })
         .catch(function(e) { reportError('keywords:pipeline-save', e); });
     }
+    // AF-006: Log save to activity log
+    if (typeof logDashboardActivity === 'function') {
+      logDashboardActivity('saved', {
+        jobTitle: feedJob.title || '',
+        company: feedJob.company_name || '',
+        jobUrl: feedJob.apply_url || feedJob.url || '',
+        metadata: { surface: 'feed' }
+      });
+    }
   }
   savePipelineMeta(meta);
   saveUserData('bj_saved_jobs', JSON.stringify(savedJobIds));

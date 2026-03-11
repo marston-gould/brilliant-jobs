@@ -221,8 +221,11 @@ const ROUTE_REGISTRY: Record<string, string> = {
   "payl-referral-webhook":    "payl-referral-webhook",    // FB-PAYL-S1: signup/subscribed/qualify_check/revoke/status/anti_gaming_check
   "payl-expiry-check":        "payl-expiry-check",        // FB-PAYL-S1: check/nudge/convert/extend/summary
 
+  // ── Activity Sync (AF-006) ────────────────────────────────────────────────
+  "log-user-activity":          "log-user-activity",          // AF-006: batch/recent/summary — extension + dashboard activity sync
+
   // ═══════════════════════════════════════════════════════════════════════════
-  // TOTAL: 114 routes (93 SA-005 + 1 SA-007 + 1 SA-008 + 1 SA-009 + 2 SA-010 + 2 SA-011 + 2 SA-012 + 1 SA-018 + 2 SA-020 + 1 SA-021 + 1 SA-024 + 1 SA-028 + 1 BI-01 + 3 FB-PAYL + 1 EXT-AS-5). Direct paths deprecated.
+  // TOTAL: 115 routes (93 SA-005 + 1 SA-007 + 1 SA-008 + 1 SA-009 + 2 SA-010 + 2 SA-011 + 2 SA-012 + 1 SA-018 + 2 SA-020 + 1 SA-021 + 1 SA-024 + 1 SA-028 + 1 BI-01 + 3 FB-PAYL + 1 EXT-AS-5 + 1 AF-006). Direct paths deprecated.
   // HOOK: Future EFs register here. Future: load from DB table for
   //       runtime updates without redeploy (api_consumers integration).
   // ═══════════════════════════════════════════════════════════════════════════
