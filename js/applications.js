@@ -208,8 +208,14 @@ $('#a-add-manual').addEventListener('click', () => {
   renderAppQueue();
 });
 
-// Process queue — simulate sending notifications or submitting
+// Process queue — EXT-AS-7: Route through headless worker
 $('#a-process-queue').addEventListener('click', () => {
+  // Use Supabase-backed processApplyQueue from apply-workflow.js
+  if (typeof processApplyQueue === 'function') {
+    processApplyQueue();
+    return;
+  }
+  // Fallback: legacy localStorage queue
   let processed = 0;
   appQueue.forEach(app => {
     if (app.status !== 'queued') return;

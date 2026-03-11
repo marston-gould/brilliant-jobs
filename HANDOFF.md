@@ -52,7 +52,56 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**EXT-AS-6** — Auto Modes + Autopilot + Limits (Handoff Phase 6)
+**EXT-AS-7** — Dashboard → Worker Routing (Headless Worker Integration)
+- Completed: 2026-03-11
+- Product version bumped: `v8.68` → `v8.69` (JS changes — apply-workflow.js worker routing + status polling + live UI + bulk queue; applications.js Process Queue delegation; all HTML surfaces cache-busted)
+- Extension manifest: unchanged (dashboard-only session)
+- ROADMAP.md updated: EXT-AS-7 → ✅
+- roadmap.html updated: EXT-AS-7 → `s: 'done'`, p: 100
+- **Worker Routing Architecture:**
+  - `_isRecruiteeJob(url)`: Detects Recruitee URLs — these stay on direct API (faster, no browser needed)
+  - Non-Recruitee ATS: `proceedToApply()`, `approvePendingApp()`, `approveRewrittenApp()`, `approveOriginalApp()` all route through headless worker (AS-1/2/3) via `_routeToWorker(app)` instead of calling `callSubmitApplication()` directly
+  - Worker picks up `status=approved` rows every 30s, sets to `processing`, then `submitted` or `failed`
+- **Status Polling (`_pollApplicationStatus`):**
+  - Polls `pending_applications` every 3s for status changes
+  - Timeout after 5 minutes (shows retry prompt)
+  - `_activePollers` map tracks active intervals by appId
+  - `_stopPolling(appId)` cleans up interval on terminal status
+- **Live UI Updates (`_renderLiveStatus`):**
+  - Finds card via `data-app-id` attribute, updates center + actions in-place
+  - Queued/Processing: Lucide `loader-2` spinner with animation
+  - Submitted: Lucide `circle-check` green icon
+  - Failed/Timeout: Lucide `circle-x` error icon
+  - Action buttons disabled during processing, re-enabled on failure
+- **Bulk Processing (`processApplyQueue`):**
+  - Approves all pending applications at once
+  - Routes each through worker or direct API based on ATS source
+  - Tracks `directCount` vs `workerCount` for toast and PostHog
+  - Wired to existing `#a-process-queue` button in applications.js
+- **APPLY_STATUS Extended:**
+  - Added `PROCESSING: 'processing'` constant to match worker status
+  - `loadPendingApplications` query now includes `processing` in `.in()` filter
+  - `renderPendingApplications` shows approved/processing cards with status badges
+  - Approved badge: "Queued for Worker" (warm background)
+  - Processing badge: "Worker Submitting..." (accent background)
+- **PostHog Events:**
+  - `worker_submission_queued`: app_id, ats_source, company, platform
+  - `worker_submission_complete`: app_id, status (submitted|failed), duration_ms, error (if failed)
+  - `bulk_queue_processed`: total, direct_count, worker_count
+- **Pod Team Manifest:**
+  - EXT-AS-7 pairing: Lead Platform Eng + Forward-Looking Dev (primary), Chief Architect + System Architect—Scalability (reviewers)
+- **Modified:**
+  - `js/apply-workflow.js` — APPLY_STATUS.PROCESSING, _isRecruiteeJob, _activePollers, _routeToWorker, _pollApplicationStatus, _stopPolling, _renderLiveStatus, processApplyQueue, worker routing in proceedToApply/approvePendingApp/approveRewrittenApp/approveOriginalApp, loadPendingApplications query, renderPendingApplications status badges, window exports
+  - `js/applications.js` — Process Queue button delegates to processApplyQueue
+  - `docs/scaling/pod-team-manifest.md` — EXT-AS-7 pairing
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — EXT-AS-7 → ✅
+  - `roadmap.html` — EXT-AS-7 → done/100
+- **Created:**
+  - `tests/ext-as-7-worker-routing.test.js` — 53 validation tests (9 sections)
+- **Tests:** 53 validation tests (all passing)
 - Completed: 2026-03-11
 - Product version bumped: `v8.67` → `v8.68` (Extension background.ts auto mode routing + daily limit + overlay auto toasts + contentScript bridge; all HTML surfaces cache-busted)
 - Extension manifest: 2.26.0 → 2.27.0
@@ -1829,14 +1878,15 @@ None. FEED-FIX-006 complete.
 
 No specific session queued. EXT-AS-5 complete.
 
-**EXT-AS series (9 sessions total, 6 done):**
+**EXT-AS series (9 sessions total, 7 done):**
 - EXT-AS-1 ✅ — Applicant Profile + Settings Sync
 - EXT-AS-2 ✅ — Consumer Popup UI + Mode Persistence
 - EXT-AS-3 ✅ — Content Script: Save Button + Apply Interception
 - EXT-AS-4 ✅ — Score Gate Popup + Resume Scoring
 - EXT-AS-5 ✅ — AI Resume Rewrite Flow
 - EXT-AS-6 ✅ — Auto Modes + Autopilot + Limits
-- EXT-AS-7 through EXT-AS-9 — Dashboard routing, settings panel, PostHog QA
+- EXT-AS-7 ✅ — Dashboard → Worker Routing
+- EXT-AS-8 through EXT-AS-9 — Settings panel, PostHog QA
 
 **Pending from EXT-AS spec (Marston to prioritize):**
 - EXT-AS-2 requires extension-ux-prototype.html designs
@@ -1898,7 +1948,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.68`** | **EXT-AS-6: Auto Modes + Autopilot + Limits** |
+| **Product (BJ_VERSION)** | **`v8.69`** | **EXT-AS-7: Dashboard → Worker Routing** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

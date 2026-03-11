@@ -3494,6 +3494,6 @@ Phase S is complete when ALL of the following are true:
 | EXT-AS-4 | Score Gate Popup + Resume Scoring (Handoff Phase 4) | ✅ | Shadow DOM score gate popup, score ring SVG, gap analysis, threshold comparison, 3 action buttons. background.ts SCORE_RESUME handler via gateway + mode routing. contentScript.ts bridge. score-resume EF direct JD text support. 75 validation tests. |
 | EXT-AS-5 | AI Resume Rewrite Flow (Handoff Phase 5) | ✅ | rewrite-resume-extension EF, background.ts _rewriteResumeForJob + rewrite handler, job-site-overlay.ts progress + review popups, contentScript.ts bridge, gateway route #114, manifest v2.26.0, v8.67 |
 | EXT-AS-6 | Auto Modes + Autopilot + Limits (Handoff Phase 6) | ✅ | Auto-apply, auto-rewrite, full-autopilot mode routing. Daily apply limit enforcement (25 default, date-reset). Limit toast. 4 PostHog events. 66 tests. v8.68. |
-| EXT-AS-7 | Dashboard → Worker Routing | 🔲 | |
+| EXT-AS-7 | Dashboard → Worker Routing | ✅ | apply-workflow.js routes non-Recruitee through headless worker; Recruitee stays direct API; poll status 3s; processApplyQueue bulk; 53 tests |
 | EXT-AS-8 | Settings Panel + Activity Feed + Pipeline View (Handoff Phase 7) | 🔲 | |
 | EXT-AS-9 | PostHog Instrumentation + QA (Handoff Phase 8) | 🔲 | |

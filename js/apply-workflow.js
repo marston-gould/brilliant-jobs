@@ -30,6 +30,7 @@ var APPLY_MODES = {
 var APPLY_STATUS = {
   PENDING:    'pending',
   APPROVED:   'approved',
+  PROCESSING: 'processing',
   SUBMITTED:  'submitted',
   SKIPPED:    'skipped',
   EXPIRED:    'expired',
@@ -54,6 +55,220 @@ var DEFAULT_APPLY_SETTINGS = {
 var pendingApplications = [];
 var userApplySettings = Object.assign({}, DEFAULT_APPLY_SETTINGS);
 var _applySubmitting = false; // Prevent double-submit
+var _activePollers = {}; // EXT-AS-7: Track active status pollers by appId
+
+// ═══════════════════════════════════════════════════════════
+// EXT-AS-7: DASHBOARD → WORKER ROUTING
+// Recruitee stays on direct API. All other ATS route through
+// headless worker (AS-1/2/3) via pending_applications polling.
+// ═══════════════════════════════════════════════════════════
+
+function _isRecruiteeJob(url) {
+  return url && url.indexOf('recruitee') >= 0;
+}
+
+/**
+ * Route a submission through the headless worker.
+ * Sets status to approved (worker polls every 30s), then polls for result.
+ * @param {Object} app - The pending_application row (must have .id, .job_url, .company_name, .job_title)
+ */
+async function _routeToWorker(app) {
+  // PostHog: track worker queue event
+  if (typeof posthog !== 'undefined') {
+    posthog.capture('worker_submission_queued', {
+      app_id: app.id,
+      ats_source: _guessAtsSource(app.job_url),
+      company: app.company_name,
+      platform: 'dashboard',
+    });
+  }
+
+  _renderLiveStatus(app.id, 'queued', 'Queued for submission...');
+
+  // Start polling for worker status updates
+  _pollApplicationStatus(app.id);
+}
+
+/**
+ * Poll pending_applications for status changes.
+ * Worker sets: approved → processing → submitted|failed
+ * Polls every 3s, times out after 5 minutes.
+ */
+function _pollApplicationStatus(appId) {
+  // Don't double-poll
+  if (_activePollers[appId]) return;
+
+  var startTime = Date.now();
+  var POLL_INTERVAL = 3000; // 3s
+  var POLL_TIMEOUT = 300000; // 5 minutes
+
+  _activePollers[appId] = setInterval(async function() {
+    // Timeout check
+    if (Date.now() - startTime > POLL_TIMEOUT) {
+      _stopPolling(appId);
+      _renderLiveStatus(appId, 'timeout', 'Worker did not pick up in time. Retry from queue.');
+      return;
+    }
+
+    try {
+      var sb = window.supabase || window._supabase;
+      if (!sb) return;
+
+      var { data, error } = await sb
+        .from('pending_applications')
+        .select('status, submitted_at, submission_error')
+        .eq('id', appId)
+        .single();
+
+      if (error || !data) return;
+
+      if (data.status === 'processing') {
+        _renderLiveStatus(appId, 'processing', 'Worker is submitting...');
+      } else if (data.status === 'submitted') {
+        _stopPolling(appId);
+        _renderLiveStatus(appId, 'submitted', 'Application submitted!');
+        // Update local cache
+        var localApp = pendingApplications.find(function(a) { return a.id === appId; });
+        if (localApp) {
+          localApp.status = 'submitted';
+          localApp.submitted_at = data.submitted_at;
+          _updatePipelineApplied(localApp.job_id);
+        }
+        if (typeof posthog !== 'undefined') {
+          posthog.capture('worker_submission_complete', {
+            app_id: appId,
+            status: 'submitted',
+            duration_ms: Date.now() - startTime,
+            platform: 'dashboard',
+          });
+        }
+        // Refresh list after a brief delay
+        setTimeout(function() { loadPendingApplications().then(renderPendingApplications); }, 2000);
+      } else if (data.status === 'failed') {
+        _stopPolling(appId);
+        _renderLiveStatus(appId, 'failed', data.submission_error || 'Submission failed. You can retry.');
+        var localApp2 = pendingApplications.find(function(a) { return a.id === appId; });
+        if (localApp2) localApp2.status = 'failed';
+        if (typeof posthog !== 'undefined') {
+          posthog.capture('worker_submission_complete', {
+            app_id: appId,
+            status: 'failed',
+            error: data.submission_error || 'unknown',
+            duration_ms: Date.now() - startTime,
+            platform: 'dashboard',
+          });
+        }
+        setTimeout(function() { loadPendingApplications().then(renderPendingApplications); }, 2000);
+      }
+    } catch (e) {
+      reportError('apply-workflow:poll', e);
+    }
+  }, POLL_INTERVAL);
+}
+
+function _stopPolling(appId) {
+  if (_activePollers[appId]) {
+    clearInterval(_activePollers[appId]);
+    delete _activePollers[appId];
+  }
+}
+
+/**
+ * Render live submission status inline on a pending app card.
+ * Uses data-app-id to find the card and update the center section.
+ */
+function _renderLiveStatus(appId, status, message) {
+  var card = document.querySelector('.pa-card[data-app-id="' + appId + '"]');
+  if (!card) return;
+
+  var center = card.querySelector('.pa-card-center');
+  var actions = card.querySelector('.pa-card-actions');
+  if (!center) return;
+
+  var iconHtml = '';
+  if (status === 'queued' || status === 'processing') {
+    iconHtml = '<i data-lucide="loader-2" class="icon-md" style="animation:spin 1s linear infinite;display:inline-block;vertical-align:middle;margin-right:6px;"></i>';
+  } else if (status === 'submitted') {
+    iconHtml = '<i data-lucide="circle-check" class="icon-md" style="color:var(--success);display:inline-block;vertical-align:middle;margin-right:6px;"></i>';
+  } else if (status === 'failed' || status === 'timeout') {
+    iconHtml = '<i data-lucide="circle-x" class="icon-md" style="color:var(--error);display:inline-block;vertical-align:middle;margin-right:6px;"></i>';
+  }
+
+  center.innerHTML = '<span class="pa-live-status">' + iconHtml + '<span>' + escapeHtml(message) + '</span></span>';
+
+  // Disable action buttons while processing
+  if (status === 'queued' || status === 'processing') {
+    if (actions) actions.innerHTML = '<span style="font-size:11px;color:var(--muted);">Processing...</span>';
+  } else if (status === 'submitted') {
+    if (actions) actions.innerHTML = '<span style="font-size:11px;color:var(--success);">Done</span>';
+  }
+  // For failed/timeout, leave actions as-is (retry button renders from renderPendingApplications)
+
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+/**
+ * EXT-AS-7: Bulk process queue — approve all pending apps and route to worker.
+ * Called from Pipeline Process Queue button.
+ */
+async function processApplyQueue() {
+  var pending = pendingApplications.filter(function(a) {
+    return a.status === APPLY_STATUS.PENDING;
+  });
+
+  if (pending.length === 0) {
+    if (typeof showToast === 'function') showToast('No pending applications to process.');
+    return;
+  }
+
+  var processed = 0;
+  var directCount = 0;
+  var workerCount = 0;
+
+  for (var i = 0; i < pending.length; i++) {
+    var app = pending[i];
+
+    // Set to approved
+    await updatePendingApplication(app.id, {
+      status: APPLY_STATUS.APPROVED,
+      responded_at: new Date().toISOString(),
+    });
+    app.status = APPLY_STATUS.APPROVED;
+
+    if (_isRecruiteeJob(app.job_url)) {
+      // Recruitee: direct API submission
+      var resume = _getActiveResume();
+      var result = await callSubmitApplication(app, resume.id, resume.filename);
+      if (result.ok) {
+        _updatePipelineApplied(app.job_id);
+        directCount++;
+      }
+    } else {
+      // All others: worker picks up approved rows
+      _routeToWorker(app);
+      workerCount++;
+    }
+    processed++;
+  }
+
+  if (typeof showToast === 'function') {
+    showToast('Processing ' + processed + ' application(s): ' +
+      (directCount > 0 ? directCount + ' direct, ' : '') +
+      (workerCount > 0 ? workerCount + ' queued for worker.' : ''));
+  }
+
+  if (typeof posthog !== 'undefined') {
+    posthog.capture('bulk_queue_processed', {
+      total: processed,
+      direct_count: directCount,
+      worker_count: workerCount,
+      platform: 'dashboard',
+    });
+  }
+
+  await loadPendingApplications();
+  renderPendingApplications();
+}
 
 function loadApplySettings() {
   try {
@@ -93,7 +308,7 @@ async function loadPendingApplications() {
       .from('pending_applications')
       .select('*')
       .eq('user_id', currentUser.id)
-      .in('status', ['pending', 'approved', 'failed'])
+      .in('status', ['pending', 'approved', 'processing', 'failed'])
       .order('created_at', { ascending: false });
     if (error) {
       console.error('[apply-workflow] Load pending apps error:', error.message);
@@ -606,26 +821,32 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
     return;
   }
 
-  // Submit to mock ATS
-  var result = await callSubmitApplication(savedApp, resume.id, resume.filename);
+  // EXT-AS-7: Route through worker or direct API
+  if (_isRecruiteeJob(jobUrl)) {
+    // Recruitee: direct API (faster, no browser needed)
+    var result = await callSubmitApplication(savedApp, resume.id, resume.filename);
 
-  if (result.ok) {
-    _updatePipelineApplied(jobId);
-    if (typeof showToast === 'function') showToast('Applied to ' + (companyName || 'this job') + '!', { type: 'success' });
-    // D6: Fire notification
-    _fireApplyNotification('apply_auto_submitted', {
-      subject: 'Applied: ' + (jobTitle || 'Job') + ' at ' + (companyName || 'Company'),
-      html: '<p>Your resume was submitted for <strong>' + escapeHtml(jobTitle || '') + '</strong> at <strong>' + escapeHtml(companyName || '') + '</strong>.</p>',
-      job_id: jobId,
-      job_title: jobTitle,
-      company_name: companyName,
-    });
-  } else if (result.error === 'rejected') {
-    if (typeof showToast === 'function') showToast('Application rejected: ' + (result.detail || 'Unknown reason') + '. You can retry.', { type: 'error', duration: 6000 });
-  } else if (result.error === 'timeout') {
-    if (typeof showToast === 'function') showToast('ATS timed out. Your application was saved — you can retry.', { type: 'error', duration: 6000 });
+    if (result.ok) {
+      _updatePipelineApplied(jobId);
+      if (typeof showToast === 'function') showToast('Applied to ' + (companyName || 'this job') + '!', { type: 'success' });
+      _fireApplyNotification('apply_auto_submitted', {
+        subject: 'Applied: ' + (jobTitle || 'Job') + ' at ' + (companyName || 'Company'),
+        html: '<p>Your resume was submitted for <strong>' + escapeHtml(jobTitle || '') + '</strong> at <strong>' + escapeHtml(companyName || '') + '</strong>.</p>',
+        job_id: jobId,
+        job_title: jobTitle,
+        company_name: companyName,
+      });
+    } else if (result.error === 'rejected') {
+      if (typeof showToast === 'function') showToast('Application rejected: ' + (result.detail || 'Unknown reason') + '. You can retry.', { type: 'error', duration: 6000 });
+    } else if (result.error === 'timeout') {
+      if (typeof showToast === 'function') showToast('ATS timed out. Your application was saved — you can retry.', { type: 'error', duration: 6000 });
+    } else {
+      if (typeof showToast === 'function') showToast('Submission failed: ' + (result.error || 'Unknown error') + '. Retry from Pending Applications.', { type: 'error', duration: 6000 });
+    }
   } else {
-    if (typeof showToast === 'function') showToast('Submission failed: ' + (result.error || 'Unknown error') + '. Retry from Pending Applications.', { type: 'error', duration: 6000 });
+    // All other ATS: route through headless worker (AS-1/2/3)
+    if (typeof showToast === 'function') showToast('Application queued — worker will submit to ' + (companyName || 'ATS') + '.', { duration: 5000 });
+    await _routeToWorker(savedApp);
   }
 
   // Refresh pending applications list
@@ -745,7 +966,8 @@ function renderPendingApplications() {
   if (!container) return;
 
   var pending = pendingApplications.filter(function(a) {
-    return a.status === APPLY_STATUS.PENDING || a.status === APPLY_STATUS.FAILED;
+    return a.status === APPLY_STATUS.PENDING || a.status === APPLY_STATUS.FAILED ||
+           a.status === APPLY_STATUS.APPROVED || a.status === APPLY_STATUS.PROCESSING;
   });
   
   if (pending.length === 0) {
@@ -774,10 +996,17 @@ function renderPendingApplications() {
     var statusBadge = '';
     if (app.status === APPLY_STATUS.FAILED) {
       statusBadge = '<span class="pa-badge pa-badge-failed">Failed — Retry?</span>';
+    } else if (app.status === APPLY_STATUS.APPROVED) {
+      statusBadge = '<span class="pa-badge" style="background:var(--warm);color:#fff;">Queued for Worker</span>';
+    } else if (app.status === APPLY_STATUS.PROCESSING) {
+      statusBadge = '<span class="pa-badge" style="background:var(--accent);color:#fff;">Worker Submitting...</span>';
     }
 
     var actionsHtml = '';
-    if (app.status === APPLY_STATUS.FAILED) {
+    if (app.status === APPLY_STATUS.APPROVED || app.status === APPLY_STATUS.PROCESSING) {
+      // Worker is handling — show spinner status
+      actionsHtml = '<span style="font-size:11px;color:var(--muted);"><i data-lucide="loader-2" class="icon-sm" style="animation:spin 1s linear infinite;display:inline-block;vertical-align:middle;margin-right:4px;"></i>Processing...</span>';
+    } else if (app.status === APPLY_STATUS.FAILED) {
       // Failed: show retry
       actionsHtml =
         '<button class="pa-btn pa-btn-primary" onclick="retryPendingApp(\'' + app.id + '\')">Retry Submit</button>' +
@@ -812,6 +1041,9 @@ function renderPendingApplications() {
       '<div class="pa-card-actions">' + actionsHtml + '</div>' +
     '</div>';
   }).join('');
+
+  // EXT-AS-7: Refresh Lucide icons for worker status spinners
+  if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -831,29 +1063,33 @@ async function approvePendingApp(appId) {
     responded_at: new Date().toISOString(),
   });
 
-  if (typeof showToast === 'function') showToast('Submitting to ' + (app.company_name || 'ATS') + '...', { duration: 10000 });
+  // EXT-AS-7: Route through worker or direct API
+  if (_isRecruiteeJob(app.job_url)) {
+    if (typeof showToast === 'function') showToast('Submitting to ' + (app.company_name || 'ATS') + '...', { duration: 10000 });
+    var resume = _getActiveResume();
+    var result = await callSubmitApplication(app, resume.id, resume.filename);
 
-  // Submit to mock ATS
-  var resume = _getActiveResume();
-  var result = await callSubmitApplication(app, resume.id, resume.filename);
-
-  if (result.ok) {
-    _updatePipelineApplied(app.job_id);
-    if (typeof showToast === 'function') showToast('Applied to ' + (app.company_name || 'job') + '!', { type: 'success' });
-    // D6: Fire notification
-    _fireApplyNotification('apply_auto_submitted', {
-      subject: 'Applied: ' + (app.job_title || 'Job') + ' at ' + (app.company_name || 'Company'),
-      html: '<p>Your resume was submitted for <strong>' + escapeHtml(app.job_title || '') + '</strong> at <strong>' + escapeHtml(app.company_name || '') + '</strong>.</p>',
-      job_id: app.job_id,
-      job_title: app.job_title,
-      company_name: app.company_name,
-    });
-  } else if (result.error === 'rejected') {
-    if (typeof showToast === 'function') showToast('Rejected: ' + (result.detail || 'Unknown') + '. You can retry.', { type: 'error', duration: 6000 });
-  } else if (result.error === 'timeout') {
-    if (typeof showToast === 'function') showToast('ATS timed out. You can retry.', { type: 'error', duration: 6000 });
+    if (result.ok) {
+      _updatePipelineApplied(app.job_id);
+      if (typeof showToast === 'function') showToast('Applied to ' + (app.company_name || 'job') + '!', { type: 'success' });
+      _fireApplyNotification('apply_auto_submitted', {
+        subject: 'Applied: ' + (app.job_title || 'Job') + ' at ' + (app.company_name || 'Company'),
+        html: '<p>Your resume was submitted for <strong>' + escapeHtml(app.job_title || '') + '</strong> at <strong>' + escapeHtml(app.company_name || '') + '</strong>.</p>',
+        job_id: app.job_id,
+        job_title: app.job_title,
+        company_name: app.company_name,
+      });
+    } else if (result.error === 'rejected') {
+      if (typeof showToast === 'function') showToast('Rejected: ' + (result.detail || 'Unknown') + '. You can retry.', { type: 'error', duration: 6000 });
+    } else if (result.error === 'timeout') {
+      if (typeof showToast === 'function') showToast('ATS timed out. You can retry.', { type: 'error', duration: 6000 });
+    } else {
+      if (typeof showToast === 'function') showToast('Submission failed. You can retry.', { type: 'error' });
+    }
   } else {
-    if (typeof showToast === 'function') showToast('Submission failed. You can retry.', { type: 'error' });
+    // Route through headless worker
+    if (typeof showToast === 'function') showToast('Queued for worker submission to ' + (app.company_name || 'ATS') + '...', { duration: 5000 });
+    await _routeToWorker(app);
   }
 
   await loadPendingApplications();
@@ -875,23 +1111,27 @@ async function approveRewrittenApp(appId) {
     responded_at: new Date().toISOString(),
   });
 
-  if (typeof showToast === 'function') showToast('Submitting rewritten resume...', { duration: 10000 });
+  // EXT-AS-7: Route through worker or direct API
+  if (_isRecruiteeJob(app.job_url)) {
+    if (typeof showToast === 'function') showToast('Submitting rewritten resume...', { duration: 10000 });
+    var result = await callSubmitApplication(app, resumeId, 'resume-rewritten.pdf');
 
-  var result = await callSubmitApplication(app, resumeId, 'resume-rewritten.pdf');
-
-  if (result.ok) {
-    _updatePipelineApplied(app.job_id);
-    if (typeof showToast === 'function') showToast('Submitted rewritten resume to ' + (app.company_name || 'job') + '!', { type: 'success' });
-    // D6: Rewrite submitted notification
-    _fireApplyNotification('apply_rewrite_submitted', {
-      subject: 'Applied (rewritten): ' + (app.job_title || 'Job') + ' at ' + (app.company_name || 'Company'),
-      html: '<p>Your AI-rewritten resume was submitted for <strong>' + escapeHtml(app.job_title || '') + '</strong> at <strong>' + escapeHtml(app.company_name || '') + '</strong>.</p>',
-      job_id: app.job_id,
-      job_title: app.job_title,
-      company_name: app.company_name,
-    });
+    if (result.ok) {
+      _updatePipelineApplied(app.job_id);
+      if (typeof showToast === 'function') showToast('Submitted rewritten resume to ' + (app.company_name || 'job') + '!', { type: 'success' });
+      _fireApplyNotification('apply_rewrite_submitted', {
+        subject: 'Applied (rewritten): ' + (app.job_title || 'Job') + ' at ' + (app.company_name || 'Company'),
+        html: '<p>Your AI-rewritten resume was submitted for <strong>' + escapeHtml(app.job_title || '') + '</strong> at <strong>' + escapeHtml(app.company_name || '') + '</strong>.</p>',
+        job_id: app.job_id,
+        job_title: app.job_title,
+        company_name: app.company_name,
+      });
+    } else {
+      if (typeof showToast === 'function') showToast('Submission failed: ' + (result.error || 'Unknown') + '. You can retry.', { type: 'error' });
+    }
   } else {
-    if (typeof showToast === 'function') showToast('Submission failed: ' + (result.error || 'Unknown') + '. You can retry.', { type: 'error' });
+    if (typeof showToast === 'function') showToast('Queued rewritten resume for worker submission...', { duration: 5000 });
+    await _routeToWorker(app);
   }
 
   await loadPendingApplications();
@@ -911,16 +1151,21 @@ async function approveOriginalApp(appId) {
     responded_at: new Date().toISOString(),
   });
 
-  if (typeof showToast === 'function') showToast('Submitting original resume...', { duration: 10000 });
+  // EXT-AS-7: Route through worker or direct API
+  if (_isRecruiteeJob(app.job_url)) {
+    if (typeof showToast === 'function') showToast('Submitting original resume...', { duration: 10000 });
+    var resume = _getActiveResume();
+    var result = await callSubmitApplication(app, resume.id, resume.filename);
 
-  var resume = _getActiveResume();
-  var result = await callSubmitApplication(app, resume.id, resume.filename);
-
-  if (result.ok) {
-    _updatePipelineApplied(app.job_id);
-    if (typeof showToast === 'function') showToast('Submitted original resume to ' + (app.company_name || 'job') + '!', { type: 'success' });
+    if (result.ok) {
+      _updatePipelineApplied(app.job_id);
+      if (typeof showToast === 'function') showToast('Submitted original resume to ' + (app.company_name || 'job') + '!', { type: 'success' });
+    } else {
+      if (typeof showToast === 'function') showToast('Submission failed: ' + (result.error || 'Unknown') + '. You can retry.', { type: 'error' });
+    }
   } else {
-    if (typeof showToast === 'function') showToast('Submission failed: ' + (result.error || 'Unknown') + '. You can retry.', { type: 'error' });
+    if (typeof showToast === 'function') showToast('Queued original resume for worker submission...', { duration: 5000 });
+    await _routeToWorker(app);
   }
 
   await loadPendingApplications();
@@ -1119,6 +1364,11 @@ function updateApplySettingsVisibility(mode) {
   if (rewriteRow) rewriteRow.style.display = usesRewrite ? '' : 'none';
   if (rewriteApprovalRow) rewriteApprovalRow.style.display = usesRewrite && document.getElementById('fas-auto-rewrite') && document.getElementById('fas-auto-rewrite').checked ? '' : 'none';
 }
+
+// EXT-AS-7: Window exports for SPA bridge + cross-module access
+window.processApplyQueue = processApplyQueue;
+window._isRecruiteeJob = _isRecruiteeJob;
+window._activePollers = _activePollers;
 
 // CS-P1-004 FE-005: Register apply-workflow exports with BJ namespace
 (function() {
