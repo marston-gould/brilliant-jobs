@@ -109,3 +109,9 @@
 | EXT-AS-6 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
 | EXT-AS-7 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + System Architect—Scalability |
 | EXT-AS-8 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
+
+## Pairing Assignments (Applicant Form Extension)
+
+| Session | Primary Pair | Pod 4 Reviewer |
+|---------|-------------|----------------|
+| AF-001 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |

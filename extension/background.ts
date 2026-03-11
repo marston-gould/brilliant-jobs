@@ -1221,6 +1221,10 @@ async function _syncProfileAndSettingsFromSupabase(userId: string, accessToken: 
     const applySettings = userData.apply_settings || null;
     const updates: Record<string, unknown> = {};
     if (applicantProfile) updates.applicantProfile = applicantProfile;
+    // AF-001: Map eeo_preferences for handler consumption
+    if (applicantProfile && applicantProfile.eeo_preferences) {
+      updates.eeoPreferences = applicantProfile.eeo_preferences;
+    }
     if (applySettings) {
       updates.applySettings = {
         applicationMode: applySettings.default_apply_mode || 'score-gated',

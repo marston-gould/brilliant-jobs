@@ -52,6 +52,56 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**AF-001** — EEOC/OFCCP Profile Extension
+- Completed: 2026-03-11
+- Product version bumped: `v8.70` → `v8.71` (JS/HTML changes — dashboard.html EEOC section, settings.js eeo_preferences populate/read, worker EEO profile extraction, 5 worker handlers EEO answering; all HTML surfaces cache-busted)
+- ROADMAP.md updated: AF-001 → ✅
+- roadmap.html updated: AF-001 → `s: 'done'`, p: 100
+- **Dashboard EEOC Form:**
+  - 4 select fields added to applicant-profile-card: Gender (Male/Female/Non-binary/Prefer not to say/Decline), Race/Ethnicity (7 EEOC categories + Prefer not to say/Decline), Veteran Status (protected/not/prefer/decline), Disability Status (yes/no/prefer/decline)
+  - Voluntary disclosure notice: "Your responses are optional and will not affect your application"
+  - All fields default to "— Not set —" (empty value)
+  - Accessibility labels (for= attributes) on all 4 selects
+- **settings.js:**
+  - `_populateApplicantProfileForm()`: reads `p.eeo_preferences` object, populates 4 select elements
+  - `_readApplicantProfileForm()`: returns `eeo_preferences: { gender, ethnicity, veteranStatus, disabilityStatus }` nested in profile (null for unset)
+  - PostHog `applicant_profile_saved` event extended with `has_eeo` boolean property
+- **Extension Sync:**
+  - `background.ts _syncProfileAndSettingsFromSupabase()`: maps `applicantProfile.eeo_preferences` → `eeoPreferences` key in chrome.storage.local
+  - Extension handlers (`radioGroup.ts`, `greenhouse-react.ts`, `recruitee.ts`) already read gender/ethnicity/veteranStatus/disabilityStatus from preferences — now populated instead of defaulting to "Prefer not to say"
+- **Worker Profile Extraction:**
+  - `worker/index.js processApplication()`: 4 new fields extracted from `applicantProfile.eeo_preferences` — `gender`, `ethnicity`, `veteranStatus`, `disabilityStatus` (null fallback)
+- **Worker Handlers — EEOC Question Answering:**
+  - All 5 handlers updated with pattern-matched EEO answering (select dropdowns + radio buttons)
+  - `greenhouse.js`: Pattern matching on radioGroups + selects for gender/sex, race/ethnic, veteran/military, disabilit
+  - `lever.js`: EEO answering within answerLeverQuestions question loop
+  - `workable.js`: EEO answering within answerWorkableQuestions question loop
+  - `ashby.js`: EEO answering within answerAshbyQuestions question loop
+  - `generic.js`: Heuristic select matching for EEO fields via parent context analysis
+  - All handlers skip EEO fields when value is null (user hasn't set preference)
+- **Pod Team Manifest:**
+  - AF-001 pairing: Lead Platform Eng + Forward-Looking Dev (primary), Chief Architect + Evolvability Strategist (reviewers)
+  - All 5 hook-and-scar roles confirmed present since SA-006
+- **Modified:**
+  - `dashboard.html` — EEOC section (4 selects + disclosure notice) in applicant-profile-card
+  - `js/settings.js` — _populateApplicantProfileForm + _readApplicantProfileForm extended with eeo_preferences
+  - `extension/background.ts` — eeoPreferences sync mapping
+  - `worker/index.js` — 4 EEO fields in profile extraction
+  - `worker/handlers/greenhouse.js` — EEO select/radio answering in answerCommonQuestions
+  - `worker/handlers/lever.js` — EEO answering in answerLeverQuestions
+  - `worker/handlers/workable.js` — EEO answering in answerWorkableQuestions
+  - `worker/handlers/ashby.js` — EEO answering in answerAshbyQuestions
+  - `worker/handlers/generic.js` — EEO heuristic select answering
+  - `docs/scaling/pod-team-manifest.md` — AF-001 pairing
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — AF-001 → ✅
+  - `roadmap.html` — AF-001 → done/100
+- **Created:**
+  - `tests/af-001-eeoc-profile.test.js` — 55 validation tests (8 sections)
+- **Tests:** 55 validation tests (all passing)
+
 **EXT-AS-8** — Settings Panel + Activity Feed + Pipeline View (Handoff Phase 7)
 - Completed: 2026-03-11
 - Product version bumped: `v8.69` → `v8.70` (Extension popup.html page views + popup-consumer.ts settings/pipeline/activity logic + background.ts getPipelineItems handler; all HTML surfaces cache-busted)
@@ -2004,7 +2054,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.70`** | **EXT-AS-8: Settings Panel + Activity Feed + Pipeline View** |
+| **Product (BJ_VERSION)** | **`v8.71`** | **AF-001: EEOC/OFCCP Profile Extension** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.28.0-settings-pipeline-activity` | EXT-AS-8 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

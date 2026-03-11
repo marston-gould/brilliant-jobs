@@ -173,6 +173,11 @@ async function processApplication(app) {
       location: applicantProfile.location || '',
       workAuth: applicantProfile.work_authorization !== false,
       needsSponsorship: applicantProfile.needs_sponsorship === true,
+      // AF-001: EEOC/OFCCP voluntary self-identification
+      gender: (applicantProfile.eeo_preferences || {}).gender || null,
+      ethnicity: (applicantProfile.eeo_preferences || {}).ethnicity || null,
+      veteranStatus: (applicantProfile.eeo_preferences || {}).veteranStatus || null,
+      disabilityStatus: (applicantProfile.eeo_preferences || {}).disabilityStatus || null,
     };
 
     if (!profile.name || !profile.email) {

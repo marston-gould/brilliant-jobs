@@ -206,6 +206,45 @@ async function answerCommonQuestions(page, profile, log) {
       }
     } catch { /* skip group */ }
   }
+
+  // AF-001: EEOC/OFCCP voluntary self-identification (selects + radios)
+  const eeoFields = [
+    { patterns: ['gender', 'sex'], value: profile.gender },
+    { patterns: ['race', 'ethnic'], value: profile.ethnicity },
+    { patterns: ['veteran', 'military'], value: profile.veteranStatus },
+    { patterns: ['disabilit'], value: profile.disabilityStatus },
+  ];
+  for (const eeo of eeoFields) {
+    if (!eeo.value) continue;
+    try {
+      // Try select dropdowns
+      const allSelects = await page.$$('select');
+      for (const sel of allSelects) {
+        const label = await sel.evaluate(el => {
+          const lbl = el.closest('.field, .question, fieldset, .form-group');
+          return (lbl ? lbl.textContent : el.getAttribute('aria-label') || '').toLowerCase();
+        });
+        if (eeo.patterns.some(p => label.includes(p))) {
+          await humanSelect(page, sel, eeo.value);
+          log(`Answered EEO ${eeo.patterns[0]}`, { value: eeo.value });
+          break;
+        }
+      }
+      // Try radio groups
+      for (const group of radioGroups) {
+        const labelText = await group.evaluate(el => el.textContent?.toLowerCase() || '');
+        if (eeo.patterns.some(p => labelText.includes(p))) {
+          const targetRadio = await group.$(`input[type="radio"][value*="${eeo.value}" i], label:has-text("${eeo.value}") input[type="radio"]`);
+          if (targetRadio) {
+            await targetRadio.click();
+            await randomDelay(200, 400);
+            log(`Clicked EEO ${eeo.patterns[0]} radio`, { value: eeo.value });
+          }
+          break;
+        }
+      }
+    } catch { /* skip eeo field */ }
+  }
 }
 
 /**

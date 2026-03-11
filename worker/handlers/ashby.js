@@ -108,6 +108,21 @@ async function answerAshbyQuestions(page, profile, log) {
         const select = await field.$('select');
         if (select) { await humanSelect(page, 'select', profile.needsSponsorship ? 'Yes' : 'No'); log('Sponsorship'); }
       }
+      // AF-001: EEOC/OFCCP voluntary self-identification
+      const eeoMap = [
+        { patterns: ['gender', 'sex'], value: profile.gender },
+        { patterns: ['race', 'ethnic'], value: profile.ethnicity },
+        { patterns: ['veteran', 'military'], value: profile.veteranStatus },
+        { patterns: ['disabilit'], value: profile.disabilityStatus },
+      ];
+      for (const eeo of eeoMap) {
+        if (!eeo.value) continue;
+        if (eeo.patterns.some(p => label.includes(p))) {
+          const select = await field.$('select');
+          if (select) { await humanSelect(page, 'select', eeo.value); log(`EEO ${eeo.patterns[0]}`, { value: eeo.value }); }
+          break;
+        }
+      }
     } catch { /* skip */ }
   }
 }

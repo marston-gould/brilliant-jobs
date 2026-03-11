@@ -1007,6 +1007,16 @@ function _populateApplicantProfileForm(p) {
   if (el) el.checked = p.work_authorization !== false;
   el = document.getElementById('ap-sponsorship');
   if (el) el.checked = p.needs_sponsorship === true;
+  // AF-001: EEOC/OFCCP voluntary self-identification
+  var eeo = p.eeo_preferences || {};
+  el = document.getElementById('ap-eeo-gender');
+  if (el) el.value = eeo.gender || '';
+  el = document.getElementById('ap-eeo-ethnicity');
+  if (el) el.value = eeo.ethnicity || '';
+  el = document.getElementById('ap-eeo-veteran');
+  if (el) el.value = eeo.veteranStatus || '';
+  el = document.getElementById('ap-eeo-disability');
+  if (el) el.value = eeo.disabilityStatus || '';
 }
 
 function _readApplicantProfileForm() {
@@ -1019,7 +1029,14 @@ function _readApplicantProfileForm() {
     linkedin: (document.getElementById('ap-linkedin')?.value || '').trim(),
     location: (document.getElementById('ap-location')?.value || '').trim(),
     work_authorization: document.getElementById('ap-work-auth')?.checked !== false,
-    needs_sponsorship: document.getElementById('ap-sponsorship')?.checked === true
+    needs_sponsorship: document.getElementById('ap-sponsorship')?.checked === true,
+    // AF-001: EEOC/OFCCP voluntary self-identification
+    eeo_preferences: {
+      gender: (document.getElementById('ap-eeo-gender')?.value || '').trim() || null,
+      ethnicity: (document.getElementById('ap-eeo-ethnicity')?.value || '').trim() || null,
+      veteranStatus: (document.getElementById('ap-eeo-veteran')?.value || '').trim() || null,
+      disabilityStatus: (document.getElementById('ap-eeo-disability')?.value || '').trim() || null
+    }
   };
 }
 
@@ -1043,7 +1060,7 @@ async function saveApplicantProfile() {
     if (status) { status.style.display = 'inline'; status.textContent = 'Saved'; status.style.color = 'var(--green)'; }
     setTimeout(function() { if (status) status.style.display = 'none'; }, 3000);
     showToast('Applicant profile saved.', { type: 'success' });
-    if (typeof posthog !== 'undefined') posthog.capture('applicant_profile_saved', { has_phone: !!profile.phone, has_linkedin: !!profile.linkedin, has_location: !!profile.location });
+    if (typeof posthog !== 'undefined') posthog.capture('applicant_profile_saved', { has_phone: !!profile.phone, has_linkedin: !!profile.linkedin, has_location: !!profile.location, has_eeo: !!(profile.eeo_preferences && (profile.eeo_preferences.gender || profile.eeo_preferences.ethnicity || profile.eeo_preferences.veteranStatus || profile.eeo_preferences.disabilityStatus)) });
   } catch (e) {
     reportError('settings:save-applicant-profile', e);
     showToast('Failed to save profile: ' + (e.message || e), { type: 'error' });
