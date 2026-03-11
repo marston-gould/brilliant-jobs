@@ -225,6 +225,11 @@ function showApp(email, role) {
 
   // Initialize app features
   initApp();
+
+  // EXT-AS-2: Initialize consumer popup view (mode selector, activity, pipeline)
+  if (typeof (window as any).initConsumerPopup === 'function') {
+    (window as any).initConsumerPopup(role);
+  }
 }
 
 /**

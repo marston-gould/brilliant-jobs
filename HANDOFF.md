@@ -52,6 +52,48 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**EXT-AS-2** — Consumer Popup UI + Mode Persistence
+- Completed: 2026-03-11
+- Product version bumped: `v8.63` → `v8.64` (Extension popup.html consumer view + popup-consumer.ts logic + background.ts sync handler; all HTML surfaces cache-busted)
+- ROADMAP.md updated: EXT-AS-2 → ✅
+- roadmap.html updated: EXT-AS-2 → `s: 'done'`, p: 100
+- **Consumer Popup View:**
+  - popup.html: New `#consumer-view` container with 6 mode radio cards (Manual, Score-Gated, Auto Apply, Auto+Score Gate, Auto Rewrite, Full Autopilot), risk badges (Low risk/Recommended/Moderate/Aggressive/Full Auto), score threshold slider (range 30-95, default 75, gradient track), active resume card (name + updated date from Supabase), pipeline summary (4 stage pills: Saved/Applied/Interview/Offer from user_pipeline), activity feed (last 5 of max 50, color-coded dots), bottom nav (Home/Pipeline/Resumes/Settings)
+  - CSS: 50+ new classes for consumer view layout, mode cards, threshold slider, pipeline stages, activity feed, bottom nav, admin toggle
+- **Admin Legacy Toggle:**
+  - Header: Legacy toggle (checkbox) visible only for admin/superadmin users
+  - Toggle ON → shows existing tab UI (Contacts/Company Scan/Jobs/Export) in `#admin-legacy-view`
+  - Toggle OFF → shows consumer Application Mode UI in `#consumer-view`
+  - Non-admin users always see consumer view (no toggle visible)
+  - Toggle state persists in chrome.storage.local as `adminLegacyMode` (default: true for admins)
+  - PostHog `admin_toggle` event with `to_view` property
+- **Mode Persistence:**
+  - Mode selection persists to chrome.storage.sync (roams across devices) AND chrome.storage.local applySettings
+  - Threshold slider persists to chrome.storage.sync AND chrome.storage.local applySettings (500ms debounce)
+  - Both changes send `syncApplySettingsToSupabase` message to background.ts
+  - background.ts handler: reads profiles.user_data, merges apply_settings, writes back via supabase.update()
+  - Maps extension fields (applicationMode, scoreThreshold) to Supabase fields (default_apply_mode, default_score_threshold)
+  - Threshold section auto-hides for Manual and Auto Apply modes (no scoring needed)
+- **Live Updates:**
+  - chrome.storage.onChanged listener updates UI when settings sync from dashboard or other devices
+  - Handles both `local` and `sync` area changes for applicationMode and scoreThreshold
+- **PostHog Events:** mode_changed, threshold_changed, admin_toggle
+- **Window exports:** initConsumerPopup, addActivityItem (for popup.ts integration + future content script use)
+- **Created:**
+  - `extension/popup-consumer.ts` — Consumer popup logic (mode selector, threshold slider, pipeline/activity, admin toggle, storage persistence)
+  - `tests/ext-as-2-consumer-popup.test.js` — 54 validation tests (8 sections)
+- **Modified:**
+  - `extension/popup.html` — Consumer view HTML + CSS, admin legacy toggle, admin-legacy-view wrapper, popup-consumer.js script tag
+  - `extension/popup.ts` — initConsumerPopup(role) call in showApp()
+  - `extension/background.ts` — syncApplySettingsToSupabase message handler
+  - `extension/build-extension.js` — popup-consumer.ts added to JS_FILES
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — EXT-AS-2 → ✅
+  - `roadmap.html` — EXT-AS-2 → done/100
+- **Tests:** 54 validation tests (all passing)
+
 **EXT-AS-1** — Applicant Profile Form + Settings Sync
 - Completed: 2026-03-11
 - Product version bumped: `v8.62` → `v8.63` (JS/HTML changes — dashboard.html applicant profile card + apply settings sync card, settings.js load/save/sync functions, apply-workflow.js debounced Supabase sync, extension/background.ts profile sync; all HTML surfaces cache-busted)
@@ -1550,11 +1592,12 @@ None. FEED-FIX-006 complete.
 
 ## Next Session
 
-No specific session queued. EXT-AS-1 complete.
+No specific session queued. EXT-AS-2 complete.
 
-**EXT-AS series (9 sessions total, 1 done):**
+**EXT-AS series (9 sessions total, 2 done):**
 - EXT-AS-1 ✅ — Applicant Profile + Settings Sync
-- EXT-AS-2 through EXT-AS-9 — Consumer popup, content script injection, score gate, AI rewrite, auto modes, dashboard routing, settings panel, PostHog QA
+- EXT-AS-2 ✅ — Consumer Popup UI + Mode Persistence
+- EXT-AS-3 through EXT-AS-9 — Content script injection, score gate, AI rewrite, auto modes, dashboard routing, settings panel, PostHog QA
 
 **Pending from EXT-AS spec (Marston to prioritize):**
 - EXT-AS-2 requires extension-ux-prototype.html designs
@@ -1616,7 +1659,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.63`** | **EXT-AS-1: Applicant Profile Form + Settings Sync** |
+| **Product (BJ_VERSION)** | **`v8.64`** | **EXT-AS-2: Consumer Popup UI + Mode Persistence** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

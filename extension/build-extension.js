@@ -43,6 +43,7 @@ const JS_FILES = [
   'interceptor-bridge.ts',
   'popup.ts',
   'popup-bridge.ts',
+  'popup-consumer.ts',
   'popup-post.ts',
   'supabase.ts',
 ];

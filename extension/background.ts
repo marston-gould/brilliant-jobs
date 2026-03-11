@@ -1331,6 +1331,35 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     })();
     return true; // async sendResponse
   }
+  // EXT-AS-2: Sync apply settings (mode, threshold) from popup back to Supabase
+  if (msg.type === 'syncApplySettingsToSupabase') {
+    (async () => {
+      try {
+        const auth = await getAuth();
+        if (!auth?.user_id || !auth?.access_token) { sendResponse({ ok: false, error: 'not_authenticated' }); return; }
+        const settings = msg.settings || {};
+        const payload = {
+          default_apply_mode: settings.applicationMode || 'score-gated',
+          default_score_threshold: settings.scoreThreshold || 75,
+          active_resume_id: settings.activeResumeId || null,
+          daily_apply_limit: settings.dailyApplyLimit || 25
+        };
+        // Use supabase helper (loaded via importScripts)
+        supabase.setAuthToken(auth.access_token);
+        const profiles = await supabase.select('profiles', `select=user_data&id=eq.${auth.user_id}`);
+        if (profiles && profiles.length > 0) {
+          const userData = profiles[0].user_data || {};
+          userData.apply_settings = payload;
+          await supabase.update('profiles', { id: auth.user_id }, { user_data: userData });
+        }
+        sendResponse({ ok: true });
+      } catch (e) {
+        console.warn('[BJ] syncApplySettingsToSupabase error:', (e as Error).message);
+        sendResponse({ ok: false, error: (e as Error).message });
+      }
+    })();
+    return true;
+  }
   if (msg.type === 'startScanner') {
     // Phase 5 RBAC: Only admin users can start the scanner
     chrome.storage.local.get('userRole').then(data => {

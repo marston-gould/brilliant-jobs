@@ -50,6 +50,87 @@
     }
     .header .help-link:hover { color: var(--accent); border-color: var(--accent); }
     .admin-badge { display: none; align-items: center; gap: 3px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; background: rgba(245,158,11,0.12); color: #b47a08; padding: 2px 7px; border-radius: 4px; }
+    /* EXT-AS-2: Admin Legacy Toggle */
+    .legacy-toggle-wrap { display: none; align-items: center; gap: 4px; font-size: 9px; font-weight: 600; color: var(--text-faint); }
+    .legacy-toggle-wrap label { cursor: pointer; }
+    .legacy-toggle { position: relative; width: 28px; height: 16px; background: var(--bg-input); border-radius: 8px; cursor: pointer; transition: background 0.2s; appearance: none; -webkit-appearance: none; border: 1px solid var(--border); }
+    .legacy-toggle:checked { background: var(--warm); border-color: var(--warm); }
+    .legacy-toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; background: white; border-radius: 50%; transition: transform 0.2s; }
+    .legacy-toggle:checked::after { transform: translateX(12px); }
+    /* EXT-AS-2: Consumer View */
+    #consumer-view { display: none; }
+    #consumer-view.active { display: flex; flex-direction: column; min-height: 460px; }
+    #admin-legacy-view { display: none; }
+    #admin-legacy-view.active { display: block; }
+    .cv-section { padding: 0 12px; }
+    .cv-section-title { font-size: 10px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; padding: 0 2px; }
+    .cv-mode-section { padding: 10px 12px 6px; }
+    .cv-mode-card { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 5px; cursor: pointer; transition: all 0.15s; background: var(--bg-card); }
+    .cv-mode-card:hover { border-color: var(--border-hover); background: var(--bg-hover); }
+    .cv-mode-card.selected { border-color: var(--accent); background: var(--accent-glow); }
+    .cv-mode-top { display: flex; align-items: center; justify-content: space-between; }
+    .cv-mode-name { font-size: 12px; font-weight: 600; color: var(--text); }
+    .cv-mode-radio { width: 14px; height: 14px; border: 2px solid var(--border); border-radius: 50%; transition: all 0.15s; position: relative; flex-shrink: 0; }
+    .cv-mode-card.selected .cv-mode-radio { border-color: var(--accent); }
+    .cv-mode-card.selected .cv-mode-radio::after { content: ''; position: absolute; top: 2px; left: 2px; width: 6px; height: 6px; background: var(--accent); border-radius: 50%; }
+    .cv-mode-desc { font-size: 10px; color: var(--text-faint); line-height: 1.4; }
+    .cv-mode-badge { display: inline-block; font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.3px; margin-top: 2px; }
+    .cv-mode-badge.safe { background: var(--green-dim); color: var(--green); }
+    .cv-mode-badge.moderate { background: var(--warm-dim); color: #b47a08; }
+    .cv-mode-badge.aggressive { background: var(--red-dim); color: var(--red); }
+    /* Threshold slider */
+    .cv-threshold { padding: 6px 12px; }
+    .cv-threshold-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+    .cv-threshold-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .cv-threshold-label span:first-child { font-size: 11px; font-weight: 600; color: var(--text); }
+    .cv-threshold-value { font-family: var(--mono); font-size: 16px; font-weight: 700; color: var(--accent); }
+    .cv-slider { width: 100%; height: 6px; border-radius: 3px; appearance: none; -webkit-appearance: none; background: linear-gradient(to right, var(--green), #f59e0b, var(--red)); outline: none; cursor: pointer; }
+    .cv-slider::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: white; border: 2px solid var(--accent); box-shadow: 0 1px 4px rgba(0,0,0,0.15); cursor: pointer; }
+    .cv-slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: white; border: 2px solid var(--accent); box-shadow: 0 1px 4px rgba(0,0,0,0.15); cursor: pointer; }
+    .cv-threshold-hints { display: flex; justify-content: space-between; font-size: 9px; color: var(--text-faint); margin-top: 4px; }
+    /* Resume card */
+    .cv-resume { padding: 4px 12px; }
+    .cv-resume-card { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
+    .cv-resume-card:hover { border-color: var(--border-hover); }
+    .cv-resume-left { display: flex; align-items: center; gap: 8px; }
+    .cv-resume-icon { width: 28px; height: 28px; border-radius: 6px; background: var(--accent-glow); display: flex; align-items: center; justify-content: center; font-size: 14px; }
+    .cv-resume-info { display: flex; flex-direction: column; }
+    .cv-resume-name { font-size: 12px; font-weight: 600; color: var(--text); }
+    .cv-resume-meta { font-size: 10px; color: var(--text-faint); }
+    .cv-resume-chevron { color: var(--text-faint); font-size: 16px; }
+    /* Pipeline summary */
+    .cv-pipeline { padding: 6px 12px; }
+    .cv-pipeline-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+    .cv-pipeline-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .cv-pipeline-header span { font-size: 11px; font-weight: 600; color: var(--text); }
+    .cv-pipeline-header a { font-size: 10px; color: var(--accent); text-decoration: none; font-weight: 600; }
+    .cv-pipeline-stages { display: flex; gap: 6px; }
+    .cv-stage-pill { flex: 1; text-align: center; padding: 6px 4px; border-radius: 6px; }
+    .cv-stage-pill.saved { background: rgba(61,126,255,0.08); }
+    .cv-stage-pill.applied { background: var(--green-dim); }
+    .cv-stage-pill.interview { background: var(--warm-dim); }
+    .cv-stage-pill.offer { background: rgba(99,102,241,0.08); }
+    .cv-stage-count { font-size: 16px; font-weight: 700; font-family: var(--mono); color: var(--text); }
+    .cv-stage-label { font-size: 9px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.3px; }
+    /* Activity feed */
+    .cv-activity { padding: 6px 12px; flex: 1; }
+    .cv-activity-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+    .cv-activity-item { display: flex; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--bg-input); font-size: 11px; }
+    .cv-activity-item:last-child { border-bottom: none; }
+    .cv-activity-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+    .cv-activity-dot.green { background: var(--green); }
+    .cv-activity-dot.amber { background: var(--warm); }
+    .cv-activity-dot.blue { background: var(--accent); }
+    .cv-activity-text { color: var(--text-dim); line-height: 1.4; }
+    .cv-activity-text strong { color: var(--text); font-weight: 600; }
+    .cv-activity-time { font-size: 9px; color: var(--text-faint); margin-top: 1px; }
+    .cv-activity-empty { text-align: center; padding: 12px; font-size: 11px; color: var(--text-faint); }
+    /* Bottom nav */
+    .cv-bottom-nav { display: flex; background: var(--bg-card); border-top: 1px solid var(--border); padding: 8px 0 6px; margin-top: auto; }
+    .cv-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 9px; font-weight: 600; color: var(--text-faint); cursor: pointer; transition: color 0.15s; background: none; border: none; font-family: var(--sans); }
+    .cv-nav-item:hover { color: var(--text-dim); }
+    .cv-nav-item.active { color: var(--accent); }
+    .cv-nav-icon { font-size: 14px; }
     .role-tag { display: none; align-items: center; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; background: rgba(99,102,241,0.10); color: #6366f1; padding: 2px 7px; border-radius: 4px; }
     .upgrade-msg { display: none; text-align: center; padding: 12px 16px; color: var(--text-dim); font-size: 12px; line-height: 1.5; }
     .upgrade-msg a { color: var(--accent); text-decoration: none; font-weight: 600; }
@@ -181,6 +262,7 @@
   <a class="skip-link" href="#app-content">Skip to main content</a>
   <header class="header" role="banner">
     <span class="admin-badge" id="admin-badge">Admin</span>
+    <div class="legacy-toggle-wrap" id="legacy-toggle-wrap"><label for="legacy-toggle">Legacy</label><input type="checkbox" class="legacy-toggle" id="legacy-toggle" aria-label="Toggle legacy admin view"></div>
     <span class="role-tag" id="role-tag"></span>
     <a href="help.html" target="_blank" class="help-link" aria-label="Help" id="help-link">?</a>
     <a href="https://brilliantjobs.app/privacy" target="_blank" class="help-link" aria-label="Privacy Policy" title="Privacy Policy" style="font-size:9px;">🔒</a>
@@ -214,6 +296,93 @@
   </div>
   <div class="auth-user-bar" id="auth-user-bar"><span class="user-email" id="auth-user-email"></span><button class="logout-btn" id="auth-logout-btn" aria-label="Log out">Log Out</button></div>
   <main id="app-content" style="display: none;" role="main">
+    <!-- EXT-AS-2: Consumer Application Mode View -->
+    <div id="consumer-view">
+      <div class="cv-mode-section">
+        <div class="cv-section-title">Application Mode</div>
+        <div id="cv-mode-list">
+          <div class="cv-mode-card" data-mode="manual">
+            <div class="cv-mode-top"><span class="cv-mode-name">Manual</span><div class="cv-mode-radio"></div></div>
+            <div class="cv-mode-desc">Save jobs to your pipeline only. No apply interception.</div>
+            <span class="cv-mode-badge safe">Low risk</span>
+          </div>
+          <div class="cv-mode-card selected" data-mode="score-gated">
+            <div class="cv-mode-top"><span class="cv-mode-name">Score-Gated</span><div class="cv-mode-radio"></div></div>
+            <div class="cv-mode-desc">Intercepts apply clicks. Shows your resume match score and offers a targeted rewrite if below threshold.</div>
+            <span class="cv-mode-badge safe">Recommended</span>
+          </div>
+          <div class="cv-mode-card" data-mode="auto-apply">
+            <div class="cv-mode-top"><span class="cv-mode-name">Auto Apply</span><div class="cv-mode-radio"></div></div>
+            <div class="cv-mode-desc">Submits your current resume as-is when you click apply. No scoring or rewriting.</div>
+            <span class="cv-mode-badge moderate">Moderate</span>
+          </div>
+          <div class="cv-mode-card" data-mode="auto-score-gate">
+            <div class="cv-mode-top"><span class="cv-mode-name">Auto + Score Gate</span><div class="cv-mode-radio"></div></div>
+            <div class="cv-mode-desc">Auto-submits if score meets threshold. Offers rewrite review if below.</div>
+            <span class="cv-mode-badge moderate">Moderate</span>
+          </div>
+          <div class="cv-mode-card" data-mode="auto-rewrite">
+            <div class="cv-mode-top"><span class="cv-mode-name">Auto Rewrite</span><div class="cv-mode-radio"></div></div>
+            <div class="cv-mode-desc">Auto-rewrites and submits below-threshold resumes without review.</div>
+            <span class="cv-mode-badge aggressive">Aggressive</span>
+          </div>
+          <div class="cv-mode-card" data-mode="full-autopilot">
+            <div class="cv-mode-top"><span class="cv-mode-name">Full Autopilot</span><div class="cv-mode-radio"></div></div>
+            <div class="cv-mode-desc">Rewrites and submits every application automatically, regardless of score.</div>
+            <span class="cv-mode-badge aggressive">Full Auto</span>
+          </div>
+        </div>
+      </div>
+      <!-- Threshold slider (hidden for Manual and Auto Apply) -->
+      <div class="cv-threshold" id="cv-threshold-section">
+        <div class="cv-threshold-card">
+          <div class="cv-threshold-label"><span>Match Score Threshold</span><span class="cv-threshold-value" id="cv-threshold-value">75</span></div>
+          <input type="range" class="cv-slider" id="cv-threshold-slider" min="30" max="95" value="75" step="1">
+          <div class="cv-threshold-hints"><span>30 · Lenient</span><span>70 · Balanced</span><span>90 · Strict</span></div>
+        </div>
+      </div>
+      <!-- Active Resume -->
+      <div class="cv-resume">
+        <div class="cv-resume-card" id="cv-resume-card">
+          <div class="cv-resume-left">
+            <div class="cv-resume-icon" id="cv-resume-icon">📄</div>
+            <div class="cv-resume-info">
+              <div class="cv-resume-name" id="cv-resume-name">No resume selected</div>
+              <div class="cv-resume-meta" id="cv-resume-meta">Select a resume on the dashboard</div>
+            </div>
+          </div>
+          <span class="cv-resume-chevron">›</span>
+        </div>
+      </div>
+      <!-- Pipeline Summary -->
+      <div class="cv-pipeline">
+        <div class="cv-pipeline-card">
+          <div class="cv-pipeline-header"><span>My Pipeline</span><a href="https://brilliantjobs.app" target="_blank">View all →</a></div>
+          <div class="cv-pipeline-stages">
+            <div class="cv-stage-pill saved"><div class="cv-stage-count" id="cv-pipe-saved">0</div><div class="cv-stage-label">Saved</div></div>
+            <div class="cv-stage-pill applied"><div class="cv-stage-count" id="cv-pipe-applied">0</div><div class="cv-stage-label">Applied</div></div>
+            <div class="cv-stage-pill interview"><div class="cv-stage-count" id="cv-pipe-interview">0</div><div class="cv-stage-label">Interview</div></div>
+            <div class="cv-stage-pill offer"><div class="cv-stage-count" id="cv-pipe-offer">0</div><div class="cv-stage-label">Offer</div></div>
+          </div>
+        </div>
+      </div>
+      <!-- Activity Feed -->
+      <div class="cv-activity">
+        <div class="cv-activity-card">
+          <div class="cv-pipeline-header"><span>Recent Activity</span></div>
+          <div id="cv-activity-list"><div class="cv-activity-empty">No recent activity</div></div>
+        </div>
+      </div>
+      <!-- Bottom Nav -->
+      <div class="cv-bottom-nav">
+        <button class="cv-nav-item active" data-nav="home"><span class="cv-nav-icon">🏠</span>Home</button>
+        <button class="cv-nav-item" data-nav="pipeline" onclick="window.open('https://brilliantjobs.app','_blank')"><span class="cv-nav-icon">📋</span>Pipeline</button>
+        <button class="cv-nav-item" data-nav="resumes" onclick="window.open('https://brilliantjobs.app','_blank')"><span class="cv-nav-icon">📄</span>Resumes</button>
+        <button class="cv-nav-item" data-nav="settings" onclick="window.open('https://brilliantjobs.app','_blank')"><span class="cv-nav-icon">⚙️</span>Settings</button>
+      </div>
+    </div>
+    <!-- EXT-AS-2: Admin Legacy View (existing UI) -->
+    <div id="admin-legacy-view">
     <!-- ES1-5: Version mismatch banner -->
     <div id="version-mismatch-banner" style="display: none; background: var(--warm-dim); border-bottom: 1px solid var(--warm); padding: 8px 16px; font-size: 11px; color: #92400e; text-align: center;" role="alert">
       <strong>Update available!</strong> A newer version of the extension is available.
@@ -264,12 +433,14 @@
       <button class="btn btn-outline" id="d-refresh">Refresh</button>
     </div>
     <div class="log-section" role="region" aria-label="Activity log"><div class="log-header"><span class="log-title" id="log-title">Activity</span><button class="log-clear" id="log-clear" aria-label="Clear activity log">Clear</button></div><div class="log" id="unified-log" aria-labelledby="log-title" role="log" aria-live="polite"></div></div>
+    </div><!-- /admin-legacy-view -->
   </main>
   <script src="supabase.js"></script>
   <script src="utils/fetchWithRetry.js"></script>
   <script src="utils/crypto.js"></script>
   <script src="popup-bridge.js"></script>
   <script src="popup.js"></script>
+  <script src="popup-consumer.js"></script>
   <script src="popup-post.js"></script>
 </body>
 </html>

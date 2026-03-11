@@ -11,7 +11,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v8.63"></script>
+  <script src="/js/version.js?v=v8.64"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2199,7 +2199,7 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'AS-3 Lever + Workable + Ashby Handlers', d: '96% ATS coverage. Lever: /apply URL, single name field, /thanks redirect. Workable: data-ui selectors, data-ui submit-application. Ashby: _systemfield_ selectors, networkidle React wait. Generic: heuristic field detection fallback. Combined: Greenhouse 40% + Workable 28% + Lever 13% + Ashby 8% + Recruitee API 7% = 96%. 60 worker tests. 2026-03-11.', p: 100, e: '5h' },
 
 { s: 'done', b: 'post-launch', n: 'EXT-AS-1 Applicant Profile Form + Settings Sync', d: 'Dashboard settings tab: applicant profile form (first/last name, email, phone, LinkedIn URL, location, work authorization toggle, visa sponsorship toggle). Save to Supabase profiles.user_data.applicant_profile. Apply settings synced to profiles.user_data.apply_settings on every change (2s debounce). Extension background.ts syncs both from Supabase to chrome.storage.local on login. syncProfileSettings message handler. 76 validation tests. v8.63. 2026-03-11.', p: 100, e: '3h' },
-{ s: 'todo', b: 'post-launch', n: 'EXT-AS-2 Consumer Popup UI + Mode Persistence', d: 'Handoff Phase 1: New popup.html consumer layout, 6 mode radio cards, threshold slider, active resume card, pipeline summary pills, activity feed, bottom nav, admin Legacy toggle.', p: 0, e: '5h' },
+{ s: 'done', b: 'post-launch', n: 'EXT-AS-2 Consumer Popup UI + Mode Persistence', d: 'Handoff Phase 1: New popup.html consumer layout, 6 mode radio cards, threshold slider, active resume card, pipeline summary pills, activity feed, bottom nav, admin Legacy toggle. chrome.storage.sync persistence. 54 tests. v8.64.', p: 100, e: '5h' },
 { s: 'todo', b: 'post-launch', n: 'EXT-AS-3 Content Script: Save + Apply Interception', d: 'Handoff Phases 2+3: job-site-overlay.ts, per-site DOM selectors (9 sites), Save-to-BJ-Pipeline branded button (Shadow DOM), apply button interception via MutationObserver.', p: 0, e: '5h' },
 { s: 'todo', b: 'post-launch', n: 'EXT-AS-4 Score Gate Popup + Resume Scoring', d: 'Handoff Phase 4: Shadow DOM popup on job page with score ring, gap analysis, threshold comparison, rewrite CTA.', p: 0, e: '5h' },
 { s: 'todo', b: 'post-launch', n: 'EXT-AS-5 AI Resume Rewrite Flow', d: 'Handoff Phase 5: Rewrite-in-progress UI, rewrite review diff view, submit rewritten resume via ats:fill.', p: 0, e: '5h' },
