@@ -1,0 +1,125 @@
+{
+    "data": [
+        {
+            "id": 1,
+            "label": "Indeed",
+            "url_pattern": "indeed.com",
+            "dom_selectors": {
+                "URL": null,
+                "salary": "#salaryInfoAndJobType > span",
+                "job_title": ".jobsearch-JobInfoHeader-title",
+                "company_name": "[data-testid=\"inlineHeader-companyName\"] span a",
+                "job_description": "div#jobDescriptionText",
+                "target_for_job_tracker": "#jobsearch-ViewJobButtons-container"
+            },
+            "created_at": "2022-07-13T16:51:52+00:00",
+            "updated_at": "2022-07-13T16:51:52+00:00"
+        },
+        {
+            "id": 2,
+            "label": "Indeed Ca",
+            "url_pattern": "indeed.com/ca",
+            "dom_selectors": {
+                "URL": null,
+                "salary": "#salaryInfoAndJobType span.attribute_snippet",
+                "job_title": ".jobsearch-JobInfoHeader-title",
+                "company_name": "div.icl-u-lg-mr--sm.icl-u-xs-mr--xs a",
+                "job_description": "div#jobDescriptionText.jobsearch-jobDescriptionText",
+                "target_for_job_tracker": null
+            },
+            "created_at": "2022-07-13T16:51:52+00:00",
+            "updated_at": "2022-07-13T16:51:52+00:00"
+        },
+        {
+            "id": 3,
+            "label": "LinkedIn",
+            "url_pattern": "linkedin.com",
+            "dom_selectors": {
+                "URL": null,
+                "salary": null,
+                "job_title": ".job-details-jobs-unified-top-card__job-title",
+                "company_name": ".job-details-jobs-unified-top-card__company-name > a",
+                "job_description": "#job-details.jobs-box__html-content",
+                "target_for_job_tracker": "button.jobs-save-button.artdeco-button.artdeco-button--3"
+            },
+            "created_at": "2022-07-13T16:51:52+00:00",
+            "updated_at": "2022-07-13T16:51:52+00:00"
+        },
+        {
+            "id": 4,
+            "label": "Glassdoor",
+            "url_pattern": "glassdoor.com",
+            "dom_selectors": {
+                "URL": "[data-test=\"job-link\"]",
+                "salary": "span[data-test=\"detailSalary\"]",
+                "job_title": "[data-test=\"job-details-header\"] h1",
+                "company_name": "[data-test=\"job-details-header\"] div a div h4",
+                "job_description": ".JobDetails_jobDescription__uW_fK",
+                "target_for_job_tracker": "[data-test=\"location\"]"
+            },
+            "created_at": "2022-07-13T16:51:51+00:00",
+            "updated_at": "2022-07-13T16:51:51+00:00"
+        },
+        {
+            "id": 5,
+            "label": "Glassdoor Job Listing",
+            "url_pattern": "glassdoor.com/job-listing",
+            "dom_selectors": {
+                "URL": null,
+                "job_title": "div.css-17x2pwl.e11nt52q6",
+                "company_name": "div.css-16nw49e.e11nt52q1",
+                "job_description": "div.css-58vpdc.desc",
+                "target_for_job_tracker": null
+            },
+            "created_at": "2022-07-13T16:51:51+00:00",
+            "updated_at": "2022-07-13T16:51:51+00:00"
+        },
+        {
+            "id": 6,
+            "label": "Handshake",
+            "url_pattern": "joinhandshake.com",
+            "dom_selectors": {
+                "URL": "#skip-to-content a:has(h1)",
+                "salary": "#skip-to-content [data-hook=\"right-content\"] div:has(> h4:first-child) ~ div svg + div",
+                "job_title": "#skip-to-content h1",
+                "company_name": "#skip-to-content [data-hook=\"right-content\"] a div",
+                "job_description": "#skip-to-content [data-hook=\"right-content\"] div:not(:first-child):has(div > h4:first-child) + div",
+                "target_for_job_tracker": "button[aria-label^=\"Apply\"]"
+            },
+            "created_at": "2024-01-12T16:44:01+00:00",
+            "updated_at": "2024-01-12T16:44:01+00:00"
+        }
+    ],
+    "links": {
+        "first": "https://static.jobscan.co/extension/job-sites.json",
+        "last": "https://static.jobscan.co/extension/job-sites.json",
+        "prev": null,
+        "next": null
+    },
+    "meta": {
+        "current_page": 1,
+        "from": 1,
+        "last_page": 1,
+        "links": [
+            {
+                "url": null,
+                "label": "&laquo; Previous",
+                "active": false
+            },
+            {
+                "url": "https://static.jobscan.co/extension/job-sites.json",
+                "label": "1",
+                "active": true
+            },
+            {
+                "url": null,
+                "label": "Next &raquo;",
+                "active": false
+            }
+        ],
+        "path": "https://static.jobscan.co/extension/job-sites.json",
+        "per_page": 50,
+        "to": 6,
+        "total": 6
+    }
+}

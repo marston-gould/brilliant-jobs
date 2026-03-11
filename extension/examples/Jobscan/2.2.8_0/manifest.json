@@ -1,0 +1,34 @@
+{
+   "action": {
+      "default_icon": "assets/icon-32.png",
+      "default_popup": "index.html"
+   },
+   "background": {
+      "events": [ "webNavigation" ],
+      "service_worker": "background.js"
+   },
+   "content_scripts": [ {
+      "all_frames": true,
+      "css": [ "styles.css" ],
+      "js": [ "external-content.js" ],
+      "matches": [ "https://*.indeed.com/*", "https://www.linkedin.com/*", "https://www.glassdoor.com/*", "https://*.joinhandshake.com/*" ]
+   } ],
+   "description": "Collect, track and manage your job applications from across the web",
+   "host_permissions": [ "https://*.jobscan.co/*", "https://*.indeed.com/*" ],
+   "icons": {
+      "128": "assets/icon-128.png",
+      "32": "assets/icon-32.png",
+      "48": "assets/icon-48.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqQsnvPF/L2VqVEpWc/Dv7Pg/MXL0QBHfwbq6qxe6cWkGIFZJhO/x8U/lOqh87P9jdsMsQMC5Rj1DKNRGcOE//18OXMGGB2v/Y+0NQeEymkB8X+qEoruHF46Ow5K0yZnBsdvn52Yqf+fVqj+KqMoNCDNRmWjm7Swgk3xjlzBs2722s9wG1AnIVMbnxFaPQ+qESrMm/IX+RX5Bhfz0Nf+R6W1iOlUBeDhCAqLemsNADovUQvuzy+pW+KZlmHYOeYVUEXuQTEiWt+EMe7H7VqL1HKjc4M0qIgLB2AFPMCFAKDIaIgtbxJ4gYUyBmUZNrLkHL/rUAzO8M516SQh+susswwIDAQAB",
+   "manifest_version": 3,
+   "name": "Jobscan: Job Search Tracker",
+   "permissions": [ "storage", "tabs", "webNavigation" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "2.2.8",
+   "version_name": "2.2.8",
+   "web_accessible_resources": [ {
+      "matches": [ "https://*.jobscan.co/*", "https://*.indeed.com/*", "https://www.linkedin.com/*", "https://www.glassdoor.com/*", "https://*.joinhandshake.com/*" ],
+      "resources": [ "assets/button-logo.svg", "index.html" ]
+   } ]
+}
