@@ -1,0 +1,31 @@
+{
+   "action": {
+      "default_title": "Toggle Teal Sidebar"
+   },
+   "background": {
+      "service_worker": "background.js"
+   },
+   "content_scripts": [ {
+      "css": [ "content-scripts/content.css" ],
+      "js": [ "content-scripts/content.js" ],
+      "matches": [ "http://*/*", "https://*/*" ]
+   } ],
+   "description": "The better way to job search. Save Jobs, Contacts, Companies & Resumes in one place.",
+   "homepage_url": "https://www.tealhq.com",
+   "icons": {
+      "128": "icon/128.png",
+      "16": "icon/16.png",
+      "24": "icon/24.png",
+      "32": "icon/32.png",
+      "48": "icon/48.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAo0ABlOS8XgXPYOwjZLBLSrOSDZoXh6wTQD8mKZfA6Zl2H66cVw6XF209yzFFyc/H5ab9G5c86dX6NKtDnuFQJeiwHs8yxu4fI/jQcLMQHUNvd4TeJ2BwONo3Lu7LkZlz1b9R8l9FdXazowVJmJqOk/yasooLIYR8bnsPPFOEcK3RLGb+808oYkPk/zeFfaQeYzfLUkZ4bnmtw+qM9HrjgAd6y9FmER/kZRrZpWlhcT9FMFARDfqSlX5RMNajMC/5gnKU0tCP0tIZswnmMgW1vTbE7heIi3I+A+Wi3U8ATC1xYPUpFucC9PXNQHDWKX0JWm1GjUP25Qr/VP+GAV3gcQIDAQAB",
+   "manifest_version": 3,
+   "name": "Teal - Job Search Companion",
+   "permissions": [ "storage", "tabs", "activeTab", "sidePanel" ],
+   "side_panel": {
+      "default_path": "sidepanel.html"
+   },
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "4.0.8"
+}
