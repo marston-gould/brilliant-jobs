@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v8.62 -->
+<!-- Brilliant Jobs Dashboard v8.63 -->
 <html lang="en">
 <head>
   <!-- CS-P1-009: Theme flash prevention — must be first script -->
@@ -19,22 +19,22 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="/js/vendor/supabase.min.js" defer></script>
-  <script src="/js/pipeline-migration.js?v=v8.62" defer></script>
-  <script src="/js/notification-center.js?v=v8.62" defer></script>
+  <script src="/js/pipeline-migration.js?v=v8.63" defer></script>
+  <script src="/js/notification-center.js?v=v8.63" defer></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" integrity="sha384-nFoSjZIoH3CCp8W639jJyQkuPHinJ2NHe7on1xvlUA7SuGfJAfvMldrsoAVm6ECz" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" integrity="sha384-eEu5CTj3qGvu9PdJuS+YlkNi7d2XxQROAFYOr59zgObtlcux1ae1Il3u7jvdCSWu" crossorigin="anonymous"></script>
   <!-- CS-014: CX-09 — ECharts lazy-loaded by stats.js when Stats tab opens -->
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js" integrity="sha384-TcLTgu6flPhnZ5dfHnHimsxNFjYWN0povfGgnOvgPJKbZe6IbuoC2ociiatSHl9E" crossorigin="anonymous"></script>
   <!-- CS-016 FIX-10: Code-split chunks — shell (globals+routing) + feed (job list) loaded eagerly; all other chunks lazy-loaded on tab switch -->
-  <script src="dist/dashboard-shell.min.js?v=v8.62" defer></script>
-  <script src="dist/dashboard-feed.min.js?v=v8.62" defer></script>
+  <script src="dist/dashboard-shell.min.js?v=v8.63" defer></script>
+  <script src="dist/dashboard-feed.min.js?v=v8.63" defer></script>
   <!-- CS-P1-002: dashboard inline scripts externalized (pdfjs, preload, feedback, insights, a11y) -->
-  <script src="js/dashboard-inline.js?v=v8.62" defer></script>
-  <script src="js/canny.js?v=v8.62" defer></script>
+  <script src="js/dashboard-inline.js?v=v8.63" defer></script>
+  <script src="js/canny.js?v=v8.63" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=v8.62">
+  <link rel="stylesheet" href="styles.css?v=v8.63">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -109,11 +109,11 @@
     </style>
   <!-- CSS extracted to styles.css in v3.28 -->
   <!-- A13: PostHog analytics — CS-P1-002: externalized for CSP compliance -->
-  <script src="js/posthog-dashboard.js?v=v8.62" defer></script>
-  <script src="js/posthog-perf.js?v=v8.62" defer></script>
-  <script src="js/feature-flags.js?v=v8.62" defer></script>
-  <script src="js/structured-logger.js?v=v8.62" defer></script>
-  <script src="js/theme.js?v=v8.62" defer></script>
+  <script src="js/posthog-dashboard.js?v=v8.63" defer></script>
+  <script src="js/posthog-perf.js?v=v8.63" defer></script>
+  <script src="js/feature-flags.js?v=v8.63" defer></script>
+  <script src="js/structured-logger.js?v=v8.63" defer></script>
+  <script src="js/theme.js?v=v8.63" defer></script>
 </head>
 <body>
 
@@ -2927,6 +2927,79 @@
               <button class="btn btn-secondary btn-sm" id="st-export">Export Data</button>
             </div>
           </div>
+          <!-- EXT-AS-1: Applicant Profile -->
+          <div class="card" id="applicant-profile-card">
+            <div class="card-title">Applicant Profile</div>
+            <div class="card-sub">Your details for auto-apply and headless submissions. Name and email are required.</div>
+            <div style="display:flex;flex-direction:column;gap:12px;margin-top:10px;">
+              <div style="display:flex;gap:12px;">
+                <div style="flex:1;">
+                  <label class="u-meta" for="ap-first-name">First Name *</label>
+                  <input type="text" id="ap-first-name" placeholder="Jane" class="u-input" style="width:100%;margin-top:4px;">
+                </div>
+                <div style="flex:1;">
+                  <label class="u-meta" for="ap-last-name">Last Name *</label>
+                  <input type="text" id="ap-last-name" placeholder="Doe" class="u-input" style="width:100%;margin-top:4px;">
+                </div>
+              </div>
+              <div>
+                <label class="u-meta" for="ap-email">Email *</label>
+                <input type="email" id="ap-email" placeholder="jane@example.com" class="u-input" style="width:100%;margin-top:4px;">
+              </div>
+              <div>
+                <label class="u-meta" for="ap-phone">Phone</label>
+                <input type="tel" id="ap-phone" placeholder="+1 (555) 123-4567" class="u-input" style="width:100%;margin-top:4px;">
+              </div>
+              <div>
+                <label class="u-meta" for="ap-linkedin">LinkedIn URL</label>
+                <input type="url" id="ap-linkedin" placeholder="https://linkedin.com/in/janedoe" class="u-input" style="width:100%;margin-top:4px;">
+              </div>
+              <div>
+                <label class="u-meta" for="ap-location">Location</label>
+                <input type="text" id="ap-location" placeholder="San Francisco, CA" class="u-input" style="width:100%;margin-top:4px;">
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--border);">
+                <div>
+                  <div class="u-heading-sm-mb2">Work Authorization (US)</div>
+                  <div class="u-meta">Legally authorized to work in the United States</div>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="ap-work-auth" checked>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--border);">
+                <div>
+                  <div class="u-heading-sm-mb2">Requires Visa Sponsorship</div>
+                  <div class="u-meta">Will need employer sponsorship for work visa</div>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="ap-sponsorship">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <button class="btn btn-primary btn-sm" id="ap-save-btn">Save Profile</button>
+                <span id="ap-save-status" class="u-meta" style="color:var(--green);display:none;">Saved</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- EXT-AS-1: Apply Settings Sync -->
+          <div class="card" id="apply-settings-sync-card">
+            <div class="card-title">Apply Settings Sync</div>
+            <div class="card-sub">Your application mode and threshold are synced to the server for headless worker and extension access.</div>
+            <div style="display:flex;gap:12px;align-items:center;margin-top:10px;">
+              <span class="u-meta">Mode: <strong id="aps-mode-display">—</strong></span>
+              <span class="u-meta">Threshold: <strong id="aps-threshold-display">—</strong></span>
+              <span class="u-meta">Daily Limit: <strong id="aps-limit-display">—</strong></span>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:10px;">
+              <button class="btn btn-secondary btn-sm" id="aps-sync-btn">Sync Now</button>
+              <span id="aps-sync-status" class="u-meta" style="display:none;"></span>
+            </div>
+          </div>
+
           <div class="card" id="ai-prefs-card">
             <div class="card-title">AI Content Preferences</div>
             <div class="card-sub">Control how AI-generated content affects your job match scores and recommendations.</div>

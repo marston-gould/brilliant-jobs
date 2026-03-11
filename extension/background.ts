@@ -1207,6 +1207,38 @@ function scrapeExperienceDetails() {
 const interceptedProfiles = {};
 
 // ============================================================
+// ============================================================
+// EXT-AS-1: PROFILE + SETTINGS SYNC FROM SUPABASE
+// ============================================================
+
+async function _syncProfileAndSettingsFromSupabase(userId: string, accessToken: string) {
+  try {
+    supabase.setAuthToken(accessToken);
+    const rows = await supabase.select('profiles', `select=user_data&id=eq.${userId}`);
+    if (!rows || !rows.length) return;
+    const userData = rows[0].user_data || {};
+    const applicantProfile = userData.applicant_profile || null;
+    const applySettings = userData.apply_settings || null;
+    const updates: Record<string, unknown> = {};
+    if (applicantProfile) updates.applicantProfile = applicantProfile;
+    if (applySettings) {
+      updates.applySettings = {
+        applicationMode: applySettings.default_apply_mode || 'score-gated',
+        scoreThreshold: applySettings.default_score_threshold || 75,
+        activeResumeId: applySettings.active_resume_id || null,
+        dailyApplyLimit: applySettings.daily_apply_limit || 25
+      };
+    }
+    if (Object.keys(updates).length > 0) {
+      await chrome.storage.local.set(updates);
+      console.log('[BJ] EXT-AS-1: Profile + settings synced from Supabase', Object.keys(updates));
+    }
+  } catch (e) {
+    console.warn('[BJ] EXT-AS-1: Profile sync failed:', (e as Error).message);
+    try { captureEvent('ext_profile_sync_failed', { error: (e as Error).message }); } catch {}
+  }
+}
+
 // MESSAGE HANDLER
 // ============================================================
 
@@ -1276,12 +1308,28 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         supabase.setAuthToken(access_token);
         lastRefreshAttempt = 0;
         console.log('[BJ] Token synced from dashboard');
+        // EXT-AS-1: Sync applicant profile + apply settings from Supabase
+        _syncProfileAndSettingsFromSupabase(user_id, access_token);
       } catch (e) {
         console.warn('[BJ] Dashboard token sync failed:', e.message);
       }
     })();
     sendResponse({ ok: true });
     return;
+  }
+  // EXT-AS-1: Explicit profile + settings sync request
+  if (msg.type === 'syncProfileSettings') {
+    (async () => {
+      try {
+        const auth = await getAuth();
+        if (!auth?.user_id || !auth?.access_token) { sendResponse({ ok: false, error: 'not_authenticated' }); return; }
+        await _syncProfileAndSettingsFromSupabase(auth.user_id, auth.access_token);
+        sendResponse({ ok: true });
+      } catch (e) {
+        sendResponse({ ok: false, error: (e as Error).message });
+      }
+    })();
+    return true; // async sendResponse
   }
   if (msg.type === 'startScanner') {
     // Phase 5 RBAC: Only admin users can start the scanner

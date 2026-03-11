@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.62';
+var BJ_VERSION = 'v8.63';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -21652,6 +21652,150 @@ async function autoHirePause(jobTitle) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════
+// EXT-AS-1: APPLICANT PROFILE + APPLY SETTINGS SYNC
+// ═══════════════════════════════════════════════════════════
+
+var _applicantProfile = null;
+
+async function loadApplicantProfile() {
+  if (!currentUser) return;
+  try {
+    var res = await safeQuery(function() {
+      return sb.from('profiles').select('user_data').eq('id', currentUser.id).maybeSingle();
+    }, { label: 'settings:load-profile', fallback: null });
+    var ud = (res && res.user_data) || {};
+    _applicantProfile = ud.applicant_profile || {};
+    _populateApplicantProfileForm(_applicantProfile);
+    // Also load apply_settings from Supabase into local
+    if (ud.apply_settings) {
+      Object.assign(userApplySettings, ud.apply_settings);
+      saveApplySettings(); // sync to localStorage
+    }
+    _updateApplySettingsDisplay();
+  } catch (e) { reportError('settings:load-applicant-profile', e); }
+}
+
+function _populateApplicantProfileForm(p) {
+  var fn = p.name || '';
+  var parts = fn.split(' ');
+  var el;
+  el = document.getElementById('ap-first-name');
+  if (el) el.value = parts[0] || '';
+  el = document.getElementById('ap-last-name');
+  if (el) el.value = parts.slice(1).join(' ') || '';
+  el = document.getElementById('ap-email');
+  if (el) el.value = p.email || (currentUser ? currentUser.email : '') || '';
+  el = document.getElementById('ap-phone');
+  if (el) el.value = p.phone || '';
+  el = document.getElementById('ap-linkedin');
+  if (el) el.value = p.linkedin || '';
+  el = document.getElementById('ap-location');
+  if (el) el.value = p.location || '';
+  el = document.getElementById('ap-work-auth');
+  if (el) el.checked = p.work_authorization !== false;
+  el = document.getElementById('ap-sponsorship');
+  if (el) el.checked = p.needs_sponsorship === true;
+}
+
+function _readApplicantProfileForm() {
+  var firstName = (document.getElementById('ap-first-name')?.value || '').trim();
+  var lastName = (document.getElementById('ap-last-name')?.value || '').trim();
+  return {
+    name: (firstName + ' ' + lastName).trim(),
+    email: (document.getElementById('ap-email')?.value || '').trim(),
+    phone: (document.getElementById('ap-phone')?.value || '').trim(),
+    linkedin: (document.getElementById('ap-linkedin')?.value || '').trim(),
+    location: (document.getElementById('ap-location')?.value || '').trim(),
+    work_authorization: document.getElementById('ap-work-auth')?.checked !== false,
+    needs_sponsorship: document.getElementById('ap-sponsorship')?.checked === true
+  };
+}
+
+async function saveApplicantProfile() {
+  if (!currentUser) { showToast('Sign in to save your profile.', { type: 'warning' }); return; }
+  var profile = _readApplicantProfileForm();
+  if (!profile.name) { showToast('First name is required.', { type: 'warning' }); return; }
+  if (!profile.email) { showToast('Email is required.', { type: 'warning' }); return; }
+  var btn = document.getElementById('ap-save-btn');
+  var status = document.getElementById('ap-save-status');
+  if (btn) btn.disabled = true;
+  try {
+    // Read existing user_data, merge applicant_profile
+    var res = await safeQuery(function() {
+      return sb.from('profiles').select('user_data').eq('id', currentUser.id).maybeSingle();
+    }, { label: 'settings:read-profile', fallback: null });
+    var ud = (res && res.user_data) || {};
+    ud.applicant_profile = profile;
+    await sb.from('profiles').update({ user_data: ud }).eq('id', currentUser.id);
+    _applicantProfile = profile;
+    if (status) { status.style.display = 'inline'; status.textContent = 'Saved'; status.style.color = 'var(--green)'; }
+    setTimeout(function() { if (status) status.style.display = 'none'; }, 3000);
+    showToast('Applicant profile saved.', { type: 'success' });
+    if (typeof posthog !== 'undefined') posthog.capture('applicant_profile_saved', { has_phone: !!profile.phone, has_linkedin: !!profile.linkedin, has_location: !!profile.location });
+  } catch (e) {
+    reportError('settings:save-applicant-profile', e);
+    showToast('Failed to save profile: ' + (e.message || e), { type: 'error' });
+    if (status) { status.style.display = 'inline'; status.textContent = 'Error'; status.style.color = 'var(--red)'; }
+  } finally { if (btn) btn.disabled = false; }
+}
+
+async function syncApplySettingsToSupabase() {
+  if (!currentUser) return;
+  var btn = document.getElementById('aps-sync-btn');
+  var status = document.getElementById('aps-sync-status');
+  if (btn) btn.disabled = true;
+  if (status) { status.style.display = 'inline'; status.textContent = 'Syncing...'; status.style.color = 'var(--text-dim)'; }
+  try {
+    var res = await safeQuery(function() {
+      return sb.from('profiles').select('user_data').eq('id', currentUser.id).maybeSingle();
+    }, { label: 'settings:read-apply-settings', fallback: null });
+    var ud = (res && res.user_data) || {};
+    ud.apply_settings = {
+      default_apply_mode: userApplySettings.default_apply_mode || 'manual',
+      default_score_threshold: userApplySettings.default_score_threshold || 70,
+      active_resume_id: window._activeResumeId || null,
+      daily_apply_limit: userApplySettings.daily_apply_limit || 25,
+      default_notification_channels: userApplySettings.default_notification_channels || ['in_app', 'email'],
+      auto_expire_hours: userApplySettings.auto_expire_hours || 48
+    };
+    await sb.from('profiles').update({ user_data: ud }).eq('id', currentUser.id);
+    if (status) { status.textContent = 'Synced'; status.style.color = 'var(--green)'; }
+    setTimeout(function() { if (status) status.style.display = 'none'; }, 3000);
+    if (typeof posthog !== 'undefined') posthog.capture('apply_settings_synced', { mode: ud.apply_settings.default_apply_mode });
+  } catch (e) {
+    reportError('settings:sync-apply-settings', e);
+    if (status) { status.textContent = 'Error'; status.style.color = 'var(--red)'; }
+  } finally { if (btn) btn.disabled = false; }
+}
+
+function _updateApplySettingsDisplay() {
+  var modeEl = document.getElementById('aps-mode-display');
+  var threshEl = document.getElementById('aps-threshold-display');
+  var limitEl = document.getElementById('aps-limit-display');
+  if (modeEl) modeEl.textContent = (userApplySettings.default_apply_mode || 'manual').replace(/_/g, ' ');
+  if (threshEl) threshEl.textContent = (userApplySettings.default_score_threshold || 70) + '%';
+  if (limitEl) limitEl.textContent = (userApplySettings.daily_apply_limit || 25) + '/day';
+}
+
+// Wire up save + sync buttons
+document.getElementById('ap-save-btn')?.addEventListener('click', saveApplicantProfile);
+document.getElementById('aps-sync-btn')?.addEventListener('click', syncApplySettingsToSupabase);
+
+// Auto-load profile data on init (deferred chunk load)
+if (typeof currentUser !== 'undefined' && currentUser) {
+  loadApplicantProfile();
+} else {
+  // Retry after auth resolves
+  setTimeout(function() { if (typeof currentUser !== 'undefined' && currentUser) loadApplicantProfile(); }, 2000);
+}
+
+// Export for SPA bridge + extension
+window.saveApplicantProfile = saveApplicantProfile;
+window.loadApplicantProfile = loadApplicantProfile;
+window.syncApplySettingsToSupabase = syncApplySettingsToSupabase;
+window._applicantProfile = _applicantProfile;
+
 // CS-P1-004 FE-005: Register settings exports with BJ namespace
 (function() {
   ['_conditionalWakeHooked'].forEach(function(name) {
@@ -27530,6 +27674,21 @@ function loadApplySettings() {
 
 function saveApplySettings() {
   try { localStorage.setItem('bj_apply_settings', JSON.stringify(userApplySettings)); } catch(e) { reportError('apply-workflow:apply-workflow', e); }
+  // EXT-AS-1: Background sync to Supabase for worker + extension access
+  _debouncedApplySettingsSync();
+}
+
+var _applySettingsSyncTimer = null;
+function _debouncedApplySettingsSync() {
+  clearTimeout(_applySettingsSyncTimer);
+  _applySettingsSyncTimer = setTimeout(function() {
+    if (typeof syncApplySettingsToSupabase === 'function') {
+      syncApplySettingsToSupabase();
+    }
+    if (typeof _updateApplySettingsDisplay === 'function') {
+      _updateApplySettingsDisplay();
+    }
+  }, 2000);
 }
 
 // ─── Supabase-backed pending applications ───────────────────

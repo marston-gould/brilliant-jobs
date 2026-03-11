@@ -52,6 +52,38 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**EXT-AS-1** — Applicant Profile Form + Settings Sync
+- Completed: 2026-03-11
+- Product version bumped: `v8.62` → `v8.63` (JS/HTML changes — dashboard.html applicant profile card + apply settings sync card, settings.js load/save/sync functions, apply-workflow.js debounced Supabase sync, extension/background.ts profile sync; all HTML surfaces cache-busted)
+- ROADMAP.md updated: EXT-AS-1 → ✅, EXT-AS-2 through EXT-AS-9 added as 🔲
+- roadmap.html updated: EXT-AS-1 → `s: 'done'`, p: 100; EXT-AS-2 through EXT-AS-9 added as `s: 'todo'`
+- **Applicant Profile Form:**
+  - dashboard.html: `#applicant-profile-card` in `#page-settings` — 9 fields (first name, last name, email, phone, LinkedIn URL, location, work authorization toggle, visa sponsorship toggle) + Save button + save status indicator
+  - settings.js: `loadApplicantProfile()` reads from `profiles.user_data.applicant_profile`, populates form, also loads apply_settings from Supabase into localStorage. `saveApplicantProfile()` validates name + email required, writes to `profiles.user_data.applicant_profile`. `_populateApplicantProfileForm()` + `_readApplicantProfileForm()` helpers. PostHog `applicant_profile_saved` event.
+  - Profile shape matches worker expectations: `{name, email, phone, linkedin, location, work_authorization, needs_sponsorship}`
+- **Apply Settings Sync:**
+  - dashboard.html: `#apply-settings-sync-card` shows current mode/threshold/daily limit + Sync Now button
+  - settings.js: `syncApplySettingsToSupabase()` writes `{default_apply_mode, default_score_threshold, active_resume_id, daily_apply_limit, default_notification_channels, auto_expire_hours}` to `profiles.user_data.apply_settings`. `_updateApplySettingsDisplay()` refreshes card values. PostHog `apply_settings_synced` event.
+  - apply-workflow.js: `saveApplySettings()` now calls `_debouncedApplySettingsSync()` (2s debounce) to automatically push settings to Supabase whenever they change from the Rules panel
+- **Extension Sync:**
+  - background.ts: `_syncProfileAndSettingsFromSupabase(userId, accessToken)` — queries profiles table, extracts applicant_profile + apply_settings from user_data, writes to chrome.storage.local as `applicantProfile` + `applySettings` keys. Called automatically after dashboardTokenSync. Maps server fields to extension-friendly names (applicationMode, scoreThreshold, activeResumeId, dailyApplyLimit).
+  - New `syncProfileSettings` message handler — allows popup or content scripts to explicitly trigger a sync. Returns true for async sendResponse.
+  - PostHog `ext_profile_sync_failed` event on error.
+- **Window exports:** saveApplicantProfile, loadApplicantProfile, syncApplySettingsToSupabase for SPA bridge.
+- **Created:**
+  - `tests/ext-as-1-applicant-profile.test.js` — 76 validation tests (9 sections)
+- **Modified:**
+  - `dashboard.html` — Applicant Profile card + Apply Settings Sync card added to #page-settings
+  - `js/settings.js` — loadApplicantProfile, saveApplicantProfile, syncApplySettingsToSupabase, profile form helpers, window exports
+  - `js/apply-workflow.js` — _debouncedApplySettingsSync added to saveApplySettings
+  - `extension/background.ts` — _syncProfileAndSettingsFromSupabase function, syncProfileSettings message handler, dashboardTokenSync calls sync
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — EXT-AS section added, EXT-AS-1 → ✅
+  - `roadmap.html` — EXT-AS entries added, EXT-AS-1 → done/100
+- **Tests:** 76 validation tests (all passing)
+
 **AS-INSTR + AS-1 + AS-2 + AS-3** — Submission Failure Instrumentation + Headless Browser Worker (96% ATS Coverage)
 - Completed: 2026-03-11
 - Product version bumped: `v8.61` → `v8.62` (JS/HTML changes — admin-autosubmit.js, admin.js ADMIN_SUBPAGE_MAP, admin.html container + script, submit-application EF timing + instrumentation; all HTML surfaces cache-busted)
@@ -1518,7 +1550,18 @@ None. FEED-FIX-006 complete.
 
 ## Next Session
 
-No specific session queued. FB-PAYL feature build is COMPLETE (S1 ✅, S2 ✅, S3 ✅, S4 ✅). AS-INSTR + AS-1 + AS-2 + AS-3 COMPLETE.
+No specific session queued. EXT-AS-1 complete.
+
+**EXT-AS series (9 sessions total, 1 done):**
+- EXT-AS-1 ✅ — Applicant Profile + Settings Sync
+- EXT-AS-2 through EXT-AS-9 — Consumer popup, content script injection, score gate, AI rewrite, auto modes, dashboard routing, settings panel, PostHog QA
+
+**Pending from EXT-AS spec (Marston to prioritize):**
+- EXT-AS-2 requires extension-ux-prototype.html designs
+- EXT-AS-5 requires confirmation that resume-rewrite EF exists (Handoff Decision #1)
+- Tier gating on modes (Handoff Decision #2) — default: all modes for all tiers
+- Daily apply limits (Handoff Decision #3) — default: 25 for all
+- Recruitee: keep direct API (faster) vs route through worker (Decision #4)
 
 **Feed Accuracy Sprint — FA-007 COMPLETE.** FA-010, FA-001, FA-002, FA-003, FA-009, FA-004, FA-005, FA-006, and FA-007 are done.
 
@@ -1573,7 +1616,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.62`** | **AS-INSTR + AS-1/AS-2/AS-3: Submission instrumentation + headless worker** |
+| **Product (BJ_VERSION)** | **`v8.63`** | **EXT-AS-1: Applicant Profile Form + Settings Sync** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

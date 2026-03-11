@@ -64,6 +64,21 @@ function loadApplySettings() {
 
 function saveApplySettings() {
   try { localStorage.setItem('bj_apply_settings', JSON.stringify(userApplySettings)); } catch(e) { reportError('apply-workflow:apply-workflow', e); }
+  // EXT-AS-1: Background sync to Supabase for worker + extension access
+  _debouncedApplySettingsSync();
+}
+
+var _applySettingsSyncTimer = null;
+function _debouncedApplySettingsSync() {
+  clearTimeout(_applySettingsSyncTimer);
+  _applySettingsSyncTimer = setTimeout(function() {
+    if (typeof syncApplySettingsToSupabase === 'function') {
+      syncApplySettingsToSupabase();
+    }
+    if (typeof _updateApplySettingsDisplay === 'function') {
+      _updateApplySettingsDisplay();
+    }
+  }, 2000);
 }
 
 // ─── Supabase-backed pending applications ───────────────────
