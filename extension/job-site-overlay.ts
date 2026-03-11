@@ -827,7 +827,7 @@
 
       if (rewriteBtn) rewriteBtn.addEventListener('click', function () {
         hideScoreGatePopup();
-        showToast('Rewrite queued — EXT-AS-5 will implement full flow');
+        showRewriteProgressPopup(data);
         _sendConfirm('rewrite', data);
       });
       if (submitBtn) submitBtn.addEventListener('click', function () {
@@ -877,6 +877,11 @@
       threshold: data.threshold,
       platform: currentSite.platform,
       mode: data.mode || _applicationMode,
+      gaps: data.gaps || [],
+      gap_analysis: data.gaps || [],
+      jobTitle: data.jobTitle || '',
+      company: data.company || '',
+      title: data.jobTitle || '',
     });
   }
 
@@ -899,16 +904,306 @@
       var s = evt.data.payload || {};
       if (s.status === 'error') {
         hideScoreGatePopup();
-        showToast('Score check failed — you can apply natively');
+        hideRewriteProgressPopup();
+        if (s.error === 'rewrite_failed') {
+          showToast('Resume rewrite failed — you can apply natively');
+        } else {
+          showToast('Score check failed — you can apply natively');
+        }
       }
       if (s.status === 'filling') {
         showToast('Submitting application...');
       }
-      if (s.status === 'rewrite_pending') {
-        showToast('Resume rewrite in progress...');
-      }
+    }
+
+    // EXT-AS-5: Rewrite progress updates
+    if (evt.data.type === 'bj:toolbar:rewriteProgress') {
+      var rp = evt.data.payload || {};
+      updateRewriteProgress(rp.step, rp.message);
+    }
+
+    // EXT-AS-5: Rewrite result — show review popup
+    if (evt.data.type === 'bj:toolbar:rewriteResult') {
+      var rr = evt.data.payload || {};
+      hideRewriteProgressPopup();
+      showRewriteReviewPopup(rr);
     }
   });
+
+  // ── EXT-AS-5: Rewrite Progress Popup ──────────────────────────
+  var _rewriteProgressActive = false;
+
+  function showRewriteProgressPopup(data) {
+    hideRewriteProgressPopup();
+    _rewriteProgressActive = true;
+
+    var shadow = getShadowRoot();
+    var overlay = document.createElement('div');
+    overlay.className = 'bj-score-gate-overlay';
+    overlay.id = 'bj-rewrite-progress-overlay';
+
+    var popup = document.createElement('div');
+    popup.className = 'bj-score-gate';
+    popup.style.maxWidth = '360px';
+
+    var jobInfo = (data.jobTitle || 'Job') + (data.company ? ' at ' + data.company : '');
+
+    var html = [
+      '<div class="bj-sg-header">',
+      '  <div class="bj-sg-header-left">',
+      '    <div class="bj-sg-logo">BJ</div>',
+      '    <span class="bj-sg-title">AI Resume Rewrite</span>',
+      '  </div>',
+      '</div>',
+      '<div class="bj-sg-body">',
+      '  <div class="bj-sg-job">' + _escText(jobInfo) + '</div>',
+      '  <div class="bj-rewrite-steps" id="bj-rewrite-steps">',
+      '    <div class="bj-rw-step active" data-step="analyzing">',
+      '      <div class="bj-rw-dot analyzing"></div>',
+      '      <span>Analyzing gaps</span>',
+      '    </div>',
+      '    <div class="bj-rw-step" data-step="rewriting">',
+      '      <div class="bj-rw-dot"></div>',
+      '      <span>Rewriting resume</span>',
+      '    </div>',
+      '    <div class="bj-rw-step" data-step="reviewing">',
+      '      <div class="bj-rw-dot"></div>',
+      '      <span>Quality check</span>',
+      '    </div>',
+      '  </div>',
+      '  <div class="bj-rw-spinner" id="bj-rw-spinner">',
+      '    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2">',
+      '      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83">',
+      '        <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite"/>',
+      '      </path>',
+      '    </svg>',
+      '  </div>',
+      '  <div class="bj-rw-status" id="bj-rw-status">Analyzing gaps...</div>',
+      '</div>',
+    ];
+
+    popup.innerHTML = html.join('\n');
+    overlay.appendChild(popup);
+
+    // Add rewrite-specific CSS
+    var style = document.createElement('style');
+    style.textContent = [
+      '.bj-rewrite-steps { display:flex; flex-direction:column; gap:12px; margin:16px 0; padding:0 8px; }',
+      '.bj-rw-step { display:flex; align-items:center; gap:10px; font-size:13px; color:#9ca3af; transition:color 0.3s; }',
+      '.bj-rw-step.active { color:#1f2937; font-weight:500; }',
+      '.bj-rw-step.done { color:#16a34a; }',
+      '.bj-rw-dot { width:10px; height:10px; border-radius:50%; background:#e5e7eb; transition:background 0.3s; flex-shrink:0; }',
+      '.bj-rw-step.active .bj-rw-dot { background:#7c3aed; animation:bj-pulse 1.2s infinite; }',
+      '.bj-rw-step.done .bj-rw-dot { background:#16a34a; }',
+      '@keyframes bj-pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }',
+      '.bj-rw-spinner { text-align:center; margin:12px 0; }',
+      '.bj-rw-status { text-align:center; font-size:12px; color:#6b7280; margin-bottom:8px; }',
+      '.bj-rw-changes { margin:12px 0; max-height:220px; overflow-y:auto; }',
+      '.bj-rw-change { border:1px solid #e5e7eb; border-radius:8px; padding:10px; margin-bottom:8px; font-size:12px; }',
+      '.bj-rw-change-section { font-weight:600; color:#374151; margin-bottom:4px; font-size:11px; }',
+      '.bj-rw-change-orig { color:#dc2626; text-decoration:line-through; margin-bottom:2px; line-height:1.4; }',
+      '.bj-rw-change-new { color:#16a34a; line-height:1.4; }',
+      '.bj-rw-change-reason { color:#6b7280; font-style:italic; margin-top:4px; font-size:11px; }',
+      '.bj-rw-skills { display:flex; flex-wrap:wrap; gap:4px; margin:8px 0; }',
+      '.bj-rw-skill { background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; border-radius:4px; padding:2px 8px; font-size:11px; }',
+      '.bj-rw-score-compare { display:flex; align-items:center; justify-content:center; gap:16px; margin:12px 0; }',
+      '.bj-rw-score-box { text-align:center; }',
+      '.bj-rw-score-val { font-size:28px; font-weight:700; }',
+      '.bj-rw-score-lbl { font-size:11px; color:#6b7280; }',
+      '.bj-rw-arrow { font-size:20px; color:#7c3aed; }',
+    ].join('\n');
+    shadow.appendChild(style);
+    shadow.appendChild(overlay);
+  }
+
+  function updateRewriteProgress(step, message) {
+    var shadow = getShadowRoot();
+    var steps = shadow.querySelectorAll('.bj-rw-step');
+    var statusEl = shadow.querySelector('#bj-rw-status');
+    var stepOrder = ['analyzing', 'rewriting', 'reviewing'];
+    var targetIdx = stepOrder.indexOf(step);
+
+    for (var i = 0; i < steps.length; i++) {
+      var s = steps[i];
+      var sStep = s.getAttribute('data-step');
+      var sIdx = stepOrder.indexOf(sStep);
+      if (sIdx < targetIdx) {
+        s.className = 'bj-rw-step done';
+      } else if (sIdx === targetIdx) {
+        s.className = 'bj-rw-step active';
+      } else {
+        s.className = 'bj-rw-step';
+      }
+    }
+    if (statusEl) statusEl.textContent = message || '';
+  }
+
+  function hideRewriteProgressPopup() {
+    _rewriteProgressActive = false;
+    var shadow = getShadowRoot();
+    var existing = shadow.querySelector('#bj-rewrite-progress-overlay');
+    if (existing) existing.remove();
+    // Also remove the style element
+    var styles = shadow.querySelectorAll('style');
+    // Keep only the original style — don't remove it
+  }
+
+  // ── EXT-AS-5: Rewrite Review Popup ──────────────────────────
+  var _rewriteReviewActive = false;
+
+  function showRewriteReviewPopup(data) {
+    hideRewriteProgressPopup();
+    _rewriteReviewActive = true;
+
+    var shadow = getShadowRoot();
+    var overlay = document.createElement('div');
+    overlay.className = 'bj-score-gate-overlay';
+    overlay.id = 'bj-rewrite-review-overlay';
+
+    var popup = document.createElement('div');
+    popup.className = 'bj-score-gate';
+    popup.style.maxWidth = '420px';
+
+    var origScore = Math.round(data.original_score || 0);
+    var newScore = Math.round(data.estimated_new_score || 0);
+    var improvement = Math.round(data.estimated_score_improvement || 0);
+    var origColor = origScore >= 75 ? '#16a34a' : origScore >= 60 ? '#f59e0b' : '#dc2626';
+    var newColor = newScore >= 75 ? '#16a34a' : newScore >= 60 ? '#f59e0b' : '#dc2626';
+    var changes = data.changes || [];
+    var skills = data.skills_added || [];
+    var keywords = data.keywords_integrated || [];
+
+    var jobInfo = (data.jobTitle || 'Job') + (data.company ? ' at ' + data.company : '');
+
+    var html = [
+      '<div class="bj-sg-header above">',
+      '  <div class="bj-sg-header-left">',
+      '    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>',
+      '    <span class="bj-sg-title">Resume Rewritten</span>',
+      '  </div>',
+      '  <button class="bj-sg-close" id="bj-rr-close-btn">&times;</button>',
+      '</div>',
+      '<div class="bj-sg-body">',
+      '  <div class="bj-sg-job">' + _escText(jobInfo) + '</div>',
+    ];
+
+    // Score comparison
+    html.push('  <div class="bj-rw-score-compare">');
+    html.push('    <div class="bj-rw-score-box">');
+    html.push('      <div class="bj-rw-score-val" style="color:' + origColor + '">' + origScore + '</div>');
+    html.push('      <div class="bj-rw-score-lbl">Original</div>');
+    html.push('    </div>');
+    html.push('    <div class="bj-rw-arrow">→</div>');
+    html.push('    <div class="bj-rw-score-box">');
+    html.push('      <div class="bj-rw-score-val" style="color:' + newColor + '">' + newScore + '</div>');
+    html.push('      <div class="bj-rw-score-lbl">Estimated</div>');
+    html.push('    </div>');
+    html.push('  </div>');
+
+    if (improvement > 0) {
+      html.push('  <div class="bj-sg-badge above">+' + improvement + ' point improvement</div>');
+    }
+
+    // Skills added
+    if (skills.length > 0) {
+      html.push('  <div style="font-size:12px;font-weight:600;color:#374151;margin-top:12px;">Skills Highlighted</div>');
+      html.push('  <div class="bj-rw-skills">');
+      for (var s = 0; s < Math.min(skills.length, 8); s++) {
+        html.push('    <span class="bj-rw-skill">+ ' + _escText(skills[s]) + '</span>');
+      }
+      html.push('  </div>');
+    }
+
+    // Changes diff (max 5)
+    if (changes.length > 0) {
+      html.push('  <div style="font-size:12px;font-weight:600;color:#374151;margin-top:8px;">Changes (' + changes.length + ')</div>');
+      html.push('  <div class="bj-rw-changes">');
+      var maxChanges = Math.min(changes.length, 5);
+      for (var c = 0; c < maxChanges; c++) {
+        var ch = changes[c];
+        html.push('    <div class="bj-rw-change">');
+        if (ch.section) html.push('      <div class="bj-rw-change-section">' + _escText(ch.section) + '</div>');
+        if (ch.original) html.push('      <div class="bj-rw-change-orig">' + _escText(ch.original.slice(0, 120)) + '</div>');
+        if (ch.revised) html.push('      <div class="bj-rw-change-new">' + _escText(ch.revised.slice(0, 120)) + '</div>');
+        if (ch.reason) html.push('      <div class="bj-rw-change-reason">' + _escText(ch.reason) + '</div>');
+        html.push('    </div>');
+      }
+      if (changes.length > 5) {
+        html.push('    <div style="text-align:center;font-size:11px;color:#6b7280;margin-top:4px;">+ ' + (changes.length - 5) + ' more changes</div>');
+      }
+      html.push('  </div>');
+    }
+
+    // Action buttons
+    html.push('  <div class="bj-sg-actions">');
+    html.push('    <button class="bj-sg-btn primary" id="bj-rr-submit-btn">Submit Rewritten Resume</button>');
+    html.push('    <button class="bj-sg-btn secondary" id="bj-rr-original-btn">Submit Original Instead</button>');
+    html.push('    <button class="bj-sg-btn ghost" id="bj-rr-cancel-btn">Cancel — Don\'t Apply</button>');
+    html.push('  </div>');
+    html.push('</div>');
+
+    popup.innerHTML = html.join('\n');
+    overlay.appendChild(popup);
+    shadow.appendChild(overlay);
+
+    // Store rewritten text for submit action
+    var _rewrittenText = data.rewritten_text || '';
+
+    // Wire buttons
+    var closeBtn = shadow.querySelector('#bj-rr-close-btn');
+    if (closeBtn) closeBtn.addEventListener('click', function () {
+      hideRewriteReviewPopup();
+      _sendRewriteDecision('cancel', data);
+    });
+
+    var submitBtn = shadow.querySelector('#bj-rr-submit-btn');
+    if (submitBtn) submitBtn.addEventListener('click', function () {
+      hideRewriteReviewPopup();
+      showToast('Submitting rewritten resume...');
+      _sendRewriteDecision('submit_rewritten', data);
+    });
+
+    var originalBtn = shadow.querySelector('#bj-rr-original-btn');
+    if (originalBtn) originalBtn.addEventListener('click', function () {
+      hideRewriteReviewPopup();
+      showToast('Submitting original resume...');
+      _sendRewriteDecision('submit_original', data);
+    });
+
+    var cancelBtn = shadow.querySelector('#bj-rr-cancel-btn');
+    if (cancelBtn) cancelBtn.addEventListener('click', function () {
+      hideRewriteReviewPopup();
+      _sendRewriteDecision('cancel', data);
+    });
+
+    // Click outside to cancel
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) {
+        hideRewriteReviewPopup();
+        _sendRewriteDecision('cancel', data);
+      }
+    });
+  }
+
+  function hideRewriteReviewPopup() {
+    _rewriteReviewActive = false;
+    var shadow = getShadowRoot();
+    var existing = shadow.querySelector('#bj-rewrite-review-overlay');
+    if (existing) existing.remove();
+  }
+
+  function _sendRewriteDecision(decision, data) {
+    sendMsg('bj:toolbar:rewriteDecision', {
+      decision: decision,
+      rewritten_text: data.rewritten_text || '',
+      original_score: data.original_score,
+      estimated_new_score: data.estimated_new_score,
+      platform: currentSite.platform,
+      mode: data.mode || _applicationMode,
+      jobTitle: data.jobTitle || '',
+      company: data.company || '',
+    });
+  }
 
   // ── Exports for testing ───────────────────────────────────────
   window._bjJobSiteOverlay = {
@@ -923,6 +1218,13 @@
     hideScoreGatePopup: hideScoreGatePopup,
     buildScoreRingSVG: buildScoreRingSVG,
     isScoreGateActive: function () { return _scoreGateActive; },
+    showRewriteProgressPopup: showRewriteProgressPopup,
+    hideRewriteProgressPopup: hideRewriteProgressPopup,
+    updateRewriteProgress: updateRewriteProgress,
+    showRewriteReviewPopup: showRewriteReviewPopup,
+    hideRewriteReviewPopup: hideRewriteReviewPopup,
+    isRewriteProgressActive: function () { return _rewriteProgressActive; },
+    isRewriteReviewActive: function () { return _rewriteReviewActive; },
   };
 
 })();

@@ -680,10 +680,11 @@
       return true;
     }
 
-    // ── EXT-AS-4: Bridge score gate messages from background → overlay ──
+    // ── EXT-AS-4/5: Bridge messages from background → overlay ──
     // The overlay runs as a <script> tag (web_accessible_resource) so cannot
     // directly receive chrome.runtime.onMessage. We relay via window.postMessage.
-    if (msg.type === 'bj:toolbar:scoreGate' || msg.type === 'bj:toolbar:applyStatus') {
+    if (msg.type === 'bj:toolbar:scoreGate' || msg.type === 'bj:toolbar:applyStatus' ||
+        msg.type === 'bj:toolbar:rewriteProgress' || msg.type === 'bj:toolbar:rewriteResult') {
       try {
         window.postMessage({
           source: 'bj-extension',

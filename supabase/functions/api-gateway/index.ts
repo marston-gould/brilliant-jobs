@@ -92,6 +92,7 @@ const ROUTE_REGISTRY: Record<string, string> = {
   "rewrite-resume":           "rewrite-resume",           // SA-005
   "rewrite-resume-analyze":   "rewrite-resume-analyze",   // SA-005
   "rewrite-resume-execute":   "rewrite-resume-execute",   // SA-005
+  "rewrite-resume-extension": "rewrite-resume-extension", // EXT-AS-5
   "generate-cover-letter":    "generate-cover-letter",    // SA-005
 
   // ── Scoring & Quality (3) ────────────────────────────────────────────────
@@ -221,7 +222,7 @@ const ROUTE_REGISTRY: Record<string, string> = {
   "payl-expiry-check":        "payl-expiry-check",        // FB-PAYL-S1: check/nudge/convert/extend/summary
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // TOTAL: 113 routes (93 SA-005 + 1 SA-007 + 1 SA-008 + 1 SA-009 + 2 SA-010 + 2 SA-011 + 2 SA-012 + 1 SA-018 + 2 SA-020 + 1 SA-021 + 1 SA-024 + 1 SA-028 + 1 BI-01 + 3 FB-PAYL). Direct paths deprecated.
+  // TOTAL: 114 routes (93 SA-005 + 1 SA-007 + 1 SA-008 + 1 SA-009 + 2 SA-010 + 2 SA-011 + 2 SA-012 + 1 SA-018 + 2 SA-020 + 1 SA-021 + 1 SA-024 + 1 SA-028 + 1 BI-01 + 3 FB-PAYL + 1 EXT-AS-5). Direct paths deprecated.
   // HOOK: Future EFs register here. Future: load from DB table for
   //       runtime updates without redeploy (api_consumers integration).
   // ═══════════════════════════════════════════════════════════════════════════

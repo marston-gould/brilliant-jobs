@@ -1492,6 +1492,109 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return scoreResult;
   }
 
+  // ── EXT-AS-5: _rewriteResumeForJob — Quick AI rewrite via extension rewrite EF ──
+  async function _rewriteResumeForJob(
+    tabId: number,
+    payload: Record<string, unknown>,
+    scoreData: Record<string, unknown>
+  ): Promise<Record<string, unknown> | null> {
+    const authSession = await getAuth();
+    if (!authSession?.access_token) return null;
+
+    const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+
+    // 1. Get active resume ID from storage
+    const storageData = await chrome.storage.local.get('applySettings');
+    const resumeId = storageData.applySettings?.activeResumeId || null;
+    if (!resumeId) {
+      console.warn('[BJ] REWRITE_RESUME: No active resume selected');
+      return null;
+    }
+
+    // 2. Fetch resume text from resume_archive
+    const resumeResp = await fetchWithRetry(`${SB_URL}/rest/v1/resume_archive?id=eq.${resumeId}&select=extracted_text,name`, {
+      headers: {
+        'apikey': authSession.access_token,
+        'Authorization': 'Bearer ' + authSession.access_token,
+      },
+    }, { timeout: 10000, retries: 1 });
+    if (!resumeResp.ok) {
+      console.warn('[BJ] REWRITE_RESUME: Failed to fetch resume:', resumeResp.status);
+      return null;
+    }
+    const resumeRows = await resumeResp.json();
+    const resumeText = resumeRows?.[0]?.extracted_text;
+    if (!resumeText) {
+      console.warn('[BJ] REWRITE_RESUME: No extracted text for resume', resumeId);
+      return null;
+    }
+
+    // 3. Get JD from content script via ats:extractJD
+    let jobDescription = '';
+    try {
+      const jdResp = await chrome.tabs.sendMessage(tabId, { type: 'ats:extractJD' });
+      jobDescription = jdResp?.jd || '';
+    } catch (e) {
+      console.warn('[BJ] REWRITE_RESUME: JD extraction failed:', (e as Error).message);
+    }
+    if (!jobDescription) {
+      jobDescription = `Job: ${payload.title || 'Unknown'} at ${payload.company || 'Unknown'}`;
+    }
+
+    // 4. Get rewrite preferences
+    const prefData = await chrome.storage.local.get('rewritePreferences');
+    const preferences = prefData.rewritePreferences || null;
+
+    // 5. Send progress: rewriting
+    chrome.tabs.sendMessage(tabId, {
+      type: 'bj:toolbar:rewriteProgress',
+      payload: { step: 'rewriting', message: 'Rewriting your resume...' },
+    });
+
+    // 6. Call rewrite-resume-extension EF via gateway
+    const rewriteResp = await fetchWithRetry(`${SB_URL}/functions/v1/api-gateway/rewrite-resume-extension`, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + authSession.access_token,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        resume_text: resumeText,
+        job_description_text: jobDescription,
+        job_title: payload.title || '',
+        company_name: payload.company || '',
+        gaps: scoreData.gaps || scoreData.gap_analysis || [],
+        current_score: scoreData.score || 0,
+        preferences: preferences,
+      }),
+    }, { timeout: 60000, retries: 0 });
+
+    if (!rewriteResp.ok) {
+      const errText = await rewriteResp.text();
+      console.warn('[BJ] REWRITE_RESUME: EF error', rewriteResp.status, errText);
+      return null;
+    }
+
+    const rewriteResult = await rewriteResp.json();
+
+    // 7. Send progress: quality check
+    chrome.tabs.sendMessage(tabId, {
+      type: 'bj:toolbar:rewriteProgress',
+      payload: { step: 'reviewing', message: 'Preparing review...' },
+    });
+
+    captureEvent('rewrite_resume_extension', {
+      platform: payload.platform,
+      original_score: scoreData.score,
+      estimated_new_score: rewriteResult.estimated_new_score,
+      changes_count: Array.isArray(rewriteResult.changes) ? rewriteResult.changes.length : 0,
+      skills_added: Array.isArray(rewriteResult.skills_added) ? rewriteResult.skills_added.length : 0,
+      duration_ms: rewriteResult.duration_ms,
+    });
+
+    return rewriteResult;
+  }
+
   // ── EXT-AS-3: APPLY_INTERCEPTED — Apply button click intercepted by overlay ──
   // Routes to appropriate flow based on application mode (EXT-AS-4/5/6 will extend).
   // For now: acknowledge receipt, log event, store pending interception.
@@ -1624,16 +1727,55 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
 
         if (action === 'rewrite') {
-          // User wants AI rewrite — EXT-AS-5 will implement full flow
-          // For now, acknowledge and stub the rewrite request
+          // EXT-AS-5: Full AI rewrite flow
           const tabId = sender?.tab?.id;
-          if (tabId) {
+          if (!tabId) {
+            sendResponse({ status: 'error', error: 'no_tab_id' });
+            return;
+          }
+
+          // Send rewrite progress: analyzing
+          chrome.tabs.sendMessage(tabId, {
+            type: 'bj:toolbar:rewriteProgress',
+            payload: { step: 'analyzing', message: 'Analyzing gaps...' },
+          });
+
+          // Build score data from the confirm payload (passed through from score gate)
+          const scoreData = {
+            score: p.score || 0,
+            gaps: p.gaps || [],
+            gap_analysis: p.gap_analysis || p.gaps || [],
+          };
+
+          const rewriteResult = await _rewriteResumeForJob(tabId, p, scoreData);
+          if (!rewriteResult) {
             chrome.tabs.sendMessage(tabId, {
               type: 'bj:toolbar:applyStatus',
-              payload: { status: 'rewrite_pending', action: 'rewrite' },
+              payload: { status: 'error', error: 'rewrite_failed', action: 'rewrite' },
             });
+            sendResponse({ status: 'error', error: 'rewrite_failed' });
+            return;
           }
-          sendResponse({ status: 'rewrite_queued' });
+
+          // Send rewrite result to content script → overlay for review
+          chrome.tabs.sendMessage(tabId, {
+            type: 'bj:toolbar:rewriteResult',
+            payload: {
+              rewritten_text: rewriteResult.rewritten_text || '',
+              changes: rewriteResult.changes || [],
+              skills_added: rewriteResult.skills_added || [],
+              keywords_integrated: rewriteResult.keywords_integrated || [],
+              original_score: rewriteResult.original_score || p.score || 0,
+              estimated_new_score: rewriteResult.estimated_new_score || 0,
+              estimated_score_improvement: rewriteResult.estimated_score_improvement || 0,
+              jobTitle: p.jobTitle || p.title || '',
+              company: p.company || '',
+              platform: p.platform,
+              mode: p.mode || _applicationMode,
+            },
+          });
+
+          sendResponse({ status: 'rewrite_complete' });
           return;
         }
 
@@ -1641,6 +1783,57 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       } catch (e) {
         console.warn('[BJ] applyConfirm error:', (e as Error).message);
         captureEvent('extension_catch_error', { context: 'applyConfirm', error: (e as Error).message });
+        sendResponse({ status: 'error', error: (e as Error).message });
+      }
+    })();
+    return true;
+  }
+
+  // ── EXT-AS-5: bj:toolbar:rewriteDecision — User decision after rewrite review ──
+  if (msg.type === 'bj:toolbar:rewriteDecision') {
+    (async () => {
+      try {
+        const p = msg.payload || {};
+        const decision = p.decision; // 'submit_rewritten', 'submit_original', 'cancel'
+
+        captureEvent('rewrite_decision', {
+          decision: decision,
+          original_score: p.original_score,
+          estimated_new_score: p.estimated_new_score,
+          platform: p.platform,
+          mode: p.mode,
+        });
+
+        if (decision === 'cancel') {
+          sendResponse({ status: 'cancelled' });
+          return;
+        }
+
+        const tabId = sender?.tab?.id;
+        if (!tabId) {
+          sendResponse({ status: 'error', error: 'no_tab_id' });
+          return;
+        }
+
+        if (decision === 'submit_rewritten' || decision === 'submit_original') {
+          // Send ats:fill to the content script tab to proceed with submission
+          chrome.tabs.sendMessage(tabId, {
+            type: 'bj:toolbar:applyStatus',
+            payload: {
+              status: 'filling',
+              action: decision,
+              use_rewrite: decision === 'submit_rewritten',
+              rewritten_text: decision === 'submit_rewritten' ? (p.rewritten_text || '') : '',
+            },
+          });
+          sendResponse({ status: 'submitting', use_rewrite: decision === 'submit_rewritten' });
+          return;
+        }
+
+        sendResponse({ status: 'unknown_decision' });
+      } catch (e) {
+        console.warn('[BJ] rewriteDecision error:', (e as Error).message);
+        captureEvent('extension_catch_error', { context: 'rewriteDecision', error: (e as Error).message });
         sendResponse({ status: 'error', error: (e as Error).message });
       }
     })();

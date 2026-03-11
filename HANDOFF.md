@@ -52,7 +52,76 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**EXT-AS-4** — Score Gate Popup + Resume Scoring (Handoff Phase 4)
+**EXT-AS-5** — AI Resume Rewrite Flow (Handoff Phase 5)
+- Completed: 2026-03-11
+- Product version bumped: `v8.66` → `v8.67` (Extension job-site-overlay.ts rewrite progress + review popups, background.ts _rewriteResumeForJob + rewriteDecision handler, contentScript.ts bridge extension, rewrite-resume-extension EF; all HTML surfaces cache-busted)
+- Extension manifest: 2.25.0 → 2.26.0
+- ROADMAP.md updated: EXT-AS-5 → ✅
+- roadmap.html updated: EXT-AS-5 → `s: 'done'`, p: 100
+- **rewrite-resume-extension EF (new):**
+  - Lightweight extension-specific rewrite path (accepts raw text, no session required)
+  - Takes resume_text + job_description_text + job_title + company_name + gaps + current_score + preferences
+  - Uses Sonnet for gap-targeted rewrite with structured JSON output
+  - Returns rewritten_text, changes array (section/original/revised/reason), skills_added, keywords_integrated, estimated_score_improvement, estimated_new_score
+  - 1-credit charge for quick rewrite (vs 5 credits for full dashboard rewrite)
+  - Auth required (JWT). Free plan blocked (PLAN_REQUIRED)
+  - Logs to agent_action_log for analytics
+  - CORS for brilliantjobs.app
+  - Gateway route #114 added
+- **background.ts _rewriteResumeForJob:**
+  - Gets active resume from chrome.storage.local → fetches extracted_text from resume_archive
+  - Gets JD from content script via ats:extractJD (same pattern as scoring)
+  - Reads rewritePreferences from chrome.storage.local
+  - Sends bj:toolbar:rewriteProgress step updates to tab (analyzing → rewriting → reviewing)
+  - Calls rewrite-resume-extension EF via api-gateway with 60s timeout
+  - PostHog `rewrite_resume_extension` event with platform, scores, changes count, duration
+- **background.ts applyConfirm rewrite handler (replaced stub):**
+  - Old stub: sent rewrite_pending toast, responded rewrite_queued
+  - New: sends analyzing progress → calls _rewriteResumeForJob → sends bj:toolbar:rewriteResult with full rewrite data
+  - Passes gaps from score gate payload through to rewrite function
+  - Error handling: sends rewrite_failed error to overlay on failure
+- **background.ts bj:toolbar:rewriteDecision handler (new):**
+  - Handles 3 decisions: submit_rewritten (sends filling with use_rewrite=true + rewritten_text), submit_original (sends filling), cancel (no-op)
+  - PostHog `rewrite_decision` event with decision, scores, platform, mode
+- **job-site-overlay.ts Rewrite Progress Popup:**
+  - 3-step progress indicator (Analyzing gaps → Rewriting resume → Quality check)
+  - Active/done state management with pulse animation on active step
+  - Spinner SVG with rotation animation
+  - Status text updates via updateRewriteProgress()
+- **job-site-overlay.ts Rewrite Review Popup:**
+  - Before/after score comparison (original vs estimated, with color coding)
+  - Score improvement badge (+N point improvement)
+  - Skills Highlighted section (green skill tags, max 8)
+  - Changes diff view (max 5, with section/original/revised/reason, overflow indicator)
+  - 3 action buttons: Submit Rewritten Resume (primary), Submit Original Instead (secondary), Cancel (ghost)
+  - Close button + click-outside-to-cancel
+  - _sendRewriteDecision() sends bj:toolbar:rewriteDecision to background
+  - CSS: 16+ new classes for rewrite UI (steps, dots, spinner, changes, skills, score comparison)
+- **job-site-overlay.ts _sendConfirm updated:**
+  - Now passes gaps, gap_analysis, jobTitle, company, title in confirm payload
+  - Required for rewrite flow to have gap data without re-scoring
+- **contentScript.ts bridge extended:**
+  - Now bridges bj:toolbar:rewriteProgress + bj:toolbar:rewriteResult in addition to scoreGate + applyStatus
+  - Comment updated to EXT-AS-4/5
+- **Pod Team Manifest:**
+  - EXT-AS-5 pairing: Lead Platform Eng + Forward-Looking Dev (primary), Chief Architect + Evolvability Strategist (reviewers)
+  - All 5 hook-and-scar roles confirmed present since SA-006
+- **Created:**
+  - `supabase/functions/rewrite-resume-extension/index.ts` — Extension quick rewrite EF
+  - `tests/ext-as-5-rewrite-flow.test.js` — 101 validation tests (15 sections)
+- **Modified:**
+  - `supabase/functions/api-gateway/index.ts` — Route #114 (rewrite-resume-extension). Total: 114 routes.
+  - `extension/background.ts` — _rewriteResumeForJob function, applyConfirm rewrite handler replaced, bj:toolbar:rewriteDecision handler
+  - `extension/job-site-overlay.ts` — Rewrite progress popup + review popup + CSS + _sendConfirm gaps + window exports + message handlers
+  - `extension/contentScript.ts` — Bridge extended for rewriteProgress + rewriteResult
+  - `extension/manifest.json` — v2.25.0 → v2.26.0
+  - `docs/scaling/pod-team-manifest.md` — EXT-AS-5 pairing
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — EXT-AS-5 → ✅
+  - `roadmap.html` — EXT-AS-5 → done/100
+- **Tests:** 101 validation tests (all passing)
 - Completed: 2026-03-11
 - Product version bumped: `v8.65` → `v8.66` (Extension job-site-overlay.ts score gate popup + background.ts SCORE_RESUME handler + contentScript.ts bridge + score-resume EF direct JD text; all HTML surfaces cache-busted)
 - Extension manifest: 2.24.0 → 2.25.0
@@ -1698,18 +1767,19 @@ None. FEED-FIX-006 complete.
 
 ## Next Session
 
-No specific session queued. EXT-AS-4 complete.
+No specific session queued. EXT-AS-5 complete.
 
-**EXT-AS series (9 sessions total, 4 done):**
+**EXT-AS series (9 sessions total, 5 done):**
 - EXT-AS-1 ✅ — Applicant Profile + Settings Sync
 - EXT-AS-2 ✅ — Consumer Popup UI + Mode Persistence
 - EXT-AS-3 ✅ — Content Script: Save Button + Apply Interception
 - EXT-AS-4 ✅ — Score Gate Popup + Resume Scoring
-- EXT-AS-5 through EXT-AS-9 — AI rewrite, auto modes, dashboard routing, settings panel, PostHog QA
+- EXT-AS-5 ✅ — AI Resume Rewrite Flow
+- EXT-AS-6 through EXT-AS-9 — Auto modes, dashboard routing, settings panel, PostHog QA
 
 **Pending from EXT-AS spec (Marston to prioritize):**
 - EXT-AS-2 requires extension-ux-prototype.html designs
-- EXT-AS-5 requires confirmation that resume-rewrite EF exists (Handoff Decision #1)
+- EXT-AS-5 confirmed: resume-rewrite EFs exist (rewrite-resume, rewrite-resume-analyze, rewrite-resume-execute). Extension uses new lightweight rewrite-resume-extension EF for quick rewrites.
 - Tier gating on modes (Handoff Decision #2) — default: all modes for all tiers
 - Daily apply limits (Handoff Decision #3) — default: 25 for all
 - Recruitee: keep direct API (faster) vs route through worker (Decision #4)
@@ -1767,7 +1837,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.66`** | **EXT-AS-4: Score Gate Popup + Resume Scoring** |
+| **Product (BJ_VERSION)** | **`v8.67`** | **EXT-AS-5: AI Resume Rewrite Flow** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@2.23.0-qa-manifest` | REM-004 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
@@ -1775,7 +1845,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 | **SPA Scaffold** | **`spa@1.0.0-scaffold`** | **SA-013** |
 | **Feature Flags** | **`infra@feature-flags-v1.0.0`** | **SA-025** |
 | **Event Bus** | **`infra@event-bus-v1.0.0`** | **SA-024** |
-| **API Gateway** | `infra@gateway-v1.0.0` | FB-PAYL-S1 (113 routes) |
+| **API Gateway** | `infra@gateway-v1.0.0` | EXT-AS-5 (114 routes) |
 | **Capacity Model** | **`infra@capacity-model-v1.0.0`** | **SA-028** |
 | **Deploy Tracker** | **`infra@deploy-tracker-v1.0.0`** | **BI-01** |
 | **Build Analytics** | **`infra@build-analytics-v1.0.0`** | **BI-02** |
