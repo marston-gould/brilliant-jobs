@@ -125,6 +125,53 @@
     .cv-activity-text strong { color: var(--text); font-weight: 600; }
     .cv-activity-time { font-size: 9px; color: var(--text-faint); margin-top: 1px; }
     .cv-activity-empty { text-align: center; padding: 12px; font-size: 11px; color: var(--text-faint); }
+    /* EXT-AS-8: Page view system */
+    .cv-page { display: none; flex-direction: column; flex: 1; overflow-y: auto; }
+    .cv-page.active { display: flex; }
+    .cv-page-header { display: flex; align-items: center; gap: 8px; padding: 10px 12px 6px; }
+    .cv-page-back { background: none; border: none; color: var(--text-faint); font-size: 16px; cursor: pointer; font-family: var(--sans); padding: 2px 4px; border-radius: 4px; }
+    .cv-page-back:hover { color: var(--accent); background: var(--accent-glow); }
+    .cv-page-title { font-size: 13px; font-weight: 700; color: var(--text); }
+    /* EXT-AS-8: Settings page */
+    .cv-settings-section { padding: 6px 12px; }
+    .cv-settings-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+    .cv-settings-label { font-size: 11px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+    .cv-settings-desc { font-size: 10px; color: var(--text-faint); margin-bottom: 8px; line-height: 1.4; }
+    .cv-toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--bg-input); }
+    .cv-toggle-row:last-child { border-bottom: none; }
+    .cv-toggle-label { font-size: 11px; color: var(--text-dim); }
+    .cv-toggle { position: relative; width: 34px; height: 18px; background: var(--bg-input); border-radius: 9px; cursor: pointer; transition: background 0.2s; appearance: none; -webkit-appearance: none; border: 1px solid var(--border); flex-shrink: 0; }
+    .cv-toggle:checked { background: var(--accent); border-color: var(--accent); }
+    .cv-toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; background: white; border-radius: 50%; transition: transform 0.2s; }
+    .cv-toggle:checked::after { transform: translateX(16px); }
+    .cv-limit-row { display: flex; align-items: center; gap: 10px; }
+    .cv-limit-slider { flex: 1; height: 4px; border-radius: 2px; appearance: none; -webkit-appearance: none; background: var(--bg-input); outline: none; cursor: pointer; }
+    .cv-limit-slider::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: white; border: 2px solid var(--accent); cursor: pointer; }
+    .cv-limit-slider::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: white; border: 2px solid var(--accent); cursor: pointer; }
+    .cv-limit-value { font-family: var(--mono); font-size: 14px; font-weight: 700; color: var(--accent); min-width: 28px; text-align: right; }
+    /* EXT-AS-8: Pipeline page */
+    .cv-pipe-section { padding: 6px 12px; }
+    .cv-pipe-job-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 4px; }
+    .cv-pipe-job-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .cv-pipe-job-dot.saved { background: var(--accent); }
+    .cv-pipe-job-dot.applied { background: var(--green); }
+    .cv-pipe-job-dot.interview { background: var(--warm); }
+    .cv-pipe-job-dot.offer { background: #6366f1; }
+    .cv-pipe-job-info { flex: 1; min-width: 0; }
+    .cv-pipe-job-title { font-size: 11px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cv-pipe-job-company { font-size: 10px; color: var(--text-faint); }
+    .cv-pipe-job-stage { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; padding: 2px 6px; border-radius: 4px; flex-shrink: 0; }
+    .cv-pipe-job-stage.saved { background: rgba(61,126,255,0.08); color: var(--accent); }
+    .cv-pipe-job-stage.applied { background: var(--green-dim); color: var(--green); }
+    .cv-pipe-job-stage.interview { background: var(--warm-dim); color: #b47a08; }
+    .cv-pipe-job-stage.offer { background: rgba(99,102,241,0.08); color: #6366f1; }
+    .cv-pipe-empty { text-align: center; padding: 20px 12px; font-size: 11px; color: var(--text-faint); }
+    .cv-pipe-viewall { display: block; text-align: center; padding: 8px; font-size: 11px; font-weight: 600; color: var(--accent); text-decoration: none; }
+    /* EXT-AS-8: Full activity feed page */
+    .cv-activity-full { padding: 6px 12px; flex: 1; overflow-y: auto; }
+    .cv-activity-full .cv-activity-item { padding: 7px 0; }
+    .cv-activity-clear { background: none; border: none; color: var(--text-faint); font-size: 10px; cursor: pointer; font-family: var(--sans); padding: 2px 6px; }
+    .cv-activity-clear:hover { color: var(--accent); }
     /* Bottom nav */
     .cv-bottom-nav { display: flex; background: var(--bg-card); border-top: 1px solid var(--border); padding: 8px 0 6px; margin-top: auto; }
     .cv-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 9px; font-weight: 600; color: var(--text-faint); cursor: pointer; transition: color 0.15s; background: none; border: none; font-family: var(--sans); }
@@ -298,6 +345,8 @@
   <main id="app-content" style="display: none;" role="main">
     <!-- EXT-AS-2: Consumer Application Mode View -->
     <div id="consumer-view">
+      <!-- EXT-AS-8: Page Home (default view) -->
+      <div class="cv-page active" id="cv-page-home">
       <div class="cv-mode-section">
         <div class="cv-section-title">Application Mode</div>
         <div id="cv-mode-list">
@@ -369,16 +418,105 @@
       <!-- Activity Feed -->
       <div class="cv-activity">
         <div class="cv-activity-card">
-          <div class="cv-pipeline-header"><span>Recent Activity</span></div>
+          <div class="cv-pipeline-header"><span>Recent Activity</span><a href="#" id="cv-activity-see-all" style="font-size:10px;color:var(--accent);text-decoration:none;font-weight:600;">See all →</a></div>
           <div id="cv-activity-list"><div class="cv-activity-empty">No recent activity</div></div>
         </div>
       </div>
+      </div> <!-- end cv-page-home -->
+
+      <!-- EXT-AS-8: Page Pipeline (expanded pipeline view) -->
+      <div class="cv-page" id="cv-page-pipeline">
+        <div class="cv-page-header">
+          <button class="cv-page-back" data-back="home">‹</button>
+          <span class="cv-page-title">My Pipeline</span>
+        </div>
+        <div class="cv-pipeline" style="padding-top:0">
+          <div class="cv-pipeline-card">
+            <div class="cv-pipeline-stages">
+              <div class="cv-stage-pill saved"><div class="cv-stage-count" id="cv-pipe2-saved">0</div><div class="cv-stage-label">Saved</div></div>
+              <div class="cv-stage-pill applied"><div class="cv-stage-count" id="cv-pipe2-applied">0</div><div class="cv-stage-label">Applied</div></div>
+              <div class="cv-stage-pill interview"><div class="cv-stage-count" id="cv-pipe2-interview">0</div><div class="cv-stage-label">Interview</div></div>
+              <div class="cv-stage-pill offer"><div class="cv-stage-count" id="cv-pipe2-offer">0</div><div class="cv-stage-label">Offer</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="cv-pipe-section">
+          <div class="cv-section-title">Recent Jobs</div>
+          <div id="cv-pipe-jobs-list"><div class="cv-pipe-empty">No pipeline items yet</div></div>
+        </div>
+        <a class="cv-pipe-viewall" href="https://brilliantjobs.app" target="_blank">View all on Dashboard →</a>
+      </div>
+
+      <!-- EXT-AS-8: Page Settings -->
+      <div class="cv-page" id="cv-page-settings">
+        <div class="cv-page-header">
+          <button class="cv-page-back" data-back="home">‹</button>
+          <span class="cv-page-title">Settings</span>
+        </div>
+        <div class="cv-settings-section">
+          <!-- Daily Limit -->
+          <div class="cv-settings-card">
+            <div class="cv-settings-label">Daily Apply Limit</div>
+            <div class="cv-settings-desc">Maximum auto-applies per day. Resets at midnight.</div>
+            <div class="cv-limit-row">
+              <input type="range" class="cv-limit-slider" id="cv-settings-limit-slider" min="5" max="100" value="25" step="5">
+              <span class="cv-limit-value" id="cv-settings-limit-value">25</span>
+            </div>
+          </div>
+          <!-- Rewrite Preferences -->
+          <div class="cv-settings-card">
+            <div class="cv-settings-label">AI Rewrite Preferences</div>
+            <div class="cv-settings-desc">Customize how your resume is rewritten for each application.</div>
+            <div class="cv-toggle-row">
+              <span class="cv-toggle-label">Preserve my writing tone</span>
+              <input type="checkbox" class="cv-toggle" id="cv-settings-preserve-tone" checked>
+            </div>
+            <div class="cv-toggle-row">
+              <span class="cv-toggle-label">Add missing keywords from JD</span>
+              <input type="checkbox" class="cv-toggle" id="cv-settings-add-keywords" checked>
+            </div>
+            <div class="cv-toggle-row">
+              <span class="cv-toggle-label">Keep resume to one page</span>
+              <input type="checkbox" class="cv-toggle" id="cv-settings-keep-one-page" checked>
+            </div>
+          </div>
+          <!-- Active Resume -->
+          <div class="cv-settings-card">
+            <div class="cv-settings-label">Active Resume</div>
+            <div id="cv-settings-resume-info" style="font-size:11px;color:var(--text-dim);">Loading...</div>
+          </div>
+          <!-- Score Threshold (mirrors home page slider) -->
+          <div class="cv-settings-card">
+            <div class="cv-settings-label">Score Threshold</div>
+            <div class="cv-settings-desc">Minimum match score to auto-submit. Also shown on Home.</div>
+            <div class="cv-limit-row">
+              <input type="range" class="cv-limit-slider" id="cv-settings-threshold-slider" min="30" max="95" value="75" step="1" style="background:linear-gradient(to right,var(--green),#f59e0b,var(--red));">
+              <span class="cv-limit-value" id="cv-settings-threshold-value">75</span>
+            </div>
+          </div>
+          <!-- Manage on Dashboard -->
+          <a class="cv-pipe-viewall" href="https://brilliantjobs.app" target="_blank" style="margin-top:4px">Full settings on Dashboard →</a>
+        </div>
+      </div>
+
+      <!-- EXT-AS-8: Page Activity (full feed) -->
+      <div class="cv-page" id="cv-page-activity">
+        <div class="cv-page-header">
+          <button class="cv-page-back" data-back="home">‹</button>
+          <span class="cv-page-title">Activity Feed</span>
+          <button class="cv-activity-clear" id="cv-activity-clear-btn">Clear All</button>
+        </div>
+        <div class="cv-activity-full" id="cv-activity-full-list">
+          <div class="cv-activity-empty">No recent activity</div>
+        </div>
+      </div>
+
       <!-- Bottom Nav -->
       <div class="cv-bottom-nav">
         <button class="cv-nav-item active" data-nav="home"><span class="cv-nav-icon">🏠</span>Home</button>
-        <button class="cv-nav-item" data-nav="pipeline" onclick="window.open('https://brilliantjobs.app','_blank')"><span class="cv-nav-icon">📋</span>Pipeline</button>
+        <button class="cv-nav-item" data-nav="pipeline"><span class="cv-nav-icon">📋</span>Pipeline</button>
         <button class="cv-nav-item" data-nav="resumes" onclick="window.open('https://brilliantjobs.app','_blank')"><span class="cv-nav-icon">📄</span>Resumes</button>
-        <button class="cv-nav-item" data-nav="settings" onclick="window.open('https://brilliantjobs.app','_blank')"><span class="cv-nav-icon">⚙️</span>Settings</button>
+        <button class="cv-nav-item" data-nav="settings"><span class="cv-nav-icon">⚙️</span>Settings</button>
       </div>
     </div>
     <!-- EXT-AS-2: Admin Legacy View (existing UI) -->

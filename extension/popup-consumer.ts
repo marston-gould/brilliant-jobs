@@ -60,6 +60,10 @@ async function initConsumerPopup(role: string): Promise<void> {
   await _loadPipelineSummary();
   await _loadActivityFeed();
   _loadResumeCard();
+
+  // EXT-AS-8: Bottom nav routing + settings listeners
+  _initBottomNav();
+  _initSettingsListeners();
 }
 
 function _switchView(showLegacy: boolean): void {
@@ -379,10 +383,27 @@ chrome.storage.onChanged.addListener((changes, area) => {
         const valueDisplay = document.getElementById('cv-threshold-value');
         if (slider) slider.value = String(newSettings.scoreThreshold);
         if (valueDisplay) valueDisplay.textContent = String(newSettings.scoreThreshold);
+        // EXT-AS-8: Sync settings page threshold too
+        const settingsSlider = document.getElementById('cv-settings-threshold-slider') as HTMLInputElement | null;
+        const settingsValue = document.getElementById('cv-settings-threshold-value');
+        if (settingsSlider) settingsSlider.value = String(newSettings.scoreThreshold);
+        if (settingsValue) settingsValue.textContent = String(newSettings.scoreThreshold);
+      }
+      // EXT-AS-8: Sync daily limit
+      if (newSettings?.dailyApplyLimit !== undefined) {
+        const limitSlider = document.getElementById('cv-settings-limit-slider') as HTMLInputElement | null;
+        const limitValue = document.getElementById('cv-settings-limit-value');
+        if (limitSlider) limitSlider.value = String(newSettings.dailyApplyLimit);
+        if (limitValue) limitValue.textContent = String(newSettings.dailyApplyLimit);
       }
     }
     if (changes.activityFeed) {
       _loadActivityFeed();
+      _loadFullActivityFeed();
+    }
+    // EXT-AS-8: Sync rewrite preferences
+    if (changes.rewritePreferences) {
+      _loadRewritePreferences();
     }
   }
   if (area === 'sync') {
@@ -395,9 +416,330 @@ chrome.storage.onChanged.addListener((changes, area) => {
       const valueDisplay = document.getElementById('cv-threshold-value');
       if (slider) slider.value = String(changes.scoreThreshold.newValue);
       if (valueDisplay) valueDisplay.textContent = String(changes.scoreThreshold.newValue);
+      const settingsSlider = document.getElementById('cv-settings-threshold-slider') as HTMLInputElement | null;
+      const settingsValue = document.getElementById('cv-settings-threshold-value');
+      if (settingsSlider) settingsSlider.value = String(changes.scoreThreshold.newValue);
+      if (settingsValue) settingsValue.textContent = String(changes.scoreThreshold.newValue);
     }
   }
 });
+
+// ============================================================
+// EXT-AS-8: BOTTOM NAV ROUTING
+// ============================================================
+
+const _NAV_PAGES = ['home', 'pipeline', 'settings', 'activity'] as const;
+
+function _initBottomNav(): void {
+  const navItems = document.querySelectorAll('.cv-nav-item[data-nav]');
+  navItems.forEach(btn => {
+    const nav = (btn as HTMLElement).getAttribute('data-nav');
+    // Resumes: keep external link (onclick already set in HTML)
+    if (nav === 'resumes') return;
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (nav) _navigateToPage(nav);
+    });
+  });
+
+  // Back buttons
+  document.querySelectorAll('.cv-page-back[data-back]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = (btn as HTMLElement).getAttribute('data-back') || 'home';
+      _navigateToPage(target);
+    });
+  });
+
+  // "See all" activity link on home page
+  const seeAllLink = document.getElementById('cv-activity-see-all');
+  if (seeAllLink) {
+    seeAllLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      _navigateToPage('activity');
+    });
+  }
+}
+
+function _navigateToPage(page: string): void {
+  // Hide all pages
+  document.querySelectorAll('.cv-page').forEach(p => p.classList.remove('active'));
+
+  // Show target page
+  const target = document.getElementById(`cv-page-${page}`);
+  if (target) target.classList.add('active');
+
+  // Update nav highlight (activity doesn't have its own nav button — highlight home)
+  document.querySelectorAll('.cv-nav-item').forEach(btn => {
+    const nav = (btn as HTMLElement).getAttribute('data-nav');
+    btn.classList.toggle('active', nav === (page === 'activity' ? 'home' : page));
+  });
+
+  // Load data for the page when navigated to
+  if (page === 'pipeline') _loadPipelinePageData();
+  if (page === 'settings') _loadSettingsPageData();
+  if (page === 'activity') _loadFullActivityFeed();
+
+  try { phCapture('popup_nav', { page }); } catch {}
+}
+
+// ============================================================
+// EXT-AS-8: SETTINGS PAGE
+// ============================================================
+
+async function _loadSettingsPageData(): Promise<void> {
+  await _loadRewritePreferences();
+  await _loadDailyLimit();
+  _loadSettingsThreshold();
+  _loadSettingsResume();
+}
+
+async function _loadRewritePreferences(): Promise<void> {
+  try {
+    const stored = await chrome.storage.local.get('rewritePreferences');
+    const prefs = stored.rewritePreferences || { preserveTone: true, addKeywords: true, keepOnePage: true };
+
+    const preserveTone = document.getElementById('cv-settings-preserve-tone') as HTMLInputElement | null;
+    const addKeywords = document.getElementById('cv-settings-add-keywords') as HTMLInputElement | null;
+    const keepOnePage = document.getElementById('cv-settings-keep-one-page') as HTMLInputElement | null;
+
+    if (preserveTone) preserveTone.checked = prefs.preserveTone !== false;
+    if (addKeywords) addKeywords.checked = prefs.addKeywords !== false;
+    if (keepOnePage) keepOnePage.checked = prefs.keepOnePage !== false;
+  } catch {}
+}
+
+async function _saveRewritePreferences(): Promise<void> {
+  const preserveTone = (document.getElementById('cv-settings-preserve-tone') as HTMLInputElement | null)?.checked ?? true;
+  const addKeywords = (document.getElementById('cv-settings-add-keywords') as HTMLInputElement | null)?.checked ?? true;
+  const keepOnePage = (document.getElementById('cv-settings-keep-one-page') as HTMLInputElement | null)?.checked ?? true;
+
+  const prefs = { preserveTone, addKeywords, keepOnePage };
+  await chrome.storage.local.set({ rewritePreferences: prefs });
+
+  // Sync to Supabase via background
+  try { chrome.runtime.sendMessage({ type: 'syncApplySettingsToSupabase' }); } catch {}
+  try { phCapture('rewrite_preferences_changed', prefs); } catch {}
+}
+
+async function _loadDailyLimit(): Promise<void> {
+  try {
+    const stored = await chrome.storage.local.get('applySettings');
+    const limit = stored.applySettings?.dailyApplyLimit || 25;
+    const slider = document.getElementById('cv-settings-limit-slider') as HTMLInputElement | null;
+    const valueEl = document.getElementById('cv-settings-limit-value');
+    if (slider) slider.value = String(limit);
+    if (valueEl) valueEl.textContent = String(limit);
+  } catch {}
+}
+
+async function _saveDailyLimit(limit: number): Promise<void> {
+  try {
+    const stored = await chrome.storage.local.get('applySettings');
+    const settings = stored.applySettings || {};
+    settings.dailyApplyLimit = limit;
+    await chrome.storage.local.set({ applySettings: settings });
+    await chrome.storage.sync.set({ dailyApplyLimit: limit });
+    try { chrome.runtime.sendMessage({ type: 'syncApplySettingsToSupabase' }); } catch {}
+    try { phCapture('daily_limit_changed', { limit }); } catch {}
+  } catch {}
+}
+
+function _loadSettingsThreshold(): void {
+  const homeSlider = document.getElementById('cv-threshold-slider') as HTMLInputElement | null;
+  const settingsSlider = document.getElementById('cv-settings-threshold-slider') as HTMLInputElement | null;
+  const settingsValue = document.getElementById('cv-settings-threshold-value');
+  if (homeSlider && settingsSlider) {
+    settingsSlider.value = homeSlider.value;
+    if (settingsValue) settingsValue.textContent = homeSlider.value;
+  }
+}
+
+async function _loadSettingsResume(): Promise<void> {
+  const resumeInfo = document.getElementById('cv-settings-resume-info');
+  if (!resumeInfo) return;
+  try {
+    const stored = await chrome.storage.local.get('applySettings');
+    const resumeId = stored.applySettings?.activeResumeId;
+    if (!resumeId) {
+      resumeInfo.textContent = 'No resume selected. Select one on the dashboard.';
+      return;
+    }
+    // Get name from home page resume card
+    const nameEl = document.getElementById('cv-resume-name');
+    const metaEl = document.getElementById('cv-resume-meta');
+    const name = nameEl?.textContent || 'Resume selected';
+    const meta = metaEl?.textContent || '';
+    resumeInfo.innerHTML = `<strong>${_escText(name)}</strong><br><span style="font-size:10px;color:var(--text-faint)">${_escText(meta)}</span>`;
+  } catch {
+    resumeInfo.textContent = 'Unable to load resume info';
+  }
+}
+
+function _initSettingsListeners(): void {
+  // Rewrite preference toggles
+  ['cv-settings-preserve-tone', 'cv-settings-add-keywords', 'cv-settings-keep-one-page'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', () => _saveRewritePreferences());
+  });
+
+  // Daily limit slider
+  const limitSlider = document.getElementById('cv-settings-limit-slider') as HTMLInputElement | null;
+  const limitValue = document.getElementById('cv-settings-limit-value');
+  let _limitDebounce: ReturnType<typeof setTimeout> | null = null;
+  if (limitSlider) {
+    limitSlider.addEventListener('input', () => {
+      if (limitValue) limitValue.textContent = limitSlider.value;
+    });
+    limitSlider.addEventListener('change', () => {
+      if (_limitDebounce) clearTimeout(_limitDebounce);
+      _limitDebounce = setTimeout(() => _saveDailyLimit(parseInt(limitSlider.value, 10)), 500);
+    });
+  }
+
+  // Settings page threshold slider (mirrors home threshold)
+  const settingsThreshold = document.getElementById('cv-settings-threshold-slider') as HTMLInputElement | null;
+  const settingsThresholdValue = document.getElementById('cv-settings-threshold-value');
+  let _thresholdDebounce: ReturnType<typeof setTimeout> | null = null;
+  if (settingsThreshold) {
+    settingsThreshold.addEventListener('input', () => {
+      if (settingsThresholdValue) settingsThresholdValue.textContent = settingsThreshold.value;
+      // Mirror to home slider
+      const homeSlider = document.getElementById('cv-threshold-slider') as HTMLInputElement | null;
+      const homeValue = document.getElementById('cv-threshold-value');
+      if (homeSlider) homeSlider.value = settingsThreshold.value;
+      if (homeValue) homeValue.textContent = settingsThreshold.value;
+    });
+    settingsThreshold.addEventListener('change', () => {
+      if (_thresholdDebounce) clearTimeout(_thresholdDebounce);
+      _thresholdDebounce = setTimeout(async () => {
+        const val = parseInt(settingsThreshold.value, 10);
+        await chrome.storage.sync.set({ scoreThreshold: val });
+        const stored = await chrome.storage.local.get('applySettings');
+        const settings = stored.applySettings || {};
+        settings.scoreThreshold = val;
+        await chrome.storage.local.set({ applySettings: settings });
+        try { chrome.runtime.sendMessage({ type: 'syncApplySettingsToSupabase' }); } catch {}
+      }, 500);
+    });
+  }
+
+  // Clear activity button
+  const clearBtn = document.getElementById('cv-activity-clear-btn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', async () => {
+      await chrome.storage.local.set({ activityFeed: [] });
+      _loadActivityFeed();
+      _loadFullActivityFeed();
+      try { phCapture('activity_feed_cleared', {}); } catch {}
+    });
+  }
+}
+
+// ============================================================
+// EXT-AS-8: PIPELINE PAGE
+// ============================================================
+
+interface PipelineJob {
+  id: string;
+  job_title: string;
+  company_name: string;
+  stage: string;
+  created_at: string;
+}
+
+async function _loadPipelinePageData(): Promise<void> {
+  // Update stage counts (mirror from home page)
+  const stages = ['saved', 'applied', 'interview', 'offer'];
+  stages.forEach(stage => {
+    const homeEl = document.getElementById(`cv-pipe-${stage}`);
+    const pageEl = document.getElementById(`cv-pipe2-${stage}`);
+    if (homeEl && pageEl) pageEl.textContent = homeEl.textContent || '0';
+  });
+
+  // Load recent pipeline items from background
+  const jobsList = document.getElementById('cv-pipe-jobs-list');
+  if (!jobsList) return;
+
+  try {
+    const response = await chrome.runtime.sendMessage({ type: 'getPipelineItems', limit: 20 });
+    if (response?.items && response.items.length > 0) {
+      const items: PipelineJob[] = response.items;
+      jobsList.innerHTML = items.map((item: PipelineJob) => {
+        const stageLower = (item.stage || 'saved').toLowerCase();
+        return `<div class="cv-pipe-job-item">
+          <div class="cv-pipe-job-dot ${_escText(stageLower)}"></div>
+          <div class="cv-pipe-job-info">
+            <div class="cv-pipe-job-title">${_escText(item.job_title || 'Untitled')}</div>
+            <div class="cv-pipe-job-company">${_escText(item.company_name || 'Unknown')}</div>
+          </div>
+          <span class="cv-pipe-job-stage ${_escText(stageLower)}">${_escText(stageLower)}</span>
+        </div>`;
+      }).join('');
+    } else {
+      jobsList.innerHTML = '<div class="cv-pipe-empty">No pipeline items yet. Save jobs from job sites!</div>';
+    }
+  } catch {
+    jobsList.innerHTML = '<div class="cv-pipe-empty">Unable to load pipeline</div>';
+  }
+}
+
+// ============================================================
+// EXT-AS-8: FULL ACTIVITY FEED
+// ============================================================
+
+async function _loadFullActivityFeed(): Promise<void> {
+  const container = document.getElementById('cv-activity-full-list');
+  if (!container) return;
+
+  try {
+    const stored = await chrome.storage.local.get('activityFeed');
+    const feed: ActivityItem[] = stored.activityFeed || [];
+
+    if (feed.length === 0) {
+      container.innerHTML = '<div class="cv-activity-empty">No recent activity</div>';
+      return;
+    }
+
+    // Show all items (up to 50), newest first
+    const sorted = [...feed].reverse();
+    container.innerHTML = sorted.map(item => {
+      const dotColor = _activityDotColor(item.type);
+      const label = _activityLabel(item.type);
+      return `<div class="cv-activity-item">
+        <div class="cv-activity-dot ${dotColor}"></div>
+        <div>
+          <div class="cv-activity-text"><strong>${_escText(item.jobTitle)}</strong> at ${_escText(item.company)} — ${label}${item.score !== undefined ? ` (Score: ${item.score})` : ''}</div>
+          <div class="cv-activity-time">${_relativeTime(item.timestamp)}</div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch {
+    container.innerHTML = '<div class="cv-activity-empty">Unable to load activity</div>';
+  }
+}
+
+// ============================================================
+// EXT-AS-8: TEXT ESCAPER
+// ============================================================
+
+function _escText(str: string): string {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ============================================================
+// POSTHOG HELPER
+// ============================================================
+
+function phCapture(event: string, props: Record<string, unknown>): void {
+  try {
+    if (typeof (window as any).posthog !== 'undefined') {
+      (window as any).posthog.capture(event, props);
+    }
+  } catch {}
+}
 
 // ============================================================
 // EXPORTS
@@ -406,3 +748,4 @@ chrome.storage.onChanged.addListener((changes, area) => {
 // Expose for popup.ts integration
 (window as any).initConsumerPopup = initConsumerPopup;
 (window as any).addActivityItem = addActivityItem;
+(window as any).navigateConsumerPage = _navigateToPage;

@@ -1360,6 +1360,39 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     })();
     return true;
   }
+  // ── EXT-AS-8: getPipelineItems — Fetch recent pipeline items from Supabase ──
+  if (msg.type === 'getPipelineItems') {
+    (async () => {
+      try {
+        const authSession = await getAuth();
+        if (!authSession?.user_id || !authSession?.access_token) {
+          sendResponse({ items: [], error: 'not_authenticated' });
+          return;
+        }
+        const limit = msg.limit || 20;
+        const resp = await fetch(
+          `${SUPABASE_URL}/rest/v1/user_pipeline?user_id=eq.${authSession.user_id}&order=created_at.desc&limit=${limit}&select=id,job_title,company_name,stage,created_at`,
+          {
+            headers: {
+              'apikey': SUPABASE_KEY,
+              'Authorization': `Bearer ${authSession.access_token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+        if (resp.ok) {
+          const items = await resp.json();
+          sendResponse({ items });
+        } else {
+          sendResponse({ items: [], error: `http_${resp.status}` });
+        }
+      } catch (e) {
+        console.warn('[BJ] getPipelineItems error:', (e as Error).message);
+        sendResponse({ items: [], error: (e as Error).message });
+      }
+    })();
+    return true;
+  }
   // ── EXT-AS-3: SAVE_TO_PIPELINE — Save job to pipeline via pipeline-write EF ──
   if (msg.type === 'SAVE_TO_PIPELINE') {
     (async () => {

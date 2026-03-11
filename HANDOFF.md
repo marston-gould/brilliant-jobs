@@ -52,6 +52,61 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**EXT-AS-8** — Settings Panel + Activity Feed + Pipeline View (Handoff Phase 7)
+- Completed: 2026-03-11
+- Product version bumped: `v8.69` → `v8.70` (Extension popup.html page views + popup-consumer.ts settings/pipeline/activity logic + background.ts getPipelineItems handler; all HTML surfaces cache-busted)
+- Extension manifest: 2.27.0 → 2.28.0
+- ROADMAP.md updated: EXT-AS-8 → ✅
+- roadmap.html updated: EXT-AS-8 → `s: 'done'`, p: 100
+- **Page View System (Bottom Nav Routing):**
+  - Home, Pipeline, Settings, Activity pages as `cv-page` containers within consumer-view
+  - `_initBottomNav()` wires click handlers on nav buttons (Pipeline, Settings navigate in-extension; Resumes still opens dashboard)
+  - `_navigateToPage(page)` toggles active page, updates nav highlight, loads page data on navigate
+  - Back buttons (‹) on Pipeline/Settings/Activity return to Home
+  - "See all →" link on Home activity section opens Activity page
+  - PostHog `popup_nav` event with page property
+- **Settings Page:**
+  - **Daily Apply Limit:** Range slider (5–100, step 5, default 25). Persists to chrome.storage.local `applySettings.dailyApplyLimit` + chrome.storage.sync. 500ms debounce. Syncs to Supabase via `syncApplySettingsToSupabase` message.
+  - **Rewrite Preferences:** 3 toggle switches: Preserve my writing tone, Add missing keywords from JD, Keep resume to one page. All default ON. Persists to chrome.storage.local `rewritePreferences`. Syncs to Supabase.
+  - **Score Threshold Mirror:** Slider (30–95) mirrors Home page threshold. Changes propagate bidirectionally (settings → home, home → settings).
+  - **Active Resume Info:** Shows name + meta from Home resume card. Displays selection status.
+  - **Dashboard Link:** "Full settings on Dashboard →" link
+  - PostHog: `rewrite_preferences_changed`, `daily_limit_changed`
+- **Pipeline Page:**
+  - Stage counters mirror Home page (Saved/Applied/Interview/Offer)
+  - `_loadPipelinePageData()` sends `getPipelineItems` message to background.ts
+  - background.ts handler: queries `user_pipeline` table via REST with auth bearer token, selects id/job_title/company_name/stage/created_at, orders by created_at desc, limit 20
+  - Renders job items with stage-colored dots + truncated title + company + stage badge
+  - Empty state: "No pipeline items yet. Save jobs from job sites!"
+  - "View all on Dashboard →" link
+- **Full Activity Feed Page:**
+  - `_loadFullActivityFeed()` renders all 50 items (newest first) from chrome.storage.local
+  - Same color-coded dots as Home (green=applied, amber=rewrite, blue=saved)
+  - Shows score when available
+  - Clear All button: resets activityFeed to empty array in storage
+  - PostHog: `activity_feed_cleared`
+- **Sync Listener Enhanced:**
+  - Settings page threshold + daily limit updated on storage changes
+  - Rewrite preferences refreshed on storage changes
+  - Full activity feed refreshed alongside home feed
+- **XSS Prevention:** `_escText()` helper for all dynamic text in pipeline items and activity feed
+- **Pod Team Manifest:**
+  - EXT-AS-8 pairing: Lead Platform Eng + Forward-Looking Dev (primary), Chief Architect + Evolvability Strategist (reviewers)
+- **Modified:**
+  - `extension/popup.html` — Page view CSS (cv-page, cv-settings, cv-pipe-job, cv-activity-full), Home/Pipeline/Settings/Activity page containers, bottom nav routing, "See all" activity link
+  - `extension/popup-consumer.ts` — _initBottomNav, _navigateToPage, _loadSettingsPageData, _loadRewritePreferences, _saveRewritePreferences, _loadDailyLimit, _saveDailyLimit, _loadSettingsThreshold, _loadSettingsResume, _initSettingsListeners, _loadPipelinePageData, _loadFullActivityFeed, _escText, phCapture helper, navigateConsumerPage export, enhanced sync listener
+  - `extension/background.ts` — getPipelineItems message handler (user_pipeline REST query)
+  - `extension/manifest.json` — v2.27.0 → v2.28.0
+  - `docs/scaling/pod-team-manifest.md` — EXT-AS-8 pairing
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — EXT-AS-8 → ✅
+  - `roadmap.html` — EXT-AS-8 → done/100
+- **Created:**
+  - `tests/ext-as-8-settings-pipeline-activity.test.js` — 68 validation tests (10 sections)
+- **Tests:** 68 validation tests (all passing)
+
 **EXT-AS-7** — Dashboard → Worker Routing (Headless Worker Integration)
 - Completed: 2026-03-11
 - Product version bumped: `v8.68` → `v8.69` (JS changes — apply-workflow.js worker routing + status polling + live UI + bulk queue; applications.js Process Queue delegation; all HTML surfaces cache-busted)
@@ -1878,7 +1933,7 @@ None. FEED-FIX-006 complete.
 
 No specific session queued. EXT-AS-5 complete.
 
-**EXT-AS series (9 sessions total, 7 done):**
+**EXT-AS series (9 sessions total, 8 done):**
 - EXT-AS-1 ✅ — Applicant Profile + Settings Sync
 - EXT-AS-2 ✅ — Consumer Popup UI + Mode Persistence
 - EXT-AS-3 ✅ — Content Script: Save Button + Apply Interception
@@ -1886,7 +1941,8 @@ No specific session queued. EXT-AS-5 complete.
 - EXT-AS-5 ✅ — AI Resume Rewrite Flow
 - EXT-AS-6 ✅ — Auto Modes + Autopilot + Limits
 - EXT-AS-7 ✅ — Dashboard → Worker Routing
-- EXT-AS-8 through EXT-AS-9 — Settings panel, PostHog QA
+- EXT-AS-8 ✅ — Settings Panel + Activity Feed + Pipeline View
+- EXT-AS-9 — PostHog QA
 
 **Pending from EXT-AS spec (Marston to prioritize):**
 - EXT-AS-2 requires extension-ux-prototype.html designs
@@ -1948,9 +2004,9 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.69`** | **EXT-AS-7: Dashboard → Worker Routing** |
+| **Product (BJ_VERSION)** | **`v8.70`** | **EXT-AS-8: Settings Panel + Activity Feed + Pipeline View** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
-| Extension | `extension@2.23.0-qa-manifest` | REM-004 |
+| Extension | `extension@2.28.0-settings-pipeline-activity` | EXT-AS-8 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
 | **Admin** | **`admin@1.9.0-referral-pipeline-agent`** | **SA-021** |
 | **SPA Scaffold** | **`spa@1.0.0-scaffold`** | **SA-013** |
