@@ -7,12 +7,12 @@ FROM mcr.microsoft.com/playwright:v1.42.1-jammy
 WORKDIR /app
 
 # Copy package files first for Docker layer caching
-COPY worker/package.json worker/package-lock.json* ./
+COPY package.json package-lock.json* ./
 
-RUN npm ci --production
+RUN npm install --production
 
 # Copy worker source
-COPY worker/ ./
+COPY . ./
 
 # No dev deps, no test files in production image
 ENV NODE_ENV=production
