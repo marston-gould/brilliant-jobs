@@ -52,6 +52,42 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**EXT-AS-9** — PostHog Instrumentation + QA
+- Completed: 2026-03-13
+- Product version bumped: `v8.77` → `v8.78` (JS changes — job-site-overlay.ts score_gate_shown + selector_failed events, background.ts POSTHOG_CAPTURE handler + _logSubmissionAttempt + submission logging at all 6 submit paths, admin-autosubmit.js method breakdown table; all HTML surfaces cache-busted)
+- Extension manifest: 2.28.0 → 3.0.0
+- ROADMAP.md updated: EXT-AS-9 → ✅
+- roadmap.html updated: EXT-AS-9 → `s: 'done'`, p: 100
+- **PostHog Events Added:**
+  - `score_gate_shown`: fires when score gate popup renders in overlay (score, threshold, is_above, platform, mode)
+  - `selector_failed`: fires when apply button selectors (0 matches on non-manual mode) or save button target selector misses after retry (site, selector_type, url)
+  - `POSTHOG_CAPTURE` message handler: generic relay in background.ts for overlay → PostHog via captureEvent()
+- **All 14 Spec Events Verified:** mode_changed, threshold_changed, save_to_pipeline (→job_site_overlay_saved), apply_intercepted, score_gate_shown, score_gate_action (→score_gate_decision), rewrite_started/completed (→rewrite_resume_extension), rewrite_submitted/discarded (→rewrite_decision), auto_submitted (→auto_apply_submitted/auto_rewrite_submitted/full_autopilot_submitted), daily_limit_hit (→daily_apply_limit_reached), selector_failed, admin_toggle
+- **Extension-side submission_attempts Logging:**
+  - `_logSubmissionAttempt()` helper: REST POST to submission_attempts table, fire-and-forget
+  - Logs at 6 submission paths: auto_apply (extension_auto), auto_rewrite (extension_rewrite), full_autopilot (extension_autopilot), score_gate submit_anyway (extension_score_gate), rewrite submit_rewritten (extension_rewrite), rewrite submit_original (extension_score_gate)
+  - Also logs cancellations from score gate and rewrite decision
+- **Admin Panel Method Breakdown:**
+  - New "Submission Method (7 days)" table in admin-autosubmit.js
+  - Queries submission_attempts table, groups by submission_method
+  - Shows per-method: total, success, failed, cancelled, fail %
+  - Method labels: ext: auto, ext: rewrite, ext: score_gate, ext: autopilot, headless
+- **Modified:**
+  - `extension/job-site-overlay.ts` — score_gate_shown event in showScoreGatePopup, selector_failed in interceptApplyButtons + injectSaveButton retry
+  - `extension/background.ts` — POSTHOG_CAPTURE handler, _logSubmissionAttempt helper, submission logging at auto_apply/auto_rewrite/full_autopilot/submit_anyway/rewrite_decision paths
+  - `extension/manifest.json` — v2.28.0 → v3.0.0
+  - `js/admin-autosubmit.js` — method breakdown query + table rendering
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `dist/admin.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — EXT-AS-9 → ✅
+  - `roadmap.html` — EXT-AS-9 → done/100
+- **Created:**
+  - `tests/ext-as-9-posthog-qa.test.js` — 25 validation tests (7 sections)
+- **Tests:** 25 validation tests (all passing)
+- **EXT-AS SERIES COMPLETE** — All 9 sessions done (EXT-AS-1 through EXT-AS-9). Full extension application mode system operational: profile sync, consumer popup, job site overlay (save + apply interception), score gate, AI rewrite, auto modes + daily limits, dashboard worker routing, settings/pipeline/activity views, PostHog instrumentation.
+
 **PC-001** — Pipeline + My Applications Consolidation (Phase 1 + Phase 2)
 - Completed: 2026-03-11
 - Product version bumped: `v8.76` → `v8.77` (HTML/JS changes — dashboard.html page-pipeline deleted + My Applications restructured; app.js switchAppTab + hero card navigation; pipeline-overlay-tab.js deleted; build.js pipeline chunk updated; all HTML surfaces cache-busted)
@@ -2270,7 +2306,7 @@ None. FEED-FIX-006 complete.
 
 No specific session queued. EXT-AS-5 complete.
 
-**EXT-AS series (9 sessions total, 8 done):**
+**EXT-AS series (9 sessions total, 9 done — COMPLETE):**
 - EXT-AS-1 ✅ — Applicant Profile + Settings Sync
 - EXT-AS-2 ✅ — Consumer Popup UI + Mode Persistence
 - EXT-AS-3 ✅ — Content Script: Save Button + Apply Interception
@@ -2279,7 +2315,7 @@ No specific session queued. EXT-AS-5 complete.
 - EXT-AS-6 ✅ — Auto Modes + Autopilot + Limits
 - EXT-AS-7 ✅ — Dashboard → Worker Routing
 - EXT-AS-8 ✅ — Settings Panel + Activity Feed + Pipeline View
-- EXT-AS-9 — PostHog QA
+- EXT-AS-9 ✅ — PostHog QA
 
 **Pending from EXT-AS spec (Marston to prioritize):**
 - EXT-AS-2 requires extension-ux-prototype.html designs
@@ -2341,9 +2377,9 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.77`** | **PC-001: Pipeline + My Applications Consolidation** |
+| **Product (BJ_VERSION)** | **`v8.78`** | **EXT-AS-9: PostHog Instrumentation + QA** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
-| Extension | `extension@2.28.0-settings-pipeline-activity` | EXT-AS-8 |
+| Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
 | **Admin** | **`admin@1.9.0-referral-pipeline-agent`** | **SA-021** |
 | **SPA Scaffold** | **`spa@1.0.0-scaffold`** | **SA-013** |

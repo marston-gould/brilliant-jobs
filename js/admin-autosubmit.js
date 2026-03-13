@@ -17,6 +17,26 @@ async function loadAutoSubmitPanel() {
     if (error) throw error;
     if (!data) throw new Error('No data returned');
 
+    // EXT-AS-9: Fetch method breakdown separately (fn_submission_summary doesn't include it)
+    try {
+      var { data: methodRows } = await supabase
+        .from('submission_attempts')
+        .select('submission_method, status')
+        .gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString());
+      if (methodRows && methodRows.length > 0) {
+        var methodMap = {};
+        methodRows.forEach(function(r) {
+          var m = r.submission_method || 'unknown';
+          if (!methodMap[m]) methodMap[m] = { submission_method: m, total: 0, submitted: 0, failed: 0, cancelled: 0 };
+          methodMap[m].total++;
+          if (r.status === 'submitted') methodMap[m].submitted++;
+          else if (r.status === 'failed') methodMap[m].failed++;
+          else if (r.status === 'cancelled') methodMap[m].cancelled++;
+        });
+        data.by_method = Object.values(methodMap).sort(function(a, b) { return b.total - a.total; });
+      }
+    } catch (_) { /* method breakdown is best-effort */ }
+
     renderAutoSubmitPanel(container, data);
 
     // Auto-refresh every 2 minutes
@@ -108,6 +128,40 @@ function renderAutoSubmitPanel(container, data) {
     html += '</tbody></table>';
   } else {
     html += '<div style="padding:12px;color:var(--text-secondary);font-size:12px;">No failures in the last 7 days.</div>';
+  }
+
+  // ── EXT-AS-9: Submission Method Breakdown (7d) ──
+  // Shows extension vs worker vs API breakdown
+  html += '<h4 style="margin:16px 0 8px;font-size:13px;font-weight:600;color:var(--text-secondary);">Submission Method (7 days)</h4>';
+  var byMethod = data.by_method || [];
+  if (byMethod.length > 0) {
+    html += '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px;">';
+    html += '<thead><tr style="border-bottom:1px solid var(--border);color:var(--text-secondary);">';
+    html += '<th style="text-align:left;padding:6px 8px;">Method</th>';
+    html += '<th style="text-align:right;padding:6px 8px;">Total</th>';
+    html += '<th style="text-align:right;padding:6px 8px;">Success</th>';
+    html += '<th style="text-align:right;padding:6px 8px;">Failed</th>';
+    html += '<th style="text-align:right;padding:6px 8px;">Cancelled</th>';
+    html += '<th style="text-align:right;padding:6px 8px;">Fail %</th>';
+    html += '</tr></thead><tbody>';
+    byMethod.forEach(function(row) {
+      var total = (row.total || 0);
+      var failed = (row.failed || 0);
+      var failPct = total > 0 ? ((failed / total) * 100).toFixed(1) : '0.0';
+      var failColor = parseFloat(failPct) > 30 ? 'color:var(--danger)' : '';
+      var methodLabel = (row.submission_method || 'unknown').replace('extension_', 'ext: ');
+      html += '<tr style="border-bottom:1px solid var(--border-light);">';
+      html += '<td style="padding:6px 8px;font-weight:500;">' + escVal(methodLabel) + '</td>';
+      html += '<td style="padding:6px 8px;text-align:right;">' + total + '</td>';
+      html += '<td style="padding:6px 8px;text-align:right;color:var(--success);">' + (row.submitted || 0) + '</td>';
+      html += '<td style="padding:6px 8px;text-align:right;color:var(--danger);">' + failed + '</td>';
+      html += '<td style="padding:6px 8px;text-align:right;color:var(--text-secondary);">' + (row.cancelled || 0) + '</td>';
+      html += '<td style="padding:6px 8px;text-align:right;' + failColor + '">' + failPct + '%</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+  } else {
+    html += '<div style="padding:12px;color:var(--text-secondary);font-size:12px;">No submissions in the last 7 days.</div>';
   }
 
   // ── Daily Trend Sparkline (30d) ──

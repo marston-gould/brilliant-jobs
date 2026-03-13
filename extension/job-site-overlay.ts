@@ -504,7 +504,20 @@
       // Retry after DOM settles (SPAs)
       setTimeout(function () {
         target = qFallback([currentSite.saveButtonTarget.selector]);
-        if (target) _doInjectSave(target);
+        if (target) {
+          _doInjectSave(target);
+        } else {
+          // EXT-AS-9: Track when save button target not found
+          sendMsg('POSTHOG_CAPTURE', {
+            event: 'selector_failed',
+            properties: {
+              site: currentSite ? currentSite.platform : 'unknown',
+              selector_type: 'save_button_target',
+              selector: currentSite.saveButtonTarget.selector,
+              url: window.location.href,
+            },
+          });
+        }
       }, 2000);
       return;
     }
@@ -573,13 +586,27 @@
   // ── Apply button interception ─────────────────────────────────
   function interceptApplyButtons() {
     var selectors = currentSite.applyButtonSelectors;
+    var foundAny = false;
     for (var k = 0; k < selectors.length; k++) {
       try {
         var buttons = document.querySelectorAll(selectors[k]);
+        if (buttons.length > 0) foundAny = true;
         for (var b = 0; b < buttons.length; b++) {
           _attachInterceptor(buttons[b]);
         }
       } catch (_) { /* invalid selector */ }
+    }
+    // EXT-AS-9: Track when no apply buttons found for this site
+    if (!foundAny && _applicationMode !== 'manual') {
+      sendMsg('POSTHOG_CAPTURE', {
+        event: 'selector_failed',
+        properties: {
+          site: currentSite ? currentSite.platform : 'unknown',
+          selector_type: 'apply_button',
+          selectors_tried: selectors.length,
+          url: window.location.href,
+        },
+      });
     }
   }
 
@@ -732,6 +759,18 @@
   function showScoreGatePopup(data) {
     hideScoreGatePopup(); // Remove any existing
     _scoreGateActive = true;
+
+    // EXT-AS-9: Fire score_gate_shown event when popup renders
+    sendMsg('POSTHOG_CAPTURE', {
+      event: 'score_gate_shown',
+      properties: {
+        score: data.score || 0,
+        threshold: data.threshold || 75,
+        is_above: !!data.isAboveThreshold,
+        platform: currentSite ? currentSite.platform : 'unknown',
+        mode: data.mode || '',
+      },
+    });
 
     var shadow = getShadowRoot();
     var score = data.score || 0;

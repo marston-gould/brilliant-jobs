@@ -1766,6 +1766,42 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return newCount;
   }
 
+  // ── EXT-AS-9: Log submission attempt to submission_attempts table ──
+  async function _logSubmissionAttempt(params: {
+    jobUrl?: string; jobTitle?: string; companyName?: string;
+    atsSource?: string; resumeId?: string; method: string;
+    status: string; errorType?: string; errorDetail?: string;
+    durationMs?: number;
+  }): Promise<void> {
+    try {
+      const authSession = await getAuth();
+      if (!authSession?.user_id || !authSession?.access_token) return;
+      const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+      await fetchFireAndForget(`${SB_URL}/rest/v1/submission_attempts`, {
+        method: 'POST',
+        headers: {
+          'apikey': authSession.access_token,
+          'Authorization': 'Bearer ' + authSession.access_token,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify({
+          user_id: authSession.user_id,
+          job_url: params.jobUrl || '',
+          job_title: params.jobTitle || '',
+          company_name: params.companyName || '',
+          ats_source: params.atsSource || 'unknown',
+          resume_id: params.resumeId || null,
+          submission_method: params.method, // 'extension_auto' | 'extension_score_gate' | 'extension_rewrite' | 'extension_autopilot'
+          status: params.status, // 'submitted' | 'failed' | 'cancelled'
+          error_type: params.errorType || null,
+          error_detail: params.errorDetail || null,
+          duration_ms: params.durationMs || null,
+        }),
+      });
+    } catch (_) { /* submission logging is best-effort */ }
+  }
+
   // ── EXT-AS-3/4/5/6: APPLY_INTERCEPTED — Apply button click intercepted by overlay ──
   // Routes to appropriate flow based on application mode.
   // EXT-AS-4: score-gated + auto-score-gate. EXT-AS-5: rewrite flow. EXT-AS-6: auto modes + limits.
@@ -1913,6 +1949,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             mode,
             daily_count: newCount,
           });
+          // EXT-AS-9: Log to submission_attempts
+          _logSubmissionAttempt({
+            jobUrl: p.url, jobTitle: p.title, companyName: p.company,
+            atsSource: p.platform, resumeId: p.resumeId,
+            method: 'extension_auto', status: 'submitted',
+          });
           sendResponse({ status: 'auto_applying', mode, daily_count: newCount });
 
         } else if (mode === 'auto-rewrite') {
@@ -2005,6 +2047,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             estimated_new_score: rewriteResult?.estimated_new_score || arScore,
             daily_count: arNewCount,
           });
+          // EXT-AS-9: Log to submission_attempts
+          _logSubmissionAttempt({
+            jobUrl: p.url, jobTitle: p.title, companyName: p.company,
+            atsSource: p.platform, resumeId: p.resumeId,
+            method: 'extension_rewrite', status: 'submitted',
+          });
           sendResponse({ status: 'auto_rewrite_complete', mode, daily_count: arNewCount });
 
         } else if (mode === 'full-autopilot') {
@@ -2075,6 +2123,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             estimated_new_score: rewriteResult?.estimated_new_score || 0,
             daily_count: fpNewCount,
           });
+          // EXT-AS-9: Log to submission_attempts
+          _logSubmissionAttempt({
+            jobUrl: p.url, jobTitle: p.title, companyName: p.company,
+            atsSource: p.platform, resumeId: p.resumeId,
+            method: 'extension_autopilot', status: 'submitted',
+          });
           sendResponse({ status: 'autopilot_complete', mode, daily_count: fpNewCount });
 
         } else {
@@ -2108,6 +2162,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
         if (action === 'cancel') {
           // User chose not to apply — nothing to do
+          // EXT-AS-9: Log cancelled submission
+          _logSubmissionAttempt({
+            jobUrl: p.jobUrl || p.url, jobTitle: p.jobTitle, companyName: p.company,
+            atsSource: p.platform, method: 'extension_score_gate', status: 'cancelled',
+          });
           sendResponse({ status: 'cancelled' });
           return;
         }
@@ -2122,6 +2181,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
               payload: { status: 'filling', action: 'submit_anyway' },
             });
           }
+          // EXT-AS-9: Log submission via score gate override
+          _logSubmissionAttempt({
+            jobUrl: p.jobUrl || p.url, jobTitle: p.jobTitle, companyName: p.company,
+            atsSource: p.platform, method: 'extension_score_gate', status: 'submitted',
+          });
           sendResponse({ status: 'submitting' });
           return;
         }
@@ -2205,6 +2269,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         });
 
         if (decision === 'cancel') {
+          // EXT-AS-9: Log cancelled rewrite submission
+          _logSubmissionAttempt({
+            jobUrl: p.jobUrl || p.url, jobTitle: p.jobTitle, companyName: p.company,
+            atsSource: p.platform, method: 'extension_rewrite', status: 'cancelled',
+          });
           sendResponse({ status: 'cancelled' });
           return;
         }
@@ -2225,6 +2294,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
               use_rewrite: decision === 'submit_rewritten',
               rewritten_text: decision === 'submit_rewritten' ? (p.rewritten_text || '') : '',
             },
+          });
+          // EXT-AS-9: Log rewrite decision submission
+          _logSubmissionAttempt({
+            jobUrl: p.jobUrl || p.url, jobTitle: p.jobTitle, companyName: p.company,
+            atsSource: p.platform, method: decision === 'submit_rewritten' ? 'extension_rewrite' : 'extension_score_gate',
+            status: 'submitted',
           });
           sendResponse({ status: 'submitting', use_rewrite: decision === 'submit_rewritten' });
           return;
@@ -2568,6 +2643,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         });
       } catch (e) { /* analytics is best-effort */ }
     })();
+    return;
+  }
+
+  // ── EXT-AS-9: POSTHOG_CAPTURE — Relay PostHog events from content scripts/overlay ──
+  if (msg.type === 'POSTHOG_CAPTURE') {
+    const p = msg.payload || {};
+    if (p.event) {
+      captureEvent(p.event, p.properties || {});
+    }
     return;
   }
 
