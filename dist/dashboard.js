@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.91';
+var BJ_VERSION = 'v8.92';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -10885,7 +10885,7 @@ function markAppliedFromModal(jobId) {
     const sf = safeReadLS('bj_saved_filters', []);
     const checkedFilters = Array.from($$('.sf-check:checked')).map(cb => sf[parseInt(cb.dataset.idx)]?.name).filter(Boolean);
     meta[jobId].filterTags = checkedFilters;
-    savePipelineMeta(meta);
+    if (typeof savePipelineMeta === 'function') savePipelineMeta(meta);
 
     // Update modal UI
     const footerEl = $('#job-modal-footer');
@@ -10921,7 +10921,7 @@ function modalSave(jobId, btn) {
     btn.textContent = 'In Pipeline';
     if (!meta[jobId]) meta[jobId] = { stage: 'saved', savedAt: new Date().toISOString(), filterTags: [] };
   }
-  savePipelineMeta(meta);
+  if (typeof savePipelineMeta === 'function') savePipelineMeta(meta);
   saveUserData('bj_saved_jobs', JSON.stringify(savedJobIds));
   // Sync feed row
   const row = document.querySelector(`tr[data-jobid="${jobId}"]`);
@@ -11130,7 +11130,7 @@ function toggleSaveJob(jobId, btn) {
       });
     }
   }
-  savePipelineMeta(meta);
+  if (typeof savePipelineMeta === 'function') savePipelineMeta(meta);
   saveUserData('bj_saved_jobs', JSON.stringify(savedJobIds));
   var savedEl = $('#j-saved');
   if (savedEl) savedEl.textContent = savedJobIds.length.toLocaleString();
