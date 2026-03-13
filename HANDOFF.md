@@ -52,7 +52,32 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**POD3-RESUME-ASSIGN-001** — Resume–Filter Assignment: Validation + Reassignment UX
+**BUGFIX-001** — Resume Scores Lost + Block Similar Broken
+- Completed: 2026-03-13
+- Product version bumped: `v8.88` → `v8.89` (JS changes — globals.ts PII keys, tuning.js window export; all HTML surfaces cache-busted)
+- ROADMAP.md updated: BUGFIX-001 → ✅
+- roadmap.html updated: BUGFIX-001 → `s: 'done'`, p: 100
+- **Fix 1: Resume scores wiped on every reload:**
+  - `bj_readiness` was in `_PII_KEYS` array (globals.ts line 192)
+  - On save: `saveUserData()` encrypted it via `encryptForStorage()` → stored as `enc:...` in localStorage
+  - On load: `safeReadLS('bj_readiness', null)` hit `enc:` prefix → returned `null` (can't parse encrypted data synchronously)
+  - Result: `readinessCache = null` on every page load — all AI corpus scores, dimension scores, coaching, recommendations, career trajectory assessments wiped
+  - Fix: removed `bj_readiness` from `_PII_KEYS` — readiness scores are keyword match percentages, not personal data. Only `bj_resumes` needs encryption.
+- **Fix 2: Block Similar broken on Search Tuning:**
+  - `analyzeHiddenJob()` was a bare `async function` declaration, not `window.analyzeHiddenJob`
+  - The dynamically rendered `onclick="analyzeHiddenJob(...)"` in poor-match-card HTML couldn't find it → `analyzeHiddenJob is not defined` error
+  - Fix: changed to `window.analyzeHiddenJob = async function(...)` + added to BJ namespace exports
+- **Modified:**
+  - `js/globals.ts` — `_PII_KEYS` reduced to `['bj_resumes']` only
+  - `js/tuning.js` — `analyzeHiddenJob` window-exported + BJ namespace
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-tuning.min.js` — rebuilt
+  - `dist/admin.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — BUGFIX-001 → ✅
+  - `roadmap.html` — BUGFIX-001 → done/100
+
+**Previous: POD3-RESUME-ASSIGN-001** — Resume–Filter Assignment: Validation + Reassignment UX
 - Completed: 2026-03-13
 - Product version bumped: `v8.87` → `v8.88` (JS changes — resumes.js validation logic + popover + clear all; all HTML surfaces cache-busted)
 - ROADMAP.md updated: POD3-RESUME-ASSIGN-001 → ✅
