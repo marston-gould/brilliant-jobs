@@ -52,7 +52,39 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**POD3-LAYOUT-001** — Layout Balance Fixes: Filter Header + Application Mode Grid
+**POD3-RESUME-ASSIGN-001** — Resume–Filter Assignment: Validation + Reassignment UX
+- Completed: 2026-03-13
+- Product version bumped: `v8.87` → `v8.88` (JS changes — resumes.js validation logic + popover + clear all; all HTML surfaces cache-busted)
+- ROADMAP.md updated: POD3-RESUME-ASSIGN-001 → ✅
+- roadmap.html updated: POD3-RESUME-ASSIGN-001 → `s: 'done'`, p: 100
+- **Fix 1: Duplicate-Level Validation in toggleResumeFilter():**
+  - On ASSIGN: checks all other active (non-archived) resumes on that filter
+  - Blocks if either resume has no level set (toast: "Assign a level to both resumes before sharing a filter")
+  - Blocks if levels overlap (toast: "[name] already covers that level on this filter")
+  - UNASSIGN always allowed — no validation on removal
+- **Fix 1b: Mirror Validation in toggleResumeLevel():**
+  - On adding a level: checks all shared filters for conflicts with other resumes
+  - Blocks if proposed level overlaps with another resume on any shared filter
+- **Fix 2a: Manage Assignment Popover:**
+  - Lucide `link` icon button added to collapsed resume row (.nri-actions)
+  - Opens fixed-position popover with all saved filters as checkboxes + color dots
+  - Toggling checkbox triggers toggleResumeFilter (with validation)
+  - "Unassign All" link at bottom removes all filter assignments
+  - Closes on outside click or Escape
+- **Fix 2b: Clear All in Expanded Panel:**
+  - "Clear all" link (red, 10px) renders after filter pills when assignedIds.length > 1
+  - Calls clearAllFilters() — resets filterIds, clears readiness cache, re-renders
+- **Window Exports:** clearAllFilters, openAssignPopover added to BJ namespace
+- **Modified:**
+  - `js/resumes.js` — toggleResumeFilter validation, toggleResumeLevel validation, openAssignPopover, clearAllFilters, manage button in card template, clear all link in expanded panel, BJ namespace exports
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `dist/admin.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — POD3-RESUME-ASSIGN-001 → ✅
+  - `roadmap.html` — POD3-RESUME-ASSIGN-001 → done/100
+
+**Previous: POD3-LAYOUT-001** — Layout Balance Fixes: Filter Header + Application Mode Grid
 - Completed: 2026-03-13
 - Product version bumped: `v8.86` → `v8.87` (HTML-only change — dashboard.html filter row + mode grid; all HTML surfaces cache-busted)
 - ROADMAP.md updated: POD3-LAYOUT-001 → ✅
@@ -2514,7 +2546,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.87`** | **POD3-LAYOUT-001: Filter toggle vertical stack + 3-column mode grid** |
+| **Product (BJ_VERSION)** | **`v8.88`** | **POD3-RESUME-ASSIGN-001: Resume-filter validation + reassignment UX** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

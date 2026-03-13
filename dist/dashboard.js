@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.87';
+var BJ_VERSION = 'v8.88';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -18240,6 +18240,7 @@ function renderResumes() {
         <div class="nri-filters">${filterDots}</div>
         <div class="nri-score ${scoreClass}">${scoreDisplay}</div>
         <div class="nri-actions" onclick="event.stopPropagation()">
+          <button onclick="openAssignPopover(${i}, this)" title="Manage filter assignment"><i data-lucide="link" class="icon-sm icon-stroke"></i></button>
           <button onclick="downloadResume(${i})" title="Download">⬇</button>
           <button onclick="renameResume(${i})" title="Rename">✎</button>
           <button onclick="archiveResume(${i})" title="Archive">📦</button>
@@ -18259,6 +18260,7 @@ function renderResumes() {
         <div style="margin-top:8px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:4px;flex-wrap:wrap;">
           <span style="font-size:10px;font-weight:600;color:var(--text-faint);margin-right:4px;line-height:22px;">Filters:</span>
           ${filterPills}
+          ${assignedIds.length > 1 ? '<span style="font-size:10px;font-weight:600;color:var(--red);cursor:pointer;margin-left:4px;line-height:22px;" onclick="event.stopPropagation();clearAllFilters(' + i + ')">Clear all</span>' : ''}
         </div>
         <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:flex;gap:4px;flex-wrap:wrap;">
           <span style="font-size:10px;font-weight:600;color:var(--text-faint);margin-right:4px;line-height:22px;">Levels:</span>
@@ -18446,8 +18448,30 @@ window.toggleResumeFilter = function(resumeIdx, filterName) {
   if (!r.filterIds) r.filterIds = [];
   const idx = r.filterIds.indexOf(filterName);
   if (idx >= 0) {
+    // UNASSIGN — always allowed
     r.filterIds.splice(idx, 1);
   } else {
+    // ASSIGN — validate level uniqueness first
+    const myLevels = r.levelLabels || (r.levelLabel ? [r.levelLabel] : []);
+    const conflicting = resumes.filter(function(other, oi) {
+      return oi !== resumeIdx && !other.archived
+        && (other.filterIds || []).includes(filterName);
+    });
+    for (var ci = 0; ci < conflicting.length; ci++) {
+      var other = conflicting[ci];
+      var otherLevels = other.levelLabels || (other.levelLabel ? [other.levelLabel] : []);
+      if (myLevels.length === 0 || otherLevels.length === 0) {
+        toastWarning('Assign a level to both resumes before sharing a filter.');
+        if (typeof reportError === 'function') reportError('resume_filter_validation', 'no_level', { resume: r.name, filter: filterName });
+        return;
+      }
+      var overlap = myLevels.some(function(l) { return otherLevels.includes(l); });
+      if (overlap) {
+        toastWarning('"' + (other.name || 'Another resume') + '" already covers that level on this filter.');
+        if (typeof reportError === 'function') reportError('resume_filter_validation', 'level_overlap', { resume: r.name, other: other.name, filter: filterName });
+        return;
+      }
+    }
     r.filterIds.push(filterName);
   }
   // Clear readiness cache so it re-analyzes with new assignment
@@ -18465,6 +18489,66 @@ window.toggleResumeFilter = function(resumeIdx, filterName) {
   }
 };
 
+// POD3-RESUME-ASSIGN-001: Clear all filter assignments from a resume
+window.clearAllFilters = function(idx) {
+  resumes[idx].filterIds = [];
+  readinessCache = null;
+  localStorage.removeItem('bj_readiness');
+  jobMatchScores = {};
+  saveResumes();
+  renderResumes();
+};
+
+// POD3-RESUME-ASSIGN-001: Assignment popover
+var _activeAssignPopover = null;
+window.openAssignPopover = function(idx, btnEl) {
+  // Close existing popover
+  if (_activeAssignPopover) { _activeAssignPopover.remove(); _activeAssignPopover = null; }
+  var r = resumes[idx];
+  var sf = safeReadLS('bj_saved_filters', []);
+  if (sf.length === 0) { toastWarning('Save a filter first to assign resumes.'); return; }
+  var assignedIds = r.filterIds || [];
+  var pop = document.createElement('div');
+  pop.className = 'assign-popover';
+  pop.style.cssText = 'position:absolute;z-index:9999;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.15);padding:12px;min-width:200px;max-width:280px;';
+  var html = '<div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:8px;">Assign to Filters</div>';
+  sf.forEach(function(f, fi) {
+    var color = filterColors[fi % filterColors.length];
+    var checked = assignedIds.includes(f.name) ? 'checked' : '';
+    var escaped = f.name.replace(/'/g, "\\'");
+    html += '<label style="display:flex;align-items:center;gap:6px;padding:4px 0;cursor:pointer;font-size:12px;color:var(--text);">'
+      + '<input type="checkbox" ' + checked + ' onchange="toggleResumeFilter(' + idx + ',\'' + escaped + '\')">'
+      + '<span style="width:8px;height:8px;border-radius:50%;background:' + color + ';flex-shrink:0;"></span>'
+      + f.name + '</label>';
+  });
+  if (assignedIds.length > 0) {
+    html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">'
+      + '<span style="font-size:10px;font-weight:600;color:var(--red);cursor:pointer;" onclick="clearAllFilters(' + idx + ')">Unassign All</span></div>';
+  }
+  pop.innerHTML = html;
+  // Position relative to button
+  var rect = btnEl.getBoundingClientRect();
+  pop.style.position = 'fixed';
+  pop.style.top = (rect.bottom + 4) + 'px';
+  pop.style.left = Math.max(8, rect.left - 100) + 'px';
+  document.body.appendChild(pop);
+  _activeAssignPopover = pop;
+  // Close on outside click or Escape
+  function closePopover(e) {
+    if (e.type === 'keydown' && e.key !== 'Escape') return;
+    if (e.type === 'click' && pop.contains(e.target)) return;
+    pop.remove();
+    _activeAssignPopover = null;
+    document.removeEventListener('click', closePopover, true);
+    document.removeEventListener('keydown', closePopover, true);
+  }
+  setTimeout(function() {
+    document.addEventListener('click', closePopover, true);
+    document.addEventListener('keydown', closePopover, true);
+  }, 10);
+  if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [pop] });
+};
+
 window.toggleResumeLevel = function(idx, levelLabel) {
   const r = resumes[idx];
   // Migrate from old single levelLabel to new levelLabels array
@@ -18473,6 +18557,23 @@ window.toggleResumeLevel = function(idx, levelLabel) {
   if (pos >= 0) {
     r.levelLabels.splice(pos, 1);
   } else {
+    // Adding a level — check if it creates a conflict on any shared filter
+    var proposedLevels = r.levelLabels.concat([levelLabel]);
+    var myFilters = r.filterIds || [];
+    for (var fi = 0; fi < myFilters.length; fi++) {
+      var fname = myFilters[fi];
+      var others = resumes.filter(function(other, oi) {
+        return oi !== idx && !other.archived && (other.filterIds || []).includes(fname);
+      });
+      for (var oi = 0; oi < others.length; oi++) {
+        var otherLevels = others[oi].levelLabels || (others[oi].levelLabel ? [others[oi].levelLabel] : []);
+        var overlap = proposedLevels.some(function(l) { return otherLevels.includes(l); });
+        if (overlap) {
+          toastWarning('"' + (others[oi].name || 'Another resume') + '" already covers ' + levelLabel + ' on filter "' + fname + '".');
+          return;
+        }
+      }
+    }
     r.levelLabels.push(levelLabel);
   }
   // Keep backward compat: levelLabel = first assigned or empty
@@ -19615,7 +19716,8 @@ window._bjFileStore = bjFileStore;
     'rescoreResumeAI', 'handleRescore', 'toggleResumeKeywords', 'toggleResumePanel',
     'renameResume', 'confirmDeleteResume', 'removeResume', 'downloadResume',
     'replaceResumePlaceholder', 'reUploadResume', 'launchRewriteInterview',
-    'triggerGapAnalysis', 'renderGapInsights', 'onGapTermClick'
+    'triggerGapAnalysis', 'renderGapInsights', 'onGapTermClick',
+    'clearAllFilters', 'openAssignPopover'
   ];
   exports.forEach(function(name) {
     if (typeof window[name] === 'function') {
