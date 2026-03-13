@@ -27772,6 +27772,21 @@ async function _routeToWorker(app) {
     });
   }
 
+  // Create pipeline entry immediately so job appears on Board
+  // upsert won't duplicate — keyed on user_id + job_id + ats_source
+  if (typeof savePipelineEntry === 'function') {
+    savePipelineEntry(app.job_id, {
+      stage: 'applied',
+      title: app.job_title || '',
+      companyName: app.company_name || '',
+      company: app.company_name || '',
+      jobUrl: app.job_url || '',
+      atsSource: _guessAtsSource(app.job_url),
+      appliedAt: new Date().toISOString(),
+      savedAt: new Date().toISOString(),
+    });
+  }
+
   _renderLiveStatus(app.id, 'queued', 'Queued for submission...');
 
   // Start polling for worker status updates
@@ -28834,6 +28849,21 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
     if (typeof showToast === 'function') showToast('Failed to create application record.', { type: 'error' });
     _applySubmitting = false;
     return;
+  }
+
+  // Create pipeline entry immediately so job appears on Board
+  // upsert won't duplicate — keyed on user_id + job_id + ats_source
+  if (typeof savePipelineEntry === 'function') {
+    savePipelineEntry(jobId, {
+      stage: 'applied',
+      title: jobTitle || '',
+      companyName: companyName || '',
+      company: companyName || '',
+      jobUrl: jobUrl || '',
+      atsSource: _guessAtsSource(jobUrl),
+      appliedAt: new Date().toISOString(),
+      savedAt: new Date().toISOString(),
+    });
   }
 
   // EXT-AS-7: Route through worker or direct API
