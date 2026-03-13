@@ -527,8 +527,14 @@ $$('.nav-item').forEach(item => {
           if (window.bjSkeleton) setTimeout(function() { bjSkeleton.hide('pipeline'); }, 150);
         }
       }
+      // BUGFIX-005: My Applications tab needs pipeline rendered
+      if (_tab === 'applications') {
+        var savedAppTab = localStorage.getItem('bj_app_tab') || 'pipeline';
+        if (typeof switchAppTab === 'function') switchAppTab(savedAppTab);
+        if (window.bjSkeleton) setTimeout(function() { bjSkeleton.hide('applications'); }, 150);
+      }
       // Tabs without explicit init get skeleton hidden after a short delay (content is static HTML)
-      if (!['stats','feedback','ghost','referrals','resumes','pipeline'].includes(_tab) && window.bjSkeleton) {
+      if (!['stats','feedback','ghost','referrals','resumes','pipeline','applications'].includes(_tab) && window.bjSkeleton) {
         setTimeout(function() { bjSkeleton.hide(_tab); }, 150);
       }
       // QA-011: Re-search feed when tuning changed (e.g. US-Only toggle)
