@@ -238,4 +238,4 @@ async function fillEeoQuestions(page, profile, log, capturePostHog) {
   return result;
 }
 
-module.exports = { fillEeoQuestions };
+export { fillEeoQuestions };
