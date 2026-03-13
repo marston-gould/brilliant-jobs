@@ -52,7 +52,31 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**GS-SETUP-V2** — Get Started + Setup Single Page Consolidation
+**POD3-LAYOUT-001** — Layout Balance Fixes: Filter Header + Application Mode Grid
+- Completed: 2026-03-13
+- Product version bumped: `v8.86` → `v8.87` (HTML-only change — dashboard.html filter row + mode grid; all HTML surfaces cache-busted)
+- ROADMAP.md updated: POD3-LAYOUT-001 → ✅
+- roadmap.html updated: POD3-LAYOUT-001 → `s: 'done'`, p: 100
+- **Fix 1: Filter/Chat Toggle Row → Vertical Stack:**
+  - Line 807: `display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;flex-wrap:wrap` → `display:flex;flex-direction:column;gap:8px;margin-bottom:8px`
+  - Line 808: Removed `flex-shrink:0` from search-mode-bar inline style
+  - Line 820: Removed `flex:1;min-width:0` from banner wrapper (now fills width naturally in column layout)
+  - Toggle renders on its own full-width row above the AI CTA banner
+- **Fix 2: Application Mode Grid → Fixed 3-Column:**
+  - Line 1505: `repeat(auto-fit,minmax(200px,1fr))` → `repeat(3,1fr)`
+  - Clean 3×2 layout: Row 1 = Manual, Score-Gated, Auto-Apply. Row 2 = Auto + Score Gate, Auto + Rewrite, Full Autopilot
+  - No orphaned single card at any desktop viewport width
+- **Pod Team Manifest:** POD3-LAYOUT-001: Chief Architect + Evolvability Strategist reviewers
+- **Modified:**
+  - `dashboard.html` — Filter row vertical stack + mode grid 3-column
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `dist/admin.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — POD3-LAYOUT-001 → ✅
+  - `roadmap.html` — POD3-LAYOUT-001 → done/100
+
+**Previous: GS-SETUP-V2** — Get Started + Setup Single Page Consolidation
 - Completed: 2026-03-13
 - Product version bumped: `v8.80` → `v8.81` (dashboard.html restructure — Setup page eliminated, all integration execution merged into Get Started)
 - ROADMAP.md updated: GS-SETUP-V2 → ✅
@@ -2490,7 +2514,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.86`** | **FEED-UX-004: Pipeline save/unsave syncs My Applications** |
+| **Product (BJ_VERSION)** | **`v8.87`** | **POD3-LAYOUT-001: Filter toggle vertical stack + 3-column mode grid** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
