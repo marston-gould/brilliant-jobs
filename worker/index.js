@@ -236,7 +236,7 @@ async function processApplication(app) {
 
     // ── Log to submission_attempts ──
     try {
-      await sb.from('submission_attempts').insert({
+      const { error: instrErr } = await sb.from('submission_attempts').insert({
         user_id: app.user_id,
         pending_app_id: app.id,
         job_id: app.job_id,
@@ -253,29 +253,55 @@ async function processApplication(app) {
         confirmation_id: result.confirmationId || null,
         response_body: result,
       });
-    } catch (e) { logger.warn('Instrumentation insert failed', { error: e.message }); }
+      if (instrErr) throw new Error(instrErr.message);
+    } catch (e) {
+      logger.warn('Instrumentation insert failed', {
+        id: app.id, error: e.message, resultStatus: result.status,
+      });
+    }
 
     // ── Update pending_application ──
+    // Retry with backoff — this MUST succeed or the app is a zombie.
+    // If the ATS submission succeeded, we must NOT fall through to failApplication.
     const newStatus = result.status === 'submitted' ? 'submitted' : 'failed';
-    await sb.from('pending_applications')
-      .update({
-        status: newStatus,
-        submitted_at: result.status === 'submitted' ? new Date().toISOString() : null,
-      })
-      .eq('id', app.id);
+    let statusUpdated = false;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const { error: updateErr } = await sb.from('pending_applications')
+          .update({
+            status: newStatus,
+            submitted_at: result.status === 'submitted' ? new Date().toISOString() : null,
+          })
+          .eq('id', app.id);
+        if (updateErr) throw new Error(updateErr.message);
+        statusUpdated = true;
+        break;
+      } catch (e) {
+        logger.warn('Failed to update pending_application status', {
+          id: app.id, targetStatus: newStatus, attempt, error: e.message,
+        });
+        if (attempt < 3) await new Promise(r => setTimeout(r, attempt * 1000));
+      }
+    }
+    if (!statusUpdated) {
+      logger.error('CRITICAL: pending_application stuck in processing — manual fix required', {
+        id: app.id, user_id: app.user_id, actualResult: result.status,
+        targetStatus: newStatus, job_url: app.job_url,
+      });
+    }
 
     totalProcessed++;
     if (result.status === 'submitted') {
       totalSuccess++;
       logger.info('Application submitted successfully', {
         id: app.id, company: app.company_name, duration: durationMs,
-        confirmationId: result.confirmationId,
+        confirmationId: result.confirmationId, dbUpdated: statusUpdated,
       });
     } else {
       totalFailed++;
       logger.warn('Application failed', {
         id: app.id, company: app.company_name, error: result.error,
-        detail: result.detail, duration: durationMs,
+        detail: result.detail, duration: durationMs, dbUpdated: statusUpdated,
       });
     }
 
@@ -295,28 +321,60 @@ async function processApplication(app) {
 
 async function failApplication(app, errorType, errorDetail, startTime) {
   const durationMs = Date.now() - startTime;
-  try {
-    await sb.from('pending_applications')
-      .update({ status: 'failed' })
-      .eq('id', app.id);
-  } catch (e) { logger.warn('Failed to update pending_application status', { id: app.id, error: e.message }); }
 
-  try {
-    await sb.from('submission_attempts').insert({
-      user_id: app.user_id,
-      pending_app_id: app.id,
-      job_id: app.job_id,
-      job_title: app.job_title,
-      company_name: app.company_name,
-      job_url: app.job_url,
-      ats_source: 'unknown',
-      submission_method: 'headless',
-      status: 'error',
-      error_type: errorType,
-      error_detail: errorDetail,
-      duration_ms: durationMs,
+  // ── Critical: status update must succeed or the app is a zombie in 'processing' ──
+  // Retry 3 times with backoff. If all fail, log CRITICAL for manual intervention.
+  let statusUpdated = false;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const { error } = await sb.from('pending_applications')
+        .update({ status: 'failed' })
+        .eq('id', app.id);
+      if (error) throw new Error(error.message);
+      statusUpdated = true;
+      break;
+    } catch (e) {
+      logger.warn('Failed to update pending_application status', {
+        id: app.id, attempt, error: e.message,
+      });
+      if (attempt < 3) await new Promise(r => setTimeout(r, attempt * 1000));
+    }
+  }
+  if (!statusUpdated) {
+    logger.error('CRITICAL: pending_application stuck in processing — manual fix required', {
+      id: app.id, user_id: app.user_id, job_url: app.job_url,
+      errorType, errorDetail,
     });
-  } catch (e) { logger.warn('Failed to log submission failure', { id: app.id, error: e.message }); }
+  }
+
+  // ── Record the failure in submission_attempts — retry once ──
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const { error } = await sb.from('submission_attempts').insert({
+        user_id: app.user_id,
+        pending_app_id: app.id,
+        job_id: app.job_id,
+        job_title: app.job_title,
+        company_name: app.company_name,
+        job_url: app.job_url,
+        ats_source: 'unknown',
+        submission_method: 'headless',
+        status: 'error',
+        error_type: errorType,
+        error_detail: errorDetail,
+        duration_ms: durationMs,
+      });
+      if (error) throw new Error(error.message);
+      break;
+    } catch (e) {
+      logger.warn('Failed to log submission failure to DB', {
+        id: app.id, attempt, error: e.message,
+        // Log full context to stdout so it's at least in Fly.io logs
+        errorType, errorDetail, durationMs, jobUrl: app.job_url,
+      });
+      if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
+    }
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
