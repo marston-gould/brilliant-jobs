@@ -118,7 +118,7 @@ function toastInfo(msg, opts) {
   return showToast(msg, Object.assign({ type: "info" }, opts || {}));
 }
 var _encryptionKey = null;
-var _PII_KEYS = ["bj_resumes"];
+var _PII_KEYS = [];
 async function _deriveEncryptionKey(userId) {
   if (_encryptionKey) return _encryptionKey;
   var encoder = new TextEncoder();
@@ -172,15 +172,8 @@ async function readPiiData(lsKey) {
   var raw = localStorage.getItem(lsKey);
   if (!raw) return null;
   if (raw.startsWith("enc:")) {
-    if (!currentUser) return null;
-    var decrypted = await decryptFromStorage(raw, currentUser.id);
-    if (decrypted) {
-      try {
-        return JSON.parse(decrypted);
-      } catch (e) {
-        return null;
-      }
-    }
+    console.log("[pii] Removing leftover encrypted value for", lsKey);
+    localStorage.removeItem(lsKey);
     return null;
   }
   try {
@@ -193,7 +186,10 @@ function safeReadLS(key, fallback) {
   try {
     var raw = localStorage.getItem(key);
     if (!raw) return fallback;
-    if (raw.startsWith("enc:")) return fallback;
+    if (raw.startsWith("enc:")) {
+      localStorage.removeItem(key);
+      return fallback;
+    }
     return JSON.parse(raw);
   } catch (e) {
     return fallback;
@@ -303,25 +299,13 @@ function saveUserData(lsKey, jsonStr) {
   if (bytes > 500 * 1024) {
     console.warn("[BJ] Storage warning: " + lsKey + " is " + Math.round(bytes / 1024) + "KB");
   }
-  if (isPiiKey(lsKey) && currentUser) {
-    encryptForStorage(jsonStr, currentUser.id).then(function(encrypted) {
-      try {
-        localStorage.setItem(lsKey, encrypted);
-      } catch (e) {
-        reportError("globals", e);
-        console.error("[BJ] Storage full (encrypted):", e.message);
-        _handleStorageFull(lsKey);
-      }
-    });
-  } else {
-    try {
-      localStorage.setItem(lsKey, jsonStr);
-    } catch (e) {
-      reportError("globals", e);
-      console.error("[BJ] Storage full! Failed to save " + lsKey + ":", e.message);
-      _handleStorageFull(lsKey);
-      return false;
-    }
+  try {
+    localStorage.setItem(lsKey, jsonStr);
+  } catch (e) {
+    reportError("globals", e);
+    console.error("[BJ] Storage full! Failed to save " + lsKey + ":", e.message);
+    _handleStorageFull(lsKey);
+    return false;
   }
   const shortKey = UD_LS_TO_SHORT[lsKey];
   if (shortKey && currentUser) {
@@ -338,8 +322,9 @@ async function _flushUserData() {
     const lsKey = UD_KEYS[key];
     try {
       var raw = localStorage.getItem(lsKey) || "null";
-      if (isPiiKey(lsKey) && raw && raw.startsWith("enc:")) {
-        raw = await decryptFromStorage(raw, currentUser.id) || "null";
+      if (raw.startsWith("enc:")) {
+        console.log("[sync] Skipping encrypted value for", lsKey, "during flush");
+        continue;
       }
       patch[key] = JSON.parse(raw);
     } catch {
@@ -386,21 +371,17 @@ async function loadUserData(userId) {
     for (const [shortKey, lsKey] of Object.entries(UD_KEYS)) {
       const cloudVal = cloud[shortKey];
       let localVal = localStorage.getItem(lsKey);
-      if (isPiiKey(lsKey) && localVal && localVal.startsWith("enc:") && userId) {
-        localVal = await decryptFromStorage(localVal, userId) || localVal;
+      if (localVal && localVal.startsWith("enc:")) {
+        console.log("[sync] Removing leftover encrypted value for", lsKey, "\u2014 cloud recovery will restore");
+        localStorage.removeItem(lsKey);
+        localVal = null;
       }
       const localParsed = localVal ? JSON.parse(localVal) : null;
       const cloudEmpty = cloudVal == null || Array.isArray(cloudVal) && cloudVal.length === 0 || typeof cloudVal === "object" && !Array.isArray(cloudVal) && Object.keys(cloudVal).length === 0;
       const localEmpty = localParsed == null || Array.isArray(localParsed) && localParsed.length === 0 || typeof localParsed === "object" && !Array.isArray(localParsed) && Object.keys(localParsed).length === 0;
       if (!cloudEmpty && localEmpty) {
         var cloudJson = JSON.stringify(cloudVal);
-        if (isPiiKey(lsKey) && userId) {
-          encryptForStorage(cloudJson, userId).then(function(enc) {
-            localStorage.setItem(lsKey, enc);
-          });
-        } else {
-          localStorage.setItem(lsKey, cloudJson);
-        }
+        localStorage.setItem(lsKey, cloudJson);
         console.log("[sync] Pulled", shortKey, "from cloud");
       } else if (cloudEmpty && !localEmpty) {
         needsSync = true;

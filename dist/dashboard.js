@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.89';
+var BJ_VERSION = 'v8.90';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -205,8 +205,12 @@ function toastInfo(msg: string, opts?: Partial<ToastOptions>): HTMLElement { ret
 // Encrypts sensitive data at rest using AES-GCM with a key derived from the user's session.
 // Only PII keys are encrypted: resume text, keywords, LinkedIn profile data.
 
+// PII encryption disabled (BUGFIX-002): async encrypt/write cycle is fragile —
+// any interruption corrupts localStorage, causing "enc:..." parse failures on load
+// and wiping resume data. Cloud (profiles.user_data) is protected by RLS.
+// localStorage is same-origin only. Encryption adds risk without meaningful benefit.
 var _encryptionKey: CryptoKey | null = null;
-var _PII_KEYS = ['bj_resumes'];
+var _PII_KEYS: string[] = [];
 
 /**
  * Derive an AES-GCM encryption key from the user's Supabase session ID.
@@ -288,13 +292,12 @@ function isPiiKey(lsKey: string): boolean {
 async function readPiiData(lsKey: string): Promise<unknown> {
   var raw = localStorage.getItem(lsKey);
   if (!raw) return null;
+  // BUGFIX-002: PII encryption removed. Clean up any leftover encrypted values
+  // so cloud recovery kicks in on next load.
   if (raw.startsWith('enc:')) {
-    if (!currentUser) return null; // Can't decrypt without user — don't parse enc: string
-    var decrypted = await decryptFromStorage(raw, currentUser.id);
-    if (decrypted) {
-      try { return JSON.parse(decrypted); } catch(e: unknown) { return null; }
-    }
-    return null; // Decryption failed — return null, never parse enc: as JSON
+    console.log('[pii] Removing leftover encrypted value for', lsKey);
+    localStorage.removeItem(lsKey);
+    return null;
   }
   try { return JSON.parse(raw); } catch(e: unknown) { return null; }
 }
@@ -309,7 +312,11 @@ function safeReadLS<T>(key: string, fallback: T): T {
   try {
     var raw = localStorage.getItem(key);
     if (!raw) return fallback;
-    if (raw.startsWith('enc:')) return fallback; // Encrypted — needs async readPiiData()
+    // BUGFIX-002: Clean up leftover encrypted values from disabled PII encryption
+    if (raw.startsWith('enc:')) {
+      localStorage.removeItem(key);
+      return fallback;
+    }
     return JSON.parse(raw);
   } catch(e: unknown) { return fallback; }
 }
@@ -454,21 +461,14 @@ function saveUserData(lsKey: string, jsonStr: string): boolean {
   if (bytes > 500 * 1024) {
     console.warn('[BJ] Storage warning: ' + lsKey + ' is ' + Math.round(bytes / 1024) + 'KB');
   }
-  // v5.16: Encrypt PII keys at rest in localStorage
-  if (isPiiKey(lsKey) && currentUser) {
-    encryptForStorage(jsonStr, currentUser.id).then(function(encrypted) {
-      try { localStorage.setItem(lsKey, encrypted); }
-      catch (e) { reportError('globals', e); console.error('[BJ] Storage full (encrypted):', (e as Error).message); _handleStorageFull(lsKey); }
-    });
-  } else {
-    try {
-      localStorage.setItem(lsKey, jsonStr);
-    } catch (e: unknown) {
-      reportError('globals', e);
-      console.error('[BJ] Storage full! Failed to save ' + lsKey + ':', (e as Error).message);
-      _handleStorageFull(lsKey);
-      return false;
-    }
+  // BUGFIX-002: PII encryption removed — write plaintext directly
+  try {
+    localStorage.setItem(lsKey, jsonStr);
+  } catch (e: unknown) {
+    reportError('globals', e);
+    console.error('[BJ] Storage full! Failed to save ' + lsKey + ':', (e as Error).message);
+    _handleStorageFull(lsKey);
+    return false;
   }
   const shortKey = UD_LS_TO_SHORT[lsKey];
   if (shortKey && currentUser) {
@@ -487,9 +487,10 @@ async function _flushUserData() {
     const lsKey = UD_KEYS[key];
     try {
       var raw = localStorage.getItem(lsKey) || 'null';
-      // v5.16: Decrypt PII before sending to cloud (cloud stays plaintext, protected by RLS)
-      if (isPiiKey(lsKey) && raw && raw.startsWith('enc:')) {
-        raw = await decryptFromStorage(raw, currentUser.id) || 'null';
+      // BUGFIX-002: Skip any leftover encrypted values — cloud already has plaintext
+      if (raw.startsWith('enc:')) {
+        console.log('[sync] Skipping encrypted value for', lsKey, 'during flush');
+        continue;
       }
       patch[key] = JSON.parse(raw);
     }
@@ -549,9 +550,12 @@ async function loadUserData(userId: string): Promise<void> {
     for (const [shortKey, lsKey] of Object.entries(UD_KEYS)) {
       const cloudVal = cloud[shortKey];
       let localVal = localStorage.getItem(lsKey);
-      // v5.16: Decrypt PII keys before comparing with cloud
-      if (isPiiKey(lsKey) && localVal && localVal.startsWith('enc:') && userId) {
-        localVal = await decryptFromStorage(localVal, userId) || localVal;
+      // BUGFIX-002: Clean up any leftover enc: values from disabled PII encryption
+      // These can't be parsed as JSON and would crash JSON.parse below
+      if (localVal && localVal.startsWith('enc:')) {
+        console.log('[sync] Removing leftover encrypted value for', lsKey, '— cloud recovery will restore');
+        localStorage.removeItem(lsKey);
+        localVal = null;
       }
       const localParsed = localVal ? JSON.parse(localVal) : null;
       const cloudEmpty = cloudVal == null || (Array.isArray(cloudVal) && cloudVal.length === 0) || (typeof cloudVal === 'object' && !Array.isArray(cloudVal) && Object.keys(cloudVal).length === 0);
@@ -560,14 +564,7 @@ async function loadUserData(userId: string): Promise<void> {
       if (!cloudEmpty && localEmpty) {
         // Cloud has data, local doesn't → pull from cloud
         var cloudJson = JSON.stringify(cloudVal);
-        // v5.16: Encrypt PII when writing cloud data to localStorage
-        if (isPiiKey(lsKey) && userId) {
-          encryptForStorage(cloudJson, userId).then(function(enc) {
-            localStorage.setItem(lsKey, enc);
-          });
-        } else {
-          localStorage.setItem(lsKey, cloudJson);
-        }
+        localStorage.setItem(lsKey, cloudJson);
         console.log('[sync] Pulled', shortKey, 'from cloud');
       } else if (cloudEmpty && !localEmpty) {
         // Local has data, cloud doesn't → queue sync up
@@ -18135,7 +18132,7 @@ function renderResumes() {
 
     // G26: Tier provenance badge
     const tierBadge = r.source === 'rewrite'
-      ? '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:linear-gradient(135deg,rgba(77,142,255,0.1),rgba(124,58,237,0.1));border:1px solid rgba(77,142,255,0.15);color:#4d8eff;cursor:help;" title="' + (r.tier_history || []).map(function(h) { return h.action + ' (' + h.tier + ')'; }).join(' → ') + '">✨ Premium Rewrite' + (r.rewrite_round > 1 ? ' R' + r.rewrite_round : '') + '</span>'
+      ? '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:linear-gradient(135deg,rgba(77,142,255,0.1),rgba(124,58,237,0.1));border:1px solid rgba(77,142,255,0.15);color:#4d8eff;cursor:help;" title="' + (r.tier_history || []).map(function(h) { return h.action + ' (' + h.tier + ')'; }).join(' → ') + '"><i data-lucide="sparkles" class="icon-xs icon-stroke" style="display:inline-block;vertical-align:middle;"></i> Premium Rewrite' + (r.rewrite_round > 1 ? ' R' + r.rewrite_round : '') + '</span>'
       : '';
 
     // v6.38: AI content detection badge
@@ -18160,7 +18157,7 @@ function renderResumes() {
         'id="rescore-btn-' + i + '" ' +
         'style="font-size:9px;font-weight:600;padding:2px 8px;border-radius:4px;background:rgba(99,102,241,0.1);color:#6366f1;border:1px solid rgba(99,102,241,0.15);cursor:' + (isCooldown ? 'not-allowed' : 'pointer') + ';margin-left:4px;' + (isCooldown ? 'opacity:0.5;' : '') + '" ' +
         'title="' + (isCooldown ? 'Cooldown: wait ' + cooldownSec + 's' : 'Re-analyze for AI content') + '" ' +
-        (isCooldown ? 'disabled' : '') + '>\u{1F504} Rescore</button>';
+        (isCooldown ? 'disabled' : '') + '><i data-lucide="refresh-cw" class="icon-xs icon-stroke" style="display:inline-block;vertical-align:middle;"></i> Rescore</button>';
     }
 
     // v6.39: Score history (previous vs current)
@@ -18183,7 +18180,7 @@ function renderResumes() {
       if (hasCache) {
         gradeHtml = `<div class="rc-grade-slot" id="rc-grade-${i}">${buildInlineGrade(i, readinessCache.scores[i])}</div>`;
       } else if (r.textStatus === 'no-text' && r.fileName && /\.docx?$/i.test(r.fileName)) {
-        gradeHtml = `<div class="rc-grade-slot" id="rc-grade-${i}"><div style="font-size:11px;color:var(--red);cursor:pointer;" onclick="reUploadResume(${i})" title="File needs re-upload for text extraction">⚠ Re-upload file to enable scoring <span style="text-decoration:underline;">Click here</span></div></div>`;
+        gradeHtml = `<div class="rc-grade-slot" id="rc-grade-${i}"><div style="font-size:11px;color:var(--red);cursor:pointer;" onclick="reUploadResume(${i})" title="File needs re-upload for text extraction"><i data-lucide="triangle-alert" class="icon-xs icon-stroke" style="display:inline-block;vertical-align:middle;color:var(--red);"></i> Re-upload file to enable scoring <span style="text-decoration:underline;">Click here</span></div></div>`;
       } else if (r.textStatus === 'ready' && r.keywords && r.keywords.length > 0 && assignedIds.length > 0) {
         gradeHtml = `<div class="rc-grade-slot" id="rc-grade-${i}"><div style="font-size:10px;color:var(--text-faint);font-style:italic;">Analyzing\u2026</div></div>`;
       } else if (r.textStatus === 'ready' && r.keywords && r.keywords.length > 0 && assignedIds.length === 0) {
@@ -18231,7 +18228,7 @@ function renderResumes() {
     return `
     <div class="new-resume-item ${isPlaceholder ? 'is-placeholder' : ''}" id="nri-${i}" onclick="toggleResumePanel(${i}, event)">
       <div class="nri-row">
-        <span class="sf-del" onclick="event.stopPropagation();confirmDeleteResume(${i})" title="Delete">✕</span>
+        <span class="sf-del" onclick="event.stopPropagation();confirmDeleteResume(${i})" title="Delete"><i data-lucide="x" class="icon-xs icon-stroke"></i></span>
         <div class="nri-icon ${icon.cls}">${isPlaceholder ? '?' : icon.text}</div>
         <div class="nri-info">
           <div class="nri-name" title="${escapeHtml(r.name||'')}">${escapeHtml(r.name)}${gdriveIcon}${tierBadge}${aiBadge}${scoreHistory}${rescoreBtn}</div>
@@ -18241,9 +18238,9 @@ function renderResumes() {
         <div class="nri-score ${scoreClass}">${scoreDisplay}</div>
         <div class="nri-actions" onclick="event.stopPropagation()">
           <button onclick="openAssignPopover(${i}, this)" title="Manage filter assignment"><i data-lucide="link" class="icon-sm icon-stroke"></i></button>
-          <button onclick="downloadResume(${i})" title="Download">⬇</button>
-          <button onclick="renameResume(${i})" title="Rename">✎</button>
-          <button onclick="archiveResume(${i})" title="Archive">📦</button>
+          <button onclick="downloadResume(${i})" title="Download"><i data-lucide="download" class="icon-sm icon-stroke"></i></button>
+          <button onclick="renameResume(${i})" title="Rename"><i data-lucide="pencil" class="icon-sm icon-stroke"></i></button>
+          <button onclick="archiveResume(${i})" title="Archive"><i data-lucide="archive" class="icon-sm icon-stroke"></i></button>
         </div>
       </div>
       <div class="rc-grade-slot" id="rc-grade-${i}" style="display:none;"></div>
@@ -18372,7 +18369,7 @@ function renderResumeArchive(archivedResumes) {
     }).filter(Boolean).join(' ') || '';
 
     return `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--bg-input);">
-      <span class="sf-del" onclick="confirmDeleteResume(${i})" title="Delete" style="opacity:0.4;font-size:11px;color:var(--text-faint);cursor:pointer;width:20px;text-align:center;flex-shrink:0;border-radius:4px;">✕</span>
+      <span class="sf-del" onclick="confirmDeleteResume(${i})" title="Delete" style="opacity:0.4;font-size:11px;color:var(--text-faint);cursor:pointer;width:20px;text-align:center;flex-shrink:0;border-radius:4px;"><i data-lucide="x" class="icon-xs icon-stroke"></i></span>
       <div style="flex:1;min-width:0;">
         <div style="font-size:12px;font-weight:600;color:var(--text-dim);display:flex;align-items:center;gap:6px;">${filterBadges} ${r.name} ${levelBadge}</div>
         <div style="font-size:10px;color:var(--text-faint);">Uploaded ${r.uploadedAt || '—'} · Archived ${r.archivedAt || '—'}</div>
@@ -19063,7 +19060,7 @@ window.rescoreResumeAI = function(idx) {
     btn.style.opacity = '0.5';
     btn.style.cursor = 'not-allowed';
     btn.title = 'Rescoring…';
-    btn.innerHTML = '\u{1F504} Rescoring…';
+    btn.innerHTML = '<i data-lucide="refresh-cw" class="icon-xs icon-stroke" style="display:inline-block;vertical-align:middle;animation:spin 1s linear infinite;"></i> Rescoring…'; if (typeof window.refreshIcons === 'function') window.refreshIcons();
   }
   // Start cooldown countdown
   _startRescoreCooldown(idx);
@@ -19082,12 +19079,12 @@ function _startRescoreCooldown(idx) {
       btn.style.opacity = '1';
       btn.style.cursor = 'pointer';
       btn.title = 'Re-analyze for AI content';
-      btn.innerHTML = '\u{1F504} Rescore';
+      btn.innerHTML = '<i data-lucide="refresh-cw" class="icon-xs icon-stroke" style="display:inline-block;vertical-align:middle;"></i> Rescore'; if (typeof window.refreshIcons === 'function') window.refreshIcons();
       clearInterval(interval);
     } else {
       const sec = Math.ceil(remaining / 1000);
       btn.title = 'Cooldown: wait ' + sec + 's';
-      btn.innerHTML = '\u{1F504} ' + sec + 's';
+      btn.innerHTML = '<i data-lucide="refresh-cw" class="icon-xs icon-stroke" style="display:inline-block;vertical-align:middle;"></i> ' + sec + 's'; if (typeof window.refreshIcons === 'function') window.refreshIcons();
     }
   }, 1000);
 }

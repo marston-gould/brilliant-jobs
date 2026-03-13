@@ -188,8 +188,12 @@ function toastInfo(msg: string, opts?: Partial<ToastOptions>): HTMLElement { ret
 // Encrypts sensitive data at rest using AES-GCM with a key derived from the user's session.
 // Only PII keys are encrypted: resume text, keywords, LinkedIn profile data.
 
+// PII encryption disabled (BUGFIX-002): async encrypt/write cycle is fragile —
+// any interruption corrupts localStorage, causing "enc:..." parse failures on load
+// and wiping resume data. Cloud (profiles.user_data) is protected by RLS.
+// localStorage is same-origin only. Encryption adds risk without meaningful benefit.
 var _encryptionKey: CryptoKey | null = null;
-var _PII_KEYS = ['bj_resumes'];
+var _PII_KEYS: string[] = [];
 
 /**
  * Derive an AES-GCM encryption key from the user's Supabase session ID.
@@ -271,13 +275,12 @@ function isPiiKey(lsKey: string): boolean {
 async function readPiiData(lsKey: string): Promise<unknown> {
   var raw = localStorage.getItem(lsKey);
   if (!raw) return null;
+  // BUGFIX-002: PII encryption removed. Clean up any leftover encrypted values
+  // so cloud recovery kicks in on next load.
   if (raw.startsWith('enc:')) {
-    if (!currentUser) return null; // Can't decrypt without user — don't parse enc: string
-    var decrypted = await decryptFromStorage(raw, currentUser.id);
-    if (decrypted) {
-      try { return JSON.parse(decrypted); } catch(e: unknown) { return null; }
-    }
-    return null; // Decryption failed — return null, never parse enc: as JSON
+    console.log('[pii] Removing leftover encrypted value for', lsKey);
+    localStorage.removeItem(lsKey);
+    return null;
   }
   try { return JSON.parse(raw); } catch(e: unknown) { return null; }
 }
@@ -292,7 +295,11 @@ function safeReadLS<T>(key: string, fallback: T): T {
   try {
     var raw = localStorage.getItem(key);
     if (!raw) return fallback;
-    if (raw.startsWith('enc:')) return fallback; // Encrypted — needs async readPiiData()
+    // BUGFIX-002: Clean up leftover encrypted values from disabled PII encryption
+    if (raw.startsWith('enc:')) {
+      localStorage.removeItem(key);
+      return fallback;
+    }
     return JSON.parse(raw);
   } catch(e: unknown) { return fallback; }
 }
@@ -437,21 +444,14 @@ function saveUserData(lsKey: string, jsonStr: string): boolean {
   if (bytes > 500 * 1024) {
     console.warn('[BJ] Storage warning: ' + lsKey + ' is ' + Math.round(bytes / 1024) + 'KB');
   }
-  // v5.16: Encrypt PII keys at rest in localStorage
-  if (isPiiKey(lsKey) && currentUser) {
-    encryptForStorage(jsonStr, currentUser.id).then(function(encrypted) {
-      try { localStorage.setItem(lsKey, encrypted); }
-      catch (e) { reportError('globals', e); console.error('[BJ] Storage full (encrypted):', (e as Error).message); _handleStorageFull(lsKey); }
-    });
-  } else {
-    try {
-      localStorage.setItem(lsKey, jsonStr);
-    } catch (e: unknown) {
-      reportError('globals', e);
-      console.error('[BJ] Storage full! Failed to save ' + lsKey + ':', (e as Error).message);
-      _handleStorageFull(lsKey);
-      return false;
-    }
+  // BUGFIX-002: PII encryption removed — write plaintext directly
+  try {
+    localStorage.setItem(lsKey, jsonStr);
+  } catch (e: unknown) {
+    reportError('globals', e);
+    console.error('[BJ] Storage full! Failed to save ' + lsKey + ':', (e as Error).message);
+    _handleStorageFull(lsKey);
+    return false;
   }
   const shortKey = UD_LS_TO_SHORT[lsKey];
   if (shortKey && currentUser) {
@@ -470,9 +470,10 @@ async function _flushUserData() {
     const lsKey = UD_KEYS[key];
     try {
       var raw = localStorage.getItem(lsKey) || 'null';
-      // v5.16: Decrypt PII before sending to cloud (cloud stays plaintext, protected by RLS)
-      if (isPiiKey(lsKey) && raw && raw.startsWith('enc:')) {
-        raw = await decryptFromStorage(raw, currentUser.id) || 'null';
+      // BUGFIX-002: Skip any leftover encrypted values — cloud already has plaintext
+      if (raw.startsWith('enc:')) {
+        console.log('[sync] Skipping encrypted value for', lsKey, 'during flush');
+        continue;
       }
       patch[key] = JSON.parse(raw);
     }
@@ -532,9 +533,12 @@ async function loadUserData(userId: string): Promise<void> {
     for (const [shortKey, lsKey] of Object.entries(UD_KEYS)) {
       const cloudVal = cloud[shortKey];
       let localVal = localStorage.getItem(lsKey);
-      // v5.16: Decrypt PII keys before comparing with cloud
-      if (isPiiKey(lsKey) && localVal && localVal.startsWith('enc:') && userId) {
-        localVal = await decryptFromStorage(localVal, userId) || localVal;
+      // BUGFIX-002: Clean up any leftover enc: values from disabled PII encryption
+      // These can't be parsed as JSON and would crash JSON.parse below
+      if (localVal && localVal.startsWith('enc:')) {
+        console.log('[sync] Removing leftover encrypted value for', lsKey, '— cloud recovery will restore');
+        localStorage.removeItem(lsKey);
+        localVal = null;
       }
       const localParsed = localVal ? JSON.parse(localVal) : null;
       const cloudEmpty = cloudVal == null || (Array.isArray(cloudVal) && cloudVal.length === 0) || (typeof cloudVal === 'object' && !Array.isArray(cloudVal) && Object.keys(cloudVal).length === 0);
@@ -543,14 +547,7 @@ async function loadUserData(userId: string): Promise<void> {
       if (!cloudEmpty && localEmpty) {
         // Cloud has data, local doesn't → pull from cloud
         var cloudJson = JSON.stringify(cloudVal);
-        // v5.16: Encrypt PII when writing cloud data to localStorage
-        if (isPiiKey(lsKey) && userId) {
-          encryptForStorage(cloudJson, userId).then(function(enc) {
-            localStorage.setItem(lsKey, enc);
-          });
-        } else {
-          localStorage.setItem(lsKey, cloudJson);
-        }
+        localStorage.setItem(lsKey, cloudJson);
         console.log('[sync] Pulled', shortKey, 'from cloud');
       } else if (cloudEmpty && !localEmpty) {
         // Local has data, cloud doesn't → queue sync up
