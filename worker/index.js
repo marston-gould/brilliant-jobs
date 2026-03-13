@@ -151,6 +151,28 @@ async function processApplication(app) {
       id: app.id, jobTitle: app.job_title, company: app.company_name, jobUrl: app.job_url,
     });
 
+    // ── Pre-flight: Check if job posting still exists ──
+    try {
+      const urlCheck = await fetch(app.job_url, {
+        method: 'HEAD',
+        redirect: 'manual',
+        signal: AbortSignal.timeout(10000),
+      });
+      if (urlCheck.status === 404 || urlCheck.status === 410) {
+        logger.warn('Job posting no longer exists', { id: app.id, status: urlCheck.status, url: app.job_url });
+        await failApplication(app, 'posting_expired', `Job posting returned ${urlCheck.status} — no longer accepting applications`, startTime);
+        // Move pipeline entry to posting_closed
+        await sb.from('user_pipeline')
+          .update({ stage: 'posting_closed' })
+          .eq('user_id', app.user_id)
+          .eq('job_id', app.job_id);
+        return;
+      }
+    } catch (urlErr) {
+      // Network error on URL check is not fatal — proceed with submission attempt
+      logger.warn('URL pre-flight check failed (proceeding anyway)', { id: app.id, error: urlErr.message });
+    }
+
     // ── Fetch user profile ──
     const { data: profileRow } = await sb
       .from('profiles')

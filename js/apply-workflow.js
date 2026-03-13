@@ -1740,7 +1740,9 @@ function renderPendingApplications() {
 
     var statusBadge = '';
     if (app.status === APPLY_STATUS.FAILED) {
-      statusBadge = '<span class="pa-badge pa-badge-failed">Failed — Retry?</span>';
+      var errorMsg = app.submission_error || 'Submission failed';
+      statusBadge = '<span class="pa-badge pa-badge-failed">Failed</span>' +
+        '<div style="font-size:11px;color:var(--danger);margin-top:4px;">' + escapeHtml(errorMsg) + '</div>';
     } else if (app.status === APPLY_STATUS.APPROVED) {
       statusBadge = '<span class="pa-badge" style="background:var(--warm);color:#fff;">Queued for Worker</span>';
     } else if (app.status === APPLY_STATUS.PROCESSING) {
@@ -1752,10 +1754,12 @@ function renderPendingApplications() {
       // Worker is handling — show spinner status
       actionsHtml = '<span style="font-size:11px;color:var(--muted);"><i data-lucide="loader-2" class="icon-sm" style="animation:spin 1s linear infinite;display:inline-block;vertical-align:middle;margin-right:4px;"></i>Processing...</span>';
     } else if (app.status === APPLY_STATUS.FAILED) {
-      // Failed: show retry
+      // Failed: show retry + manual apply link
+      var manualLink = app.job_url ? '<a href="' + escapeHtml(app.job_url) + '" target="_blank" class="pa-btn pa-btn-secondary" style="text-decoration:none;">Apply Manually</a>' : '';
       actionsHtml =
-        '<button class="pa-btn pa-btn-primary" onclick="retryPendingApp(\'' + app.id + '\')">Retry Submit</button>' +
-        '<button class="pa-btn pa-btn-ghost" onclick="skipPendingApp(\'' + app.id + '\')">Skip</button>';
+        manualLink +
+        '<button class="pa-btn pa-btn-primary" onclick="retryPendingApp(\'' + app.id + '\')">Retry</button>' +
+        '<button class="pa-btn pa-btn-ghost" onclick="skipPendingApp(\'' + app.id + '\')">Dismiss</button>';
     } else if (app.approval_mode === 'rewrite_review') {
       actionsHtml = 
         '<button class="pa-btn pa-btn-primary" onclick="approveRewrittenApp(\'' + app.id + '\')">Submit Rewritten</button>' +
