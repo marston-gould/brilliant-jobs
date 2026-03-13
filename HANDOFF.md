@@ -2490,7 +2490,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority â€
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.82`** | **GS-SETUP-V2-FIX: Move integrations.js to shell chunk** |
+| **Product (BJ_VERSION)** | **`v8.83`** | **FEED-UX-001: Feed layout fixes (4 bugs)** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

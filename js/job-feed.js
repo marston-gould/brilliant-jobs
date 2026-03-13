@@ -2651,7 +2651,7 @@ function renderJobRows(jobs, total, page, filtersToRun) {
       <td class="jt-salary">${formatSalaryCell(job)}</td>
       <td class="jt-days" style="${daysClass}">${daysStr}</td>
       <td class="jt-match"${job._aiScoringExcluded ? ' style="opacity:0.3;" title="Match score excluded per your AI content preferences"' : ''}>${typeof matchBadgeWithBoost==='function'?matchBadgeWithBoost(jobMatchScores[job.greenhouse_id],job.greenhouse_id,job.title,job.company_name):matchBadge(jobMatchScores[job.greenhouse_id])}</td>
-      <td><div style="white-space:nowrap;display:flex;gap:4px;align-items:center;">
+      <td class="jt-actions"><div style="white-space:nowrap;display:flex;gap:4px;align-items:center;">
         ${saveBtn}${applyBtn}
       </div></td>
     </tr>

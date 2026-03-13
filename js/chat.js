@@ -210,6 +210,14 @@ function setSearchMode(mode) {
   if (filtersBtn) filtersBtn.classList.toggle('active', !_chatMode);
   if (chatBtn) chatBtn.classList.toggle('active', _chatMode);
 
+  // GS-SETUP-V2: Update AI CTA label for current mode
+  var aiCtaTitle = document.getElementById('ai-cta-title');
+  var aiCtaSub = document.getElementById('ai-cta-sub');
+  if (aiCtaTitle) aiCtaTitle.textContent = _chatMode ? 'Generate prompt from your resume' : 'Generate filters from your resume';
+  if (aiCtaSub) aiCtaSub.textContent = _chatMode
+    ? 'AI reads your resume and creates a natural language search prompt automatically'
+    : 'AI reads your resume and creates keyword, location, and level filters automatically';
+
   // Crossfade panels
   var filterPanel = document.getElementById('filter-panel-wrap');
   var chatPanel = document.getElementById('chat-panel');

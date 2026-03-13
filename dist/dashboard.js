@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.82';
+var BJ_VERSION = 'v8.83';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -6641,7 +6641,7 @@ function renderJobRows(jobs, total, page, filtersToRun) {
       <td class="jt-salary">${formatSalaryCell(job)}</td>
       <td class="jt-days" style="${daysClass}">${daysStr}</td>
       <td class="jt-match"${job._aiScoringExcluded ? ' style="opacity:0.3;" title="Match score excluded per your AI content preferences"' : ''}>${typeof matchBadgeWithBoost==='function'?matchBadgeWithBoost(jobMatchScores[job.greenhouse_id],job.greenhouse_id,job.title,job.company_name):matchBadge(jobMatchScores[job.greenhouse_id])}</td>
-      <td><div style="white-space:nowrap;display:flex;gap:4px;align-items:center;">
+      <td class="jt-actions"><div style="white-space:nowrap;display:flex;gap:4px;align-items:center;">
         ${saveBtn}${applyBtn}
       </div></td>
     </tr>
@@ -26035,6 +26035,14 @@ function setSearchMode(mode) {
   // Update toggle state
   if (filtersBtn) filtersBtn.classList.toggle('active', !_chatMode);
   if (chatBtn) chatBtn.classList.toggle('active', _chatMode);
+
+  // GS-SETUP-V2: Update AI CTA label for current mode
+  var aiCtaTitle = document.getElementById('ai-cta-title');
+  var aiCtaSub = document.getElementById('ai-cta-sub');
+  if (aiCtaTitle) aiCtaTitle.textContent = _chatMode ? 'Generate prompt from your resume' : 'Generate filters from your resume';
+  if (aiCtaSub) aiCtaSub.textContent = _chatMode
+    ? 'AI reads your resume and creates a natural language search prompt automatically'
+    : 'AI reads your resume and creates keyword, location, and level filters automatically';
 
   // Crossfade panels
   var filterPanel = document.getElementById('filter-panel-wrap');

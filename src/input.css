@@ -1424,6 +1424,7 @@
     .job-table th[data-sort="level"].sorted { color: #06b6d4; }
     .job-table th[data-sort="ghost"].sorted { color: var(--red); }
     .job-table td { padding: 10px 12px; font-size: 13px; border-block-end: 1px solid var(--border); color: var(--text-dim); vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .job-table td.jt-actions { overflow: visible; white-space: nowrap; }
     .job-table tr:hover td { background: var(--bg-hover); }
     .job-table tr.job-snippet-row { display: none; }
     .job-table tr.job-snippet-row td {
