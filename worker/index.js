@@ -299,7 +299,7 @@ async function failApplication(app, errorType, errorDetail, startTime) {
     await sb.from('pending_applications')
       .update({ status: 'failed' })
       .eq('id', app.id);
-  } catch (_) {}
+  } catch (e) { logger.warn('Failed to update pending_application status', { id: app.id, error: e.message }); }
 
   try {
     await sb.from('submission_attempts').insert({
@@ -316,7 +316,7 @@ async function failApplication(app, errorType, errorDetail, startTime) {
       error_detail: errorDetail,
       duration_ms: durationMs,
     });
-  } catch (_) {}
+  } catch (e) { logger.warn('Failed to log submission failure', { id: app.id, error: e.message }); }
 }
 
 // ══════════════════════════════════════════════════════════════
