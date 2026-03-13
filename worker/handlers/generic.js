@@ -28,6 +28,16 @@ export async function fillGeneric(page, jobUrl, profile, resumePath, opts = {}) 
       await randomDelay(1500, 3000);
     }
 
+    // ── Pre-flight: verify form + submit button exist before filling ──
+    const preflightSubmit = await page.$('button[type="submit"], input[type="submit"], button:has-text("Submit"), button:has-text("Apply")');
+    const formCheck = await page.$('form, [role="form"]');
+    if (!formCheck && !preflightSubmit) {
+      warn('Pre-flight failed: no form or submit button found — aborting before fill');
+      const state = await capturePageState(page);
+      if (sb) await captureFailureScreenshot(page, sb, userId, jobId, 'generic-preflight-fail');
+      return { status: 'error', error: 'no_application_form', detail: `No application form found. Page: ${state.title}` };
+    }
+
     // Fill fields by label/placeholder/name heuristics
     const nameParts = (profile.name || '').trim().split(/\s+/);
 

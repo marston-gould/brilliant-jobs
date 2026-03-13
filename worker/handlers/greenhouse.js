@@ -40,6 +40,16 @@ export async function fillGreenhouse(page, jobUrl, profile, resumePath, opts = {
     const isReact = await page.$('[data-reactroot], [id="react-app"], #__next') !== null;
     log('Form type detected', { isReact });
 
+    // ── Pre-flight: verify application form + submit button exist before filling ──
+    const formEl = await page.$('#application_form, form[id*="application"], #s2_app, form[action*="application"], form');
+    const preflightSubmit = await page.$('input[type="submit"], button[type="submit"], #submit_app, button:has-text("Submit Application"), button:has-text("Submit"), input[value="Submit Application"]');
+    if (!formEl && !preflightSubmit) {
+      warn('Pre-flight failed: no form or submit button found — aborting before fill');
+      const state = await capturePageState(page);
+      if (sb) await captureFailureScreenshot(page, sb, userId, jobId, 'gh-preflight-fail');
+      return { status: 'error', error: 'no_application_form', detail: `No application form found. Page: ${state.title}` };
+    }
+
     // ── Fill standard fields ──
 
     // First name / Last name (split from profile.name)

@@ -35,6 +35,16 @@ export async function fillLever(page, jobUrl, profile, resumePath, opts = {}) {
       }
     }
 
+    // ── Pre-flight: verify submit button exists before filling ──
+    const preflightSubmit = await page.$('button[type="submit"], button:has-text("Submit application"), button:has-text("Submit"), input[type="submit"]');
+    const formCheck = await page.$('.application-form, form[action*="apply"], #application-form, form');
+    if (!formCheck && !preflightSubmit) {
+      warn('Pre-flight failed: no form or submit button found — aborting before fill');
+      const state = await capturePageState(page);
+      if (sb) await captureFailureScreenshot(page, sb, userId, jobId, 'lever-preflight-fail');
+      return { status: 'error', error: 'no_application_form', detail: `No application form found. Page: ${state.title}` };
+    }
+
     // ── Fill standard fields ──
     // Lever uses name="name" for full name (single field)
     await tryFill(page, 'input[name="name"], #resume-name, input[placeholder*="Full name"]', profile.name, log);

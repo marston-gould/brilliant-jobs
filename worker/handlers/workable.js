@@ -33,6 +33,16 @@ export async function fillWorkable(page, jobUrl, profile, resumePath, opts = {})
     // Wait for form
     await page.waitForSelector('form, [data-ui="application-form"]', { timeout: 15000 }).catch(() => {});
 
+    // ── Pre-flight: verify form + submit button exist before filling ──
+    const preflightSubmit = await page.$('[data-ui="submit-application"], button[type="submit"], button:has-text("Submit"), input[type="submit"]');
+    const formCheck = await page.$('form, [data-ui="application-form"]');
+    if (!formCheck && !preflightSubmit) {
+      warn('Pre-flight failed: no form or submit button found — aborting before fill');
+      const state = await capturePageState(page);
+      if (sb) await captureFailureScreenshot(page, sb, userId, jobId, 'workable-preflight-fail');
+      return { status: 'error', error: 'no_application_form', detail: `No application form found on Workable. Page: ${state.title}` };
+    }
+
     // ── Fill fields ──
     // Workable uses data-ui="firstname", data-ui="lastname", etc.
     const nameParts = (profile.name || '').trim().split(/\s+/);

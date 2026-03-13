@@ -32,6 +32,16 @@ export async function fillAshby(page, jobUrl, profile, resumePath, opts = {}) {
     // Wait for form to render (React)
     await page.waitForSelector('form, [role="form"], input[name="_systemfield_name"]', { timeout: 15000 }).catch(() => {});
 
+    // ── Pre-flight: verify form + submit button exist before filling ──
+    const preflightSubmit = await page.$('button[type="submit"], button:has-text("Submit"), button:has-text("Submit Application")');
+    const formCheck = await page.$('form, [role="form"], input[name="_systemfield_name"]');
+    if (!formCheck && !preflightSubmit) {
+      warn('Pre-flight failed: no form or submit button found — aborting before fill');
+      const state = await capturePageState(page);
+      if (sb) await captureFailureScreenshot(page, sb, userId, jobId, 'ashby-preflight-fail');
+      return { status: 'error', error: 'no_application_form', detail: `No application form found on Ashby. Page: ${state.title}` };
+    }
+
     // ── Fill fields ──
     // Ashby uses _systemfield_ prefix for standard fields
     await tryFill(page, 'input[name="_systemfield_name"], input[name="name"], input[placeholder*="Full name"]', profile.name, log);
