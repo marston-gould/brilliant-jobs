@@ -235,23 +235,25 @@ async function processApplication(app) {
     const durationMs = Date.now() - startTime;
 
     // ── Log to submission_attempts ──
-    await sb.from('submission_attempts').insert({
-      user_id: app.user_id,
-      pending_app_id: app.id,
-      job_id: app.job_id,
-      job_title: app.job_title,
-      company_name: app.company_name,
-      job_url: app.job_url,
-      ats_source: result.ats_name || 'unknown',
-      resume_id: app.resume_id,
-      submission_method: 'headless',
-      status: result.status,
-      error_type: result.error || null,
-      error_detail: result.detail || null,
-      duration_ms: durationMs,
-      confirmation_id: result.confirmationId || null,
-      response_body: result,
-    }).catch(e => logger.warn('Instrumentation insert failed', { error: e.message }));
+    try {
+      await sb.from('submission_attempts').insert({
+        user_id: app.user_id,
+        pending_app_id: app.id,
+        job_id: app.job_id,
+        job_title: app.job_title,
+        company_name: app.company_name,
+        job_url: app.job_url,
+        ats_source: result.ats_name || 'unknown',
+        resume_id: app.resume_id,
+        submission_method: 'headless',
+        status: result.status,
+        error_type: result.error || null,
+        error_detail: result.detail || null,
+        duration_ms: durationMs,
+        confirmation_id: result.confirmationId || null,
+        response_body: result,
+      });
+    } catch (e) { logger.warn('Instrumentation insert failed', { error: e.message }); }
 
     // ── Update pending_application ──
     const newStatus = result.status === 'submitted' ? 'submitted' : 'failed';
@@ -293,25 +295,28 @@ async function processApplication(app) {
 
 async function failApplication(app, errorType, errorDetail, startTime) {
   const durationMs = Date.now() - startTime;
-  await sb.from('pending_applications')
-    .update({ status: 'failed' })
-    .eq('id', app.id)
-    .catch(() => {});
+  try {
+    await sb.from('pending_applications')
+      .update({ status: 'failed' })
+      .eq('id', app.id);
+  } catch (_) {}
 
-  await sb.from('submission_attempts').insert({
-    user_id: app.user_id,
-    pending_app_id: app.id,
-    job_id: app.job_id,
-    job_title: app.job_title,
-    company_name: app.company_name,
-    job_url: app.job_url,
-    ats_source: 'unknown',
-    submission_method: 'headless',
-    status: 'error',
-    error_type: errorType,
-    error_detail: errorDetail,
-    duration_ms: durationMs,
-  }).catch(() => {});
+  try {
+    await sb.from('submission_attempts').insert({
+      user_id: app.user_id,
+      pending_app_id: app.id,
+      job_id: app.job_id,
+      job_title: app.job_title,
+      company_name: app.company_name,
+      job_url: app.job_url,
+      ats_source: 'unknown',
+      submission_method: 'headless',
+      status: 'error',
+      error_type: errorType,
+      error_detail: errorDetail,
+      duration_ms: durationMs,
+    });
+  } catch (_) {}
 }
 
 // ══════════════════════════════════════════════════════════════
