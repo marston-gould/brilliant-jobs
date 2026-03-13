@@ -218,7 +218,7 @@ function renderResumes() {
 
     // G26: Tier provenance badge
     const tierBadge = r.source === 'rewrite'
-      ? '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:linear-gradient(135deg,rgba(77,142,255,0.1),rgba(124,58,237,0.1));border:1px solid rgba(77,142,255,0.15);color:#4d8eff;cursor:help;" title="' + (r.tier_history || []).map(function(h) { return h.action + ' (' + h.tier + ')'; }).join(' → ') + '">✨ Premium Rewrite' + (r.rewrite_round > 1 ? ' R' + r.rewrite_round : '') + '</span>'
+      ? '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:linear-gradient(135deg,rgba(77,142,255,0.1),rgba(124,58,237,0.1));border:1px solid rgba(77,142,255,0.15);color:#4d8eff;cursor:help;" title="' + (r.tier_history || []).map(function(h) { return h.action + ' (' + h.tier + ')'; }).join(' → ') + '"><i data-lucide="sparkles" class="icon-xs icon-stroke" style="display:inline-block;vertical-align:middle;"></i> Premium Rewrite' + (r.rewrite_round > 1 ? ' R' + r.rewrite_round : '') + '</span>'
       : '';
 
     // v6.38: AI content detection badge
@@ -243,7 +243,7 @@ function renderResumes() {
         'id="rescore-btn-' + i + '" ' +
         'style="font-size:9px;font-weight:600;padding:2px 8px;border-radius:4px;background:rgba(99,102,241,0.1);color:#6366f1;border:1px solid rgba(99,102,241,0.15);cursor:' + (isCooldown ? 'not-allowed' : 'pointer') + ';margin-left:4px;' + (isCooldown ? 'opacity:0.5;' : '') + '" ' +
         'title="' + (isCooldown ? 'Cooldown: wait ' + cooldownSec + 's' : 'Re-analyze for AI content') + '" ' +
-        (isCooldown ? 'disabled' : '') + '>\u{1F504} Rescore</button>';
+        (isCooldown ? 'disabled' : '') + '><i data-lucide="refresh-cw" class="icon-xs icon-stroke" style="display:inline-block;vertical-align:middle;"></i> Rescore</button>';
     }
 
     // v6.39: Score history (previous vs current)
@@ -314,7 +314,7 @@ function renderResumes() {
     return `
     <div class="new-resume-item ${isPlaceholder ? 'is-placeholder' : ''}" id="nri-${i}" onclick="toggleResumePanel(${i}, event)">
       <div class="nri-row">
-        <span class="sf-del" onclick="event.stopPropagation();confirmDeleteResume(${i})" title="Delete">✕</span>
+        <span class="sf-del" onclick="event.stopPropagation();confirmDeleteResume(${i})" title="Delete"><i data-lucide="x" class="icon-xs icon-stroke"></i></span>
         <div class="nri-icon ${icon.cls}">${isPlaceholder ? '?' : icon.text}</div>
         <div class="nri-info">
           <div class="nri-name" title="${escapeHtml(r.name||'')}">${escapeHtml(r.name)}${gdriveIcon}${tierBadge}${aiBadge}${scoreHistory}${rescoreBtn}</div>
@@ -324,9 +324,9 @@ function renderResumes() {
         <div class="nri-score ${scoreClass}">${scoreDisplay}</div>
         <div class="nri-actions" onclick="event.stopPropagation()">
           <button onclick="openAssignPopover(${i}, this)" title="Manage filter assignment"><i data-lucide="link" class="icon-sm icon-stroke"></i></button>
-          <button onclick="downloadResume(${i})" title="Download">⬇</button>
-          <button onclick="renameResume(${i})" title="Rename">✎</button>
-          <button onclick="archiveResume(${i})" title="Archive">📦</button>
+          <button onclick="downloadResume(${i})" title="Download"><i data-lucide="download" class="icon-sm icon-stroke"></i></button>
+          <button onclick="renameResume(${i})" title="Rename"><i data-lucide="pencil" class="icon-sm icon-stroke"></i></button>
+          <button onclick="archiveResume(${i})" title="Archive"><i data-lucide="archive" class="icon-sm icon-stroke"></i></button>
         </div>
       </div>
       <div class="rc-grade-slot" id="rc-grade-${i}" style="display:none;"></div>
@@ -1146,7 +1146,7 @@ window.rescoreResumeAI = function(idx) {
     btn.style.opacity = '0.5';
     btn.style.cursor = 'not-allowed';
     btn.title = 'Rescoring…';
-    btn.innerHTML = '\u{1F504} Rescoring…';
+    btn.innerHTML = '<i data-lucide="refresh-cw" class="icon-xs icon-stroke" style="display:inline-block;vertical-align:middle;animation:spin 1s linear infinite;"></i> Rescoring…'; if (typeof window.refreshIcons === 'function') window.refreshIcons();
   }
   // Start cooldown countdown
   _startRescoreCooldown(idx);
@@ -1165,12 +1165,12 @@ function _startRescoreCooldown(idx) {
       btn.style.opacity = '1';
       btn.style.cursor = 'pointer';
       btn.title = 'Re-analyze for AI content';
-      btn.innerHTML = '\u{1F504} Rescore';
+      btn.innerHTML = '<i data-lucide="refresh-cw" class="icon-xs icon-stroke" style="display:inline-block;vertical-align:middle;"></i> Rescore'; if (typeof window.refreshIcons === 'function') window.refreshIcons();
       clearInterval(interval);
     } else {
       const sec = Math.ceil(remaining / 1000);
       btn.title = 'Cooldown: wait ' + sec + 's';
-      btn.innerHTML = '\u{1F504} ' + sec + 's';
+      btn.innerHTML = '<i data-lucide="refresh-cw" class="icon-xs icon-stroke" style="display:inline-block;vertical-align:middle;"></i> ' + sec + 's'; if (typeof window.refreshIcons === 'function') window.refreshIcons();
     }
   }, 1000);
 }
