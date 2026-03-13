@@ -1328,6 +1328,7 @@ async function loadRecruiterContacts() {
 (function() {
   // Cross-chunk exports: keywords.js calls these before pipeline chunk may be loaded
   window.renderPipeline = renderPipeline;
+  window.loadPipelineFromSupabase = loadPipelineFromSupabase;
   window.getPipelineMeta = getPipelineMeta;
   window.savePipelineMeta = savePipelineMeta;
   ['_newPipelineCache','_newPipelineLoaded'].forEach(function(name) {

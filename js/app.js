@@ -1145,7 +1145,12 @@ window.switchAppTab = function(panel) {
 
   // Trigger pipeline render when switching to Pipeline view
   if (panel === 'pipeline' && typeof renderPipeline === 'function') {
-    renderPipeline();
+    // BUGFIX: Reload from Supabase first — toggleSaveJob writes to DB but not _pipelineCache
+    if (typeof loadPipelineFromSupabase === 'function') {
+      loadPipelineFromSupabase().then(function() { renderPipeline(); });
+    } else {
+      renderPipeline();
+    }
   }
 
   localStorage.setItem('bj_app_tab', panel);

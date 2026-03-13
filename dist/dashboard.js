@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.92';
+var BJ_VERSION = 'v8.93';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -3269,7 +3269,12 @@ window.switchAppTab = function(panel) {
 
   // Trigger pipeline render when switching to Pipeline view
   if (panel === 'pipeline' && typeof renderPipeline === 'function') {
-    renderPipeline();
+    // BUGFIX: Reload from Supabase first — toggleSaveJob writes to DB but not _pipelineCache
+    if (typeof loadPipelineFromSupabase === 'function') {
+      loadPipelineFromSupabase().then(function() { renderPipeline(); });
+    } else {
+      renderPipeline();
+    }
   }
 
   localStorage.setItem('bj_app_tab', panel);
@@ -16370,6 +16375,7 @@ async function loadRecruiterContacts() {
 (function() {
   // Cross-chunk exports: keywords.js calls these before pipeline chunk may be loaded
   window.renderPipeline = renderPipeline;
+  window.loadPipelineFromSupabase = loadPipelineFromSupabase;
   window.getPipelineMeta = getPipelineMeta;
   window.savePipelineMeta = savePipelineMeta;
   ['_newPipelineCache','_newPipelineLoaded'].forEach(function(name) {
