@@ -52,8 +52,21 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**APR-002** — Notification Log Archive (A7)
+**GS-SETUP-V2** — Get Started + Setup Single Page Consolidation
 - Completed: 2026-03-13
+- Product version bumped: `v8.80` → `v8.81` (dashboard.html restructure — Setup page eliminated, all integration execution merged into Get Started)
+- ROADMAP.md updated: GS-SETUP-V2 → ✅
+- roadmap.html updated: GS-SETUP-V2 → `s: 'done'`, p: 100
+- **Setup page killed.** Single Get Started page (page-brilliant) now contains:
+  - Connections status bar (status-ext/gmail/gcal/gdrive) below hero
+  - Step 1: Full Extension card — download button, ext-status-bar, ext-update-banner, instance-card, guided 4-step install walkthrough (from Setup)
+  - Step 2: Full integration cards — Gmail, Calendar, Drive with setup-action-zone connect/disconnect buttons (from Setup)
+  - Steps 3–5 + data advantage section: unchanged
+- **Removed:** Setup nav item from sidebar, ext-status-dot moved to Get Started nav. page-setup div deleted (~230 lines). Pipeline Gmail button redirected to Get Started.
+- **No JS changes required** — v8.80 already had: shared `_connectionState`, `renderConnectionStatus()`, live stats fetch, Gmail/Calendar/Drive state sync in integrations.js. HTML IDs preserved exactly.
+- **Pod Team Manifest:** GS-SETUP-V2 pairing: Senior Frontend Eng + Lead Platform Eng; Chief Architect + Evolvability Strategist reviewers
+
+**Previous: APR-002** — Notification Log Archive (A7)
 - Product version bumped: `v8.79` → `v8.80` (HTML/CSS/JS changes — dashboard.html notification log archive UI, notification-center.js archive functions, input.css btn-icon; all HTML surfaces cache-busted)
 - ROADMAP.md updated: APR-002 → ✅
 - roadmap.html updated: APR-002 → `s: 'done'`, p: 100
@@ -2477,7 +2490,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.80`** | **APR-002: Notification Log Archive (A7)** |
+| **Product (BJ_VERSION)** | **`v8.81`** | **GS-SETUP-V2: Get Started + Setup Single Page Consolidation** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
