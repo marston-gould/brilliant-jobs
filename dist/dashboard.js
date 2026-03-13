@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.85';
+var BJ_VERSION = 'v8.86';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -11139,6 +11139,8 @@ function toggleSaveJob(jobId, btn) {
   saveUserData('bj_saved_jobs', JSON.stringify(savedJobIds));
   var savedEl = $('#j-saved');
   if (savedEl) savedEl.textContent = savedJobIds.length.toLocaleString();
+  // Refresh My Applications view if pipeline chunk is loaded
+  if (typeof renderPipeline === 'function') renderPipeline();
 }
 
 
@@ -16368,6 +16370,10 @@ async function loadRecruiterContacts() {
 
 // CS-P1-004 FE-005: Register pipeline exports with BJ namespace
 (function() {
+  // Cross-chunk exports: keywords.js calls these before pipeline chunk may be loaded
+  window.renderPipeline = renderPipeline;
+  window.getPipelineMeta = getPipelineMeta;
+  window.savePipelineMeta = savePipelineMeta;
   ['_newPipelineCache','_newPipelineLoaded'].forEach(function(name) {
     if (typeof window[name] === 'function') {
       window.BJ[name] = window[name];

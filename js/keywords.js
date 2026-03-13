@@ -3570,6 +3570,8 @@ function toggleSaveJob(jobId, btn) {
   saveUserData('bj_saved_jobs', JSON.stringify(savedJobIds));
   var savedEl = $('#j-saved');
   if (savedEl) savedEl.textContent = savedJobIds.length.toLocaleString();
+  // Refresh My Applications view if pipeline chunk is loaded
+  if (typeof renderPipeline === 'function') renderPipeline();
 }
 
 

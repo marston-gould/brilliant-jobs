@@ -1323,6 +1323,10 @@ async function loadRecruiterContacts() {
 
 // CS-P1-004 FE-005: Register pipeline exports with BJ namespace
 (function() {
+  // Cross-chunk exports: keywords.js calls these before pipeline chunk may be loaded
+  window.renderPipeline = renderPipeline;
+  window.getPipelineMeta = getPipelineMeta;
+  window.savePipelineMeta = savePipelineMeta;
   ['_newPipelineCache','_newPipelineLoaded'].forEach(function(name) {
     if (typeof window[name] === 'function') {
       window.BJ[name] = window[name];
