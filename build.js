@@ -27,6 +27,7 @@ const chunks = {
     'js/lazy-loader.ts',
     'js/tab-guard.js',
     'js/app.js',
+    'js/integrations.js',
   ],
   feed: [
     'js/us-filter.js',
@@ -47,7 +48,6 @@ const chunks = {
   ],
   deferred: [
     'js/resumes.js',
-    'js/integrations.js',
     'js/applications.js',
     'js/settings.js',
     'js/stats.js',
