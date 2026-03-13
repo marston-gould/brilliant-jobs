@@ -52,6 +52,64 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**APR-001** — Applications + Notifications Page Restructure (A1–A6)
+- Completed: 2026-03-13
+- Product version bumped: `v8.78` → `v8.79` (HTML/CSS/JS changes — dashboard.html Applications + Notifications restructured, input.css tab system + config section + toolbar CSS, app.js switchAppTab rewrite + initTabGroup + mode UI logic, applications.js notification log code removed; all HTML surfaces cache-busted)
+- ROADMAP.md updated: APR-001 → ✅
+- roadmap.html updated: APR-001 → `s: 'done'`, p: 100
+- **A1 — Tab System CSS/JS Wired:**
+  - `.app-flow-tabs`, `.app-flow-tab`, `.app-flow-tab.active`, `.app-flow-panel`, `.app-flow-panel.active` CSS added to `src/input.css`
+  - `initTabGroup(containerSelector)` generic tab switcher added to `app.js` — scopes to parent `.page` element, reusable for both Applications and Notifications
+  - Applications tabs wired via `switchAppTab` click handlers
+  - Notifications tabs wired via `initTabGroup('#page-notifications')`
+- **A2 — Pending Applications Panel Eliminated:**
+  - `#pending-apps-panel` div deleted from `dashboard.html` (was lines 1572–1583)
+  - `renderPendingApplications()` in `apply-workflow.js` safely no-ops via `if (!container) return`
+- **A3 — Application Mode + Score Gate Promoted to Top:**
+  - Application Mode moved to `<details id="app-mode-details">` collapsible at page top (before tabs)
+  - 6 mode buttons inside `.app-config-body`
+  - Summary badge `#app-mode-label` updates on mode selection
+  - Score Gate moved to `<details id="score-gate-details">` below Mode
+  - Score Gate visibility controlled by `scoreGateModes` array — hidden for Manual/Auto-Apply
+  - Threshold slider oninput updates both `#fas-threshold-val` and `#score-gate-label`
+  - `.app-config-section`, `.app-config-summary`, `.app-config-value`, `.app-config-body` CSS added
+  - Mode initialization from `localStorage bj_apply_settings` on page load
+- **A4 — Notification Settings Removed from Applications:**
+  - Entire Notification Settings card (email/SMS/push toggles, batch digest) deleted from Settings panel
+  - These settings live exclusively on Notification Center Preferences tab
+- **A5 — Three Proper Tabs (Queue|Pipeline|History):**
+  - Tabs renamed: Board→Pipeline, Settings tab removed
+  - `panel-board` → `panel-pipeline` (ID rename)
+  - `panel-queue` is now default active tab
+  - `switchAppTab` migrates legacy `'board'→'pipeline'` and `'settings'→'queue'` values
+  - Stat cards (Queued|Pending Approval|Submitted|Failed) moved above tabs (always visible)
+  - Remaining settings (Approval, Auto-Apply Rules, Resume Assignment, Pipeline Intelligence) wrapped in `<details id="app-advanced-settings">` below tab panels
+  - Hero card navigation updated: `switchAppTab('board')` → `switchAppTab('pipeline')`
+- **A6 — Notification Center Subtabs (Preferences|Log):**
+  - Subtab bar `#nc-tabs` with Preferences (active) and Log tabs
+  - `#panel-nc-preferences` wraps all existing cards: notification matrix, phone setup, escalation rules, filter-specific overrides
+  - `#panel-nc-log` wraps notification log table (standalone, single source of truth)
+  - Notification Log removed from Applications History panel (was duplicate)
+  - `loadNotifLog()`, filter handlers, CSV export code removed from `applications.js`
+  - `.notif-log-toolbar`, `.notif-log-toolbar-right` CSS added for future A7 toolbar
+- **A7 (Notification Log Archive) deferred to APR-002** — requires Supabase migration (`archived_at` column), archive/unarchive JS functions, checkbox UI, bulk operations
+- **Pod Team Manifest:** APR-001 pairing added (Senior Frontend Eng + Lead Platform Eng, Chief Architect + Evolvability Strategist reviewers). All 5 Pod 4 roles confirmed present since SA-006.
+- **Modified:**
+  - `dashboard.html` — Applications page restructured (A1–A5), Notifications page restructured (A6)
+  - `src/input.css` — Tab system CSS, config section CSS, notification log toolbar CSS
+  - `js/app.js` — switchAppTab rewrite (board→pipeline migration), initTabGroup, mode label + score gate visibility
+  - `js/applications.js` — Notification log code removed (loadNotifLog, filters, CSV export)
+  - `docs/scaling/pod-team-manifest.md` — APR-001 pairing
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `dist/admin.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — APR-001 → ✅
+  - `roadmap.html` — APR-001 → done/100
+- **Created:**
+  - `tests/apr-001-applications-restructure.test.js` — 65 validation tests (12 sections)
+- **Tests:** 65 validation tests (all passing)
+
 **EXT-AS-9** — PostHog Instrumentation + QA
 - Completed: 2026-03-13
 - Product version bumped: `v8.77` → `v8.78` (JS changes — job-site-overlay.ts score_gate_shown + selector_failed events, background.ts POSTHOG_CAPTURE handler + _logSubmissionAttempt + submission logging at all 6 submit paths, admin-autosubmit.js method breakdown table; all HTML surfaces cache-busted)
@@ -2377,7 +2435,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.78`** | **EXT-AS-9: PostHog Instrumentation + QA** |
+| **Product (BJ_VERSION)** | **`v8.79`** | **APR-001: Applications + Notifications Page Restructure** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

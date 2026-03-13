@@ -880,7 +880,7 @@ $('#j-saved-card').addEventListener('click', () => {
   }
   $$('.page').forEach(p => p.classList.remove('active'));
   $('#page-applications').classList.add('active');
-  if (typeof switchAppTab === 'function') switchAppTab('board');
+  if (typeof switchAppTab === 'function') switchAppTab('pipeline');
 });
 
 // Download
@@ -1127,8 +1127,12 @@ initGmailStatus();
   } catch(e) { reportError('app:gs-stats', e); }
 })();
 
-// PC-001: Switch between Board, Queue, History, Settings sub-tabs in My Applications
+// APR-001: Switch between Queue, Pipeline, History sub-tabs in My Applications
 window.switchAppTab = function(panel) {
+  // Migrate legacy 'board' → 'pipeline', 'settings' → 'queue'
+  if (panel === 'board') panel = 'pipeline';
+  if (panel === 'settings') panel = 'queue';
+
   // Toggle active on sub-tab buttons
   document.querySelectorAll('#page-applications .app-flow-tab').forEach(function(tab) {
     tab.classList.toggle('active', tab.dataset.panel === panel);
@@ -1141,25 +1145,94 @@ window.switchAppTab = function(panel) {
   var target = document.getElementById('panel-' + panel);
   if (target) target.classList.add('active');
 
-  // Trigger pipeline render when switching to Board view
-  if (panel === 'board' && typeof renderPipeline === 'function') {
+  // Trigger pipeline render when switching to Pipeline view
+  if (panel === 'pipeline' && typeof renderPipeline === 'function') {
     renderPipeline();
   }
 
   localStorage.setItem('bj_app_tab', panel);
 };
 
-// PC-001: Wire sub-tab click handlers
+// APR-001: Generic tab switcher — reusable for Applications and Notifications
+window.initTabGroup = function(containerSelector) {
+  var container = document.querySelector(containerSelector);
+  if (!container) return;
+  container.querySelectorAll('.app-flow-tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      var panel = this.dataset.panel;
+      var parent = this.closest('.page');
+      if (!parent) return;
+      parent.querySelectorAll('.app-flow-tab').forEach(function(t) { t.classList.remove('active'); });
+      parent.querySelectorAll('.app-flow-panel').forEach(function(p) { p.classList.remove('active'); });
+      this.classList.add('active');
+      var target = parent.querySelector('#panel-' + panel);
+      if (target) target.classList.add('active');
+    });
+  });
+};
+
+// APR-001: Wire tab groups
 (function() {
+  // Applications tabs
   document.querySelectorAll('#page-applications .app-flow-tab').forEach(function(tab) {
     tab.addEventListener('click', function() {
       var panel = this.dataset.panel;
       if (panel) switchAppTab(panel);
     });
   });
-  // Restore last sub-tab or default to Board
-  var saved = localStorage.getItem('bj_app_tab') || 'board';
+  // Restore last sub-tab or default to Queue
+  var saved = localStorage.getItem('bj_app_tab') || 'queue';
+  if (saved === 'board') saved = 'pipeline';
+  if (saved === 'settings') saved = 'queue';
   if (typeof switchAppTab === 'function') switchAppTab(saved);
+
+  // Notifications tabs
+  initTabGroup('#page-notifications');
+
+  // APR-001: Application Mode label + Score Gate visibility
+  var modeLabels = {
+    manual: 'Manual', score_gated: 'Score-Gated',
+    auto: 'Auto-Apply', score_gated_auto: 'Auto + Score Gate',
+    auto_rewrite: 'Auto + Rewrite', autopilot: 'Full Autopilot'
+  };
+  var scoreGateModes = ['score_gated','score_gated_auto','auto_rewrite','autopilot'];
+
+  function updateModeUI(mode) {
+    var label = document.getElementById('app-mode-label');
+    if (label) label.textContent = modeLabels[mode] || mode;
+    var sgDetails = document.getElementById('score-gate-details');
+    if (sgDetails) sgDetails.style.display = scoreGateModes.indexOf(mode) !== -1 ? '' : 'none';
+  }
+
+  document.querySelectorAll('.app-mode-select').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var mode = this.dataset.mode;
+      document.querySelectorAll('.app-mode-select').forEach(function(b) {
+        b.classList.remove('active');
+        b.style.border = '';
+      });
+      this.classList.add('active');
+      this.style.border = '2px solid var(--accent)';
+      updateModeUI(mode);
+    });
+  });
+
+  // Initialize mode UI from saved settings
+  try {
+    var applySettings = JSON.parse(localStorage.getItem('bj_apply_settings') || '{}');
+    var currentMode = applySettings.default_apply_mode || 'manual';
+    updateModeUI(currentMode);
+    // Highlight the correct mode button
+    document.querySelectorAll('.app-mode-select').forEach(function(btn) {
+      if (btn.dataset.mode === currentMode) {
+        btn.classList.add('active');
+        btn.style.border = '2px solid var(--accent)';
+      } else {
+        btn.classList.remove('active');
+        btn.style.border = '';
+      }
+    });
+  } catch(e) { /* ignore */ }
 })();
 
 // Q16-Q19: Resume-First Onboarding

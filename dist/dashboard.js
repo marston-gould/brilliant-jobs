@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.78';
+var BJ_VERSION = 'v8.79';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -3007,7 +3007,7 @@ $('#j-saved-card').addEventListener('click', () => {
   }
   $$('.page').forEach(p => p.classList.remove('active'));
   $('#page-applications').classList.add('active');
-  if (typeof switchAppTab === 'function') switchAppTab('board');
+  if (typeof switchAppTab === 'function') switchAppTab('pipeline');
 });
 
 // Download
@@ -3254,8 +3254,12 @@ initGmailStatus();
   } catch(e) { reportError('app:gs-stats', e); }
 })();
 
-// PC-001: Switch between Board, Queue, History, Settings sub-tabs in My Applications
+// APR-001: Switch between Queue, Pipeline, History sub-tabs in My Applications
 window.switchAppTab = function(panel) {
+  // Migrate legacy 'board' → 'pipeline', 'settings' → 'queue'
+  if (panel === 'board') panel = 'pipeline';
+  if (panel === 'settings') panel = 'queue';
+
   // Toggle active on sub-tab buttons
   document.querySelectorAll('#page-applications .app-flow-tab').forEach(function(tab) {
     tab.classList.toggle('active', tab.dataset.panel === panel);
@@ -3268,25 +3272,94 @@ window.switchAppTab = function(panel) {
   var target = document.getElementById('panel-' + panel);
   if (target) target.classList.add('active');
 
-  // Trigger pipeline render when switching to Board view
-  if (panel === 'board' && typeof renderPipeline === 'function') {
+  // Trigger pipeline render when switching to Pipeline view
+  if (panel === 'pipeline' && typeof renderPipeline === 'function') {
     renderPipeline();
   }
 
   localStorage.setItem('bj_app_tab', panel);
 };
 
-// PC-001: Wire sub-tab click handlers
+// APR-001: Generic tab switcher — reusable for Applications and Notifications
+window.initTabGroup = function(containerSelector) {
+  var container = document.querySelector(containerSelector);
+  if (!container) return;
+  container.querySelectorAll('.app-flow-tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      var panel = this.dataset.panel;
+      var parent = this.closest('.page');
+      if (!parent) return;
+      parent.querySelectorAll('.app-flow-tab').forEach(function(t) { t.classList.remove('active'); });
+      parent.querySelectorAll('.app-flow-panel').forEach(function(p) { p.classList.remove('active'); });
+      this.classList.add('active');
+      var target = parent.querySelector('#panel-' + panel);
+      if (target) target.classList.add('active');
+    });
+  });
+};
+
+// APR-001: Wire tab groups
 (function() {
+  // Applications tabs
   document.querySelectorAll('#page-applications .app-flow-tab').forEach(function(tab) {
     tab.addEventListener('click', function() {
       var panel = this.dataset.panel;
       if (panel) switchAppTab(panel);
     });
   });
-  // Restore last sub-tab or default to Board
-  var saved = localStorage.getItem('bj_app_tab') || 'board';
+  // Restore last sub-tab or default to Queue
+  var saved = localStorage.getItem('bj_app_tab') || 'queue';
+  if (saved === 'board') saved = 'pipeline';
+  if (saved === 'settings') saved = 'queue';
   if (typeof switchAppTab === 'function') switchAppTab(saved);
+
+  // Notifications tabs
+  initTabGroup('#page-notifications');
+
+  // APR-001: Application Mode label + Score Gate visibility
+  var modeLabels = {
+    manual: 'Manual', score_gated: 'Score-Gated',
+    auto: 'Auto-Apply', score_gated_auto: 'Auto + Score Gate',
+    auto_rewrite: 'Auto + Rewrite', autopilot: 'Full Autopilot'
+  };
+  var scoreGateModes = ['score_gated','score_gated_auto','auto_rewrite','autopilot'];
+
+  function updateModeUI(mode) {
+    var label = document.getElementById('app-mode-label');
+    if (label) label.textContent = modeLabels[mode] || mode;
+    var sgDetails = document.getElementById('score-gate-details');
+    if (sgDetails) sgDetails.style.display = scoreGateModes.indexOf(mode) !== -1 ? '' : 'none';
+  }
+
+  document.querySelectorAll('.app-mode-select').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var mode = this.dataset.mode;
+      document.querySelectorAll('.app-mode-select').forEach(function(b) {
+        b.classList.remove('active');
+        b.style.border = '';
+      });
+      this.classList.add('active');
+      this.style.border = '2px solid var(--accent)';
+      updateModeUI(mode);
+    });
+  });
+
+  // Initialize mode UI from saved settings
+  try {
+    var applySettings = JSON.parse(localStorage.getItem('bj_apply_settings') || '{}');
+    var currentMode = applySettings.default_apply_mode || 'manual';
+    updateModeUI(currentMode);
+    // Highlight the correct mode button
+    document.querySelectorAll('.app-mode-select').forEach(function(btn) {
+      if (btn.dataset.mode === currentMode) {
+        btn.classList.add('active');
+        btn.style.border = '2px solid var(--accent)';
+      } else {
+        btn.classList.remove('active');
+        btn.style.border = '';
+      }
+    });
+  } catch(e) { /* ignore */ }
 })();
 
 // Q16-Q19: Resume-First Onboarding
@@ -20279,114 +20352,8 @@ $('#override-clear')?.addEventListener('click', async () => {
   } catch(e) { reportError('applications', e); console.error('[Notif] Override clear failed:', e); }
 });
 
-// ---- Notification Log ----
-let notifLogPage = 0;
-const NLOG_PER_PAGE = 20;
-
-const NOTIF_TYPE_LABELS = {};
-NOTIF_TYPES.forEach(n => { NOTIF_TYPE_LABELS[n.id] = n.label; });
-
-function notifStatusBadge(status) {
-  const map = {
-    sent: 'ns-sent', delivered: 'ns-delivered', opened: 'ns-opened',
-    clicked: 'ns-opened', applied: 'ns-applied', passed: 'ns-passed',
-    missed: 'ns-missed', expired: 'ns-expired', failed: 'ns-failed'
-  };
-  const labels = {
-    sent: 'Sent', delivered: 'Delivered', opened: 'Opened',
-    clicked: 'Clicked', applied: 'Applied', passed: 'Passed',
-    missed: 'Missed', expired: 'Expired', failed: 'Failed'
-  };
-  return `<span class="notif-status-badge ${map[status] || 'ns-sent'}">${labels[status] || status}</span>`;
-}
-
-function channelIcon(ch) {
-  if (ch === 'sms') return `<span class="notif-channel-icon" title="SMS"><i data-lucide="message-square" class="icon-stroke"></i></span>`;
-  return `<span class="notif-channel-icon" title="Email"><i data-lucide="mail" class="icon-stroke"></i></span>`;
-}
-
-async function loadNotifLog() {
-  if (!currentUser) return;
-  const tbody = $('#notif-log-body');
-  const typeFilter = $('#nlog-filter-type')?.value || '';
-  const channelFilter = $('#nlog-filter-channel')?.value || '';
-  const statusFilter = $('#nlog-filter-status')?.value || '';
-
-  try {
-    let query = sb.from('notification_log')
-      .select('*')
-      .eq('user_id', currentUser.id)
-      .order('created_at', { ascending: false })
-      .range(notifLogPage * NLOG_PER_PAGE, (notifLogPage + 1) * NLOG_PER_PAGE - 1);
-
-    if (typeFilter) query = query.eq('notification_type', typeFilter);
-    if (channelFilter) query = query.eq('channel', channelFilter);
-    if (statusFilter) query = query.eq('status', statusFilter);
-
-    const { data: logs, error } = await query;
-    if (error) throw error;
-
-    if (!logs || logs.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
-        <div style="margin-bottom:12px;color:var(--text-faint);"><i data-lucide="bell" class="icon-xl icon-stroke-lg" style="opacity:0.25;"></i></div>
-        <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No notifications found</div>
-        <div style="font-size:12px;">Notification history will appear here once the system is active.</div>
-      </td></tr>`;
-      if (typeof window.refreshIcons === 'function') window.refreshIcons();
-      return;
-    }
-
-    tbody.innerHTML = logs.map(log => {
-      const ts = new Date(log.created_at);
-      const timeStr = ts.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + ts.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-      const jobInfo = [log.job_title, log.company_name].filter(Boolean).join(' at ') || '—';
-      return `<tr>
-        <td style="font-size:12px;color:var(--text-faint);white-space:nowrap;">${timeStr}</td>
-        <td style="font-size:12px;">${NOTIF_TYPE_LABELS[log.notification_type] || log.notification_type}</td>
-        <td>${channelIcon(log.channel)}</td>
-        <td style="font-size:12px;">${jobInfo}</td>
-        <td>${notifStatusBadge(log.status)}</td>
-      </tr>`;
-    }).join('');
-    if (typeof window.refreshIcons === 'function') window.refreshIcons();
-  } catch(e) { reportError('applications', e); console.warn('[Notif] Log load failed:', e);
-  }
-}
-
-// Log filters
-$$('#nlog-filter-type, #nlog-filter-channel, #nlog-filter-status').forEach(el => {
-  el?.addEventListener('change', () => { notifLogPage = 0; loadNotifLog(); });
-});
-
-// CSV export
-$('#notif-export-csv')?.addEventListener('click', async () => {
-  if (!currentUser) return;
-  try {
-    const { data: logs, error: logErr } = await sb.from('notification_log')
-      .select('*')
-      .eq('user_id', currentUser.id)
-      .order('created_at', { ascending: false })
-      .limit(1000);
-    if (logErr) { reportError('applications:notif-csv', logErr); alert('Failed to export.'); return; }
-
-    if (!logs || logs.length === 0) { alert('No notifications to export.'); return; }
-
-    const header = 'Timestamp,Type,Channel,Job,Company,Status,Subject\n';
-    const rows = logs.map(l =>
-      `"${l.created_at}","${l.notification_type}","${l.channel}","${l.job_id || ''}","${l.company_name || ''}","${l.status}","${(l.subject || '').replace(/"/g, '""')}"`
-    ).join('\n');
-
-    const blob = new Blob([header + rows], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `brilliant-jobs-notifications-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  } catch(e) { reportError('applications', e); console.error('[Notif] CSV export failed:', e); }
-});
+// APR-001: Notification Log removed — lives exclusively on Notification Center page
+// (rendered by notification-center.js with nc- prefixed IDs)
 
 // ---- Pulsing Nav Dots ----
 async function checkNavPulses() {
