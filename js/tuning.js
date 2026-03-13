@@ -1285,7 +1285,7 @@ updatePoorMatchSuggestions();
 
 // ─── Feature 2: AI Analysis of Hidden Jobs ───
 
-async function analyzeHiddenJob(jobId, btn) {
+window.analyzeHiddenJob = async function(jobId, btn) {
   // Find the hidden job record
   var hidden = hiddenJobIds.find(function(h) { return h.id === jobId; });
   if (!hidden) return;
@@ -1519,7 +1519,7 @@ function acceptAnalyzeHidden() {
 
 // CS-P1-004 FE-005: Register tuning.js exports with BJ namespace
 (function() {
-  ['editFilterLevelHierarchy', 'unhideJob', 'addSuggestedExclusion'].forEach(function(name) {
+  ['editFilterLevelHierarchy', 'unhideJob', 'addSuggestedExclusion', 'analyzeHiddenJob'].forEach(function(name) {
     if (typeof window[name] === 'function') {
       window.BJ[name] = window[name];
       window.BJ._registry[name] = { module: 'tuning', registered: Date.now() };

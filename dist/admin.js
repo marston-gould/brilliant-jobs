@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.88';
+var BJ_VERSION = 'v8.89';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -206,7 +206,7 @@ function toastInfo(msg: string, opts?: Partial<ToastOptions>): HTMLElement { ret
 // Only PII keys are encrypted: resume text, keywords, LinkedIn profile data.
 
 var _encryptionKey: CryptoKey | null = null;
-var _PII_KEYS = ['bj_resumes', 'bj_readiness'];
+var _PII_KEYS = ['bj_resumes'];
 
 /**
  * Derive an AES-GCM encryption key from the user's Supabase session ID.

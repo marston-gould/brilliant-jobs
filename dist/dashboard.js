@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.88';
+var BJ_VERSION = 'v8.89';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -206,7 +206,7 @@ function toastInfo(msg: string, opts?: Partial<ToastOptions>): HTMLElement { ret
 // Only PII keys are encrypted: resume text, keywords, LinkedIn profile data.
 
 var _encryptionKey: CryptoKey | null = null;
-var _PII_KEYS = ['bj_resumes', 'bj_readiness'];
+var _PII_KEYS = ['bj_resumes'];
 
 /**
  * Derive an AES-GCM encryption key from the user's Supabase session ID.
@@ -17671,7 +17671,7 @@ updatePoorMatchSuggestions();
 
 // ─── Feature 2: AI Analysis of Hidden Jobs ───
 
-async function analyzeHiddenJob(jobId, btn) {
+window.analyzeHiddenJob = async function(jobId, btn) {
   // Find the hidden job record
   var hidden = hiddenJobIds.find(function(h) { return h.id === jobId; });
   if (!hidden) return;
@@ -17905,7 +17905,7 @@ function acceptAnalyzeHidden() {
 
 // CS-P1-004 FE-005: Register tuning.js exports with BJ namespace
 (function() {
-  ['editFilterLevelHierarchy', 'unhideJob', 'addSuggestedExclusion'].forEach(function(name) {
+  ['editFilterLevelHierarchy', 'unhideJob', 'addSuggestedExclusion', 'analyzeHiddenJob'].forEach(function(name) {
     if (typeof window[name] === 'function') {
       window.BJ[name] = window[name];
       window.BJ._registry[name] = { module: 'tuning', registered: Date.now() };

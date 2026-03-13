@@ -11,7 +11,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v8.88"></script>
+  <script src="/js/version.js?v=v8.89"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2162,6 +2162,7 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'GS-SETUP-V2 Single Page Consolidation', d: 'Kill Setup page entirely. Merge extension download, install guide, Gmail/Calendar/Drive connect/disconnect into Get Started inline. Delete page-setup div. Remove Setup nav. v8.81.', p: 100, e: '3h' },
 { s: 'done', b: 'post-launch', n: 'POD3-LAYOUT-001 Layout Balance Fixes', d: 'Fix 1: Filter/Chat toggle row vertical stack (no lopsided whitespace). Fix 2: Application Mode grid fixed 3-column (3x2, no orphaned cards). HTML-only. v8.87.', p: 100, e: '<30min' },
 { s: 'done', b: 'post-launch', n: 'POD3-RESUME-ASSIGN-001 Resume Filter Assignment', d: 'Duplicate-level validation on filter assignment + level change. Manage popover with filter checkboxes + Unassign All. Clear all link in expanded panel. JS-only. v8.88.', p: 100, e: '1-2d' },
+{ s: 'done', b: 'post-launch', n: 'BUGFIX-001 Resume Scores + Block Similar', d: 'bj_readiness removed from PII encryption (scores wiped on every reload). analyzeHiddenJob window-exported (Block Similar broken). v8.89.', p: 100, e: '<1h' },
 { s: 'done', b: 'post-launch', n: 'POD3-SF Saved Filters UX + Resume Tab Fix', d: '4 fixes: 1D/7D/30D columns removed, commitSaveFilter preserves checkbox state + invalidateCache + immediate re-search, search includes pill values, readinessCache moved to globals (shell chunk) fixing Resume tab crash. Chat UX Iteration relabeled to Post-Launch. 26 tests. v7.83.', p: 100, e: '4h' },
 { s: 'done', b: 'post-launch', n: 'POD3-LUCIDE Lucide Icon Migration', d: 'Standardized all dashboard iconography on Lucide v0.577.0 (ISC license). Eliminated 43+ emoji from UI across 15+ files. 7 CSS icon size tokens. Trust/AI badges use Lucide SVGs. Credits icon removed. refreshIcons() for dynamic content. Admin nav icons replaced. 37 tests. v8.20.', p: 100, e: '4h' },
 { s: 'done', b: 'post-launch', n: 'POD3-LUCIDE-S2 Dynamic JS Icon Migration + SVG Elimination', d: 'Replaced ~100 inline SVGs with data-lucide elements across dashboard.html (73 SVGs) and 7 JS modules (28 SVGs + 3 emoji). Chat, referrals, applications, notification-center, resumes, tier-gating, integrations. 15+ refreshIcons() calls. 23 SVGs remain: 14 sidebar nav (out of scope), 6 Google brand, 1 theme toggle. v8.21.', p: 100, e: '4h' },

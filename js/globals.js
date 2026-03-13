@@ -118,7 +118,7 @@ function toastInfo(msg, opts) {
   return showToast(msg, Object.assign({ type: "info" }, opts || {}));
 }
 var _encryptionKey = null;
-var _PII_KEYS = ["bj_resumes", "bj_readiness"];
+var _PII_KEYS = ["bj_resumes"];
 async function _deriveEncryptionKey(userId) {
   if (_encryptionKey) return _encryptionKey;
   var encoder = new TextEncoder();
