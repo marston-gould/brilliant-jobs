@@ -15563,6 +15563,20 @@ function movePipelineStage(jobId, newStage) {
   // Track stage dates
   const now = new Date().toISOString();
   if (newStage === 'applied' && !m.appliedAt) m.appliedAt = now;
+  // Auto-set resume when moving to applied (if not already set)
+  if (newStage === 'applied' && !m.resumeUsed && typeof resumes !== 'undefined') {
+    var _filterTags = m.filterTags || [];
+    var bestResume = null;
+    for (var ri = 0; ri < resumes.length; ri++) {
+      var _r = resumes[ri];
+      if (_r.archived) continue;
+      var _rFilters = _r.filterIds || [];
+      var filterMatch = _filterTags.length > 0 && _filterTags.some(function(t) { return _rFilters.includes(t); });
+      if (filterMatch) { bestResume = _r; break; }
+      if (!bestResume) bestResume = _r; // fallback: first active resume
+    }
+    if (bestResume) m.resumeUsed = bestResume.name;
+  }
   if (newStage === 'responded' && !m.respondedAt) m.respondedAt = now;
   if (newStage === 'interview' && !m.interviewAt) m.interviewAt = now;
   if (newStage === 'offer' && !m.offerAt) m.offerAt = now;
@@ -15686,6 +15700,20 @@ function setPipelineResume(jobId, resumeName) {
   savePipelineEntry(jobId, meta);
   renderPipeline();
 }
+
+// ── Handle resume picker change (includes upload option) ─────
+window.handlePipelineResumeChange = function(jobId, selectEl) {
+  var val = selectEl.value;
+  if (val === '__upload__') {
+    // Navigate to Resumes tab for upload
+    selectEl.value = '';
+    var resumeNav = document.querySelector('[data-page="resumes"]');
+    if (resumeNav) resumeNav.click();
+    if (typeof showToast === 'function') showToast('Upload a resume, then return to assign it.');
+    return;
+  }
+  setPipelineResume(jobId, val);
+};
 
 // ── Collapse toggle ──────────────────────────────────────────
 function togglePipelineStage(headerEl) {
@@ -15856,7 +15884,12 @@ async function renderPipeline() {
           if (filterMatch && !bestResume) bestResume = _r;
           if (levelMatch && !bestResume) bestResume = _r;
         }
-        if (bestResume) resumeName = bestResume.name;
+        if (bestResume) {
+          resumeName = bestResume.name;
+          // Persist auto-match so it sticks
+          m.resumeUsed = resumeName;
+          savePipelineEntry(item.id, m);
+        }
       }
 
       const stageDate = m.respondedAt ? new Date(m.respondedAt) :
@@ -15922,20 +15955,32 @@ async function renderPipeline() {
       html += '<td class="pl-days">' + daysInStage + (typeof daysInStage === 'number' ? 'd' : '') + '</td>';
       html += '<td>' + (filterBadges || '<span style="color:var(--text-faint);font-size:10px;">—</span>') + '</td>';
 
-      // Resume cell — auto-matched name with picker override
-      var resumeOpts = '<option value="">— Pick —</option>';
-      if (typeof resumes !== 'undefined') {
-        for (var _ri2 = 0; _ri2 < resumes.length; _ri2++) {
-          if (resumes[_ri2].archived) continue;
-          var _sel = resumes[_ri2].name === resumeName ? ' selected' : '';
-          resumeOpts += '<option value="' + resumes[_ri2].name.replace(/"/g, '&quot;') + '"' + _sel + '>' + resumes[_ri2].name + '</option>';
+      // Resume cell — stage-aware rendering
+      var lockedResumeStages = ['applied', 'responded', 'interview', 'posting_closed', 'offer', 'hired', 'rejected', 'archived'];
+      if (lockedResumeStages.includes(stage)) {
+        // Post-apply: show static resume name (locked)
+        if (resumeName) {
+          html += '<td><span class="pl-resume-badge" title="' + resumeName + '">' + (resumeName.length > 15 ? resumeName.slice(0,15) + '…' : resumeName) + '</span></td>';
+        } else {
+          html += '<td><span style="color:var(--text-faint);font-size:10px;">—</span></td>';
         }
-      }
-      if (resumeName) {
-        html += '<td><span class="pl-resume-badge" title="' + resumeName + '" style="cursor:pointer;" onclick="this.style.display=\'none\';this.nextElementSibling.style.display=\'inline-block\'">' + (resumeName.length > 15 ? resumeName.slice(0,15) + '…' : resumeName) + '</span>';
-        html += '<select class="pl-move-select" style="display:none;font-size:10px;" onchange="setPipelineResume(\'' + item.id + '\',this.value)">' + resumeOpts + '</select></td>';
       } else {
-        html += '<td><select class="pl-move-select" style="font-size:10px;" onchange="setPipelineResume(\'' + item.id + '\',this.value)">' + resumeOpts + '</select></td>';
+        // Saved: picker with auto-matched preselected + upload option
+        var resumeOpts = '<option value="">— Pick —</option>';
+        if (typeof resumes !== 'undefined') {
+          for (var _ri2 = 0; _ri2 < resumes.length; _ri2++) {
+            if (resumes[_ri2].archived) continue;
+            var _sel = resumes[_ri2].name === resumeName ? ' selected' : '';
+            resumeOpts += '<option value="' + resumes[_ri2].name.replace(/"/g, '&quot;') + '"' + _sel + '>' + resumes[_ri2].name + '</option>';
+          }
+        }
+        resumeOpts += '<option value="__upload__">↑ Upload new…</option>';
+        if (resumeName) {
+          html += '<td><span class="pl-resume-badge" title="' + resumeName + '" style="cursor:pointer;" onclick="this.style.display=\'none\';this.nextElementSibling.style.display=\'inline-block\'">' + (resumeName.length > 15 ? resumeName.slice(0,15) + '…' : resumeName) + '</span>';
+          html += '<select class="pl-move-select" style="display:none;font-size:10px;" onchange="handlePipelineResumeChange(\'' + item.id + '\',this)">' + resumeOpts + '</select></td>';
+        } else {
+          html += '<td><select class="pl-move-select" style="font-size:10px;" onchange="handlePipelineResumeChange(\'' + item.id + '\',this)">' + resumeOpts + '</select></td>';
+        }
       }
 
       html += '<td class="pl-match" style="' + matchColor + '">' + matchScore + '</td>';
@@ -16254,6 +16299,25 @@ function showStatusNote(jobId) {
 function showManualPipelineAdd() {
   const form = document.getElementById('pl-manual-add');
   if (form) form.style.display = '';
+  // Populate resume dropdown
+  var resumeSelect = document.getElementById('pl-man-resume');
+  if (resumeSelect && typeof resumes !== 'undefined') {
+    var html = '<option value="">— Select resume —</option>';
+    for (var i = 0; i < resumes.length; i++) {
+      if (resumes[i].archived) continue;
+      html += '<option value="' + resumes[i].name.replace(/"/g, '&quot;') + '">' + resumes[i].name + '</option>';
+    }
+    html += '<option value="__upload__">↑ Upload new…</option>';
+    resumeSelect.innerHTML = html;
+    resumeSelect.onchange = function() {
+      if (this.value === '__upload__') {
+        this.value = '';
+        var resumeNav = document.querySelector('[data-page="resumes"]');
+        if (resumeNav) resumeNav.click();
+        if (typeof showToast === 'function') showToast('Upload a resume, then return to add your job.');
+      }
+    };
+  }
 }
 
 function hideManualPipelineAdd() {
@@ -16263,6 +16327,8 @@ function hideManualPipelineAdd() {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  var resumeSelect = document.getElementById('pl-man-resume');
+  if (resumeSelect) resumeSelect.selectedIndex = 0;
 }
 
 async function saveManualPipelineEntry() {
@@ -16271,9 +16337,15 @@ async function saveManualPipelineEntry() {
   const company = (document.getElementById('pl-man-company')?.value || '').trim();
   const url = (document.getElementById('pl-man-url')?.value || '').trim();
   const stage = document.getElementById('pl-man-stage')?.value || 'applied';
+  const resumeUsed = (document.getElementById('pl-man-resume')?.value || '').trim();
 
   if (!title || !company) {
     alert('Job title and company name are required.');
+    return;
+  }
+  // Resume required for any stage past saved
+  if (stage !== 'saved' && !resumeUsed) {
+    alert('Please select a resume for this application. If you don\'t have one uploaded, use "Upload new…" to add it first.');
     return;
   }
 
@@ -16305,6 +16377,7 @@ async function saveManualPipelineEntry() {
     company_domain: companyDomain,
     job_title: title,
     job_url: url || null,
+    resume_used: resumeUsed || null,
     tracking_mode: 'auto',
     notes: 'Manually added',
   };
@@ -16329,6 +16402,7 @@ async function saveManualPipelineEntry() {
       title: title,
       companyDomain: companyDomain,
       jobUrl: url,
+      resumeUsed: resumeUsed || null,
       notes: 'Manually added',
       atsSource: 'manual',
       filterTags: [],
