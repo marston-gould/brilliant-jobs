@@ -49,7 +49,7 @@
     "feedback": ["keywords", "deferred"],
     "ghost": ["keywords", "deferred"],
     "referrals": ["keywords", "deferred"],
-    "applications": ["keywords", "deferred"],
+    "applications": ["pipeline", "keywords", "deferred"],
     "settings": ["keywords", "deferred"],
     "billing": ["keywords", "deferred"],
     "rewrite": ["keywords", "deferred"],

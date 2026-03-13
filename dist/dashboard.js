@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.93';
+var BJ_VERSION = 'v8.94';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -1827,7 +1827,7 @@ window.requiredTierFor = requiredTier;
     'feedback':     ['keywords', 'deferred'],
     'ghost':        ['keywords', 'deferred'],
     'referrals':    ['keywords', 'deferred'],
-    'applications': ['keywords', 'deferred'],
+    'applications': ['pipeline', 'keywords', 'deferred'],
     'settings':     ['keywords', 'deferred'],
     'billing':      ['keywords', 'deferred'],
     'rewrite':      ['keywords', 'deferred'],
