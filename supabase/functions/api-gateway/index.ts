@@ -275,10 +275,23 @@ serve(async (req: Request): Promise<Response> => {
   const correlationId = req.headers.get("x-correlation-id") ?? crypto.randomUUID();
   const logger = createLogger("api-gateway", correlationId);
 
-  // Route resolution: /api/v1/{function-name}/... → function-name
-  const pathParts = url.pathname.replace(/^\/api\/v1\//, "").split("/");
-  const routeKey = pathParts[0];
+  // Route resolution: handle multiple URL formats
+  //   Path-based (extension):  /functions/v1/api-gateway/{route}/...
+  //   Path-based (Vercel):     /api/v1/{route}/...
+  //   Header-based (dashboard): /functions/v1/api-gateway + x-gateway-route header
+  const cleanPath = url.pathname
+    .replace(/^\/functions\/v1\/api-gateway\/?/, "")
+    .replace(/^\/api-gateway\/?/, "")
+    .replace(/^\/api\/v1\//, "")
+    .replace(/^\//, "");
+  const pathParts = cleanPath.split("/").filter(Boolean);
+  // Path-based route takes priority; fall back to x-gateway-route header
+  const routeKey = pathParts[0] || req.headers.get("x-gateway-route") || "";
   const upstreamFunction = ROUTE_REGISTRY[routeKey];
+  // When route came from header, inject it as first pathPart for proxyToUpstream
+  if (!pathParts[0] && routeKey) {
+    pathParts.unshift(routeKey);
+  }
 
   if (!upstreamFunction) {
     return jsonResponse(
