@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v8.80 -->
+<!-- Brilliant Jobs Dashboard v8.81 -->
 <html lang="en">
 <head>
   <!-- CS-P1-009: Theme flash prevention — must be first script -->
@@ -19,22 +19,22 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="/js/vendor/supabase.min.js" defer></script>
-  <script src="/js/pipeline-migration.js?v=v8.80" defer></script>
-  <script src="/js/notification-center.js?v=v8.80" defer></script>
+  <script src="/js/pipeline-migration.js?v=v8.81" defer></script>
+  <script src="/js/notification-center.js?v=v8.81" defer></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" integrity="sha384-nFoSjZIoH3CCp8W639jJyQkuPHinJ2NHe7on1xvlUA7SuGfJAfvMldrsoAVm6ECz" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" integrity="sha384-eEu5CTj3qGvu9PdJuS+YlkNi7d2XxQROAFYOr59zgObtlcux1ae1Il3u7jvdCSWu" crossorigin="anonymous"></script>
   <!-- CS-014: CX-09 — ECharts lazy-loaded by stats.js when Stats tab opens -->
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js" integrity="sha384-TcLTgu6flPhnZ5dfHnHimsxNFjYWN0povfGgnOvgPJKbZe6IbuoC2ociiatSHl9E" crossorigin="anonymous"></script>
   <!-- CS-016 FIX-10: Code-split chunks — shell (globals+routing) + feed (job list) loaded eagerly; all other chunks lazy-loaded on tab switch -->
-  <script src="dist/dashboard-shell.min.js?v=v8.80" defer></script>
-  <script src="dist/dashboard-feed.min.js?v=v8.80" defer></script>
+  <script src="dist/dashboard-shell.min.js?v=v8.81" defer></script>
+  <script src="dist/dashboard-feed.min.js?v=v8.81" defer></script>
   <!-- CS-P1-002: dashboard inline scripts externalized (pdfjs, preload, feedback, insights, a11y) -->
-  <script src="js/dashboard-inline.js?v=v8.80" defer></script>
-  <script src="js/canny.js?v=v8.80" defer></script>
+  <script src="js/dashboard-inline.js?v=v8.81" defer></script>
+  <script src="js/canny.js?v=v8.81" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=v8.80">
+  <link rel="stylesheet" href="styles.css?v=v8.81">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -109,11 +109,11 @@
     </style>
   <!-- CSS extracted to styles.css in v3.28 -->
   <!-- A13: PostHog analytics — CS-P1-002: externalized for CSP compliance -->
-  <script src="js/posthog-dashboard.js?v=v8.80" defer></script>
-  <script src="js/posthog-perf.js?v=v8.80" defer></script>
-  <script src="js/feature-flags.js?v=v8.80" defer></script>
-  <script src="js/structured-logger.js?v=v8.80" defer></script>
-  <script src="js/theme.js?v=v8.80" defer></script>
+  <script src="js/posthog-dashboard.js?v=v8.81" defer></script>
+  <script src="js/posthog-perf.js?v=v8.81" defer></script>
+  <script src="js/feature-flags.js?v=v8.81" defer></script>
+  <script src="js/structured-logger.js?v=v8.81" defer></script>
+  <script src="js/theme.js?v=v8.81" defer></script>
 </head>
 <body>
 
@@ -148,10 +148,6 @@
         <div class="nav-item active" data-page="brilliant">
           <div class="nav-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></div>
           <span>Get Started</span>
-        </div>
-        <div class="nav-item" data-page="setup">
-          <div class="nav-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
-          <span>Setup</span>
           <div class="ext-status-dot" id="ext-status-dot" title="Extension not detected" aria-label="Extension not detected" role="status"></div>
         </div>
 
@@ -425,27 +421,119 @@
             </div>
           </div>
 
-          <!-- Step 1: Extension -->
+          <!-- Connections status bar (consolidated from Setup) -->
+          <div class="setup-status-bar">
+            <div style="font-size:13px;font-weight:600;">Connections</div>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;">
+              <div class="setup-status-item"><span class="setup-status-dot" id="status-ext"></span> Extension</div>
+              <div class="setup-status-item"><span class="setup-status-dot" id="status-gmail"></span> Gmail</div>
+              <div class="setup-status-item"><span class="setup-status-dot" id="status-gcal"></span> Calendar</div>
+              <div class="setup-status-item"><span class="setup-status-dot" id="status-gdrive"></span> Drive</div>
+            </div>
+          </div>
+
+          <!-- Step 1: Chrome Extension (merged — explanation + execution inline) -->
           <div class="gs-step">
             <div class="gs-step-header">
               <div class="gs-step-icon bg-indigo-dim">
                 <i data-lucide="circle-plus" class="icon-lg icon-stroke-lg" style="stroke:var(--indigo);"></i>
               </div>
-              <div>
+              <div class="u-flex-1">
                 <div class="gs-step-num">Step 1</div>
                 <div class="gs-step-title">Install the Chrome Extension</div>
               </div>
+              <!-- POD3-GS: BUG-7 — unified header dot -->
+              <div class="setup-dot" id="ext-dot" role="status" aria-label="Extension not connected"></div>
             </div>
             <div class="gs-step-body">
               Your extension works quietly in the background, identifying opportunities at companies where you already have professional connections. It maps your network to active hiring &mdash; so when a company you're connected to posts a role, you'll know before most applicants do.
             </div>
-            <div class="gs-tip">
-              <span class="gs-tip-label">Heads up</span>
-              <span>Each extension is unique to your account with its own security parameters. Download it from the <strong>Setup</strong> page after signing in.</span>
+            <!-- Extension status + download (from Setup) -->
+            <div id="ext-setup-disconnected">
+              <div class="ext-status u-mb-14" id="ext-status-bar" style="margin-top:14px;">
+                <div>
+                  <div style="font-size:13px;font-weight:600;" id="ext-status-text">Extension not detected</div>
+                  <div class="u-meta" id="ext-status-detail">Download and install below</div>
+                </div>
+              </div>
+              <div id="download-box" class="u-mb-12">
+                <button class="btn btn-primary btn-sm setup-connect-btn" id="download-btn">Download Extension</button>
+                <div class="download-status" id="download-status"></div>
+              </div>
+              <!-- Extension update notification (hidden by default) -->
+              <div id="ext-update-banner" class="ext-update-banner">
+                <div class="u-flex-gap-8" style="margin-bottom:6px;">
+                  <div class="admin-health-dot amber"></div>
+                  <div style="font-size:13px;font-weight:600;color:var(--warm);">Update available</div>
+                </div>
+                <div class="u-meta-dim-lh u-mb-12">
+                  Your extension is <strong id="ext-installed-ver">&mdash;</strong> &mdash; latest is <strong id="ext-required-ver">&mdash;</strong>.
+                  Download the new version to get the latest features and fixes.
+                </div>
+                <button class="btn btn-sm ext-update-dl-btn" id="ext-update-dl-btn">
+                  Download v<span id="ext-update-ver-label">&mdash;</span>
+                </button>
+              </div>
+              <div class="card u-mt-12" id="instance-card" style="display:none;">
+                <div class="card-title">Your Extension Instance</div>
+                <div class="card-sub">Unique parameters for this build</div>
+                <div class="instance-info">
+                  <div>Instance ID: <span id="ext-instance-id">&mdash;</span></div>
+                  <div>Built: <span id="ext-built-at">&mdash;</span></div>
+                </div>
+              </div>
+              <!-- Installation guide -->
+              <div id="ext-install-guide" class="card ext-install-guide">
+                <div class="card-title" style="margin-bottom:2px;">Installation Guide</div>
+                <div class="card-sub">Follow these 4 steps to get the extension running</div>
+                <div class="install-steps">
+                  <div class="install-step" id="ext-step-1" data-step="1">
+                    <div class="step-num-circle">1</div>
+                    <div class="step-content">
+                      <h4>Unzip the download</h4>
+                      <p>Extract the .zip to a <strong>permanent folder</strong> (like <code>~/Extensions/brilliant-jobs</code>). Don&rsquo;t delete it &mdash; Chrome needs the folder to keep working.</p>
+                      <button class="btn btn-sm btn-secondary u-mt-8" onclick="markExtStep(1)" style="font-size:11px;padding:3px 10px;">Done &rarr;</button>
+                    </div>
+                  </div>
+                  <div class="install-step u-dim-25" id="ext-step-2" data-step="2">
+                    <div class="step-num-circle">2</div>
+                    <div class="step-content">
+                      <h4>Open Chrome Extensions</h4>
+                      <p>Go to <code>chrome://extensions</code> in your address bar and turn on <strong>Developer mode</strong> (top right toggle).</p>
+                      <button class="btn btn-sm btn-secondary u-mt-8" onclick="markExtStep(2)" style="font-size:11px;padding:3px 10px;">Done &rarr;</button>
+                    </div>
+                  </div>
+                  <div class="install-step u-dim-25" id="ext-step-3" data-step="3">
+                    <div class="step-num-circle">3</div>
+                    <div class="step-content">
+                      <h4>Load the extension</h4>
+                      <p>Click <strong>Load unpacked</strong> and select the unzipped folder you created in step 1.</p>
+                      <button class="btn btn-sm btn-secondary u-mt-8" onclick="markExtStep(3)" style="font-size:11px;padding:3px 10px;">Done &rarr;</button>
+                    </div>
+                  </div>
+                  <div class="install-step u-dim-25" id="ext-step-4" data-step="4">
+                    <div class="step-num-circle">4</div>
+                    <div class="step-content">
+                      <h4>Pin and open</h4>
+                      <p>Click the <strong>puzzle icon</strong> in Chrome's toolbar and <strong>pin</strong> the Brilliant Jobs extension. Then click it to open.</p>
+                      <button class="btn btn-sm btn-primary u-mt-8" onclick="markExtStep(4)" style="font-size:11px;padding:3px 10px;">All done!</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div><!-- /ext-setup-disconnected -->
+            <div class="setup-action-zone">
+              <div class="setup-connected" id="ext-setup-connected" style="display:none;">
+                <div style="display:flex;align-items:center;gap:8px;justify-content:center;">
+                  <div class="phone-verified-badge"><i data-lucide="check" class="icon-sm" style="stroke-width:2.5;fill:none;stroke:currentColor;"></i> Connected</div>
+                  <span id="ext-instance-label" style="font-size:11px;color:var(--text-dim);font-family:var(--mono);"></span>
+                </div>
+                <div class="u-meta" id="ext-status-detail-connected" style="text-align:center;"></div>
+              </div>
             </div>
           </div>
 
-          <!-- Step 2: Connect Accounts -->
+          <!-- Step 2: Connect Accounts (merged — full integration cards inline) -->
           <div class="gs-step">
             <div class="gs-step-header">
               <div class="gs-step-icon" style="background:var(--green-dim);">
@@ -459,39 +547,108 @@
             <div class="gs-step-body">
               Authorize read-only access so Brilliant Jobs can help track your application pipeline &mdash; detecting responses, scheduling interviews, and flagging companies that go silent.
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:16px;">
-              <!-- POD3-GS: BUG-3 resolved — all three cards are uniform display-only. No action buttons on Get Started. -->
-              <div class="gs-connect-card">
-                <div style="width:36px;height:36px;border-radius:10px;background:hsla(4,80%,56%,0.08);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
-                  <svg width="18" height="14" viewBox="0 0 24 18" fill="none"><path d="M1.5 4.5L12 10.5L22.5 4.5V15.75C22.5 16.575 21.825 17.25 21 17.25H3C2.175 17.25 1.5 16.575 1.5 15.75V4.5Z" fill="#EA4335" opacity="0.8"/><path d="M22.5 2.25C22.5 1.425 21.825 0.75 21 0.75H3C2.175 0.75 1.5 1.425 1.5 2.25L12 8.25L22.5 2.25Z" fill="#EA4335"/></svg>
+            <div class="setup-grid" style="margin-top:16px;">
+
+              <!-- Gmail -->
+              <div class="setup-int-card">
+                <div class="setup-int-header">
+                  <div class="setup-int-icon" style="background:hsla(4,80%,56%,0.08);">
+                    <svg width="20" height="16" viewBox="0 0 24 18" fill="none"><path d="M1.5 4.5L12 10.5L22.5 4.5V15.75C22.5 16.575 21.825 17.25 21 17.25H3C2.175 17.25 1.5 16.575 1.5 15.75V4.5Z" fill="#EA4335" opacity="0.8"/><path d="M22.5 2.25C22.5 1.425 21.825 0.75 21 0.75H3C2.175 0.75 1.5 1.425 1.5 2.25L12 8.25L22.5 2.25Z" fill="#EA4335"/></svg>
+                  </div>
+                  <div class="u-flex-1">
+                    <div class="card-title u-mb-0">Gmail</div>
+                    <div class="u-meta-dim">Your application pipeline, mostly on autopilot</div>
+                  </div>
+                  <div class="setup-dot" id="gmail-dot"></div>
                 </div>
-                <div class="u-label-bold">Gmail</div>
-                <div class="u-meta-dim-lh">Detects confirmations, rejections, and interview requests</div>
-                <a href="#" onclick="event.preventDefault();document.querySelector('[data-page=setup]').click()" style="display:inline-block;margin-top:8px;font-size:11px;color:var(--accent);text-decoration:none;">Set up on Setup page &rarr;</a>
-              </div>
-              <div class="gs-connect-card">
-                <div style="width:36px;height:36px;border-radius:10px;background:hsla(217,80%,56%,0.08);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="#4285F4" stroke-width="2"/><path d="M3 9h18" stroke="#4285F4" stroke-width="2"/><circle cx="8" cy="14" r="1.5" fill="#EA4335"/><circle cx="12" cy="14" r="1.5" fill="#34A853"/></svg>
+                <div class="setup-int-body">
+                  <div class="setup-desc">
+                    Tracks your job applications automatically &mdash; detecting responses, interview requests, and rejections so your pipeline stays current without manual updates.
+                  </div>
+                  <div class="setup-action-zone">
+                    <div class="setup-connected" id="gmail-setup-connected" style="display:none;">
+                      <div style="display:flex;align-items:center;gap:8px;justify-content:center;">
+                        <div class="phone-verified-badge"><i data-lucide="check" class="icon-sm" style="stroke-width:2.5;fill:none;stroke:currentColor;"></i> Connected</div>
+                        <span id="gmail-address" style="font-size:11px;color:var(--text-dim);font-family:var(--mono);"></span>
+                      </div>
+                      <button class="btn btn-sm btn-secondary setup-connect-btn" onclick="disconnectGmail()">Disconnect Gmail</button>
+                    </div>
+                    <div class="setup-disconnected" id="gmail-setup-disconnected">
+                      <button class="btn btn-sm btn-primary setup-connect-btn" id="gmail-setup-connect-btn" onclick="connectGmail()">Connect Gmail</button>
+                      <span class="u-meta">Read-only access</span>
+                    </div>
+                  </div>
                 </div>
-                <div class="u-label-bold">Calendar</div>
-                <div class="u-meta-dim-lh">Tracks interview schedules and follow-up timelines</div>
-                <a href="#" onclick="event.preventDefault();document.querySelector('[data-page=setup]').click()" style="display:inline-block;margin-top:8px;font-size:11px;color:var(--accent);text-decoration:none;">Set up on Setup page &rarr;</a>
               </div>
-              <div class="gs-connect-card">
-                <div style="width:36px;height:36px;border-radius:10px;background:hsla(217,80%,56%,0.08);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M8 3L1.5 14.4h6.5L14.5 3H8z" fill="#0066DA"/><path d="M16 21l6.5-6.6H16L9.5 21h6.5z" fill="#00AC47"/><path d="M1.5 14.4l3.25 6.6 6.5-6.6H1.5z" fill="#EA4335"/></svg>
+
+              <!-- Google Calendar -->
+              <div class="setup-int-card">
+                <div class="setup-int-header">
+                  <div class="setup-int-icon" style="background:hsla(217,80%,56%,0.08);">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="#4285F4" stroke-width="2"/><path d="M3 9h18" stroke="#4285F4" stroke-width="2"/><path d="M9 4V2M15 4V2" stroke="#4285F4" stroke-width="2" stroke-linecap="round"/><circle cx="8" cy="14" r="1.5" fill="#EA4335"/><circle cx="12" cy="14" r="1.5" fill="#34A853"/><circle cx="16" cy="14" r="1.5" fill="#FBBC05"/></svg>
+                  </div>
+                  <div class="u-flex-1">
+                    <div class="card-title u-mb-0">Google Calendar</div>
+                    <div class="u-meta-dim">Never miss an interview or follow-up window</div>
+                  </div>
+                  <div class="setup-dot" id="gcal-dot"></div>
                 </div>
-                <div class="u-label-bold">Drive</div>
-                <div class="u-meta-dim-lh">Keep resumes synced &mdash; edit in Docs, always current here</div>
-                <a href="#" onclick="event.preventDefault();document.querySelector('[data-page=setup]').click()" style="display:inline-block;margin-top:8px;font-size:11px;color:var(--accent);text-decoration:none;">Set up on Setup page &rarr;</a>
+                <div class="setup-int-body">
+                  <div class="setup-desc">
+                    Picks up interview schedules and follow-up timelines. Paired with Gmail, gives you a complete picture of every application.
+                  </div>
+                  <div class="setup-action-zone">
+                    <div class="setup-connected" id="gcal-setup-connected" style="display:none;">
+                      <div style="display:flex;align-items:center;gap:8px;justify-content:center;">
+                        <div class="phone-verified-badge"><i data-lucide="check" class="icon-sm" style="stroke-width:2.5;fill:none;stroke:currentColor;"></i> Connected</div>
+                        <span id="gcal-address" style="font-size:11px;color:var(--text-dim);font-family:var(--mono);"></span>
+                      </div>
+                      <button class="btn btn-sm btn-secondary setup-connect-btn" id="gcal-disconnect-btn" onclick="disconnectGoogleCalendar()">Disconnect Calendar</button>
+                    </div>
+                    <div class="setup-disconnected" id="gcal-setup-disconnected">
+                      <button class="btn btn-sm btn-primary setup-connect-btn" id="gcal-connect-btn" onclick="connectGoogleCalendar()">Connect Calendar</button>
+                      <span class="u-meta">Read-only access</span>
+                    </div>
+                  </div>
+                </div>
               </div>
+
+              <!-- Google Drive -->
+              <div class="setup-int-card">
+                <div class="setup-int-header">
+                  <div class="setup-int-icon" style="background:hsla(217,80%,56%,0.08);">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M8.006 3L1.5 14.4h6.506L14.512 3H8.006z" fill="#0066DA"/><path d="M16.005 21l6.495-6.6H15.99L9.506 21h6.5z" fill="#00AC47"/><path d="M1.5 14.4l3.253 6.6 6.506-6.6H1.5z" fill="#EA4335"/><path d="M16.005 21l-3.247-6.6H6.253L9.506 21h6.5z" fill="#00832D"/><path d="M14.512 3l-1.754 3.6 3.247 7.8h6.495L14.512 3z" fill="#2684FC"/><path d="M12.758 6.6L8.006 14.4h4.752l3.247-7.8-3.247-3z" fill="#FFBA00"/></svg>
+                  </div>
+                  <div class="u-flex-1">
+                    <div class="card-title u-mb-0">Google Drive</div>
+                    <div class="u-meta-dim">Edit once, always up to date</div>
+                  </div>
+                  <div class="setup-dot" id="gdrive-dot"></div>
+                </div>
+                <div class="setup-int-body">
+                  <div class="setup-desc">
+                    Resumes stay synced from Google Docs. Optional &mdash; you can also upload files directly.
+                  </div>
+                  <div class="setup-action-zone">
+                    <div class="setup-connected" id="gdrive-setup-connected" style="display:none;">
+                      <div style="display:flex;align-items:center;gap:8px;justify-content:center;">
+                        <div class="phone-verified-badge"><i data-lucide="check" class="icon-sm" style="stroke-width:2.5;fill:none;stroke:currentColor;"></i> Connected</div>
+                        <span id="gdrive-address" style="font-size:11px;color:var(--text-dim);font-family:var(--mono);"></span>
+                      </div>
+                      <button class="btn btn-sm btn-secondary setup-connect-btn" id="gdrive-disconnect-btn" onclick="disconnectGoogleDrive()">Disconnect Drive</button>
+                    </div>
+                    <div class="setup-disconnected" id="gdrive-setup-disconnected">
+                      <button class="btn btn-sm btn-primary setup-connect-btn" id="gdrive-connect-btn" onclick="connectGoogleDrive()">Connect Drive</button>
+                      <span class="u-meta">Read-only access</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             </div>
             <div class="gs-tip">
               <span class="gs-tip-label">Why?</span>
               <span>Gmail and Calendar are the backbone of your application pipeline &mdash; they detect confirmations, rejections, interview invites, and ghosting patterns so your dashboard stays current without you updating it manually.</span>
-            </div>
-            <div class="u-mt-12" style="text-align:center;">
-              <button class="btn btn-primary btn-sm" onclick="document.querySelector('[data-page=setup]').click()" style="font-size:12px;">Open Setup &rarr; Connect Your Accounts</button>
             </div>
           </div>
 
@@ -596,238 +753,6 @@
               <div><div class="u-stat-lg" id="gs-stat-pages">—</div><div class="u-meta">career pages tracked</div></div>
               <div><div class="u-stat-lg" id="gs-stat-companies">—</div><div class="u-meta">companies hiring now</div></div>
             </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- ============ SETUP ============ -->
-      <div class="page" id="page-setup">
-        <div class="page-header">
-          <h2>Setup</h2>
-          <p>Connect your network and integrations <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('setup')">How this works →</a></p>
-        </div>
-        <!-- POD3-GS: BUG-8 resolved — page-body max-width: 760px matches Get Started for consistent hero treatment -->
-        <div class="page-body" style="max-width:760px;">
-
-          <!-- Setup hero -->
-          <div class="setup-hero">
-            <div style="font-size:18px;font-weight:800;margin-bottom:6px;">Connect once. <span class="u-color-amber">Track everything.</span></div>
-            <div style="font-size:13px;color:rgba(255,255,255,0.88);line-height:1.7;max-width:540px;">
-              These integrations let Brilliant Jobs handle most of your application tracking automatically — detecting responses, scheduling interviews, and flagging silence. Less spreadsheet maintenance, more time preparing.
-            </div>
-          </div>
-
-          <!-- Status bar -->
-          <div class="setup-status-bar">
-            <div style="font-size:13px;font-weight:600;">Connections</div>
-            <div style="display:flex;gap:16px;flex-wrap:wrap;">
-              <div class="setup-status-item"><span class="setup-status-dot" id="status-ext"></span> Extension</div>
-              <div class="setup-status-item"><span class="setup-status-dot" id="status-gmail"></span> Gmail</div>
-              <div class="setup-status-item"><span class="setup-status-dot" id="status-gcal"></span> Calendar</div>
-              <div class="setup-status-item"><span class="setup-status-dot" id="status-gdrive"></span> Drive</div>
-            </div>
-          </div>
-
-          <!-- Integration grid — all four equal -->
-          <div class="setup-grid">
-
-            <!-- Chrome Extension -->
-            <div class="setup-int-card">
-              <div class="setup-int-header">
-                <div class="setup-int-icon bg-indigo-dim">
-                  <i data-lucide="circle-plus" class="icon-md icon-stroke" style="stroke:var(--indigo);"></i>
-                </div>
-                <div class="u-flex-1">
-                  <div class="card-title u-mb-0">Chrome Extension</div>
-                  <div class="u-meta-dim">Your network mapped to active hiring</div>
-                </div>
-                <!-- POD3-GS: BUG-7 — unified header dot class -->
-                <div class="setup-dot" id="ext-dot" role="status" aria-label="Extension not connected"></div>
-              </div>
-              <div class="setup-int-body">
-                <div class="setup-desc">Your network mapped to active hiring managers. The extension runs in the background, building a live map of who's hiring.</div>
-                <div id="ext-setup-disconnected">
-                  <div class="ext-status u-mb-14" id="ext-status-bar">
-                    <div>
-                      <div style="font-size:13px;font-weight:600;" id="ext-status-text">Extension not detected</div>
-                      <div class="u-meta" id="ext-status-detail">Download and install below</div>
-                    </div>
-                  </div>
-                <div id="download-box" class="u-mb-12">
-                  <button class="btn btn-primary btn-sm" id="download-btn">Download Extension</button>
-                  <div class="download-status" id="download-status"></div>
-                </div>
-                <!-- Extension update notification (hidden by default) -->
-                <div id="ext-update-banner" class="ext-update-banner">
-                  <div class="u-flex-gap-8" style="margin-bottom:6px;">
-                    <div class="admin-health-dot amber"></div>
-                    <div style="font-size:13px;font-weight:600;color:var(--warm);">Update available</div>
-                  </div>
-                  <div class="u-meta-dim-lh u-mb-12">
-                    Your extension is <strong id="ext-installed-ver">—</strong> — latest is <strong id="ext-required-ver">—</strong>.
-                    Download the new version to get the latest features and fixes.
-                  </div>
-                  <button class="btn btn-sm ext-update-dl-btn" id="ext-update-dl-btn">
-                    Download v<span id="ext-update-ver-label">—</span>
-                  </button>
-                </div>
-                <div class="card u-mt-12" id="instance-card" style="display:none;">
-                  <div class="card-title">Your Extension Instance</div>
-                  <div class="card-sub">Unique parameters for this build</div>
-                  <div class="instance-info">
-                    <div>Instance ID: <span id="ext-instance-id">—</span></div>
-                    <div>Built: <span id="ext-built-at">—</span></div>
-                  </div>
-                </div>
-                <!-- DS1A-13: Guided installation walkthrough (always visible after download) -->
-                <div id="ext-install-guide" class="card ext-install-guide">
-                  <div class="card-title" style="margin-bottom:2px;">Installation Guide</div>
-                  <div class="card-sub">Follow these 4 steps to get the extension running</div>
-                  <div class="install-steps">
-                    <div class="install-step" id="ext-step-1" data-step="1">
-                      <div class="step-num-circle">1</div>
-                      <div class="step-content">
-                        <h4>Unzip the download</h4>
-                        <p>Extract the .zip to a <strong>permanent folder</strong> (like <code>~/Extensions/brilliant-jobs</code>). Don&rsquo;t delete it — Chrome needs the folder to keep working.</p>
-                        <button class="btn btn-sm btn-secondary u-mt-8" onclick="markExtStep(1)" style="font-size:11px;padding:3px 10px;">Done &rarr;</button>
-                      </div>
-                    </div>
-                    <div class="install-step u-dim-25" id="ext-step-2" data-step="2">
-                      <div class="step-num-circle">2</div>
-                      <div class="step-content">
-                        <h4>Open Chrome Extensions</h4>
-                        <p>Go to <code>chrome://extensions</code> in your address bar and turn on <strong>Developer mode</strong> (top right toggle).</p>
-                        <button class="btn btn-sm btn-secondary u-mt-8" onclick="markExtStep(2)" style="font-size:11px;padding:3px 10px;">Done &rarr;</button>
-                      </div>
-                    </div>
-                    <div class="install-step u-dim-25" id="ext-step-3" data-step="3">
-                      <div class="step-num-circle">3</div>
-                      <div class="step-content">
-                        <h4>Load the extension</h4>
-                        <p>Click <strong>Load unpacked</strong> and select the unzipped folder you created in step 1.</p>
-                        <button class="btn btn-sm btn-secondary u-mt-8" onclick="markExtStep(3)" style="font-size:11px;padding:3px 10px;">Done &rarr;</button>
-                      </div>
-                    </div>
-                    <div class="install-step u-dim-25" id="ext-step-4" data-step="4">
-                      <div class="step-num-circle">4</div>
-                      <div class="step-content">
-                        <h4>Pin and open</h4>
-                        <p>Click the <strong>puzzle icon</strong> in Chrome's toolbar and <strong>pin</strong> the Brilliant Jobs extension. Then click it to open.</p>
-                        <button class="btn btn-sm btn-primary u-mt-8" onclick="markExtStep(4)" style="font-size:11px;padding:3px 10px;">All done!</button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                </div><!-- /ext-setup-disconnected -->
-                <div class="setup-action-zone">
-                  <div class="setup-connected" id="ext-setup-connected" style="display:none;">
-                    <div style="display:flex;align-items:center;gap:8px;justify-content:center;">
-                      <div class="phone-verified-badge"><i data-lucide="check" class="icon-sm" style="stroke-width:2.5;fill:none;stroke:currentColor;"></i> Connected</div>
-                      <span id="ext-instance-label" style="font-size:11px;color:var(--text-dim);font-family:var(--mono);"></span>
-                    </div>
-                    <div class="u-meta" id="ext-status-detail-connected" style="text-align:center;"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Gmail -->
-            <div class="setup-int-card">
-              <div class="setup-int-header">
-                <div class="setup-int-icon" style="background:hsla(4,80%,56%,0.08);">
-                  <svg width="20" height="16" viewBox="0 0 24 18" fill="none"><path d="M1.5 4.5L12 10.5L22.5 4.5V15.75C22.5 16.575 21.825 17.25 21 17.25H3C2.175 17.25 1.5 16.575 1.5 15.75V4.5Z" fill="#EA4335" opacity="0.8"/><path d="M22.5 2.25C22.5 1.425 21.825 0.75 21 0.75H3C2.175 0.75 1.5 1.425 1.5 2.25L12 8.25L22.5 2.25Z" fill="#EA4335"/></svg>
-                </div>
-                <div class="u-flex-1">
-                  <div class="card-title u-mb-0">Gmail</div>
-                  <div class="u-meta-dim">Your application pipeline, mostly on autopilot</div>
-                </div>
-                <div class="setup-dot" id="gmail-dot"></div>
-              </div>
-              <div class="setup-int-body">
-                <div class="setup-desc">
-                  Tracks your job applications automatically — detecting responses, interview requests, and rejections so your pipeline stays current without manual updates.
-                </div>
-                <div class="setup-action-zone">
-                  <div class="setup-connected" id="gmail-setup-connected" style="display:none;">
-                    <div style="display:flex;align-items:center;gap:8px;justify-content:center;">
-                      <div class="phone-verified-badge"><i data-lucide="check" class="icon-sm" style="stroke-width:2.5;fill:none;stroke:currentColor;"></i> Connected</div>
-                      <span id="gmail-address" style="font-size:11px;color:var(--text-dim);font-family:var(--mono);"></span>
-                    </div>
-                    <button class="btn btn-sm btn-secondary setup-connect-btn" onclick="disconnectGmail()">Disconnect Gmail</button>
-                  </div>
-                  <div class="setup-disconnected" id="gmail-setup-disconnected">
-                    <button class="btn btn-sm btn-primary setup-connect-btn" id="gmail-setup-connect-btn" onclick="connectGmail()">Connect Gmail</button>
-                    <span class="u-meta">Read-only access</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Google Calendar -->
-            <div class="setup-int-card">
-              <div class="setup-int-header">
-                <div class="setup-int-icon" style="background:hsla(217,80%,56%,0.08);">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="#4285F4" stroke-width="2"/><path d="M3 9h18" stroke="#4285F4" stroke-width="2"/><path d="M9 4V2M15 4V2" stroke="#4285F4" stroke-width="2" stroke-linecap="round"/><circle cx="8" cy="14" r="1.5" fill="#EA4335"/><circle cx="12" cy="14" r="1.5" fill="#34A853"/><circle cx="16" cy="14" r="1.5" fill="#FBBC05"/></svg>
-                </div>
-                <div class="u-flex-1">
-                  <div class="card-title u-mb-0">Google Calendar</div>
-                  <div class="u-meta-dim">Never miss an interview or follow-up window</div>
-                </div>
-                <div class="setup-dot" id="gcal-dot"></div>
-              </div>
-              <div class="setup-int-body">
-                <div class="setup-desc">
-                  Picks up interview schedules and follow-up timelines. Paired with Gmail, gives you a complete picture of every application.
-                </div>
-                <div class="setup-action-zone">
-                  <div class="setup-connected" id="gcal-setup-connected" style="display:none;">
-                    <div style="display:flex;align-items:center;gap:8px;justify-content:center;">
-                      <div class="phone-verified-badge"><i data-lucide="check" class="icon-sm" style="stroke-width:2.5;fill:none;stroke:currentColor;"></i> Connected</div>
-                      <span id="gcal-address" style="font-size:11px;color:var(--text-dim);font-family:var(--mono);"></span>
-                    </div>
-                    <button class="btn btn-sm btn-secondary setup-connect-btn" id="gcal-disconnect-btn" onclick="disconnectGoogleCalendar()">Disconnect Calendar</button>
-                  </div>
-                  <div class="setup-disconnected" id="gcal-setup-disconnected">
-                    <button class="btn btn-sm btn-primary setup-connect-btn" id="gcal-connect-btn" onclick="connectGoogleCalendar()">Connect Calendar</button>
-                    <span class="u-meta">Read-only access</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Google Drive -->
-            <div class="setup-int-card">
-              <div class="setup-int-header">
-                <div class="setup-int-icon" style="background:hsla(217,80%,56%,0.08);">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M8.006 3L1.5 14.4h6.506L14.512 3H8.006z" fill="#0066DA"/><path d="M16.005 21l6.495-6.6H15.99L9.506 21h6.5z" fill="#00AC47"/><path d="M1.5 14.4l3.253 6.6 6.506-6.6H1.5z" fill="#EA4335"/><path d="M16.005 21l-3.247-6.6H6.253L9.506 21h6.5z" fill="#00832D"/><path d="M14.512 3l-1.754 3.6 3.247 7.8h6.495L14.512 3z" fill="#2684FC"/><path d="M12.758 6.6L8.006 14.4h4.752l3.247-7.8-3.247-3z" fill="#FFBA00"/></svg>
-                </div>
-                <div class="u-flex-1">
-                  <div class="card-title u-mb-0">Google Drive</div>
-                  <div class="u-meta-dim">Edit once, always up to date</div>
-                </div>
-                <div class="setup-dot" id="gdrive-dot"></div>
-              </div>
-              <div class="setup-int-body">
-                <div class="setup-desc">
-                  Resumes stay synced from Google Docs. Optional — you can also upload files directly.
-                </div>
-                <div class="setup-action-zone">
-                  <div class="setup-connected" id="gdrive-setup-connected" style="display:none;">
-                    <div style="display:flex;align-items:center;gap:8px;justify-content:center;">
-                      <div class="phone-verified-badge"><i data-lucide="check" class="icon-sm" style="stroke-width:2.5;fill:none;stroke:currentColor;"></i> Connected</div>
-                      <span id="gdrive-address" style="font-size:11px;color:var(--text-dim);font-family:var(--mono);"></span>
-                    </div>
-                    <button class="btn btn-sm btn-secondary setup-connect-btn" id="gdrive-disconnect-btn" onclick="disconnectGoogleDrive()">Disconnect Drive</button>
-                  </div>
-                  <div class="setup-disconnected" id="gdrive-setup-disconnected">
-                    <button class="btn btn-sm btn-primary setup-connect-btn" id="gdrive-connect-btn" onclick="connectGoogleDrive()">Connect Drive</button>
-                    <span class="u-meta">Read-only access</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
           </div>
 
         </div>
@@ -1963,7 +1888,7 @@
                 <div class="notify-config-row u-hidden" id="pi-gmail-status">
                   <label>Gmail connection</label>
                   <span id="pi-gmail-connected" style="font-size:12px;color:var(--green);display:none;">Connected</span>
-                  <button class="btn btn-secondary btn-sm u-fs-11" id="pi-gmail-connect" onclick="window.location.hash='setup'">Connect Gmail on Setup page</button>
+                  <button class="btn btn-secondary btn-sm u-fs-11" id="pi-gmail-connect" onclick="document.querySelector('[data-page=brilliant]')?.click()">Connect Gmail on Get Started</button>
                 </div>
               </div>
               <details class="u-mt-12">
