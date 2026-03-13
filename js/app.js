@@ -1133,29 +1133,55 @@ initGmailStatus();
 
 // APR-001: Switch between Queue, Pipeline, History sub-tabs in My Applications
 window.switchAppTab = function(panel) {
-  // Migrate legacy 'board' → 'pipeline', 'settings' → 'queue'
-  if (panel === 'board') panel = 'pipeline';
-  if (panel === 'settings') panel = 'queue';
+  // FB-APPS-001: Migrate legacy values to new 2-tab model
+  if (panel === 'board' || panel === 'queue' || panel === 'history') panel = 'pipeline';
+  if (panel !== 'pipeline' && panel !== 'settings') panel = 'pipeline';
 
-  // Toggle active on sub-tab buttons
-  document.querySelectorAll('#page-applications .app-flow-tab').forEach(function(tab) {
-    tab.classList.toggle('active', tab.dataset.panel === panel);
-  });
+  // Toggle top-level tab buttons
+  var tabPipeline = document.getElementById('app-top-tab-pipeline');
+  var tabSettings = document.getElementById('app-top-tab-settings');
+  if (tabPipeline) tabPipeline.classList.toggle('active', panel === 'pipeline');
+  if (tabSettings) tabSettings.classList.toggle('active', panel === 'settings');
 
-  // Toggle sub-tab panels
-  document.querySelectorAll('#page-applications .app-flow-panel').forEach(function(p) {
-    p.classList.remove('active');
-  });
-  var target = document.getElementById('panel-' + panel);
-  if (target) target.classList.add('active');
+  // Toggle tab content panels
+  var panelPipeline = document.getElementById('app-tab-pipeline');
+  var panelSettings = document.getElementById('app-tab-settings');
+  if (panelPipeline) {
+    if (panel === 'pipeline') panelPipeline.classList.remove('u-hidden');
+    else panelPipeline.classList.add('u-hidden');
+  }
+  if (panelSettings) {
+    if (panel === 'settings') panelSettings.classList.remove('u-hidden');
+    else panelSettings.classList.add('u-hidden');
+  }
 
-  // Trigger pipeline render when switching to Pipeline view
-  if (panel === 'pipeline' && typeof renderPipeline === 'function') {
-    // BUGFIX: Reload from Supabase first — toggleSaveJob writes to DB but not _pipelineCache
-    if (typeof loadPipelineFromSupabase === 'function') {
-      loadPipelineFromSupabase().then(function() { renderPipeline(); });
-    } else {
-      renderPipeline();
+  // Show/hide settings summary banner (only visible on Pipeline tab)
+  var summaryBanner = document.getElementById('app-settings-summary');
+  if (summaryBanner) summaryBanner.style.display = (panel === 'pipeline') ? '' : 'none';
+
+  // Trigger pipeline render when switching to Pipeline tab
+  if (panel === 'pipeline') {
+    if (typeof renderPipeline === 'function') {
+      if (typeof loadPipelineFromSupabase === 'function') {
+        loadPipelineFromSupabase().then(function() { renderPipeline(); });
+      } else {
+        renderPipeline();
+      }
+    }
+    // Update settings summary banner
+    if (typeof renderSettingsSummary === 'function') renderSettingsSummary();
+  }
+
+  // FB-APPS-001: Score Gate card visibility in Settings tab
+  if (panel === 'settings') {
+    var scoreGateCard = document.getElementById('score-gate-card');
+    if (scoreGateCard) {
+      try {
+        var as = JSON.parse(localStorage.getItem('bj_apply_settings') || '{}');
+        var mode = as.default_apply_mode || 'manual';
+        var scoreGateModes = ['score_gated','score_gated_auto','auto_rewrite','autopilot'];
+        scoreGateCard.style.display = scoreGateModes.indexOf(mode) !== -1 ? '' : 'none';
+      } catch(e) { scoreGateCard.style.display = ''; }
     }
   }
 
@@ -1180,25 +1206,73 @@ window.initTabGroup = function(containerSelector) {
   });
 };
 
-// APR-001: Wire tab groups
+// FB-APPS-001: Old APR-001 sub-tab wiring removed — replaced by top-level Pipeline/Settings tabs above
+
+  // FB-APPS-001: Settings Summary Banner — reads current config and populates banner
+window.renderSettingsSummary = function() {
+  try {
+    var as = JSON.parse(localStorage.getItem('bj_apply_settings') || '{}');
+    var mode = as.default_apply_mode || 'manual';
+    var modeLabels = {
+      manual: 'Manual', score_gated: 'Score-Gated',
+      auto: 'Auto-Apply', score_gated_auto: 'Auto + Score Gate',
+      auto_rewrite: 'Auto + Rewrite', autopilot: 'Full Autopilot'
+    };
+    var scoreGateModes = ['score_gated','score_gated_auto','auto_rewrite','autopilot'];
+    var autoRuleModes = ['auto','score_gated_auto','auto_rewrite','autopilot'];
+
+    // Mode
+    var modeEl = document.getElementById('app-summary-mode');
+    if (modeEl) modeEl.textContent = 'Mode: ' + (modeLabels[mode] || mode);
+
+    // Score Gate (conditional)
+    var gateEl = document.getElementById('app-summary-gate');
+    if (gateEl) {
+      if (scoreGateModes.indexOf(mode) !== -1) {
+        var threshold = document.getElementById('fas-threshold');
+        gateEl.style.display = '';
+        gateEl.innerHTML = 'Score Gate: ' + (threshold ? threshold.value : (as.default_score_threshold || 70)) + '<span class="app-summary-dot">&middot;</span>';
+      } else {
+        gateEl.style.display = 'none';
+      }
+    }
+
+    // Rules count (conditional)
+    var rulesEl = document.getElementById('app-summary-rules');
+    if (rulesEl) {
+      if (autoRuleModes.indexOf(mode) !== -1) {
+        var checked = document.querySelectorAll('.rule-toggle:checked').length;
+        var total = document.querySelectorAll('.rule-toggle').length;
+        rulesEl.style.display = '';
+        rulesEl.innerHTML = 'Rules: ' + checked + '/' + total + ' on<span class="app-summary-dot">&middot;</span>';
+      } else {
+        rulesEl.style.display = 'none';
+      }
+    }
+
+    // Resume
+    var resumeEl = document.getElementById('app-summary-resume');
+    if (resumeEl) {
+      var sel = document.getElementById('resume-assign-default');
+      var resumeName = (sel && sel.selectedIndex > 0) ? sel.options[sel.selectedIndex].text : 'none';
+      resumeEl.textContent = 'Resume: ' + resumeName;
+      if (resumeName === 'none') resumeEl.style.color = 'var(--warm)';
+      else resumeEl.style.color = '';
+    }
+
+    // Prompts
+    var promptsEl = document.getElementById('app-summary-prompts');
+    if (promptsEl) {
+      var sp = document.getElementById('pi-smart-prompts');
+      promptsEl.textContent = 'Prompts: ' + (sp && sp.checked ? 'On' : 'Off');
+    }
+  } catch(e) {
+    if (typeof reportError === 'function') reportError('renderSettingsSummary', e);
+  }
+};
+
+// FB-APPS-001: Application Mode label update + Score Gate visibility
 (function() {
-  // Applications tabs
-  document.querySelectorAll('#page-applications .app-flow-tab').forEach(function(tab) {
-    tab.addEventListener('click', function() {
-      var panel = this.dataset.panel;
-      if (panel) switchAppTab(panel);
-    });
-  });
-  // Restore last sub-tab or default to Queue
-  var saved = localStorage.getItem('bj_app_tab') || 'queue';
-  if (saved === 'board') saved = 'pipeline';
-  if (saved === 'settings') saved = 'queue';
-  if (typeof switchAppTab === 'function') switchAppTab(saved);
-
-  // Notifications tabs
-  initTabGroup('#page-notifications');
-
-  // APR-001: Application Mode label + Score Gate visibility
   var modeLabels = {
     manual: 'Manual', score_gated: 'Score-Gated',
     auto: 'Auto-Apply', score_gated_auto: 'Auto + Score Gate',
@@ -1207,10 +1281,9 @@ window.initTabGroup = function(containerSelector) {
   var scoreGateModes = ['score_gated','score_gated_auto','auto_rewrite','autopilot'];
 
   function updateModeUI(mode) {
-    var label = document.getElementById('app-mode-label');
-    if (label) label.textContent = modeLabels[mode] || mode;
-    var sgDetails = document.getElementById('score-gate-details');
-    if (sgDetails) sgDetails.style.display = scoreGateModes.indexOf(mode) !== -1 ? '' : 'none';
+    // Update score gate card visibility in Settings tab
+    var sgCard = document.getElementById('score-gate-card');
+    if (sgCard) sgCard.style.display = scoreGateModes.indexOf(mode) !== -1 ? '' : 'none';
   }
 
   document.querySelectorAll('.app-mode-select').forEach(function(btn) {
@@ -1242,6 +1315,32 @@ window.initTabGroup = function(containerSelector) {
       }
     });
   } catch(e) { /* ignore */ }
+
+  // FB-APPS-001: Wire top-level Pipeline/Settings tabs
+  // Default to pipeline on load (migrate legacy values)
+  var saved = localStorage.getItem('bj_app_tab') || 'pipeline';
+  // Migrate legacy sub-tab values
+  if (saved === 'board' || saved === 'queue' || saved === 'history') saved = 'pipeline';
+  if (saved !== 'pipeline' && saved !== 'settings') saved = 'pipeline';
+  if (typeof switchAppTab === 'function') switchAppTab(saved);
+
+  // Notifications tabs (unchanged)
+  if (typeof initTabGroup === 'function') initTabGroup('#page-notifications');
+
+  // FB-APPS-001: Queue section visibility — show when queue count > 0
+  window.updateQueueSectionVisibility = function() {
+    var queueSection = document.getElementById('app-queue-section');
+    var queueBadge = document.getElementById('app-queue-badge');
+    var queuedEl = document.getElementById('a-queued');
+    if (queueSection && queuedEl) {
+      var count = parseInt(queuedEl.textContent) || 0;
+      queueSection.style.display = count > 0 ? '' : 'none';
+      if (queueBadge) queueBadge.textContent = count > 0 ? ('(' + count + ')') : '';
+    }
+  };
+
+  // Render settings summary on initial load
+  if (typeof renderSettingsSummary === 'function') renderSettingsSummary();
 })();
 
 // Q16-Q19: Resume-First Onboarding
@@ -1486,7 +1585,8 @@ async function processReferralAttribution(user) {
 // CS-P1-004 FE-005: Register app.js exports with BJ namespace
 (function() {
   ['togglePageHelp', 'connectGmail', 'disconnectGmail', 'switchAppTab',
-   'handleOnboardResume', 'createFilterFromProfile'].forEach(function(name) {
+   'handleOnboardResume', 'createFilterFromProfile', 'renderSettingsSummary',
+   'updateQueueSectionVisibility'].forEach(function(name) {
     if (typeof window[name] === 'function') {
       window.BJ[name] = window[name];
       window.BJ._registry[name] = { module: 'app', registered: Date.now() };

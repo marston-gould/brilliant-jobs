@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v8.95 -->
+<!-- Brilliant Jobs Dashboard v8.96 -->
 <html lang="en">
 <head>
   <!-- CS-P1-009: Theme flash prevention — must be first script -->
@@ -19,22 +19,22 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="/js/vendor/supabase.min.js" defer></script>
-  <script src="/js/pipeline-migration.js?v=v8.95" defer></script>
-  <script src="/js/notification-center.js?v=v8.95" defer></script>
+  <script src="/js/pipeline-migration.js?v=v8.96" defer></script>
+  <script src="/js/notification-center.js?v=v8.96" defer></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" integrity="sha384-nFoSjZIoH3CCp8W639jJyQkuPHinJ2NHe7on1xvlUA7SuGfJAfvMldrsoAVm6ECz" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" integrity="sha384-eEu5CTj3qGvu9PdJuS+YlkNi7d2XxQROAFYOr59zgObtlcux1ae1Il3u7jvdCSWu" crossorigin="anonymous"></script>
   <!-- CS-014: CX-09 — ECharts lazy-loaded by stats.js when Stats tab opens -->
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js" integrity="sha384-TcLTgu6flPhnZ5dfHnHimsxNFjYWN0povfGgnOvgPJKbZe6IbuoC2ociiatSHl9E" crossorigin="anonymous"></script>
   <!-- CS-016 FIX-10: Code-split chunks — shell (globals+routing) + feed (job list) loaded eagerly; all other chunks lazy-loaded on tab switch -->
-  <script src="dist/dashboard-shell.min.js?v=v8.95" defer></script>
-  <script src="dist/dashboard-feed.min.js?v=v8.95" defer></script>
+  <script src="dist/dashboard-shell.min.js?v=v8.96" defer></script>
+  <script src="dist/dashboard-feed.min.js?v=v8.96" defer></script>
   <!-- CS-P1-002: dashboard inline scripts externalized (pdfjs, preload, feedback, insights, a11y) -->
-  <script src="js/dashboard-inline.js?v=v8.95" defer></script>
-  <script src="js/canny.js?v=v8.95" defer></script>
+  <script src="js/dashboard-inline.js?v=v8.96" defer></script>
+  <script src="js/canny.js?v=v8.96" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=v8.95">
+  <link rel="stylesheet" href="styles.css?v=v8.96">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -109,11 +109,11 @@
     </style>
   <!-- CSS extracted to styles.css in v3.28 -->
   <!-- A13: PostHog analytics — CS-P1-002: externalized for CSP compliance -->
-  <script src="js/posthog-dashboard.js?v=v8.95" defer></script>
-  <script src="js/posthog-perf.js?v=v8.95" defer></script>
-  <script src="js/feature-flags.js?v=v8.95" defer></script>
-  <script src="js/structured-logger.js?v=v8.95" defer></script>
-  <script src="js/theme.js?v=v8.95" defer></script>
+  <script src="js/posthog-dashboard.js?v=v8.96" defer></script>
+  <script src="js/posthog-perf.js?v=v8.96" defer></script>
+  <script src="js/feature-flags.js?v=v8.96" defer></script>
+  <script src="js/structured-logger.js?v=v8.96" defer></script>
+  <script src="js/theme.js?v=v8.96" defer></script>
 </head>
 <body>
 
@@ -1495,86 +1495,34 @@
         </div>
         <div class="page-body">
 
-          <!-- APR-001: Application Mode (collapsible, always visible) -->
-          <details class="app-config-section" id="app-mode-details" open>
-            <summary class="app-config-summary">
-              <span class="app-config-title">Application Mode</span>
-              <span class="app-config-value" id="app-mode-label">Manual</span>
-            </summary>
-            <div class="app-config-body">
-              <div class="card-sub" style="margin-bottom:12px;">Controls how saved/matched jobs get processed. Can be overridden per filter.</div>
-              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-                <button class="btn btn-sm app-mode-select active" data-mode="manual" style="border:2px solid var(--accent);text-align:left;padding:10px 12px;">
-                  <div class="u-card-label">Manual</div>
-                  <div class="u-sub-meta">I review each job and click Apply</div>
-                </button>
-                <button class="btn btn-secondary btn-sm app-mode-select u-text-left-pad" data-mode="score_gated">
-                  <div class="u-card-label">Score-Gated</div>
-                  <div class="u-sub-meta">I click Apply, but low scores get a check first</div>
-                </button>
-                <button class="btn btn-secondary btn-sm app-mode-select u-text-left-pad" data-mode="auto">
-                  <div class="u-card-label">Auto-Apply</div>
-                  <div class="u-sub-meta">Submit my resume automatically</div>
-                </button>
-                <button class="btn btn-secondary btn-sm app-mode-select u-text-left-pad" data-mode="score_gated_auto">
-                  <div class="u-card-label">Auto + Score Gate</div>
-                  <div class="u-sub-meta">Auto-apply only if score meets threshold</div>
-                </button>
-                <button class="btn btn-secondary btn-sm app-mode-select u-text-left-pad" data-mode="auto_rewrite">
-                  <div class="u-card-label">Auto + Rewrite</div>
-                  <div class="u-sub-meta">Auto-rewrite weak resumes, then submit</div>
-                </button>
-                <button class="btn btn-secondary btn-sm app-mode-select u-text-left-pad" data-mode="autopilot">
-                  <div class="u-card-label">Full Autopilot</div>
-                  <div class="u-sub-meta">Score, rewrite, submit — no approval needed</div>
-                </button>
-              </div>
+          <!-- FB-APPS-001: Settings Summary Banner (Pipeline tab) -->
+          <div id="app-settings-summary" class="app-settings-summary" onclick="switchAppTab('settings')" title="Click to edit settings">
+            <div class="app-settings-summary-items" id="app-summary-items">
+              <span class="app-summary-mode" id="app-summary-mode">Mode: Manual</span>
+              <span class="app-summary-dot">&middot;</span>
+              <span id="app-summary-gate" style="display:none;">Score Gate: 70<span class="app-summary-dot">&middot;</span></span>
+              <span id="app-summary-rules" style="display:none;">Rules: 0/3 on<span class="app-summary-dot">&middot;</span></span>
+              <span id="app-summary-resume">Resume: none</span>
+              <span class="app-summary-dot">&middot;</span>
+              <span id="app-summary-prompts">Prompts: On</span>
             </div>
-          </details>
+            <a class="app-summary-edit" id="app-summary-edit" href="#" onclick="event.preventDefault();event.stopPropagation();switchAppTab('settings')">Edit →</a>
+          </div>
 
-          <!-- APR-001: Score Gate (collapsible, visible only for scoring modes) -->
-          <details class="app-config-section" id="score-gate-details">
-            <summary class="app-config-summary">
-              <span class="app-config-title">Score Gate</span>
-              <span class="app-config-value" id="score-gate-label">Threshold: 70</span>
-            </summary>
-            <div class="app-config-body">
-              <div class="fas-panel">
-                <div class="fas-row">
-                  <span class="fas-label">Score threshold</span>
-                  <div class="fas-range">
-                    <input type="range" id="fas-threshold" min="0" max="100" value="70" oninput="document.getElementById('fas-threshold-val').textContent=this.value;var lb=document.getElementById('score-gate-label');if(lb)lb.textContent='Threshold: '+this.value;">
-                    <span class="fas-range-val" id="fas-threshold-val">70</span>
-                  </div>
-                </div>
-                <div class="fas-row">
-                  <span class="fas-label">When unscored</span>
-                  <div class="fas-radio-group">
-                    <label class="fas-radio"><input type="radio" name="fas-unscored" value="score_first" checked> Score first</label>
-                    <label class="fas-radio"><input type="radio" name="fas-unscored" value="skip"> Skip</label>
-                    <label class="fas-radio"><input type="radio" name="fas-unscored" value="apply_anyway"> Apply anyway</label>
-                  </div>
-                </div>
-                <div class="fas-row u-hidden" id="fas-rewrite-row">
-                  <span class="fas-label">Auto-rewrite below threshold</span>
-                  <label class="toggle-switch">
-                    <input type="checkbox" id="fas-auto-rewrite">
-                    <span class="toggle-slider"></span>
-                  </label>
-                </div>
-                <div class="fas-row u-hidden" id="fas-rewrite-approval-row">
-                  <span class="fas-label">Rewrite approval</span>
-                  <div class="fas-radio-group">
-                    <label class="fas-radio"><input type="radio" name="fas-rewrite-approval" value="approve_before" checked> Review before submit</label>
-                    <label class="fas-radio"><input type="radio" name="fas-rewrite-approval" value="notify_after"> Notify after submit</label>
-                    <label class="fas-radio"><input type="radio" name="fas-rewrite-approval" value="none"> Silent</label>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </details>
+          <!-- FB-APPS-001: Top-level tabs: Pipeline | Settings -->
+          <div class="app-view-toggle-bar u-tab-bar">
+            <button class="btn btn-sm app-top-tab active u-btn-pill" id="app-top-tab-pipeline" onclick="switchAppTab('pipeline')">
+              Pipeline
+            </button>
+            <button class="btn btn-sm app-top-tab u-btn-pill" id="app-top-tab-settings" onclick="switchAppTab('settings')">
+              Settings
+            </button>
+          </div>
 
-          <!-- APR-001: Stat cards (always visible above tabs) -->
+          <!-- ===================== PIPELINE TAB ===================== -->
+          <div id="app-tab-pipeline">
+
+<!-- APR-001: Stat cards (always visible above tabs) -->
           <div class="stat-grid" style="margin-bottom:16px;">
             <div class="stat-card"><div class="stat-val" id="a-queued">0</div><div class="stat-label">Queued</div></div>
             <div class="stat-card"><div class="stat-val" id="a-pending">0</div><div class="stat-label">Pending Approval</div></div>
@@ -1582,16 +1530,53 @@
             <div class="stat-card"><div class="stat-val" id="a-failed">0</div><div class="stat-label">Failed</div></div>
           </div>
 
-          <!-- APR-001: Sub-tabs: Queue | Pipeline | History -->
-          <div class="app-flow-tabs" id="app-tabs">
-            <div class="app-flow-tab active" data-panel="queue">Queue</div>
-            <div class="app-flow-tab" data-panel="pipeline">Pipeline</div>
-            <div class="app-flow-tab" data-panel="history">History</div>
-          </div>
+            <!-- FB-APPS-001: Queue absorption — collapsible section above pipeline stages -->
+            <div id="app-queue-section" style="display:none;">
+              <details open>
+                <summary style="font-size:13px;font-weight:600;color:var(--text);cursor:pointer;margin-bottom:8px;">
+                  Application Queue <span id="app-queue-badge" style="font-size:11px;color:var(--accent);font-weight:600;margin-left:6px;"></span>
+                </summary>
+                <div id="app-queue-inner">
+<div class="u-flex-between-mb16">
+              <div class="card-title">Application Queue</div>
+              <div style="display:flex;gap:8px;">
+                <button class="btn btn-secondary btn-sm" id="a-add-manual">+ Manual Add</button>
+                <button class="btn btn-primary btn-sm" id="a-process-queue" disabled>Process Queue</button>
+              </div>
+            </div>
+            <div class="u-overflow-x">
+              <table class="app-queue-table" id="app-queue-table">
+                <thead>
+                  <tr>
+                    <th style="width:28px;"><input type="checkbox" id="a-select-all"></th>
+                    <th>Job</th>
+                    <th>Company</th>
+                    <th>Resume</th>
+                    <th>Mode</th>
+                    <th>Status</th>
+                    <th>Added</th>
+                    <th class="u-w-60"></th>
+                  </tr>
+                </thead>
+                <tbody id="app-queue-body">
+                  <tr>
+                    <td colspan="8" class="u-empty">
+                      <div class="u-mb-12 u-text-faint"><i data-lucide="mail" class="icon-xl icon-stroke-lg u-dim-25"></i></div>
+                      <div class="u-section-title">No applications queued</div>
+                      <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">
+                        Add jobs manually, or save jobs from Discovery to auto-queue them based on your rules.
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+                </div>
+              </details>
+            </div>
 
-          <!-- PIPELINE PANEL — Pipeline stages view -->
-          <div class="app-flow-panel" id="panel-pipeline">
-            <div class="stat-grid">
+            <!-- FB-APPS-001: Pipeline stages (promoted from sub-tab to primary content) -->
+<div class="stat-grid">
               <div class="stat-card"><div class="stat-val" id="p-total">0</div><div class="stat-label">Total Tracked</div></div>
               <div class="stat-card"><div class="stat-val" id="p-active">0</div><div class="stat-label">Active</div></div>
               <div class="stat-card"><div class="stat-val" id="p-response">—</div><div class="stat-label">Response Rate</div></div>
@@ -1707,87 +1692,70 @@
                 <div class="pl-stage-body" id="pb-archived"></div>
               </div>
             </div>
-          </div>
 
+          </div><!-- /app-tab-pipeline -->
 
+          <!-- ===================== SETTINGS TAB ===================== -->
+          <div id="app-tab-settings" class="u-hidden">
 
-          <!-- QUEUE PANEL -->
-          <!-- QUEUE PANEL (default) -->
-          <div class="app-flow-panel active" id="panel-queue">
-            <div class="u-flex-between-mb16">
-              <div class="card-title">Application Queue</div>
-              <div style="display:flex;gap:8px;">
-                <button class="btn btn-secondary btn-sm" id="a-add-manual">+ Manual Add</button>
-                <button class="btn btn-primary btn-sm" id="a-process-queue" disabled>Process Queue</button>
+            <!-- FB-APPS-001: Application Mode (unwrapped from <details>) -->
+            <div class="card" id="app-mode-card">
+              <div class="card-title">Application Mode</div>
+              <div class="card-sub">Choose how Brilliant Jobs handles your applications</div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;">
+                <button class="btn btn-sm app-mode-select active" data-mode="manual" style="border:2px solid var(--accent);text-align:left;padding:10px 12px;">
+                  <div style="font-weight:600;font-size:12px;">Manual</div>
+                  <div style="font-size:10px;color:var(--text-dim);margin-top:2px;">Review each job individually</div>
+                </button>
+                <button class="btn btn-secondary btn-sm app-mode-select u-text-left-pad" data-mode="score_gated">
+                  <div style="font-weight:600;font-size:12px;">Score-Gated</div>
+                  <div style="font-size:10px;color:var(--text-dim);margin-top:2px;">AI scores before you decide</div>
+                </button>
+                <button class="btn btn-secondary btn-sm app-mode-select u-text-left-pad" data-mode="auto">
+                  <div style="font-weight:600;font-size:12px;">Auto-Apply</div>
+                  <div style="font-size:10px;color:var(--text-dim);margin-top:2px;">Auto-submit matching jobs</div>
+                </button>
+                <button class="btn btn-secondary btn-sm app-mode-select u-text-left-pad" data-mode="score_gated_auto">
+                  <div style="font-weight:600;font-size:12px;">Auto + Score Gate</div>
+                  <div style="font-size:10px;color:var(--text-dim);margin-top:2px;">Score first, auto-submit above threshold</div>
+                </button>
+                <button class="btn btn-secondary btn-sm app-mode-select u-text-left-pad" data-mode="auto_rewrite">
+                  <div style="font-weight:600;font-size:12px;">Auto + Rewrite</div>
+                  <div style="font-size:10px;color:var(--text-dim);margin-top:2px;">AI rewrites resume before submitting</div>
+                </button>
+                <button class="btn btn-secondary btn-sm app-mode-select u-text-left-pad" data-mode="autopilot">
+                  <div style="font-weight:600;font-size:12px;">Full Autopilot</div>
+                  <div style="font-size:10px;color:var(--text-dim);margin-top:2px;">Rewrite + submit everything automatically</div>
+                </button>
               </div>
             </div>
-            <div class="u-overflow-x">
-              <table class="app-queue-table" id="app-queue-table">
-                <thead>
-                  <tr>
-                    <th style="width:28px;"><input type="checkbox" id="a-select-all"></th>
-                    <th>Job</th>
-                    <th>Company</th>
-                    <th>Resume</th>
-                    <th>Mode</th>
-                    <th>Status</th>
-                    <th>Added</th>
-                    <th class="u-w-60"></th>
-                  </tr>
-                </thead>
-                <tbody id="app-queue-body">
-                  <tr>
-                    <td colspan="8" class="u-empty">
-                      <div class="u-mb-12 u-text-faint"><i data-lucide="mail" class="icon-xl icon-stroke-lg u-dim-25"></i></div>
-                      <div class="u-section-title">No applications queued</div>
-                      <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">
-                        Add jobs manually, or save jobs from Discovery to auto-queue them based on your rules.
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
 
-
-<!-- NOTIFICATIONS PANEL -->
-          <div class="app-flow-panel" id="panel-history">
-            <div class="u-overflow-x">
-              <table class="app-queue-table">
-                <thead>
-                  <tr>
-                    <th>Job</th>
-                    <th>Company</th>
-                    <th>Resume Used</th>
-                    <th>Mode</th>
-                    <th>Status</th>
-                    <th>Submitted</th>
-                    <th>Source</th>
-                  </tr>
-                </thead>
-                <tbody id="app-history-body">
-                  <tr>
-                    <td colspan="7" class="u-empty">
-                      <div class="u-section-title">No application history yet</div>
-                      <div class="u-fs-12">Completed applications will appear here with full audit trail.</div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <!-- FB-APPS-001: Score Gate (unwrapped from <details>) -->
+            <div class="card" id="score-gate-card">
+              <div class="card-title">Score Gate</div>
+              <div class="card-sub">Set the minimum AI match score required before applications are submitted</div>
+              <div class="fas-panel" style="margin-top:12px;">
+                <div class="fas-row">
+                  <span class="fas-label">Score threshold</span>
+                  <div style="display:flex;align-items:center;gap:10px;flex:1;">
+                    <input type="range" id="fas-threshold" min="0" max="100" value="70" oninput="document.getElementById('fas-threshold-val').textContent=this.value;">
+                    <span id="fas-threshold-val" style="font-weight:700;font-size:13px;min-width:28px;">70</span>
+                  </div>
+                </div>
+                <div class="fas-row">
+                  <span class="fas-label">Unscored jobs behavior</span>
+                  <select id="fas-unscored" style="padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-input);color:var(--text);font-family:var(--sans);font-size:11px;">
+                    <option value="hold">Hold for manual review</option>
+                    <option value="skip">Skip (do not apply)</option>
+                    <option value="allow">Allow (apply anyway)</option>
+                  </select>
+                </div>
+              </div>
             </div>
 
-            
-          </div>
-
-          <!-- APR-001: Rules & Advanced Settings (collapsible) -->
-          <details class="app-config-section" id="app-advanced-settings">
-            <summary class="app-config-summary">
-              <span class="app-config-title">Rules & Advanced Settings</span>
-            </summary>
-            <div class="app-config-body">
+            <!-- FB-APPS-001: Auto-Apply Rules (unwrapped) -->
 <!-- Approval Settings (visible for auto modes) -->
-            <div class="card u-hidden" id="approval-settings">
+            <div class="card" id="approval-settings">
               <div class="card-title">Approval Settings</div>
               <div class="card-sub">When auto-applying, do you want a chance to review before submission?</div>
               <div class="fas-panel">
@@ -1956,13 +1924,7 @@
               <button class="btn btn-primary btn-sm" id="pi-save-btn" onclick="savePipelineIntelligenceSettings()" style="margin-top:12px;font-size:11px;">Save Pipeline Settings</button>
             </div>
 
-          
-            </div>
-          </details>
-
-
-
-
+          </div><!-- /app-tab-settings -->
 
 
         </div>

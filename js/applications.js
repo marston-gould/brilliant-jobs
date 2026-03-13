@@ -89,6 +89,8 @@ function renderAppQueue() {
   const _el = id => document.getElementById(id);
   if (_el('a-queued')) _el('a-queued').textContent = queued;
   if (_el('a-submitted')) _el('a-submitted').textContent = submitted;
+  // FB-APPS-001: Update queue section visibility in Pipeline tab
+  if (typeof updateQueueSectionVisibility === 'function') updateQueueSectionVisibility();
 
   // Hero lifecycle stats
   const allApps = (typeof appHistory !== 'undefined' && Array.isArray(appHistory)) ? [...appQueue, ...appHistory] : [...appQueue];

@@ -52,7 +52,56 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**BUGFIX-001** — Resume Scores Lost + Block Similar Broken
+**FB-APPS-001-S1** — My Applications Page Restructure (Session 1: Tab Infrastructure)
+- Completed: 2026-03-13
+- Product version bumped: `v8.95` → `v8.96` (HTML/JS/CSS changes — dashboard.html Applications page restructured, app.js switchAppTab rewrite + renderSettingsSummary + updateQueueSectionVisibility, applications.js queue visibility call, input.css settings summary banner CSS; all HTML surfaces cache-busted)
+- ROADMAP.md updated: FB-APPS-001-S1 → ✅
+- roadmap.html updated: FB-APPS-001-S1 → `s: 'done'`, p: 100
+- **Phase 1: Tab Infrastructure:**
+  - Old 3-tab (Queue|Pipeline|History) sub-tab system replaced with 2-tab Pipeline|Settings top-level tabs
+  - Uses `u-tab-bar` pattern (same as Resumes page Active/Archive)
+  - `#app-tab-pipeline` (default visible): stat cards + queue absorption + 9 pipeline stages
+  - `#app-tab-settings` (hidden): Mode + Score Gate + Rules + Resume + Approval + Pipeline Intelligence
+  - Default tab: Pipeline. Persists to localStorage `bj_app_tab`
+  - Legacy migration: `board`/`queue`/`history` → `pipeline`
+- **Phase 2: Settings Summary Banner:**
+  - `#app-settings-summary` banner at top of Pipeline tab
+  - Displays 5 data points: mode (pill), score gate (conditional), rules count (conditional), default resume, smart prompts
+  - Clickable — navigates to Settings tab. "Edit →" link right-aligned
+  - `renderSettingsSummary()` reads from DOM elements + localStorage, called on tab switch + page load
+  - Score gate line hidden for Manual/Auto modes. Rules count hidden for Manual/Score-Gated modes
+  - "Resume: none" shown in warm color as nudge
+- **Phase 3: Queue Absorption:**
+  - `#app-queue-section` collapsible section above pipeline stages
+  - Hidden when queue count = 0, shown with badge count when > 0
+  - `updateQueueSectionVisibility()` called after stat card update in applications.js
+  - Queue table, Process Queue button, Manual Add button all preserved
+- **Phase 4: Settings Tab Polish:**
+  - Application Mode: standalone card with 6 buttons (was `<details id="app-mode-details">`)
+  - Score Gate: standalone card with threshold slider (was `<details id="score-gate-details">`)
+  - Score Gate card visibility controlled by mode (hidden for manual/auto)
+  - `#app-advanced-settings` `<details>` unwrapped — all child sections render directly
+  - Approval Settings: `u-hidden` removed — always visible in Settings tab
+  - Pipeline Intelligence Save button present at bottom of settings
+- **History Tab Removed:** Redundant with pipeline stages (Applied, Submitted show same data)
+- **Notification Center Unaffected:** `#nc-tabs` still uses `app-flow-tab` pattern via `initTabGroup`
+- **Pod Team Manifest:** FB-APPS-001-S1: Chief Architect + Evolvability Strategist reviewers
+- **Modified:**
+  - `dashboard.html` — Full page-applications restructure: Pipeline/Settings tabs, summary banner, queue absorption, settings unwrapped
+  - `js/app.js` — switchAppTab rewrite, renderSettingsSummary, updateQueueSectionVisibility, mode UI logic, BJ namespace exports
+  - `js/applications.js` — updateQueueSectionVisibility call after stat card update
+  - `src/input.css` — 10 CSS rules: app-settings-summary, app-summary-mode/dot/edit, app-top-tab
+  - `styles.css` — Tailwind rebuild
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `dist/admin.min.js` — rebuilt
+  - `ROADMAP.md` — FB-APPS-001-S1 → ✅
+  - `roadmap.html` — FB-APPS-001-S1 → done/100
+- **Created:**
+  - `tests/fb-apps-001-s1-restructure.test.js` — 66 validation tests (12 sections)
+- **Tests:** 66 validation tests (all passing)
+
+**Previous: BUGFIX-001** — Resume Scores Lost + Block Similar Broken
 - Completed: 2026-03-13
 - Product version bumped: `v8.88` → `v8.89` (JS changes — globals.ts PII keys, tuning.js window export; all HTML surfaces cache-busted)
 - ROADMAP.md updated: BUGFIX-001 → ✅
@@ -2571,7 +2620,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.88`** | **POD3-RESUME-ASSIGN-001: Resume-filter validation + reassignment UX** |
+| **Product (BJ_VERSION)** | **`v8.96`** | **FB-APPS-001-S1: My Applications Page Restructure** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
