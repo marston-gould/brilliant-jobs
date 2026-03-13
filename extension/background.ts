@@ -1799,7 +1799,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           duration_ms: params.durationMs || null,
         }),
       });
-    } catch (_) { /* submission logging is best-effort */ }
+    } catch (e) { captureEvent('extension_catch_error', { context: '_logSubmissionAttempt', error: (e as Error).message }); }
   }
 
   // ── EXT-AS-3/4/5/6: APPLY_INTERCEPTED — Apply button click intercepted by overlay ──

@@ -139,8 +139,11 @@ describe('EXT-AS-9: Extension-side submission_attempts Logging', () => {
 
   it('is fire-and-forget (best-effort)', () => {
     const idx = BG.indexOf('async function _logSubmissionAttempt');
-    const fn = BG.substring(idx, idx + 1500);
+    const fn = BG.substring(idx, idx + 2000);
     expect(fn).toContain('fetchFireAndForget');
+    // Must report errors, not swallow them
+    expect(fn).toContain('captureEvent');
+    expect(fn).toContain('extension_catch_error');
   });
 });
 
@@ -166,6 +169,10 @@ describe('EXT-AS-9: Admin Panel Method Breakdown', () => {
   it('groups by submission_method', () => {
     expect(ADMIN_AS).toContain('methodMap');
     expect(ADMIN_AS).toContain('r.submission_method');
+  });
+
+  it('reports errors on method breakdown failure (not silent)', () => {
+    expect(ADMIN_AS).toContain("reportError('admin-autosubmit-method'");
   });
 });
 

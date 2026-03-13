@@ -35,7 +35,7 @@ async function loadAutoSubmitPanel() {
         });
         data.by_method = Object.values(methodMap).sort(function(a, b) { return b.total - a.total; });
       }
-    } catch (_) { /* method breakdown is best-effort */ }
+    } catch (err) { if (typeof reportError === 'function') reportError('admin-autosubmit-method', err); }
 
     renderAutoSubmitPanel(container, data);
 
