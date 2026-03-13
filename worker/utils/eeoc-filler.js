@@ -150,7 +150,7 @@ async function tryRadioValue(page, groupEl, value) {
  * @param {function} [capturePostHog] — Optional PostHog capture fn(event, props)
  * @returns {{ filled: number, skipped: number, skipReasons: string[] }}
  */
-async function fillEeoQuestions(page, profile, log, capturePostHog) {
+export async function fillEeoQuestions(page, profile, log, capturePostHog) {
   const result = { filled: 0, skipped: 0, skipReasons: [] };
 
   for (const field of EEO_FIELDS) {
@@ -237,5 +237,3 @@ async function fillEeoQuestions(page, profile, log, capturePostHog) {
 
   return result;
 }
-
-export { fillEeoQuestions };
