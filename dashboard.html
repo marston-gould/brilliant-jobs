@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v8.79 -->
+<!-- Brilliant Jobs Dashboard v8.80 -->
 <html lang="en">
 <head>
   <!-- CS-P1-009: Theme flash prevention — must be first script -->
@@ -19,22 +19,22 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="/js/vendor/supabase.min.js" defer></script>
-  <script src="/js/pipeline-migration.js?v=v8.79" defer></script>
-  <script src="/js/notification-center.js?v=v8.79" defer></script>
+  <script src="/js/pipeline-migration.js?v=v8.80" defer></script>
+  <script src="/js/notification-center.js?v=v8.80" defer></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" integrity="sha384-nFoSjZIoH3CCp8W639jJyQkuPHinJ2NHe7on1xvlUA7SuGfJAfvMldrsoAVm6ECz" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" integrity="sha384-eEu5CTj3qGvu9PdJuS+YlkNi7d2XxQROAFYOr59zgObtlcux1ae1Il3u7jvdCSWu" crossorigin="anonymous"></script>
   <!-- CS-014: CX-09 — ECharts lazy-loaded by stats.js when Stats tab opens -->
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js" integrity="sha384-TcLTgu6flPhnZ5dfHnHimsxNFjYWN0povfGgnOvgPJKbZe6IbuoC2ociiatSHl9E" crossorigin="anonymous"></script>
   <!-- CS-016 FIX-10: Code-split chunks — shell (globals+routing) + feed (job list) loaded eagerly; all other chunks lazy-loaded on tab switch -->
-  <script src="dist/dashboard-shell.min.js?v=v8.79" defer></script>
-  <script src="dist/dashboard-feed.min.js?v=v8.79" defer></script>
+  <script src="dist/dashboard-shell.min.js?v=v8.80" defer></script>
+  <script src="dist/dashboard-feed.min.js?v=v8.80" defer></script>
   <!-- CS-P1-002: dashboard inline scripts externalized (pdfjs, preload, feedback, insights, a11y) -->
-  <script src="js/dashboard-inline.js?v=v8.79" defer></script>
-  <script src="js/canny.js?v=v8.79" defer></script>
+  <script src="js/dashboard-inline.js?v=v8.80" defer></script>
+  <script src="js/canny.js?v=v8.80" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=v8.79">
+  <link rel="stylesheet" href="styles.css?v=v8.80">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -109,11 +109,11 @@
     </style>
   <!-- CSS extracted to styles.css in v3.28 -->
   <!-- A13: PostHog analytics — CS-P1-002: externalized for CSP compliance -->
-  <script src="js/posthog-dashboard.js?v=v8.79" defer></script>
-  <script src="js/posthog-perf.js?v=v8.79" defer></script>
-  <script src="js/feature-flags.js?v=v8.79" defer></script>
-  <script src="js/structured-logger.js?v=v8.79" defer></script>
-  <script src="js/theme.js?v=v8.79" defer></script>
+  <script src="js/posthog-dashboard.js?v=v8.80" defer></script>
+  <script src="js/posthog-perf.js?v=v8.80" defer></script>
+  <script src="js/feature-flags.js?v=v8.80" defer></script>
+  <script src="js/structured-logger.js?v=v8.80" defer></script>
+  <script src="js/theme.js?v=v8.80" defer></script>
 </head>
 <body>
 
@@ -2437,15 +2437,18 @@
           <!-- LOG PANEL -->
           <div class="app-flow-panel" id="panel-nc-log">
 
-          <!-- Notification Log (standalone) -->
+          <!-- Notification Log (standalone) — APR-002: Archive UI -->
           <div class="u-mt-8">
             <div class="card">
-              <div class="u-flex-between-mb16">
+              <div class="notif-log-toolbar">
                 <div>
-                  <div class="card-title">Notification Log</div>
-                  <div class="card-sub" style="margin-top:2px;">All sent notifications with delivery status and actions taken</div>
+                  <h3 class="card-title" style="margin:0;">Notification Log</h3>
+                  <div class="card-sub" style="margin-top:2px;">All sent notifications with delivery status</div>
                 </div>
-                <button class="btn btn-secondary btn-sm u-fs-11" id="nc-notif-export-csv">Export CSV</button>
+                <div class="notif-log-toolbar-right">
+                  <button class="btn btn-secondary btn-sm u-fs-11" id="nc-archive-selected" disabled>Archive Selected</button>
+                  <button class="btn btn-secondary btn-sm u-fs-11" id="nc-notif-export-csv">Export CSV</button>
+                </div>
               </div>
               <div class="notif-log-filters">
                 <select id="nc-nlog-filter-type">
@@ -2478,21 +2481,28 @@
                   <option value="missed">Missed</option>
                   <option value="failed">Failed</option>
                 </select>
+                <select id="nlog-filter-archive">
+                  <option value="active" selected>Active</option>
+                  <option value="archived">Archived</option>
+                  <option value="all">All</option>
+                </select>
               </div>
               <div class="u-overflow-x">
                 <table class="notif-log-table" id="nc-notif-log-table">
                   <thead>
                     <tr>
+                      <th style="width:28px;"><input type="checkbox" id="nc-log-select-all"></th>
                       <th>Timestamp</th>
                       <th>Type</th>
                       <th style="width:50px;">Channel</th>
                       <th>Job / Company</th>
                       <th>Status</th>
+                      <th style="width:50px;"></th>
                     </tr>
                   </thead>
                   <tbody id="nc-notif-log-body">
                     <tr>
-                      <td colspan="5" class="u-empty">
+                      <td colspan="7" class="u-empty">
                         <div class="u-mb-12 u-text-faint"><i data-lucide="bell" class="icon-xl icon-stroke-lg u-dim-25"></i></div>
                         <div class="u-section-title">No notifications sent yet</div>
                         <div class="u-fs-12">Notification history will appear here once the system is active.</div>

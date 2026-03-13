@@ -1,6 +1,6 @@
 # Pod 3 + Pod 4 — Team Manifest
 
-> Last updated: 2026-03-13 | APR-001 complete
+> Last updated: 2026-03-13 | APR-002 complete
 
 ## Pod 3: Core Engineering (10 roles — original)
 
@@ -121,3 +121,4 @@
 | AF-005 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
 | AF-006 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + System Architect—Scalability |
 | APR-001 | Senior Frontend Eng + Lead Platform Eng | Chief Architect + Evolvability Strategist |
+| APR-002 | Senior Frontend Eng + Lead Platform Eng | Chief Architect + Evolvability Strategist |

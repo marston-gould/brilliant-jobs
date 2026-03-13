@@ -52,6 +52,48 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**APR-002** — Notification Log Archive (A7)
+- Completed: 2026-03-13
+- Product version bumped: `v8.79` → `v8.80` (HTML/CSS/JS changes — dashboard.html notification log archive UI, notification-center.js archive functions, input.css btn-icon; all HTML surfaces cache-busted)
+- ROADMAP.md updated: APR-002 → ✅
+- roadmap.html updated: APR-002 → `s: 'done'`, p: 100
+- **A7 — Notification Log Archive Functionality:**
+  - **Migration v8.47:** `archived_at timestamptz DEFAULT NULL` column on notification_log. `idx_notif_log_archived` composite index on (user_id, archived_at). Applied to production.
+  - **Dashboard HTML (panel-nc-log):**
+    - Toolbar header replaces old flex-between: `notif-log-toolbar` with title/subtitle left, Archive Selected + Export CSV buttons right
+    - `nlog-filter-archive` dropdown (Active selected by default, Archived, All)
+    - Select-all checkbox `nc-log-select-all` in table header
+    - 7-column thead: checkbox, Timestamp, Type, Channel, Job/Company, Status, action
+    - Empty state colspan updated 5→7
+  - **notification-center.js:**
+    - `ncLoadNotificationLog()` rewritten: reads `nlog-filter-archive` value, applies `.is('archived_at', null)` for active / `.not('archived_at', 'is', null)` for archived / no filter for all. Selects `archived_at` column. Renders checkbox column (`.nc-log-check` class with `data-id`). Renders action column with Lucide `archive` or `archive-restore` icon per row based on `archived_at` state. Resets select-all on load. Updates bulk button label (Archive Selected / Unarchive Selected) based on current filter view.
+    - `ncArchiveNotification(id)`: single-row archive with `.eq('user_id', currentUser.id)` guard
+    - `ncUnarchiveNotification(id)`: single-row unarchive (sets `archived_at: null`)
+    - `ncBulkArchive()`: reads `.nc-log-check:checked`, bulk `.in('id', checked)` update, auto-detects archive vs unarchive based on current filter
+    - `ncUpdateArchiveButtonState()`: enables/disables `nc-archive-selected` button based on checkbox state
+    - `nlog-filter-archive` added to filter change listener array
+    - Select-all checkbox wired to toggle all `.nc-log-check` boxes
+    - `nc-archive-selected` click wired to `ncBulkArchive`
+    - All archive functions use `reportError` for PostHog error capture
+  - **CSS:** `.btn-icon` base + hover styles added to `src/input.css` (transparent background, pointer cursor, accent on hover)
+- **Pod Team Manifest:** APR-002 pairing added (Senior Frontend Eng + Lead Platform Eng, Chief Architect + Evolvability Strategist reviewers)
+- **Modified:**
+  - `dashboard.html` — Notification Log panel: toolbar header, archive filter, select-all checkbox, 7-col thead, colspan updates
+  - `js/notification-center.js` — ncLoadNotificationLog rewritten with archive filter + checkbox + action column; ncArchiveNotification, ncUnarchiveNotification, ncBulkArchive, ncUpdateArchiveButtonState added; filter/select-all/bulk wiring
+  - `src/input.css` — .btn-icon/.btn-icon:hover styles
+  - `docs/scaling/pod-team-manifest.md` — APR-002 pairing
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `dist/admin.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — APR-002 → ✅
+  - `roadmap.html` — APR-002 → done/100
+- **Created:**
+  - `supabase/migrations/v8.47-apr002-notification-log-archive.sql` — archived_at column + index
+  - `tests/apr-002-notification-archive.test.js` — 36 validation tests (5 sections)
+- **Tests:** 36 validation tests (all passing)
+- **APR SERIES COMPLETE** — Both sessions done (APR-001 A1–A6, APR-002 A7). All 7 architectural/UX issues from the Applications + Notifications Page Restructure spec are resolved.
+
 **APR-001** — Applications + Notifications Page Restructure (A1–A6)
 - Completed: 2026-03-13
 - Product version bumped: `v8.78` → `v8.79` (HTML/CSS/JS changes — dashboard.html Applications + Notifications restructured, input.css tab system + config section + toolbar CSS, app.js switchAppTab rewrite + initTabGroup + mode UI logic, applications.js notification log code removed; all HTML surfaces cache-busted)
@@ -2435,7 +2477,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.79`** | **APR-001: Applications + Notifications Page Restructure** |
+| **Product (BJ_VERSION)** | **`v8.80`** | **APR-002: Notification Log Archive (A7)** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

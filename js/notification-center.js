@@ -567,7 +567,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // Wire standalone notification log filter changes
-  ['nc-nlog-filter-type','nc-nlog-filter-channel','nc-nlog-filter-status'].forEach(function(id) {
+  ['nc-nlog-filter-type','nc-nlog-filter-channel','nc-nlog-filter-status','nlog-filter-archive'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.addEventListener('change', function() {
       ncLoadNotificationLog(1);
@@ -578,6 +578,23 @@ document.addEventListener('DOMContentLoaded', function() {
   var ncExportBtn = document.getElementById('nc-notif-export-csv');
   if (ncExportBtn) {
     ncExportBtn.addEventListener('click', ncExportLogCSV);
+  }
+
+  // Wire select-all checkbox
+  var selectAllCb = document.getElementById('nc-log-select-all');
+  if (selectAllCb) {
+    selectAllCb.addEventListener('change', function() {
+      document.querySelectorAll('.nc-log-check').forEach(function(cb) {
+        cb.checked = selectAllCb.checked;
+      });
+      ncUpdateArchiveButtonState();
+    });
+  }
+
+  // Wire bulk archive button
+  var archiveBtn = document.getElementById('nc-archive-selected');
+  if (archiveBtn) {
+    archiveBtn.addEventListener('click', ncBulkArchive);
   }
 
   // Initial log load on standalone page
@@ -602,14 +619,25 @@ async function ncLoadNotificationLog(page) {
   var typeFilter = (document.getElementById('nc-nlog-filter-type') || {}).value || '';
   var channelFilter = (document.getElementById('nc-nlog-filter-channel') || {}).value || '';
   var statusFilter = (document.getElementById('nc-nlog-filter-status') || {}).value || '';
+  var archiveFilter = (document.getElementById('nlog-filter-archive') || {}).value || 'active';
 
   // Show loading state
-  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-faint);padding:32px;">Loading notifications…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-faint);padding:32px;">Loading notifications…</td></tr>';
+
+  // Reset select-all checkbox
+  var selectAllCb = document.getElementById('nc-log-select-all');
+  if (selectAllCb) selectAllCb.checked = false;
+  ncUpdateArchiveButtonState();
 
   try {
     var query = sb.from('notification_log')
-      .select('id,notification_type,channel,status,subject,company_name,created_at,payload,classification,send_decision', { count: 'exact' })
+      .select('id,notification_type,channel,status,subject,company_name,created_at,payload,classification,send_decision,archived_at', { count: 'exact' })
       .order('created_at', { ascending: false });
+
+    // Archive filter
+    if (archiveFilter === 'active') query = query.is('archived_at', null);
+    else if (archiveFilter === 'archived') query = query.not('archived_at', 'is', null);
+    // 'all' = no filter
 
     if (typeFilter) query = query.eq('notification_type', typeFilter);
     if (channelFilter) query = query.eq('channel', channelFilter);
@@ -625,11 +653,13 @@ async function ncLoadNotificationLog(page) {
     var total = result.count || 0;
     ncLogCache = rows;
 
+    var isViewingArchived = archiveFilter === 'archived';
+
     if (rows.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-faint);padding:48px 12px;">' +
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-faint);padding:48px 12px;">' +
         '<div style="margin-bottom:12px;"><i data-lucide="bell" class="icon-xl icon-stroke-lg" style="opacity:0.25;"></i></div>' +
         '<div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No notifications found</div>' +
-        '<div style="font-size:12px;">' + (typeFilter || channelFilter || statusFilter ? 'Try adjusting your filters.' : 'Notification history will appear here once the system is active.') + '</div>' +
+        '<div style="font-size:12px;">' + (typeFilter || channelFilter || statusFilter || archiveFilter !== 'active' ? 'Try adjusting your filters.' : 'Notification history will appear here once the system is active.') + '</div>' +
         '</td></tr>';
     } else {
       tbody.innerHTML = rows.map(function(row) {
@@ -642,16 +672,27 @@ async function ncLoadNotificationLog(page) {
           row.status === 'held' ? 'color:var(--yellow)' : 'color:var(--text-dim)';
         var jobInfo = row.company_name || (row.payload && row.payload.job_title) || '—';
 
+        // Action column: archive or unarchive icon
+        var actionIcon = row.archived_at
+          ? '<button class="btn-icon" onclick="ncUnarchiveNotification(\'' + row.id + '\')" title="Restore"><i data-lucide="archive-restore" class="icon-sm icon-stroke"></i></button>'
+          : '<button class="btn-icon" onclick="ncArchiveNotification(\'' + row.id + '\')" title="Archive"><i data-lucide="archive" class="icon-sm icon-stroke"></i></button>';
+
         return '<tr>' +
+          '<td style="width:28px;text-align:center;"><input type="checkbox" class="nc-log-check" data-id="' + row.id + '" onchange="ncUpdateArchiveButtonState()"></td>' +
           '<td style="font-size:12px;white-space:nowrap;color:var(--text-dim);">' + timeStr + '</td>' +
           '<td style="font-size:12px;">' + typeLabel + '</td>' +
           '<td style="font-size:12px;text-align:center;" title="' + row.channel + '">' + channelIcon + '</td>' +
           '<td style="font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + jobInfo + '</td>' +
           '<td style="font-size:12px;font-weight:500;' + statusClass + '">' + (row.status || '—') + '</td>' +
+          '<td style="width:50px;text-align:center;">' + actionIcon + '</td>' +
           '</tr>';
       }).join('');
     }
     if (typeof window.refreshIcons === 'function') window.refreshIcons();
+
+    // Update Archive Selected button label based on view
+    var archiveBtn = document.getElementById('nc-archive-selected');
+    if (archiveBtn) archiveBtn.textContent = isViewingArchived ? 'Unarchive Selected' : 'Archive Selected';
 
     // Render pagination
     ncRenderLogPagination(page, total);
@@ -660,7 +701,7 @@ async function ncLoadNotificationLog(page) {
   } catch (err) {
     reportError('notification_center', err);
     console.error('[NC] Failed to load notification log:', err);
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--red);padding:32px;">Failed to load notification log. Please try again.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--red);padding:32px;">Failed to load notification log. Please try again.</td></tr>';
   }
 }
 
@@ -717,4 +758,68 @@ function ncExportLogCSV() {
   ncShowToast('Notification log exported (' + ncLogCache.length + ' rows).', 'success');
 }
 
+// ═══════════════════════════════════════════════════════════
+// NOTIFICATION LOG — Archive / Unarchive (APR-002)
+// ═══════════════════════════════════════════════════════════
 
+// Single row archive
+async function ncArchiveNotification(id) {
+  if (typeof sb === 'undefined' || typeof currentUser === 'undefined' || !currentUser) return;
+  try {
+    var result = await sb.from('notification_log')
+      .update({ archived_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('user_id', currentUser.id);
+    if (result.error) throw result.error;
+    ncLoadNotificationLog(1);
+  } catch (err) {
+    reportError('notification_center', err, { action: 'archive', id: id });
+    ncShowToast('Failed to archive notification.', 'error');
+  }
+}
+
+// Single row unarchive
+async function ncUnarchiveNotification(id) {
+  if (typeof sb === 'undefined' || typeof currentUser === 'undefined' || !currentUser) return;
+  try {
+    var result = await sb.from('notification_log')
+      .update({ archived_at: null })
+      .eq('id', id)
+      .eq('user_id', currentUser.id);
+    if (result.error) throw result.error;
+    ncLoadNotificationLog(1);
+  } catch (err) {
+    reportError('notification_center', err, { action: 'unarchive', id: id });
+    ncShowToast('Failed to restore notification.', 'error');
+  }
+}
+
+// Bulk archive (or unarchive if viewing archived)
+async function ncBulkArchive() {
+  if (typeof sb === 'undefined' || typeof currentUser === 'undefined' || !currentUser) return;
+  var checked = [].slice.call(document.querySelectorAll('.nc-log-check:checked')).map(function(cb) { return cb.dataset.id; });
+  if (!checked.length) return;
+
+  var archiveFilter = (document.getElementById('nlog-filter-archive') || {}).value || 'active';
+  var isUnarchive = archiveFilter === 'archived';
+
+  try {
+    var result = await sb.from('notification_log')
+      .update({ archived_at: isUnarchive ? null : new Date().toISOString() })
+      .in('id', checked)
+      .eq('user_id', currentUser.id);
+    if (result.error) throw result.error;
+    ncShowToast((isUnarchive ? 'Restored ' : 'Archived ') + checked.length + ' notification' + (checked.length > 1 ? 's' : '') + '.', 'success');
+    ncLoadNotificationLog(1);
+  } catch (err) {
+    reportError('notification_center', err, { action: 'bulk_archive', count: checked.length });
+    ncShowToast('Failed to update notifications.', 'error');
+  }
+}
+
+// Update Archive Selected button enabled state
+function ncUpdateArchiveButtonState() {
+  var anyChecked = document.querySelectorAll('.nc-log-check:checked').length > 0;
+  var btn = document.getElementById('nc-archive-selected');
+  if (btn) btn.disabled = !anyChecked;
+}

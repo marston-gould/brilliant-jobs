@@ -1,3 +1,10 @@
+## v8.80 APR-002: Notification Log Archive (A7) (2026-03-13)
+- Migration v8.47: archived_at timestamptz column + idx_notif_log_archived composite index on notification_log
+- dashboard.html: notif-log-toolbar header, nlog-filter-archive dropdown (Active/Archived/All), nc-log-select-all checkbox, 7-column thead with action column, Archive Selected button
+- notification-center.js: ncLoadNotificationLog rewritten with archive filter + checkbox + action column rendering; ncArchiveNotification, ncUnarchiveNotification, ncBulkArchive, ncUpdateArchiveButtonState functions; filter/select-all/bulk archive wiring
+- input.css: .btn-icon / .btn-icon:hover styles for row action buttons
+- 36 validation tests (all passing)
+
 ## v8.79 Session NN: TITLE (2026-03-13)
 - DESCRIBE CHANGES HERE
 

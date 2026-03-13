@@ -3523,3 +3523,5 @@
     /* ── APR-001: Notification Log Toolbar ────────── */
     .notif-log-toolbar { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
     .notif-log-toolbar-right { display: flex; gap: 8px; align-items: center; }
+    .btn-icon { background: none; border: none; cursor: pointer; padding: 4px; border-radius: 4px; color: var(--text-dim); transition: color 0.15s, background 0.15s; }
+    .btn-icon:hover { color: var(--accent); background: hsla(var(--accent-hsl), 0.08); }
