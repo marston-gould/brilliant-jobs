@@ -392,6 +392,9 @@ async function initPipeline() {
   await loadPipelineFromSupabase();
   await loadNewPipelineFromSupabase(); // S10: wire overlay pipeline load on init
   await loadPendingSignals();
+  // BUGFIX: Update hero Pipeline count after data loads (was never set on init)
+  var heroSaved = $('#j-saved');
+  if (heroSaved) heroSaved.textContent = savedJobIds.length.toLocaleString();
 }
 
 // ── Move job to a new stage ──────────────────────────────────

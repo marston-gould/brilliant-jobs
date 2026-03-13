@@ -351,16 +351,14 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   // Cloud sync is now live via user_filters + user_tuning tables
   // Q23: Populate global rules crosslink banner
   const grBanner = document.getElementById('global-rules-banner');
-  const grSummary = document.getElementById('gr-summary');
-  if (grBanner && grSummary) {
+  if (grBanner) {
     const parts = [];
     if (tuningSettings.locationExcludes?.length) parts.push(tuningSettings.locationExcludes.length + ' excluded locations');
     if (tuningSettings.titleExcludes?.length) parts.push(tuningSettings.titleExcludes.length + ' excluded titles');
     if (tuningSettings.companyExcludes?.length) parts.push(tuningSettings.companyExcludes.length + ' excluded companies');
     if (tuningSettings.levelHierarchy?.length) parts.push(tuningSettings.levelHierarchy.length + ' levels');
     if (parts.length) {
-      grSummary.textContent = parts.join(', ');
-      grBanner.style.display = '';
+      grBanner.style.display = 'flex';
     }
   }
   // Initialize Supabase pipeline (migrate localStorage → Supabase on first run)

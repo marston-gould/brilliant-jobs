@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.90';
+var BJ_VERSION = 'v8.91';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {

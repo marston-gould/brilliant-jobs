@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.90';
+var BJ_VERSION = 'v8.91';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -2475,16 +2475,14 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   // Cloud sync is now live via user_filters + user_tuning tables
   // Q23: Populate global rules crosslink banner
   const grBanner = document.getElementById('global-rules-banner');
-  const grSummary = document.getElementById('gr-summary');
-  if (grBanner && grSummary) {
+  if (grBanner) {
     const parts = [];
     if (tuningSettings.locationExcludes?.length) parts.push(tuningSettings.locationExcludes.length + ' excluded locations');
     if (tuningSettings.titleExcludes?.length) parts.push(tuningSettings.titleExcludes.length + ' excluded titles');
     if (tuningSettings.companyExcludes?.length) parts.push(tuningSettings.companyExcludes.length + ' excluded companies');
     if (tuningSettings.levelHierarchy?.length) parts.push(tuningSettings.levelHierarchy.length + ' levels');
     if (parts.length) {
-      grSummary.textContent = parts.join(', ');
-      grBanner.style.display = '';
+      grBanner.style.display = 'flex';
     }
   }
   // Initialize Supabase pipeline (migrate localStorage → Supabase on first run)
@@ -15436,6 +15434,9 @@ async function initPipeline() {
   await loadPipelineFromSupabase();
   await loadNewPipelineFromSupabase(); // S10: wire overlay pipeline load on init
   await loadPendingSignals();
+  // BUGFIX: Update hero Pipeline count after data loads (was never set on init)
+  var heroSaved = $('#j-saved');
+  if (heroSaved) heroSaved.textContent = savedJobIds.length.toLocaleString();
 }
 
 // ── Move job to a new stage ──────────────────────────────────
