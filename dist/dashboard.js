@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.83';
+var BJ_VERSION = 'v8.84';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -11041,7 +11041,7 @@ function hideJob(jobId, btn) {
 
 function toggleSaveJob(jobId, btn) {
   const idx = savedJobIds.indexOf(jobId);
-  const meta = getPipelineMeta();
+  const meta = typeof getPipelineMeta === 'function' ? getPipelineMeta() : (window._pipelineMetaFallback || (window._pipelineMetaFallback = {}));
   if (idx >= 0) {
     // Remove from pipeline
     savedJobIds.splice(idx, 1);
