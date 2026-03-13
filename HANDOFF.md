@@ -2490,7 +2490,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority â€
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.84`** | **FEED-UX-002: Pipeline fix + banner layout** |
+| **Product (BJ_VERSION)** | **`v8.85`** | **FEED-UX-003: Resume-first apply flow** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

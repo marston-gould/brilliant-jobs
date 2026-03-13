@@ -1501,97 +1501,237 @@ async function handleFeedApply(jobId, jobUrl, jobData) {
     return;
   }
 
-  var mode = getApplyModeForJob(jobId);
   var jobTitle = (jobData && jobData.title) || '';
   var companyName = (jobData && jobData.company_name) || '';
 
-  // PostHog: track feed apply initiation
+  // PostHog
   if (typeof posthog !== 'undefined') {
-    posthog.capture('feed_apply_initiated', {
-      mode: mode,
-      job_id: jobId,
-      has_cached_score: !!(typeof jobMatchScores !== 'undefined' && jobMatchScores[jobId])
+    posthog.capture('feed_apply_initiated', { job_id: jobId });
+  }
+
+  // ── Step 1: Resolve resume for this job's filter ──
+  var resume = _resolveResumeForJob(jobId);
+
+  if (resume === 'no_resumes') {
+    // No resumes exist → prompt upload
+    _showResumeNeededModal(jobId, jobTitle, companyName, jobUrl, 'upload');
+    return;
+  }
+
+  if (resume === 'no_match') {
+    // Resumes exist but none assigned to this filter → show picker
+    _showResumeNeededModal(jobId, jobTitle, companyName, jobUrl, 'pick');
+    return;
+  }
+
+  // ── Step 2: We have a resume — submit via worker ──
+  await _submitViaWorker(jobId, jobTitle, companyName, jobUrl, resume);
+}
+
+// Resolve the right resume for a job based on its matching filter
+function _resolveResumeForJob(jobId) {
+  var allResumes = [];
+  try {
+    var raw = localStorage.getItem('bj_resumes');
+    if (raw && !raw.startsWith('enc:')) allResumes = JSON.parse(raw);
+  } catch(e) {}
+  allResumes = allResumes.filter(function(r) { return !r.archived && r.name; });
+
+  if (allResumes.length === 0) return 'no_resumes';
+
+  // Find which saved filters matched this job
+  var feedJob = (window._feedJobMap || {})[jobId];
+  var filterNums = feedJob ? (feedJob._filterNums || []) : [];
+  var sf = typeof savedFilters !== 'undefined' ? savedFilters : [];
+
+  // Try to find a resume assigned to one of the matching filters
+  for (var i = 0; i < filterNums.length; i++) {
+    var idx = (typeof filterNums[i].num === 'number' ? filterNums[i].num : parseInt(filterNums[i].num)) - 1;
+    if (idx >= 0 && sf[idx] && sf[idx].name) {
+      var filterName = sf[idx].name;
+      for (var j = 0; j < allResumes.length; j++) {
+        if ((allResumes[j].filterIds || []).indexOf(filterName) >= 0) {
+          return { id: allResumes[j].id, filename: allResumes[j].fileName || allResumes[j].name || 'resume.pdf' };
+        }
+      }
+    }
+  }
+
+  // No filter-specific resume — if only one resume, use it
+  if (allResumes.length === 1) {
+    return { id: allResumes[0].id, filename: allResumes[0].fileName || allResumes[0].name || 'resume.pdf' };
+  }
+
+  // Multiple resumes but none assigned → user needs to pick
+  return 'no_match';
+}
+
+// Submit application via worker (never opens ATS directly)
+async function _submitViaWorker(jobId, jobTitle, companyName, jobUrl, resume) {
+  if (_applySubmitting) return;
+  _applySubmitting = true;
+
+  // Set button to "Submitting..."
+  _setApplyButtonState(jobId, 'submitting');
+
+  if (!currentUser) {
+    if (typeof showToast === 'function') showToast('Please log in to apply.', { type: 'error' });
+    _setApplyButtonState(jobId, 'retry', jobUrl);
+    _applySubmitting = false;
+    return;
+  }
+
+  if (typeof showToast === 'function') showToast('Submitting application to ' + (companyName || 'ATS') + '...', { duration: 10000 });
+
+  // Get score if available
+  var scoreResult = getScoreForJob(jobId);
+  var originalScore = scoreResult ? (scoreResult.match_score || null) : null;
+
+  var expiresAt = new Date();
+  expiresAt.setHours(expiresAt.getHours() + (userApplySettings.auto_expire_hours || 48));
+
+  var pendingRow = {
+    user_id: currentUser.id,
+    job_id: jobId,
+    resume_id: resume.id,
+    original_score: originalScore,
+    score_result: scoreResult || null,
+    status: 'approved',
+    approval_mode: 'auto_no_approval',
+    job_title: jobTitle || '',
+    company_name: companyName || '',
+    job_url: jobUrl || '',
+    expires_at: expiresAt.toISOString(),
+    idempotency_key: crypto.randomUUID(),
+  };
+
+  var savedApp = await savePendingApplication(pendingRow);
+  if (!savedApp) {
+    if (typeof showToast === 'function') showToast('Failed to create application record. Opening ATS page.', { type: 'error' });
+    _setApplyButtonState(jobId, 'retry', jobUrl);
+    _applySubmitting = false;
+    return;
+  }
+
+  // Pipeline entry
+  if (typeof savePipelineEntry === 'function') {
+    savePipelineEntry(jobId, {
+      stage: 'applied', title: jobTitle || '', companyName: companyName || '', company: companyName || '',
+      jobUrl: jobUrl || '', atsSource: _guessAtsSource(jobUrl), appliedAt: new Date().toISOString(), savedAt: new Date().toISOString(),
     });
   }
 
-  // ── Manual: open external link (existing behavior) ──
-  if (mode === APPLY_MODES.MANUAL) {
-    if (jobUrl && jobUrl !== '#') window.open(jobUrl, '_blank');
-    if (typeof markApplied === 'function') markApplied(jobId, null);
-    _trackFeedApplyComplete(jobId, mode, 'direct');
-    return;
-  }
-
-  // ── Score-Gated: score first, show gate modal ──
-  if (mode === APPLY_MODES.SCORE_GATED) {
-    var cached = getScoreForJob(jobId);
-    if (cached) {
-      showScoreGateModal(jobId, jobTitle, companyName, jobUrl, cached);
-    } else {
-      scoreAndRecheck(jobId, jobTitle, companyName, jobUrl);
-    }
-    _trackFeedApplyComplete(jobId, mode, 'score_gate');
-    return;
-  }
-
-  // ── Auto Apply: straight to worker, no scoring ──
-  if (mode === APPLY_MODES.AUTO) {
-    if (typeof showToast === 'function') showToast('Auto-applying to ' + (companyName || 'this job') + '...', { duration: 5000 });
-    await proceedToApply(jobId, jobTitle, companyName, jobUrl);
-    _trackFeedApplyComplete(jobId, mode, 'auto_worker');
-    return;
-  }
-
-  // ── Score-Gated + Auto: score first; above threshold → auto submit, below → gate modal ──
-  if (mode === APPLY_MODES.SCORE_GATED_AUTO) {
-    var cachedScore = getScoreForJob(jobId);
-    if (cachedScore && typeof cachedScore.match_score === 'number') {
-      var threshold = userApplySettings.default_score_threshold;
-      if (cachedScore.match_score >= threshold) {
-        if (typeof showToast === 'function') showToast('Score ' + cachedScore.match_score + ' ≥ ' + threshold + ' — auto-applying...', { duration: 4000 });
-        await proceedToApply(jobId, jobTitle, companyName, jobUrl);
-        _trackFeedApplyComplete(jobId, mode, 'auto_above_threshold');
+  // Route to worker
+  try {
+    if (_isRecruiteeJob(jobUrl)) {
+      var result = await callSubmitApplication(savedApp, resume.id, resume.filename);
+      if (result.ok) {
+        _updatePipelineApplied(jobId);
+        _setApplyButtonState(jobId, 'applied');
+        if (typeof showToast === 'function') showToast('Applied to ' + (companyName || 'this job') + '!', { type: 'success' });
+        _fireApplyNotification('apply_auto_submitted', {
+          subject: 'Applied: ' + (jobTitle || 'Job') + ' at ' + (companyName || 'Company'),
+          html: '<p>Your resume was submitted for <strong>' + escapeHtml(jobTitle || '') + '</strong> at <strong>' + escapeHtml(companyName || '') + '</strong>.</p>',
+          job_id: jobId, job_title: jobTitle, company_name: companyName,
+        });
       } else {
-        showScoreGateModal(jobId, jobTitle, companyName, jobUrl, cachedScore);
-        _trackFeedApplyComplete(jobId, mode, 'gate_below_threshold');
+        if (typeof showToast === 'function') showToast('Submission failed: ' + (result.error || 'Unknown') + '. Click Retry to open ATS.', { type: 'error', duration: 8000 });
+        _setApplyButtonState(jobId, 'retry', jobUrl);
       }
     } else {
-      // Score not cached — score first, then auto-route or show gate
-      await _scoreAndAutoRoute(jobId, jobTitle, companyName, jobUrl);
+      // All other ATS: headless worker
+      await _routeToWorker(savedApp);
+      _updatePipelineApplied(jobId);
+      _setApplyButtonState(jobId, 'applied');
+      if (typeof showToast === 'function') showToast('Application queued — submitting to ' + (companyName || 'ATS') + '.', { type: 'success', duration: 5000 });
     }
-    return;
+  } catch(e) {
+    reportError('apply-workflow:submit', e);
+    if (typeof showToast === 'function') showToast('Submission error. Click Retry to open ATS.', { type: 'error', duration: 8000 });
+    _setApplyButtonState(jobId, 'retry', jobUrl);
   }
 
-  // ── Auto Rewrite: score → rewrite → submit ──
-  if (mode === APPLY_MODES.AUTO_REWRITE) {
-    var cachedRw = getScoreForJob(jobId);
-    if (cachedRw && typeof cachedRw.match_score === 'number') {
-      // Already scored — go to rewrite
-      if (typeof showToast === 'function') showToast('Rewriting resume for ' + (companyName || 'this job') + '...', { duration: 5000 });
-      triggerRewrite(jobId, jobTitle, companyName);
-      _trackFeedApplyComplete(jobId, mode, 'rewrite');
-    } else {
-      // Score first, then rewrite
-      if (typeof showToast === 'function') showToast('Scoring resume before rewrite...', { duration: 5000 });
-      await scoreAndRecheck(jobId, jobTitle, companyName, jobUrl);
-      // scoreAndRecheck shows the gate modal which has a Rewrite button
-      _trackFeedApplyComplete(jobId, mode, 'score_then_rewrite');
-    }
-    return;
-  }
-
-  // ── Full Autopilot: rewrite + submit, no UI interruption ──
-  if (mode === APPLY_MODES.AUTOPILOT) {
-    if (typeof showToast === 'function') showToast('Full autopilot: rewriting & submitting to ' + (companyName || 'this job') + '...', { duration: 8000 });
-    await proceedToApply(jobId, jobTitle, companyName, jobUrl);
-    _trackFeedApplyComplete(jobId, mode, 'autopilot');
-    return;
-  }
-
-  // Fallback: manual
-  if (jobUrl && jobUrl !== '#') window.open(jobUrl, '_blank');
-  if (typeof markApplied === 'function') markApplied(jobId, null);
+  if (typeof loadPendingApplications === 'function') await loadPendingApplications();
+  if (typeof renderPendingApplications === 'function') renderPendingApplications();
+  _applySubmitting = false;
 }
+
+// Update the Apply button in the feed row
+function _setApplyButtonState(jobId, state, fallbackUrl) {
+  var row = document.querySelector('tr.job-data-row[data-jobid="' + jobId + '"]');
+  if (!row) return;
+  var actionsTd = row.querySelector('.jt-actions');
+  if (!actionsTd) return;
+  var applyEl = actionsTd.querySelector('.apply-btn');
+  if (!applyEl) return;
+
+  if (state === 'submitting') {
+    applyEl.textContent = 'Submitting…';
+    applyEl.style.opacity = '0.6';
+    applyEl.style.pointerEvents = 'none';
+  } else if (state === 'applied') {
+    applyEl.className = 'job-action-btn applied-btn';
+    applyEl.textContent = 'Applied ✓';
+    applyEl.style.opacity = '1';
+    applyEl.style.pointerEvents = 'none';
+    applyEl.removeAttribute('onclick');
+    applyEl.href = '#';
+  } else if (state === 'retry') {
+    applyEl.textContent = 'Retry →';
+    applyEl.style.opacity = '1';
+    applyEl.style.pointerEvents = 'auto';
+    applyEl.className = 'apply-btn apply-btn-default';
+    var safeUrl = (fallbackUrl || '#').replace(/'/g, "\\'");
+    applyEl.setAttribute('onclick', "event.preventDefault();window.open('" + safeUrl + "','_blank')");
+  }
+}
+
+// Resume picker/upload modal
+function _showResumeNeededModal(jobId, jobTitle, companyName, jobUrl, mode) {
+  var existing = document.getElementById('resume-needed-modal');
+  if (existing) existing.remove();
+
+  var allResumes = [];
+  try {
+    var raw = localStorage.getItem('bj_resumes');
+    if (raw && !raw.startsWith('enc:')) allResumes = JSON.parse(raw);
+  } catch(e) {}
+  allResumes = allResumes.filter(function(r) { return !r.archived && r.name; });
+
+  var title = mode === 'upload' ? 'Upload a resume to apply' : 'Select a resume for this application';
+  var body = mode === 'upload'
+    ? '<p style="font-size:13px;color:var(--text-dim);margin-bottom:16px;">You need at least one resume to submit applications. Upload a resume and we\'ll submit it for you.</p>'
+    + '<div style="text-align:center;"><button class="btn btn-primary btn-sm" onclick="document.getElementById(\'resume-needed-modal\').remove();document.querySelector(\'[data-page=resumes]\')?.click();">Go to Resumes →</button></div>'
+    : '<p style="font-size:13px;color:var(--text-dim);margin-bottom:12px;">No resume is assigned to the filter that matched <strong>' + escapeHtml(jobTitle) + '</strong>. Pick one to submit:</p>'
+    + '<div style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;margin-bottom:16px;">'
+    + allResumes.map(function(r) {
+        return '<button class="btn btn-sm btn-secondary" style="text-align:left;padding:8px 14px;" '
+          + 'onclick="_pickResumeAndApply(\'' + jobId + '\',\'' + escapeHtml(r.id) + '\',\'' + escapeHtml(r.fileName || r.name || 'resume.pdf').replace(/'/g, "\\'") + '\',\'' + escapeHtml(jobTitle).replace(/'/g, "\\'") + '\',\'' + escapeHtml(companyName).replace(/'/g, "\\'") + '\',\'' + (jobUrl||'').replace(/'/g, "\\'") + '\')">'
+          + '<div style="font-size:12px;font-weight:600;">' + escapeHtml(r.name) + '</div>'
+          + (r.filterIds && r.filterIds.length ? '<div style="font-size:10px;color:var(--text-faint);">Assigned to: ' + r.filterIds.join(', ') + '</div>' : '')
+          + '</button>';
+      }).join('')
+    + '</div>';
+
+  var modal = document.createElement('div');
+  modal.id = 'resume-needed-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);';
+  modal.innerHTML = '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.2);">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">'
+    + '<div style="font-size:16px;font-weight:700;color:var(--text);">' + title + '</div>'
+    + '<button onclick="document.getElementById(\'resume-needed-modal\').remove()" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--text-faint);">&times;</button>'
+    + '</div>'
+    + body
+    + '</div>';
+  modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
+
+// Called from resume picker modal
+window._pickResumeAndApply = async function(jobId, resumeId, resumeFilename, jobTitle, companyName, jobUrl) {
+  document.getElementById('resume-needed-modal')?.remove();
+  await _submitViaWorker(jobId, jobTitle, companyName, jobUrl, { id: resumeId, filename: resumeFilename });
+};
 
 // AF-003: Score then auto-route (for score_gated_auto mode)
 async function _scoreAndAutoRoute(jobId, jobTitle, companyName, jobUrl) {
