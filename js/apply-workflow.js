@@ -143,7 +143,10 @@ function isSetupComplete() {
 
     var hasProfile = profile && profile.name && profile.name.trim().length > 0 && profile.email && profile.email.trim().length > 0;
     var hasMode = settings && settings.default_apply_mode && settings.default_apply_mode !== 'null' && settings.default_apply_mode !== '';
-    var hasResume = (settings && settings.active_resume_id) || (typeof window._activeResumeId !== 'undefined' && window._activeResumeId);
+    // Check explicit active_resume_id, then window global, then any uploaded resume
+    var hasResume = (settings && settings.active_resume_id)
+      || (typeof window._activeResumeId !== 'undefined' && window._activeResumeId)
+      || (typeof resumes !== 'undefined' && Array.isArray(resumes) && resumes.length > 0);
 
     return !!(hasProfile && hasMode && hasResume);
   } catch (e) {
@@ -202,7 +205,9 @@ async function checkAndSetSetupComplete() {
 
     var hasProfile = profile && profile.name && profile.name.trim().length > 0 && profile.email && profile.email.trim().length > 0;
     var hasMode = settings && settings.default_apply_mode && settings.default_apply_mode !== 'null' && settings.default_apply_mode !== '';
-    var hasResume = (settings && settings.active_resume_id) || (typeof window._activeResumeId !== 'undefined' && window._activeResumeId);
+    var hasResume = (settings && settings.active_resume_id)
+      || (typeof window._activeResumeId !== 'undefined' && window._activeResumeId)
+      || (typeof resumes !== 'undefined' && Array.isArray(resumes) && resumes.length > 0);
 
     if (hasProfile && hasMode && hasResume) {
       // Set flag in localStorage

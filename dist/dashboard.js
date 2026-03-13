@@ -21576,6 +21576,14 @@ function _populateApplicantProfileForm(p) {
   if (el) el.value = eeo.veteranStatus || '';
   el = document.getElementById('ap-eeo-disability');
   if (el) el.value = eeo.disabilityStatus || '';
+
+  // EXT-AS-9: Show persistent saved indicator when profile has name + email
+  var status = document.getElementById('ap-save-status');
+  if (status && p.name && p.name.trim().length > 0 && p.email && p.email.trim().length > 0) {
+    status.style.display = 'inline';
+    status.textContent = 'Profile stored';
+    status.style.color = 'var(--green)';
+  }
 }
 
 function _readApplicantProfileForm() {
@@ -21618,8 +21626,7 @@ async function saveApplicantProfile() {
     _applicantProfile = profile;
     // AF-002: Cache profile in localStorage for isSetupComplete() checks
     try { localStorage.setItem('bj_applicant_profile', JSON.stringify(profile)); } catch (e) { /* ignore */ }
-    if (status) { status.style.display = 'inline'; status.textContent = 'Saved'; status.style.color = 'var(--green)'; }
-    setTimeout(function() { if (status) status.style.display = 'none'; }, 3000);
+    if (status) { status.style.display = 'inline'; status.textContent = 'Profile stored'; status.style.color = 'var(--green)'; }
     showToast('Applicant profile saved.', { type: 'success' });
     if (typeof posthog !== 'undefined') posthog.capture('applicant_profile_saved', { has_phone: !!profile.phone, has_linkedin: !!profile.linkedin, has_location: !!profile.location, has_eeo: !!(profile.eeo_preferences && (profile.eeo_preferences.gender || profile.eeo_preferences.ethnicity || profile.eeo_preferences.veteranStatus || profile.eeo_preferences.disabilityStatus)) });
     // AF-002: Check if setup is now complete after profile save
@@ -27648,7 +27655,10 @@ function isSetupComplete() {
 
     var hasProfile = profile && profile.name && profile.name.trim().length > 0 && profile.email && profile.email.trim().length > 0;
     var hasMode = settings && settings.default_apply_mode && settings.default_apply_mode !== 'null' && settings.default_apply_mode !== '';
-    var hasResume = (settings && settings.active_resume_id) || (typeof window._activeResumeId !== 'undefined' && window._activeResumeId);
+    // Check explicit active_resume_id, then window global, then any uploaded resume
+    var hasResume = (settings && settings.active_resume_id)
+      || (typeof window._activeResumeId !== 'undefined' && window._activeResumeId)
+      || (typeof resumes !== 'undefined' && Array.isArray(resumes) && resumes.length > 0);
 
     return !!(hasProfile && hasMode && hasResume);
   } catch (e) {
@@ -27707,7 +27717,9 @@ async function checkAndSetSetupComplete() {
 
     var hasProfile = profile && profile.name && profile.name.trim().length > 0 && profile.email && profile.email.trim().length > 0;
     var hasMode = settings && settings.default_apply_mode && settings.default_apply_mode !== 'null' && settings.default_apply_mode !== '';
-    var hasResume = (settings && settings.active_resume_id) || (typeof window._activeResumeId !== 'undefined' && window._activeResumeId);
+    var hasResume = (settings && settings.active_resume_id)
+      || (typeof window._activeResumeId !== 'undefined' && window._activeResumeId)
+      || (typeof resumes !== 'undefined' && Array.isArray(resumes) && resumes.length > 0);
 
     if (hasProfile && hasMode && hasResume) {
       // Set flag in localStorage
