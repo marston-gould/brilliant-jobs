@@ -288,8 +288,7 @@ function _pollApplicationStatus(appId) {
     }
 
     try {
-      var sb = window.supabase || window._supabase;
-      if (!sb) return;
+      // Use outer-scope sb (Supabase client) — do NOT reassign from window.supabase (that's the constructor)
 
       var { data, error } = await sb
         .from('pending_applications')
