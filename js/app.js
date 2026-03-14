@@ -390,6 +390,8 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
       }
     }, 5 * 60 * 1000);
   }
+  // FB-TRIAL-001-S3: Initialize trial gate (banner, sample badges)
+  if (typeof initTrialGate === 'function') initTrialGate();
   // POD3-LUCIDE: Initialize Lucide icons after all DOM content is ready
   if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
     lucide.createIcons();

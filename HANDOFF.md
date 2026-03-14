@@ -52,7 +52,47 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FB-TRIAL-001-S2** — Trial Gate Server
+**FB-TRIAL-001-S3** — Trial Gate Client + Free Samples
+- Completed: 2026-03-14
+- Product version bumped: `v8.96` → `v8.97` (JS/HTML changes — trial-gate.js new file, dashboard.html 3 containers, app.js initTrialGate wiring; all HTML surfaces cache-busted)
+- ROADMAP.md updated: FB-TRIAL-001-S3 → ✅
+- roadmap.html updated: FB-TRIAL-001-S3 → `s: 'done'`, p: 100
+- **trial-gate.js (NEW — added to deferred chunk in build.js):**
+  - `initTrialGate()`: On page load, queries profiles for user_state/trial_expires_at/feature_samples_used. If trialing, renders #trial-banner with countdown. If expired_free, caches sample availability and renders "1 free try" badges on gated feature buttons. If active_pro, hides banner.
+  - `_renderTrialBanner(expiresAt)`: Persistent banner below nav. Color tiers: blue #3B82F6 (5–7 days), amber #F59E0B (2–4 days), red #E24B4A (0–1 day). Shows "X days left in your free trial — Upgrade now" with /upgrade link. Updates every 60 seconds. Auto-hides on expiry.
+  - `showPreSamplePrompt(featureKey, onConfirm, onCancel)`: Pre-sample confirmation for expired_free users. "This will use your one free [feature] sample. Continue?" with Continue + Cancel buttons. Click outside to dismiss. Skipped for trialing/active_pro users. Falls back to onConfirm if overlay element missing.
+  - `showSampleConversionModal(featureKey)`: Post-sample conversion modal. Shown AFTER the feature result is displayed, triggered by X-Is-Sample response header. "That was your free [feature] sample — Upgrade to Pro for unlimited [feature] and all other Pro features." Upgrade button (/upgrade) + "Maybe later" dismiss. Sparkles Lucide icon. Marks sample as consumed in local _sampleAvailability cache. Calls _updateSampleBadges.
+  - `handleSampleHeader(response, featureKey)`: Utility to detect X-Is-Sample: true header on API responses. Triggers showSampleConversionModal after 800ms delay (feature result visible first per spec 4.5).
+  - `getClientSampleAvailability()`: Returns cached sample availability map { chat: true, score: false, ... } or null.
+  - `hideTrialBanner()`: Hides banner, clears interval.
+  - `_updateSampleBadges()`: Renders "1 free try" badges (position:absolute, accent bg, 9px) on gated feature buttons for available samples. Clears and re-renders on state change. Feature-to-selector mapping for chat, score, apply, stats, filter, boolean, sms, email.
+  - `_FEATURE_LABELS`: Human-readable labels for all 8 gated features (AI Chat, Resume Scoring, SMS Alert, Email Notification, Auto-Apply, Stats Page, Saved Filter, Boolean Search).
+  - 6 PostHog events: trial_banner_upgrade_click, pre_sample_prompt_shown, pre_sample_confirmed, pre_sample_cancelled, sample_conversion_prompted, sample_conversion_dismissed, sample_conversion_upgrade_click.
+  - 6 window + BJ namespace exports: initTrialGate, showPreSamplePrompt, showSampleConversionModal, hideTrialBanner, handleSampleHeader, getClientSampleAvailability.
+- **Dashboard HTML (3 containers added):**
+  - `#trial-banner`: Below nav, above .main. display:none default. Flex layout for text + upgrade button.
+  - `#sample-conversion-modal`: Fixed overlay, z-index:9999. display:none default. Content rendered dynamically by showSampleConversionModal.
+  - `#pre-sample-prompt`: Fixed overlay, z-index:9999. display:none default. Content rendered dynamically by showPreSamplePrompt.
+- **app.js:** `initTrialGate()` call added to init() with typeof guard, positioned before lucide.createIcons().
+- **build.js:** `js/trial-gate.js` added to deferred chunk (17 files total).
+- **Pod Team Manifest:** FB-TRIAL-001-S3 pairing added (Lead Platform Eng + Forward-Looking Dev, Chief Architect + Evolvability Strategist reviewers).
+- **Modified:**
+  - `dashboard.html` — 3 trial gate containers (#trial-banner, #sample-conversion-modal, #pre-sample-prompt)
+  - `js/app.js` — initTrialGate() call in init()
+  - `build.js` — trial-gate.js added to deferred chunk
+  - `docs/scaling/pod-team-manifest.md` — FB-TRIAL-001-S3 pairing
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt (includes trial-gate.js)
+  - `dist/admin.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — FB-TRIAL-001-S3 → ✅
+  - `roadmap.html` — FB-TRIAL-001-S3 → done/100
+- **Created:**
+  - `js/trial-gate.js` — Trial gate client module
+  - `tests/fb-trial-001-s3-client-trial-gate.test.js` — 69 validation tests (12 sections)
+- **Tests:** 69 validation tests (all passing)
+
+**Previous: FB-TRIAL-001-S2** — Trial Gate Server
 - Completed: 2026-03-14
 - No product version bump (EF-only changes — no dashboard JS/CSS/HTML)
 - ROADMAP.md updated: FB-TRIAL-001-S2 → ✅
@@ -2697,7 +2737,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.96`** | **FB-APPS-001-S1: My Applications Page Restructure** |
+| **Product (BJ_VERSION)** | **`v8.97`** | **FB-TRIAL-001-S3: Trial Gate Client + Free Samples** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

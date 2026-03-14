@@ -62,6 +62,7 @@ const chunks = {
     'js/referrals.js',
     'js/referral-outreach.js',
     'js/payl.js',
+    'js/trial-gate.js',
   ],
 };
 
