@@ -52,7 +52,44 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FB-APPS-001-S1** — My Applications Page Restructure (Session 1: Tab Infrastructure)
+**FB-TRIAL-001-S1** — Trial Gate Schema + checkFeatureAccess Utility
+- Completed: 2026-03-13
+- No product version bump (migration + EF shared utility only — no dashboard JS/CSS/HTML changes)
+- ROADMAP.md updated: FB-TRIAL-001-S1 → ✅
+- roadmap.html updated: FB-TRIAL-001-S1 → `s: 'done'`, p: 100
+- **Migration v8.48-fb-trial-001-schema.sql:**
+  - ALTER profiles: 7 new columns (trial_started_at TIMESTAMPTZ, trial_expires_at TIMESTAMPTZ, user_state TEXT CHECK trialing/active_pro/expired_free, feature_samples_used JSONB DEFAULT '{}', referral_code TEXT UNIQUE, referred_by UUID FK, referral_credit_expires_at TIMESTAMPTZ)
+  - 3 profiles indexes: idx_profiles_trial_expiry (partial WHERE trialing), idx_profiles_referral_code (partial WHERE NOT NULL), idx_profiles_referred_by (partial WHERE NOT NULL)
+  - CREATE referrals table (referrer_id, referred_id, referral_code, 5-state status CHECK, 4 timestamps, RLS 2 policies)
+  - 3 referrals indexes: idx_referrals_code, idx_referrals_referrer (compound), idx_referrals_referred
+  - CREATE resume_score_queue table (user_id, resume_id, job_id, 4-state status CHECK, batch_id, result JSONB, error TEXT, RLS 2 policies)
+  - 3 resume_score_queue indexes: idx_rsq_status (partial WHERE pending), idx_rsq_user, idx_rsq_batch
+  - pg_cron trial-expiry-checker: */15, trialing→expired_free WHERE trial_expires_at < NOW() AND NOT EXISTS active subscription
+  - fn_trial_on_signup trigger: BEFORE INSERT ON profiles, sets trial_started_at/trial_expires_at/user_state/feature_samples_used
+  - fn_check_feature_access(p_user_id, p_feature) RPC: 4-branch JSONB return (active_pro, trialing+daysRemaining, sample with atomic JSONB WHERE guard, denied). SECURITY DEFINER. GRANT to authenticated + service_role
+  - Existing user migration: active subscribers → active_pro + all samples consumed, expired (>7d) → expired_free + fresh samples, recent (<7d) → trialing, referral codes generated for active_pro
+  - Table/column/function COMMENTS for documentation
+- **_shared/checkFeatureAccess.ts:**
+  - checkFeatureAccess(sb, userId, feature) — calls fn_check_feature_access RPC, returns FeatureAccessResult
+  - GatedFeature type: 8 feature keys (chat, score, sms, email, apply, stats, filter, boolean)
+  - FeatureAccessResult interface: allowed, isSample?, daysRemaining?, reason?
+  - isActivePro(sb, userId) — lightweight pro check (no sample logic)
+  - getTrialState(sb, userId) — trial banner data (daysRemaining, expiresAt)
+  - getSampleAvailability(sb, userId) — per-feature sample availability map
+  - buildDeniedResponse(result) — standardized 403 response
+  - buildSampleHeaders() — X-Is-Sample: true header for client detection
+  - Fail-open on RPC errors (migration safety during rollout)
+- **Pod Team Manifest:** FB-TRIAL-001-S1: Chief Architect + Evolvability Strategist reviewers
+- **Created:**
+  - `supabase/migrations/v8.48-fb-trial-001-schema.sql` — Full trial schema + migration
+  - `supabase/functions/_shared/checkFeatureAccess.ts` — Shared gating utility
+  - `tests/fb-trial-001-s1-schema.test.js` — 77 validation tests (11 sections)
+- **Modified:**
+  - `ROADMAP.md` — FB-TRIAL section added, FB-TRIAL-001-S1 → ✅
+  - `roadmap.html` — FB-TRIAL entries added, FB-TRIAL-001-S1 → done/100
+- **Tests:** 77 validation tests (all passing)
+
+**Previous: FB-APPS-001-S1** — My Applications Page Restructure (Session 1: Tab Infrastructure)
 - Completed: 2026-03-13
 - Product version bumped: `v8.95` → `v8.96` (HTML/JS/CSS changes — dashboard.html Applications page restructured, app.js switchAppTab rewrite + renderSettingsSummary + updateQueueSectionVisibility, applications.js queue visibility call, input.css settings summary banner CSS; all HTML surfaces cache-busted)
 - ROADMAP.md updated: FB-APPS-001-S1 → ✅
