@@ -156,7 +156,7 @@ serve(async (req: Request) => {
     console.warn('[handle-referral-signup] Failed to insert trial_referrals row:', insertErr.message);
   }
 
-  // Fire referral-lifecycle notification to referrer
+  // Fire referral-lifecycle for status tracking (updates referrals table, handles nudge logic)
   try {
     await sb.functions.invoke('referral-lifecycle', {
       body: {
@@ -169,6 +169,22 @@ serve(async (req: Request) => {
     });
   } catch (e) {
     console.warn('[handle-referral-signup] referral-lifecycle notification failed:', String(e));
+  }
+
+  // FB-TRIAL-001-S5: Fire dedicated referral_signup email via send-trial-notifications
+  // referral-lifecycle fires referral_status_update (generic); this fires the dedicated
+  // referral_signup_notify template with the correct copy per Section 7.4.
+  try {
+    await sb.functions.invoke('send-trial-notifications', {
+      body: {
+        action: 'referral_signup',
+        referrer_id: referrer.id,
+        referred_id: user.id,
+      },
+    });
+  } catch (e) {
+    // Non-fatal — status tracking already completed above
+    console.warn('[handle-referral-signup] send-trial-notifications referral_signup failed:', String(e));
   }
 
   // PostHog events

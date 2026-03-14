@@ -799,6 +799,25 @@ serve(async (req: Request) => {
                     referredId: convertedUserId,
                     referralId: trialRef.id,
                   });
+
+                  // ─── FB-TRIAL-001-S5: Fire referral_converted notifications to both parties ───
+                  try {
+                    await sb.functions.invoke('send-trial-notifications', {
+                      body: {
+                        action: 'referral_converted',
+                        referrer_id: referrerId,
+                        referred_id: convertedUserId,
+                      },
+                    });
+                    logger.info('checkout.session.completed → referral_converted notifications fired', {
+                      referrerId, referredId: convertedUserId,
+                    });
+                  } catch (notifyErr) {
+                    // Non-fatal — reward already applied
+                    logger.error('checkout.session.completed → referral_converted notification failed', {
+                      error: String(notifyErr),
+                    });
+                  }
                 }
               } catch (refErr) {
                 logger.error('checkout.session.completed → referral reward failed', { error: String(refErr) });

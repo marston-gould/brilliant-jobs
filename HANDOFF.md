@@ -52,7 +52,49 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FB-TRIAL-001-S4** — Referral Program
+**FB-TRIAL-001-S5** — Trial Notifications
+- Completed: 2026-03-14
+- Product version bumped: `v8.98` → `v8.99` (no JS/HTML changes — EF-only session; notification system backend, no dashboard surfaces changed)
+- ROADMAP.md updated: FB-TRIAL-001-S5 → ✅
+- roadmap.html updated: FB-TRIAL-001-S5 → `s: 'done'`, p: 100
+- **Part 1 — send-trial-notifications EF (NEW):**
+  - `supabase/functions/send-trial-notifications/index.ts`
+  - 6 actions: `trial_expiring` (queries trialing profiles with trial_expires_at falling in 5d/3d/1d windows, deduped per window, sends countdown emails), `expired_nudge` (users transitioned to expired_free in last 24h, sends "trial ended + free samples" email), `expired_nudge_30d` (users expired ~30 days ago, personalized with filter count), `sample_reminder` (day 10 post-expiry, only if feature_samples_used = '{}'), `referral_signup` (fires to referrer when referred user signs up — dedup per referred_id), `referral_converted` (fires to both referrer + referred on conversion).
+  - Service-role only auth. Template-first (reads notification_templates), inline fallback HTML if template missing. Logs all sends to notification_log for dedup guard.
+  - Gateway route #117.
+- **Part 2 — weekly-digest-expired EF (NEW):**
+  - `supabase/functions/weekly-digest-expired/index.ts`
+  - Queries expired_free users. Matches new jobs (last 7 days, status=open) against user_filters using lightweight matchesFilter. Shows up to 5 job preview rows + "Upgrade to see all X jobs" CTA.
+  - Skips: users not seen in 60+ days, users with no saved filter, users with email_enabled=false in notification_preferences, users who already received digest this week.
+  - Gateway route #118.
+- **Part 3 — pg_cron migration:**
+  - `supabase/migrations/20260314000002_fb_trial_001_s5_notification_crons.sql`
+  - 5 schedules: `trial-expiry-notifications` (daily 9AM UTC → trial_expiring), `expired-nudge-notifications` (daily 9AM UTC → expired_nudge), `expired-nudge-30d` (daily 10AM UTC → expired_nudge_30d), `sample-reminder-notifications` (daily 10AM UTC → sample_reminder), `weekly-digest-expired` (Mondays 8AM UTC). All ON CONFLICT DO UPDATE (idempotent).
+- **Part 4 — Notification templates seeded:**
+  - Same migration seeds 9 email templates: `trial_expiring_5d`, `trial_expiring_3d`, `trial_expiring_1d`, `trial_expired`, `trial_expired_30d`, `referral_signup_notify`, `referral_converted_referrer`, `referral_converted_referred`, `sample_used_reminder`. Plus 3 SMS templates (trial_expiring_1d, trial_expired, referral_converted_referrer). ON CONFLICT DO UPDATE. notification_log dedup index added.
+- **Part 5 — Notification consolidation:**
+  - `stripe-webhook/index.ts`: after process-referral-reward succeeds, invokes send-trial-notifications with action=referral_converted (non-fatal, separate try-catch).
+  - `handle-referral-signup/index.ts`: still calls referral-lifecycle for status tracking; also now calls send-trial-notifications with action=referral_signup for dedicated referral_signup_notify email.
+- **Pod Team Manifest:** FB-TRIAL-001-S5 pairing added (Lead Platform Eng + Forward-Looking Dev, Chief Architect + Evolvability Strategist reviewers).
+- **Modified:**
+  - `supabase/functions/stripe-webhook/index.ts` — referral_converted notification wiring
+  - `supabase/functions/handle-referral-signup/index.ts` — referral_signup notification via send-trial-notifications
+  - `supabase/functions/api-gateway/index.ts` — routes #117-118 (send-trial-notifications, weekly-digest-expired), total 118
+  - `docs/scaling/pod-team-manifest.md` — FB-TRIAL-001-S5 pairing
+  - `dist/dashboard.min.js` — rebuilt (version bump)
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `dist/admin.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — FB-TRIAL-001-S5 → ✅
+  - `roadmap.html` — FB-TRIAL-001-S5 → done/100
+- **Created:**
+  - `supabase/functions/send-trial-notifications/index.ts` — Trial lifecycle + referral notification EF
+  - `supabase/functions/weekly-digest-expired/index.ts` — Weekly digest for expired_free users
+  - `supabase/migrations/20260314000002_fb_trial_001_s5_notification_crons.sql` — pg_cron schedules + template seeds
+  - `tests/fb-trial-001-s5-trial-notifications.test.js` — 71 validation tests (10 sections)
+- **Tests:** 71 validation tests (all passing)
+
+**Previous: FB-TRIAL-001-S4** — Referral Program
 - Completed: 2026-03-14
 - Product version bumped: `v8.97` → `v8.98` (JS/HTML changes — trial-gate.js _maybeShowUpgradeIntro, referrals.js 5 new functions, dashboard.html sidebar-referral-link + referral-intro-card; all HTML surfaces cache-busted)
 - ROADMAP.md updated: FB-TRIAL-001-S4 → ✅
@@ -2713,7 +2755,7 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Session In Progress
 
-None. FB-TRIAL-001-S4 complete.
+None. FB-TRIAL-001-S5 complete.
 
 ---
 
@@ -2792,7 +2834,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.98`** | **FB-TRIAL-001-S4: Referral Program** |
+| **Product (BJ_VERSION)** | **`v8.99`** | **FB-TRIAL-001-S5: Trial Notifications** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
@@ -2800,7 +2842,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 | **SPA Scaffold** | **`spa@1.0.0-scaffold`** | **SA-013** |
 | **Feature Flags** | **`infra@feature-flags-v1.0.0`** | **SA-025** |
 | **Event Bus** | **`infra@event-bus-v1.0.0`** | **SA-024** |
-| **API Gateway** | `infra@gateway-v1.0.0` | AF-006 (115 routes) |
+| **API Gateway** | `infra@gateway-v1.0.0` | FB-TRIAL-001-S5 (118 routes) |
 | **Capacity Model** | **`infra@capacity-model-v1.0.0`** | **SA-028** |
 | **Deploy Tracker** | **`infra@deploy-tracker-v1.0.0`** | **BI-01** |
 | **Build Analytics** | **`infra@build-analytics-v1.0.0`** | **BI-02** |
