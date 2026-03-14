@@ -41,9 +41,11 @@ CREATE INDEX IF NOT EXISTS idx_profiles_referred_by
   WHERE referred_by IS NOT NULL;
 
 
--- ── 2. REFERRALS TABLE ─────────────────────────────────────────────────────
+-- ── 2. TRIAL_REFERRALS TABLE ────────────────────────────────────────────────
+-- Named trial_referrals to avoid conflict with existing referrals table
+-- (which serves the legacy referral system with fraud_score, attribution_method, etc.)
 
-CREATE TABLE IF NOT EXISTS referrals (
+CREATE TABLE IF NOT EXISTS trial_referrals (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   referrer_id     UUID NOT NULL REFERENCES profiles(id),
   referred_id     UUID REFERENCES profiles(id),
@@ -57,22 +59,22 @@ CREATE TABLE IF NOT EXISTS referrals (
   created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_referrals_code
-  ON referrals (referral_code);
+CREATE INDEX IF NOT EXISTS idx_trial_referrals_code
+  ON trial_referrals (referral_code);
 
-CREATE INDEX IF NOT EXISTS idx_referrals_referrer
-  ON referrals (referrer_id, status);
+CREATE INDEX IF NOT EXISTS idx_trial_referrals_referrer
+  ON trial_referrals (referrer_id, status);
 
-CREATE INDEX IF NOT EXISTS idx_referrals_referred
-  ON referrals (referred_id)
+CREATE INDEX IF NOT EXISTS idx_trial_referrals_referred
+  ON trial_referrals (referred_id)
   WHERE referred_id IS NOT NULL;
 
 -- RLS
-ALTER TABLE referrals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE trial_referrals ENABLE ROW LEVEL SECURITY;
 
 -- Users can read their own referrals (as referrer or referred)
 DO $$ BEGIN
-  CREATE POLICY referrals_user_read ON referrals
+  CREATE POLICY trial_referrals_user_read ON trial_referrals
     FOR SELECT USING (
       auth.uid() = referrer_id OR auth.uid() = referred_id
     );
@@ -81,7 +83,7 @@ END $$;
 
 -- Service role has full access
 DO $$ BEGIN
-  CREATE POLICY referrals_service_all ON referrals
+  CREATE POLICY trial_referrals_service_all ON trial_referrals
     FOR ALL USING (
       (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'service_role'
     );
@@ -164,7 +166,7 @@ SELECT cron.schedule(
 
 COMMENT ON COLUMN profiles.user_state IS 'FB-TRIAL-001: User lifecycle state. trialing=7-day full access, active_pro=paid subscriber, expired_free=browse+samples only';
 COMMENT ON COLUMN profiles.feature_samples_used IS 'FB-TRIAL-001: JSONB tracking one-time free sample usage per feature. Keys: chat,score,sms,email,apply,stats,filter,boolean. Values: true when consumed.';
-COMMENT ON TABLE referrals IS 'FB-TRIAL-001: Referral tracking. Paying users refer others; both get 1 free week on referred conversion.';
+COMMENT ON TABLE trial_referrals IS 'FB-TRIAL-001: Referral tracking. Paying users refer others; both get 1 free week on referred conversion.';
 COMMENT ON TABLE resume_score_queue IS 'FB-TRIAL-001 5.2: Batch API queue for resume scoring. pg_cron submits pending items to Anthropic Batch API every 5 minutes.';
 
 

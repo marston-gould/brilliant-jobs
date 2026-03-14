@@ -2,7 +2,7 @@
  * FB-TRIAL-001-S1 — Trial Gate Schema + checkFeatureAccess Validation Tests
  * 
  * Validates:
- * 1. Migration v8.48 structure (profiles columns, referrals table, resume_score_queue, indexes, pg_cron, user migration, signup trigger, fn_check_feature_access)
+ * 1. Migration v8.48 structure (profiles columns, trial_referrals table, resume_score_queue, indexes, pg_cron, user migration, signup trigger, fn_check_feature_access)
  * 2. checkFeatureAccess.ts shared utility (exports, types, functions)
  * 3. File inventory
  */
@@ -73,11 +73,11 @@ describe('FB-TRIAL-001-S1: profiles table columns', () => {
 
 // ── Section 3: Referrals Table ──────────────────────────────────────────────
 
-describe('FB-TRIAL-001-S1: referrals table', () => {
+describe('FB-TRIAL-001-S1: trial_referrals table', () => {
   const sql = read('supabase/migrations/20260313000000_fb_trial_001_schema.sql');
 
   test('CREATE TABLE referrals', () => {
-    expect(sql).toContain('CREATE TABLE IF NOT EXISTS referrals');
+    expect(sql).toContain('CREATE TABLE IF NOT EXISTS trial_referrals');
   });
 
   test('referrer_id UUID NOT NULL REFERENCES profiles', () => {
@@ -97,25 +97,25 @@ describe('FB-TRIAL-001-S1: referrals table', () => {
   });
 
   test('referral_code index', () => {
-    expect(sql).toContain('idx_referrals_code');
+    expect(sql).toContain('idx_trial_referrals_code');
   });
 
   test('referrer index (compound with status)', () => {
-    expect(sql).toContain('idx_referrals_referrer');
+    expect(sql).toContain('idx_trial_referrals_referrer');
     expect(sql).toContain('(referrer_id, status)');
   });
 
   test('RLS enabled', () => {
-    expect(sql).toContain('ALTER TABLE referrals ENABLE ROW LEVEL SECURITY');
+    expect(sql).toContain('ALTER TABLE trial_referrals ENABLE ROW LEVEL SECURITY');
   });
 
   test('user read policy (referrer or referred)', () => {
-    expect(sql).toContain('referrals_user_read');
+    expect(sql).toContain('trial_referrals_user_read');
     expect(sql).toContain('auth.uid() = referrer_id OR auth.uid() = referred_id');
   });
 
   test('service role policy', () => {
-    expect(sql).toContain('referrals_service_all');
+    expect(sql).toContain('trial_referrals_service_all');
     expect(sql).toContain('service_role');
   });
 });
@@ -405,8 +405,8 @@ describe('FB-TRIAL-001-S1: documentation comments', () => {
     expect(sql).toContain("COMMENT ON COLUMN profiles.feature_samples_used");
   });
 
-  test('referrals table comment', () => {
-    expect(sql).toContain("COMMENT ON TABLE referrals");
+  test('trial_referrals table comment', () => {
+    expect(sql).toContain("COMMENT ON TABLE trial_referrals");
   });
 
   test('resume_score_queue table comment', () => {
