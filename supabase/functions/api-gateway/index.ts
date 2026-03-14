@@ -237,9 +237,10 @@ const ROUTE_REGISTRY: Record<string, string> = {
   "ghost-auto-detect":          "ghost-auto-detect",          // FB-GHOST-BADGE-001: pg_cron stale scan (#121)
   "ghost-score-refresh":        "ghost-score-refresh",        // FB-GHOST-BADGE-001: Score recalculation (#122)
   "enrich-jd-location":         "enrich-jd-location",         // EDE-001: User-triggered location enrichment (#123)
+  "classify-pipeline-signal":   "classify-pipeline-signal",   // FB-PI-001-S2: AI signal classifier (#124)
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // TOTAL: 123 routes (93 SA-005 + 1 SA-007 + 1 SA-008 + 1 SA-009 + 2 SA-010 + 2 SA-011 + 2 SA-012 + 1 SA-018 + 2 SA-020 + 1 SA-021 + 1 SA-024 + 1 SA-028 + 1 BI-01 + 3 FB-PAYL + 1 EXT-AS-5 + 1 AF-006 + 1 FB-TRIAL-S4 + 2 FB-TRIAL-S5 + 1 FB-TRIAL-S6). Direct paths deprecated.
+  // TOTAL: 124 routes (93 SA-005 + 1 SA-007 + 1 SA-008 + 1 SA-009 + 2 SA-010 + 2 SA-011 + 2 SA-012 + 1 SA-018 + 2 SA-020 + 1 SA-021 + 1 SA-024 + 1 SA-028 + 1 BI-01 + 3 FB-PAYL + 1 EXT-AS-5 + 1 AF-006 + 1 FB-TRIAL-S4 + 2 FB-TRIAL-S5 + 1 FB-TRIAL-S6). Direct paths deprecated.
   // HOOK: Future EFs register here. Future: load from DB table for
   //       runtime updates without redeploy (api_consumers integration).
   // ═══════════════════════════════════════════════════════════════════════════

@@ -2950,7 +2950,52 @@ None.
 
 ## Last Completed Session
 
-**FB-PI-001-S1 — Pipeline Intelligence: Schema + Inbox Pipeline**
+**FB-PI-001-S3 — Application Matching + Stage Transitions**
+
+Entry gates:
+- S1 migration applied ✅, pipeline_signal_inbox + user_scan_checkpoints live ✅
+- S2 classify-pipeline-signal EF deployed ✅, cron registered ✅
+
+Deliverables:
+- `process-pipeline-action` EF: reads classified pipeline_signals WHERE action_taken IS NULL. Fuzzy company/role match against user_pipeline. High/medium confidence + tracked app → auto_move (update stage, set previous_stage, action_taken=auto_moved). Low confidence OR untracked → action_taken=prompted. PostHog pipeline_signal_processed.
+- Fuzzy matching: company name normalization, pg_trgm similarity or string distance. Falls back to domain matching.
+- Gateway route #125.
+- pg_cron: process-pipeline-signals every 15 minutes (staggered 7min from classify).
+- Tests: 70+ validation tests.
+- Completed: 2026-03-15
+- Product version bumped: `v9.09` → `v9.10` (EF-only changes — no dashboard JS/CSS/HTML)
+- ROADMAP.md updated: FB-PI-001-S2 → ✅
+- roadmap.html updated: FB-PI-001-S2 → `s: 'done'`, p: 100
+
+**classify-pipeline-signal EF (new, route #124, deployed):**
+- Reads `pipeline_signal_inbox` WHERE classification_status='pending' AND retry_count<3, batch 10
+- Anthropic claude-sonnet-4-20250514 with ephemeral prompt caching on 800-token system prompt
+- System prompt: 9 signal types (ACK, REJ-PRE, INT, REJ-POST, OFFER, RESCHED, CAL-INT, CAL-OFFER, NONE) with descriptions, confidence guidance, extraction rules, 6 few-shot examples
+- Structured JSON output: signal_type, confidence, extracted_fields (company/role/date/interviewer_names/format/scheduling_link/salary_range/rejection_stage), reasoning
+- confidenceToLevel: high ≥0.85, medium ≥0.50, low <0.50
+- NONE → classification_status=skipped (no pipeline_signals insert)
+- Valid signal → insert into pipeline_signals with all S1 columns (inbox_id, signal_type, confidence_score, confidence_level, extracted_fields, proposed_stage, status=pending_confirmation)
+- signalTypeToStage: INT/CAL-INT→interview, OFFER/CAL-OFFER→offer, REJ-PRE/REJ-POST→rejected, RESCHED→interview, ACK→applied
+- Error path: retry_count++ → status=error after 3 failures
+- PostHog: pipeline_signal_classified, classifier_batch_complete, classifier_error, classifier_fatal_error, classifier_cache_hit
+- Returns 503 if ANTHROPIC_API_KEY not configured
+- HOOK H-PI-02 (classifier model swap point), SCAR S-PI-06 (ML training dataset)
+
+**Migration 20260315000003 (applied to prod):** pg_cron classify-pipeline-signals */15 * * * *
+
+**Tests:** 81 validation tests (tests/fb-pi-001-s2-classifier.test.js — all passing)
+
+**Modified:**
+  - `supabase/functions/api-gateway/index.ts` — route #124, total 124 routes
+  - `ROADMAP.md` — FB-PI-001-S2 → ✅
+  - `roadmap.html` — FB-PI-001-S2 → done/100
+
+**Created:**
+  - `supabase/functions/classify-pipeline-signal/index.ts` — AI classifier EF
+  - `supabase/migrations/20260315000003_fb_pi_001_s2_classifier_cron.sql` — pg_cron
+  - `tests/fb-pi-001-s2-classifier.test.js` — 81 validation tests
+
+**Previous: FB-PI-001-S1 — Pipeline Intelligence: Schema + Inbox Pipeline**
 - Completed: 2026-03-15
 - Product version bumped: `v9.08` → `v9.09` (no JS/HTML changes — EF + migration only; gmail-scan EF extended with calendar, no dashboard surfaces changed)
 - ROADMAP.md updated: FB-PI-001-S1 → ✅
@@ -3057,7 +3102,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.09`** | **FB-PI-001-S1: Pipeline Intelligence Schema + Inbox** |
+| **Product (BJ_VERSION)** | **`v9.10`** | **FB-PI-001-S2: AI Classifier Edge Function** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
@@ -3065,7 +3110,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 | **SPA Scaffold** | **`spa@1.0.0-scaffold`** | **SA-013** |
 | **Feature Flags** | **`infra@feature-flags-v1.0.0`** | **SA-025** |
 | **Event Bus** | **`infra@event-bus-v1.0.0`** | **SA-024** |
-| **API Gateway** | `infra@gateway-v1.0.0` | EDE-001 (123 routes) |
+| **API Gateway** | `infra@gateway-v1.0.0` | FB-PI-001-S2 (124 routes) |
 | **Capacity Model** | **`infra@capacity-model-v1.0.0`** | **SA-028** |
 | **Deploy Tracker** | **`infra@deploy-tracker-v1.0.0`** | **BI-01** |
 | **Build Analytics** | **`infra@build-analytics-v1.0.0`** | **BI-02** |

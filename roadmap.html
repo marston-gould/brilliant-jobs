@@ -11,7 +11,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v9.09"></script>
+  <script src="/js/version.js?v=v9.10"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2224,7 +2224,7 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'FB-GHOST-BADGE-001 Ghost Intelligence Badges', d: 'Replaces Ghost Monitor tab. ghost_reports + ghost_company_scores tables. Recency-weighted fn_ghost_score_refresh. 3 EFs (ghost-report-submit/auto-detect/score-refresh). Tier badges (gray/amber/red) on My Applications cards. Self-report action. Async pre-fetch. Ghost Monitor nav + page removed.', p: 100, e: '4h' },
 
 { s: 'done', b: 'post-launch', n: 'FB-PI-001-S1 Pipeline Intelligence Schema + Inbox', d: 'pipeline_signal_inbox staging table (source plugin H-PI-01, dedup UNIQUE index, retry_count, pending index). user_scan_checkpoints per-user cursors (last_gmail_scan_at, last_calendar_scan_at, gmail_history_id, scan status states, consecutive_errors). pipeline_signals extended: inbox_id, signal_type, confidence_score, confidence_level, extracted_fields, action_taken, target/previous_stage, user_response. gmail-scan EF: Gmail broad-subject scan → inbox, Calendar API v3 (interview keyword filter, video link, external organiser filter) → inbox. Checkpoint mgmt: getOrCreateCheckpoint + updateCheckpoint. Dedup via ignoreDuplicates upsert. Legacy email_signals path preserved. SCAR S-PI-05 (Outlook/iCal). 100 tests. Route #123. v9.09. 2026-03-15.', p: 100, e: '8h' },
-{ s: 'todo', b: 'post-launch', n: 'FB-PI-001-S2 AI Classifier EF', d: 'classify-pipeline-signal EF — Anthropic Sonnet structured output, 8 signal types, few-shot examples, prompt caching, retry on error.', p: 0, e: '8h' },
+{ s: 'done', b: 'post-launch', n: 'FB-PI-001-S2 AI Classifier EF', d: 'classify-pipeline-signal EF. 9 signal types (ACK/REJ-PRE/INT/REJ-POST/OFFER/RESCHED/CAL-INT/CAL-OFFER/NONE). 6 few-shot examples. Prompt caching (ephemeral). Confidence thresholds high/medium/low. Batch 10/cycle. pipeline_signals insert (S1 columns). pg_cron */15. Gateway route #124. HOOK H-PI-02, SCAR S-PI-06. 81 tests. v9.10. 2026-03-15.', p: 100, e: '8h' },
 { s: 'todo', b: 'post-launch', n: 'FB-PI-001-S3 Application Matching + Stage Transitions', d: 'Fuzzy company/role matching, process-pipeline-action EF, auto-move medium+, prompt for low confidence.', p: 0, e: '8h' },
 { s: 'todo', b: 'post-launch', n: 'FB-PI-001-S4 Untracked App Confirmations', d: 'pipeline_pending_confirmations table, confirmation card UI, confirm/dismiss/create handlers.', p: 0, e: '6h' },
 { s: 'todo', b: 'post-launch', n: 'FB-PI-001-S5 Staleness Engine', d: 'check-pipeline-staleness cron, staleness prompts, auto-archive 30d, snooze, backward stage movement, undo.', p: 0, e: '6h' },
