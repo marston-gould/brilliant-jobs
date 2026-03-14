@@ -2547,17 +2547,7 @@ None. FEED-FIX-006 complete.
 
 ## Next Session
 
-**CREDIT-TIER-001** — Credit Tier Model
-
-**Entry gate:** Migration v8.48 written, score-resume EF patched. Ready to deploy.
-
-**Fix items:**
-1. `supabase db push` — v8.48-credit-tier-model.sql (starter plan, free_tier_feature_usage, check_entitlement rewrite, record_free_tier_use)
-2. `supabase functions deploy score-resume` — isPro includes starter, isFree lifetime gate + recording
-3. Apply same isFree gate + record_free_tier_use to `rewrite-resume-extension` EF (feature: `ai_rewrite`)
-4. Verify: Free user scores once → 200. Free user scores twice → 403 free_limit_reached. Starter user scores → 200 (no gate).
-
-**Exit gate:** All 4 deploy steps green. Manual prod verification passes.
+No specific session queued. EXT-AS-5 complete.
 
 **EXT-AS series (9 sessions total, 9 done — COMPLETE):**
 - EXT-AS-1 ✅ — Applicant Profile + Settings Sync

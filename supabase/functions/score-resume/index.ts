@@ -588,25 +588,9 @@ serve(async (req) => {
 
     const _scoreStartMs = Date.now();
 
-    // Check entitlement (Pro/Starter vs Free)
+    // Check entitlement (Pro vs Free)
     const { data: profile } = await sb.from('profiles').select('plan').eq('id', user.id).single();
-    const userPlan = profile?.plan || 'free';
-    const isPro = userPlan === 'pro' || userPlan === 'enterprise' || userPlan === 'starter';
-    const isFree = userPlan === 'free';
-
-    // Free tier: check 1-lifetime-use gate before doing any work
-    if (isFree) {
-      const { data: entResult } = await sb.rpc('check_entitlement', {
-        p_user_id: user.id, p_feature: 'resume_grading', p_usage_count: 0
-      });
-      if (entResult && !entResult.allowed) {
-        return new Response(JSON.stringify({
-          error: 'free_limit_reached',
-          message: entResult.reason,
-          upgrade: true
-        }), { status: 403, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
-      }
-    }
+    const isPro = profile?.plan === 'pro' || profile?.plan === 'enterprise';
 
     // Parse body
     const body = await req.json();
@@ -815,11 +799,6 @@ Assess. Return ONLY JSON.`;
     }
 
     console.log(`[score-resume] user=${user.id} tier=${result.tier} mode=${mode} jds=${jds.length} score=${result.match_score || result.overall_score} pro=${isPro}`);
-
-    // Record free tier use (idempotent — UNIQUE constraint prevents double-counting)
-    if (isFree) {
-      await sb.rpc('record_free_tier_use', { p_user_id: user.id, p_feature: 'resume_grading' });
-    }
 
     // ─── Phase 5: Dual-write to resume_score_history ───
     try {
