@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.05';
+var BJ_VERSION = 'v9.06';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -2131,14 +2131,14 @@ console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded');
 var _bjPageTitles = {
   brilliant: 'Get Started', setup: 'Setup', jobs: 'Jobs Feed', tuning: 'Search Tuning',
   resumes: 'Resumes', applications: 'My Applications', notifications: 'Notifications',
-  ghost: 'Ghost Monitor', stats: 'Stats', referrals: 'Referrals', settings: 'Settings',
-  subscription: 'Subscription', feedback: 'Feedback', pipeline: 'Pipeline'
+  stats: 'Stats', referrals: 'Referrals', settings: 'Settings',
+  subscription: 'Subscription', feedback: 'Feedback'
 };
 var _bjPageSections = {
   brilliant: 'onboarding', setup: 'onboarding', jobs: 'search', tuning: 'search',
   resumes: 'search', applications: 'tracking', notifications: 'tracking',
-  ghost: 'intelligence', stats: 'intelligence', referrals: 'growth',
-  settings: 'account', subscription: 'account', feedback: 'account', pipeline: 'tracking'
+  stats: 'intelligence', referrals: 'growth',
+  settings: 'account', subscription: 'account', feedback: 'account'
 };
 
 // Auth
@@ -2720,14 +2720,9 @@ if (lastTab && $(`#page-${lastTab}`)) {
     if (lastTab === 'ghost') {
       localStorage.setItem('bj_active_tab', 'applications');
     }
-    if (lastTab === 'pipeline' && typeof initPipeline === 'function') {
-      initPipeline().then(function() {
-        if (typeof renderPipeline === 'function') renderPipeline();
-        if (window.bjSkeleton) bjSkeleton.hide('pipeline');
-      }).catch(function(e) {
-        if (typeof reportError === 'function') reportError('app:pipeline-restore', e);
-        if (window.bjSkeleton) bjSkeleton.hide('pipeline');
-      });
+    // APR-001: pipeline is now embedded in applications tab
+    if (lastTab === 'pipeline') {
+      localStorage.setItem('bj_active_tab', 'applications');
     }
   };
   if (typeof bjEnsureTab === 'function') {
@@ -4376,20 +4371,23 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
   // FA-001: When content search is enabled, each keyword matches against BOTH
   // title (ilike) and content_tsv (wfts/websearch). The GIN index on content_tsv
   // prevents seq scans. Controlled by 'feed_content_search' feature flag.
+  // WHAT — title matching via word-boundary regex (imatch) + FA-001 content_tsv
+  // Uses PostgreSQL \y word boundaries so "seo" does NOT match "geneseo", "overseo" etc.
   const allWhatClauses = w.flatMap(pill => {
     return pill.values.flatMap(v => {
       const safe = v.replace(/[,()]/g, '').trim();
       if (!safe) return [];
+      // Escape regex special chars in the keyword
+      const escaped = safe.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       if (_contentSearchEnabled) {
-        // FA-001: OR title match with full-text content match
         return [
-          `title.ilike.%${safe}%`,
+          `title.imatch.\\y${escaped}\\y`,
           `content_tsv.wfts(english).${safe}`,
         ];
       }
       return [
-        `title.ilike.%${safe}%`,
-      ]; // Pre-FA-001 fallback: title-only (wfts removed v7.13)
+        `title.imatch.\\y${escaped}\\y`,
+      ];
     });
   });
   if (allWhatClauses.length > 0) query = query.or(allWhatClauses.join(','));
@@ -7869,14 +7867,10 @@ var filterCorpusCache = {}; // filterName → { skills: [[term,count],...], bigr
 var readinessRunning = false;
 
 function scoreToGrade(score) {
-  if (score >= 90) return { grade: 'A+', color: 'var(--green)' };
-  if (score >= 80) return { grade: 'A', color: 'var(--green)' };
-  if (score >= 70) return { grade: 'B+', color: '#22c55e' };
-  if (score >= 60) return { grade: 'B', color: 'var(--warm)' };
-  if (score >= 50) return { grade: 'C+', color: 'var(--warm)' };
-  if (score >= 40) return { grade: 'C', color: '#f97316' };
-  if (score >= 30) return { grade: 'D', color: 'var(--red)' };
-  return { grade: 'F', color: 'var(--red)' };
+  // Returns numeric score string with color — no letter grades
+  var s = score != null ? Math.round(score) : 0;
+  var color = s >= 80 ? 'var(--green)' : s >= 60 ? '#22c55e' : s >= 40 ? 'var(--warm)' : 'var(--red)';
+  return { grade: s + '%', color: color };
 }
 
 // Fetch up to `limit` JDs for a given saved filter
@@ -8655,10 +8649,9 @@ function buildInlineGrade(ri, data) {
 
   var html = '<div style="padding:8px 10px;border-radius:8px;background:var(--bg-main);border:1px solid var(--border);margin-bottom:6px;">';
 
-  // Top row: letter grade + score + CTA
+  // Top row: score + CTA
   html += '<div style="display:flex;align-items:center;gap:8px;">';
-  html += '<span style="font-family:var(--mono);font-size:22px;font-weight:800;color:' + g.color + ';line-height:1;">' + g.grade + '</span>';
-  html += '<span style="font-family:var(--mono);font-size:12px;color:var(--text-dim);">' + data.overallScore + '%</span>';
+  html += '<span style="font-family:var(--mono);font-size:22px;font-weight:800;color:' + g.color + ';line-height:1;">' + data.overallScore + '%</span>';
 
   // Per-filter mini scores
   if (filterNames.length > 0) {
@@ -8686,7 +8679,7 @@ function buildInlineGrade(ri, data) {
 
     html += '<div style="margin-bottom:10px;">';
     html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">';
-    html += '<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:' + fg2.color + ';">' + fg2.grade + ' ' + fs2.score + '%</span>';
+    html += '<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:' + fg2.color + ';">' + fg2.grade + '</span>';
     html += '<span style="font-size:11px;font-weight:600;color:var(--text);">' + escapeHtml(fname2) + '</span>';
     html += '<span style="font-size:9px;color:var(--text-faint);">' + fs2.matched + '/' + fs2.total + ' terms \u00b7 ' + fs2.jdsAnalyzed + ' JDs</span>';
     html += '</div>';
@@ -8741,7 +8734,7 @@ function buildInlineGrade(ri, data) {
       var ls = data.levels[lbl];
       var lg = scoreToGrade(ls.score);
       html += '<div style="padding:4px 8px;border-radius:6px;background:var(--bg-card);border:1px solid var(--border);text-align:center;">';
-      html += '<div style="font-family:var(--mono);font-size:11px;font-weight:700;color:' + lg.color + ';">' + lg.grade + ' ' + ls.score + '%</div>';
+      html += '<div style="font-family:var(--mono);font-size:11px;font-weight:700;color:' + lg.color + ';">' + lg.grade + '</div>';
       html += '<div style="font-size:9px;color:var(--text-dim);">' + lbl + ' <span style="color:var(--text-faint);">(' + ls.jobCount + ')</span></div>';
       html += '</div>';
     }

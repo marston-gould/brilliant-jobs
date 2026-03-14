@@ -249,20 +249,23 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
   // FA-001: When content search is enabled, each keyword matches against BOTH
   // title (ilike) and content_tsv (wfts/websearch). The GIN index on content_tsv
   // prevents seq scans. Controlled by 'feed_content_search' feature flag.
+  // WHAT — title matching via word-boundary regex (imatch) + FA-001 content_tsv
+  // Uses PostgreSQL \y word boundaries so "seo" does NOT match "geneseo", "overseo" etc.
   const allWhatClauses = w.flatMap(pill => {
     return pill.values.flatMap(v => {
       const safe = v.replace(/[,()]/g, '').trim();
       if (!safe) return [];
+      // Escape regex special chars in the keyword
+      const escaped = safe.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       if (_contentSearchEnabled) {
-        // FA-001: OR title match with full-text content match
         return [
-          `title.ilike.%${safe}%`,
+          `title.imatch.\\y${escaped}\\y`,
           `content_tsv.wfts(english).${safe}`,
         ];
       }
       return [
-        `title.ilike.%${safe}%`,
-      ]; // Pre-FA-001 fallback: title-only (wfts removed v7.13)
+        `title.imatch.\\y${escaped}\\y`,
+      ];
     });
   });
   if (allWhatClauses.length > 0) query = query.or(allWhatClauses.join(','));

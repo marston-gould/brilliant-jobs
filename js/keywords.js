@@ -163,14 +163,10 @@ var filterCorpusCache = {}; // filterName → { skills: [[term,count],...], bigr
 var readinessRunning = false;
 
 function scoreToGrade(score) {
-  if (score >= 90) return { grade: 'A+', color: 'var(--green)' };
-  if (score >= 80) return { grade: 'A', color: 'var(--green)' };
-  if (score >= 70) return { grade: 'B+', color: '#22c55e' };
-  if (score >= 60) return { grade: 'B', color: 'var(--warm)' };
-  if (score >= 50) return { grade: 'C+', color: 'var(--warm)' };
-  if (score >= 40) return { grade: 'C', color: '#f97316' };
-  if (score >= 30) return { grade: 'D', color: 'var(--red)' };
-  return { grade: 'F', color: 'var(--red)' };
+  // Returns numeric score string with color — no letter grades
+  var s = score != null ? Math.round(score) : 0;
+  var color = s >= 80 ? 'var(--green)' : s >= 60 ? '#22c55e' : s >= 40 ? 'var(--warm)' : 'var(--red)';
+  return { grade: s + '%', color: color };
 }
 
 // Fetch up to `limit` JDs for a given saved filter
@@ -949,10 +945,9 @@ function buildInlineGrade(ri, data) {
 
   var html = '<div style="padding:8px 10px;border-radius:8px;background:var(--bg-main);border:1px solid var(--border);margin-bottom:6px;">';
 
-  // Top row: letter grade + score + CTA
+  // Top row: score + CTA
   html += '<div style="display:flex;align-items:center;gap:8px;">';
-  html += '<span style="font-family:var(--mono);font-size:22px;font-weight:800;color:' + g.color + ';line-height:1;">' + g.grade + '</span>';
-  html += '<span style="font-family:var(--mono);font-size:12px;color:var(--text-dim);">' + data.overallScore + '%</span>';
+  html += '<span style="font-family:var(--mono);font-size:22px;font-weight:800;color:' + g.color + ';line-height:1;">' + data.overallScore + '%</span>';
 
   // Per-filter mini scores
   if (filterNames.length > 0) {
@@ -980,7 +975,7 @@ function buildInlineGrade(ri, data) {
 
     html += '<div style="margin-bottom:10px;">';
     html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">';
-    html += '<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:' + fg2.color + ';">' + fg2.grade + ' ' + fs2.score + '%</span>';
+    html += '<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:' + fg2.color + ';">' + fg2.grade + '</span>';
     html += '<span style="font-size:11px;font-weight:600;color:var(--text);">' + escapeHtml(fname2) + '</span>';
     html += '<span style="font-size:9px;color:var(--text-faint);">' + fs2.matched + '/' + fs2.total + ' terms \u00b7 ' + fs2.jdsAnalyzed + ' JDs</span>';
     html += '</div>';
@@ -1035,7 +1030,7 @@ function buildInlineGrade(ri, data) {
       var ls = data.levels[lbl];
       var lg = scoreToGrade(ls.score);
       html += '<div style="padding:4px 8px;border-radius:6px;background:var(--bg-card);border:1px solid var(--border);text-align:center;">';
-      html += '<div style="font-family:var(--mono);font-size:11px;font-weight:700;color:' + lg.color + ';">' + lg.grade + ' ' + ls.score + '%</div>';
+      html += '<div style="font-family:var(--mono);font-size:11px;font-weight:700;color:' + lg.color + ';">' + lg.grade + '</div>';
       html += '<div style="font-size:9px;color:var(--text-dim);">' + lbl + ' <span style="color:var(--text-faint);">(' + ls.jobCount + ')</span></div>';
       html += '</div>';
     }

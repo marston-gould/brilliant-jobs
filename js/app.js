@@ -7,14 +7,14 @@ console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded');
 var _bjPageTitles = {
   brilliant: 'Get Started', setup: 'Setup', jobs: 'Jobs Feed', tuning: 'Search Tuning',
   resumes: 'Resumes', applications: 'My Applications', notifications: 'Notifications',
-  ghost: 'Ghost Monitor', stats: 'Stats', referrals: 'Referrals', settings: 'Settings',
-  subscription: 'Subscription', feedback: 'Feedback', pipeline: 'Pipeline'
+  stats: 'Stats', referrals: 'Referrals', settings: 'Settings',
+  subscription: 'Subscription', feedback: 'Feedback'
 };
 var _bjPageSections = {
   brilliant: 'onboarding', setup: 'onboarding', jobs: 'search', tuning: 'search',
   resumes: 'search', applications: 'tracking', notifications: 'tracking',
-  ghost: 'intelligence', stats: 'intelligence', referrals: 'growth',
-  settings: 'account', subscription: 'account', feedback: 'account', pipeline: 'tracking'
+  stats: 'intelligence', referrals: 'growth',
+  settings: 'account', subscription: 'account', feedback: 'account'
 };
 
 // Auth
@@ -596,14 +596,9 @@ if (lastTab && $(`#page-${lastTab}`)) {
     if (lastTab === 'ghost') {
       localStorage.setItem('bj_active_tab', 'applications');
     }
-    if (lastTab === 'pipeline' && typeof initPipeline === 'function') {
-      initPipeline().then(function() {
-        if (typeof renderPipeline === 'function') renderPipeline();
-        if (window.bjSkeleton) bjSkeleton.hide('pipeline');
-      }).catch(function(e) {
-        if (typeof reportError === 'function') reportError('app:pipeline-restore', e);
-        if (window.bjSkeleton) bjSkeleton.hide('pipeline');
-      });
+    // APR-001: pipeline is now embedded in applications tab
+    if (lastTab === 'pipeline') {
+      localStorage.setItem('bj_active_tab', 'applications');
     }
   };
   if (typeof bjEnsureTab === 'function') {
