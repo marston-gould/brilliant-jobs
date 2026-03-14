@@ -19,6 +19,7 @@ COMMENT ON COLUMN public.feature_flags.metadata IS 'Arbitrary metadata (variant 
 COMMENT ON COLUMN public.feature_flags.category IS 'Flag category: general, experiment, killswitch, ops';
 
 -- ─── 2. is_feature_enabled() SQL function ───
+DROP FUNCTION IF EXISTS public.is_feature_enabled(text, uuid);
 CREATE OR REPLACE FUNCTION public.is_feature_enabled(
   flag_key TEXT,
   user_id UUID DEFAULT NULL
