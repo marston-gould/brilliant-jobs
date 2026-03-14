@@ -794,7 +794,7 @@ $$('.nav-item').forEach(item => {
 // ---- Init notification system ----
 async function initNotifications() {
   await loadNotifPrefs();
-  await loadNotifLog();
+  if (typeof ncLoadNotificationLog === 'function') await ncLoadNotificationLog(1);
   await checkNavPulses();
 }
 if (currentUser) {
