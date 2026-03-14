@@ -170,7 +170,7 @@ GRANT EXECUTE ON FUNCTION public.run_data_hygiene() TO service_role;
 
 -- Step 3: Schedule unified hygiene cron (daily at 3:00 AM UTC)
 -- Replaces all individual cleanup crons with a single consolidated job.
-DO $$
+DO $outer$
 BEGIN
   -- Remove old standalone cleanup crons if they exist
   BEGIN PERFORM cron.unschedule('cleanup-cron-logs'); EXCEPTION WHEN OTHERS THEN NULL; END;
@@ -192,7 +192,7 @@ BEGIN
       $$SELECT public.run_data_hygiene();$$
     );
   END IF;
-END $$;
+END $outer$;
 
 
 -- ─── Hook/Scar: Cron validation function (Forward-Looking Developer) ──
