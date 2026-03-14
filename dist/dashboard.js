@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.12';
+var BJ_VERSION = 'v9.13';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -15601,6 +15601,7 @@ async function loadPendingSignals() {
       if (s.pipeline_entry_id) _pendingSignals[s.pipeline_entry_id] = s;
     });
     const sigCount = Object.keys(_pendingSignals).length;
+    renderStalnessCards(); // FB-PI-001 S5: refresh staleness cards after signal load
     console.log('[BJ] Loaded', sigCount, 'pending pipeline signals');
     if (sigCount > 0 && typeof posthog !== 'undefined') {
       const sources = {};
@@ -15739,6 +15740,227 @@ if (typeof window !== 'undefined') {
   window.confirmPendingApp = confirmPendingApp;
   window.dismissPendingApp = dismissPendingApp;
   window.renderConfirmationCards = renderConfirmationCards;
+}
+
+// ── FB-PI-001 S5: Staleness prompt cards + undo ─────────────────────────────
+// Staleness signals are pipeline_signals with evidence_metadata.staleness_prompt=true
+// They surface in loadPendingSignals() and are rendered here separately.
+
+function renderStalnessCards() {
+  var container = document.getElementById('pi-staleness-cards');
+  if (!container) return;
+  var stale = Object.values(_pendingSignals).filter(function(s) {
+    return s.evidence_metadata && s.evidence_metadata.staleness_prompt;
+  });
+  if (!stale.length) { container.innerHTML = ''; container.style.display = 'none'; return; }
+  container.style.display = 'block';
+
+  var html = stale.map(function(s) {
+    var days = (s.evidence_metadata && s.evidence_metadata.days_inactive) || '?';
+    var preview = escHtml(s.evidence_preview || 'No updates in ' + days + ' days');
+    var stageOptions = ['applied','responded','interview','offer','rejected'].map(function(st) {
+      return '<option value="'+st+'">'+st.charAt(0).toUpperCase()+st.slice(1)+'</option>';
+    }).join('');
+    return '<div class="pi-stale-card" data-signal-id="'+s.id+'" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg-card);border:1px solid #6B7280;border-left:3px solid #6B7280;border-radius:8px;margin-bottom:8px;flex-wrap:wrap;">'
+      + '<span style="font-size:12px;color:var(--text);flex:1;min-width:200px;">'+preview+'</span>'
+      + '<select class="pi-stale-stage" style="font-size:11px;padding:3px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);">'+stageOptions+'</select>'
+      + '<button class="pi-stale-mark" data-id="'+s.id+'" style="font-size:11px;padding:3px 10px;background:var(--accent);color:#fff;border:none;border-radius:5px;cursor:pointer;">Mark Stage</button>'
+      + '<button class="pi-stale-archive" data-id="'+s.id+'" data-entry-id="'+(s.pipeline_entry_id||'')+'" style="font-size:11px;padding:3px 10px;background:transparent;color:var(--text-secondary);border:1px solid var(--border);border-radius:5px;cursor:pointer;">Archive</button>'
+      + '<button class="pi-stale-snooze" data-id="'+s.id+'" data-entry-id="'+(s.pipeline_entry_id||'')+'" style="font-size:11px;padding:3px 10px;background:transparent;color:var(--text-secondary);border:1px solid var(--border);border-radius:5px;cursor:pointer;">Snooze 7d</button>'
+      + '</div>';
+  }).join('');
+
+  container.innerHTML = '<div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em;">Follow-up Needed</div>' + html;
+
+  container.onclick = function(e) {
+    var markBtn = e.target.closest('.pi-stale-mark');
+    var archBtn = e.target.closest('.pi-stale-archive');
+    var snoozeBtn = e.target.closest('.pi-stale-snooze');
+    var card = e.target.closest('.pi-stale-card');
+
+    if (markBtn && card) {
+      var stage = card.querySelector('.pi-stale-stage').value;
+      var signalId = markBtn.getAttribute('data-id');
+      dismissStaleSignal(signalId, 'confirmed', stage);
+    } else if (archBtn) {
+      var signalId = archBtn.getAttribute('data-id');
+      var entryId = archBtn.getAttribute('data-entry-id');
+      archiveFromStalePrompt(signalId, entryId);
+    } else if (snoozeBtn) {
+      var signalId = snoozeBtn.getAttribute('data-id');
+      var entryId = snoozeBtn.getAttribute('data-entry-id');
+      snoozeStalePrompt(signalId, entryId);
+    }
+  };
+}
+
+async function dismissStaleSignal(signalId, action, correctedStage) {
+  try {
+    await sb.from('pipeline_signals').update({
+      status: 'confirmed', resolved_at: new Date().toISOString(),
+      user_response: action, user_responded_at: new Date().toISOString(),
+    }).eq('id', signalId).eq('user_id', currentUser.id);
+
+    if (correctedStage) {
+      var sig = Object.values(_pendingSignals).find(function(s) { return s.id === signalId; });
+      if (sig && sig.pipeline_entry_id && correctedStage !== sig.evidence_metadata?.current_stage) {
+        var now = new Date().toISOString();
+        var upd = { stage: correctedStage, stage_changed_at: now };
+        upd[correctedStage + '_at'] = now;
+        await sb.from('user_pipeline').update(upd).eq('id', sig.pipeline_entry_id).eq('user_id', currentUser.id);
+      }
+    }
+    if (typeof posthog !== 'undefined') posthog.capture('staleness_prompt_resolved', { action: action, stage: correctedStage });
+    await loadPendingSignals();
+    renderStalnessCards();
+    renderPipeline();
+  } catch (e) {
+    reportError('pipeline:stale_dismiss', e);
+    toastError('Failed to update');
+  }
+}
+
+async function archiveFromStalePrompt(signalId, entryId) {
+  try {
+    var now = new Date().toISOString();
+    if (entryId) {
+      await sb.from('user_pipeline').update({
+        stage: 'archived', archived_at: now, stage_changed_at: now,
+      }).eq('id', entryId).eq('user_id', currentUser.id);
+    }
+    await sb.from('pipeline_signals').update({
+      status: 'confirmed', resolved_at: now, user_response: 'confirmed',
+    }).eq('id', signalId).eq('user_id', currentUser.id);
+    if (typeof posthog !== 'undefined') posthog.capture('staleness_prompt_archived');
+    await loadPendingSignals();
+    renderStalnessCards();
+    renderPipeline();
+  } catch (e) {
+    reportError('pipeline:stale_archive', e);
+    toastError('Failed to archive');
+  }
+}
+
+async function snoozeStalePrompt(signalId, entryId) {
+  try {
+    if (entryId) {
+      await sb.from('user_pipeline').update({
+        last_prompted_at: new Date().toISOString(),
+      }).eq('id', entryId).eq('user_id', currentUser.id);
+    }
+    await sb.from('pipeline_signals').update({
+      status: 'dismissed', resolved_at: new Date().toISOString(),
+    }).eq('id', signalId).eq('user_id', currentUser.id);
+    if (typeof posthog !== 'undefined') posthog.capture('staleness_prompt_snoozed', { days: 7 });
+    await loadPendingSignals();
+    renderStalnessCards();
+  } catch (e) {
+    reportError('pipeline:stale_snooze', e);
+    toastError('Failed to snooze');
+  }
+}
+
+// ── Undo auto-archive (48h window) ───────────────────────────────────────────
+// Looks for pipeline_signals with auto_archive=true + undo_expires_at > now
+// Renders undo toast at top of Board tab
+async function loadAutoArchiveUndo() {
+  if (!currentUser?.id) return;
+  try {
+    var cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+    var { data } = await sb.from('pipeline_signals')
+      .select('id, previous_stage, evidence_preview, evidence_metadata, created_at')
+      .eq('user_id', currentUser.id)
+      .eq('signal_type', 'MANUAL')
+      .eq('action_taken', 'auto_moved')
+      .gt('created_at', cutoff)
+      .order('created_at', { ascending: false })
+      .limit(3);
+    renderUndoToasts(data || []);
+  } catch (e) {
+    reportError('pipeline:load_undo', e);
+  }
+}
+
+function renderUndoToasts(signals) {
+  var container = document.getElementById('pi-undo-toasts');
+  if (!container) return;
+  var autoArchived = signals.filter(function(s) { return s.evidence_metadata && s.evidence_metadata.auto_archive; });
+  if (!autoArchived.length) { container.innerHTML = ''; container.style.display = 'none'; return; }
+  container.style.display = 'block';
+  container.innerHTML = autoArchived.map(function(s) {
+    var preview = escHtml(s.evidence_preview || 'Application archived');
+    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 14px;background:#065F46;color:#fff;border-radius:6px;margin-bottom:6px;font-size:12px;">'
+      + '<span style="flex:1;">'+preview+'</span>'
+      + '<button data-signal-id="'+s.id+'" data-prev-stage="'+(s.previous_stage||'applied')+'" class="pi-undo-btn" style="font-size:11px;padding:3px 10px;background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:5px;cursor:pointer;white-space:nowrap;">Undo</button>'
+      + '</div>';
+  }).join('');
+
+  container.onclick = function(e) {
+    var btn = e.target.closest('.pi-undo-btn');
+    if (btn) undoAutoArchive(btn.getAttribute('data-signal-id'), btn.getAttribute('data-prev-stage'));
+  };
+}
+
+async function undoAutoArchive(signalId, prevStage) {
+  try {
+    // Find the signal to get the pipeline_entry_id
+    var { data: sig } = await sb.from('pipeline_signals').select('pipeline_entry_id, evidence_metadata').eq('id', signalId).single();
+    var entryId = sig?.pipeline_entry_id || (sig?.evidence_metadata?.entry_id);
+
+    if (entryId) {
+      var now = new Date().toISOString();
+      var upd = { stage: prevStage || 'applied', stage_changed_at: now, archived_at: null };
+      await sb.from('user_pipeline').update(upd).eq('id', entryId).eq('user_id', currentUser.id);
+    }
+    // Mark signal as dismissed so it won't show again
+    await sb.from('pipeline_signals').update({ action_taken: 'dismissed' }).eq('id', signalId);
+    if (typeof posthog !== 'undefined') posthog.capture('auto_archive_undone', { prev_stage: prevStage });
+    toastSuccess('Application restored to ' + (prevStage || 'pipeline'));
+    await loadAutoArchiveUndo();
+    renderPipeline();
+  } catch (e) {
+    reportError('pipeline:undo_archive', e);
+    toastError('Failed to undo');
+  }
+}
+
+// ── Backward stage movement logging (spec §6.3) ───────────────────────────
+// Wrap movePipelineStage to log MANUAL signal for backward transitions
+var _origMovePipelineStage = typeof movePipelineStage !== 'undefined' ? movePipelineStage : null;
+var _PI_STAGE_ORDER = ['saved','applied','posting_closed','responded','interview','offer','hired','rejected','archived'];
+
+function logManualStageMove(entryId, fromStage, toStage) {
+  if (!currentUser?.id || !entryId) return;
+  var fromIdx = _PI_STAGE_ORDER.indexOf(fromStage);
+  var toIdx = _PI_STAGE_ORDER.indexOf(toStage);
+  if (fromIdx < 0 || toIdx < 0) return;  // unknown stage
+  // Only log backward movements (per spec §6.3)
+  if (toIdx >= fromIdx) return;
+  sb.from('pipeline_signals').insert({
+    user_id: currentUser.id,
+    pipeline_entry_id: entryId,
+    signal_source: 'user_override',
+    signal_type: 'MANUAL',
+    proposed_stage: toStage,
+    confidence: 1.0,
+    confidence_level: 'high',
+    evidence_preview: 'Manual stage change: ' + fromStage + ' → ' + toStage,
+    action_taken: 'confirmed',
+    target_stage: toStage,
+    previous_stage: fromStage,
+    status: 'auto',
+  }).then(function() {}).catch(function(e) { reportError('pipeline:manual_move', e); });
+}
+
+if (typeof window !== 'undefined') {
+  window.renderStalnessCards = renderStalnessCards;
+  window.dismissStaleSignal = dismissStaleSignal;
+  window.archiveFromStalePrompt = archiveFromStalePrompt;
+  window.snoozeStalePrompt = snoozeStalePrompt;
+  window.loadAutoArchiveUndo = loadAutoArchiveUndo;
+  window.renderUndoToasts = renderUndoToasts;
+  window.undoAutoArchive = undoAutoArchive;
+  window.logManualStageMove = logManualStageMove;
 }
 
 async function confirmPipelineSignal(signalId, action, correctedStage) {
@@ -16078,6 +16300,7 @@ async function initPipeline() {
   await loadNewPipelineFromSupabase(); // S10: wire overlay pipeline load on init
   await loadPendingSignals();
   await loadPendingConfirmations(); // FB-PI-001 S4
+  await loadAutoArchiveUndo();       // FB-PI-001 S5
   // BUGFIX: Update hero Pipeline count after data loads (was never set on init)
   var heroSaved = $('#j-saved');
   if (heroSaved) heroSaved.textContent = savedJobIds.length.toLocaleString();
