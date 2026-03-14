@@ -5,7 +5,10 @@
 -- 1. Update pg_cron schedule: 6-hourly → every 3 minutes
 -- Old: 0 */6 * * * (job ID 13)
 -- New: */3 * * * *
-SELECT cron.unschedule('refresh-jobs');  -- remove old job by name if exists
+DO $$ BEGIN
+  PERFORM cron.unschedule('refresh-jobs');  -- remove old job by name if exists
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
 SELECT cron.schedule(
   'refresh-jobs-tiered',
   '*/3 * * * *',
