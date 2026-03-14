@@ -13,6 +13,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { createLogger } from "../_shared/logger.ts";
+import { checkFeatureAccess, buildDeniedResponse, buildSampleHeaders } from '../_shared/checkFeatureAccess.ts';
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -445,6 +446,11 @@ serve(async (req) => {
     const userId = user.id;
     logger.info("Authenticated user", { userId });
 
+    // ─── FB-TRIAL-001-S2: Feature access gate ───
+    const access = await checkFeatureAccess(sb, userId, 'apply');
+    if (!access.allowed) return buildDeniedResponse(access);
+    const sampleHeaders = access.isSample ? buildSampleHeaders() : {};
+
     // ── Parse & Validate ──
     const body: SubmitRequest = await req.json();
     const validation = validateRequest(body);
@@ -709,7 +715,7 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify(result),
-      { status: statusCode, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
+      { status: statusCode, headers: { ...CORS_HEADERS, ...sampleHeaders, "Content-Type": "application/json" } }
     );
 
   } catch (err) {

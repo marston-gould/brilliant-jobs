@@ -6,6 +6,7 @@
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { checkFeatureAccess } from '../_shared/checkFeatureAccess.ts';
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -103,6 +104,15 @@ serve(async (req: Request) => {
     }
 
     const userId = prefs.user_id;
+
+    // ─── FB-TRIAL-001-S2: Feature access gate ───
+    // Gate SMS reply processing for expired users without samples
+    const access = await checkFeatureAccess(sb, userId, 'sms');
+    if (!access.allowed) {
+      console.log(`[handle-sms-reply] Feature access denied for user ${userId} (sms)`);
+      await sendReply(msisdn, "BrilliantJobs: Upgrade to Pro to continue receiving SMS job alerts. Visit brilliantjobs.app/upgrade");
+      return new Response("OK", { status: 200 });
+    }
 
     // 3. Find the most recent escalated action for this user
     const { data: action } = await sb

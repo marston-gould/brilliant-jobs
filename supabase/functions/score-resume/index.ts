@@ -7,6 +7,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { checkFeatureAccess, buildDeniedResponse, buildSampleHeaders } from '../_shared/checkFeatureAccess.ts';
 
 const SB_URL = Deno.env.get('SUPABASE_URL')!;
 const SB_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -570,6 +571,11 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Daily AI scoring limit reached (20/day)' }), { status: 429, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
     }
 
+    // ─── FB-TRIAL-001-S2: Feature access gate ───
+    const access = await checkFeatureAccess(sb, user.id, 'score');
+    if (!access.allowed) return buildDeniedResponse(access);
+    const sampleHeaders = access.isSample ? buildSampleHeaders() : {};
+
     // Rate limit (database-backed persistent check)
     try {
       const { data: allowed } = await sb.rpc('check_ef_rate_limit', {
@@ -623,7 +629,7 @@ serve(async (req) => {
         ...gapResult,
         model: HAIKU_MODEL
       }), {
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+        headers: { ...CORS_HEADERS, ...sampleHeaders, 'Content-Type': 'application/json' }
       });
     }
 
@@ -689,7 +695,7 @@ Assess. Return ONLY JSON.`;
         ...assessment,
         model: HAIKU_MODEL
       }), {
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+        headers: { ...CORS_HEADERS, ...sampleHeaders, 'Content-Type': 'application/json' }
       });
     }
 
@@ -881,7 +887,7 @@ Assess. Return ONLY JSON.`;
     ).catch(() => {});
 
     return new Response(JSON.stringify(result), {
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+      headers: { ...CORS_HEADERS, ...sampleHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (err) {

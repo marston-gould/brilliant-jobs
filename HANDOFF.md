@@ -52,7 +52,47 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FB-TRIAL-001-S1** — Trial Gate Schema + checkFeatureAccess Utility
+**FB-TRIAL-001-S2** — Trial Gate Server
+- Completed: 2026-03-14
+- No product version bump (EF-only changes — no dashboard JS/CSS/HTML)
+- ROADMAP.md updated: FB-TRIAL-001-S2 → ✅
+- roadmap.html updated: FB-TRIAL-001-S2 → `s: 'done'`, p: 100
+- **5 Edge Functions gated with checkFeatureAccess:**
+  - `chat-job-search` → feature key `chat`: Import + gate after auth + sampleHeaders on cached + uncached response paths
+  - `score-resume` → feature key `score`: Import + gate after auth (before DB rate limit) + sampleHeaders on all 3 success paths (gap-interview, revision-assess, main)
+  - `send-notification` → feature key `email`: Import + gate only for `product` classification (transactional notifications NOT gated — required_transactional, configurable_transactional, marketing all bypass)
+  - `submit-application` → feature key `apply`: Import + gate after auth (before parse/validate) + sampleHeaders on success response
+  - `handle-sms-reply` → feature key `sms`: Import + gate after phone→user lookup, sends upgrade SMS on denial, returns 200 to Vonage (prevents retries)
+- **2 EFs deferred (do not exist yet):**
+  - `stats-query`: Not created — stats page EF not built
+  - `saved-filters CRUD`: Not an EF — filter CRUD is client-side Supabase calls, gating handled in dashboard JS (future session)
+- **Stripe webhook state transitions (4 events):**
+  - `checkout.session.completed`: New case in switch — looks up user by stripe_customer_id → sets user_state='active_pro'
+  - `customer.subscription.created` (handleSubscriptionCreated): After subscription record update → sets user_state='active_pro'. Covers mid-trial subscription.
+  - `customer.subscription.updated` (handleSubscriptionUpdated): If sub.status='active' or 'trialing' → sets user_state='active_pro'
+  - `customer.subscription.deleted` (handleSubscriptionDeleted): After subscription record update → sets user_state='expired_free' + RESETS feature_samples_used='{}' (fresh samples for churned users per spec 3.5 item 9)
+- **Gating pattern (consistent across all 5 EFs):**
+  - Import: `import { checkFeatureAccess, buildDeniedResponse, buildSampleHeaders } from '../_shared/checkFeatureAccess.ts'`
+  - Gate: `const access = await checkFeatureAccess(sb, userId, '<feature_key>'); if (!access.allowed) return buildDeniedResponse(access);`
+  - Sample header: `const sampleHeaders = access.isSample ? buildSampleHeaders() : {};` → spread into success response headers
+  - Exception: handle-sms-reply sends upgrade SMS reply instead of buildDeniedResponse (Vonage inbound webhook, not user-facing API)
+  - Exception: send-notification skips sampleHeaders (server-to-server, not user-facing)
+- **Pod Team Manifest:** FB-TRIAL-001-S2 pairing added (Lead Platform Eng + Forward-Looking Dev, Chief Architect + Evolvability Strategist reviewers)
+- **Modified:**
+  - `supabase/functions/chat-job-search/index.ts` — checkFeatureAccess import + gate + sampleHeaders on 2 response paths
+  - `supabase/functions/score-resume/index.ts` — checkFeatureAccess import + gate + sampleHeaders on 3 response paths
+  - `supabase/functions/send-notification/index.ts` — checkFeatureAccess import + gate (product classification only)
+  - `supabase/functions/submit-application/index.ts` — checkFeatureAccess import + gate + sampleHeaders on success response
+  - `supabase/functions/handle-sms-reply/index.ts` — checkFeatureAccess import + gate with upgrade SMS reply
+  - `supabase/functions/stripe-webhook/index.ts` — checkout.session.completed case + user_state transitions in created/updated/deleted handlers
+  - `docs/scaling/pod-team-manifest.md` — FB-TRIAL pairing section added
+  - `ROADMAP.md` — FB-TRIAL-001-S2 → ✅
+  - `roadmap.html` — FB-TRIAL-001-S2 → done/100
+- **Created:**
+  - `tests/fb-trial-001-s2-server-gating.test.js` — 75 validation tests (11 sections)
+- **Tests:** 75 validation tests (all passing)
+
+**Previous: FB-TRIAL-001-S1** — Trial Gate Schema + checkFeatureAccess Utility
 - Completed: 2026-03-13
 - No product version bump (migration + EF shared utility only — no dashboard JS/CSS/HTML changes)
 - ROADMAP.md updated: FB-TRIAL-001-S1 → ✅

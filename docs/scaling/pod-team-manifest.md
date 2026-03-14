@@ -122,3 +122,10 @@
 | AF-006 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + System Architect—Scalability |
 | APR-001 | Senior Frontend Eng + Lead Platform Eng | Chief Architect + Evolvability Strategist |
 | APR-002 | Senior Frontend Eng + Lead Platform Eng | Chief Architect + Evolvability Strategist |
+
+## Pairing Assignments (Trial Gate)
+
+| Session | Primary Pair | Pod 4 Reviewer |
+|---------|-------------|----------------|
+| FB-TRIAL-001-S1 | Lead Platform Eng + Evolvability Strategist | Chief Architect + Evolvability Strategist |
+| FB-TRIAL-001-S2 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |

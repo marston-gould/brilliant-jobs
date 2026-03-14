@@ -118,6 +118,14 @@ async function handleSubscriptionCreated(sb: SupabaseClient, event: unknown, log
     })
     .eq('user_id', userId);
 
+  // ─── FB-TRIAL-001-S2: Set user_state to active_pro on subscription ───
+  // Covers mid-trial subscription (user upgrades before trial expires)
+  await sb
+    .from('profiles')
+    .update({ user_state: 'active_pro' })
+    .eq('id', userId);
+  logger.info('Set user_state to active_pro', { userId });
+
   // Grant included credits
   if (credits > 0) {
     await grantCredits(sb, userId, credits, 'subscription_grant',
@@ -173,6 +181,14 @@ async function handleSubscriptionUpdated(sb: SupabaseClient, event: unknown, log
       cancel_at_period_end: sub.cancel_at_period_end || false,
     })
     .eq('user_id', existing.user_id);
+
+  // ─── FB-TRIAL-001-S2: Sync user_state with subscription status ───
+  if (sub.status === 'active' || sub.status === 'trialing') {
+    await sb
+      .from('profiles')
+      .update({ user_state: 'active_pro' })
+      .eq('id', existing.user_id);
+  }
 
   // If tier changed (upgrade/downgrade), grant the difference in credits
   if (previousTier && previousTier !== tier) {
@@ -236,6 +252,16 @@ async function handleSubscriptionDeleted(sb: SupabaseClient, event: unknown, log
     .from('user_subscriptions')
     .update({ status: 'canceled', stripe_subscription_id: null, tier: 'free' })
     .eq('stripe_customer_id', customerId);
+
+  // ─── FB-TRIAL-001-S2: Set user_state to expired_free + reset samples ───
+  // Churned users get fresh samples as a re-engagement hook (spec 3.5 item 9)
+  if (existing) {
+    await sb
+      .from('profiles')
+      .update({ user_state: 'expired_free', feature_samples_used: '{}' })
+      .eq('id', existing.user_id);
+    logger.info('Set user_state to expired_free + reset samples', { userId: existing.user_id });
+  }
 
   // ── NOTIFICATION: subscription_cancelled (if not already sent on cancel_at_period_end) ──
   if (existing) {
@@ -714,6 +740,26 @@ serve(async (req: Request) => {
 
     // Route to handler
     switch (event.type) {
+      case 'checkout.session.completed': {
+        // ─── FB-TRIAL-001-S2: Set user_state to active_pro on checkout ───
+        const session = event.data.object;
+        const sessionCustomerId = session.customer;
+        if (sessionCustomerId) {
+          const { data: subUser } = await sb
+            .from('user_subscriptions')
+            .select('user_id')
+            .eq('stripe_customer_id', sessionCustomerId)
+            .single();
+          if (subUser) {
+            await sb
+              .from('profiles')
+              .update({ user_state: 'active_pro' })
+              .eq('id', subUser.user_id);
+            logger.info('checkout.session.completed → active_pro', { userId: subUser.user_id });
+          }
+        }
+        break;
+      }
       case 'customer.subscription.created':
         await handleSubscriptionCreated(sb, event, logger);
         break;

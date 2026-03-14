@@ -11,6 +11,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { fetchWithRetry, TIMEOUT_CONFIGS } from "../_shared/resilience.ts";
 import { passiveHighBarAlertEmail } from "../_shared/email-templates.ts";
 import { safeSms } from "../_shared/sms-templates.ts";
+import { checkFeatureAccess, buildDeniedResponse, buildSampleHeaders } from '../_shared/checkFeatureAccess.ts';
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -1032,6 +1033,16 @@ serve(async (req: Request) => {
     }
 
     const classification = getClassification(notification_type);
+
+    // ─── FB-TRIAL-001-S2: Gate product notifications (match alerts) ───
+    // Transactional and marketing notifications are NOT gated — only product (match alerts)
+    if (classification === 'product') {
+      const access = await checkFeatureAccess(sb, user_id, 'email');
+      if (!access.allowed) return buildDeniedResponse(access);
+      // Note: sampleHeaders not needed here — send-notification is server-to-server,
+      // client sees X-Is-Sample on the originating user-facing EF response
+    }
+
     const result: NotificationResult = {
       email_sent: false,
       sms_sent: false,
