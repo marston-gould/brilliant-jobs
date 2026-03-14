@@ -747,13 +747,19 @@ function boostMatch(jobId, jobTitle, company) {
   var matchScore = jobMatchScores[jobId];
   if (typeof matchScore === 'object') matchScore = matchScore.score;
 
-  // Already A+ match — celebrate instead
+  // Already 95%+ match — celebrate instead
   if (matchScore != null && matchScore >= 95) {
     showToast('Your resume is already a 95%+ match for this role! No rewrite needed.', { type: 'success', duration: 4000 });
     return;
   }
 
-  openRewritePanel(jobId, jobTitle, company, assignedResume.id, matchScore);
+  // Resolve real UUID — res_sync_ IDs are local stubs, use archiveId
+  var resumeId = assignedResume.id;
+  if (resumeId && resumeId.startsWith('res_sync_') && assignedResume.archiveId) {
+    resumeId = assignedResume.archiveId;
+  }
+
+  openRewritePanel(jobId, jobTitle, company, resumeId, matchScore);
 }
 
 // ════════════════════════════════════════════════════════════
@@ -766,12 +772,11 @@ function matchBadgeWithBoost(result, jobId, jobTitle, company) {
   if (!result) return '<span style="color:var(--text-faint);font-size:10px;">\u2014</span>';
   var score = typeof result === 'number' ? result : result.score;
   var rName = typeof result === 'object' ? (result.resumeName || '') : '';
-  var g = scoreToGrade(score);
+  var color = score >= 80 ? 'var(--green)' : score >= 60 ? '#22c55e' : score >= 40 ? 'var(--warm)' : 'var(--red)';
   var tooltip = score + '% match' + (rName ? ' \u00b7 ' + rName.replace(/"/g, '&quot;') : '');
 
-  var badge = '<span title="' + tooltip + '" style="font-family:var(--mono);font-size:11px;font-weight:600;color:' + g.color + ';cursor:help;">' + g.grade + '</span>';
+  var badge = '<span title="' + tooltip + '" style="font-family:var(--mono);font-size:11px;font-weight:600;color:' + color + ';cursor:help;">' + score + '</span>';
 
-  // Add Boost pill for scores < 85 (and user has a resume assigned)
   if (score != null && score < 85 && jobId) {
     var safeTitle = (jobTitle || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
     var safeCo = (company || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');

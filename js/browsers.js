@@ -53,6 +53,8 @@ function openCompanyBrowser(mode, returnPage) {
   $$('.page').forEach(p => p.classList.remove('active'));
   $('#page-company-browser').classList.add('active');
   $$('.nav-item').forEach(n => n.classList.remove('active'));
+  var mainEl = document.querySelector('.main');
+  if (mainEl) mainEl.scrollTop = 0;
   $('#cb-search').value = '';
   $('#cb-back-btn').textContent = cbReturnPage === 'tuning' ? '← Back to Tuning' : '← Back to Jobs';
 
@@ -121,6 +123,8 @@ async function openLocationBrowser() {
   $$('.page').forEach(p => p.classList.remove('active'));
   $('#page-location-browser').classList.add('active');
   $$('.nav-item').forEach(n => n.classList.remove('active'));
+  var mainEl = document.querySelector('.main');
+  if (mainEl) mainEl.scrollTop = 0;
   $('#lb-search').value = '';
   lbMode = 'all';
   $$('[data-browser="loc"]').forEach(b => b.classList.toggle('active', b.dataset.mode === 'all'));
@@ -326,6 +330,8 @@ async function openIndustryBrowser() {
   $$('.page').forEach(p => p.classList.remove('active'));
   $('#page-industry-browser').classList.add('active');
   $$('.nav-item').forEach(n => n.classList.remove('active'));
+  var mainEl = document.querySelector('.main');
+  if (mainEl) mainEl.scrollTop = 0;
   $('#ib-search').value = '';
   ibMode = 'all';
   $$('[data-browser="ind"]').forEach(b => b.classList.toggle('active', b.dataset.mode === 'all'));
@@ -1166,6 +1172,10 @@ function openFilterBrowser(dimension, mode) {
   $$('.page').forEach(p => p.classList.remove('active'));
   $('#page-filter-browser').classList.add('active');
   $$('.nav-item').forEach(n => n.classList.remove('active'));
+
+  // Scroll main content area to top so the page header is visible
+  var mainEl = document.querySelector('.main');
+  if (mainEl) mainEl.scrollTop = 0;
 
   // Show US-Only banner when active
   var usBanner = $('#fb-us-only-banner');

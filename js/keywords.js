@@ -398,9 +398,9 @@ function matchBadge(result) {
   if (!result) return '<span style="color:var(--text-faint);font-size:10px;">\u2014</span>';
   var score = typeof result === 'number' ? result : result.score;
   var rName = typeof result === 'object' ? (result.resumeName || '') : '';
-  var g = scoreToGrade(score);
-  var tooltip = score + '% match' + (rName ? ' · ' + rName.replace(/"/g, '&quot;') : '');
-  return '<span title="' + tooltip + '" style="font-family:var(--mono);font-size:11px;font-weight:600;color:' + g.color + ';cursor:help;">' + g.grade + '</span>';
+  var color = score >= 80 ? 'var(--green)' : score >= 60 ? '#22c55e' : score >= 40 ? 'var(--warm)' : 'var(--red)';
+  var tooltip = score + '% match' + (rName ? ' \u00b7 ' + rName.replace(/"/g, '&quot;') : '');
+  return '<span title="' + tooltip + '" style="font-family:var(--mono);font-size:11px;font-weight:600;color:' + color + ';cursor:help;">' + score + '</span>';
 }
 
 // Main readiness analysis — runs automatically on Resumes page load, or manually via button
@@ -2495,6 +2495,7 @@ function initPreviewToggle() {
   if (localStorage.getItem('bj_show_previews') === '1') {
     toggle.checked = true;
     $('#job-table')?.classList.add('show-previews');
+    loadPreviewSnippets(); // fetch snippets immediately on restore
   }
 
   toggle.addEventListener('change', () => {

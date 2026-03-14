@@ -967,14 +967,25 @@ function _guessAtsSource(url) {
 function _getActiveResume() {
   // Check resumes module for selected resume
   if (typeof window._activeResumeId !== 'undefined' && window._activeResumeId) {
-    return { id: window._activeResumeId, filename: window._activeResumeFilename || 'resume.pdf' };
+    var rid = window._activeResumeId;
+    // res_sync_ IDs are local stubs — resolve to real archiveId
+    if (rid.startsWith('res_sync_') && typeof resumes !== 'undefined') {
+      var match = resumes.find(function(r) { return r.id === rid; });
+      if (match && match.archiveId) rid = match.archiveId;
+    }
+    return { id: rid, filename: window._activeResumeFilename || 'resume.pdf' };
   }
   // Fallback: check localStorage
   try {
     var raw = localStorage.getItem('bj_resumes'); if (raw && raw.startsWith('enc:')) raw = null;
     if (raw) {
       var resumes = JSON.parse(raw);
-      if (resumes.length > 0) return { id: resumes[0].id || crypto.randomUUID(), filename: resumes[0].name || 'resume.pdf' };
+      if (resumes.length > 0) {
+        var r0 = resumes[0];
+        // res_sync_ IDs are local stubs — use archiveId (real DB UUID) when available
+        var realId = (r0.id && !r0.id.startsWith('res_sync_')) ? r0.id : (r0.archiveId || crypto.randomUUID());
+        return { id: realId, filename: r0.name || 'resume.pdf' };
+      }
     }
   } catch(e) { reportError('apply-workflow:apply-workflow', e); }
   return { id: crypto.randomUUID(), filename: 'resume.pdf' };
