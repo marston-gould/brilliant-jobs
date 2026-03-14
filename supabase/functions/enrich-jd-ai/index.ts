@@ -241,6 +241,15 @@ serve(async (req) => {
       console.warn('[enrich-jd-ai] hygiene_log insert failed:', logErr.message)
     }
 
+    // EDE-001: Update enrichment_requests progress for any active requests
+    if (processed > 0) {
+      try {
+        await supabase.rpc('fn_update_enrichment_progress', { p_increment: processed })
+      } catch (erErr) {
+        console.warn('[enrich-jd-ai] enrichment_requests progress update failed:', erErr)
+      }
+    }
+
     return new Response(
       JSON.stringify({
         ok: true,

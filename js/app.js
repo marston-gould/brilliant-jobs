@@ -392,6 +392,8 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   }
   // FB-TRIAL-001-S3: Initialize trial gate (banner, sample badges)
   if (typeof initTrialGate === 'function') initTrialGate();
+  // EDE-001: Load enrichment request statuses for filter badge display
+  loadEnrichmentStatus();
   // POD3-LUCIDE: Initialize Lucide icons after all DOM content is ready
   if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
     lucide.createIcons();
@@ -1443,6 +1445,24 @@ window.createFilterFromProfile = function() {
   invalidateCache(); // A14: clear query caches when filters change
   updateOnboardingStep(2);
 
+  // EDE-001: Persist onboarding filter to Supabase + trigger enrichment
+  if (currentUser && (newFilter.wherePills || []).length > 0) {
+    sb.from('user_filters').insert({
+      user_id: currentUser.id,
+      name: newFilter.name || 'Untitled',
+      filter_data: newFilter,
+      sort_order: savedFilters.length - 1,
+    }).select('id').single().then(function(r) {
+      if (r.error) { reportError('app:onboarding-filter-persist', r.error); return; }
+      if (r.data && r.data.id) {
+        newFilter._id = r.data.id;
+        if (typeof window.triggerLocationEnrichment === 'function') {
+          window.triggerLocationEnrichment(newFilter.wherePills, r.data.id, !!newFilter.includeRemote);
+        }
+      }
+    }).catch(function(e) { reportError('app:onboarding-filter-persist', e); });
+  }
+
   // v6.04: Mark onboarding milestone
   if (typeof markOnboardingMilestone === 'function') markOnboardingMilestone('filter');
 
@@ -1619,6 +1639,132 @@ window.showPage = function(pageName) {
 };
 window.switchPage = window.showPage;
 window.BJ.switchPage = window.showPage;
+
+// EDE-001: Trigger location enrichment after filter save with wherePills
+window.triggerLocationEnrichment = async function(wherePills, filterId, includeRemote) {
+  if (!wherePills || !wherePills.length || !currentUser) return;
+  try {
+    var session = await sb.auth.getSession();
+    var token = session && session.data && session.data.session && session.data.session.access_token;
+    if (!token) return;
+    for (var i = 0; i < wherePills.length; i++) {
+      var loc = (wherePills[i].values || [])[0];
+      if (!loc) continue;
+      try {
+        var res = await fetch(SUPABASE_URL + '/functions/v1/enrich-jd-location', {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ location: loc, filter_id: filterId || null, include_remote: !!includeRemote }),
+        });
+        if (!res.ok) continue;
+        var data = await res.json();
+        if (data.status !== 'complete' && !data.cached && data.jobs_total > 0) {
+          showEnrichmentPopup(data);
+        }
+        if (window.posthog) {
+          posthog.capture('enrichment_triggered', {
+            location_key: data.location_key,
+            jobs_total: data.jobs_total,
+            cached: !!data.cached,
+          });
+        }
+      } catch(e) { reportError('app:enrich-trigger-pill', e); }
+    }
+  } catch(e) { reportError('app:enrich-trigger', e); }
+};
+
+// EDE-001: Show enrichment confirmation popup
+function showEnrichmentPopup(data) {
+  var existing = document.getElementById('enrichment-popup');
+  if (existing) existing.remove();
+
+  var etaLabel = 'less than 30 minutes';
+  if (data.estimated_at) {
+    var mins = Math.round((new Date(data.estimated_at) - Date.now()) / 60000);
+    if (mins > 90) etaLabel = 'about ' + Math.round(mins / 60) + ' hours';
+    else if (mins > 30) etaLabel = 'about ' + Math.round(mins / 30) * 30 + ' minutes';
+  }
+
+  var popup = document.createElement('div');
+  popup.id = 'enrichment-popup';
+  popup.style.cssText = [
+    'position:fixed;bottom:80px;right:24px;z-index:9000;',
+    'background:var(--bg-card);border:1px solid var(--border);border-radius:12px;',
+    'padding:14px 16px;max-width:320px;box-shadow:0 8px 24px rgba(0,0,0,.15);',
+    'animation:fadeIn .2s ease;',
+  ].join('');
+  popup.innerHTML = [
+    '<div style="display:flex;align-items:flex-start;gap:10px;">',
+    '<span style="font-size:18px;line-height:1;">🔍</span>',
+    '<div style="flex:1;min-width:0;">',
+    '<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px;">Reviewing jobs in ' + escapeHtml(data.loc_display || data.location_key) + '</div>',
+    '<div style="font-size:12px;color:var(--text-dim);">Found ' + (data.jobs_total || 0).toLocaleString() + ' jobs · ready in ' + etaLabel + '</div>',
+    '</div>',
+    '<button onclick="var ep=document.getElementById(&quot;enrichment-popup&quot;);if(ep)ep.remove();if(window.posthog)posthog.capture(&quot;enrichment_popup_dismissed&quot;)" ',
+    'style="background:none;border:none;cursor:pointer;color:var(--text-faint);font-size:16px;line-height:1;padding:0 0 0 4px;">×</button>',
+    '</div>',
+  ].join('');
+  document.body.appendChild(popup);
+
+  if (window.posthog) {
+    var etaMins = data.estimated_at ? Math.round((new Date(data.estimated_at) - Date.now()) / 60000) : 0;
+    posthog.capture('enrichment_popup_shown', { location_key: data.location_key, eta_minutes: etaMins });
+  }
+
+  setTimeout(function() {
+    var el = document.getElementById('enrichment-popup');
+    if (el) el.remove();
+  }, 8000);
+}
+
+// EDE-001: Load enrichment_requests on dashboard init and provide badge helper
+var _enrichmentRequests = [];
+
+async function loadEnrichmentStatus() {
+  if (!currentUser) return;
+  try {
+    var cutoff = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+    var { data } = await sb
+      .from('enrichment_requests')
+      .select('location_key, loc_display, status, jobs_total, jobs_enriched, estimated_at')
+      .eq('user_id', currentUser.id)
+      .gt('requested_at', cutoff);
+    _enrichmentRequests = data || [];
+  } catch(e) { /* non-critical — silently ignore */ }
+}
+
+window._enrichmentBadgeHtml = function(sf) {
+  if (!_enrichmentRequests.length) return '';
+  var pills = sf.wherePills || [];
+  if (!pills.length) return '';
+  // Find matching enrichment request for any where pill
+  for (var i = 0; i < pills.length; i++) {
+    var loc = (pills[i].values || [])[0];
+    if (!loc) continue;
+    var lower = loc.toLowerCase().replace(/[.,]/g,'').trim();
+    var req = _enrichmentRequests.find(function(r) {
+      return r.loc_display.toLowerCase() === lower ||
+             r.location_key.includes(lower.replace(/[ ]/g, '-'));
+    });
+    if (!req) continue;
+    if (req.status === 'complete') {
+      return '<div style="font-size:10px;color:var(--green);font-weight:600;margin-top:1px;">✓ Up to date</div>';
+    }
+    if (req.status === 'processing' || req.status === 'queued') {
+      var etaStr = '';
+      if (req.estimated_at) {
+        var mins = Math.round((new Date(req.estimated_at) - Date.now()) / 60000);
+        if (mins > 0) etaStr = ' · ~' + (mins > 60 ? Math.round(mins/60) + 'h' : mins + 'min');
+      }
+      return '<div style="font-size:10px;color:var(--warm);font-weight:600;margin-top:1px;">🔍 Reviewing' + etaStr + '</div>';
+    }
+  }
+  return '';
+};
 
 // Dashboard version check — shows banner if server has newer version
 (async function checkDashboardVersion() {

@@ -778,6 +778,32 @@ async function commitSaveFilter() {
   saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
   clearEntitlementCache('filters');
   invalidateCache(); // POD3-SF: bust query cache so re-search uses updated filter data
+
+  // EDE-001: Persist to Supabase user_filters + trigger location enrichment (fire-and-forget)
+  if (typeof currentUser !== 'undefined' && currentUser) {
+    (function(fd, idx) {
+      var payload = {
+        user_id: currentUser.id,
+        name: fd.name || 'Untitled',
+        filter_data: fd,
+        sort_order: idx >= 0 ? idx : savedFilters.length - 1,
+      };
+      var op = fd._id
+        ? sb.from('user_filters').update(payload).eq('id', fd._id).select('id').single()
+        : sb.from('user_filters').insert(payload).select('id').single();
+      op.then(function(r) {
+        if (r.error) { if (typeof reportError === 'function') reportError('location:filter-persist', r.error); return; }
+        if (r.data && r.data.id) {
+          fd._id = r.data.id;
+          var pills = fd.wherePills || [];
+          if (pills.length > 0 && typeof window.triggerLocationEnrichment === 'function') {
+            window.triggerLocationEnrichment(pills, r.data.id, !!fd.includeRemote);
+          }
+        }
+      }).catch(function(e) { if (typeof reportError === 'function') reportError('location:filter-persist', e); });
+    })(filterData, existingIdx);
+  }
+
   // Only clear the name if it was a new filter
   if (existingIdx < 0) {
     $('#save-filter-name').value = '';
@@ -1059,6 +1085,7 @@ function renderSavedFilters() {
       <div class="sf-item-info">
         <div class="sf-item-name">${escapeHtml(sf.name)}${sf.source === 'chat' ? ' <span style="font-size:8px;padding:1px 5px;border-radius:3px;background:var(--accent-dim);color:var(--accent);font-weight:600;vertical-align:1px;margin-left:4px;">via Chat</span>' : ''}</div>
         ${meta ? `<div class="sf-item-meta">${meta}</div>` : ''}
+        ${window._enrichmentBadgeHtml ? window._enrichmentBadgeHtml(sf) : ''}
       </div>
       ${miniPills}
       ${(() => {
