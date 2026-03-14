@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.04';
+var BJ_VERSION = 'v9.05';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -3735,6 +3735,19 @@ async function processReferralAttribution(user) {
     }
   });
 })();
+
+// showPage / switchPage — navigate to a named page by simulating nav-item click
+// Used in onclick= attributes throughout dashboard.html and resume-archive.js
+window.showPage = function(pageName) {
+  var navItem = document.querySelector('.nav-item[data-page="' + pageName + '"]');
+  if (navItem) { navItem.click(); return; }
+  // Fallback: directly activate page if no nav item (e.g. sub-pages)
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  var page = document.getElementById('page-' + pageName);
+  if (page) page.classList.add('active');
+};
+window.switchPage = window.showPage;
+window.BJ.switchPage = window.showPage;
 
 // Dashboard version check — shows banner if server has newer version
 (async function checkDashboardVersion() {
