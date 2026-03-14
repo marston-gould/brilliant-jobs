@@ -24,7 +24,7 @@ DO $$ BEGIN
   CREATE POLICY "users_read_own_profile"
     ON profiles FOR SELECT
     USING (auth.uid() = id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
@@ -32,7 +32,7 @@ DO $$ BEGIN
     ON profiles FOR UPDATE
     USING (auth.uid() = id)
     WITH CHECK (auth.uid() = id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- Admin can read all profiles
@@ -42,7 +42,7 @@ DO $$ BEGIN
     USING (
       EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
     );
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- resumes: users own their own resume
@@ -52,14 +52,14 @@ DO $$ BEGIN
   CREATE POLICY "users_read_own_resume"
     ON resumes FOR SELECT
     USING (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
   CREATE POLICY "users_write_own_resume"
     ON resumes FOR INSERT
     WITH CHECK (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
@@ -67,14 +67,14 @@ DO $$ BEGIN
     ON resumes FOR UPDATE
     USING (auth.uid() = user_id)
     WITH CHECK (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
   CREATE POLICY "users_delete_own_resume"
     ON resumes FOR DELETE
     USING (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- subscriptions: users can read their own, admin can read/write all
@@ -84,7 +84,7 @@ DO $$ BEGIN
   CREATE POLICY "users_read_own_subscriptions"
     ON subscriptions FOR SELECT
     USING (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
@@ -93,7 +93,7 @@ DO $$ BEGIN
     USING (
       EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
     );
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- connections: users own their connections
@@ -103,28 +103,28 @@ DO $$ BEGIN
   CREATE POLICY "users_read_own_connections"
     ON connections FOR SELECT
     USING (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
   CREATE POLICY "users_write_own_connections"
     ON connections FOR INSERT
     WITH CHECK (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
   CREATE POLICY "users_update_own_connections"
     ON connections FOR UPDATE
     USING (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
   CREATE POLICY "users_delete_own_connections"
     ON connections FOR DELETE
     USING (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- feedback: users can read their own and insert new
@@ -134,14 +134,14 @@ DO $$ BEGIN
   CREATE POLICY "users_read_own_feedback"
     ON feedback FOR SELECT
     USING (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
   CREATE POLICY "users_insert_feedback"
     ON feedback FOR INSERT
     WITH CHECK (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
@@ -150,7 +150,7 @@ DO $$ BEGIN
     USING (
       EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
     );
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- notification_log: users see their own notifications
@@ -160,7 +160,7 @@ DO $$ BEGIN
   CREATE POLICY "users_read_own_notifications"
     ON notification_log FOR SELECT
     USING (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
@@ -169,7 +169,7 @@ DO $$ BEGIN
     USING (
       EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
     );
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- notification_actions: users see their own actions
@@ -179,21 +179,21 @@ DO $$ BEGIN
   CREATE POLICY "users_read_own_notification_actions"
     ON notification_actions FOR SELECT
     USING (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
   CREATE POLICY "users_write_own_notification_actions"
     ON notification_actions FOR INSERT
     WITH CHECK (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
   CREATE POLICY "users_update_own_notification_actions"
     ON notification_actions FOR UPDATE
     USING (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 
@@ -208,7 +208,7 @@ DO $$ BEGIN
   CREATE POLICY "authenticated_read_plans"
     ON plans FOR SELECT
     USING (auth.role() = 'authenticated');
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
@@ -217,7 +217,7 @@ DO $$ BEGIN
     USING (
       EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
     );
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- cohorts: authenticated read, admin write
@@ -227,7 +227,7 @@ DO $$ BEGIN
   CREATE POLICY "authenticated_read_cohorts"
     ON cohorts FOR SELECT
     USING (auth.role() = 'authenticated');
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
@@ -236,7 +236,7 @@ DO $$ BEGIN
     USING (
       EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
     );
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- ats_companies: public read (company data shown on SEO pages)
@@ -246,7 +246,7 @@ DO $$ BEGIN
   CREATE POLICY "public_read_ats_companies"
     ON ats_companies FOR SELECT
     USING (true);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
@@ -255,7 +255,7 @@ DO $$ BEGIN
     USING (
       EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
     );
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- ats_jobs: public read (job data shown on SEO pages / dashboard)
@@ -265,7 +265,7 @@ DO $$ BEGIN
   CREATE POLICY "public_read_ats_jobs"
     ON ats_jobs FOR SELECT
     USING (true);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
@@ -274,7 +274,7 @@ DO $$ BEGIN
     USING (
       EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
     );
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 
@@ -291,7 +291,7 @@ DO $$ BEGIN
     USING (
       EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
     );
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- Service role inserts (from EFs) bypass RLS — no INSERT policy needed
@@ -305,7 +305,7 @@ DO $$ BEGIN
     USING (
       EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
     );
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- ghost_alerts_sent: admin-only
@@ -317,7 +317,7 @@ DO $$ BEGIN
     USING (
       EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
     );
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 
@@ -336,7 +336,7 @@ DO $$ BEGIN
           ON content_stories FOR SELECT
           USING (status = 'published')
       $policy$;
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
     EXECUTE $policy$
@@ -347,7 +347,7 @@ DO $$ BEGIN
             EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
           )
       $policy$;
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
   END IF;
 END $$;

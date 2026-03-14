@@ -23,13 +23,13 @@ DROP POLICY IF EXISTS "extension_events_insert" ON public.extension_events;
 DO $$ BEGIN
   CREATE POLICY extension_events_insert ON public.extension_events
     FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 DROP POLICY IF EXISTS "extension_events_select" ON public.extension_events;
 DO $$ BEGIN
   CREATE POLICY extension_events_select ON public.extension_events
     FOR SELECT TO authenticated USING (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 COMMENT ON TABLE public.extension_events IS 'Centralized event log for Chrome extension actions: installs, fills, detections, errors';

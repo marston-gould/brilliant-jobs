@@ -10,7 +10,7 @@ DO $$ BEGIN
   CREATE TYPE pipeline_entry_source AS ENUM (
     'manual', 'auto_apply', 'overlay', 'gmail_detected', 'calendar_detected', 'import'
   );
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
@@ -18,7 +18,7 @@ DO $$ BEGIN
     'saved', 'applied', 'phone_screen', 'interview', 'offer',
     'rejected', 'withdrawn', 'posting_closed'
   );
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- 2. PIPELINE TABLE
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS pipeline (
 -- 3. UNIQUE CONSTRAINT
 DO $$ BEGIN
   ALTER TABLE pipeline ADD CONSTRAINT pipeline_user_source_url_unique UNIQUE (user_id, source_url);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- 4. INDEXES
@@ -110,7 +110,7 @@ DO $$ BEGIN
     FOR ALL
     USING (auth.uid() = user_id)
     WITH CHECK (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DROP POLICY IF EXISTS pipeline_admin_read ON pipeline;
@@ -124,7 +124,7 @@ DO $$ BEGIN
         AND profiles.role = 'admin'
       )
     );
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- 7. OVERLAY ANALYTICS TABLE
@@ -149,14 +149,14 @@ DROP POLICY IF EXISTS overlay_analytics_insert ON overlay_analytics;
 DO $$ BEGIN
   CREATE POLICY overlay_analytics_insert ON overlay_analytics
     FOR INSERT WITH CHECK (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DROP POLICY IF EXISTS overlay_analytics_user_read ON overlay_analytics;
 DO $$ BEGIN
   CREATE POLICY overlay_analytics_user_read ON overlay_analytics
     FOR SELECT USING (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- 8. BACKFILL pending_applications → pipeline

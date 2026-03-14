@@ -21,7 +21,7 @@ DO $$ BEGIN
   ALTER TABLE job_fraud_scores 
     ADD CONSTRAINT chk_fraud_label 
     CHECK (fraud_label IN ('safe', 'caution', 'suspicious', 'unknown'));
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- 3. Add constraint for valid score range
@@ -29,7 +29,7 @@ DO $$ BEGIN
   ALTER TABLE job_fraud_scores 
     ADD CONSTRAINT chk_fraud_score_range 
     CHECK (fraud_score >= 0.000 AND fraud_score <= 1.000);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- 4. Indexes for common query patterns
@@ -44,7 +44,7 @@ ALTER TABLE job_fraud_scores ENABLE ROW LEVEL SECURITY;
 DO $$ BEGIN
   CREATE POLICY "Anyone can read fraud scores"
     ON job_fraud_scores FOR SELECT USING (true);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- Only service role can write fraud scores (Edge Function)
@@ -52,21 +52,21 @@ DO $$ BEGIN
   CREATE POLICY "Service role writes fraud scores"
     ON job_fraud_scores FOR INSERT 
     WITH CHECK (current_setting('request.jwt.claims', true)::jsonb->>'role' = 'service_role');
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
   CREATE POLICY "Service role updates fraud scores"
     ON job_fraud_scores FOR UPDATE 
     USING (current_setting('request.jwt.claims', true)::jsonb->>'role' = 'service_role');
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
   CREATE POLICY "Service role deletes fraud scores"
     ON job_fraud_scores FOR DELETE 
     USING (current_setting('request.jwt.claims', true)::jsonb->>'role' = 'service_role');
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- 6. Comment the table

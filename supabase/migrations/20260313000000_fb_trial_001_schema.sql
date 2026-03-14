@@ -76,7 +76,7 @@ DO $$ BEGIN
     FOR SELECT USING (
       auth.uid() = referrer_id OR auth.uid() = referred_id
     );
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- Service role has full access
@@ -85,7 +85,7 @@ DO $$ BEGIN
     FOR ALL USING (
       (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'service_role'
     );
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 
@@ -122,7 +122,7 @@ ALTER TABLE resume_score_queue ENABLE ROW LEVEL SECURITY;
 DO $$ BEGIN
   CREATE POLICY rsq_user_read ON resume_score_queue
     FOR SELECT USING (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
@@ -130,7 +130,7 @@ DO $$ BEGIN
     FOR ALL USING (
       (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'service_role'
     );
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 

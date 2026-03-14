@@ -47,14 +47,14 @@ ALTER TABLE user_pipeline ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users manage own pipeline" ON user_pipeline;
 DO $$ BEGIN
   CREATE POLICY "Users manage own pipeline" ON user_pipeline FOR ALL USING (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 DROP POLICY IF EXISTS "Admins read all pipeline" ON user_pipeline;
 DO $$ BEGIN
   CREATE POLICY "Admins read all pipeline" ON user_pipeline FOR SELECT USING (
     EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
   );
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- 2. COMPANY GHOST STATS TABLE

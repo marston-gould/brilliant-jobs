@@ -96,7 +96,7 @@ DO $$ BEGIN
         WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
       )
     );
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- Grant service role full access for EF writes

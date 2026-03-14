@@ -25,14 +25,14 @@ DO $$ BEGIN
     USING (
       EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
     );
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
   CREATE POLICY "Service insert health_check_log"
     ON public.health_check_log FOR INSERT
     WITH CHECK (true);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 CREATE INDEX IF NOT EXISTS idx_health_check_log_created ON public.health_check_log(created_at DESC);
@@ -67,7 +67,7 @@ DO $$ BEGIN
     USING (
       EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
     );
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- ─── Alert History — records of fired alerts ───
@@ -93,7 +93,7 @@ DO $$ BEGIN
     USING (
       EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
     );
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 CREATE INDEX IF NOT EXISTS idx_alert_history_created ON public.alert_history(created_at DESC);

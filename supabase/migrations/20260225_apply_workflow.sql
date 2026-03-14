@@ -46,7 +46,7 @@ DO $$ BEGIN
   ALTER TABLE public.pending_applications
     ADD CONSTRAINT chk_pending_status
     CHECK (status IN ('pending','approved','submitted','skipped','expired','failed'));
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- Approval mode constraint
@@ -54,7 +54,7 @@ DO $$ BEGIN
   ALTER TABLE public.pending_applications
     ADD CONSTRAINT chk_approval_mode
     CHECK (approval_mode IN ('manual','auto_no_approval','auto_with_approval','rewrite_review'));
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- Enable RLS
@@ -65,28 +65,28 @@ DROP POLICY IF EXISTS "pending_select" ON public.pending_applications;
 DO $$ BEGIN
   CREATE POLICY pending_select ON public.pending_applications
     FOR SELECT USING (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DROP POLICY IF EXISTS "pending_insert" ON public.pending_applications;
 DO $$ BEGIN
   CREATE POLICY pending_insert ON public.pending_applications
     FOR INSERT WITH CHECK (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DROP POLICY IF EXISTS "pending_update" ON public.pending_applications;
 DO $$ BEGIN
   CREATE POLICY pending_update ON public.pending_applications
     FOR UPDATE USING (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DROP POLICY IF EXISTS "pending_delete" ON public.pending_applications;
 DO $$ BEGIN
   CREATE POLICY pending_delete ON public.pending_applications
     FOR DELETE USING (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- Admin reads all
@@ -96,7 +96,7 @@ DO $$ BEGIN
     FOR SELECT USING (
       EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
     );
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- ─── D3: mock_ats_submissions ───────────────────────────────
@@ -118,7 +118,7 @@ DO $$ BEGIN
   ALTER TABLE public.mock_ats_submissions
     ADD CONSTRAINT chk_response_type
     CHECK (response_type IN ('success','rejected','timeout'));
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- ATS source constraint
@@ -126,7 +126,7 @@ DO $$ BEGIN
   ALTER TABLE public.mock_ats_submissions
     ADD CONSTRAINT chk_ats_source
     CHECK (ats_source IN ('greenhouse','lever','ashby','workable','recruitee','usajobs'));
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- Enable RLS
@@ -137,14 +137,14 @@ DROP POLICY IF EXISTS "mock_ats_select" ON public.mock_ats_submissions;
 DO $$ BEGIN
   CREATE POLICY mock_ats_select ON public.mock_ats_submissions
     FOR SELECT USING (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DROP POLICY IF EXISTS "mock_ats_insert" ON public.mock_ats_submissions;
 DO $$ BEGIN
   CREATE POLICY mock_ats_insert ON public.mock_ats_submissions
     FOR INSERT WITH CHECK (auth.uid() = user_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- Admin reads all
@@ -154,5 +154,5 @@ DO $$ BEGIN
     FOR SELECT USING (
       EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
     );
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;

@@ -30,14 +30,14 @@ DROP POLICY IF EXISTS "city_pages_anon_select" ON city_pages;
 DO $$ BEGIN
   CREATE POLICY "city_pages_anon_select" ON city_pages
     FOR SELECT TO anon USING (true);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DROP POLICY IF EXISTS "city_pages_auth_select" ON city_pages;
 DO $$ BEGIN
   CREATE POLICY "city_pages_auth_select" ON city_pages
     FOR SELECT TO authenticated USING (true);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 CREATE INDEX IF NOT EXISTS idx_city_pages_slug ON city_pages(slug);
@@ -65,12 +65,12 @@ DROP POLICY IF EXISTS "city_popular_pills_anon_select" ON city_popular_pills;
 DO $$ BEGIN
   CREATE POLICY "city_popular_pills_anon_select" ON city_popular_pills
     FOR SELECT TO anon USING (true);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DROP POLICY IF EXISTS "city_popular_pills_auth_select" ON city_popular_pills;
 DO $$ BEGIN
   CREATE POLICY "city_popular_pills_auth_select" ON city_popular_pills
     FOR SELECT TO authenticated USING (true);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;

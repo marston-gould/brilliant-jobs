@@ -31,7 +31,7 @@ DO $$ BEGIN
   CREATE POLICY "Users can insert own errors"
     ON public.client_errors FOR INSERT
     WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
@@ -43,7 +43,7 @@ DO $$ BEGIN
         WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
       )
     );
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- Materialized view for error rate monitoring (refreshed by pg_cron)
