@@ -52,7 +52,56 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FB-TRIAL-001-S7** — PostHog Events + Inline Nudges + QA
+**FB-GHOST-BADGE-001** — Ghost Intelligence Badges
+- Completed: 2026-03-14
+- Product version bumped: `v9.01` → `v9.02` (JS/HTML changes — dashboard.html Ghost Monitor removed, apply-workflow.js ghost badge + self-report, app.js redirect, pipeline.js dead code removal; all HTML surfaces cache-busted)
+- ROADMAP.md updated: FB-GHOST-BADGE-001 → ✅
+- roadmap.html updated: FB-GHOST-BADGE-001 → `s: 'done'`, p: 100
+- **Part 1 — Ghost Monitor removal (spec §1.1, §5):**
+  - `dashboard.html`: Ghost Monitor nav item (`data-page="ghost"`) removed. Ghost Monitor page (`#page-ghost`, 52 lines) removed. Ghost option removed from feedback dropdown. `ghost_alert` + `ghost_report` notification rows preserved per spec §5.
+  - `js/pipeline.js`: `renderGhostMonitor()` (~90 lines) and `onGhostPageShow()` dead code removed. `get_pipeline_ghost_status` RPC call removed.
+  - `js/app.js`: Ghost tab handler replaced with redirect → applications (deep link / bookmark safety). Ghost tab removed from skeleton guard list and progressive nav items.
+- **Part 2 — Database (spec §6):**
+  - Migration `20260314000004_fb_ghost_badge_001.sql`: `ghost_reports` table (user_id, company_name, application_id, source CHECK, confidence, reported_at, expires_at GENERATED 18 months, is_active). Dedup unique index per (user, company, source, 90-day window). `ghost_company_scores` table (company_name PK, raw_count, effective_count, tier CHECK, self_reported_count, auto_inferred_count, last_report_at, updated_at). RLS on both (users insert/select own reports; all authenticated read scores; service_role writes). `fn_ghost_score_refresh()` with recency weighting (1.0/<6mo, 0.5/6-12mo, 0.25/12-18mo), tier thresholds (low=1-4, medium=5-15, high=16+), expires stale reports. pg_cron: ghost-score-refresh every 6h, ghost-auto-detect daily 2AM UTC.
+- **Part 3 — 3 Edge Functions (spec §7):**
+  - `ghost-report-submit` (route #120): user JWT auth, normalizes company name, validates application ownership, 90-day dedup check, inserts self_reported report (confidence=1.0), triggers fn_ghost_score_refresh, returns updated score for immediate badge render. PostHog: `ghost_self_report_confirmed`.
+  - `ghost-auto-detect` (route #121): service_role only, scans `user_pipeline` in WAITING_STAGES (applied/screening/interview), applies 30d/21d/21d thresholds, inserts auto_inferred reports (confidence=0.5) with 90-day dedup, triggers fn_ghost_score_refresh after batch. PostHog: `ghost_auto_detect_batch`.
+  - `ghost-score-refresh` (route #122): service_role only, calls fn_ghost_score_refresh RPC, reports tier distribution. PostHog: `ghost_score_refresh`.
+  - API gateway total: 119 → 122 routes.
+- **Part 4 — UI (spec §8):**
+  - `js/apply-workflow.js`:
+    - `_ghostScoreCache` — module-level cache `{ [company_name]: { tier, effective_count, self_reported_count, auto_inferred_count } }`
+    - `loadGhostScores(companyNames)` — batch SELECT from `ghost_company_scores` for given normalized company names, populates cache.
+    - `buildGhostBadge(companyName)` — returns badge HTML from cache. Low=gray, Medium=amber, High=red. Lucide `ghost` icon at 10px. Tooltip shows "N self-reported, M auto-detected — weighted score: X". Empty string if no data.
+    - `confirmGhostReport(appId, companyName, days)` — shows native confirm dialog, fires PostHog `ghost_self_report_initiated` + `ghost_self_report_cancelled` on dismiss.
+    - `submitGhostReport(appId, companyName, days)` — POSTs to ghost-report-submit EF via gateway, refreshes cache, re-renders cards.
+    - `renderPendingApplications()` updated: pre-fetches ghost scores async then re-injects badges; badge rendered inline in `pa-card-left` below company name; "Report Ghosted" button added to actions for waiting-state apps (pending/approved) only.
+  - PostHog events: `ghost_badge_tooltip_shown`, `ghost_self_report_initiated`, `ghost_self_report_confirmed` (EF), `ghost_self_report_cancelled`, `ghost_auto_detect_batch` (EF), `ghost_score_refresh` (EF).
+- **Modified:**
+  - `dashboard.html` — Ghost Monitor nav + page + dropdown option removed
+  - `js/apply-workflow.js` — ghost badge cache + functions + renderPendingApplications wired
+  - `js/app.js` — ghost tab handler → redirect; skeleton list; progressive nav
+  - `js/pipeline.js` — renderGhostMonitor + onGhostPageShow removed
+  - `supabase/functions/api-gateway/index.ts` — routes #120–122, total 122
+  - `docs/scaling/pod-team-manifest.md` — FB-GHOST-BADGE-001 pairing
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `dist/admin.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — FB-GHOST-BADGE-001 → ✅
+  - `roadmap.html` — FB-GHOST-BADGE-001 → done/100
+- **Created:**
+  - `supabase/migrations/20260314000004_fb_ghost_badge_001.sql` — schema
+  - `supabase/functions/ghost-report-submit/index.ts` — self-report EF
+  - `supabase/functions/ghost-auto-detect/index.ts` — auto-detection cron EF
+  - `supabase/functions/ghost-score-refresh/index.ts` — score refresh EF
+  - `tests/fb-ghost-badge-001.test.js` — 80 validation tests (12 sections)
+- **Tests:** 80 validation tests (all passing)
+- **Pending manual steps (Marston):**
+  - `supabase db push` (migration 20260314000004)
+  - `supabase functions deploy ghost-report-submit ghost-auto-detect ghost-score-refresh api-gateway`
+
+**Previous: FB-TRIAL-001-S7** — PostHog Events + Inline Nudges + QA
 - Completed: 2026-03-14
 - Product version bumped: `v9.00` → `v9.01` (JS/TS changes — trial-gate.js major expansion, checkFeatureAccess.ts trial_feature_used, send-trial-notifications EF, weekly-digest-expired EF, process-referral-reward EF, referral-reward-clawback EF, stripe-webhook EF; all HTML surfaces cache-busted)
 - ROADMAP.md updated: FB-TRIAL-001-S7 → ✅
@@ -2870,13 +2919,13 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Session In Progress
 
-None. FB-TRIAL-001-S7 complete.
+None. FB-GHOST-BADGE-001 complete.
 
 ---
 
 ## Next Session
 
-No specific session queued. FB-TRIAL-001 series complete.
+No specific session queued. FB-GHOST-BADGE-001 complete.
 
 **EXT-AS series (9 sessions total, 9 done — COMPLETE):**
 - EXT-AS-1 ✅ — Applicant Profile + Settings Sync
@@ -2949,7 +2998,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.01`** | **FB-TRIAL-001-S7: PostHog Events + Inline Nudges** |
+| **Product (BJ_VERSION)** | **`v9.02`** | **FB-GHOST-BADGE-001: Ghost Intelligence Badges** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

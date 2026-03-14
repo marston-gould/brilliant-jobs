@@ -233,9 +233,12 @@ const ROUTE_REGISTRY: Record<string, string> = {
 
   // ── Batch Resume Scorer (FB-TRIAL-001-S6) ──────────────────────────────────
   "batch-resume-scorer":        "batch-resume-scorer",        // FB-TRIAL-001-S6: Anthropic Batch API queue (service_role only)
+  "ghost-report-submit":        "ghost-report-submit",        // FB-GHOST-BADGE-001: User self-reports ghosting (#120)
+  "ghost-auto-detect":          "ghost-auto-detect",          // FB-GHOST-BADGE-001: pg_cron stale scan (#121)
+  "ghost-score-refresh":        "ghost-score-refresh",        // FB-GHOST-BADGE-001: Score recalculation (#122)
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // TOTAL: 119 routes (93 SA-005 + 1 SA-007 + 1 SA-008 + 1 SA-009 + 2 SA-010 + 2 SA-011 + 2 SA-012 + 1 SA-018 + 2 SA-020 + 1 SA-021 + 1 SA-024 + 1 SA-028 + 1 BI-01 + 3 FB-PAYL + 1 EXT-AS-5 + 1 AF-006 + 1 FB-TRIAL-S4 + 2 FB-TRIAL-S5 + 1 FB-TRIAL-S6). Direct paths deprecated.
+  // TOTAL: 122 routes (93 SA-005 + 1 SA-007 + 1 SA-008 + 1 SA-009 + 2 SA-010 + 2 SA-011 + 2 SA-012 + 1 SA-018 + 2 SA-020 + 1 SA-021 + 1 SA-024 + 1 SA-028 + 1 BI-01 + 3 FB-PAYL + 1 EXT-AS-5 + 1 AF-006 + 1 FB-TRIAL-S4 + 2 FB-TRIAL-S5 + 1 FB-TRIAL-S6). Direct paths deprecated.
   // HOOK: Future EFs register here. Future: load from DB table for
   //       runtime updates without redeploy (api_consumers integration).
   // ═══════════════════════════════════════════════════════════════════════════

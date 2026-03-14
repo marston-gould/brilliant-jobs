@@ -498,7 +498,20 @@ $$('.nav-item').forEach(item => {
       if (_tab === 'stats' && typeof initStatsPage === 'function') { if (window.bjTabGuard) bjTabGuard('stats', initStatsPage); else initStatsPage(); }
       // Admin moved to /admin page (v6.26)
       if (_tab === 'feedback' && typeof initCannyFeedback === 'function') { if (window.bjTabGuard) bjTabGuard('feedback', initCannyFeedback); else initCannyFeedback(); }
-      if (_tab === 'ghost' && typeof renderGhostMonitor === 'function') { if (window.bjTabGuard) bjTabGuard('ghost', renderGhostMonitor); else renderGhostMonitor(); }
+      // FB-GHOST-BADGE-001: Ghost Monitor page removed — redirect to Applications
+      if (_tab === 'ghost') {
+        // Redirect any deep links / bookmarks to Applications page
+        var appPage = document.getElementById('page-applications');
+        var appNav  = document.querySelector('[data-page="applications"]');
+        if (appPage) {
+          document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+          document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+          appPage.classList.add('active');
+          if (appNav) appNav.classList.add('active');
+          localStorage.setItem('bj_active_tab', 'applications');
+        }
+        return;
+      }
       if (_tab === 'referrals' && typeof initReferralHub === 'function') { if (window.bjTabGuard) bjTabGuard('referrals', initReferralHub); else initReferralHub(); }
       // Refresh resumes when switching to resumes tab
       if (_tab === 'resumes') {
@@ -536,7 +549,7 @@ $$('.nav-item').forEach(item => {
         if (window.bjSkeleton) setTimeout(function() { bjSkeleton.hide('applications'); }, 150);
       }
       // Tabs without explicit init get skeleton hidden after a short delay (content is static HTML)
-      if (!['stats','feedback','ghost','referrals','resumes','pipeline','applications'].includes(_tab) && window.bjSkeleton) {
+      if (!['stats','feedback','referrals','resumes','pipeline','applications'].includes(_tab) && window.bjSkeleton) {
         setTimeout(function() { bjSkeleton.hide(_tab); }, 150);
       }
       // QA-011: Re-search feed when tuning changed (e.g. US-Only toggle)
@@ -579,7 +592,10 @@ if (lastTab && $(`#page-${lastTab}`)) {
     if (lastTab === 'stats' && typeof initStatsPage === 'function') { if (window.bjTabGuard) bjTabGuard('stats', initStatsPage); else initStatsPage(); }
     if (lastTab === 'feedback' && typeof initCannyFeedback === 'function') { if (window.bjTabGuard) bjTabGuard('feedback', initCannyFeedback); else initCannyFeedback(); }
     if (lastTab === 'referrals' && typeof initReferralHub === 'function') { if (window.bjTabGuard) bjTabGuard('referrals', initReferralHub); else initReferralHub(); }
-    if (lastTab === 'ghost' && typeof renderGhostMonitor === 'function') { if (window.bjTabGuard) bjTabGuard('ghost', renderGhostMonitor); else renderGhostMonitor(); }
+    // FB-GHOST-BADGE-001: ghost tab removed — fall through to applications
+    if (lastTab === 'ghost') {
+      localStorage.setItem('bj_active_tab', 'applications');
+    }
     if (lastTab === 'pipeline' && typeof initPipeline === 'function') {
       initPipeline().then(function() {
         if (typeof renderPipeline === 'function') renderPipeline();
@@ -1470,7 +1486,7 @@ function applyProgressiveNav(step) {
     'tuning': 2,
     'resumes': 1,
     'applications': 1,
-    'ghost': 1,
+    // FB-GHOST-BADGE-001: ghost nav item removed
     'stats': 1,
     'notifications': 2,
     'feedback': 1,

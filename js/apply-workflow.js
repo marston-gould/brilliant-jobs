@@ -1867,6 +1867,35 @@ function renderPendingApplications() {
   var body = document.getElementById('pending-apps-body');
   if (!body) return;
 
+  // FB-GHOST-BADGE-001: Pre-fetch ghost scores for all companies in this batch.
+  // Async — we render cards immediately, then refresh once scores arrive.
+  var companyNames = pending.map(function(a) { return a.company_name || ''; }).filter(Boolean);
+  if (typeof loadGhostScores === 'function' && companyNames.length > 0) {
+    loadGhostScores(companyNames).then(function() {
+      // Re-render just the ghost badge elements without full re-render
+      pending.forEach(function(app) {
+        if (!app.company_name) return;
+        var card = body.querySelector('.pa-card[data-app-id="' + app.id + '"]');
+        if (!card) return;
+        var existing = card.querySelector('.ghost-badge');
+        if (existing) existing.remove();
+        var companyEl = card.querySelector('.pa-job-company');
+        if (companyEl && typeof buildGhostBadge === 'function') {
+          var badge = buildGhostBadge(app.company_name);
+          if (badge) {
+            var wrapper = document.createElement('div');
+            wrapper.innerHTML = badge;
+            companyEl.parentNode.insertBefore(wrapper.firstChild, companyEl.nextSibling);
+          }
+        }
+      });
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }).catch(function(e) { reportError('ghost_badge', e); });
+  }
+
+  // WAITING states that qualify for ghost badge display + self-report option
+  var WAITING_STATUSES = ['pending', 'approved'];
+
   body.innerHTML = pending.map(function(app, i) {
     var scoreHtml = '';
     if (app.rewritten_score) {
@@ -1891,10 +1920,8 @@ function renderPendingApplications() {
 
     var actionsHtml = '';
     if (app.status === APPLY_STATUS.APPROVED || app.status === APPLY_STATUS.PROCESSING) {
-      // Worker is handling — show spinner status
       actionsHtml = '<span style="font-size:11px;color:var(--muted);"><i data-lucide="loader-2" class="icon-sm" style="animation:spin 1s linear infinite;display:inline-block;vertical-align:middle;margin-right:4px;"></i>Processing...</span>';
     } else if (app.status === APPLY_STATUS.FAILED) {
-      // Failed: show retry + manual apply link
       var manualLink = app.job_url ? '<a href="' + escapeHtml(app.job_url) + '" target="_blank" class="pa-btn pa-btn-secondary" style="text-decoration:none;">Apply Manually</a>' : '';
       actionsHtml =
         manualLink +
@@ -1916,12 +1943,31 @@ function renderPendingApplications() {
         '<button class="pa-btn pa-btn-ghost" onclick="skipPendingApp(\'' + app.id + '\')">Skip</button>';
     }
 
+    // FB-GHOST-BADGE-001: "Report as Ghosted" added for pending/failed apps only
+    var isWaiting = WAITING_STATUSES.indexOf(app.status) !== -1;
+    if (isWaiting && app.company_name) {
+      var daysAgo = app.created_at
+        ? Math.floor((Date.now() - new Date(app.created_at).getTime()) / 86400000)
+        : 0;
+      actionsHtml +=
+        '<button class="pa-btn pa-btn-ghost" style="font-size:10px;opacity:.7;" ' +
+        'onclick="confirmGhostReport(\'' + (app.id || '') + '\',\'' + escapeHtml(app.company_name) + '\',' + daysAgo + ')">' +
+        '<i data-lucide="ghost" style="width:10px;height:10px;display:inline-block;vertical-align:middle;margin-right:3px;stroke:currentColor;fill:none;"></i>' +
+        'Report Ghosted</button>';
+    }
+
     var rewriteBadge = app.rewritten_score ? '<span class="pa-badge pa-badge-rewrite">Rewritten</span>' : '';
+
+    // FB-GHOST-BADGE-001: Build ghost badge from cache (may be empty until async load completes)
+    var ghostBadge = (isWaiting && app.company_name && typeof buildGhostBadge === 'function')
+      ? buildGhostBadge(app.company_name)
+      : '';
 
     return '<div class="pa-card" data-app-id="' + (app.id || i) + '">' +
       '<div class="pa-card-left">' +
         '<div class="pa-job-title">' + escapeHtml(app.job_title || 'Unknown Job') + '</div>' +
         '<div class="pa-job-company">' + escapeHtml(app.company_name || '') + '</div>' +
+        (ghostBadge ? ghostBadge : '') +
       '</div>' +
       '<div class="pa-card-center">' +
         scoreHtml + rewriteBadge + statusBadge +
@@ -2290,3 +2336,178 @@ window.logDashboardActivity = logDashboardActivity;
     }
   });
 })();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FB-GHOST-BADGE-001: Ghost Intelligence Badges
+// Crowdsourced ghosting badges on My Applications cards.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/* Ghost score cache: { [company_name]: { tier, effective_count, self_reported_count, auto_inferred_count } } */
+var _ghostScoreCache = {};
+
+/**
+ * loadGhostScores(companyNames)
+ * Batch-fetch ghost_company_scores for the given set of normalized company names.
+ * Populates _ghostScoreCache. Called before rendering application cards.
+ */
+async function loadGhostScores(companyNames) {
+  if (!currentUser || !companyNames || companyNames.length === 0) return;
+  try {
+    var normalized = companyNames.map(function(n) {
+      return (n || '').trim().toLowerCase().replace(/[,.'"\-]+/g, ' ').replace(/\s+/g, ' ').trim();
+    }).filter(Boolean);
+
+    if (normalized.length === 0) return;
+
+    var { data, error } = await sb
+      .from('ghost_company_scores')
+      .select('company_name, effective_count, tier, self_reported_count, auto_inferred_count')
+      .in('company_name', normalized);
+
+    if (error) { reportError('ghost_badge', error); return; }
+
+    for (var i = 0; i < (data || []).length; i++) {
+      var row = data[i];
+      _ghostScoreCache[row.company_name] = row;
+    }
+  } catch (e) {
+    reportError('ghost_badge', e);
+  }
+}
+
+/**
+ * buildGhostBadge(companyName)
+ * Returns HTML string for the ghost intelligence badge, or '' if no data.
+ * Only shown for applications in waiting states (Applied/Screening/Interview).
+ */
+function buildGhostBadge(companyName) {
+  if (!companyName) return '';
+  var key = (companyName || '').trim().toLowerCase().replace(/[,.'"\-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  var score = _ghostScoreCache[key];
+  if (!score) return '';
+
+  var count = Math.round(parseFloat(score.effective_count) || 0);
+  if (count < 1) return '';
+
+  var tier = score.tier || 'low';
+  var tierColor = tier === 'high' ? 'var(--red)' : tier === 'medium' ? 'var(--amber, #F59E0B)' : 'var(--text-faint)';
+  var tierBg    = tier === 'high' ? 'rgba(220,38,38,0.1)' : tier === 'medium' ? 'rgba(245,158,11,0.12)' : 'rgba(0,0,0,0.06)';
+
+  var badgeText = tier === 'high'
+    ? 'Frequent ghosting reported (' + count + ')'
+    : count + ' user' + (count === 1 ? '' : 's') + ' reported no response';
+
+  var tooltip = (score.self_reported_count || 0) + ' self-reported, ' +
+    (score.auto_inferred_count || 0) + ' auto-detected — weighted score: ' + count +
+    '. Reports from the last 18 months.';
+
+  return '<span class="ghost-badge ghost-badge-' + tier + '" ' +
+    'data-company="' + (typeof escapeHtml === 'function' ? escapeHtml(key) : key) + '" ' +
+    'title="' + (typeof escapeHtml === 'function' ? escapeHtml(tooltip) : tooltip) + '" ' +
+    'style="display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:10px;' +
+    'font-size:10px;font-weight:600;color:' + tierColor + ';background:' + tierBg + ';' +
+    'cursor:pointer;white-space:nowrap;margin-top:4px;" ' +
+    'onclick="showGhostBadgeTooltip(this)">' +
+    '<i data-lucide="ghost" style="width:10px;height:10px;stroke:currentColor;fill:none;flex-shrink:0;"></i>' +
+    (typeof escapeHtml === 'function' ? escapeHtml(badgeText) : badgeText) +
+    '</span>';
+}
+
+/**
+ * showGhostBadgeTooltip(el)
+ * Show the tooltip on tap/click (for mobile where :hover isn't reliable).
+ * Fires PostHog ghost_badge_tooltip_shown.
+ */
+function showGhostBadgeTooltip(el) {
+  var company = el ? el.getAttribute('data-company') : '';
+  var score = company ? _ghostScoreCache[company] : null;
+  if (window.posthog) posthog.capture('ghost_badge_tooltip_shown', {
+    company_name: company,
+    tier: score ? score.tier : 'unknown',
+  });
+  // tooltip is already on the title attr; native browser handles it on desktop
+  // For mobile we could add a small toast but title attr is sufficient for MVP
+}
+
+/**
+ * submitGhostReport(applicationId, companyName, daysSinceApplied)
+ * Fires ghost-report-submit EF after user confirms.
+ */
+async function submitGhostReport(applicationId, companyName, daysSinceApplied) {
+  if (!currentUser) return;
+  try {
+    var { data: { session } } = await sb.auth.getSession();
+    if (!session) return;
+
+    if (window.posthog) posthog.capture('ghost_self_report_initiated', {
+      company_name:       companyName,
+      application_id:     applicationId,
+      days_since_applied: daysSinceApplied || 0,
+    });
+
+    var resp = await fetch(SUPABASE_URL + '/functions/v1/api-gateway', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + session.access_token,
+        'x-gateway-route': 'ghost-report-submit',
+      },
+      body: JSON.stringify({
+        application_id:     applicationId || null,
+        company_name:       companyName,
+        days_since_applied: daysSinceApplied || null,
+      }),
+    });
+
+    var result = await resp.json();
+    if (result.already_reported) {
+      if (typeof showToast === 'function') showToast('You already reported this company recently.', { type: 'info' });
+      return;
+    }
+    if (!resp.ok) {
+      if (typeof showToast === 'function') showToast('Failed to submit ghost report.', { type: 'error' });
+      reportError('ghost_badge', new Error(result.error || 'submit failed'));
+      return;
+    }
+
+    // Refresh badge for this company in cache
+    if (result.score) {
+      var key = (companyName || '').trim().toLowerCase().replace(/[,.'"\-]+/g, ' ').replace(/\s+/g, ' ').trim();
+      _ghostScoreCache[key] = result.score;
+    }
+
+    if (typeof showToast === 'function') showToast('Reported. This helps other job seekers. ✓', { type: 'success' });
+
+    // Re-render application cards to show updated badge
+    if (typeof renderPendingApplications === 'function') renderPendingApplications();
+
+  } catch (e) {
+    reportError('ghost_badge', e);
+    if (typeof showToast === 'function') showToast('Failed to submit ghost report.', { type: 'error' });
+  }
+}
+
+/**
+ * confirmGhostReport(applicationId, companyName, daysSinceApplied)
+ * Shows confirmation dialog before submitting.
+ */
+function confirmGhostReport(applicationId, companyName, daysSinceApplied) {
+  if (window.posthog) posthog.capture('ghost_self_report_initiated', {
+    company_name: companyName,
+    application_id: applicationId,
+    days_since_applied: daysSinceApplied || 0,
+  });
+
+  var escaped = typeof escapeHtml === 'function' ? escapeHtml(companyName) : companyName;
+  if (confirm('Mark ' + escaped + ' as ghosted? This helps other job seekers find honest intel.')) {
+    submitGhostReport(applicationId, companyName, daysSinceApplied);
+  } else {
+    if (window.posthog) posthog.capture('ghost_self_report_cancelled', { company_name: companyName });
+  }
+}
+
+window.loadGhostScores = loadGhostScores;
+window.buildGhostBadge = buildGhostBadge;
+window.showGhostBadgeTooltip = showGhostBadgeTooltip;
+window.confirmGhostReport = confirmGhostReport;
+window.submitGhostReport = submitGhostReport;

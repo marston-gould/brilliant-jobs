@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.01';
+var BJ_VERSION = 'v9.02';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -2622,7 +2622,20 @@ $$('.nav-item').forEach(item => {
       if (_tab === 'stats' && typeof initStatsPage === 'function') { if (window.bjTabGuard) bjTabGuard('stats', initStatsPage); else initStatsPage(); }
       // Admin moved to /admin page (v6.26)
       if (_tab === 'feedback' && typeof initCannyFeedback === 'function') { if (window.bjTabGuard) bjTabGuard('feedback', initCannyFeedback); else initCannyFeedback(); }
-      if (_tab === 'ghost' && typeof renderGhostMonitor === 'function') { if (window.bjTabGuard) bjTabGuard('ghost', renderGhostMonitor); else renderGhostMonitor(); }
+      // FB-GHOST-BADGE-001: Ghost Monitor page removed — redirect to Applications
+      if (_tab === 'ghost') {
+        // Redirect any deep links / bookmarks to Applications page
+        var appPage = document.getElementById('page-applications');
+        var appNav  = document.querySelector('[data-page="applications"]');
+        if (appPage) {
+          document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+          document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+          appPage.classList.add('active');
+          if (appNav) appNav.classList.add('active');
+          localStorage.setItem('bj_active_tab', 'applications');
+        }
+        return;
+      }
       if (_tab === 'referrals' && typeof initReferralHub === 'function') { if (window.bjTabGuard) bjTabGuard('referrals', initReferralHub); else initReferralHub(); }
       // Refresh resumes when switching to resumes tab
       if (_tab === 'resumes') {
@@ -2660,7 +2673,7 @@ $$('.nav-item').forEach(item => {
         if (window.bjSkeleton) setTimeout(function() { bjSkeleton.hide('applications'); }, 150);
       }
       // Tabs without explicit init get skeleton hidden after a short delay (content is static HTML)
-      if (!['stats','feedback','ghost','referrals','resumes','pipeline','applications'].includes(_tab) && window.bjSkeleton) {
+      if (!['stats','feedback','referrals','resumes','pipeline','applications'].includes(_tab) && window.bjSkeleton) {
         setTimeout(function() { bjSkeleton.hide(_tab); }, 150);
       }
       // QA-011: Re-search feed when tuning changed (e.g. US-Only toggle)
@@ -2703,7 +2716,10 @@ if (lastTab && $(`#page-${lastTab}`)) {
     if (lastTab === 'stats' && typeof initStatsPage === 'function') { if (window.bjTabGuard) bjTabGuard('stats', initStatsPage); else initStatsPage(); }
     if (lastTab === 'feedback' && typeof initCannyFeedback === 'function') { if (window.bjTabGuard) bjTabGuard('feedback', initCannyFeedback); else initCannyFeedback(); }
     if (lastTab === 'referrals' && typeof initReferralHub === 'function') { if (window.bjTabGuard) bjTabGuard('referrals', initReferralHub); else initReferralHub(); }
-    if (lastTab === 'ghost' && typeof renderGhostMonitor === 'function') { if (window.bjTabGuard) bjTabGuard('ghost', renderGhostMonitor); else renderGhostMonitor(); }
+    // FB-GHOST-BADGE-001: ghost tab removed — fall through to applications
+    if (lastTab === 'ghost') {
+      localStorage.setItem('bj_active_tab', 'applications');
+    }
     if (lastTab === 'pipeline' && typeof initPipeline === 'function') {
       initPipeline().then(function() {
         if (typeof renderPipeline === 'function') renderPipeline();
@@ -3594,7 +3610,7 @@ function applyProgressiveNav(step) {
     'tuning': 2,
     'resumes': 1,
     'applications': 1,
-    'ghost': 1,
+    // FB-GHOST-BADGE-001: ghost nav item removed
     'stats': 1,
     'notifications': 2,
     'feedback': 1,
@@ -16175,99 +16191,6 @@ function formatTimeAgo(date) {
   if (diffDays === 1) return 'yesterday';
   if (diffDays < 7) return diffDays + 'd ago';
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-// ── Ghost Monitor rendering ──────────────────────────────────
-async function renderGhostMonitor() {
-  if (!currentUser?.id) return;
-  const tbody = document.getElementById('ghost-table-body');
-  if (!tbody) return;
-
-  try {
-    const { data, error } = await sb.rpc('get_pipeline_ghost_status', { p_user_id: currentUser.id });
-    if (error) throw error;
-
-    // Update KPI cards
-    const activeEl = document.getElementById('g-active');
-    const avgWaitEl = document.getElementById('g-avg-wait');
-    const likelyEl = document.getElementById('g-likely');
-    const ghostedEl = document.getElementById('g-ghosted');
-
-    const entries = data || [];
-    if (activeEl) activeEl.textContent = entries.length;
-
-    const totalDays = entries.reduce((sum, e) => sum + (e.days_since_applied || 0), 0);
-    if (avgWaitEl) avgWaitEl.textContent = entries.length > 0 ? Math.round(totalDays / entries.length) + 'd' : '—';
-
-    const likelyCount = entries.filter(e => e.ghost_status === 'likely_ghosted').length;
-    const ghostedCount = entries.filter(e => e.ghost_status === 'ghosted').length;
-    if (likelyEl) likelyEl.textContent = likelyCount;
-    if (ghostedEl) ghostedEl.textContent = ghostedCount;
-
-    if (entries.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-faint);padding:32px;">No active applications to monitor. Apply to jobs from the Feed to see ghost detection here.</td></tr>';
-      return;
-    }
-
-    // Sort: ghosted first, then by score desc
-    entries.sort((a, b) => (b.ghost_score || 0) - (a.ghost_score || 0));
-
-    let html = '';
-    for (const e of entries) {
-      const score = e.ghost_score || 0;
-      const status = e.ghost_status || 'active';
-      const statusColors = {
-        active: 'color:var(--green);', waiting: 'color:var(--warm);',
-        likely_ghosted: 'color:var(--red);', ghosted: 'color:var(--red);font-weight:600;'
-      };
-      const statusLabels = {
-        active: 'Active', waiting: 'Waiting',
-        likely_ghosted: 'Likely Ghosted', ghosted: 'Ghosted'
-      };
-      const listingLabels = {
-        open: '<span style="color:var(--green);">Open</span>',
-        closed: '<span style="color:var(--red);">Closed</span>',
-        removed: '<span style="color:var(--red);">Removed</span>',
-        unknown: '<span style="color:var(--text-faint);">—</span>'
-      };
-
-      // Score bar color
-      const barColor = score >= 80 ? 'var(--red)' : score >= 50 ? 'var(--warm)' : score >= 25 ? 'var(--accent)' : 'var(--green)';
-
-      const appliedStr = e.applied_at ? new Date(e.applied_at).toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '—';
-
-      const actionBtn = status === 'ghosted'
-        ? '<button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;" onclick="movePipelineStage(\'' + e.pipeline_entry_id + '\', \'archived\')">Archive</button>'
-        : status === 'likely_ghosted'
-        ? '<span style="font-size:11px;color:var(--text-dim);">Follow up</span>'
-        : '<span style="font-size:11px;color:var(--text-faint);">—</span>';
-
-      html += '<tr>';
-      html += '<td title="' + (e.company_slug || '') + '">' + (e.company_name || e.company_slug || '—') + '</td>';
-      html += '<td title="' + (e.job_title || '') + '">' + ((e.job_title || '').length > 30 ? (e.job_title || '').slice(0,30) + '…' : (e.job_title || '—')) + '</td>';
-      html += '<td>' + appliedStr + '</td>';
-      html += '<td>' + (e.days_since_applied || 0) + 'd</td>';
-      html += '<td>' + (listingLabels[e.listing_status] || listingLabels.unknown) + '</td>';
-      html += '<td><div style="display:flex;align-items:center;gap:6px;">';
-      html += '<div style="width:40px;height:6px;background:var(--bg-card);border-radius:3px;overflow:hidden;">';
-      html += '<div style="width:' + score + '%;height:100%;background:' + barColor + ';border-radius:3px;"></div></div>';
-      html += '<span style="font-size:11px;font-weight:500;">' + score + '</span></div></td>';
-      html += '<td style="' + (statusColors[status] || '') + 'font-size:12px;">' + (statusLabels[status] || status) + '</td>';
-      html += '<td>' + actionBtn + '</td>';
-      html += '</tr>';
-    }
-    tbody.innerHTML = html;
-
-  } catch (err) {
-    reportError('pipeline', err);
-    console.error('[BJ] Ghost monitor error:', err); toastWarning('Ghost monitor failed to load');
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--red);padding:32px;">Error loading ghost data: ' + (err.message || 'unknown') + '</td></tr>';
-  }
-}
-
-// Auto-load ghost monitor when page is shown
-function onGhostPageShow() {
-  renderGhostMonitor();
 }
 
 // ── Pipeline Signal UI (Phase A) ─────────────────────────────
@@ -29710,6 +29633,35 @@ function renderPendingApplications() {
   var body = document.getElementById('pending-apps-body');
   if (!body) return;
 
+  // FB-GHOST-BADGE-001: Pre-fetch ghost scores for all companies in this batch.
+  // Async — we render cards immediately, then refresh once scores arrive.
+  var companyNames = pending.map(function(a) { return a.company_name || ''; }).filter(Boolean);
+  if (typeof loadGhostScores === 'function' && companyNames.length > 0) {
+    loadGhostScores(companyNames).then(function() {
+      // Re-render just the ghost badge elements without full re-render
+      pending.forEach(function(app) {
+        if (!app.company_name) return;
+        var card = body.querySelector('.pa-card[data-app-id="' + app.id + '"]');
+        if (!card) return;
+        var existing = card.querySelector('.ghost-badge');
+        if (existing) existing.remove();
+        var companyEl = card.querySelector('.pa-job-company');
+        if (companyEl && typeof buildGhostBadge === 'function') {
+          var badge = buildGhostBadge(app.company_name);
+          if (badge) {
+            var wrapper = document.createElement('div');
+            wrapper.innerHTML = badge;
+            companyEl.parentNode.insertBefore(wrapper.firstChild, companyEl.nextSibling);
+          }
+        }
+      });
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }).catch(function(e) { reportError('ghost_badge', e); });
+  }
+
+  // WAITING states that qualify for ghost badge display + self-report option
+  var WAITING_STATUSES = ['pending', 'approved'];
+
   body.innerHTML = pending.map(function(app, i) {
     var scoreHtml = '';
     if (app.rewritten_score) {
@@ -29734,10 +29686,8 @@ function renderPendingApplications() {
 
     var actionsHtml = '';
     if (app.status === APPLY_STATUS.APPROVED || app.status === APPLY_STATUS.PROCESSING) {
-      // Worker is handling — show spinner status
       actionsHtml = '<span style="font-size:11px;color:var(--muted);"><i data-lucide="loader-2" class="icon-sm" style="animation:spin 1s linear infinite;display:inline-block;vertical-align:middle;margin-right:4px;"></i>Processing...</span>';
     } else if (app.status === APPLY_STATUS.FAILED) {
-      // Failed: show retry + manual apply link
       var manualLink = app.job_url ? '<a href="' + escapeHtml(app.job_url) + '" target="_blank" class="pa-btn pa-btn-secondary" style="text-decoration:none;">Apply Manually</a>' : '';
       actionsHtml =
         manualLink +
@@ -29759,12 +29709,31 @@ function renderPendingApplications() {
         '<button class="pa-btn pa-btn-ghost" onclick="skipPendingApp(\'' + app.id + '\')">Skip</button>';
     }
 
+    // FB-GHOST-BADGE-001: "Report as Ghosted" added for pending/failed apps only
+    var isWaiting = WAITING_STATUSES.indexOf(app.status) !== -1;
+    if (isWaiting && app.company_name) {
+      var daysAgo = app.created_at
+        ? Math.floor((Date.now() - new Date(app.created_at).getTime()) / 86400000)
+        : 0;
+      actionsHtml +=
+        '<button class="pa-btn pa-btn-ghost" style="font-size:10px;opacity:.7;" ' +
+        'onclick="confirmGhostReport(\'' + (app.id || '') + '\',\'' + escapeHtml(app.company_name) + '\',' + daysAgo + ')">' +
+        '<i data-lucide="ghost" style="width:10px;height:10px;display:inline-block;vertical-align:middle;margin-right:3px;stroke:currentColor;fill:none;"></i>' +
+        'Report Ghosted</button>';
+    }
+
     var rewriteBadge = app.rewritten_score ? '<span class="pa-badge pa-badge-rewrite">Rewritten</span>' : '';
+
+    // FB-GHOST-BADGE-001: Build ghost badge from cache (may be empty until async load completes)
+    var ghostBadge = (isWaiting && app.company_name && typeof buildGhostBadge === 'function')
+      ? buildGhostBadge(app.company_name)
+      : '';
 
     return '<div class="pa-card" data-app-id="' + (app.id || i) + '">' +
       '<div class="pa-card-left">' +
         '<div class="pa-job-title">' + escapeHtml(app.job_title || 'Unknown Job') + '</div>' +
         '<div class="pa-job-company">' + escapeHtml(app.company_name || '') + '</div>' +
+        (ghostBadge ? ghostBadge : '') +
       '</div>' +
       '<div class="pa-card-center">' +
         scoreHtml + rewriteBadge + statusBadge +
@@ -30133,6 +30102,181 @@ window.logDashboardActivity = logDashboardActivity;
     }
   });
 })();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FB-GHOST-BADGE-001: Ghost Intelligence Badges
+// Crowdsourced ghosting badges on My Applications cards.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/* Ghost score cache: { [company_name]: { tier, effective_count, self_reported_count, auto_inferred_count } } */
+var _ghostScoreCache = {};
+
+/**
+ * loadGhostScores(companyNames)
+ * Batch-fetch ghost_company_scores for the given set of normalized company names.
+ * Populates _ghostScoreCache. Called before rendering application cards.
+ */
+async function loadGhostScores(companyNames) {
+  if (!currentUser || !companyNames || companyNames.length === 0) return;
+  try {
+    var normalized = companyNames.map(function(n) {
+      return (n || '').trim().toLowerCase().replace(/[,.'"\-]+/g, ' ').replace(/\s+/g, ' ').trim();
+    }).filter(Boolean);
+
+    if (normalized.length === 0) return;
+
+    var { data, error } = await sb
+      .from('ghost_company_scores')
+      .select('company_name, effective_count, tier, self_reported_count, auto_inferred_count')
+      .in('company_name', normalized);
+
+    if (error) { reportError('ghost_badge', error); return; }
+
+    for (var i = 0; i < (data || []).length; i++) {
+      var row = data[i];
+      _ghostScoreCache[row.company_name] = row;
+    }
+  } catch (e) {
+    reportError('ghost_badge', e);
+  }
+}
+
+/**
+ * buildGhostBadge(companyName)
+ * Returns HTML string for the ghost intelligence badge, or '' if no data.
+ * Only shown for applications in waiting states (Applied/Screening/Interview).
+ */
+function buildGhostBadge(companyName) {
+  if (!companyName) return '';
+  var key = (companyName || '').trim().toLowerCase().replace(/[,.'"\-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  var score = _ghostScoreCache[key];
+  if (!score) return '';
+
+  var count = Math.round(parseFloat(score.effective_count) || 0);
+  if (count < 1) return '';
+
+  var tier = score.tier || 'low';
+  var tierColor = tier === 'high' ? 'var(--red)' : tier === 'medium' ? 'var(--amber, #F59E0B)' : 'var(--text-faint)';
+  var tierBg    = tier === 'high' ? 'rgba(220,38,38,0.1)' : tier === 'medium' ? 'rgba(245,158,11,0.12)' : 'rgba(0,0,0,0.06)';
+
+  var badgeText = tier === 'high'
+    ? 'Frequent ghosting reported (' + count + ')'
+    : count + ' user' + (count === 1 ? '' : 's') + ' reported no response';
+
+  var tooltip = (score.self_reported_count || 0) + ' self-reported, ' +
+    (score.auto_inferred_count || 0) + ' auto-detected — weighted score: ' + count +
+    '. Reports from the last 18 months.';
+
+  return '<span class="ghost-badge ghost-badge-' + tier + '" ' +
+    'data-company="' + (typeof escapeHtml === 'function' ? escapeHtml(key) : key) + '" ' +
+    'title="' + (typeof escapeHtml === 'function' ? escapeHtml(tooltip) : tooltip) + '" ' +
+    'style="display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:10px;' +
+    'font-size:10px;font-weight:600;color:' + tierColor + ';background:' + tierBg + ';' +
+    'cursor:pointer;white-space:nowrap;margin-top:4px;" ' +
+    'onclick="showGhostBadgeTooltip(this)">' +
+    '<i data-lucide="ghost" style="width:10px;height:10px;stroke:currentColor;fill:none;flex-shrink:0;"></i>' +
+    (typeof escapeHtml === 'function' ? escapeHtml(badgeText) : badgeText) +
+    '</span>';
+}
+
+/**
+ * showGhostBadgeTooltip(el)
+ * Show the tooltip on tap/click (for mobile where :hover isn't reliable).
+ * Fires PostHog ghost_badge_tooltip_shown.
+ */
+function showGhostBadgeTooltip(el) {
+  var company = el ? el.getAttribute('data-company') : '';
+  var score = company ? _ghostScoreCache[company] : null;
+  if (window.posthog) posthog.capture('ghost_badge_tooltip_shown', {
+    company_name: company,
+    tier: score ? score.tier : 'unknown',
+  });
+  // tooltip is already on the title attr; native browser handles it on desktop
+  // For mobile we could add a small toast but title attr is sufficient for MVP
+}
+
+/**
+ * submitGhostReport(applicationId, companyName, daysSinceApplied)
+ * Fires ghost-report-submit EF after user confirms.
+ */
+async function submitGhostReport(applicationId, companyName, daysSinceApplied) {
+  if (!currentUser) return;
+  try {
+    var { data: { session } } = await sb.auth.getSession();
+    if (!session) return;
+
+    if (window.posthog) posthog.capture('ghost_self_report_initiated', {
+      company_name:       companyName,
+      application_id:     applicationId,
+      days_since_applied: daysSinceApplied || 0,
+    });
+
+    var resp = await fetch(SUPABASE_URL + '/functions/v1/api-gateway', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + session.access_token,
+        'x-gateway-route': 'ghost-report-submit',
+      },
+      body: JSON.stringify({
+        application_id:     applicationId || null,
+        company_name:       companyName,
+        days_since_applied: daysSinceApplied || null,
+      }),
+    });
+
+    var result = await resp.json();
+    if (result.already_reported) {
+      if (typeof showToast === 'function') showToast('You already reported this company recently.', { type: 'info' });
+      return;
+    }
+    if (!resp.ok) {
+      if (typeof showToast === 'function') showToast('Failed to submit ghost report.', { type: 'error' });
+      reportError('ghost_badge', new Error(result.error || 'submit failed'));
+      return;
+    }
+
+    // Refresh badge for this company in cache
+    if (result.score) {
+      var key = (companyName || '').trim().toLowerCase().replace(/[,.'"\-]+/g, ' ').replace(/\s+/g, ' ').trim();
+      _ghostScoreCache[key] = result.score;
+    }
+
+    if (typeof showToast === 'function') showToast('Reported. This helps other job seekers. ✓', { type: 'success' });
+
+    // Re-render application cards to show updated badge
+    if (typeof renderPendingApplications === 'function') renderPendingApplications();
+
+  } catch (e) {
+    reportError('ghost_badge', e);
+    if (typeof showToast === 'function') showToast('Failed to submit ghost report.', { type: 'error' });
+  }
+}
+
+/**
+ * confirmGhostReport(applicationId, companyName, daysSinceApplied)
+ * Shows confirmation dialog before submitting.
+ */
+function confirmGhostReport(applicationId, companyName, daysSinceApplied) {
+  if (window.posthog) posthog.capture('ghost_self_report_initiated', {
+    company_name: companyName,
+    application_id: applicationId,
+    days_since_applied: daysSinceApplied || 0,
+  });
+
+  var escaped = typeof escapeHtml === 'function' ? escapeHtml(companyName) : companyName;
+  if (confirm('Mark ' + escaped + ' as ghosted? This helps other job seekers find honest intel.')) {
+    submitGhostReport(applicationId, companyName, daysSinceApplied);
+  } else {
+    if (window.posthog) posthog.capture('ghost_self_report_cancelled', { company_name: companyName });
+  }
+}
+
+window.loadGhostScores = loadGhostScores;
+window.buildGhostBadge = buildGhostBadge;
+window.showGhostBadgeTooltip = showGhostBadgeTooltip;
+window.confirmGhostReport = confirmGhostReport;
+window.submitGhostReport = submitGhostReport;
 
 
 // === js/referrals.js ===
