@@ -266,7 +266,8 @@ BEGIN
 
   -- Record this call
   INSERT INTO ef_rate_limits (function_name, caller_id)
-  VALUES (p_function_name, p_caller_id);
+  VALUES (p_function_name, p_caller_id)
+ON CONFLICT DO NOTHING;
 
   -- Opportunistic cleanup (1% chance per call)
   IF random() < 0.01 THEN

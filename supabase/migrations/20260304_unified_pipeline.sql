@@ -183,7 +183,7 @@ SELECT
   END,
   'auto_apply'::pipeline_entry_source,
   pa.submitted_at,
-  pa.resume_id,
+  CASE WHEN EXISTS (SELECT 1 FROM resumes r WHERE r.id = pa.resume_id) THEN pa.resume_id ELSE NULL END,
   pa.original_score,
   (pa.confirmation_detected_at IS NOT NULL),
   pa.confirmation_pattern,
