@@ -62,23 +62,32 @@ CREATE TABLE IF NOT EXISTS public.paid_spend_log (
 
 ALTER TABLE public.paid_spend_log ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Admin read paid_spend_log"
-  ON public.paid_spend_log FOR SELECT
-  USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-  );
+DO $$ BEGIN
+  CREATE POLICY "Admin read paid_spend_log"
+    ON public.paid_spend_log FOR SELECT
+    USING (
+      EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Admin insert paid_spend_log"
-  ON public.paid_spend_log FOR INSERT
-  WITH CHECK (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-  );
+DO $$ BEGIN
+  CREATE POLICY "Admin insert paid_spend_log"
+    ON public.paid_spend_log FOR INSERT
+    WITH CHECK (
+      EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Admin delete paid_spend_log"
-  ON public.paid_spend_log FOR DELETE
-  USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-  );
+DO $$ BEGIN
+  CREATE POLICY "Admin delete paid_spend_log"
+    ON public.paid_spend_log FOR DELETE
+    USING (
+      EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Social Post Log
 CREATE TABLE IF NOT EXISTS public.social_post_log (
@@ -93,23 +102,32 @@ CREATE TABLE IF NOT EXISTS public.social_post_log (
 
 ALTER TABLE public.social_post_log ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Admin read social_post_log"
-  ON public.social_post_log FOR SELECT
-  USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-  );
+DO $$ BEGIN
+  CREATE POLICY "Admin read social_post_log"
+    ON public.social_post_log FOR SELECT
+    USING (
+      EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Admin insert social_post_log"
-  ON public.social_post_log FOR INSERT
-  WITH CHECK (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-  );
+DO $$ BEGIN
+  CREATE POLICY "Admin insert social_post_log"
+    ON public.social_post_log FOR INSERT
+    WITH CHECK (
+      EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Admin delete social_post_log"
-  ON public.social_post_log FOR DELETE
-  USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-  );
+DO $$ BEGIN
+  CREATE POLICY "Admin delete social_post_log"
+    ON public.social_post_log FOR DELETE
+    USING (
+      EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Vendor Cost Log
 CREATE TABLE IF NOT EXISTS public.vendor_cost_log (
@@ -124,23 +142,32 @@ CREATE TABLE IF NOT EXISTS public.vendor_cost_log (
 
 ALTER TABLE public.vendor_cost_log ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Admin read vendor_cost_log"
-  ON public.vendor_cost_log FOR SELECT
-  USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-  );
+DO $$ BEGIN
+  CREATE POLICY "Admin read vendor_cost_log"
+    ON public.vendor_cost_log FOR SELECT
+    USING (
+      EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Admin insert vendor_cost_log"
-  ON public.vendor_cost_log FOR INSERT
-  WITH CHECK (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-  );
+DO $$ BEGIN
+  CREATE POLICY "Admin insert vendor_cost_log"
+    ON public.vendor_cost_log FOR INSERT
+    WITH CHECK (
+      EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Admin delete vendor_cost_log"
-  ON public.vendor_cost_log FOR DELETE
-  USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-  );
+DO $$ BEGIN
+  CREATE POLICY "Admin delete vendor_cost_log"
+    ON public.vendor_cost_log FOR DELETE
+    USING (
+      EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Indexes for common queries
 CREATE INDEX IF NOT EXISTS idx_paid_spend_log_date ON public.paid_spend_log(date DESC);

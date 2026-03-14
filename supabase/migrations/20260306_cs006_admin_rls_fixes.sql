@@ -33,11 +33,14 @@ DROP POLICY IF EXISTS "service_manage_flags" ON feature_flags;
 -- anyone_read_flags already exists with qual=true for SELECT — leave it
 
 -- Add admin-only write policy
-CREATE POLICY "admin_manage_flags"
-  ON feature_flags
-  FOR ALL
-  USING (is_admin())
-  WITH CHECK (is_admin());
+DO $$ BEGIN
+  CREATE POLICY "admin_manage_flags"
+    ON feature_flags
+    FOR ALL
+    USING (is_admin())
+    WITH CHECK (is_admin());
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- ════════════════════════════════════════════════════════════
 -- 2. admin_notification_config — restrict to admin only
@@ -47,11 +50,14 @@ CREATE POLICY "admin_manage_flags"
 DROP POLICY IF EXISTS "Admin full access config" ON admin_notification_config;
 
 -- Admin can read + write
-CREATE POLICY "admin_full_access_config"
-  ON admin_notification_config
-  FOR ALL
-  USING (is_admin())
-  WITH CHECK (is_admin());
+DO $$ BEGIN
+  CREATE POLICY "admin_full_access_config"
+    ON admin_notification_config
+    FOR ALL
+    USING (is_admin())
+    WITH CHECK (is_admin());
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- ════════════════════════════════════════════════════════════
 -- 3. merch_placements — fix wrong JWT claim
@@ -61,11 +67,14 @@ CREATE POLICY "admin_full_access_config"
 
 DROP POLICY IF EXISTS "Admins can manage merch_placements" ON merch_placements;
 
-CREATE POLICY "admin_manage_merch_placements"
-  ON merch_placements
-  FOR ALL
-  USING (is_admin())
-  WITH CHECK (is_admin());
+DO $$ BEGIN
+  CREATE POLICY "admin_manage_merch_placements"
+    ON merch_placements
+    FOR ALL
+    USING (is_admin())
+    WITH CHECK (is_admin());
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Public read stays: "Public can read active merch_placements" — correct as-is
 
@@ -75,11 +84,14 @@ CREATE POLICY "admin_manage_merch_placements"
 
 DROP POLICY IF EXISTS "Admins can manage merch_rules" ON merch_rules;
 
-CREATE POLICY "admin_manage_merch_rules"
-  ON merch_rules
-  FOR ALL
-  USING (is_admin())
-  WITH CHECK (is_admin());
+DO $$ BEGIN
+  CREATE POLICY "admin_manage_merch_rules"
+    ON merch_rules
+    FOR ALL
+    USING (is_admin())
+    WITH CHECK (is_admin());
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Public read stays: "Public can read active merch_rules" — correct as-is
 
@@ -89,11 +101,14 @@ CREATE POLICY "admin_manage_merch_rules"
 
 DROP POLICY IF EXISTS "Admins can manage merch_content" ON merch_content;
 
-CREATE POLICY "admin_manage_merch_content"
-  ON merch_content
-  FOR ALL
-  USING (is_admin())
-  WITH CHECK (is_admin());
+DO $$ BEGIN
+  CREATE POLICY "admin_manage_merch_content"
+    ON merch_content
+    FOR ALL
+    USING (is_admin())
+    WITH CHECK (is_admin());
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Public read stays: "Public can read active merch_content" — correct as-is
 
@@ -105,51 +120,87 @@ CREATE POLICY "admin_manage_merch_content"
 
 -- seo_site_daily
 ALTER TABLE seo_site_daily ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "public_read_seo_site_daily"
-  ON seo_site_daily FOR SELECT USING (true);
-CREATE POLICY "admin_write_seo_site_daily"
-  ON seo_site_daily FOR ALL
-  USING (is_admin()) WITH CHECK (is_admin());
+DO $$ BEGIN
+  CREATE POLICY "public_read_seo_site_daily"
+    ON seo_site_daily FOR SELECT USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  CREATE POLICY "admin_write_seo_site_daily"
+    ON seo_site_daily FOR ALL
+    USING (is_admin()) WITH CHECK (is_admin());
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- seo_page_daily
 ALTER TABLE seo_page_daily ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "public_read_seo_page_daily"
-  ON seo_page_daily FOR SELECT USING (true);
-CREATE POLICY "admin_write_seo_page_daily"
-  ON seo_page_daily FOR ALL
-  USING (is_admin()) WITH CHECK (is_admin());
+DO $$ BEGIN
+  CREATE POLICY "public_read_seo_page_daily"
+    ON seo_page_daily FOR SELECT USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  CREATE POLICY "admin_write_seo_page_daily"
+    ON seo_page_daily FOR ALL
+    USING (is_admin()) WITH CHECK (is_admin());
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- seo_tech_audits
 ALTER TABLE seo_tech_audits ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "public_read_seo_tech_audits"
-  ON seo_tech_audits FOR SELECT USING (true);
-CREATE POLICY "admin_write_seo_tech_audits"
-  ON seo_tech_audits FOR ALL
-  USING (is_admin()) WITH CHECK (is_admin());
+DO $$ BEGIN
+  CREATE POLICY "public_read_seo_tech_audits"
+    ON seo_tech_audits FOR SELECT USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  CREATE POLICY "admin_write_seo_tech_audits"
+    ON seo_tech_audits FOR ALL
+    USING (is_admin()) WITH CHECK (is_admin());
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- seo_index_status
 ALTER TABLE seo_index_status ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "public_read_seo_index_status"
-  ON seo_index_status FOR SELECT USING (true);
-CREATE POLICY "admin_write_seo_index_status"
-  ON seo_index_status FOR ALL
-  USING (is_admin()) WITH CHECK (is_admin());
+DO $$ BEGIN
+  CREATE POLICY "public_read_seo_index_status"
+    ON seo_index_status FOR SELECT USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  CREATE POLICY "admin_write_seo_index_status"
+    ON seo_index_status FOR ALL
+    USING (is_admin()) WITH CHECK (is_admin());
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- seo_conversions
 ALTER TABLE seo_conversions ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "public_read_seo_conversions"
-  ON seo_conversions FOR SELECT USING (true);
-CREATE POLICY "admin_write_seo_conversions"
-  ON seo_conversions FOR ALL
-  USING (is_admin()) WITH CHECK (is_admin());
+DO $$ BEGIN
+  CREATE POLICY "public_read_seo_conversions"
+    ON seo_conversions FOR SELECT USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  CREATE POLICY "admin_write_seo_conversions"
+    ON seo_conversions FOR ALL
+    USING (is_admin()) WITH CHECK (is_admin());
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- seo_gsc_daily
 ALTER TABLE seo_gsc_daily ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "public_read_seo_gsc_daily"
-  ON seo_gsc_daily FOR SELECT USING (true);
-CREATE POLICY "admin_write_seo_gsc_daily"
-  ON seo_gsc_daily FOR ALL
-  USING (is_admin()) WITH CHECK (is_admin());
+DO $$ BEGIN
+  CREATE POLICY "public_read_seo_gsc_daily"
+    ON seo_gsc_daily FOR SELECT USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  CREATE POLICY "admin_write_seo_gsc_daily"
+    ON seo_gsc_daily FOR ALL
+    USING (is_admin()) WITH CHECK (is_admin());
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- ════════════════════════════════════════════════════════════
 -- Verification queries (run after applying):

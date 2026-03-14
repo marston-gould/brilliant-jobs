@@ -105,21 +105,27 @@ CREATE TRIGGER trg_pipeline_updated_at
 ALTER TABLE pipeline ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS pipeline_user_crud ON pipeline;
-CREATE POLICY pipeline_user_crud ON pipeline
-  FOR ALL
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+DO $$ BEGIN
+  CREATE POLICY pipeline_user_crud ON pipeline
+    FOR ALL
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 DROP POLICY IF EXISTS pipeline_admin_read ON pipeline;
-CREATE POLICY pipeline_admin_read ON pipeline
-  FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role = 'admin'
-    )
-  );
+DO $$ BEGIN
+  CREATE POLICY pipeline_admin_read ON pipeline
+    FOR SELECT
+    USING (
+      EXISTS (
+        SELECT 1 FROM profiles
+        WHERE profiles.id = auth.uid()
+        AND profiles.role = 'admin'
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- 7. OVERLAY ANALYTICS TABLE
 CREATE TABLE IF NOT EXISTS overlay_analytics (
@@ -140,12 +146,18 @@ CREATE INDEX IF NOT EXISTS idx_overlay_analytics_action ON overlay_analytics (ac
 ALTER TABLE overlay_analytics ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS overlay_analytics_insert ON overlay_analytics;
-CREATE POLICY overlay_analytics_insert ON overlay_analytics
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+DO $$ BEGIN
+  CREATE POLICY overlay_analytics_insert ON overlay_analytics
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 DROP POLICY IF EXISTS overlay_analytics_user_read ON overlay_analytics;
-CREATE POLICY overlay_analytics_user_read ON overlay_analytics
-  FOR SELECT USING (auth.uid() = user_id);
+DO $$ BEGIN
+  CREATE POLICY overlay_analytics_user_read ON overlay_analytics
+    FOR SELECT USING (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- 8. BACKFILL pending_applications → pipeline
 INSERT INTO pipeline (

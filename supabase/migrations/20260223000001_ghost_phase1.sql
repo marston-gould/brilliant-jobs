@@ -45,11 +45,17 @@ CREATE INDEX IF NOT EXISTS idx_pipeline_user_updated ON user_pipeline (user_id, 
 
 ALTER TABLE user_pipeline ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users manage own pipeline" ON user_pipeline;
-CREATE POLICY "Users manage own pipeline" ON user_pipeline FOR ALL USING (auth.uid() = user_id);
+DO $$ BEGIN
+  CREATE POLICY "Users manage own pipeline" ON user_pipeline FOR ALL USING (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 DROP POLICY IF EXISTS "Admins read all pipeline" ON user_pipeline;
-CREATE POLICY "Admins read all pipeline" ON user_pipeline FOR SELECT USING (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-);
+DO $$ BEGIN
+  CREATE POLICY "Admins read all pipeline" ON user_pipeline FOR SELECT USING (
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- 2. COMPANY GHOST STATS TABLE
 CREATE TABLE IF NOT EXISTS company_ghost_stats (

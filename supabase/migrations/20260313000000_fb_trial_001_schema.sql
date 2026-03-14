@@ -71,16 +71,22 @@ CREATE INDEX IF NOT EXISTS idx_referrals_referred
 ALTER TABLE referrals ENABLE ROW LEVEL SECURITY;
 
 -- Users can read their own referrals (as referrer or referred)
-CREATE POLICY referrals_user_read ON referrals
-  FOR SELECT USING (
-    auth.uid() = referrer_id OR auth.uid() = referred_id
-  );
+DO $$ BEGIN
+  CREATE POLICY referrals_user_read ON referrals
+    FOR SELECT USING (
+      auth.uid() = referrer_id OR auth.uid() = referred_id
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Service role has full access
-CREATE POLICY referrals_service_all ON referrals
-  FOR ALL USING (
-    (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'service_role'
-  );
+DO $$ BEGIN
+  CREATE POLICY referrals_service_all ON referrals
+    FOR ALL USING (
+      (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'service_role'
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 
 -- ── 3. RESUME_SCORE_QUEUE TABLE (Cost Optimization 5.2: Batch API) ─────────
@@ -113,13 +119,19 @@ CREATE INDEX IF NOT EXISTS idx_rsq_batch
 -- RLS
 ALTER TABLE resume_score_queue ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY rsq_user_read ON resume_score_queue
-  FOR SELECT USING (auth.uid() = user_id);
+DO $$ BEGIN
+  CREATE POLICY rsq_user_read ON resume_score_queue
+    FOR SELECT USING (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY rsq_service_all ON resume_score_queue
-  FOR ALL USING (
-    (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'service_role'
-  );
+DO $$ BEGIN
+  CREATE POLICY rsq_service_all ON resume_score_queue
+    FOR ALL USING (
+      (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'service_role'
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 
 -- ── 4. pg_cron: Trial Expiry Checker ───────────────────────────────────────

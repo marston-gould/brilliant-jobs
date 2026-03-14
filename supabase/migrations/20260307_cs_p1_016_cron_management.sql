@@ -17,20 +17,29 @@ CREATE TABLE IF NOT EXISTS public.cron_alert_config (
 -- RLS: admin only
 ALTER TABLE public.cron_alert_config ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "admin_cron_alert_config_select" ON public.cron_alert_config
-  FOR SELECT USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-  );
+DO $$ BEGIN
+  CREATE POLICY "admin_cron_alert_config_select" ON public.cron_alert_config
+    FOR SELECT USING (
+      EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "admin_cron_alert_config_insert" ON public.cron_alert_config
-  FOR INSERT WITH CHECK (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-  );
+DO $$ BEGIN
+  CREATE POLICY "admin_cron_alert_config_insert" ON public.cron_alert_config
+    FOR INSERT WITH CHECK (
+      EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "admin_cron_alert_config_update" ON public.cron_alert_config
-  FOR UPDATE USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-  );
+DO $$ BEGIN
+  CREATE POLICY "admin_cron_alert_config_update" ON public.cron_alert_config
+    FOR UPDATE USING (
+      EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- ═══════════════════════════════════════════════════════════
 -- 0.161: Cron Management RPC Functions (service_role only)

@@ -87,14 +87,17 @@ CREATE INDEX IF NOT EXISTS idx_availability_status ON public.availability_checks
 
 ALTER TABLE public.availability_checks ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Admin read availability"
-  ON public.availability_checks FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
-    )
-  );
+DO $$ BEGIN
+  CREATE POLICY "Admin read availability"
+    ON public.availability_checks FOR SELECT
+    USING (
+      EXISTS (
+        SELECT 1 FROM public.profiles
+        WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Grant service role full access for EF writes
 GRANT ALL ON public.availability_checks TO service_role;

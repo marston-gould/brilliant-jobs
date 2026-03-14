@@ -27,12 +27,18 @@ CREATE TABLE IF NOT EXISTS city_pages (
 ALTER TABLE city_pages ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "city_pages_anon_select" ON city_pages;
-CREATE POLICY "city_pages_anon_select" ON city_pages
-  FOR SELECT TO anon USING (true);
+DO $$ BEGIN
+  CREATE POLICY "city_pages_anon_select" ON city_pages
+    FOR SELECT TO anon USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 DROP POLICY IF EXISTS "city_pages_auth_select" ON city_pages;
-CREATE POLICY "city_pages_auth_select" ON city_pages
-  FOR SELECT TO authenticated USING (true);
+DO $$ BEGIN
+  CREATE POLICY "city_pages_auth_select" ON city_pages
+    FOR SELECT TO authenticated USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_city_pages_slug ON city_pages(slug);
 CREATE INDEX IF NOT EXISTS idx_city_pages_job_count ON city_pages(job_count DESC);
@@ -56,9 +62,15 @@ CREATE TABLE IF NOT EXISTS city_popular_pills (
 ALTER TABLE city_popular_pills ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "city_popular_pills_anon_select" ON city_popular_pills;
-CREATE POLICY "city_popular_pills_anon_select" ON city_popular_pills
-  FOR SELECT TO anon USING (true);
+DO $$ BEGIN
+  CREATE POLICY "city_popular_pills_anon_select" ON city_popular_pills
+    FOR SELECT TO anon USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 DROP POLICY IF EXISTS "city_popular_pills_auth_select" ON city_popular_pills;
-CREATE POLICY "city_popular_pills_auth_select" ON city_popular_pills
-  FOR SELECT TO authenticated USING (true);
+DO $$ BEGIN
+  CREATE POLICY "city_popular_pills_auth_select" ON city_popular_pills
+    FOR SELECT TO authenticated USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;

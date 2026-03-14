@@ -27,18 +27,24 @@ CREATE INDEX idx_client_errors_fingerprint ON public.client_errors (fingerprint,
 -- RLS: users can insert their own errors, admins can read all
 ALTER TABLE public.client_errors ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can insert own errors"
-  ON public.client_errors FOR INSERT
-  WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
+DO $$ BEGIN
+  CREATE POLICY "Users can insert own errors"
+    ON public.client_errors FOR INSERT
+    WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Admins can read all errors"
-  ON public.client_errors FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
-    )
-  );
+DO $$ BEGIN
+  CREATE POLICY "Admins can read all errors"
+    ON public.client_errors FOR SELECT
+    USING (
+      EXISTS (
+        SELECT 1 FROM public.profiles
+        WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Materialized view for error rate monitoring (refreshed by pg_cron)
 CREATE MATERIALIZED VIEW IF NOT EXISTS public.mv_error_rates AS

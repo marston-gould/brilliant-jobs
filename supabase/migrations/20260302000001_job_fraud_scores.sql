@@ -17,14 +17,20 @@ CREATE TABLE IF NOT EXISTS job_fraud_scores (
 );
 
 -- 2. Add constraint for valid fraud labels
-ALTER TABLE job_fraud_scores 
-  ADD CONSTRAINT chk_fraud_label 
-  CHECK (fraud_label IN ('safe', 'caution', 'suspicious', 'unknown'));
+DO $$ BEGIN
+  ALTER TABLE job_fraud_scores 
+    ADD CONSTRAINT chk_fraud_label 
+    CHECK (fraud_label IN ('safe', 'caution', 'suspicious', 'unknown'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- 3. Add constraint for valid score range
-ALTER TABLE job_fraud_scores 
-  ADD CONSTRAINT chk_fraud_score_range 
-  CHECK (fraud_score >= 0.000 AND fraud_score <= 1.000);
+DO $$ BEGIN
+  ALTER TABLE job_fraud_scores 
+    ADD CONSTRAINT chk_fraud_score_range 
+    CHECK (fraud_score >= 0.000 AND fraud_score <= 1.000);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- 4. Indexes for common query patterns
 CREATE INDEX IF NOT EXISTS idx_fraud_scores_label ON job_fraud_scores(fraud_label);
@@ -35,21 +41,33 @@ CREATE INDEX IF NOT EXISTS idx_fraud_scores_scored_at ON job_fraud_scores(scored
 ALTER TABLE job_fraud_scores ENABLE ROW LEVEL SECURITY;
 
 -- Anyone can read fraud scores (public data for job seekers)
-CREATE POLICY "Anyone can read fraud scores"
-  ON job_fraud_scores FOR SELECT USING (true);
+DO $$ BEGIN
+  CREATE POLICY "Anyone can read fraud scores"
+    ON job_fraud_scores FOR SELECT USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Only service role can write fraud scores (Edge Function)
-CREATE POLICY "Service role writes fraud scores"
-  ON job_fraud_scores FOR INSERT 
-  WITH CHECK (current_setting('request.jwt.claims', true)::jsonb->>'role' = 'service_role');
+DO $$ BEGIN
+  CREATE POLICY "Service role writes fraud scores"
+    ON job_fraud_scores FOR INSERT 
+    WITH CHECK (current_setting('request.jwt.claims', true)::jsonb->>'role' = 'service_role');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Service role updates fraud scores"
-  ON job_fraud_scores FOR UPDATE 
-  USING (current_setting('request.jwt.claims', true)::jsonb->>'role' = 'service_role');
+DO $$ BEGIN
+  CREATE POLICY "Service role updates fraud scores"
+    ON job_fraud_scores FOR UPDATE 
+    USING (current_setting('request.jwt.claims', true)::jsonb->>'role' = 'service_role');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Service role deletes fraud scores"
-  ON job_fraud_scores FOR DELETE 
-  USING (current_setting('request.jwt.claims', true)::jsonb->>'role' = 'service_role');
+DO $$ BEGIN
+  CREATE POLICY "Service role deletes fraud scores"
+    ON job_fraud_scores FOR DELETE 
+    USING (current_setting('request.jwt.claims', true)::jsonb->>'role' = 'service_role');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- 6. Comment the table
 COMMENT ON TABLE job_fraud_scores IS 'ML-powered fraud detection scores for job postings. Scored by score-job-fraud Edge Function.';

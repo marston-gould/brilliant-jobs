@@ -19,15 +19,21 @@ CREATE TABLE IF NOT EXISTS public.health_check_log (
 
 ALTER TABLE public.health_check_log ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Admin read health_check_log"
-  ON public.health_check_log FOR SELECT
-  USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-  );
+DO $$ BEGIN
+  CREATE POLICY "Admin read health_check_log"
+    ON public.health_check_log FOR SELECT
+    USING (
+      EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Service insert health_check_log"
-  ON public.health_check_log FOR INSERT
-  WITH CHECK (true);
+DO $$ BEGIN
+  CREATE POLICY "Service insert health_check_log"
+    ON public.health_check_log FOR INSERT
+    WITH CHECK (true);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_health_check_log_created ON public.health_check_log(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_health_check_log_overall ON public.health_check_log(overall, created_at DESC);
@@ -55,11 +61,14 @@ CREATE TABLE IF NOT EXISTS public.alert_rules (
 
 ALTER TABLE public.alert_rules ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Admin manage alert_rules"
-  ON public.alert_rules FOR ALL
-  USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-  );
+DO $$ BEGIN
+  CREATE POLICY "Admin manage alert_rules"
+    ON public.alert_rules FOR ALL
+    USING (
+      EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- ─── Alert History — records of fired alerts ───
 CREATE TABLE IF NOT EXISTS public.alert_history (
@@ -78,11 +87,14 @@ CREATE TABLE IF NOT EXISTS public.alert_history (
 
 ALTER TABLE public.alert_history ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Admin manage alert_history"
-  ON public.alert_history FOR ALL
-  USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-  );
+DO $$ BEGIN
+  CREATE POLICY "Admin manage alert_history"
+    ON public.alert_history FOR ALL
+    USING (
+      EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_alert_history_created ON public.alert_history(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_alert_history_status ON public.alert_history(status, created_at DESC);

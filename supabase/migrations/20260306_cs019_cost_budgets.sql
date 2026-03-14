@@ -17,20 +17,26 @@ CREATE TABLE IF NOT EXISTS public.vendor_cost_budgets (
 
 ALTER TABLE public.vendor_cost_budgets ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Admin read vendor_cost_budgets"
-  ON public.vendor_cost_budgets FOR SELECT
-  USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-  );
+DO $$ BEGIN
+  CREATE POLICY "Admin read vendor_cost_budgets"
+    ON public.vendor_cost_budgets FOR SELECT
+    USING (
+      EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE POLICY "Admin write vendor_cost_budgets"
-  ON public.vendor_cost_budgets FOR ALL
-  USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-  )
-  WITH CHECK (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-  );
+DO $$ BEGIN
+  CREATE POLICY "Admin write vendor_cost_budgets"
+    ON public.vendor_cost_budgets FOR ALL
+    USING (
+      EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    )
+    WITH CHECK (
+      EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Seed default budgets for known vendors
 INSERT INTO public.vendor_cost_budgets (vendor, monthly_budget, alert_threshold_pct, notes) VALUES
