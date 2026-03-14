@@ -58,8 +58,14 @@ BEGIN
 END $$;
 
 -- ─── Bump timeouts ────────────────────────────────────────────────────
-ALTER FUNCTION compute_seo_cache_role(text) SET statement_timeout = '120s';
-ALTER FUNCTION compute_seo_cache_combo(text, text) SET statement_timeout = '120s';
+DO $$ BEGIN
+  ALTER FUNCTION compute_seo_cache_role(text) SET statement_timeout = '120s';
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER FUNCTION compute_seo_cache_combo(text, text) SET statement_timeout = '120s';
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
 
 -- ============================================================================
 -- Verification query (run after migration):

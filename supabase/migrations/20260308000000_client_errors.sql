@@ -19,10 +19,10 @@ CREATE TABLE IF NOT EXISTS public.client_errors (
 );
 
 -- Indexes for monitoring queries
-CREATE INDEX idx_client_errors_created ON public.client_errors (created_at DESC);
-CREATE INDEX idx_client_errors_label   ON public.client_errors (label, created_at DESC);
-CREATE INDEX idx_client_errors_severity ON public.client_errors (severity, created_at DESC);
-CREATE INDEX idx_client_errors_fingerprint ON public.client_errors (fingerprint, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_client_errors_created ON public.client_errors (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_client_errors_label   ON public.client_errors (label, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_client_errors_severity ON public.client_errors (severity, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_client_errors_fingerprint ON public.client_errors (fingerprint, created_at DESC);
 
 -- RLS: users can insert their own errors, admins can read all
 ALTER TABLE public.client_errors ENABLE ROW LEVEL SECURITY;

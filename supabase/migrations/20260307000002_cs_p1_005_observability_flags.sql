@@ -124,6 +124,10 @@ GRANT SELECT ON public.v_availability_summary TO authenticated;
 
 -- ─── 6. Schedule evaluate-alerts via pg_cron (every 5 minutes) ───
 -- Note: Requires pg_cron extension enabled in Supabase project settings
+DO $$ BEGIN
+  PERFORM cron.unschedule('evaluate-alerts-5min');
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
 SELECT cron.schedule(
   'evaluate-alerts-5min',
   '*/5 * * * *',
@@ -140,6 +144,10 @@ SELECT cron.schedule(
 );
 
 -- ─── 7. Schedule availability checks via pg_cron (every 10 minutes) ───
+DO $$ BEGIN
+  PERFORM cron.unschedule('availability-check-10min');
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
 SELECT cron.schedule(
   'availability-check-10min',
   '*/10 * * * *',

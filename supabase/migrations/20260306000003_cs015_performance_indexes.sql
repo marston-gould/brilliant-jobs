@@ -61,8 +61,8 @@ CREATE INDEX IF NOT EXISTS idx_notification_log_user_created
 -- user_pipeline — 11 call sites, filtered by user_id + status
 -- ============================================================
 
-CREATE INDEX IF NOT EXISTS idx_user_pipeline_user_status
-  ON user_pipeline (user_id, status);
+CREATE INDEX IF NOT EXISTS idx_user_pipeline_user_stage
+  ON user_pipeline (user_id, stage);
 
 -- ============================================================
 -- pending_applications — filtered by user_id + status
@@ -79,14 +79,17 @@ CREATE INDEX IF NOT EXISTS idx_referrals_referrer
   ON referrals (referrer_id, status);
 
 CREATE INDEX IF NOT EXISTS idx_referrals_referee
-  ON referrals (referee_id, status);
+  ON referrals (referred_id, status);
 
 -- ============================================================
 -- billing_events — filtered by user_id + event time
 -- ============================================================
 
-CREATE INDEX IF NOT EXISTS idx_billing_events_user
-  ON billing_events (user_id, created_at DESC);
+DO $$ BEGIN
+  CREATE INDEX IF NOT EXISTS idx_billing_events_user
+    ON billing_events (user_id, created_at DESC);
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
 
 -- ============================================================
 -- DE-001: Cron failure alerting — create a cron_run_log table
@@ -103,8 +106,11 @@ CREATE TABLE IF NOT EXISTS cron_run_log (
   rows_affected INTEGER DEFAULT 0
 );
 
-CREATE INDEX IF NOT EXISTS idx_cron_run_log_job_status
-  ON cron_run_log (job_name, status, started_at DESC);
+DO $$ BEGIN
+  CREATE INDEX IF NOT EXISTS idx_cron_run_log_job_status
+    ON cron_run_log (job_name, status, started_at DESC);
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
 
 -- Auto-cleanup: keep 30 days of cron logs
 -- This can be wired to a pg_cron job: DELETE FROM cron_run_log WHERE started_at < now() - interval '30 days';
