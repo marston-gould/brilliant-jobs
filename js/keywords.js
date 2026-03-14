@@ -345,35 +345,66 @@ function computeJobMatchScore(job) {
 
   if (!resume || !resume.keywords || !resume.keywords.length) return null;
 
-  var text = stripHtmlToText(job.content);
-  var words = tokenize(text);
-
-  // Count term frequency within this job (not arbitrary Set order)
-  var termCounts = {};
-  for (var w = 0; w < words.length; w++) {
-    var word = words[w];
-    if (!KW_STOPWORDS.has(word) && !KW_GENERIC.has(word) && word.length > 2) {
-      termCounts[word] = (termCounts[word] || 0) + 1;
-    }
-  }
-
-  // Rank by frequency — top repeated terms are the real requirements
-  var jdTerms = Object.entries(termCounts)
-    .sort(function(a, b) { return b[1] - a[1]; })
-    .slice(0, 40)
-    .map(function(e) { return e[0]; });
-
-  if (jdTerms.length === 0) return null;
-
   var resumeTerms = new Set(resume.keywords.map(function(k){ return k[0].toLowerCase(); }));
   var resumeText = (resume.extractedText || '').toLowerCase();
 
-  var matched = 0;
-  for (var t = 0; t < jdTerms.length; t++) {
-    if (resumeTerms.has(jdTerms[t]) || resumeText.includes(jdTerms[t])) matched++;
+  var jdTerms = [];
+  var termSource = 'content';
+
+  // Prefer AI-extracted jd_skills — cleaner signal than raw word frequency
+  if (job.jd_skills && job.jd_skills.length >= 5) {
+    jdTerms = job.jd_skills.map(function(s){ return s.toLowerCase().trim(); }).filter(Boolean);
+    // Also add jd_requirements if available
+    if (job.jd_requirements && job.jd_requirements.length > 0) {
+      var reqTerms = job.jd_requirements.map(function(r){ return r.toLowerCase().trim(); });
+      // Add unique ones
+      reqTerms.forEach(function(r){ if (jdTerms.indexOf(r) < 0) jdTerms.push(r); });
+    }
+    termSource = 'ai_skills';
+  } else {
+    // Fallback: raw word frequency from JD content
+    var text = stripHtmlToText(job.content);
+    var words = tokenize(text);
+    var termCounts = {};
+    for (var w = 0; w < words.length; w++) {
+      var word = words[w];
+      if (!KW_STOPWORDS.has(word) && !KW_GENERIC.has(word) && word.length > 2) {
+        termCounts[word] = (termCounts[word] || 0) + 1;
+      }
+    }
+    jdTerms = Object.entries(termCounts)
+      .sort(function(a, b) { return b[1] - a[1]; })
+      .slice(0, 40)
+      .map(function(e) { return e[0]; });
   }
+
+  if (jdTerms.length === 0) return null;
+
+  var matched = 0;
+  var topMatched = [];
+  var topMissing = [];
+
+  for (var t = 0; t < jdTerms.length; t++) {
+    var term = jdTerms[t];
+    // Match if term appears in resume keywords or anywhere in extracted text
+    var found = resumeTerms.has(term) || resumeText.includes(term);
+    if (found) {
+      matched++;
+      topMatched.push(term);
+    } else {
+      topMissing.push(term);
+    }
+  }
+
   var score = jdTerms.length > 0 ? Math.round((matched / jdTerms.length) * 100) : null;
-  return score !== null ? { score: score, resumeName: resume.name } : null;
+  return score !== null ? {
+    score: score,
+    resumeName: resume.name,
+    topMatched: topMatched,
+    topMissing: topMissing,
+    termSource: termSource,
+    total: jdTerms.length
+  } : null;
 }
 
 // Batch-compute match scores for visible jobs
@@ -385,18 +416,19 @@ function computeVisibleJobScores() {
     if (result !== null) {
       jobMatchScores[job.greenhouse_id] = result;
       var cell = document.querySelector('tr[data-jobid="' + job.greenhouse_id + '"] .jt-match');
-      if (cell) cell.innerHTML = matchBadge(result);
+      if (cell) cell.innerHTML = matchBadge(result, job.greenhouse_id);
     }
   }
 }
 
-function matchBadge(result) {
+function matchBadge(result, jobId) {
   if (!result) return '<span style="color:var(--text-faint);font-size:10px;">\u2014</span>';
   var score = typeof result === 'number' ? result : result.score;
   var rName = typeof result === 'object' ? (result.resumeName || '') : '';
   var color = score >= 80 ? 'var(--green)' : score >= 60 ? '#22c55e' : score >= 40 ? 'var(--warm)' : 'var(--red)';
   var tooltip = score + '% match' + (rName ? ' \u00b7 ' + rName.replace(/"/g, '&quot;') : '');
-  return '<span title="' + tooltip + '" style="font-family:var(--mono);font-size:11px;font-weight:600;color:' + color + ';cursor:help;">' + score + '</span>';
+  var clickAttr = jobId ? ' onclick="event.stopPropagation();showScoreExplainer(\'' + jobId + '\')" style="font-family:var(--mono);font-size:11px;font-weight:600;color:' + color + ';cursor:pointer;text-decoration:underline dotted;"' : ' style="font-family:var(--mono);font-size:11px;font-weight:600;color:' + color + ';cursor:help;"';
+  return '<span title="' + tooltip + '" ' + clickAttr + '>' + score + '</span>';
 }
 
 // Main readiness analysis — runs automatically on Resumes page load, or manually via button
@@ -2811,6 +2843,110 @@ async function aiScoreJob(jobId) {
   }
 }
 
+
+// ─── Score Explainer Panel ────────────────────────────────────────────
+// Shows a popup explaining exactly why a job scored the way it did.
+// Tells user: which terms matched, which are missing, and what data source was used.
+window.showScoreExplainer = function(jobId) {
+  var result = jobMatchScores[jobId];
+  if (!result) return;
+
+  var job = currentJobs && currentJobs.find(function(j){ return j.greenhouse_id === jobId; });
+  var jobTitle = job ? job.title : jobId;
+  var score = result.score;
+  var color = score >= 80 ? 'var(--green)' : score >= 60 ? '#22c55e' : score >= 40 ? 'var(--warm)' : 'var(--red)';
+
+  var matched = result.topMatched || [];
+  var missing = result.topMissing || [];
+  var source = result.termSource || 'content';
+  var total = result.total || (matched.length + missing.length);
+  var resumeName = result.resumeName || '';
+
+  // Source label
+  var sourceLabel = source === 'ai_skills'
+    ? '<span style="color:var(--green);font-weight:600;">AI-extracted skills</span>'
+    : '<span style="color:var(--warm);font-weight:600;">word frequency fallback</span> <span style="color:var(--text-faint);font-size:10px;">(no AI skills yet — add credits to improve)</span>';
+
+  var pill = function(t, hit) {
+    var bg = hit ? 'rgba(34,197,94,.12)' : 'rgba(239,68,68,.10)';
+    var col = hit ? 'var(--green)' : 'var(--red)';
+    var icon = hit ? '✓' : '✗';
+    return '<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:4px;background:' + bg + ';color:' + col + ';font-size:11px;font-weight:500;margin:2px;">' + icon + ' ' + escapeHtml(t) + '</span>';
+  };
+
+  var matchedHtml = matched.slice(0, 20).map(function(t){ return pill(t, true); }).join('');
+  var missingHtml = missing.slice(0, 20).map(function(t){ return pill(t, false); }).join('');
+
+  // Build overall tip
+  var tip = '';
+  if (score < 40) {
+    tip = 'Very low match. Your resume likely needs these terms added or the role may be a poor fit.';
+  } else if (score < 60) {
+    tip = 'Below average. Adding a few of the missing terms to your resume could meaningfully improve your score.';
+  } else if (score < 80) {
+    tip = 'Decent match. You cover most of the basics but a tailored rewrite could push this higher.';
+  } else {
+    tip = 'Strong match. Your resume aligns well with this role\'s requirements.';
+  }
+
+  var html = [
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">',
+      '<div>',
+        '<div style="font-size:13px;font-weight:700;color:var(--text);">Score Breakdown</div>',
+        '<div style="font-size:11px;color:var(--text-faint);margin-top:1px;">' + escapeHtml(jobTitle) + (resumeName ? ' · ' + escapeHtml(resumeName) : '') + '</div>',
+      '</div>',
+      '<div style="font-family:var(--mono);font-size:28px;font-weight:800;color:' + color + ';">' + score + '%</div>',
+    '</div>',
+    '<div style="font-size:11px;color:var(--text-dim);margin-bottom:12px;padding:8px 10px;background:var(--bg-input);border-radius:6px;">',
+      'Scored against: ' + sourceLabel + ' · ' + matched.length + '/' + total + ' terms matched',
+    '</div>',
+    tip ? '<div style="font-size:12px;color:var(--text-dim);margin-bottom:12px;font-style:italic;">' + tip + '</div>' : '',
+    matched.length > 0 ? [
+      '<div style="font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Matched (' + matched.length + ')</div>',
+      '<div style="display:flex;flex-wrap:wrap;margin-bottom:12px;">' + matchedHtml + '</div>',
+    ].join('') : '',
+    missing.length > 0 ? [
+      '<div style="font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Missing from your resume (' + Math.min(missing.length, 20) + ')</div>',
+      '<div style="display:flex;flex-wrap:wrap;margin-bottom:12px;">' + missingHtml + '</div>',
+    ].join('') : '',
+    missing.length > 0 ? '<div style="font-size:11px;color:var(--text-faint);margin-top:4px;">Use Boost to rewrite your resume targeting these terms.</div>' : '',
+  ].join('');
+
+  // Render into a popup overlay
+  var overlay = document.createElement('div');
+  overlay.id = 'score-explainer-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;';
+  overlay.addEventListener('click', function(e){ if (e.target === overlay) overlay.remove(); });
+
+  var modal = document.createElement('div');
+  modal.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px 24px;width:520px;max-width:92vw;max-height:80vh;overflow-y:auto;box-shadow:0 16px 40px rgba(0,0,0,.3);animation:fadeIn .15s ease;position:relative;';
+  modal.innerHTML = html;
+
+  var closeBtn = document.createElement('button');
+  closeBtn.innerHTML = '&times;';
+  closeBtn.style.cssText = 'position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-faint);line-height:1;';
+  closeBtn.addEventListener('click', function(){ overlay.remove(); });
+  modal.appendChild(closeBtn);
+
+  // Boost button if score < 85
+  if (score < 85 && job && typeof boostMatch === 'function') {
+    var boostBtn = document.createElement('button');
+    boostBtn.className = 'btn btn-primary';
+    boostBtn.style.cssText = 'margin-top:12px;width:100%;justify-content:center;';
+    boostBtn.textContent = 'Boost Resume for this Role';
+    boostBtn.addEventListener('click', function(){
+      overlay.remove();
+      boostMatch(jobId, jobTitle, job.company_name);
+    });
+    modal.appendChild(boostBtn);
+  }
+
+  overlay.appendChild(modal);
+  // Remove existing
+  var existing = document.getElementById('score-explainer-overlay');
+  if (existing) existing.remove();
+  document.body.appendChild(overlay);
+};
 
 function closeJobModal(e) {
   if (e && e.target !== e.currentTarget) return;
