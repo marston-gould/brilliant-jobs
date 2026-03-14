@@ -135,3 +135,9 @@
 | FB-TRIAL-001-S6 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
 | FB-TRIAL-001-S7 | Lead Platform Eng + Evolvability Strategist | Chief Architect + Forward-Looking Dev |
 | FB-GHOST-BADGE-001 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
+| FB-PI-001-S1 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + System Architect—Scalability |
+| FB-PI-001-S2 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
+| FB-PI-001-S3 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
+| FB-PI-001-S4 | Senior Frontend Eng + Lead Platform Eng | Chief Architect + Evolvability Strategist |
+| FB-PI-001-S5 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
+| FB-PI-001-S6 | Full Pod 3 | Full Pod 4 |

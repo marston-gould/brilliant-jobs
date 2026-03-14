@@ -2950,7 +2950,38 @@ None.
 
 ## Last Completed Session
 
-**EDE-001 — Event-Driven JD Enrichment with Eligibility Gate**
+**FB-PI-001-S1 — Pipeline Intelligence: Schema + Inbox Pipeline**
+- Completed: 2026-03-15
+- Product version bumped: `v9.08` → `v9.09` (no JS/HTML changes — EF + migration only; gmail-scan EF extended with calendar, no dashboard surfaces changed)
+- ROADMAP.md updated: FB-PI-001-S1 → ✅
+- roadmap.html updated: FB-PI-001-S1 → `s: 'done'`, p: 100
+
+**DB (migration 20260315000002_fb_pi_001_s1_schema.sql — applied to prod):**
+- `pipeline_signal_inbox` table: id, user_id, source (gmail/calendar), source_message_id, raw_subject, raw_snippet, raw_from, raw_date, raw_metadata (jsonb), classification_status (pending/classified/skipped/error), retry_count, created_at. UNIQUE(user_id,source,source_message_id) for dedup. Pending index with retry_count<3. RLS: users read own, service_role full. HOOK H-PI-01 comment (signal source plugin). SCAR S-PI-04 comment (user-defined rule engine on raw_metadata).
+- `user_scan_checkpoints` table: per-user cursor storage. last_gmail_scan_at, last_gmail_history_id (incremental scanning), last_calendar_scan_at. gmail_scan_status / calendar_scan_status CHECK columns (idle/scanning/error/token_error/not_connected). consecutive_errors (99 = surface reconnect prompt). updated_at trigger. SCAR S-PI-05 comment (Outlook/iCal activation point).
+- `pipeline_signals` schema extended: 9 new columns — inbox_id (FK to pipeline_signal_inbox), signal_type (ACK/REJ-PRE/INT/REJ-POST/OFFER/RESCHED/CAL-INT/CAL-OFFER/MANUAL), confidence_score (numeric 0–1), confidence_level (high/medium/low), extracted_fields (jsonb), matched_application_id (uuid), action_taken (auto_moved/prompted/dismissed/confirmed/error), target_stage, previous_stage (for undo), user_response (confirmed/dismissed/modified), user_responded_at.
+
+**Edge Function (gmail-scan — rewritten, deployed):**
+- New Gmail inbox scan path: broad subject-based query across all application-related emails (interview/offer/rejection/schedule/calendly). Fetches Subject+From+Date metadata. Writes to pipeline_signal_inbox via writeToInbox() with dedup upsert (ignoreDuplicates). Tracks historyId for next incremental scan.
+- New Calendar scan path: Google Calendar API v3, primary calendar only. Filters events matching 22 interview/offer keywords. Extracts organizer, attendees, video link (conferenceData), event start/end. Skips events with no external organizer. Handles 403 insufficientPermissions gracefully (sets calendar_scan_status=not_connected).
+- Checkpoint management: getOrCreateCheckpoint() + updateCheckpoint() per user. Sets status=scanning before, status=idle after, status=token_error/error on failure. consecutive_errors=99 on token failure to surface reconnect prompt on dashboard.
+- Legacy backward compat: scanUserEmailsLegacy() + createPipelineSignals() preserved — email_signals table still written, pipeline_signals with pending_confirmation status still created.
+- Wall-time safety: isOvertime() checked in all 3 scan paths + main loop. 120s limit enforced.
+- Stats response: usersProcessed, totalGmailInbox, totalCalendarInbox, legacyEmailSignals, pipelineSignalsCreated, errors, elapsed_ms.
+
+**Tests:** 100 validation tests (tests/fb-pi-001-s1-schema-inbox.test.js — all passing)
+
+**Modified:**
+  - `supabase/functions/gmail-scan/index.ts` — full rewrite with calendar + inbox pipeline
+  - `docs/scaling/pod-team-manifest.md` — FB-PI-001 S1–S6 pairing assignments
+  - `ROADMAP.md` — FB-PI-001 section added, S1 → ✅
+  - `roadmap.html` — FB-PI-001-S1 → done/100, S2–S6 todo
+
+**Created:**
+  - `supabase/migrations/20260315000002_fb_pi_001_s1_schema.sql` — schema
+  - `tests/fb-pi-001-s1-schema-inbox.test.js` — 100 validation tests
+
+**Previous: EDE-001 — Event-Driven JD Enrichment with Eligibility Gate**
 - Completed: 2026-03-15
 - Product version bumped: `v9.06` → `v9.07`
 - ROADMAP.md updated: EDE-001 → ✅
@@ -2982,7 +3013,20 @@ None.
 
 ## Next Session
 
-No specific session queued.
+**FB-PI-001-S2 — AI Classifier Edge Function**
+
+Entry gates:
+- S1 migration (20260315000002) applied to prod ✅
+- pipeline_signal_inbox table exists with data flowing in ✅
+- gmail-scan EF deployed ✅
+
+Deliverables:
+- `classify-pipeline-signal` EF: reads pipeline_signal_inbox WHERE classification_status='pending' AND retry_count<3. Sends raw_subject + raw_snippet + raw_from + raw_date + source to Anthropic Sonnet with structured output schema. Returns signal_type, confidence, extracted_fields (company, role, date, interviewer_names, format, scheduling_link). Prompt cached (system prompt ephemeral). Max 10 per cron invocation. Sets classification_status='classified' or 'error'. Increments retry_count on error.
+- Gateway route #124.
+- pg_cron: classify-pipeline-signals every 15 minutes.
+- 8 signal types: ACK, REJ-PRE, INT, REJ-POST, OFFER, RESCHED, CAL-INT, CAL-OFFER.
+- Prompt with few-shot examples for all 8 types.
+- Tests: 70+ validation tests.
 
 
 ## Deferred: SA-001 / SA-002 / SA-003 (Typesense)
@@ -3013,7 +3057,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.02`** | **FB-GHOST-BADGE-001: Ghost Intelligence Badges** |
+| **Product (BJ_VERSION)** | **`v9.09`** | **FB-PI-001-S1: Pipeline Intelligence Schema + Inbox** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
@@ -3021,7 +3065,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 | **SPA Scaffold** | **`spa@1.0.0-scaffold`** | **SA-013** |
 | **Feature Flags** | **`infra@feature-flags-v1.0.0`** | **SA-025** |
 | **Event Bus** | **`infra@event-bus-v1.0.0`** | **SA-024** |
-| **API Gateway** | `infra@gateway-v1.0.0` | FB-TRIAL-001-S6 (119 routes) |
+| **API Gateway** | `infra@gateway-v1.0.0` | EDE-001 (123 routes) |
 | **Capacity Model** | **`infra@capacity-model-v1.0.0`** | **SA-028** |
 | **Deploy Tracker** | **`infra@deploy-tracker-v1.0.0`** | **BI-01** |
 | **Build Analytics** | **`infra@build-analytics-v1.0.0`** | **BI-02** |
