@@ -331,25 +331,20 @@ DO $$ BEGIN
     EXECUTE 'ALTER TABLE content_stories ENABLE ROW LEVEL SECURITY';
 
     EXECUTE $policy$
-DO $$ BEGIN
         CREATE POLICY "public_read_published_stories"
           ON content_stories FOR SELECT
           USING (status = 'published')
       $policy$;
-EXCEPTION WHEN OTHERS THEN NULL;
-END $$;
 
     EXECUTE $policy$
-DO $$ BEGIN
         CREATE POLICY "admin_manage_stories"
           ON content_stories FOR ALL
           USING (
             EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
           )
       $policy$;
-EXCEPTION WHEN OTHERS THEN NULL;
-END $$;
   END IF;
+EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 
