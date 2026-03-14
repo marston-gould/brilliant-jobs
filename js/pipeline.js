@@ -56,6 +56,134 @@ async function loadPendingSignals() {
   }
 }
 
+// ── FB-PI-001 S4: Untracked app confirmation cards ─────────────────────────
+// Keyed by confirmation id
+var _pendingConfirmations = [];
+
+async function loadPendingConfirmations() {
+  if (!currentUser?.id) return;
+  try {
+    const { data, error } = await sb.from('pipeline_pending_confirmations')
+      .select('id,signal_id,detected_company,detected_role,detected_stage,source_email_subject,source_email_date,source,created_at')
+      .eq('user_id', currentUser.id)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(20);
+    if (error) throw error;
+    _pendingConfirmations = data || [];
+    renderConfirmationCards();
+  } catch (e) {
+    reportError('pipeline:confirmations', e);
+  }
+}
+
+function renderConfirmationCards() {
+  var container = document.getElementById('pi-confirmation-cards');
+  if (!container) return;
+  if (!_pendingConfirmations.length) { container.innerHTML = ''; container.style.display = 'none'; return; }
+  container.style.display = 'block';
+
+  var STAGE_LABELS = { applied:'Applied', responded:'Responded', interview:'Interview', offer:'Offer', rejected:'Rejected' };
+
+  var html = _pendingConfirmations.map(function(conf) {
+    var dateStr = conf.source_email_date ? new Date(conf.source_email_date).toLocaleDateString('en-US', {month:'short',day:'numeric'}) : '';
+    var sourceIcon = conf.source === 'calendar' ? '📅' : '✉️';
+    var roleStr = conf.detected_role ? '<span style="color:var(--text-secondary);font-size:12px;margin-left:6px;">'+escHtml(conf.detected_role)+'</span>' : '';
+    var subjectStr = conf.source_email_subject ? '<div style="font-size:11px;color:var(--text-secondary);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escHtml(conf.source_email_subject.slice(0,80))+'</div>' : '';
+    var stageLabel = STAGE_LABELS[conf.detected_stage] || conf.detected_stage;
+    return '<div class="pi-conf-card" data-conf-id="'+conf.id+'" style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:var(--bg-card);border:1px solid #3B82F6;border-left:3px solid #3B82F6;border-radius:8px;margin-bottom:8px;">'
+      + '<div style="flex:1;min-width:0;">'
+      +   '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
+      +     '<span style="font-size:13px;">'+sourceIcon+'</span>'
+      +     '<strong style="font-size:13px;color:var(--text);">'+escHtml(conf.detected_company)+'</strong>'
+      +     roleStr
+      +     (dateStr ? '<span style="font-size:11px;color:var(--text-secondary);margin-left:auto;">'+dateStr+'</span>' : '')
+      +   '</div>'
+      +   subjectStr
+      +   '<div style="margin-top:6px;font-size:11px;color:var(--text-secondary);">Detected stage: <strong>'+stageLabel+'</strong></div>'
+      + '</div>'
+      + '<div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">'
+      +   '<button class="pi-conf-add" data-id="'+conf.id+'" data-company="'+escHtml(conf.detected_company)+'" data-role="'+escHtml(conf.detected_role||'')+'" data-stage="'+conf.detected_stage+'" style="font-size:11px;padding:4px 10px;background:#3B82F6;color:#fff;border:none;border-radius:5px;cursor:pointer;white-space:nowrap;">Add to Pipeline</button>'
+      +   '<button class="pi-conf-dismiss" data-id="'+conf.id+'" style="font-size:11px;padding:4px 10px;background:transparent;color:var(--text-secondary);border:1px solid var(--border);border-radius:5px;cursor:pointer;">Dismiss</button>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+
+  container.innerHTML = '<div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em;">Detected Applications</div>' + html;
+
+  // Event delegation for add/dismiss buttons
+  container.onclick = function(e) {
+    var addBtn = e.target.closest('.pi-conf-add');
+    var dismissBtn = e.target.closest('.pi-conf-dismiss');
+    if (addBtn) {
+      var id = addBtn.getAttribute('data-id');
+      var company = addBtn.getAttribute('data-company');
+      var role = addBtn.getAttribute('data-role');
+      var stage = addBtn.getAttribute('data-stage');
+      confirmPendingApp(id, company, role, stage);
+    } else if (dismissBtn) {
+      dismissPendingApp(dismissBtn.getAttribute('data-id'));
+    }
+  };
+}
+
+async function confirmPendingApp(confId, company, role, stage) {
+  try {
+    // 1. Create user_pipeline entry
+    const now = new Date().toISOString();
+    const stageCol = stage + '_at';
+    const entry = {
+      user_id: currentUser.id,
+      company_name: company,
+      company_slug: company.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+      stage: stage,
+      stage_changed_at: now,
+      [stageCol]: now,
+    };
+    if (role) entry.job_title = role;
+    const { data: newApp, error: insertErr } = await sb.from('user_pipeline').insert(entry).select('id').single();
+    if (insertErr) throw insertErr;
+
+    // 2. Mark confirmation confirmed + store application id
+    await sb.from('pipeline_pending_confirmations').update({
+      status: 'confirmed',
+      confirmed_application_id: newApp.id,
+      resolved_at: now,
+    }).eq('id', confId).eq('user_id', currentUser.id);
+
+    if (typeof posthog !== 'undefined') posthog.capture('untracked_app_confirmed', { company, stage });
+    toastSuccess('Added "' + company + '" to your pipeline.');
+    await loadPendingConfirmations();
+    renderPipeline();
+  } catch (e) {
+    reportError('pipeline:confirm_app', e);
+    toastError('Failed to add application');
+  }
+}
+
+async function dismissPendingApp(confId) {
+  try {
+    await sb.from('pipeline_pending_confirmations').update({
+      status: 'dismissed',
+      resolved_at: new Date().toISOString(),
+    }).eq('id', confId).eq('user_id', currentUser.id);
+    if (typeof posthog !== 'undefined') posthog.capture('untracked_app_dismissed');
+    _pendingConfirmations = _pendingConfirmations.filter(c => c.id !== confId);
+    renderConfirmationCards();
+  } catch (e) {
+    reportError('pipeline:dismiss_app', e);
+    toastError('Failed to dismiss');
+  }
+}
+
+// Export for BJ namespace
+if (typeof window !== 'undefined') {
+  window.loadPendingConfirmations = loadPendingConfirmations;
+  window.confirmPendingApp = confirmPendingApp;
+  window.dismissPendingApp = dismissPendingApp;
+  window.renderConfirmationCards = renderConfirmationCards;
+}
+
 async function confirmPipelineSignal(signalId, action, correctedStage) {
   try {
     // PostHog: track signal actions
@@ -392,6 +520,7 @@ async function initPipeline() {
   await loadPipelineFromSupabase();
   await loadNewPipelineFromSupabase(); // S10: wire overlay pipeline load on init
   await loadPendingSignals();
+  await loadPendingConfirmations(); // FB-PI-001 S4
   // BUGFIX: Update hero Pipeline count after data loads (was never set on init)
   var heroSaved = $('#j-saved');
   if (heroSaved) heroSaved.textContent = savedJobIds.length.toLocaleString();

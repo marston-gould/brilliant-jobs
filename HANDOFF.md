@@ -2950,9 +2950,18 @@ None.
 
 ## Last Completed Session
 
-**FB-PI-001-S4 — Untracked App Confirmations + Dashboard Prompt Cards**
+**FB-PI-001-S5 — Staleness Engine**
 
 Entry gates:
+- S1–S4 complete ✅, full signal pipeline live end-to-end
+
+Deliverables (spec §6):
+- `check-pipeline-staleness` EF: reads non-archived user_pipeline entries, calculates days_since_stage_change, prompts at user_threshold (default 7d), auto-archives at 30d. Snooze via last_prompted_at + snooze period.
+- Staleness prompt cards in pipeline.js: gray accent, "No updates from [Company] in N days", Mark as [stage] / Archive / Snooze 7d actions.
+- Auto-archive: moves stage=archived, sets archived_at, sets action_taken=auto_archived in new pipeline_stage_log table.
+- Backward stage movement: existing movePipelineStage already allows any stage; add validation that previous stages are selectable in UI.
+- Undo: 48h window — store previous_stage in meta; renderPipeline shows undo toast on auto-archived entries.
+- Tests: 65+ validation tests.
 - S1 migration ✅, S2 classifier ✅, S3 matching ✅ — full pipeline live end-to-end
 
 Deliverables (spec §4.2.3 + §7.1):
@@ -3110,7 +3119,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.11`** | **FB-PI-001-S3: Application Matching + Stage Transitions** |
+| **Product (BJ_VERSION)** | **`v9.12`** | **FB-PI-001-S4: Untracked App Confirmations** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
@@ -3118,7 +3127,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 | **SPA Scaffold** | **`spa@1.0.0-scaffold`** | **SA-013** |
 | **Feature Flags** | **`infra@feature-flags-v1.0.0`** | **SA-025** |
 | **Event Bus** | **`infra@event-bus-v1.0.0`** | **SA-024** |
-| **API Gateway** | `infra@gateway-v1.0.0` | FB-PI-001-S3 (125 routes) |
+| **API Gateway** | `infra@gateway-v1.0.0` | FB-PI-001-S3 (125 routes — S4 no new routes) |
 | **Capacity Model** | **`infra@capacity-model-v1.0.0`** | **SA-028** |
 | **Deploy Tracker** | **`infra@deploy-tracker-v1.0.0`** | **BI-01** |
 | **Build Analytics** | **`infra@build-analytics-v1.0.0`** | **BI-02** |

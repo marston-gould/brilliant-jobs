@@ -231,7 +231,26 @@ async function processSignal(signal: SignalRow): Promise<{
     signal.confidence_level === "high" || signal.confidence_level === "medium";
 
   if (!entry) {
-    // Untracked application — always prompt (S4 will handle confirmation cards)
+    // Untracked application — create pending confirmation card (S4)
+    const detectedCompany = (extracted.company as string) || "Unknown Company";
+    const detectedRole = (extracted.role as string) || null;
+    const emailSubject = (signal.evidence_metadata?.raw_subject as string)
+      || signal.evidence_preview || null;
+    const emailDate = (signal.evidence_metadata?.raw_date as string) || null;
+
+    // Insert into pipeline_pending_confirmations (ignore duplicate per signal_id)
+    await sb.from("pipeline_pending_confirmations").upsert({
+      user_id: signal.user_id,
+      signal_id: signal.id,
+      detected_company: detectedCompany,
+      detected_role: detectedRole,
+      detected_stage: signal.proposed_stage || "applied",
+      source_email_subject: emailSubject,
+      source_email_date: emailDate,
+      source: signal.signal_source as "gmail" | "calendar",
+      status: "pending",
+    }, { onConflict: "signal_id", ignoreDuplicates: true });
+
     await sb.from("pipeline_signals").update({
       action_taken: "prompted",
       matched_application_id: null,
@@ -251,6 +270,13 @@ async function processSignal(signal: SignalRow): Promise<{
       source: signal.signal_source,
       match_type: "none",
       untracked: true,
+    });
+
+    capturePostHog("untracked_app_detected", {
+      user_id: signal.user_id,
+      source: signal.signal_source,
+      detected_company: detectedCompany,
+      has_role: !!detectedRole,
     });
 
     return { action: "prompted", match_type: "none" };

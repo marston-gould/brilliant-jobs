@@ -1,7 +1,7 @@
 {
   "shell": {
     "file": "dashboard-shell.min.js",
-    "hash": "b328c397",
+    "hash": "c3f66fe7",
     "size": 108903
   },
   "feed": {
@@ -16,8 +16,8 @@
   },
   "pipeline": {
     "file": "dashboard-pipeline.min.js",
-    "hash": "e6e1983f",
-    "size": 42435
+    "hash": "37796222",
+    "size": 47604
   },
   "tuning": {
     "file": "dashboard-tuning.min.js",
@@ -31,13 +31,13 @@
   },
   "full": {
     "file": "dashboard.min.js",
-    "hash": "2a066c6d",
-    "size": 1035856
+    "hash": "29a3ee3f",
+    "size": 1041025
   },
   "styles": {
     "file": "styles.css",
     "hash": "564c5982",
     "size": 128113
   },
-  "_buildHash": "5c6c176b"
+  "_buildHash": "6be118a3"
 }
