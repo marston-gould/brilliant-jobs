@@ -920,13 +920,11 @@ const features = [
   { s: 'done', n: 'ATS board health: admin metrics panel', d: 'Three headline stat cards in admin panel: Total Identified Feeds (COUNT of ats_companies), Feeds With Jobs (WHERE job_count > 0), Feeds Returning 4xx (WHERE last_http_status BETWEEN 400 AND 499). Platform breakdown table (Greenhouse/Lever/Ashby/Workable/Recruitee) with per-source counts. Health indicator dot: green < 5%% dead, amber 5-10%%, red > 10%%. Derived metrics: Feed Health %%, Feeds Never Scraped, Feeds With 0 Jobs (live but no openings). Admin-only access.', p: 14 },
 
   // Phase 15 — Gamification & Rewards
-  { s: 'todo', n: 'XP reward system', d: 'Earn XP: profile completion (+50), surveys (+25), applications (+10), interviews (+100), company reviews (+20), referrals (+200). Persistent balance.', b: 'post-launch', p: 7, b: 'post-launch', e: '6h'},
-  { s: 'todo', n: 'XP reward store — user-selected feature unlocks', d: 'Spend XP to temporarily unlock chosen premium features: 1-week Pro access (500 XP), 3-day profile boost (300 XP), resume review (1000 XP), early access (250 XP).', b: 'post-launch', p: 7, b: 'post-launch', e: '4h'},
+  // XP reward system, XP store, streaks removed — duplicate of credits/entitlements system (FB-TRIAL-001)
   { s: 'todo', n: 'Profile strength game', d: 'Progress bar with levels: "Rising Star" (50%) → "Highly Sought After" (85%) → "Top Talent" (100%). Level-up unlocks: 2x employer views, premium offer filter, early salary data.', b: 'post-launch', p: 7, b: 'post-launch', e: '4h'},
   { s: 'todo', n: 'Market Value Index', d: 'Composite score (0-200) from skills demand + offer history + profile completeness + market positioning. "Top 15% for Marketing Directors, SaaS." Tips to increase.', b: 'needs-data', p: 7, b: 'post-launch', e: '6h'},
   { s: 'todo', n: 'Achievement badges', d: '"Salary Setter" (3 offers above min), "Remote Magnet" (10 remote offers), "Fast Responder", "Survey Champion", "Network Builder". Displayed on profile.', b: 'post-launch', p: 7, b: 'post-launch', e: '3h'},
   { s: 'todo', n: 'Application success predictor', d: 'Pre-apply scorecard: skills match %, salary alignment, culture fit, competition level, ghost probability, response rate. "Strong apply — high interview chance."', b: 'needs-data', p: 7, b: 'post-launch', e: '6h'},
-  { s: 'todo', n: 'Streaks and engagement loops', d: 'Daily login, weekly survey, application streaks. 7-day streak = 2x XP day. Gentle re-engagement on break. No dark patterns.', b: 'needs-users', p: 7, b: 'post-launch', e: '4h'},
   { s: 'todo', n: 'Opt-in leaderboard', d: 'Anonymized rankings: "Top profiles in your industry this week." Opt-in only. Drives completion and survey participation.', b: 'needs-users', p: 7, b: 'post-launch', e: '3h'},
 
   // Phase 16 — Passive Mode (realigned 2026-03-03: removed social network framing, no browsable profiles exist)
