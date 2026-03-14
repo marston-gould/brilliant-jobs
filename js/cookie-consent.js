@@ -177,6 +177,7 @@
 
 // CS-P1-004 FE-005: Register cookie-consent exports with BJ namespace
 (function() {
+  if (typeof window.BJ === 'undefined') return; // BJ not yet initialized — skip
   ['bjConsent','bjError'].forEach(function(name) {
     if (typeof window[name] === 'function') {
       window.BJ[name] = window[name];

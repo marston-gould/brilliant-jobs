@@ -1220,7 +1220,7 @@ const features = [
   { s: 'todo', n: 'Tour: Resumes & Readiness', d: 'Guide through first resume upload. Explain readiness letter grades, filter assignment, per-job match scoring, missing-term chips.', b: 'pre-launch', p: 20, b: 'pre-launch', e: '2h'},
   { s: 'todo', n: 'Tour: Pipeline', d: 'Explain stages (Saved through Offer/Rejected), staleness indicators (yellow/red dots), how to move jobs between stages.', b: 'pre-launch', p: 20, b: 'pre-launch', e: '2h'},
   { s: 'todo', n: 'Tour: Applications & Notifications', d: 'Explain auto-apply vs apply-on-notification vs manual. Walk through notification preferences, escalation chain, phone setup.', b: 'pre-launch', p: 20, b: 'pre-launch', e: '2h'},
-  { s: 'todo', n: 'Tour: Stats + Ghost Monitor', d: 'Explain filter-scoped charts, compare mode, ghost scoring, average response times.', b: 'pre-launch', p: 20, b: 'pre-launch', e: '2h'},
+  { s: 'wontdo', n: 'Tour: Stats + Ghost Monitor', d: 'Ghost Monitor page removed (FB-GHOST-BADGE-001). Ghost intelligence now surfaces as inline badges on My Applications. Tour content superseded.', b: 'pre-launch', p: 20, b: 'post-launch', e: '2h'},
   { s: 'todo', n: 'Tour: replay from Settings', d: 'Add Replay Walkthrough button on Settings page. Support full replay or per-page tours.', b: 'pre-launch', p: 20, b: 'pre-launch', e: '1h'},
   { s: 'todo', n: 'Tooltips: reusable component', d: 'Build tooltip component matching design system. Dark bg, Outfit font, 12px, max-width 280px, arrow pointer. Trigger on hover (desktop) or tap (mobile). Dismiss on click-outside. Position-aware edge flipping.', b: 'pre-launch', p: 20, b: 'pre-launch', e: '3h'},
   { s: 'todo', n: 'Tooltips: Jobs Feed', d: 'Info-icon tooltips on: filter pills, Match %% header, salary column, sort options, new jobs badge, company name link.', b: 'pre-launch', p: 20, b: 'pre-launch', e: '2h'},
@@ -1581,8 +1581,7 @@ const features = [
   // Phase 45: Visual Consistency Pass + UX Fixes (v5.01–v5.05) — Feb 26, 2026 ✅ COMPLETE
   { s: 'done', n: 'Applications hero banner (.app-hero)', d: 'Navy hero banner with lifecycle stats (Queued, Submitted, Response Rate, This Week). Same gradient pattern as all other heroes. Replaces old page-header + stat-grid. v5.01.', p: 45 },
   { s: 'done', n: '3-way Queue/Pipeline/History toggle', d: 'Replaces old List/Board toggle + app-flow-tabs bar. switchAppView() with localStorage persistence. Gear icon opens collapsible settings panel. v5.01.', p: 45 },
-  { s: 'done', n: 'Ghost Monitor hero banner (.ghost-hero)', d: '"Silence is data. We track it." Hero with stats: Active, Avg Days, Likely Ghosted, Confirmed, Gmail chip. v5.01.', p: 45 },
-  { s: 'done', n: 'Intel slot below hero', d: '#app-intel-slot for cross-tab ghost alerts when stale apps > 7 days exist. Links to Ghost Monitor. v5.01.', p: 45 },
+  { s: 'wontdo', n: 'Ghost Monitor hero banner (.ghost-hero)', d: 'Ghost Monitor page removed (FB-GHOST-BADGE-001). Hero + intel slot superseded by inline badges on My Applications.', p: 45 },
   { s: 'done', n: 'Settings gear panel (Rules + Notifications)', d: 'Collapsed into #app-settings-panel with sub-tabs. Gear icon toggle replaces old tab bar. v5.01.', p: 45 },
   { s: 'done', n: 'Queue table restyle', d: 'Font-size 10px headers, 700 weight, 8px padding — aligned with .job-table conventions. v5.01.', p: 45 },
   { s: 'done', n: 'Dead CSS/JS cleanup (4C audit)', d: 'Removed 14 lines orphaned .app-flow-tabs CSS, null-guarded a-pending/a-failed writes, updated Gmail hero chip (g-gmail-stat). v5.02.', p: 45 },

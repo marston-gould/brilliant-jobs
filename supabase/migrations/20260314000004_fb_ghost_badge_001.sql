@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS ghost_reports (
   source          text         NOT NULL CHECK (source IN ('self_reported', 'auto_inferred')),
   confidence      numeric(3,2) NOT NULL DEFAULT 1.0,         -- 1.0 self, 0.5 auto
   reported_at     timestamptz  NOT NULL DEFAULT now(),
-  expires_at      timestamptz  NOT NULL GENERATED ALWAYS AS (reported_at + INTERVAL '18 months') STORED,
+  expires_at      timestamptz  NOT NULL DEFAULT (now() + INTERVAL '18 months'),
   is_active       boolean      NOT NULL DEFAULT true
 );
 
@@ -177,40 +177,22 @@ GRANT EXECUTE ON FUNCTION fn_ghost_score_refresh TO service_role;
 
 -- ─── 5. pg_cron ───────────────────────────────────────────────────────────
 -- ghost-score-refresh: every 6 hours
-INSERT INTO cron.job (schedule, command, jobname, active)
-VALUES (
-  '0 */6 * * *',
-  $$SELECT fn_ghost_score_refresh()$$,
-  'ghost-score-refresh',
-  true
-)
-ON CONFLICT (jobname) DO UPDATE
-  SET schedule = EXCLUDED.schedule,
-      command  = EXCLUDED.command,
-      active   = EXCLUDED.active;
+DO $guard1$ BEGIN
+  PERFORM cron.unschedule('ghost-score-refresh');
+EXCEPTION WHEN OTHERS THEN NULL;
+END $guard1$;
+SELECT cron.schedule('ghost-score-refresh', '0 */6 * * *', 'SELECT fn_ghost_score_refresh()');
 
 -- ghost-auto-detect: daily at 2 AM UTC (called via EF, not direct SQL)
 -- The EF reads user_pipeline and inserts auto_inferred reports.
 -- Scheduled here as a reminder anchor; actual work done in ghost-auto-detect EF.
-INSERT INTO cron.job (schedule, command, jobname, active)
-VALUES (
-  '0 2 * * *',
-  $$SELECT net.http_post(
-      url := (SELECT value FROM vault.secrets WHERE name = 'SUPABASE_URL') || '/functions/v1/api-gateway',
-      headers := jsonb_build_object(
-        'Content-Type', 'application/json',
-        'x-gateway-route', 'ghost-auto-detect',
-        'Authorization', 'Bearer ' || (SELECT value FROM vault.secrets WHERE name = 'SUPABASE_SERVICE_ROLE_KEY')
-      ),
-      body := '{"action":"detect"}'::jsonb
-  )$$,
-  'ghost-auto-detect',
-  true
-)
-ON CONFLICT (jobname) DO UPDATE
-  SET schedule = EXCLUDED.schedule,
-      command  = EXCLUDED.command,
-      active   = EXCLUDED.active;
+DO $guard2$ BEGIN
+  PERFORM cron.unschedule('ghost-auto-detect');
+EXCEPTION WHEN OTHERS THEN NULL;
+END $guard2$;
+SELECT cron.schedule('ghost-auto-detect', '0 2 * * *',
+  'SELECT net.http_post(url := current_setting(''app.settings.supabase_url'', true) || ''/functions/v1/api-gateway'', headers := jsonb_build_object(''Content-Type'', ''application/json'', ''x-gateway-route'', ''ghost-auto-detect'', ''Authorization'', ''Bearer '' || current_setting(''app.settings.service_role_key'', true)), body := ''{"action":"detect"}''::jsonb)'
+);
 
 -- ─── 6. agent_action_log migration event ─────────────────────────────────
 DO $$

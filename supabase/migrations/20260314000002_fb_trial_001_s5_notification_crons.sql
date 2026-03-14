@@ -13,6 +13,10 @@
 
 -- trial-expiry-notifications: daily at 9AM UTC
 -- Sends countdown emails at 5-day, 3-day, 1-day marks
+DO $guard$ BEGIN
+  PERFORM cron.unschedule('trial-expiry-notifications');
+EXCEPTION WHEN OTHERS THEN NULL;
+END $guard$;
 SELECT cron.schedule(
   'trial-expiry-notifications',
   '0 9 * * *',
@@ -26,10 +30,14 @@ SELECT cron.schedule(
     body := '{"action":"trial_expiring"}'::jsonb
   );
   $$
-) ON CONFLICT (jobname) DO UPDATE SET schedule = EXCLUDED.schedule, command = EXCLUDED.command;
+);
 
 -- expired-nudge-notifications: daily at 9AM UTC
 -- "Your trial has expired" email for users who just transitioned
+DO $guard$ BEGIN
+  PERFORM cron.unschedule('expired-nudge-notifications');
+EXCEPTION WHEN OTHERS THEN NULL;
+END $guard$;
 SELECT cron.schedule(
   'expired-nudge-notifications',
   '0 9 * * *',
@@ -43,10 +51,14 @@ SELECT cron.schedule(
     body := '{"action":"expired_nudge"}'::jsonb
   );
   $$
-) ON CONFLICT (jobname) DO UPDATE SET schedule = EXCLUDED.schedule, command = EXCLUDED.command;
+);
 
 -- expired-nudge-30d: daily at 10AM UTC
 -- 30-day post-expiry re-engagement email
+DO $guard$ BEGIN
+  PERFORM cron.unschedule('expired-nudge-30d');
+EXCEPTION WHEN OTHERS THEN NULL;
+END $guard$;
 SELECT cron.schedule(
   'expired-nudge-30d',
   '0 10 * * *',
@@ -60,10 +72,14 @@ SELECT cron.schedule(
     body := '{"action":"expired_nudge_30d"}'::jsonb
   );
   $$
-) ON CONFLICT (jobname) DO UPDATE SET schedule = EXCLUDED.schedule, command = EXCLUDED.command;
+);
 
 -- sample-reminder-notifications: daily at 10AM UTC
 -- Day 10 post-expiry nudge for users who haven't used their samples
+DO $guard$ BEGIN
+  PERFORM cron.unschedule('sample-reminder-notifications');
+EXCEPTION WHEN OTHERS THEN NULL;
+END $guard$;
 SELECT cron.schedule(
   'sample-reminder-notifications',
   '0 10 * * *',
@@ -77,10 +93,14 @@ SELECT cron.schedule(
     body := '{"action":"sample_reminder"}'::jsonb
   );
   $$
-) ON CONFLICT (jobname) DO UPDATE SET schedule = EXCLUDED.schedule, command = EXCLUDED.command;
+);
 
 -- weekly-digest-expired: Mondays at 8AM UTC
 -- Weekly digest for expired_free users with matching job counts
+DO $guard$ BEGIN
+  PERFORM cron.unschedule('weekly-digest-expired');
+EXCEPTION WHEN OTHERS THEN NULL;
+END $guard$;
 SELECT cron.schedule(
   'weekly-digest-expired',
   '0 8 * * 1',
@@ -94,7 +114,7 @@ SELECT cron.schedule(
     body := '{}'::jsonb
   );
   $$
-) ON CONFLICT (jobname) DO UPDATE SET schedule = EXCLUDED.schedule, command = EXCLUDED.command;
+);
 
 -- ══════════════════════════════════════════════════════════════
 -- PART 4: Notification templates
@@ -159,7 +179,7 @@ VALUES
  '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;padding:0;background:#0e1117;font-family:-apple-system,BlinkMacSystemFont,''Segoe UI'',Roboto,sans-serif;color:#e2e8f0;}.wrap{max-width:520px;margin:40px auto;padding:0 20px;}.card{background:#1a1d27;border:1px solid #2a2d35;border-radius:12px;padding:32px;}h2{margin:0 0 12px;font-size:20px;color:#f0f1f3;font-weight:600;}p{margin:0 0 16px;font-size:14px;line-height:1.6;color:#94a3b8;}.feature-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #2a2d35;font-size:13px;color:#94a3b8;}.cta{display:inline-block;background:#6366f1;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;margin-top:8px;}.footer{margin-top:24px;font-size:11px;color:#475569;text-align:center;}</style></head><body><div class="wrap"><div class="card"><h2>You haven''t used your free samples yet</h2><p>You have <strong>1 free use of every Pro feature</strong> — no subscription needed. Try them anytime:</p><div class="feature-row">🤖 AI job search chat</div><div class="feature-row">📊 Resume scoring + gap analysis</div><div class="feature-row">🚀 Auto-apply a job</div><div class="feature-row">📱 SMS job alert</div><a href="{{dashboard_url}}" class="cta">Try It Now — Free</a></div><div class="footer">Brilliant Jobs · <a href="https://brilliantjobs.app/unsubscribe" style="color:#475569;">Unsubscribe</a></div></div></body></html>',
  true)
 
-ON CONFLICT (notification_type, channel) DO UPDATE
+ON CONFLICT (notification_type, plan, cohort_id) DO UPDATE
   SET subject_line = EXCLUDED.subject_line,
       html_body = EXCLUDED.html_body,
       active = EXCLUDED.active;
@@ -176,7 +196,7 @@ VALUES
   ('referral_converted_referrer', 'sms',
    'BrilliantJobs: Your referral subscribed! Free week applied to your account: https://brilliantjobs.app/billing',
    true)
-ON CONFLICT (notification_type, channel) DO UPDATE
+ON CONFLICT (notification_type, plan, cohort_id) DO UPDATE
   SET sms_body = EXCLUDED.sms_body, active = EXCLUDED.active;
 
 -- ══════════════════════════════════════════════════════════════

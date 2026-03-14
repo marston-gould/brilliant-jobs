@@ -8,50 +8,27 @@ ALTER TABLE resume_score_queue
   ADD COLUMN IF NOT EXISTS resume_text TEXT,
   ADD COLUMN IF NOT EXISTS job_description_text TEXT;
 
--- ─── pg_cron: batch-resume-scorer every 5 minutes ───
--- Calls submit then poll in sequence
-DO $$
-BEGIN
-  -- Submit pending items
-  INSERT INTO cron.job (schedule, command, nodename, nodeport, database, username)
-  VALUES (
-    '*/5 * * * *',
-    $$
-    SELECT net.http_post(
-      url := current_setting('app.supabase_url') || '/functions/v1/batch-resume-scorer?action=submit',
-      headers := jsonb_build_object(
-        'Authorization', 'Bearer ' || current_setting('app.service_role_key'),
-        'Content-Type', 'application/json'
-      ),
-      body := '{}'::jsonb
-    );
-    $$,
-    'localhost', 5432, 'postgres', 'postgres'
-  )
-  ON CONFLICT (jobname) DO UPDATE
-    SET schedule = EXCLUDED.schedule, command = EXCLUDED.command
-  WHERE cron.job.jobname = 'batch-resume-scorer-submit';
-EXCEPTION WHEN OTHERS THEN
-  -- pg_cron may not use jobname PK; use alternative insert
-  BEGIN
-    SELECT cron.schedule(
-      'batch-resume-scorer-submit',
-      '*/5 * * * *',
-      $$SELECT net.http_post(url := current_setting('app.supabase_url') || '/functions/v1/batch-resume-scorer?action=submit', headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.service_role_key'), 'Content-Type', 'application/json'), body := '{}'::jsonb)$$
-    );
-  EXCEPTION WHEN OTHERS THEN NULL;
-  END;
-END $$;
-
-DO $$
-BEGIN
-  SELECT cron.schedule(
-    'batch-resume-scorer-poll',
-    '*/5 * * * *',
-    $$SELECT net.http_post(url := current_setting('app.supabase_url') || '/functions/v1/batch-resume-scorer?action=poll', headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.service_role_key'), 'Content-Type', 'application/json'), body := '{}'::jsonb)$$
-  );
+-- ─── pg_cron: batch-resume-scorer-submit every 5 minutes ───
+DO $guard$ BEGIN
+  PERFORM cron.unschedule('batch-resume-scorer-submit');
 EXCEPTION WHEN OTHERS THEN NULL;
-END $$;
+END $guard$;
+SELECT cron.schedule(
+  'batch-resume-scorer-submit',
+  '*/5 * * * *',
+  'SELECT net.http_post(url := current_setting(''app.supabase_url'') || ''/functions/v1/batch-resume-scorer?action=submit'', headers := jsonb_build_object(''Authorization'', ''Bearer '' || current_setting(''app.service_role_key''), ''Content-Type'', ''application/json''), body := ''{}''::jsonb)'
+);
+
+-- ─── pg_cron: batch-resume-scorer-poll every 5 minutes ───
+DO $guard$ BEGIN
+  PERFORM cron.unschedule('batch-resume-scorer-poll');
+EXCEPTION WHEN OTHERS THEN NULL;
+END $guard$;
+SELECT cron.schedule(
+  'batch-resume-scorer-poll',
+  '*/5 * * * *',
+  'SELECT net.http_post(url := current_setting(''app.supabase_url'') || ''/functions/v1/batch-resume-scorer?action=poll'', headers := jsonb_build_object(''Authorization'', ''Bearer '' || current_setting(''app.service_role_key''), ''Content-Type'', ''application/json''), body := ''{}''::jsonb)'
+);
 
 -- ─── Index on submitted status for polling ───
 CREATE INDEX IF NOT EXISTS idx_rsq_submitted

@@ -2000,7 +2000,7 @@ window.requiredTierFor = requiredTier;
     'resumes':   { rows: 4, type: 'card' },
     'applications': { rows: 5, type: 'table' },
     'notifications': { rows: 6, type: 'list' },
-    'ghost':     { rows: 3, type: 'card' },
+    // FB-GHOST-BADGE-001: 'ghost' tab removed — Ghost Monitor page deleted
     'stats':     { rows: 3, type: 'chart' },
     'settings':  { rows: 5, type: 'form' },
     'subscription': { rows: 3, type: 'card' },
