@@ -2950,9 +2950,17 @@ None.
 
 ## Last Completed Session
 
-**FB-PI-001-S3 — Application Matching + Stage Transitions**
+**FB-PI-001-S4 — Untracked App Confirmations + Dashboard Prompt Cards**
 
 Entry gates:
+- S1 migration ✅, S2 classifier ✅, S3 matching ✅ — full pipeline live end-to-end
+
+Deliverables (spec §4.2.3 + §7.1):
+- `pipeline_pending_confirmations` table: id, user_id, signal_id (FK pipeline_signals), detected_company, detected_role, detected_stage, source_email_subject, source_email_date, status (pending/confirmed/dismissed), confirmed_application_id, created_at, resolved_at. RLS: users manage own.
+- process-pipeline-action EF extended: when action_taken=prompted AND untracked=true → inserts pipeline_pending_confirmations row.
+- Dashboard Board tab: confirmation cards above pipeline stages. Blue accent for untracked. Amber for low-confidence tracked. "Add to Pipeline" opens stage selector → creates user_pipeline entry, sets confirmed_application_id. "Dismiss" sets status=dismissed.
+- `confirm-pipeline-signal` EF updated: handle confirm/dismiss for both pipeline_signals and pipeline_pending_confirmations.
+- Tests: 65+ validation tests.
 - S1 migration applied ✅, pipeline_signal_inbox + user_scan_checkpoints live ✅
 - S2 classify-pipeline-signal EF deployed ✅, cron registered ✅
 
@@ -3102,7 +3110,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.10`** | **FB-PI-001-S2: AI Classifier Edge Function** |
+| **Product (BJ_VERSION)** | **`v9.11`** | **FB-PI-001-S3: Application Matching + Stage Transitions** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
@@ -3110,7 +3118,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 | **SPA Scaffold** | **`spa@1.0.0-scaffold`** | **SA-013** |
 | **Feature Flags** | **`infra@feature-flags-v1.0.0`** | **SA-025** |
 | **Event Bus** | **`infra@event-bus-v1.0.0`** | **SA-024** |
-| **API Gateway** | `infra@gateway-v1.0.0` | FB-PI-001-S2 (124 routes) |
+| **API Gateway** | `infra@gateway-v1.0.0` | FB-PI-001-S3 (125 routes) |
 | **Capacity Model** | **`infra@capacity-model-v1.0.0`** | **SA-028** |
 | **Deploy Tracker** | **`infra@deploy-tracker-v1.0.0`** | **BI-01** |
 | **Build Analytics** | **`infra@build-analytics-v1.0.0`** | **BI-02** |

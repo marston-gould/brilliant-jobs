@@ -11,7 +11,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v9.10"></script>
+  <script src="/js/version.js?v=v9.11"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2225,7 +2225,7 @@ const features = [
 
 { s: 'done', b: 'post-launch', n: 'FB-PI-001-S1 Pipeline Intelligence Schema + Inbox', d: 'pipeline_signal_inbox staging table (source plugin H-PI-01, dedup UNIQUE index, retry_count, pending index). user_scan_checkpoints per-user cursors (last_gmail_scan_at, last_calendar_scan_at, gmail_history_id, scan status states, consecutive_errors). pipeline_signals extended: inbox_id, signal_type, confidence_score, confidence_level, extracted_fields, action_taken, target/previous_stage, user_response. gmail-scan EF: Gmail broad-subject scan → inbox, Calendar API v3 (interview keyword filter, video link, external organiser filter) → inbox. Checkpoint mgmt: getOrCreateCheckpoint + updateCheckpoint. Dedup via ignoreDuplicates upsert. Legacy email_signals path preserved. SCAR S-PI-05 (Outlook/iCal). 100 tests. Route #123. v9.09. 2026-03-15.', p: 100, e: '8h' },
 { s: 'done', b: 'post-launch', n: 'FB-PI-001-S2 AI Classifier EF', d: 'classify-pipeline-signal EF. 9 signal types (ACK/REJ-PRE/INT/REJ-POST/OFFER/RESCHED/CAL-INT/CAL-OFFER/NONE). 6 few-shot examples. Prompt caching (ephemeral). Confidence thresholds high/medium/low. Batch 10/cycle. pipeline_signals insert (S1 columns). pg_cron */15. Gateway route #124. HOOK H-PI-02, SCAR S-PI-06. 81 tests. v9.10. 2026-03-15.', p: 100, e: '8h' },
-{ s: 'todo', b: 'post-launch', n: 'FB-PI-001-S3 Application Matching + Stage Transitions', d: 'Fuzzy company/role matching, process-pipeline-action EF, auto-move medium+, prompt for low confidence.', p: 0, e: '8h' },
+{ s: 'done', b: 'post-launch', n: 'FB-PI-001-S3 Application Matching + Stage Transitions', d: 'process-pipeline-action EF. 3-tier match: domain (rootDomain) → exact normalised (normaliseCompany) → pg_trgm fuzzy (fn_fuzzy_match_pipeline RPC, threshold 0.35). Auto-move for high/medium (user_pipeline stage+timestamps+auto_advanced). Prompt for low/untracked. previous_stage for undo. Cron 7,22,37,52. Route #125. HOOK H-PI-03, SCAR S-PI-01. 71 tests. v9.11. 2026-03-15.', p: 100, e: '8h' },
 { s: 'todo', b: 'post-launch', n: 'FB-PI-001-S4 Untracked App Confirmations', d: 'pipeline_pending_confirmations table, confirmation card UI, confirm/dismiss/create handlers.', p: 0, e: '6h' },
 { s: 'todo', b: 'post-launch', n: 'FB-PI-001-S5 Staleness Engine', d: 'check-pipeline-staleness cron, staleness prompts, auto-archive 30d, snooze, backward stage movement, undo.', p: 0, e: '6h' },
 { s: 'todo', b: 'post-launch', n: 'FB-PI-001-S6 Settings + Polish + Tests', d: 'Pipeline Intelligence settings extensions, notification integration, PostHog event taxonomy, comprehensive test suite.', p: 0, e: '6h' },
