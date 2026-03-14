@@ -20064,6 +20064,8 @@ function renderAppQueue() {
 
 function renderAppHistory() {
   const tbody = $('#app-history-body');
+  if (!tbody) return; // APR-001: history tab removed, element no longer in DOM
+
   if (appHistory.length === 0) {
     tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
       <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No application history yet</div>
@@ -20188,7 +20190,9 @@ renderAppHistory();
 loadPipelineIntelligenceSettings();
 
 // Gmail
-$('#gmail-connect-btn').addEventListener('click', () => {
+// APR-001/FB-GHOST-BADGE-001: gmail-connect-btn was on Ghost Monitor page (removed)
+const _gcBtn = $('#gmail-connect-btn');
+if (_gcBtn) _gcBtn.addEventListener('click', () => {
   alert('Gmail integration coming soon.\n\nThis will use Gmail OAuth to auto-detect responses from companies you\'ve applied to.');
 });
 
