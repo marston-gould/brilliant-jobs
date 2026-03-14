@@ -2919,13 +2919,183 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Session In Progress
 
-None. FB-GHOST-BADGE-001 complete.
+None.
+
+---
+
+## Last Multi-Session Bug Fix Run (v9.03 → v9.06, 2026-03-14)
+
+**Deployed fixes across v9.03–v9.06:**
+
+**v9.03 hotfixes:** `loadNotifLog` undefined → `ncLoadNotificationLog(1)`. `renderAppHistory` null guard. `#gmail-connect-btn` guard. CSP GTM fix. `cookie-consent.js` BJ guard. ghost skeleton config removed.
+
+**v9.04 — Apply/Boost/Browse/Preview:**
+- `apply-workflow.js`: both `_getActiveResume()` paths resolve `res_sync_` stubs to `archiveId` — fixes every apply UUID error.
+- `rewrite.js` `boostMatch()`: same `res_sync_` → `archiveId` fix — fixes Boost button.
+- `keywords.js` + `rewrite.js`: `matchBadge()` + `matchBadgeWithBoost()` show numeric score (67%) not letter grade (B+).
+- `keywords.js`: `loadPreviewSnippets()` called on init when `bj_show_previews='1'`.
+- `browsers.js`: `scrollTop = 0` on `.main` in all 4 browser open functions — fixes blank browse pages.
+
+**v9.05 — Missing globals:**
+- `app.js`: `window.showPage()` + `window.switchPage()` — called via onclick everywhere but never defined. "Upgrade plan" link, referral sidebar, archive nav were silently failing.
+
+**v9.06 — Keyword word-boundary + numeric scores:**
+- `job-feed.js`: `title.ilike.%seo%` → `title.imatch.\yseo\y` — PostgreSQL word-boundary regex. "seo" no longer matches "geneseo".
+- `keywords.js`: `scoreToGrade()` returns `67%` + color instead of A/B/C/D/F. Fixes readiness panel, filter badges, level scores, AI Score modal.
+- `app.js`: ghost + pipeline removed from page name/section maps. `lastTab=pipeline` redirects to applications.
+
+**Anthropic billing:** All 24 AI EFs returning 402 — account out of credits. Key is valid. Fix: add credits at `console.anthropic.com/settings/billing`.
 
 ---
 
 ## Next Session
 
-No specific session queued. FB-GHOST-BADGE-001 complete.
+**EDE-001 — Event-Driven JD Enrichment with Eligibility Gate**
+
+Spec: `POD2_HANDOFF_EventDrivenEnrichment.docx` (in project uploads, 2026-03-14)
+
+Problem: cron #49 enriches ALL jobs including non-US, non-remote — ~40-60% waste. Enrichment is time-triggered not user-triggered.
+
+Solution: fire enrichment only when a user saves a filter with a wherePill. Non-US non-remote jobs never touched.
+
+**Entry gates:**
+- Confirm `enrichment_requests` table does NOT exist: `SELECT tablename FROM pg_tables WHERE tablename='enrichment_requests'`
+- Confirm cron #49 still at `*/5`: `SELECT schedule FROM cron.job WHERE jobid=49`
+
+**Step 1 — DB migration (new file: `supabase/migrations/20260315000001_ede_001.sql`):**
+
+```sql
+CREATE TABLE enrichment_requests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  filter_id uuid REFERENCES user_filters(id) ON DELETE SET NULL,
+  location_key text NOT NULL,  -- 'us:tx:austin', 'us:ca', 'remote'
+  loc_display text NOT NULL,
+  status text NOT NULL DEFAULT 'queued', -- queued|processing|complete|no_jobs
+  jobs_total int,
+  jobs_enriched int DEFAULT 0,
+  requested_at timestamptz NOT NULL DEFAULT now(),
+  estimated_at timestamptz,
+  completed_at timestamptz,
+  UNIQUE (user_id, location_key)
+);
+CREATE INDEX idx_er_status ON enrichment_requests(status) WHERE status != 'complete';
+CREATE INDEX idx_er_user ON enrichment_requests(user_id);
+```
+
+Update `fn_mark_jobs_for_enrichment()` to accept `p_location text DEFAULT NULL`. When provided, add eligibility gate WHERE clauses:
+- `status = 'open'`
+- `content IS NOT NULL AND length(content) > 200`
+- `title IS NOT NULL`
+- `jd_skills IS NULL`
+- `jd_enrich_retry_count < 3`
+- `(loc_country = 'US' OR is_remote = true OR loc_state IS NOT NULL)`
+Mark matching jobs with `enrichment_priority = 1`.
+
+**Step 2 — New EF: `supabase/functions/enrich-jd-location/index.ts`**
+
+POST `{ location: string, filter_id?: string, include_remote?: boolean }`
+
+Location key normalisation:
+- Strip punctuation, lowercase, state name → 2-letter abbrev
+- `'Austin, TX'` → `'us:tx:austin'` | `'California'` → `'us:ca'` | `'United States'` → `'us'` | `'Remote'` → `'remote'`
+
+Dedup: if existing row with same user_id + location_key within 24h and status != 'no_jobs' → return `cached: true`
+
+ETA: `Math.ceil(jobs_total / 300)` hours (300/hr = 50 jobs × 10min), min 30min.
+
+Returns: `{ location_key, loc_display, status, jobs_total, jobs_enriched, estimated_at, cached }`
+
+Add to API gateway (next route after 122).
+
+**Step 3 — Update `enrich-jd-ai` EF**
+After each batch success, run:
+```sql
+UPDATE enrichment_requests
+SET jobs_enriched = jobs_enriched + $batch_count,
+    status = CASE WHEN jobs_enriched + $batch_count >= jobs_total THEN 'complete' ELSE 'processing' END,
+    completed_at = CASE WHEN jobs_enriched + $batch_count >= jobs_total THEN now() ELSE NULL END
+WHERE status IN ('queued','processing')
+  AND location_key = ANY($locations_in_batch);
+```
+
+**Step 4 — Fix filter persistence (PREREQUISITE)**
+Filters currently write to localStorage only. Need every save to also write to `user_filters` and capture the row ID.
+
+Primary save: `location.js` ~line 778 (after `saveUserData('bj_saved_filters', ...)`):
+```javascript
+// Persist to Supabase + trigger enrichment
+if (currentUser) {
+  const upsertData = { user_id: currentUser.id, name: filterData.name, filter_data: filterData, sort_order: existingIdx >= 0 ? existingIdx : savedFilters.length - 1 };
+  const method = filterData._id ? sb.from('user_filters').update(upsertData).eq('id', filterData._id) : sb.from('user_filters').insert(upsertData).select().single();
+  method.then(({ data, error }) => {
+    if (!error && data) {
+      filterData._id = data.id;
+      if ((filterData.wherePills || []).length > 0) triggerLocationEnrichment(filterData.wherePills, data.id, filterData.includeRemote);
+    }
+  });
+}
+```
+
+Onboarding: `app.js` ~line 1444 (after `saveUserData('bj_saved_filters', ...)`):
+```javascript
+if (currentUser && (newFilter.wherePills || []).length > 0) {
+  sb.from('user_filters').insert({ user_id: currentUser.id, name: newFilter.name, filter_data: newFilter, sort_order: savedFilters.length - 1 }).select().single()
+    .then(({ data, error }) => { if (!error && data) triggerLocationEnrichment(newFilter.wherePills, data.id, newFilter.includeRemote); });
+}
+```
+
+**Step 5 — Client: `triggerLocationEnrichment()` in `app.js`**
+```javascript
+window.triggerLocationEnrichment = async function(wherePills, filterId, includeRemote) {
+  if (!wherePills || !wherePills.length || !currentUser) return;
+  var session = await sb.auth.getSession();
+  var token = session?.data?.session?.access_token;
+  if (!token) return;
+  for (var i = 0; i < wherePills.length; i++) {
+    var loc = (wherePills[i].values || [])[0];
+    if (!loc) continue;
+    try {
+      var res = await fetch(SUPABASE_URL + '/functions/v1/enrich-jd-location', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+        body: JSON.stringify({ location: loc, filter_id: filterId, include_remote: !!includeRemote })
+      });
+      var data = await res.json();
+      if (res.ok && data.status !== 'complete' && !data.cached) showEnrichmentPopup(data);
+      if (window.posthog) posthog.capture('enrichment_triggered', { location_key: data.location_key, jobs_total: data.jobs_total, cached: data.cached });
+    } catch(e) { reportError('app:enrich-trigger', e); }
+  }
+};
+```
+
+**Step 6 — UX: `showEnrichmentPopup(data)` + filter badge**
+
+Popup (toast-style, 8s auto-dismiss):
+```
+🔍 Reviewing jobs in Austin, TX
+Found 847 jobs · check back in ~30 min
+[Dismiss]
+```
+Don't show if `cached: true` or `status === 'complete'`.
+
+Filter badge: on dashboard load, query `enrichment_requests WHERE user_id = $1 AND requested_at > NOW() - INTERVAL '7 days'`. Map `location_key` back to filters. Show badge below filter name: "Reviewing…" (processing) / "Up to date" (complete).
+
+**Step 7 — Cron**
+Change cron #49 from `*/5` to `*/10`:
+```sql
+SELECT cron.alter_job(49::bigint, schedule := '*/10 * * * *');
+```
+
+**Step 8 — PostHog + tests**
+Events: `enrichment_triggered`, `enrichment_complete`, `enrichment_popup_shown`, `enrichment_popup_dismissed`
+
+Acceptance:
+- Non-US non-remote job never enriched after deploy
+- Content ≤ 200 chars never enriched
+- Filter save with wherePill triggers EF within 2s
+- Same filter twice within 24h returns `cached: true`
+- Daily Anthropic spend drops within 48h
 
 **EXT-AS series (9 sessions total, 9 done — COMPLETE):**
 - EXT-AS-1 ✅ — Applicant Profile + Settings Sync

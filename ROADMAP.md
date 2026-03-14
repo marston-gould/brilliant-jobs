@@ -3532,6 +3532,14 @@ Phase S is complete when ALL of the following are true:
 | FB-TRIAL-001-S6 | Cost Optimizations 5.1–5.3 — Prompt caching, PostHog billing caps, Supabase spend cap, batch-resume-scorer EF + queue shimmer/poll, fly.toml auto-stop, annual billing toggle + Stripe Price, POSTHOG_MIGRATION_READY.md. | ✅ | 2026-03-14: prompt caching in chat-job-search + score-resume (all 3 paths), batch-resume-scorer EF (submit/poll/status + pg_cron), X-Score-Queued 202 queue path in score-resume, keywords.js shimmer+10s poll, fly.toml auto_stop="stop"+min=0, billing toggle upgrade.js ($19.99/mo + $199.90/yr), create-checkout billing_period routing + ACH, POSTHOG_MIGRATION_READY.md (design doc + billing caps), gateway route #119, 66 tests, v9.00 |
 | FB-TRIAL-001-S7 | PostHog Events + Inline Nudges + QA — All 22 analytics events, 7 contextual inline nudges, upgrade page annual toggle, end-to-end testing. | ✅ | 2026-03-14: All 22 PostHog events from spec §11 implemented (trial_started, trial_feature_used, trial_upgrade_prompted, trial_upgrade_clicked, sample_offered, sample_used, sample_converted, expired_gate_hit, trial_expired, expired_digest_sent, expired_reactivated, referral_rewarded, referral_clawback + preserved events from S3–S6). 7 inline nudges (§6.4) in renderExpiredNudges() — chat tab, boolean toggle, stats overlay, filter counter, SMS toggles, score column, auto-apply. capturePostHog helper added to send-trial-notifications, weekly-digest-expired, process-referral-reward. trial_feature_used in checkFeatureAccess.ts. expired_reactivated in stripe-webhook (expired_free → active_pro path). 64 validation tests. v9.01. |
 
+
+## Bug Fix Run + Event-Driven Enrichment Spec (v9.03–v9.06, 2026-03-14)
+
+| ID | Item | Status | Notes |
+|----|------|--------|-------|
+| BUGFIX-002 | Multi-session bug fix run — apply UUID crash (res_sync_ stubs), boost button UUID crash, letter grades → numeric scores everywhere, Preview JD not loading on init, all browse pages blank (scroll reset), showPage/switchPage undefined globals, keyword word-boundary matching (seo≠geneseo), ghost/pipeline removed from page maps, pipeline lastTab redirect, loadNotifLog undefined, renderAppHistory null crash | ✅ | v9.03–v9.06. 2026-03-14. Anthropic account out of credits (billing only, no code change needed). |
+| EDE-001 | Event-Driven JD Enrichment — Replace cron-driven enrichment with user-intent-triggered enrichment. enrichment_requests table. enrich-jd-location EF with location key normalisation + dedup + ETA. Hard eligibility gate (US/remote only, content>200, title not null, open status). enrich-jd-ai EF updated to track progress. Filter persistence fixed (user_filters writes). triggerLocationEnrichment() client hook. Confirmation popup + filter badge UX. Cron #49 slowed to */10. | 🔲 | Spec: POD2_HANDOFF_EventDrivenEnrichment.docx |
+
 ## Ghost Intelligence Badges (FB-GHOST-BADGE-001)
 
 | ID | Item | Status | Notes |
