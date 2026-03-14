@@ -67,7 +67,7 @@ async function callAnthropic(
   userPrompt: string,
   maxTokens: number = 3000,
   temperature: number = 0
-): Promise<{ text: string; ok: boolean; error?: string; usage?: { input_tokens: number; output_tokens: number } }> {
+): Promise<{ text: string; ok: boolean; error?: string; usage?: { input_tokens: number; output_tokens: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number } }> {
   const startMs = Date.now();
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -75,13 +75,14 @@ async function callAnthropic(
       headers: {
         'x-api-key': ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'prompt-caching-2024-07-31',
         'content-type': 'application/json'
       },
       body: JSON.stringify({
         model,
         max_tokens: maxTokens,
         temperature,
-        system: systemPrompt,
+        system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
         messages: [{ role: 'user', content: userPrompt }]
       })
     });
@@ -94,7 +95,18 @@ async function callAnthropic(
 
     const data = await res.json();
     const text = data.content?.[0]?.text || '';
-    const usage = data.usage ? { input_tokens: data.usage.input_tokens || 0, output_tokens: data.usage.output_tokens || 0 } : undefined;
+    const usage = data.usage ? {
+      input_tokens: data.usage.input_tokens || 0,
+      output_tokens: data.usage.output_tokens || 0,
+      cache_read_input_tokens: data.usage.cache_read_input_tokens || 0,
+      cache_creation_input_tokens: data.usage.cache_creation_input_tokens || 0,
+    } : undefined;
+    // 5.1: Log cache hit rate
+    if (usage) {
+      const totalInput = (usage.input_tokens || 0) + (usage.cache_read_input_tokens || 0) + (usage.cache_creation_input_tokens || 0);
+      const hitRate = totalInput > 0 ? Math.round(((usage.cache_read_input_tokens || 0) / totalInput) * 100) / 100 : 0;
+      if (hitRate > 0) console.log(`[score-resume] cache_hit_rate=${hitRate} tokens_saved=${usage.cache_read_input_tokens} model=${model}`);
+    }
     return { text, ok: true, usage };
   } catch (e) {
     console.error(`[score-resume] Anthropic ${model} exception:`, e);
@@ -573,7 +585,35 @@ serve(async (req) => {
 
     // ─── FB-TRIAL-001-S2: Feature access gate ───
     const access = await checkFeatureAccess(sb, user.id, 'score');
-    if (!access.allowed) return buildDeniedResponse(access);
+    if (!access.allowed) {
+      // 5.2: Queue for batch scoring if expired_free and score sample already consumed
+      if (access.reason === 'upgrade_required' && resume_text && mode === 'single') {
+        const jobDescText = body.job_description_text as string || '';
+        const { data: queueRow, error: queueErr } = await sb
+          .from('resume_score_queue')
+          .insert({
+            user_id: user.id,
+            resume_id: body.resume_id || null,
+            job_id: body.job_id || null,
+            resume_text: resume_text.slice(0, 8000),
+            job_description_text: jobDescText.slice(0, 3000),
+            status: 'pending',
+          })
+          .select('id')
+          .single();
+
+        if (queueErr || !queueRow) {
+          console.error('[score-resume] Queue insert error:', queueErr?.message);
+          return buildDeniedResponse(access);
+        }
+
+        return new Response(JSON.stringify({ queued: true, queue_id: queueRow.id }), {
+          status: 202,
+          headers: { ...CORS_HEADERS, 'Content-Type': 'application/json', 'X-Score-Queued': 'true' },
+        });
+      }
+      return buildDeniedResponse(access);
+    }
     const sampleHeaders = access.isSample ? buildSampleHeaders() : {};
 
     // Rate limit (database-backed persistent check)

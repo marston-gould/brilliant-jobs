@@ -24,6 +24,13 @@ const SUBSCRIPTION_PRICES: Record<string, string> = {
   pro: 'price_1T3lhRPKzCZbw3KzoLVOrwko',
 };
 
+// FB-TRIAL-001-S6 5.3: Annual price — $199.90/yr (17% savings vs $239.88 annual monthly)
+// Stored in Supabase Vault as ANNUAL_STRIPE_PRICE_ID
+// To create in Stripe Dashboard:
+//   Products → Add product → "Brilliant Jobs Pro (Annual)" → $199.90 → Recurring → Yearly
+//   Copy Price ID → Supabase Dashboard → Vault → New secret → ANNUAL_STRIPE_PRICE_ID
+const ANNUAL_STRIPE_PRICE_ID = Deno.env.get('ANNUAL_STRIPE_PRICE_ID') || '';
+
 // Credit pack prices by tier
 const CREDIT_PACK_PRICES: Record<string, Record<number, string>> = {
   free: {
@@ -165,9 +172,10 @@ serve(async (req: Request) => {
     }
 
     const body = await req.json();
-    const { mode, tier, pack_qty } = body;
+    const { mode, tier, pack_qty, billing_period } = body;
     // mode: 'subscription' | 'credit_pack'
     // tier: 'starter' | 'pro' (for subscriptions)
+    // billing_period: 'monthly' | 'annual' (5.3 — defaults to 'monthly')
     // pack_qty: 10 | 50 | 100 (for credit packs)
 
     const successUrl = 'https://brilliantjobs.app/dashboard.html?payment=success';
@@ -180,7 +188,21 @@ serve(async (req: Request) => {
 
     if (mode === 'subscription') {
       // ─── Subscription checkout ───
-      const priceId = SUBSCRIPTION_PRICES[tier];
+      // FB-TRIAL-001-S6 5.3: Route to annual price if billing_period === 'annual'
+      let priceId: string;
+      const isAnnual = billing_period === 'annual';
+      if (isAnnual && tier === 'pro') {
+        if (!ANNUAL_STRIPE_PRICE_ID) {
+          // Fall back to monthly if annual price not yet configured
+          logger.warn('ANNUAL_STRIPE_PRICE_ID not set in Vault — falling back to monthly', { userId: user.id });
+          priceId = SUBSCRIPTION_PRICES[tier] || '';
+        } else {
+          priceId = ANNUAL_STRIPE_PRICE_ID;
+        }
+      } else {
+        priceId = SUBSCRIPTION_PRICES[tier];
+      }
+
       if (!priceId) {
         return new Response(JSON.stringify({ error: 'Invalid tier' }), {
           status: 400,
@@ -198,9 +220,16 @@ serve(async (req: Request) => {
         'subscription_data[metadata][tier]': tier,
         'subscription_data[metadata][credits]': tier === 'starter' ? '100' : '300',
         'subscription_data[metadata][user_id]': user.id,
+        'subscription_data[metadata][billing_period]': isAnnual ? 'annual' : 'monthly',
       };
 
-      logger.info('Creating subscription checkout', { userId: user.id, tier });
+      // 5.3: Annual plan — add ACH bank account as payment option
+      if (isAnnual) {
+        sessionParams['payment_method_types[0]'] = 'card';
+        sessionParams['payment_method_types[1]'] = 'us_bank_account';
+      }
+
+      logger.info('Creating subscription checkout', { userId: user.id, tier, billing_period: billing_period || 'monthly' });
 
     } else if (mode === 'credit_pack') {
       // ─── Credit pack checkout ───

@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.99';
+var BJ_VERSION = 'v9.00';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -8176,6 +8176,15 @@ async function fetchAIScore(params) {
       body: JSON.stringify(params)
     });
 
+    // ─── 5.2: Batch queue path for expired_free users ───
+    if (res.status === 202 && res.headers.get('X-Score-Queued') === 'true') {
+      var queueData = await res.json();
+      if (queueData.queued && queueData.queue_id) {
+        _startScoreQueuePoll(queueData.queue_id, params);
+      }
+      return null;
+    }
+
     if (!res.ok) {
       console.log('[BJ] AI score HTTP', res.status);
       if (res.status === 406 || res.status === 404) {
@@ -11846,6 +11855,57 @@ function _startClRescoreCooldown(clId) {
       btn.innerHTML = '\ud83d\udd04 ' + sec + 's';
     }
   }, 1000);
+}
+
+// ─── FB-TRIAL-001-S6 5.2: Poll resume_score_queue for batch results ───
+function _startScoreQueuePoll(queueId, originalParams) {
+  // Show shimmer on the score card
+  var scoreCard = document.getElementById('readiness-scores');
+  if (scoreCard) {
+    scoreCard.innerHTML = '<div class="score-shimmer" style="background:linear-gradient(90deg,#2a2a3a 25%,#3a3a4a 50%,#2a2a3a 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:8px;height:80px;width:100%;"></div>';
+  }
+  showToast('Score queued — results ready in ~2 minutes', { type: 'info' });
+
+  var pollInterval = 10000; // 10s
+  var maxAttempts = 30; // 5 minutes
+  var attempts = 0;
+  var poller = setInterval(async function() {
+    attempts++;
+    if (attempts > maxAttempts) {
+      clearInterval(poller);
+      if (scoreCard) scoreCard.innerHTML = '<p style="color:var(--text-muted);font-size:13px;">Score timed out — please try again.</p>';
+      return;
+    }
+    try {
+      var { data: { session } } = await sb.auth.getSession();
+      if (!session) { clearInterval(poller); return; }
+      var res = await fetch(SUPABASE_URL + '/functions/v1/batch-resume-scorer?action=status&queue_id=' + queueId, {
+        headers: { 'Authorization': 'Bearer ' + session.access_token, 'Content-Type': 'application/json' }
+      });
+      // Alternatively query Supabase directly
+      var { data: qrow } = await sb.from('resume_score_queue').select('status,result').eq('id', queueId).single();
+      if (!qrow || qrow.status === 'pending' || qrow.status === 'submitted') return; // still waiting
+      clearInterval(poller);
+      if (qrow.status === 'completed' && qrow.result) {
+        // Render score result
+        if (typeof window._renderBatchScoreResult === 'function') {
+          window._renderBatchScoreResult(qrow.result, originalParams);
+        } else if (scoreCard) {
+          var r = qrow.result;
+          scoreCard.innerHTML = '<div style="padding:12px;background:var(--bg-card);border-radius:8px;">' +
+            '<div style="font-size:24px;font-weight:700;color:var(--accent);">' + (r.match_score || '--') + '</div>' +
+            '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">' + (r.fit_status || '') + '</div>' +
+            '<div style="font-size:12px;margin-top:8px;">' + (r.analysis_summary || '') + '</div>' +
+            '</div>';
+        }
+        showToast('Resume scored!', { type: 'success' });
+      } else {
+        if (scoreCard) scoreCard.innerHTML = '<p style="color:var(--warning);font-size:13px;">Scoring failed — please try again.</p>';
+      }
+    } catch (e) {
+      console.warn('[BJ] Queue poll error:', e);
+    }
+  }, pollInterval);
 }
 
 // CS-P1-004 FE-005: Register keywords.js exports with BJ namespace
@@ -32505,3 +32565,131 @@ if (typeof window.BJ !== 'undefined') {
   BJ.handleSampleHeader = handleSampleHeader;
   BJ.getClientSampleAvailability = getClientSampleAvailability;
 }
+
+
+// === js/upgrade.js ===
+// js/upgrade.js
+// FB-TRIAL-001-S6 — 5.3: Monthly/Annual billing toggle on upgrade page
+// Renders toggle UI, updates CTA price display, passes billing_period to create-checkout EF
+// Exports: initBillingToggle (window + BJ namespace)
+
+/* global sb, SUPABASE_URL, showToast, posthog */
+
+var _billingPeriod = 'monthly'; // 'monthly' | 'annual'
+
+var MONTHLY_PRICE_DISPLAY = '$19.99/mo';
+var ANNUAL_PRICE_DISPLAY = '$199.90/yr';
+var ANNUAL_SAVINGS_DISPLAY = 'save 17%';
+
+// ─── Render toggle pills ───
+function _renderBillingToggle(container) {
+  container.innerHTML = [
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">',
+    '<button id="billing-toggle-monthly" onclick="setBillingPeriod(\'monthly\')" ',
+    'style="',
+    'padding:6px 16px;border-radius:999px;font-size:13px;font-weight:500;cursor:pointer;border:1.5px solid;transition:all 0.15s;',
+    (_billingPeriod === 'monthly' ? 'background:var(--accent);color:#fff;border-color:var(--accent);' : 'background:transparent;color:var(--text-muted);border-color:var(--border);'),
+    '">Monthly &mdash; ' + MONTHLY_PRICE_DISPLAY + '</button>',
+    '<button id="billing-toggle-annual" onclick="setBillingPeriod(\'annual\')" ',
+    'style="',
+    'padding:6px 16px;border-radius:999px;font-size:13px;font-weight:500;cursor:pointer;border:1.5px solid;transition:all 0.15s;',
+    (_billingPeriod === 'annual' ? 'background:var(--accent);color:#fff;border-color:var(--accent);' : 'background:transparent;color:var(--text-muted);border-color:var(--border);'),
+    '">Annual &mdash; ' + ANNUAL_PRICE_DISPLAY + ' <span style="font-size:11px;opacity:0.85;">(' + ANNUAL_SAVINGS_DISPLAY + ')</span></button>',
+    '</div>',
+  ].join('');
+}
+
+// ─── Update CTA button text based on period ───
+function _updateCtaButton() {
+  var btn = document.getElementById('sub-upgrade-cta-btn');
+  if (!btn) return;
+  if (_billingPeriod === 'annual') {
+    btn.textContent = 'Upgrade to Pro — ' + ANNUAL_PRICE_DISPLAY;
+  } else {
+    btn.textContent = 'Upgrade to Pro — ' + MONTHLY_PRICE_DISPLAY;
+  }
+}
+
+// ─── Public: set billing period ───
+window.setBillingPeriod = function(period) {
+  if (period !== 'monthly' && period !== 'annual') return;
+  _billingPeriod = period;
+  var container = document.getElementById('billing-toggle');
+  if (container) _renderBillingToggle(container);
+  _updateCtaButton();
+  if (typeof posthog !== 'undefined') {
+    posthog.capture('billing_period_toggled', { period: period });
+  }
+};
+
+// ─── Public: get current period for checkout ───
+window.getBillingPeriod = function() { return _billingPeriod; };
+
+// ─── Init: show toggle container, render pills ───
+function initBillingToggle() {
+  var container = document.getElementById('billing-toggle');
+  if (!container) return;
+  container.style.display = 'block';
+  _billingPeriod = 'monthly';
+  _renderBillingToggle(container);
+  _updateCtaButton();
+}
+
+window.initBillingToggle = initBillingToggle;
+
+// ─── Hook into startCheckout to pass billing_period ───
+// Monkey-patch billing.js startCheckout to include billing_period
+(function() {
+  var _originalStartCheckout = window.startCheckout;
+  window.startCheckout = async function(mode, tier, packQty) {
+    if (mode === 'subscription' && tier === 'pro') {
+      // Inject billing_period into the checkout
+      var session = await sb.auth.getSession();
+      var token = session?.data?.session?.access_token;
+      if (!token) { window.location.href = '/'; return; }
+      if (typeof posthog !== 'undefined') posthog.capture('billing_checkout_started', { mode, tier, billing_period: _billingPeriod });
+      try {
+        var res = await fetch(SUPABASE_URL + '/functions/v1/create-checkout', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mode: 'subscription', tier: 'pro', billing_period: _billingPeriod }),
+        });
+        var data = await res.json();
+        if (data.url) { window.location.href = data.url; }
+        else { showToast('Failed to start checkout. Please try again.', 'error'); }
+      } catch (e) { showToast('Network error. Please try again.', 'error'); }
+      return;
+    }
+    if (typeof _originalStartCheckout === 'function') {
+      return _originalStartCheckout(mode, tier, packQty);
+    }
+  };
+})();
+
+// ─── Auto-init when upgrade banner is visible ───
+(function() {
+  // Watch for the sub-upgrade-banner becoming visible
+  var banner = document.getElementById('sub-upgrade-banner');
+  if (!banner) return;
+  var obs = new MutationObserver(function(mutations) {
+    mutations.forEach(function(m) {
+      if (m.type === 'attributes' && m.attributeName === 'class') {
+        if (!banner.classList.contains('u-hidden')) {
+          initBillingToggle();
+        }
+      }
+    });
+  });
+  obs.observe(banner, { attributes: true });
+})();
+
+// ─── BJ namespace ───
+(function() {
+  if (!window.BJ) window.BJ = {};
+  window.BJ.initBillingToggle = initBillingToggle;
+  window.BJ.setBillingPeriod = window.setBillingPeriod;
+  window.BJ.getBillingPeriod = window.getBillingPeriod;
+  if (window.BJ._registry) {
+    window.BJ._registry['initBillingToggle'] = { module: 'upgrade', registered: Date.now() };
+  }
+})();

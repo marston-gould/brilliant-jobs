@@ -52,7 +52,62 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FB-TRIAL-001-S5** — Trial Notifications
+**FB-TRIAL-001-S6** — Cost Optimizations 5.1–5.3
+- Completed: 2026-03-14
+- Product version bumped: `v8.99` → `v9.00` (JS changes — chat-job-search prompt caching, score-resume prompt caching, keywords.js shimmer+poll, upgrade.js new file, dashboard.html billing-toggle container; all HTML surfaces cache-busted)
+- ROADMAP.md updated: FB-TRIAL-001-S6 → ✅
+- roadmap.html updated: FB-TRIAL-001-S6 → `s: 'done'`, p: 100
+- **Part 1 — Prompt Caching (5.1):**
+  - `chat-job-search/index.ts`: system prompt converted to array with `cache_control: { type: 'ephemeral' }`, `anthropic-beta: prompt-caching-2024-07-31` header added. Logs `cache_hit_rate` + `tokens_saved` after each Anthropic call.
+  - `score-resume/index.ts`: `callAnthropic()` updated — system prompt wrapped as array with ephemeral cache_control, beta header added, usage extended to capture `cache_read_input_tokens` + `cache_creation_input_tokens`. Logs hit rate when > 0. All 3 response paths (gap-interview, revision-assess, main) inherit caching via shared `callAnthropic`.
+- **Part 2 — batch-resume-scorer EF (NEW, 5.2):**
+  - `supabase/functions/batch-resume-scorer/index.ts`: 3 actions — `submit` (reads ≤50 pending rows, submits to Anthropic Batch API `/v1/messages/batches`, stores batch_id, sets status=submitted), `poll` (finds submitted rows, checks batch status endpoint, marks complete+result JSONB or failed+error), `status` (queue summary counts). Service-role only. PostHog `batch_score_completed` on completion.
+  - `supabase/migrations/20260314000003_fb_trial_001_s6_batch_scorer.sql`: `resume_text` + `job_description_text` columns on `resume_score_queue`, pg_cron `batch-resume-scorer-submit` + `batch-resume-scorer-poll` (both `*/5 * * * *`), `idx_rsq_submitted` index.
+  - `score-resume/index.ts`: when `access.reason === 'upgrade_required'` AND mode=single AND resume_text present — inserts to `resume_score_queue`, returns `{ queued: true, queue_id }` with status 202 + `X-Score-Queued: true` header.
+  - `keywords.js`: detects 202 + `X-Score-Queued: true` → calls `_startScoreQueuePoll(queueId)` → shows shimmer on score card, polls Supabase every 10s up to 5 minutes (30 attempts), renders result when status=completed.
+- **Part 3 — Fly.io auto-stop (5.2):**
+  - `worker/fly.toml`: `auto_stop_machines = "stop"`, `min_machines_running = 0` (was `true` / `1`). `auto_start_machines = true` confirmed present.
+- **Part 4 — Annual billing toggle (5.3):**
+  - `js/upgrade.js` (NEW): renders Monthly/Annual pill toggle above upgrade CTA. Monthly = $19.99/mo, Annual = $199.90/yr (save 17%). `initBillingToggle()`, `setBillingPeriod()`, `getBillingPeriod()` exported. Monkey-patches `startCheckout` to pass `billing_period` to create-checkout EF. Auto-init via MutationObserver on `sub-upgrade-banner`. BJ namespace exports.
+  - `dashboard.html`: `#billing-toggle` container added inside `sub-upgrade-banner`. `sub-upgrade-cta-btn` id added to upgrade button.
+  - `supabase/functions/create-checkout/index.ts`: `billing_period` extracted from request body. `ANNUAL_STRIPE_PRICE_ID = Deno.env.get('ANNUAL_STRIPE_PRICE_ID')`. Annual path routes to annual price; falls back to monthly with warning if vault secret not yet set. Annual adds `payment_method_types: ['card', 'us_bank_account']` for ACH. Metadata includes `billing_period`.
+  - **Stripe Price creation steps (manual — Marston):** Stripe Dashboard → Products → Add product → "Brilliant Jobs Pro (Annual)" → $199.90 → Recurring → Every year → Save. Copy Price ID → Supabase Dashboard → Vault → New secret → `ANNUAL_STRIPE_PRICE_ID` → paste Price ID.
+  - `build.js`: `js/upgrade.js` added to deferred chunk.
+- **Part 5+6 — PostHog migration readiness doc (5.3):**
+  - `docs/specs/POSTHOG_MIGRATION_READY.md` (NEW, design doc only): current cost model, trigger condition ($50/mo), self-hosting options (Cloud EU / Fly.io / Render), data migration plan (export API + backfill), SDK swap for all 4 surfaces, feature flag migration path, engineering effort estimate. **Billing caps section:** PostHog → Organization → Billing → Usage limits — set Analytics $50/mo, Session Replay $0, Feature Flags $0.
+- **Gateway:** route #119 (`batch-resume-scorer`). Total: 119 routes.
+- **Pod Team Manifest:** FB-TRIAL-001-S6 pairing added (Lead Platform Eng + Forward-Looking Dev, Chief Architect + Evolvability Strategist reviewers).
+- **Modified:**
+  - `supabase/functions/chat-job-search/index.ts` — prompt caching + cache hit rate logging
+  - `supabase/functions/score-resume/index.ts` — callAnthropic prompt caching + queue path for expired_free
+  - `supabase/functions/create-checkout/index.ts` — billing_period routing + ACH + ANNUAL_STRIPE_PRICE_ID
+  - `supabase/functions/api-gateway/index.ts` — route #119, total 119
+  - `js/keywords.js` — X-Score-Queued detection + _startScoreQueuePoll shimmer+poll
+  - `js/upgrade.js` (NEW) — billing toggle module
+  - `dashboard.html` — #billing-toggle container + sub-upgrade-cta-btn id
+  - `build.js` — upgrade.js in deferred chunk
+  - `worker/fly.toml` — auto_stop="stop", min=0
+  - `docs/scaling/pod-team-manifest.md` — FB-TRIAL-001-S6 pairing
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt (includes upgrade.js)
+  - `dist/admin.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — FB-TRIAL-001-S6 → ✅
+  - `roadmap.html` — FB-TRIAL-001-S6 → done/100
+- **Created:**
+  - `supabase/functions/batch-resume-scorer/index.ts` — Batch API EF
+  - `supabase/migrations/20260314000003_fb_trial_001_s6_batch_scorer.sql` — queue columns + pg_cron
+  - `js/upgrade.js` — billing toggle
+  - `docs/specs/POSTHOG_MIGRATION_READY.md` — self-hosting design doc
+  - `tests/fb-trial-001-s6-cost-optimizations.test.js` — 66 validation tests
+- **Tests:** 66 validation tests (all passing)
+- **Pending manual steps (Marston):**
+  - Create Stripe annual price: $199.90/yr → store as `ANNUAL_STRIPE_PRICE_ID` in Supabase Vault
+  - Set PostHog billing caps: Analytics $50/mo, Session Replay $0, Feature Flags $0 (PostHog → Organization → Billing → Usage limits)
+  - Deploy EFs: `supabase functions deploy batch-resume-scorer chat-job-search score-resume create-checkout api-gateway`
+  - Push migration: `supabase db push` (migration 20260314000003)
+
+**Previous: FB-TRIAL-001-S5** — Trial Notifications
 - Completed: 2026-03-14
 - Product version bumped: `v8.98` → `v8.99` (no JS/HTML changes — EF-only session; notification system backend, no dashboard surfaces changed)
 - ROADMAP.md updated: FB-TRIAL-001-S5 → ✅
@@ -2755,7 +2810,7 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Session In Progress
 
-None. FB-TRIAL-001-S5 complete.
+None. FB-TRIAL-001-S6 complete.
 
 ---
 
@@ -2834,7 +2889,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.99`** | **FB-TRIAL-001-S5: Trial Notifications** |
+| **Product (BJ_VERSION)** | **`v9.00`** | **FB-TRIAL-001-S6: Cost Optimizations 5.1–5.3** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
@@ -2842,7 +2897,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 | **SPA Scaffold** | **`spa@1.0.0-scaffold`** | **SA-013** |
 | **Feature Flags** | **`infra@feature-flags-v1.0.0`** | **SA-025** |
 | **Event Bus** | **`infra@event-bus-v1.0.0`** | **SA-024** |
-| **API Gateway** | `infra@gateway-v1.0.0` | FB-TRIAL-001-S5 (118 routes) |
+| **API Gateway** | `infra@gateway-v1.0.0` | FB-TRIAL-001-S6 (119 routes) |
 | **Capacity Model** | **`infra@capacity-model-v1.0.0`** | **SA-028** |
 | **Deploy Tracker** | **`infra@deploy-tracker-v1.0.0`** | **BI-01** |
 | **Build Analytics** | **`infra@build-analytics-v1.0.0`** | **BI-02** |

@@ -231,8 +231,11 @@ const ROUTE_REGISTRY: Record<string, string> = {
   "send-trial-notifications":   "send-trial-notifications",   // FB-TRIAL-001-S5: trial lifecycle emails (service_role only)
   "weekly-digest-expired":      "weekly-digest-expired",      // FB-TRIAL-001-S5: weekly job digest for expired_free users
 
+  // ── Batch Resume Scorer (FB-TRIAL-001-S6) ──────────────────────────────────
+  "batch-resume-scorer":        "batch-resume-scorer",        // FB-TRIAL-001-S6: Anthropic Batch API queue (service_role only)
+
   // ═══════════════════════════════════════════════════════════════════════════
-  // TOTAL: 118 routes (93 SA-005 + 1 SA-007 + 1 SA-008 + 1 SA-009 + 2 SA-010 + 2 SA-011 + 2 SA-012 + 1 SA-018 + 2 SA-020 + 1 SA-021 + 1 SA-024 + 1 SA-028 + 1 BI-01 + 3 FB-PAYL + 1 EXT-AS-5 + 1 AF-006 + 1 FB-TRIAL-S4 + 2 FB-TRIAL-S5). Direct paths deprecated.
+  // TOTAL: 119 routes (93 SA-005 + 1 SA-007 + 1 SA-008 + 1 SA-009 + 2 SA-010 + 2 SA-011 + 2 SA-012 + 1 SA-018 + 2 SA-020 + 1 SA-021 + 1 SA-024 + 1 SA-028 + 1 BI-01 + 3 FB-PAYL + 1 EXT-AS-5 + 1 AF-006 + 1 FB-TRIAL-S4 + 2 FB-TRIAL-S5 + 1 FB-TRIAL-S6). Direct paths deprecated.
   // HOOK: Future EFs register here. Future: load from DB table for
   //       runtime updates without redeploy (api_consumers integration).
   // ═══════════════════════════════════════════════════════════════════════════

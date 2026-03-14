@@ -264,11 +264,12 @@ serve(async (req: Request) => {
   'x-api-version': API_VERSION,
         'x-api-key': ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'prompt-caching-2024-07-31',
       },
       body: JSON.stringify({
         model: HAIKU_MODEL,
         max_tokens: 500,
-        system: SYSTEM_PROMPT,
+        system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
         messages: trimmed,
       }),
     });
@@ -297,6 +298,19 @@ serve(async (req: Request) => {
     if (filters && Object.keys(filters).length > 0) {
       _setCache(cKey, responseText, filters);
     }
+
+    // ─── 5.1: Log prompt cache hit rate ───
+    try {
+      const usage = anthropicData.usage || {};
+      const cacheRead = usage.cache_read_input_tokens || 0;
+      const totalInput = (usage.input_tokens || 0) + (usage.cache_read_input_tokens || 0) + (usage.cache_creation_input_tokens || 0);
+      const hitRate = totalInput > 0 ? Math.round((cacheRead / totalInput) * 100) / 100 : 0;
+      const tokensSaved = cacheRead;
+      if (window?.posthog || typeof posthog !== 'undefined') {
+        // PostHog unavailable server-side; log for analytics visibility
+      }
+      console.log(`[chat-job-search] cache_hit_rate=${hitRate} tokens_saved=${tokensSaved} total_input=${totalInput}`);
+    } catch (_ce) { /* non-fatal */ }
 
     // ─── Log usage ───
     await sb.from('chat_usage').insert({ user_id: user.id });

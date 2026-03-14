@@ -63,6 +63,7 @@ const chunks = {
     'js/referral-outreach.js',
     'js/payl.js',
     'js/trial-gate.js',
+    'js/upgrade.js',         // FB-TRIAL-001-S6: billing toggle for upgrade page
   ],
 };
 

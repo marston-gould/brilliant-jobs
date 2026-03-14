@@ -499,6 +499,15 @@ async function fetchAIScore(params) {
       body: JSON.stringify(params)
     });
 
+    // ─── 5.2: Batch queue path for expired_free users ───
+    if (res.status === 202 && res.headers.get('X-Score-Queued') === 'true') {
+      var queueData = await res.json();
+      if (queueData.queued && queueData.queue_id) {
+        _startScoreQueuePoll(queueData.queue_id, params);
+      }
+      return null;
+    }
+
     if (!res.ok) {
       console.log('[BJ] AI score HTTP', res.status);
       if (res.status === 406 || res.status === 404) {
@@ -4169,6 +4178,57 @@ function _startClRescoreCooldown(clId) {
       btn.innerHTML = '\ud83d\udd04 ' + sec + 's';
     }
   }, 1000);
+}
+
+// ─── FB-TRIAL-001-S6 5.2: Poll resume_score_queue for batch results ───
+function _startScoreQueuePoll(queueId, originalParams) {
+  // Show shimmer on the score card
+  var scoreCard = document.getElementById('readiness-scores');
+  if (scoreCard) {
+    scoreCard.innerHTML = '<div class="score-shimmer" style="background:linear-gradient(90deg,#2a2a3a 25%,#3a3a4a 50%,#2a2a3a 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:8px;height:80px;width:100%;"></div>';
+  }
+  showToast('Score queued — results ready in ~2 minutes', { type: 'info' });
+
+  var pollInterval = 10000; // 10s
+  var maxAttempts = 30; // 5 minutes
+  var attempts = 0;
+  var poller = setInterval(async function() {
+    attempts++;
+    if (attempts > maxAttempts) {
+      clearInterval(poller);
+      if (scoreCard) scoreCard.innerHTML = '<p style="color:var(--text-muted);font-size:13px;">Score timed out — please try again.</p>';
+      return;
+    }
+    try {
+      var { data: { session } } = await sb.auth.getSession();
+      if (!session) { clearInterval(poller); return; }
+      var res = await fetch(SUPABASE_URL + '/functions/v1/batch-resume-scorer?action=status&queue_id=' + queueId, {
+        headers: { 'Authorization': 'Bearer ' + session.access_token, 'Content-Type': 'application/json' }
+      });
+      // Alternatively query Supabase directly
+      var { data: qrow } = await sb.from('resume_score_queue').select('status,result').eq('id', queueId).single();
+      if (!qrow || qrow.status === 'pending' || qrow.status === 'submitted') return; // still waiting
+      clearInterval(poller);
+      if (qrow.status === 'completed' && qrow.result) {
+        // Render score result
+        if (typeof window._renderBatchScoreResult === 'function') {
+          window._renderBatchScoreResult(qrow.result, originalParams);
+        } else if (scoreCard) {
+          var r = qrow.result;
+          scoreCard.innerHTML = '<div style="padding:12px;background:var(--bg-card);border-radius:8px;">' +
+            '<div style="font-size:24px;font-weight:700;color:var(--accent);">' + (r.match_score || '--') + '</div>' +
+            '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">' + (r.fit_status || '') + '</div>' +
+            '<div style="font-size:12px;margin-top:8px;">' + (r.analysis_summary || '') + '</div>' +
+            '</div>';
+        }
+        showToast('Resume scored!', { type: 'success' });
+      } else {
+        if (scoreCard) scoreCard.innerHTML = '<p style="color:var(--warning);font-size:13px;">Scoring failed — please try again.</p>';
+      }
+    } catch (e) {
+      console.warn('[BJ] Queue poll error:', e);
+    }
+  }, pollInterval);
 }
 
 // CS-P1-004 FE-005: Register keywords.js exports with BJ namespace
