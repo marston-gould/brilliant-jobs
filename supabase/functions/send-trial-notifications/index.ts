@@ -21,8 +21,21 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 const FROM_EMAIL = Deno.env.get("FROM_EMAIL") || "notifications@brilliantjobs.app";
 const DASHBOARD_URL = "https://brilliantjobs.app";
+const POSTHOG_KEY = Deno.env.get("POSTHOG_API_KEY") || "";
+const POSTHOG_HOST = Deno.env.get("POSTHOG_HOST") || "https://app.posthog.com";
 
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+async function capturePostHog(distinctId: string, event: string, props: Record<string, unknown>) {
+  if (!POSTHOG_KEY) return;
+  try {
+    await fetch(`${POSTHOG_HOST}/capture/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ api_key: POSTHOG_KEY, distinct_id: distinctId, event, properties: props }),
+    });
+  } catch (_) { /* fire-and-forget */ }
+}
 
 const CORS = {
   "Access-Control-Allow-Origin": "https://brilliantjobs.app",
@@ -252,6 +265,12 @@ async function handleExpiredNudge(): Promise<{ sent: number; skipped: number }> 
     const ok = await sendEmail(authUser.user.email, subject, html);
     if (ok) {
       await logNotification(user.id, "trial_expired", { expired_at: user.trial_expires_at });
+      // spec §11: trial_expired PostHog event
+      await capturePostHog(user.id, "trial_expired", {
+        user_id: user.id,
+        features_used_count: Object.values(user.feature_samples_used || {}).filter(Boolean).length,
+        surface: "send_trial_notifications",
+      });
       sent++;
     } else {
       skipped++;

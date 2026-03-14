@@ -108,6 +108,28 @@ serve(async (req) => {
       await sb.from("referrals").update({ status: "clawed_back" }).eq("id", reward.referral_id);
     }
 
+    // spec §11: referral_clawback PostHog event
+    try {
+      const phKey = Deno.env.get("POSTHOG_API_KEY");
+      const phHost = Deno.env.get("POSTHOG_HOST") || "https://app.posthog.com";
+      if (phKey && userId) {
+        await fetch(`${phHost}/capture/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            api_key: phKey,
+            distinct_id: userId,
+            event: "referral_clawback",
+            properties: {
+              referrer_id: userId,
+              referred_id: reward.referred_id || null,
+              surface: "referral_reward_clawback",
+            },
+          }),
+        });
+      }
+    } catch (_) { /* fire-and-forget */ }
+
     return new Response(JSON.stringify({ 
       success: true, 
       reward_id, 

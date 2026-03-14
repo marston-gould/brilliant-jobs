@@ -66,12 +66,35 @@ export async function checkFeatureAccess(
 
     // RPC returns JSONB: { allowed, isSample?, daysRemaining?, reason? }
     const result = data as Record<string, unknown>;
-    return {
+    const accessResult: FeatureAccessResult = {
       allowed: result.allowed === true,
       isSample: result.isSample === true ? true : undefined,
       daysRemaining: typeof result.daysRemaining === 'number' ? result.daysRemaining : undefined,
       reason: typeof result.reason === 'string' ? (result.reason as FeatureAccessResult['reason']) : undefined,
     };
+
+    // spec §11: trial_feature_used — fires when trialing user uses a gated feature
+    if (accessResult.allowed && typeof accessResult.daysRemaining === 'number') {
+      try {
+        const phKey = Deno.env.get('POSTHOG_API_KEY');
+        const phHost = Deno.env.get('POSTHOG_HOST') || 'https://app.posthog.com';
+        if (phKey) {
+          const dayOfTrial = 7 - accessResult.daysRemaining;
+          fetch(`${phHost}/capture/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              api_key: phKey,
+              distinct_id: userId,
+              event: 'trial_feature_used',
+              properties: { user_id: userId, feature, day_of_trial: dayOfTrial },
+            }),
+          }).catch(() => { /* fire-and-forget */ });
+        }
+      } catch (_) { /* never block the gate */ }
+    }
+
+    return accessResult;
   } catch (err) {
     console.error('[checkFeatureAccess] Unexpected error:', (err as Error).message);
     // Fail open on unexpected errors

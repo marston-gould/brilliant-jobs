@@ -754,12 +754,42 @@ serve(async (req: Request) => {
           if (subUser) {
             const convertedUserId = subUser.user_id;
 
+            // S7: Read old state BEFORE overwriting — needed for expired_reactivated event
+            const { data: oldProfile } = await sb
+              .from('profiles')
+              .select('user_state, trial_expires_at')
+              .eq('id', convertedUserId)
+              .single();
+
             // S2: Set user_state to active_pro
             await sb
               .from('profiles')
               .update({ user_state: 'active_pro' })
               .eq('id', convertedUserId);
             logger.info('checkout.session.completed → active_pro', { userId: convertedUserId });
+
+            // spec §11: expired_reactivated — fires when expired_free user subscribes
+            if (oldProfile?.user_state === 'expired_free') {
+              try {
+                const phKey = Deno.env.get('POSTHOG_API_KEY');
+                const phHost = Deno.env.get('POSTHOG_HOST') || 'https://app.posthog.com';
+                if (phKey) {
+                  const daysSinceExpiry = oldProfile.trial_expires_at
+                    ? Math.max(0, Math.floor((Date.now() - new Date(oldProfile.trial_expires_at).getTime()) / 86400000))
+                    : 0;
+                  await fetch(`${phHost}/capture/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      api_key: phKey,
+                      distinct_id: convertedUserId,
+                      event: 'expired_reactivated',
+                      properties: { user_id: convertedUserId, days_since_expiry: daysSinceExpiry, trigger: 'checkout' },
+                    }),
+                  });
+                }
+              } catch (_) { /* fire-and-forget */ }
+            }
 
             // S4: Check if user has referred_by set → trigger referral reward
             const { data: profile } = await sb

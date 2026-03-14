@@ -14,8 +14,21 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 const FROM_EMAIL = Deno.env.get("FROM_EMAIL") || "notifications@brilliantjobs.app";
 const DASHBOARD_URL = "https://brilliantjobs.app";
+const POSTHOG_KEY = Deno.env.get("POSTHOG_API_KEY") || "";
+const POSTHOG_HOST = Deno.env.get("POSTHOG_HOST") || "https://app.posthog.com";
 
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+async function capturePostHog(distinctId: string, event: string, props: Record<string, unknown>) {
+  if (!POSTHOG_KEY) return;
+  try {
+    await fetch(`${POSTHOG_HOST}/capture/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ api_key: POSTHOG_KEY, distinct_id: distinctId, event, properties: props }),
+    });
+  } catch (_) { /* fire-and-forget */ }
+}
 
 const CORS = {
   "Access-Control-Allow-Origin": "https://brilliantjobs.app",
@@ -260,6 +273,12 @@ async function runWeeklyDigest(): Promise<{ sent: number; skipped: number; error
           channel: "email",
           status: "sent",
           metadata: { total_matches: totalCount, filter_count: filters.length },
+        });
+        // spec §11: expired_digest_sent PostHog event
+        await capturePostHog(user.id, "expired_digest_sent", {
+          user_id: user.id,
+          jobs_matched: totalCount,
+          surface: "weekly_digest_expired",
         });
         sent++;
       } else {

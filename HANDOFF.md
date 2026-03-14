@@ -52,7 +52,67 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FB-TRIAL-001-S6** — Cost Optimizations 5.1–5.3
+**FB-TRIAL-001-S7** — PostHog Events + Inline Nudges + QA
+- Completed: 2026-03-14
+- Product version bumped: `v9.00` → `v9.01` (JS/TS changes — trial-gate.js major expansion, checkFeatureAccess.ts trial_feature_used, send-trial-notifications EF, weekly-digest-expired EF, process-referral-reward EF, referral-reward-clawback EF, stripe-webhook EF; all HTML surfaces cache-busted)
+- ROADMAP.md updated: FB-TRIAL-001-S7 → ✅
+- roadmap.html updated: FB-TRIAL-001-S7 → `s: 'done'`, p: 100
+- **Part 1 — 22 PostHog Events (spec §11):**
+  - `trial_started`: fires on first dashboard load within 10min of signup (session dedup via `bj_trial_started_fired`). Properties: user_id, signup_source, referred_by. In trial-gate.js.
+  - `trial_upgrade_prompted`: fires each time trial banner renders. Properties: user_id, trigger='trial_banner', day_of_trial. In trial-gate.js.
+  - `trial_upgrade_clicked`: renamed from `trial_banner_upgrade_click`. source='trial_banner', day_of_trial. Also fires from inline nudges with source='inline_nudge', feature. In trial-gate.js.
+  - `trial_feature_used`: fires in `checkFeatureAccess.ts` when trialing user (daysRemaining is a number) uses a gated feature. Properties: user_id, feature, day_of_trial. Fire-and-forget, never blocks the gate.
+  - `trial_expired`: fires in `send-trial-notifications` `expired_nudge` action after email sends. Properties: user_id, features_used_count.
+  - `sample_offered`: fires when pre-sample prompt shows (alongside legacy `pre_sample_prompt_shown`). Properties: feature, days_since_expiry. In trial-gate.js.
+  - `sample_used`: fires when user confirms sample consumption. Properties: feature, days_since_expiry. In trial-gate.js `showPreSamplePrompt` confirm handler.
+  - `sample_conversion_prompted`: already existed (S3). Preserved.
+  - `sample_converted`: fires when user clicks Upgrade in post-sample modal. Properties: feature, days_since_expiry. Also fires `sample_conversion_upgrade_click` for backwards compat.
+  - `expired_gate_hit`: fires per-feature in `renderExpiredNudges()` for each of 7 locations. Properties: feature, days_since_expiry.
+  - `expired_digest_sent`: fires in `weekly-digest-expired` after successful email. Properties: user_id, jobs_matched.
+  - `expired_reactivated`: fires in `stripe-webhook` `checkout.session.completed` only when old user_state was `expired_free` before active_pro transition. Properties: user_id, days_since_expiry, trigger='checkout'.
+  - `referral_rewarded`: fires in `process-referral-reward` after credit grant. Properties: referrer_id, credits_this_cycle.
+  - `referral_clawback`: fires in `referral-reward-clawback`. Properties: referrer_id, referred_id.
+  - **Preserved (S3–S6):** sample_conversion_dismissed, sample_conversion_upgrade_click, referral_intro_shown, referral_link_copied, trial_converted, referral_signup, batch_score_completed, cache_hit_rate.
+- **Part 2 — 7 Inline Nudges (spec §6.4, `renderExpiredNudges()`):**
+  - Called from `initTrialGate()` when `_allSamplesConsumed=true` (expired_free + all samples gone).
+  - Each location: (1) fires `expired_gate_hit`, (2) injects `.trial-expired-nudge` element, (3) upgrade links fire `trial_upgrade_clicked` with `source='inline_nudge'`.
+  - Nudge 1 — Chat tab: disables `#chat-input`, inserts full-width card above it.
+  - Nudge 2 — Boolean toggle: disables `#boolean-toggle`, appends "Pro" badge span.
+  - Nudge 3 — Stats page: absolute overlay with `backdrop-filter:blur(4px)` + upgrade CTA.
+  - Nudge 4 — Saved filters: card after `#saved-filters-header`.
+  - Nudge 5 — SMS toggles: disables all `[data-feature-gate="sms"]` toggles, appends "Pro feature" badges.
+  - Nudge 6 — Resume score column: appends "Upgrade to score more resumes" note to score area.
+  - Nudge 7 — Auto-apply button: disables `#auto-apply-btn`, appends "Pro" badge.
+- **Part 3 — Infrastructure:**
+  - `_daysSinceExpiry()` helper in trial-gate.js — reads `bj_trial_expires_at` from sessionStorage (written during `initTrialGate`).
+  - `_allSamplesConsumed` state flag added — tracks whether all 8 features have been sampled.
+  - `_trialDaysRemaining` state cached for `trial_upgrade_prompted` event.
+  - `capturePostHog()` helper added to: `send-trial-notifications`, `weekly-digest-expired`, `process-referral-reward` (all use POSTHOG_KEY + POSTHOG_HOST env vars, fire-and-forget).
+  - `checkFeatureAccess.ts`: reads old `return {...}` flow replaced with named `accessResult` so PostHog fires between RPC and return.
+  - `stripe-webhook`: reads `user_state + trial_expires_at` before overwriting to detect expired_free path.
+- **Modified:**
+  - `js/trial-gate.js` — trial_started, trial_upgrade_prompted, trial_upgrade_clicked rename, sample_offered, sample_used, sample_converted, _allSamplesConsumed, renderExpiredNudges (7 nudges), _daysSinceExpiry, sessionStorage caching of trial_expires_at; window + BJ exports extended
+  - `supabase/functions/_shared/checkFeatureAccess.ts` — trial_feature_used PostHog event (fire-and-forget, never blocks)
+  - `supabase/functions/send-trial-notifications/index.ts` — POSTHOG_KEY/HOST constants, capturePostHog helper, trial_expired event in expired_nudge handler
+  - `supabase/functions/weekly-digest-expired/index.ts` — POSTHOG_KEY/HOST constants, capturePostHog helper, expired_digest_sent event
+  - `supabase/functions/process-referral-reward/index.ts` — POSTHOG_KEY/HOST constants, capturePostHog helper, referral_rewarded event
+  - `supabase/functions/referral-reward-clawback/index.ts` — referral_clawback PostHog event (inline, no helper)
+  - `supabase/functions/stripe-webhook/index.ts` — reads old user_state before update, expired_reactivated event
+  - `dist/dashboard-deferred.min.js` — rebuilt (includes updated trial-gate.js)
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/admin.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — FB-TRIAL-001-S7 → ✅
+  - `roadmap.html` — FB-TRIAL-001-S7 → done/100
+- **Created:**
+  - `tests/fb-trial-001-s7-posthog-nudges.test.js` — 64 validation tests (10 sections)
+- **Tests:** 64 validation tests (all passing)
+- **Pending manual steps (Marston):**
+  - Deploy EFs: `supabase functions deploy send-trial-notifications weekly-digest-expired process-referral-reward referral-reward-clawback stripe-webhook`
+  - Deploy shared: `supabase functions deploy _shared` (checkFeatureAccess.ts updated)
+  - No migrations needed (no schema changes)
+
+**Previous: FB-TRIAL-001-S6** — Cost Optimizations 5.1–5.3
 - Completed: 2026-03-14
 - Product version bumped: `v8.99` → `v9.00` (JS changes — chat-job-search prompt caching, score-resume prompt caching, keywords.js shimmer+poll, upgrade.js new file, dashboard.html billing-toggle container; all HTML surfaces cache-busted)
 - ROADMAP.md updated: FB-TRIAL-001-S6 → ✅
@@ -2810,13 +2870,13 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Session In Progress
 
-None. FB-TRIAL-001-S6 complete.
+None. FB-TRIAL-001-S7 complete.
 
 ---
 
 ## Next Session
 
-No specific session queued. EXT-AS-5 complete.
+No specific session queued. FB-TRIAL-001 series complete.
 
 **EXT-AS series (9 sessions total, 9 done — COMPLETE):**
 - EXT-AS-1 ✅ — Applicant Profile + Settings Sync
@@ -2889,7 +2949,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.00`** | **FB-TRIAL-001-S6: Cost Optimizations 5.1–5.3** |
+| **Product (BJ_VERSION)** | **`v9.01`** | **FB-TRIAL-001-S7: PostHog Events + Inline Nudges** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

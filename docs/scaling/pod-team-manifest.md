@@ -133,3 +133,4 @@
 | FB-TRIAL-001-S4 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
 | FB-TRIAL-001-S5 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
 | FB-TRIAL-001-S6 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
+| FB-TRIAL-001-S7 | Lead Platform Eng + Evolvability Strategist | Chief Architect + Forward-Looking Dev |

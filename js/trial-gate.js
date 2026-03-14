@@ -1,7 +1,9 @@
-// js/trial-gate.js — FB-TRIAL-001-S3: Trial Gate Client + Free Samples
-// Renders trial countdown banner, pre-sample prompts, and post-sample conversion modals.
-// Reads user_state + trial data from profiles via Supabase.
-// Exports: initTrialGate, showPreSamplePrompt, showSampleConversionModal, hideTrialBanner
+// js/trial-gate.js — FB-TRIAL-001-S3/S7: Trial Gate Client + Free Samples + Inline Nudges
+// Renders trial countdown banner, pre-sample prompts, post-sample conversion modals,
+// and contextual inline nudges for fully-expired users.
+// S7: adds all 22 PostHog events per spec §11, 7 inline nudges per spec §6.4.
+// Exports: initTrialGate, showPreSamplePrompt, showSampleConversionModal,
+//          hideTrialBanner, renderExpiredNudges
 
 /* ─── Feature label map (human-readable names for modals) ─── */
 var _FEATURE_LABELS = {
@@ -18,6 +20,8 @@ var _FEATURE_LABELS = {
 /* ─── State ─── */
 var _trialBannerInterval = null;
 var _sampleAvailability = null; // { chat: true, score: false, ... }
+var _allSamplesConsumed = false; // true when expired_free + no samples left → show inline nudges
+var _trialDaysRemaining = null;  // cached for event properties
 
 /* ────────────────────────────────────────────────────────────
  *  initTrialGate()
@@ -30,7 +34,7 @@ async function initTrialGate() {
   try {
     var result = await safeQuery(function() {
       return sb.from('profiles')
-        .select('user_state, trial_expires_at, feature_samples_used')
+        .select('user_state, trial_expires_at, feature_samples_used, trial_started_at')
         .eq('id', currentUser.id)
         .single();
     }, { label: 'trial-gate:init', fallback: null });
@@ -39,8 +43,37 @@ async function initTrialGate() {
 
     var state = result.user_state;
 
-    // ── TRIALING: render countdown banner ──
+    // Cache trial_expires_at for _daysSinceExpiry() calls
+    if (result.trial_expires_at) {
+      try { sessionStorage.setItem('bj_trial_expires_at', result.trial_expires_at); } catch (_e) {}
+    }
+
+    // ── TRIALING: render countdown banner + fire trial_started if fresh ──
     if (state === 'trialing' && result.trial_expires_at) {
+      var now = new Date();
+      var exp = new Date(result.trial_expires_at);
+      var msLeft = exp.getTime() - now.getTime();
+      _trialDaysRemaining = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)));
+
+      // trial_started: fire once per user (only on first dashboard load, within 10 min of signup)
+      if (result.trial_started_at) {
+        var startedMsAgo = now.getTime() - new Date(result.trial_started_at).getTime();
+        if (startedMsAgo < 10 * 60 * 1000 && !sessionStorage.getItem('bj_trial_started_fired')) {
+          sessionStorage.setItem('bj_trial_started_fired', '1');
+          if (window.posthog) posthog.capture('trial_started', {
+            user_id: currentUser.id,
+            signup_source: 'dashboard',
+            referred_by: (window._bjReferredBy || null),
+          });
+        }
+      }
+      // trial_upgrade_prompted: fires each time the banner is rendered
+      if (window.posthog) posthog.capture('trial_upgrade_prompted', {
+        user_id: currentUser.id,
+        trigger: 'trial_banner',
+        day_of_trial: 7 - _trialDaysRemaining,
+      });
+
       _renderTrialBanner(result.trial_expires_at);
     }
 
@@ -49,11 +82,20 @@ async function initTrialGate() {
       var used = result.feature_samples_used || {};
       _sampleAvailability = {};
       var allFeatures = ['chat', 'score', 'sms', 'email', 'apply', 'stats', 'filter', 'boolean'];
+      var anyAvailable = false;
       for (var i = 0; i < allFeatures.length; i++) {
         _sampleAvailability[allFeatures[i]] = !used[allFeatures[i]];
+        if (!used[allFeatures[i]]) anyAvailable = true;
       }
-      // Update any gated feature buttons with sample badges
-      _updateSampleBadges();
+      _allSamplesConsumed = !anyAvailable;
+
+      if (_allSamplesConsumed) {
+        // §6.4: render inline nudges — replaces feature UI for fully-expired users
+        renderExpiredNudges();
+      } else {
+        // Update any gated feature buttons with sample badges
+        _updateSampleBadges();
+      }
     }
 
     // ── ACTIVE_PRO: hide banner if it exists (e.g. mid-trial upgrade) ──
@@ -111,7 +153,7 @@ function _renderTrialBanner(expiresAt) {
       '</span>' +
       '<a href="/upgrade" style="background:rgba(255,255,255,0.2);color:' + textColor +
         ';padding:4px 14px;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap;"' +
-        ' onclick="if(window.posthog)posthog.capture(\'trial_banner_upgrade_click\',{days_remaining:' + daysLeft + '})">' +
+        ' onclick="if(window.posthog)posthog.capture(\'trial_upgrade_clicked\',{source:\'trial_banner\',day_of_trial:' + (7 - daysLeft) + '})">' +
         'Upgrade now</a>';
 
     // If expired already, switch to hidden
@@ -161,8 +203,11 @@ function showPreSamplePrompt(featureKey, onConfirm, onCancel) {
 
   overlay.style.display = 'flex';
 
-  // PostHog
-  if (window.posthog) posthog.capture('pre_sample_prompt_shown', { feature: featureKey });
+  // PostHog — spec §11: sample_offered + legacy pre_sample_prompt_shown
+  if (window.posthog) {
+    posthog.capture('sample_offered', { feature: featureKey, days_since_expiry: _daysSinceExpiry() });
+    posthog.capture('pre_sample_prompt_shown', { feature: featureKey });
+  }
 
   // Wire buttons
   var confirmBtn = document.getElementById('pre-sample-confirm');
@@ -171,7 +216,11 @@ function showPreSamplePrompt(featureKey, onConfirm, onCancel) {
   if (confirmBtn) {
     confirmBtn.onclick = function() {
       overlay.style.display = 'none';
-      if (window.posthog) posthog.capture('pre_sample_confirmed', { feature: featureKey });
+      // sample_used: spec §11 — fires when sample is consumed
+      if (window.posthog) {
+        posthog.capture('sample_used', { feature: featureKey, days_since_expiry: _daysSinceExpiry() });
+        posthog.capture('pre_sample_confirmed', { feature: featureKey });
+      }
       if (onConfirm) onConfirm();
     };
   }
@@ -240,7 +289,11 @@ function showSampleConversionModal(featureKey) {
   var upgradeBtn = document.getElementById('sample-modal-upgrade');
   if (upgradeBtn) {
     upgradeBtn.onclick = function() {
-      if (window.posthog) posthog.capture('sample_conversion_upgrade_click', { feature: featureKey });
+      // sample_converted: user upgrades immediately after sample — spec §11
+      if (window.posthog) {
+        posthog.capture('sample_converted', { feature: featureKey, days_since_expiry: _daysSinceExpiry() });
+        posthog.capture('sample_conversion_upgrade_click', { feature: featureKey });
+      }
     };
   }
 
@@ -373,6 +426,162 @@ function _maybeShowUpgradeIntro() {
   }
 }
 
+/* ────────────────────────────────────────────────────────────
+ *  _daysSinceExpiry()
+ *  Returns days since trial expired (for PostHog event properties).
+ *  Uses trial_expires_at from the banner interval if available,
+ *  otherwise returns 0 as a safe default.
+ * ──────────────────────────────────────────────────────────── */
+function _daysSinceExpiry() {
+  try {
+    // Try to read from cached profile if available
+    var cached = sessionStorage.getItem('bj_trial_expires_at');
+    if (cached) {
+      var diff = Date.now() - new Date(cached).getTime();
+      return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+    }
+  } catch (_e) { /* ignore */ }
+  return 0;
+}
+
+/* ────────────────────────────────────────────────────────────
+ *  renderExpiredNudges()
+ *  §6.4: Contextual inline nudges for expired_free users with
+ *  all samples consumed. Injects small upgrade prompts into 7
+ *  feature locations. Fires expired_gate_hit for each location.
+ * ──────────────────────────────────────────────────────────── */
+function renderExpiredNudges() {
+  var upgradeUrl = '/upgrade';
+  var nudgeStyle = 'display:inline-flex;align-items:center;gap:6px;padding:6px 12px;' +
+    'border-radius:8px;background:var(--bg-card);border:1px solid var(--border);' +
+    'font-size:12px;color:var(--text-dim);margin-top:6px;';
+  var ctaStyle = 'color:var(--accent);font-weight:700;text-decoration:none;';
+
+  function _makeNudge(msgHtml, feature) {
+    var el = document.createElement('div');
+    el.className = 'trial-expired-nudge';
+    el.setAttribute('data-feature', feature);
+    el.style.cssText = nudgeStyle;
+    el.innerHTML = msgHtml + ' <a href="' + upgradeUrl + '" style="' + ctaStyle + '">Upgrade</a>';
+    el.querySelector('a').addEventListener('click', function() {
+      if (window.posthog) posthog.capture('trial_upgrade_clicked', {
+        source: 'inline_nudge',
+        feature: feature,
+        days_since_expiry: _daysSinceExpiry(),
+      });
+    });
+    return el;
+  }
+
+  function _fireGateHit(feature) {
+    if (window.posthog) posthog.capture('expired_gate_hit', {
+      feature: feature,
+      days_since_expiry: _daysSinceExpiry(),
+    });
+  }
+
+  // 1. Chat tab — disable input, show static card above it
+  var chatInput = document.getElementById('chat-input');
+  if (chatInput && !document.querySelector('.trial-expired-nudge[data-feature="chat"]')) {
+    _fireGateHit('chat');
+    var chatNudge = _makeNudge('You used your free AI Chat sample.', 'chat');
+    chatNudge.style.cssText += 'width:100%;box-sizing:border-box;justify-content:center;';
+    chatInput.parentNode.insertBefore(chatNudge, chatInput);
+    chatInput.disabled = true;
+    chatInput.placeholder = 'Upgrade to continue using AI Chat';
+    chatInput.style.opacity = '0.4';
+  }
+
+  // 2. Boolean search toggle — disable + add Pro badge
+  var booleanToggle = document.getElementById('boolean-toggle') ||
+    document.querySelector('[data-feature-gate="boolean"]');
+  if (booleanToggle && !document.querySelector('.trial-expired-nudge[data-feature="boolean"]')) {
+    _fireGateHit('boolean');
+    booleanToggle.disabled = true;
+    booleanToggle.style.opacity = '0.4';
+    var boolNudge = document.createElement('span');
+    boolNudge.className = 'trial-expired-nudge';
+    boolNudge.setAttribute('data-feature', 'boolean');
+    boolNudge.style.cssText = 'margin-left:6px;padding:2px 6px;border-radius:4px;' +
+      'background:var(--accent);color:#fff;font-size:9px;font-weight:700;';
+    boolNudge.textContent = 'Pro';
+    booleanToggle.parentNode && booleanToggle.parentNode.insertBefore(boolNudge, booleanToggle.nextSibling);
+  }
+
+  // 3. Stats page — blur charts with upgrade overlay
+  var statsPage = document.getElementById('page-stats');
+  if (statsPage && !document.querySelector('.trial-expired-nudge[data-feature="stats"]')) {
+    _fireGateHit('stats');
+    var statsOverlay = document.createElement('div');
+    statsOverlay.className = 'trial-expired-nudge';
+    statsOverlay.setAttribute('data-feature', 'stats');
+    statsOverlay.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;' +
+      'display:flex;flex-direction:column;align-items:center;justify-content:center;' +
+      'background:rgba(var(--bg-rgb,255,255,255),0.85);backdrop-filter:blur(4px);' +
+      'z-index:10;border-radius:8px;gap:10px;';
+    statsOverlay.innerHTML = '<div style="font-size:14px;font-weight:600;color:var(--text);">' +
+      'Upgrade to see your analytics</div>' +
+      '<a href="' + upgradeUrl + '" style="' + ctaStyle + 'font-size:13px;padding:8px 20px;' +
+      'background:var(--accent);color:#fff;border-radius:8px;text-decoration:none;">Upgrade to Pro</a>';
+    statsOverlay.querySelector('a').addEventListener('click', function() {
+      if (window.posthog) posthog.capture('trial_upgrade_clicked', { source: 'inline_nudge', feature: 'stats' });
+    });
+    var statsInner = statsPage.querySelector('.page-content, .stats-content, section') || statsPage;
+    statsInner.style.position = 'relative';
+    statsInner.appendChild(statsOverlay);
+  }
+
+  // 4. Saved filter counter nudge — append after filter list header
+  var filterListHeader = document.getElementById('saved-filters-header') ||
+    document.querySelector('.sf-header, #saved-searches-header');
+  if (filterListHeader && !document.querySelector('.trial-expired-nudge[data-feature="filter"]')) {
+    _fireGateHit('filter');
+    var filterNudge = _makeNudge('You\'ve used your free filter sample.', 'filter');
+    filterListHeader.parentNode && filterListHeader.parentNode.insertBefore(filterNudge, filterListHeader.nextSibling);
+  }
+
+  // 5. SMS notification toggles — disable + badge
+  var smsToggles = document.querySelectorAll('[data-feature-gate="sms"], .sms-toggle, #sms-enabled-toggle');
+  if (smsToggles.length > 0 && !document.querySelector('.trial-expired-nudge[data-feature="sms"]')) {
+    _fireGateHit('sms');
+    smsToggles.forEach(function(toggle) {
+      toggle.disabled = true;
+      toggle.style.opacity = '0.4';
+      var badge = document.createElement('span');
+      badge.className = 'trial-expired-nudge';
+      badge.setAttribute('data-feature', 'sms');
+      badge.style.cssText = 'margin-left:6px;padding:2px 6px;border-radius:4px;' +
+        'background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);font-size:9px;font-weight:700;';
+      badge.textContent = 'Pro feature';
+      toggle.parentNode && toggle.parentNode.insertBefore(badge, toggle.nextSibling);
+    });
+  }
+
+  // 6. Resume score column — "Upgrade to score more" note below score cards
+  var scoreArea = document.querySelector('.readiness-area, #readiness-section, [data-feature-gate="score"]');
+  if (scoreArea && !document.querySelector('.trial-expired-nudge[data-feature="score"]')) {
+    _fireGateHit('score');
+    var scoreNudge = _makeNudge('Upgrade to score more resumes.', 'score');
+    scoreArea.appendChild(scoreNudge);
+  }
+
+  // 7. Extension auto-apply button placeholder — injected via data attribute
+  // Extension handles its own gating; we ensure the page-level settings button is flagged
+  var autoApplyBtn = document.querySelector('[data-feature-gate="apply"], #auto-apply-btn, .auto-apply-toggle');
+  if (autoApplyBtn && !document.querySelector('.trial-expired-nudge[data-feature="apply"]')) {
+    _fireGateHit('apply');
+    autoApplyBtn.disabled = true;
+    autoApplyBtn.style.opacity = '0.4';
+    var applyBadge = document.createElement('span');
+    applyBadge.className = 'trial-expired-nudge';
+    applyBadge.setAttribute('data-feature', 'apply');
+    applyBadge.style.cssText = 'margin-left:6px;padding:2px 6px;border-radius:4px;' +
+      'background:var(--accent);color:#fff;font-size:9px;font-weight:700;';
+    applyBadge.textContent = 'Pro';
+    autoApplyBtn.parentNode && autoApplyBtn.parentNode.insertBefore(applyBadge, autoApplyBtn.nextSibling);
+  }
+}
+
 /* ─── Exports to window + BJ namespace ─── */
 window.initTrialGate = initTrialGate;
 window.showPreSamplePrompt = showPreSamplePrompt;
@@ -380,6 +589,7 @@ window.showSampleConversionModal = showSampleConversionModal;
 window.hideTrialBanner = hideTrialBanner;
 window.handleSampleHeader = handleSampleHeader;
 window.getClientSampleAvailability = getClientSampleAvailability;
+window.renderExpiredNudges = renderExpiredNudges;
 
 if (typeof window.BJ !== 'undefined') {
   BJ.initTrialGate = initTrialGate;
@@ -388,4 +598,5 @@ if (typeof window.BJ !== 'undefined') {
   BJ.hideTrialBanner = hideTrialBanner;
   BJ.handleSampleHeader = handleSampleHeader;
   BJ.getClientSampleAvailability = getClientSampleAvailability;
+  BJ.renderExpiredNudges = renderExpiredNudges;
 }

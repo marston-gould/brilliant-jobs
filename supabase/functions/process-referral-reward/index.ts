@@ -11,6 +11,19 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 const SB_URL = Deno.env.get('SUPABASE_URL')!;
 const SB_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY')!;
+const POSTHOG_KEY = Deno.env.get('POSTHOG_API_KEY') || '';
+const POSTHOG_HOST = Deno.env.get('POSTHOG_HOST') || 'https://app.posthog.com';
+
+async function capturePostHog(distinctId: string, event: string, props: Record<string, unknown>) {
+  if (!POSTHOG_KEY) return;
+  try {
+    await fetch(`${POSTHOG_HOST}/capture/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key: POSTHOG_KEY, distinct_id: distinctId, event, properties: props }),
+    });
+  } catch (_) { /* fire-and-forget */ }
+}
 
 // ─── Stripe API helper ───
 async function stripePost(endpoint: string, body: Record<string, string>) {
@@ -235,6 +248,15 @@ serve(async (req: Request) => {
         refConfig.value.pro_days
       );
       stripeResults.push({ ...refStripe, party: 'referred' });
+    }
+
+    // spec §11: referral_rewarded PostHog event — fires to referrer on credit grant
+    if (result.referrer_id) {
+      await capturePostHog(result.referrer_id, 'referral_rewarded', {
+        referrer_id: result.referrer_id,
+        credits_this_cycle: result.referrer_new_credits_this_cycle ?? 0,
+        surface: 'process_referral_reward',
+      });
     }
 
     return new Response(JSON.stringify({
