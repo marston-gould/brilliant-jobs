@@ -2948,197 +2948,42 @@ None.
 
 ---
 
-## Next Session
+## Last Completed Session
 
 **EDE-001 — Event-Driven JD Enrichment with Eligibility Gate**
+- Completed: 2026-03-15
+- Product version bumped: `v9.06` → `v9.07`
+- ROADMAP.md updated: EDE-001 → ✅
+- roadmap.html updated: EDE-001 → `s: 'done'`, p: 100
 
-Spec: `POD2_HANDOFF_EventDrivenEnrichment.docx` (in project uploads, 2026-03-14)
+**DB (migration 20260315000001_ede_001.sql — applied to prod):**
+- `enrichment_requests` table: user_id, filter_id, location_key, loc_display, status (queued/processing/complete/no_jobs), jobs_total, jobs_enriched, estimated_at, completed_at. UNIQUE(user_id, location_key). RLS: users manage own, service_role full.
+- `jd_enrich_retry_count integer DEFAULT 0` added to `ats_jobs` — was referenced by enrich-jd-ai EF but missing from prod DB. Index on non-zero values.
+- `fn_mark_jobs_for_enrichment(p_location text DEFAULT NULL)`: p_location IS NOT NULL → hard eligibility gate (open, content>200, title not null, jd_skills null, retry<3, US/remote geo) + priority=1. p_location IS NULL → original cron behaviour.
+- `fn_update_enrichment_progress(p_increment)`: increments jobs_enriched on all queued/processing rows, marks complete when threshold reached.
+- Cron #49: `*/5` → `*/10` (enrichment now on-demand; cron is drain-only).
 
-Problem: cron #49 enriches ALL jobs including non-US, non-remote — ~40-60% waste. Enrichment is time-triggered not user-triggered.
+**Edge Functions (deployed):**
+- `enrich-jd-location` NEW — route #123. User-JWT auth. Normalises location key (Austin, TX → us:tx:austin, California → us:ca, Remote → remote). 24h dedup per user+location_key. Counts eligible jobs. Inserts enrichment_requests. Calls fn_mark_jobs_for_enrichment. Returns {location_key, loc_display, status, jobs_total, estimated_at, cached}.
+- `enrich-jd-ai` UPDATED — calls fn_update_enrichment_progress after each batch.
+- `api-gateway` UPDATED — route #123 added. Total: 123 routes.
 
-Solution: fire enrichment only when a user saves a filter with a wherePill. Non-US non-remote jobs never touched.
+**Client (js/location.js, js/app.js):**
+- `location.js` filter save: persists to `user_filters` Supabase table (fire-and-forget, captures row ID) + calls triggerLocationEnrichment for wherePills.
+- `app.js` createFilterFromProfile: onboarding filter persists to `user_filters` + triggers enrichment.
+- `window.triggerLocationEnrichment(wherePills, filterId, includeRemote)`: calls enrich-jd-location per pill, shows popup for new processing requests, PostHog `enrichment_triggered`.
+- `showEnrichmentPopup(data)`: 8s auto-dismiss toast showing loc_display + job count + ETA. PostHog `enrichment_popup_shown/dismissed`.
+- `loadEnrichmentStatus()`: fetches last 7d enrichment_requests on init, populates _enrichmentRequests cache.
+- `window._enrichmentBadgeHtml(sf)`: badge injected below filter name — "🔍 Reviewing ~Xmin" (queued/processing) or "✓ Up to date" (complete).
 
-**Entry gates:**
-- Confirm `enrichment_requests` table does NOT exist: `SELECT tablename FROM pg_tables WHERE tablename='enrichment_requests'`
-- Confirm cron #49 still at `*/5`: `SELECT schedule FROM cron.job WHERE jobid=49`
-
-**Step 1 — DB migration (new file: `supabase/migrations/20260315000001_ede_001.sql`):**
-
-```sql
-CREATE TABLE enrichment_requests (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  filter_id uuid REFERENCES user_filters(id) ON DELETE SET NULL,
-  location_key text NOT NULL,  -- 'us:tx:austin', 'us:ca', 'remote'
-  loc_display text NOT NULL,
-  status text NOT NULL DEFAULT 'queued', -- queued|processing|complete|no_jobs
-  jobs_total int,
-  jobs_enriched int DEFAULT 0,
-  requested_at timestamptz NOT NULL DEFAULT now(),
-  estimated_at timestamptz,
-  completed_at timestamptz,
-  UNIQUE (user_id, location_key)
-);
-CREATE INDEX idx_er_status ON enrichment_requests(status) WHERE status != 'complete';
-CREATE INDEX idx_er_user ON enrichment_requests(user_id);
-```
-
-Update `fn_mark_jobs_for_enrichment()` to accept `p_location text DEFAULT NULL`. When provided, add eligibility gate WHERE clauses:
-- `status = 'open'`
-- `content IS NOT NULL AND length(content) > 200`
-- `title IS NOT NULL`
-- `jd_skills IS NULL`
-- `jd_enrich_retry_count < 3`
-- `(loc_country = 'US' OR is_remote = true OR loc_state IS NOT NULL)`
-Mark matching jobs with `enrichment_priority = 1`.
-
-**Step 2 — New EF: `supabase/functions/enrich-jd-location/index.ts`**
-
-POST `{ location: string, filter_id?: string, include_remote?: boolean }`
-
-Location key normalisation:
-- Strip punctuation, lowercase, state name → 2-letter abbrev
-- `'Austin, TX'` → `'us:tx:austin'` | `'California'` → `'us:ca'` | `'United States'` → `'us'` | `'Remote'` → `'remote'`
-
-Dedup: if existing row with same user_id + location_key within 24h and status != 'no_jobs' → return `cached: true`
-
-ETA: `Math.ceil(jobs_total / 300)` hours (300/hr = 50 jobs × 10min), min 30min.
-
-Returns: `{ location_key, loc_display, status, jobs_total, jobs_enriched, estimated_at, cached }`
-
-Add to API gateway (next route after 122).
-
-**Step 3 — Update `enrich-jd-ai` EF**
-After each batch success, run:
-```sql
-UPDATE enrichment_requests
-SET jobs_enriched = jobs_enriched + $batch_count,
-    status = CASE WHEN jobs_enriched + $batch_count >= jobs_total THEN 'complete' ELSE 'processing' END,
-    completed_at = CASE WHEN jobs_enriched + $batch_count >= jobs_total THEN now() ELSE NULL END
-WHERE status IN ('queued','processing')
-  AND location_key = ANY($locations_in_batch);
-```
-
-**Step 4 — Fix filter persistence (PREREQUISITE)**
-Filters currently write to localStorage only. Need every save to also write to `user_filters` and capture the row ID.
-
-Primary save: `location.js` ~line 778 (after `saveUserData('bj_saved_filters', ...)`):
-```javascript
-// Persist to Supabase + trigger enrichment
-if (currentUser) {
-  const upsertData = { user_id: currentUser.id, name: filterData.name, filter_data: filterData, sort_order: existingIdx >= 0 ? existingIdx : savedFilters.length - 1 };
-  const method = filterData._id ? sb.from('user_filters').update(upsertData).eq('id', filterData._id) : sb.from('user_filters').insert(upsertData).select().single();
-  method.then(({ data, error }) => {
-    if (!error && data) {
-      filterData._id = data.id;
-      if ((filterData.wherePills || []).length > 0) triggerLocationEnrichment(filterData.wherePills, data.id, filterData.includeRemote);
-    }
-  });
-}
-```
-
-Onboarding: `app.js` ~line 1444 (after `saveUserData('bj_saved_filters', ...)`):
-```javascript
-if (currentUser && (newFilter.wherePills || []).length > 0) {
-  sb.from('user_filters').insert({ user_id: currentUser.id, name: newFilter.name, filter_data: newFilter, sort_order: savedFilters.length - 1 }).select().single()
-    .then(({ data, error }) => { if (!error && data) triggerLocationEnrichment(newFilter.wherePills, data.id, newFilter.includeRemote); });
-}
-```
-
-**Step 5 — Client: `triggerLocationEnrichment()` in `app.js`**
-```javascript
-window.triggerLocationEnrichment = async function(wherePills, filterId, includeRemote) {
-  if (!wherePills || !wherePills.length || !currentUser) return;
-  var session = await sb.auth.getSession();
-  var token = session?.data?.session?.access_token;
-  if (!token) return;
-  for (var i = 0; i < wherePills.length; i++) {
-    var loc = (wherePills[i].values || [])[0];
-    if (!loc) continue;
-    try {
-      var res = await fetch(SUPABASE_URL + '/functions/v1/enrich-jd-location', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
-        body: JSON.stringify({ location: loc, filter_id: filterId, include_remote: !!includeRemote })
-      });
-      var data = await res.json();
-      if (res.ok && data.status !== 'complete' && !data.cached) showEnrichmentPopup(data);
-      if (window.posthog) posthog.capture('enrichment_triggered', { location_key: data.location_key, jobs_total: data.jobs_total, cached: data.cached });
-    } catch(e) { reportError('app:enrich-trigger', e); }
-  }
-};
-```
-
-**Step 6 — UX: `showEnrichmentPopup(data)` + filter badge**
-
-Popup (toast-style, 8s auto-dismiss):
-```
-🔍 Reviewing jobs in Austin, TX
-Found 847 jobs · check back in ~30 min
-[Dismiss]
-```
-Don't show if `cached: true` or `status === 'complete'`.
-
-Filter badge: on dashboard load, query `enrichment_requests WHERE user_id = $1 AND requested_at > NOW() - INTERVAL '7 days'`. Map `location_key` back to filters. Show badge below filter name: "Reviewing…" (processing) / "Up to date" (complete).
-
-**Step 7 — Cron**
-Change cron #49 from `*/5` to `*/10`:
-```sql
-SELECT cron.alter_job(49::bigint, schedule := '*/10 * * * *');
-```
-
-**Step 8 — PostHog + tests**
-Events: `enrichment_triggered`, `enrichment_complete`, `enrichment_popup_shown`, `enrichment_popup_dismissed`
-
-Acceptance:
-- Non-US non-remote job never enriched after deploy
-- Content ≤ 200 chars never enriched
-- Filter save with wherePill triggers EF within 2s
-- Same filter twice within 24h returns `cached: true`
-- Daily Anthropic spend drops within 48h
-
-**EXT-AS series (9 sessions total, 9 done — COMPLETE):**
-- EXT-AS-1 ✅ — Applicant Profile + Settings Sync
-- EXT-AS-2 ✅ — Consumer Popup UI + Mode Persistence
-- EXT-AS-3 ✅ — Content Script: Save Button + Apply Interception
-- EXT-AS-4 ✅ — Score Gate Popup + Resume Scoring
-- EXT-AS-5 ✅ — AI Resume Rewrite Flow
-- EXT-AS-6 ✅ — Auto Modes + Autopilot + Limits
-- EXT-AS-7 ✅ — Dashboard → Worker Routing
-- EXT-AS-8 ✅ — Settings Panel + Activity Feed + Pipeline View
-- EXT-AS-9 ✅ — PostHog QA
-
-**Pending from EXT-AS spec (Marston to prioritize):**
-- EXT-AS-2 requires extension-ux-prototype.html designs
-- EXT-AS-5 confirmed: resume-rewrite EFs exist (rewrite-resume, rewrite-resume-analyze, rewrite-resume-execute). Extension uses new lightweight rewrite-resume-extension EF for quick rewrites.
-- Tier gating on modes (Handoff Decision #2) — default: all modes for all tiers
-- Daily apply limits (Handoff Decision #3) — default: 25 for all
-- Recruitee: keep direct API (faster) vs route through worker (Decision #4)
-
-**Feed Accuracy Sprint — FA-007 COMPLETE.** FA-010, FA-001, FA-002, FA-003, FA-009, FA-004, FA-005, FA-006, and FA-007 are done.
-
-**Phase S is COMPLETE.** All 29 sessions (SA-001 through SA-029) plus SA-023b are done.
-**Phase REM is COMPLETE.** All 5 sessions (REM-001 through REM-005) are done.
-**FB-PAYL is COMPLETE.** All 4 sessions (FB-PAYL-S1 through FB-PAYL-S4) are done. PAYL operational in production with Stripe integration.
-**UX-001-S1 is COMPLETE.** Save/Load unification + layout fixes done. 
-**UX-001-S2 is COMPLETE.** Pagination done.
-**UX-001-S3 is COMPLETE.** Universal Filter Browser done. UX-001 FEATURE BUILD COMPLETE.
-
-Pending work streams (Marston to prioritize):
-- **Worker deployment:** `cd worker && flyctl deploy` after setting secrets (`flyctl secrets set SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=...`). Migration v6.50 needs `supabase db push`. submit-application EF needs redeploy. Create `submission-screenshots` storage bucket (private, image/png only).
-- **Applicant profile UI:** Settings tab needs applicant_profile form (name, email, phone, LinkedIn, location, work authorization, sponsorship) to populate `profiles.user_data.applicant_profile` for the worker to read.
-- **Stripe configuration:** Create PAYL product in Stripe dashboard, configure setup_intent flow with PAYL-specific metadata. Requires Marston Stripe access.
-- **Phase 69.5: Vonage 10DLC campaign design + setup** — 7 cards: SMS use case taxonomy, campaign description + samples, privacy policy page, terms page, opt-in CTAs, campaign submission, external vetting. Requires Marston to define SMS use cases first.
-- **BI-07 follow-up: ESLint enforcement** — Remove `|| true` from ci.yml line 56 after triaging 2,106 errors (config vs real bugs). Makes Gate 1 fully blocking.
-- **BI-07 follow-up: SA-022 stale test cleanup** — Update 167 assertions across 36 test files (`.js` → `.ts` paths, stale version/count checks). Removes `continue-on-error` from Gate 3.
-- **BI-07 follow-up: Extension build script** — Fix `build-extension.js` for SA-022 `.ts` exports. Removes warning from Gate 9.
-- **Run the 5K load test against production** — `k6 run load-tests/scale-5k-suite.js` (test infra is built, needs actual execution against live environment with test user credentials)
-- S-01 activation (TD-001): EF auth trust migration — first post-launch SA session
-- S-10 DataProvider migration (TD-004): Post-launch SPA consolidation
-- Agent graduation: First CrewAI agent graduation (Marston approval required)
-- Launch preparation: June 1, 2026 go/no-go gate evaluation
+**Tests: 56 passing** (tests/ede-001-event-driven-enrichment.test.js)
 
 ---
+
+## Next Session
+
+No specific session queued.
+
 
 ## Deferred: SA-001 / SA-002 / SA-003 (Typesense)
 
