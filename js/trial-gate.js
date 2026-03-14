@@ -59,6 +59,8 @@ async function initTrialGate() {
     // ── ACTIVE_PRO: hide banner if it exists (e.g. mid-trial upgrade) ──
     if (state === 'active_pro') {
       hideTrialBanner();
+      // FB-TRIAL-001-S4 Part 5: Post-upgrade referral intro on ?upgraded=true
+      _maybeShowUpgradeIntro();
     }
   } catch (e) {
     if (typeof reportError === 'function') reportError('trial-gate:init', e);
@@ -327,6 +329,47 @@ function _updateSampleBadges() {
       badge.style.cssText = 'position:absolute;top:-6px;right:-6px;background:var(--accent);color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;pointer-events:none;z-index:2;';
       btn.appendChild(badge);
     }
+  }
+}
+
+/* ────────────────────────────────────────────────────────────
+ *  _maybeShowUpgradeIntro()
+ *  FB-TRIAL-001-S4 Part 5: Shows post-upgrade toast + referral card
+ *  if ?upgraded=true is in the URL (once per page load, then param cleared).
+ * ─────────────────────────────────────────────────────────── */
+function _maybeShowUpgradeIntro() {
+  try {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('upgraded') !== 'true') return;
+
+    // Clear param from URL without reload
+    params.delete('upgraded');
+    var newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
+    window.history.replaceState({}, '', newUrl);
+
+    // Delegate to referrals.js (deferred chunk — may not be loaded yet)
+    if (typeof window.showUpgradeReferralIntro === 'function') {
+      window.showUpgradeReferralIntro();
+    } else {
+      // Wait for deferred chunk
+      var attempts = 0;
+      var poll = setInterval(function() {
+        attempts++;
+        if (typeof window.showUpgradeReferralIntro === 'function') {
+          clearInterval(poll);
+          window.showUpgradeReferralIntro();
+        } else if (attempts > 20) {
+          clearInterval(poll);
+        }
+      }, 200);
+    }
+
+    // Part 6: ensure sidebar link visible
+    if (typeof window.initSidebarReferralLink === 'function') {
+      window.initSidebarReferralLink('active_pro');
+    }
+  } catch (e) {
+    if (typeof reportError === 'function') reportError('trial-gate:upgrade-intro', e);
   }
 }
 

@@ -52,7 +52,62 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FB-TRIAL-001-S3** — Trial Gate Client + Free Samples
+**FB-TRIAL-001-S4** — Referral Program
+- Completed: 2026-03-14
+- Product version bumped: `v8.97` → `v8.98` (JS/HTML changes — trial-gate.js _maybeShowUpgradeIntro, referrals.js 5 new functions, dashboard.html sidebar-referral-link + referral-intro-card; all HTML surfaces cache-busted)
+- ROADMAP.md updated: FB-TRIAL-001-S4 → ✅
+- roadmap.html updated: FB-TRIAL-001-S4 → `s: 'done'`, p: 100
+- **Part 1 — handle-referral-signup EF (NEW):**
+  - `supabase/functions/handle-referral-signup/index.ts`
+  - `signup` action: validates referral_code against profiles.referral_code, blocks self-referral (referrer_id ≠ referred_id + email cross-check), checks 90-day code expiry, sets referred_by immutably (WHERE referred_by IS NULL guard), inserts trial_referrals row (status='signed_up', referred_signup_at=NOW()), invokes referral-lifecycle for referee_signup notification to referrer. PostHog: referral_signup + referral_signup_received.
+  - `status` action: returns trial_referrals entry for authenticated referred user.
+  - Auth required (Bearer token). CORS to brilliantjobs.app.
+  - Gateway route #116 added.
+- **Part 2 — stripe-webhook checkout.session.completed extended:**
+  - After setting user_state='active_pro', checks if user has referred_by set on profile.
+  - If yes: updates trial_referrals status signed_up → converted (referred_converted_at=NOW()), invokes process-referral-reward EF with referral_id + referrer_id + referred_id (Stripe coupon logic).
+  - PostHog trial_converted event with referred_by property. Referral reward failure is non-fatal (try-catch).
+- **Part 3 — Migration 20260314000001_fb_trial_001_s4_referral.sql:**
+  - ADD COLUMN profiles.referral_code_generated_at TIMESTAMPTZ (backfill from created_at for existing codes).
+  - Updated fn_trial_on_signup trigger to set referral_code_generated_at=NOW() on new signup.
+  - fn_referral_clawback_check(): finds trial_referrals where status='converted' AND referred user's subscription canceled within 7 days of referred_converted_at → sets status='expired'. Logs to agent_action_log.
+  - pg_cron: referral-clawback-checker daily at 3AM UTC.
+- **Part 4 — Referral limits:**
+  - process-referral-reward EF (pre-existing) handles the Stripe coupon logic and referrer_credit_applied_at tracking for billing-cycle limits (max 4 per cycle). Invoked by stripe-webhook on conversion.
+- **Part 5 — Post-Upgrade Referral Introduction:**
+  - trial-gate.js: _maybeShowUpgradeIntro() called on active_pro state. Detects ?upgraded=true, clears param from URL, calls showUpgradeReferralIntro() (polls for deferred chunk if needed).
+  - referrals.js showUpgradeReferralIntro(): (1) green toast (#22C55E) "Welcome to Pro! All features are now unlocked." auto-dismiss 8s; (2) referral-intro-card with "Know someone searching for a job? Share your link and you'll both get a free week when they subscribe." + [Copy referral link] + [Not now]. Dismiss persists referral_intro_dismissed to localStorage. PostHog: referral_intro_shown, referral_link_copied.
+  - dashboard.html: #referral-intro-card container added below trial-banner.
+- **Part 6 — Sidebar Referral Link:**
+  - dashboard.html: #sidebar-referral-link div above nav-footer logout button. Hidden by default (display:none). Navigates to referrals page.
+  - referrals.js initSidebarReferralLink(userState): shows link for active_pro, hides otherwise.
+  - trial-gate.js calls initSidebarReferralLink('active_pro') from _maybeShowUpgradeIntro.
+- **Part 7 — Referral Code Expiry + Regeneration:**
+  - Migration adds referral_code_generated_at to profiles + backfill + trigger.
+  - handle-referral-signup EF checks 90-day expiry (daysDiff > 90 → error).
+  - referrals.js regenerateReferralCode(): generates new 8-char code, updates profiles (referral_code + referral_code_generated_at), updates UI (ref-code-val, referralStats). PostHog: referral_code_regenerated.
+  - "Regenerate code" button added to Share Your Link card in rendered referrals hub.
+- **Pod Team Manifest:** FB-TRIAL-001-S4 pairing added (Lead Platform Eng + Forward-Looking Dev, Chief Architect + Evolvability Strategist reviewers).
+- **Modified:**
+  - `supabase/functions/stripe-webhook/index.ts` — checkout.session.completed extended with referral reward
+  - `supabase/functions/api-gateway/index.ts` — route #116 (handle-referral-signup), total 116
+  - `js/trial-gate.js` — _maybeShowUpgradeIntro + initSidebarReferralLink call
+  - `js/referrals.js` — showUpgradeReferralIntro, _introcopyreferrallink, _dismissReferralIntro, regenerateReferralCode, initSidebarReferralLink, regenerate button in hub HTML, BJ namespace exports
+  - `dashboard.html` — #sidebar-referral-link, #referral-intro-card containers
+  - `docs/scaling/pod-team-manifest.md` — FB-TRIAL-001-S4 pairing
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt (includes updated referrals.js + trial-gate.js)
+  - `dist/admin.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — FB-TRIAL-001-S4 → ✅
+  - `roadmap.html` — FB-TRIAL-001-S4 → done/100
+- **Created:**
+  - `supabase/functions/handle-referral-signup/index.ts` — Referral signup attribution EF
+  - `supabase/migrations/20260314000001_fb_trial_001_s4_referral.sql` — referral_code_generated_at + clawback cron
+  - `tests/fb-trial-001-s4-referral-program.test.js` — 75 validation tests (11 sections)
+- **Tests:** 75 validation tests (all passing)
+
+**Previous: FB-TRIAL-001-S3** — Trial Gate Client + Free Samples
 - Completed: 2026-03-14
 - Product version bumped: `v8.96` → `v8.97` (JS/HTML changes — trial-gate.js new file, dashboard.html 3 containers, app.js initTrialGate wiring; all HTML surfaces cache-busted)
 - ROADMAP.md updated: FB-TRIAL-001-S3 → ✅
@@ -2658,7 +2713,7 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Session In Progress
 
-None. FEED-FIX-006 complete.
+None. FB-TRIAL-001-S4 complete.
 
 ---
 
@@ -2737,7 +2792,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v8.97`** | **FB-TRIAL-001-S3: Trial Gate Client + Free Samples** |
+| **Product (BJ_VERSION)** | **`v8.98`** | **FB-TRIAL-001-S4: Referral Program** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

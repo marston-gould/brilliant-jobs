@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v8.97';
+var BJ_VERSION = 'v8.98';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -30247,6 +30247,7 @@ window.logDashboardActivity = logDashboardActivity;
           <span>Your code:</span>
           <span style="font-family:var(--mono);font-weight:700;color:var(--accent);font-size:15px;letter-spacing:1px;" id="ref-code-val">${s.referral_code}</span>
           <button class="btn btn-secondary btn-sm" onclick="window._refCopyCode()" style="margin-left:4px;">Copy Code</button>
+          <button class="btn btn-ghost btn-sm" id="ref-regenerate-btn" onclick="window.regenerateReferralCode()" style="margin-left:4px;font-size:11px;color:var(--text-faint);">Regenerate code</button>
         </div>
         <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
           <button class="btn btn-secondary btn-sm" onclick="window._refShareLinkedIn()" style="display:flex;align-items:center;gap:6px;">
@@ -30959,12 +30960,170 @@ Or use my code: ${referralStats.referral_code}`);
     }
   };
 
+  // ──────────────────────────────────────────────────────────────
+  // FB-TRIAL-001-S4: Post-Upgrade Referral Introduction (Part 5)
+  // Called from trial-gate.js on ?upgraded=true detection.
+  // Shows: (1) green success toast, (2) one-time referral intro card.
+  // ──────────────────────────────────────────────────────────────
+  window.showUpgradeReferralIntro = async function () {
+    // (1) Success toast — green, auto-dismiss 8s
+    if (typeof window.toast === 'function') {
+      window.toast('Welcome to Pro! All features are now unlocked.', { type: 'success', duration: 8000 });
+    } else {
+      // Fallback minimal toast
+      var toastEl = document.createElement('div');
+      toastEl.id = 'upgrade-success-toast';
+      toastEl.style.cssText = [
+        'position:fixed;top:20px;right:20px;z-index:9999;',
+        'background:#22C55E;color:#fff;font-weight:600;',
+        'padding:12px 20px;border-radius:10px;',
+        'box-shadow:0 4px 16px rgba(0,0,0,0.18);',
+        'font-size:14px;max-width:360px;',
+        'animation:fadeIn .2s ease;'
+      ].join('');
+      toastEl.textContent = 'Welcome to Pro! All features are now unlocked.';
+      document.body.appendChild(toastEl);
+      setTimeout(function() { if (toastEl.parentNode) toastEl.parentNode.removeChild(toastEl); }, 8000);
+    }
+
+    // PostHog
+    if (window.posthog) posthog.capture('referral_intro_shown', { surface: 'post_upgrade' });
+
+    // (2) Check localStorage — only show once
+    try {
+      if (localStorage.getItem('referral_intro_dismissed') === '1') return;
+    } catch(e) { /* ignore */ }
+
+    // Fetch referral_code from profiles
+    var code = null;
+    try {
+      if (window.sb && window.currentUser) {
+        var r = await sb.from('profiles').select('referral_code').eq('id', currentUser.id).single();
+        code = r.data && r.data.referral_code;
+      }
+    } catch(e) { if (typeof reportError === 'function') reportError('referrals:intro', e); }
+
+    var link = code ? ('https://brilliantjobs.app/r/' + code) : '';
+
+    // Render intro card
+    var card = document.getElementById('referral-intro-card');
+    if (!card) return; // Container must exist in dashboard.html
+
+    card.innerHTML = [
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">',
+        '<div style="font-weight:700;font-size:14px;color:var(--text);">',
+          '<i data-lucide="gift" style="width:15px;height:15px;vertical-align:-2px;margin-right:6px;" class="icon-stroke"></i>',
+          'Know someone searching for a job?',
+        '</div>',
+        '<button onclick="window._dismissReferralIntro()" aria-label="Dismiss" ',
+          'style="background:none;border:none;cursor:pointer;color:var(--text-faint);font-size:16px;padding:0 0 0 12px;">&times;</button>',
+      '</div>',
+      '<div style="font-size:13px;color:var(--text-dim);margin-bottom:12px;">',
+        "Share your link and you'll both get a free week when they subscribe.",
+      '</div>',
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;">',
+        '<button class="btn btn-primary btn-sm" onclick="window._introcopyreferrallink()" id="intro-copy-link-btn">',
+          '<i data-lucide="copy" style="width:13px;height:13px;margin-right:4px;" class="icon-stroke"></i>',
+          'Copy referral link',
+        '</button>',
+        '<button class="btn btn-secondary btn-sm" onclick="window._dismissReferralIntro()">Not now</button>',
+      '</div>'
+    ].join('');
+
+    card.style.display = 'block';
+    card.dataset.referralLink = link;
+    if (typeof window.refreshIcons === 'function') window.refreshIcons();
+  };
+
+  window._introcopyreferrallink = function () {
+    var card = document.getElementById('referral-intro-card');
+    var link = (card && card.dataset.referralLink) || '';
+    if (!link) return;
+    try {
+      navigator.clipboard.writeText(link).then(function() {
+        var btn = document.getElementById('intro-copy-link-btn');
+        if (btn) { btn.textContent = 'Copied!'; setTimeout(function() { btn.innerHTML = '<i data-lucide="copy" style="width:13px;height:13px;margin-right:4px;" class="icon-stroke"></i>Copy referral link'; if (typeof window.refreshIcons === 'function') window.refreshIcons(); }, 2000); }
+        if (window.posthog) posthog.capture('referral_link_copied', { surface: 'intro_card' });
+      });
+    } catch(e) { if (typeof reportError === 'function') reportError('referrals:copy', e); }
+  };
+
+  window._dismissReferralIntro = function () {
+    var card = document.getElementById('referral-intro-card');
+    if (card) card.style.display = 'none';
+    try { localStorage.setItem('referral_intro_dismissed', '1'); } catch(e) { /* ignore */ }
+    if (window.posthog) posthog.capture('referral_intro_dismissed', { surface: 'intro_card' });
+  };
+
+  // ──────────────────────────────────────────────────────────────
+  // FB-TRIAL-001-S4: Referral Code Regeneration (Part 7)
+  // Called from Settings > Referrals section "Regenerate code" button.
+  // ──────────────────────────────────────────────────────────────
+  window.regenerateReferralCode = async function () {
+    if (!window.currentUser || !window.sb) return;
+    var btn = document.getElementById('ref-regenerate-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Regenerating...'; }
+
+    try {
+      // Generate new 8-char code
+      var newCode = Math.random().toString(36).slice(2, 6) + Math.random().toString(36).slice(2, 6);
+      newCode = newCode.slice(0, 8);
+
+      var { error } = await sb.from('profiles').update({
+        referral_code: newCode,
+        referral_code_generated_at: new Date().toISOString(),
+      }).eq('id', currentUser.id);
+
+      if (error) throw error;
+
+      // Update UI
+      var codeEl = document.getElementById('ref-code-val');
+      if (codeEl) codeEl.textContent = newCode;
+      var linkEl = document.getElementById('ref-link-val');
+      if (linkEl) linkEl.textContent = 'brilliantjobs.app/r/' + newCode;
+      if (referralStats) {
+        referralStats.referral_code = newCode;
+        referralStats.referral_link = 'https://brilliantjobs.app/r/' + newCode;
+      }
+
+      if (typeof window.toast === 'function') {
+        window.toast('Referral code regenerated!', { type: 'success', duration: 3000 });
+      }
+      if (window.posthog) posthog.capture('referral_code_regenerated', { surface: 'settings' });
+
+    } catch(e) {
+      if (typeof reportError === 'function') reportError('referrals:regenerate', e);
+      if (typeof window.toast === 'function') {
+        window.toast('Failed to regenerate code. Please try again.', { type: 'error', duration: 4000 });
+      }
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Regenerate code'; }
+    }
+  };
+
+  // ──────────────────────────────────────────────────────────────
+  // FB-TRIAL-001-S4: Sidebar Referral Link visibility (Part 6)
+  // Called from init() — shows sidebar link for active_pro users only.
+  // ──────────────────────────────────────────────────────────────
+  window.initSidebarReferralLink = function (userState) {
+    var linkEl = document.getElementById('sidebar-referral-link');
+    if (!linkEl) return;
+    if (userState === 'active_pro') {
+      linkEl.style.display = 'flex';
+    } else {
+      linkEl.style.display = 'none';
+    }
+  };
+
   // CS-P1-004 FE-005: Register referrals.js exports with BJ namespace
   [
     'initReferralHub', '_refCopyLink', '_refCopyCode', '_refShareLinkedIn',
     '_refShareEmail', '_refShareSMS', '_refSwitchPeriod', '_refToggleLeaderboard',
     'showReferralShareModal', 'initReferralTracking', '_updateOutreachStatus',
-    '_saveReferralLink', '_trackReferralLinkClick'
+    '_saveReferralLink', '_trackReferralLinkClick',
+    // FB-TRIAL-001-S4
+    'showUpgradeReferralIntro', '_introcopyreferrallink', '_dismissReferralIntro',
+    'regenerateReferralCode', 'initSidebarReferralLink'
   ].forEach(function(name) {
     if (typeof window[name] === 'function') {
       window.BJ[name] = window[name];
@@ -32016,6 +32175,8 @@ async function initTrialGate() {
     // ── ACTIVE_PRO: hide banner if it exists (e.g. mid-trial upgrade) ──
     if (state === 'active_pro') {
       hideTrialBanner();
+      // FB-TRIAL-001-S4 Part 5: Post-upgrade referral intro on ?upgraded=true
+      _maybeShowUpgradeIntro();
     }
   } catch (e) {
     if (typeof reportError === 'function') reportError('trial-gate:init', e);
@@ -32284,6 +32445,47 @@ function _updateSampleBadges() {
       badge.style.cssText = 'position:absolute;top:-6px;right:-6px;background:var(--accent);color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;pointer-events:none;z-index:2;';
       btn.appendChild(badge);
     }
+  }
+}
+
+/* ────────────────────────────────────────────────────────────
+ *  _maybeShowUpgradeIntro()
+ *  FB-TRIAL-001-S4 Part 5: Shows post-upgrade toast + referral card
+ *  if ?upgraded=true is in the URL (once per page load, then param cleared).
+ * ─────────────────────────────────────────────────────────── */
+function _maybeShowUpgradeIntro() {
+  try {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('upgraded') !== 'true') return;
+
+    // Clear param from URL without reload
+    params.delete('upgraded');
+    var newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
+    window.history.replaceState({}, '', newUrl);
+
+    // Delegate to referrals.js (deferred chunk — may not be loaded yet)
+    if (typeof window.showUpgradeReferralIntro === 'function') {
+      window.showUpgradeReferralIntro();
+    } else {
+      // Wait for deferred chunk
+      var attempts = 0;
+      var poll = setInterval(function() {
+        attempts++;
+        if (typeof window.showUpgradeReferralIntro === 'function') {
+          clearInterval(poll);
+          window.showUpgradeReferralIntro();
+        } else if (attempts > 20) {
+          clearInterval(poll);
+        }
+      }, 200);
+    }
+
+    // Part 6: ensure sidebar link visible
+    if (typeof window.initSidebarReferralLink === 'function') {
+      window.initSidebarReferralLink('active_pro');
+    }
+  } catch (e) {
+    if (typeof reportError === 'function') reportError('trial-gate:upgrade-intro', e);
   }
 }
 

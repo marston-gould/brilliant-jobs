@@ -224,8 +224,11 @@ const ROUTE_REGISTRY: Record<string, string> = {
   // ── Activity Sync (AF-006) ────────────────────────────────────────────────
   "log-user-activity":          "log-user-activity",          // AF-006: batch/recent/summary — extension + dashboard activity sync
 
+  // ── Referral Signup Attribution (FB-TRIAL-001-S4) ────────────────────────
+  "handle-referral-signup":     "handle-referral-signup",     // FB-TRIAL-001-S4: signup attribution + status
+
   // ═══════════════════════════════════════════════════════════════════════════
-  // TOTAL: 115 routes (93 SA-005 + 1 SA-007 + 1 SA-008 + 1 SA-009 + 2 SA-010 + 2 SA-011 + 2 SA-012 + 1 SA-018 + 2 SA-020 + 1 SA-021 + 1 SA-024 + 1 SA-028 + 1 BI-01 + 3 FB-PAYL + 1 EXT-AS-5 + 1 AF-006). Direct paths deprecated.
+  // TOTAL: 116 routes (93 SA-005 + 1 SA-007 + 1 SA-008 + 1 SA-009 + 2 SA-010 + 2 SA-011 + 2 SA-012 + 1 SA-018 + 2 SA-020 + 1 SA-021 + 1 SA-024 + 1 SA-028 + 1 BI-01 + 3 FB-PAYL + 1 EXT-AS-5 + 1 AF-006 + 1 FB-TRIAL-S4). Direct paths deprecated.
   // HOOK: Future EFs register here. Future: load from DB table for
   //       runtime updates without redeploy (api_consumers integration).
   // ═══════════════════════════════════════════════════════════════════════════

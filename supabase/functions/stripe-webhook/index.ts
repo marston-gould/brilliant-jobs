@@ -742,6 +742,7 @@ serve(async (req: Request) => {
     switch (event.type) {
       case 'checkout.session.completed': {
         // ─── FB-TRIAL-001-S2: Set user_state to active_pro on checkout ───
+        // ─── FB-TRIAL-001-S4: Referral reward on conversion ───
         const session = event.data.object;
         const sessionCustomerId = session.customer;
         if (sessionCustomerId) {
@@ -751,11 +752,76 @@ serve(async (req: Request) => {
             .eq('stripe_customer_id', sessionCustomerId)
             .single();
           if (subUser) {
+            const convertedUserId = subUser.user_id;
+
+            // S2: Set user_state to active_pro
             await sb
               .from('profiles')
               .update({ user_state: 'active_pro' })
-              .eq('id', subUser.user_id);
-            logger.info('checkout.session.completed → active_pro', { userId: subUser.user_id });
+              .eq('id', convertedUserId);
+            logger.info('checkout.session.completed → active_pro', { userId: convertedUserId });
+
+            // S4: Check if user has referred_by set → trigger referral reward
+            const { data: profile } = await sb
+              .from('profiles')
+              .select('referred_by')
+              .eq('id', convertedUserId)
+              .single();
+
+            if (profile?.referred_by) {
+              const referrerId = profile.referred_by;
+
+              // Update trial_referrals row: signed_up → converted
+              await sb
+                .from('trial_referrals')
+                .update({
+                  status: 'converted',
+                  referred_converted_at: new Date().toISOString(),
+                })
+                .eq('referred_id', convertedUserId)
+                .eq('status', 'signed_up');
+
+              // Invoke process-referral-reward EF (Stripe coupon logic)
+              try {
+                const { data: trialRef } = await sb
+                  .from('trial_referrals')
+                  .select('id')
+                  .eq('referred_id', convertedUserId)
+                  .eq('referrer_id', referrerId)
+                  .single();
+
+                if (trialRef?.id) {
+                  await sb.functions.invoke('process-referral-reward', {
+                    body: { referral_id: trialRef.id, referrer_id: referrerId, referred_id: convertedUserId },
+                  });
+                  logger.info('checkout.session.completed → referral reward triggered', {
+                    referrerId,
+                    referredId: convertedUserId,
+                    referralId: trialRef.id,
+                  });
+                }
+              } catch (refErr) {
+                logger.error('checkout.session.completed → referral reward failed', { error: String(refErr) });
+              }
+
+              // PostHog: trial_converted with referred_by property
+              try {
+                const phKey = Deno.env.get('POSTHOG_API_KEY');
+                const phHost = Deno.env.get('POSTHOG_HOST') || 'https://app.posthog.com';
+                if (phKey) {
+                  await fetch(`${phHost}/capture/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      api_key: phKey,
+                      distinct_id: convertedUserId,
+                      event: 'trial_converted',
+                      properties: { referred_by: referrerId, surface: 'stripe_webhook' },
+                    }),
+                  });
+                }
+              } catch (_) { /* fire-and-forget */ }
+            }
           }
         }
         break;
