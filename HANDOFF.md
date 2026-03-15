@@ -52,7 +52,34 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**REFERRAL-CONSOL** — Referral Consolidation into Subscription Page ✅
+**FB-INTPREP-001-S1** — Interview Prep Phase 1: Question Bank Backend ✅
+- Completed: 2026-03-15
+- Product version bumped: `v9.48` → `v9.49`
+- **Migration v9.48-fb-intprep-001-s1-question-bank.sql:**
+  - `interview_questions` table: uuid PK, question_text, category CHECK (behavioral/technical/situational/case_study), difficulty CHECK (standard/advanced), role_cluster, department, level, skill_tags text[], source_cluster_size, generated_at, model_version, created_at.
+  - `question_tsv` tsvector GENERATED column (to_tsvector english on question_text) + GIN index for keyword search.
+  - 7 indexes: role_cluster, category, difficulty, department (partial), level (partial), skill_tags GIN (partial), generated_at DESC.
+  - RLS: authenticated SELECT, service_role ALL.
+  - `v_interview_question_clusters` view: role_cluster × department × level with per-category counts (behavioral/technical/situational/case_study), question_count, cluster_size, last_generated_at. Granted to authenticated + service_role.
+- **interview-generate-questions EF (NEW):**
+  - 3 actions: `generate` (cluster JDs → extract skills → Claude Haiku → parse JSON → validate → store), `clusters` (list available role clusters from ats_jobs with fallback client-side clustering), `status` (bank stats).
+  - Service-role only auth. Model: claude-haiku-4-5-20251001.
+  - Clustering: normalizeTitle strips seniority/level prefixes/suffixes, groups by title+department+seniority. MIN_CLUSTER_SIZE=5.
+  - Skill extraction: aggregates extracted_skills from ats_jobs, separates core (≥30% frequency) vs niche skills.
+  - Question generation: structured system prompt → 20 questions per cluster → JSON parse with markdown fence stripping → validates category/difficulty enums → skill_tags lowercased.
+  - Cost controls: MAX_CLUSTERS_PER_RUN=20, max_tokens=4096, excludes already-generated clusters by default.
+  - PostHog: interview_questions_generated (questions_generated, clusters_processed, errors).
+  - Error handling: per-cluster try/catch with error array in response, console.warn on failures, 503 on missing API key.
+- **Gateway route #128** added. Total: 128 routes.
+- **Tests:** 66 validation tests (12 sections, all passing)
+- **Modified:** supabase/functions/api-gateway/index.ts
+- **Created:** supabase/migrations/v9.48-fb-intprep-001-s1-question-bank.sql, supabase/functions/interview-generate-questions/index.ts, tests/fb-intprep-001-s1-question-bank.test.js
+- **Pending manual steps (Marston):**
+  - `supabase db push` (migration v9.48-fb-intprep-001-s1-question-bank)
+  - `SUPABASE_ACCESS_TOKEN=<token> npx supabase functions deploy interview-generate-questions api-gateway --project-ref qojhagupdnbtomfoxnsf`
+  - Run initial batch: `curl -X POST https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/api-gateway/interview-generate-questions -H "Authorization: Bearer <service_role_key>" -H "Content-Type: application/json" -d '{"action":"generate","limit":20}'` (repeat 5x for top 100 clusters)
+
+**Previous: REFERRAL-CONSOL** — Referral Consolidation into Subscription Page ✅
 - Completed: 2026-03-15
 - Product version bumped: `v9.47` → `v9.48`
 - Removed standalone Referrals page + "Growth" nav section label + Referrals nav item from sidebar.
@@ -3655,12 +3682,13 @@ None.
 
 **Next Session**
 
-**FB-INTPREP-001-S1** — Interview Prep Phase 1: Question Bank Backend
-- interview_questions table migration
-- interview-generate-questions Edge Function (batch, Claude Haiku)
-- Run initial batch generation for top 100 role clusters
-- PostgREST API for question queries with filter parameters
-- Spec: FB-INTPREP-001_InterviewPrep.docx §3, §6.2, §10 Phase 1
+**FB-INTPREP-001-S2** — Interview Prep Phase 2: Question Bank UI
+- Interview Prep nav item + page shell (Lucide graduation-cap icon, between Stats and Settings)
+- Question Bank tab with filters (role family dropdown, department dropdown, level dropdown), category pills, difficulty toggle
+- Search input with debounced query against question_text (question_tsv) and skill_tags
+- Question cards with category badge, difficulty badge, skill tag chips
+- Bookmark functionality (localStorage initially)
+- Spec: FB-INTPREP-001_InterviewPrep.docx §3.4, §5.2, §5.3, §10 Phase 2
 
 Potential next workstreams:
 - PostHog Google OAuth verification reminder (R5 in FB-PI-001 risk register — must submit for verification before public Gmail/Calendar launch)
@@ -3846,7 +3874,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.48`** | **REFERRAL-CONSOL: Referral Consolidation into Subscription Page. Standalone referrals page removed.** |
+| **Product (BJ_VERSION)** | **`v9.49`** | **FB-INTPREP-001-S1: Question Bank Backend. interview_questions table + EF + gateway #128.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
