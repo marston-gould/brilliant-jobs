@@ -1177,9 +1177,10 @@ function openFilterBrowser(dimension, mode) {
   var mainEl = document.querySelector('.main');
   if (mainEl) mainEl.scrollTop = 0;
 
-  // Show US-Only banner when active
+  // Show US-Only banner only for geography-sensitive dimensions (title, skills)
   var usBanner = $('#fb-us-only-banner');
-  if (usBanner) usBanner.classList.toggle('u-hidden', !currentUsOnly);
+  var geoSensitiveDims = ['title', 'skill', 'jd_keyword'];
+  if (usBanner) usBanner.classList.toggle('u-hidden', !currentUsOnly || !geoSensitiveDims.includes(dimension));
 
   // Update header
   $('#fb-title').textContent = dimConfig.label;
