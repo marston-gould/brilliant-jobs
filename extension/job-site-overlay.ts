@@ -297,16 +297,204 @@
         location: ['.job-details__location', '.offer-location'],
       },
     },
+    // ── Phase B Tier 2: Handshake (expanded) ──────────────────────────
     {
       platform: 'handshake',
-      urlPattern: /joinhandshake\.com\/stu\/jobs/,
+      urlPattern: /joinhandshake\.com\/(stu\/jobs|jobs|postings)/,
       hostPattern: /joinhandshake\.com$/,
-      applyButtonSelectors: ['button[data-hook="apply-button"]', 'button[data-hook="apply"]', 'a[data-hook="apply-button"]'],
-      saveButtonTarget: { position: 'after', selector: '[data-hook="job-actions"], [data-hook="job-detail-actions"]' },
+      applyButtonSelectors: ['button[data-hook="apply-button"]', 'button[data-hook="apply"]', 'a[data-hook="apply-button"]', 'a[href*="/apply"]', 'button[class*="apply"]'],
+      saveButtonTarget: { position: 'after', selector: '[data-hook="job-actions"], [data-hook="job-detail-actions"], [class*="job-actions"]' },
       jobMetaSelectors: {
-        title: ['[data-hook="job-title"]', 'h1[data-hook="job-title"]'],
-        company: ['[data-hook="employer-name"]', '[data-hook="company-name"]'],
-        location: ['[data-hook="job-location"]'],
+        title: ['[data-hook="job-title"]', 'h1[data-hook="job-title"]', 'h1[class*="job-title"]'],
+        company: ['[data-hook="employer-name"]', '[data-hook="company-name"]', 'a[data-hook="employer-name"]'],
+        location: ['[data-hook="job-location"]', '[class*="job-location"]'],
+        salary: ['[data-hook="salary"]', '[class*="salary"]', '[data-hook="compensation"]'],
+        description: ['[data-hook="job-description"]', '[class*="job-description"]', '.description-text'],
+      },
+    },
+    // ── Phase B Tier 2: Google Jobs ──────────────────────────────────
+    {
+      platform: 'google-jobs',
+      urlPattern: /google\.com\/(search\?.*ibp=htl;jobs|about\/careers|jobs)/,
+      hostPattern: /google\.com$/,
+      applyButtonSelectors: [
+        '.pMhGee a[href]', // "Apply" link in job detail panel
+        'a[class*="apply"]', 'a[data-ved][href*="apply"]',
+        '.whazf a', // Apply buttons in sidebar
+        'a.pMhGee', '.KGjGe a',
+      ],
+      saveButtonTarget: { position: 'before', selector: '.pMhGee, .whazf, [class*="apply"], [role="main"]' },
+      jobMetaSelectors: {
+        title: ['.KLsYvd', 'h2.KLsYvd', '.BjJfJf', '.PwjeAc h2', '[data-attrid="title"]'],
+        company: ['.nJlQNd', '.vNEEBe', '.PwjeAc .nJlQNd', '[data-attrid="company"]'],
+        location: ['.Qk80Jf', '.PwjeAc .Qk80Jf', '[data-attrid="location"]'],
+        salary: ['.YQ4gaf', '.SuWscb', '[data-attrid="salary"]'],
+        description: ['.HBvzbc', '.YgLbBe', '.job-description-text'],
+      },
+    },
+    // ── Phase B Tier 2: ZipRecruiter ─────────────────────────────────
+    {
+      platform: 'ziprecruiter',
+      urlPattern: /ziprecruiter\.com\/(jobs|c\/)/,
+      hostPattern: /ziprecruiter\.com$/,
+      applyButtonSelectors: [
+        'button[data-testid="apply-button"]', '#apply_button', 'button.apply_button',
+        'a.apply_button', 'button[name="apply"]', 'a[data-tracking="apply"]',
+        '.job_header button[class*="apply"]',
+      ],
+      saveButtonTarget: { position: 'adjacent', selector: '#apply_button, .apply_button, [data-testid="apply-button"], .job_header' },
+      jobMetaSelectors: {
+        title: ['h1.job_title', 'h1[class*="JobTitle"]', '[data-testid="job-title"]', '.job_title'],
+        company: ['.hiring_company .company_name', 'a[data-testid="company-name"]', '.company_name', '.t_company_name'],
+        location: ['.location', '.job_location', '[data-testid="job-location"]', '.t_location'],
+        salary: ['.salary_range', '.compensation', '[data-testid="salary"]', '.t_salary'],
+        description: ['.job_description', '.jobDescriptionSection', '#job_description', '[data-testid="job-description"]'],
+      },
+    },
+    // ── Phase B Tier 2: Monster ──────────────────────────────────────
+    {
+      platform: 'monster',
+      urlPattern: /monster\.com\/(job-openings|jobs\/)/,
+      hostPattern: /monster\.com$/,
+      applyButtonSelectors: [
+        'button[data-testid="applyButton"]', '#applyButton', 'a.apply-button',
+        'button[class*="applyBtn"]', '.job-header-apply button',
+        'a[data-bypass="true"][href*="apply"]',
+      ],
+      saveButtonTarget: { position: 'adjacent', selector: '#applyButton, .apply-button, .job-header-apply, [data-testid="applyButton"]' },
+      jobMetaSelectors: {
+        title: ['h1[data-testid="jobTitle"]', '.job-title h1', 'h1.JobViewTitle', '.title h1'],
+        company: ['[data-testid="company"]', '.company-name', '.job-company a', '.employer-name'],
+        location: ['[data-testid="location"]', '.location-text', '.job-location', '.location'],
+        salary: ['[data-testid="salary"]', '.salary-info', '.job-salary'],
+        description: ['[data-testid="jobDescription"]', '.job-description', '#JobDescription'],
+      },
+    },
+    // ── Phase B Tier 2: Built In ─────────────────────────────────────
+    {
+      platform: 'builtin',
+      urlPattern: /builtin\.com\/job\//,
+      hostPattern: /builtin\.com$/,
+      applyButtonSelectors: [
+        'a[data-id="apply-button"]', 'a.apply-button', 'a[class*="ApplyButton"]',
+        'button[data-id="apply"]', '.job-apply a', 'a[href*="/apply"]',
+      ],
+      saveButtonTarget: { position: 'adjacent', selector: 'a[data-id="apply-button"], .apply-button, .job-info' },
+      jobMetaSelectors: {
+        title: ['h1[class*="job-title"]', 'h1.font-barlow', '.job-title', '.job-info h1'],
+        company: ['[class*="company-title"] a', '.company-title', '[data-id="company-name"]', '.job-company-name a'],
+        location: ['[class*="job-info-location"]', '.job-location', '[data-id="location"]'],
+        salary: ['[class*="job-info-salary"]', '.salary-range', '[data-id="salary"]'],
+        description: ['.job-description', '.job-posting-description', '[data-id="job-description"]'],
+      },
+    },
+    // ── Phase B Tier 2: Dice ─────────────────────────────────────────
+    {
+      platform: 'dice',
+      urlPattern: /dice\.com\/job-detail\//,
+      hostPattern: /dice\.com$/,
+      applyButtonSelectors: [
+        'apply-button-wc', // Dice web component
+        'a[data-cy="apply-btn"]', 'button[data-cy="apply-btn"]', 'a.btn-apply',
+        'a[href*="/apply"]', 'dhi-wc-apply-button',
+      ],
+      saveButtonTarget: { position: 'adjacent', selector: 'apply-button-wc, a[data-cy="apply-btn"], .company-header' },
+      jobMetaSelectors: {
+        title: ['h1[data-cy="jobTitle"]', 'h1.jobTitle', '.job-title h1', '[data-testid="jobTitle"]'],
+        company: ['a[data-cy="companyNameLink"]', '.employer-name a', '.company-name', '[data-cy="companyName"]'],
+        location: ['li[data-cy="location"]', '.location-text', '[data-cy="location"]'],
+        salary: ['li[data-cy="compensationText"]', '.compensation', '[data-cy="salary"]'],
+        description: ['[data-cy="jobDescription"]', '.job-description', '#jobDescription'],
+      },
+    },
+    // ── Phase B Tier 2: The Muse ─────────────────────────────────────
+    {
+      platform: 'themuse',
+      urlPattern: /themuse\.com\/(jobs|companies\/[^/]+\/jobs)/,
+      hostPattern: /themuse\.com$/,
+      applyButtonSelectors: [
+        'a[data-test="apply-button"]', 'a.apply-button', '.job-apply a',
+        'button[class*="apply"]', 'a[href*="/apply"]',
+      ],
+      saveButtonTarget: { position: 'adjacent', selector: 'a[data-test="apply-button"], .apply-button, .job-header' },
+      jobMetaSelectors: {
+        title: ['h1[data-test="job-title"]', '.job-title h1', 'h1.JobIndividualHeader_title'],
+        company: ['[data-test="company-name"]', '.company-name a', '.employer-name', 'a[data-test="company-link"]'],
+        location: ['[data-test="location"]', '.job-location', '.location'],
+        salary: ['[data-test="salary"]', '.salary', '.compensation-info'],
+        description: ['[data-test="job-description"]', '.job-description', '.job-body'],
+      },
+    },
+    // ── Phase B Tier 2: Wellfound (AngelList Talent) ─────────────────
+    {
+      platform: 'wellfound',
+      urlPattern: /wellfound\.com\/(jobs|company\/[^/]+\/jobs)/,
+      hostPattern: /wellfound\.com$/,
+      applyButtonSelectors: [
+        'button[data-test="apply-button"]', 'a.apply-btn', 'button.styles_applyButton',
+        'button[class*="apply"]', 'a[href*="/apply"]',
+      ],
+      saveButtonTarget: { position: 'adjacent', selector: 'button[data-test="apply-button"], .apply-btn, .job-listing-header' },
+      jobMetaSelectors: {
+        title: ['h1[data-test="job-title"]', 'h1.styles_title', '.job-title h1', '.listing-title'],
+        company: ['a[data-test="company-name"]', '.styles_companyName a', '.company-name', '.startup-link'],
+        location: ['[data-test="location"]', '.styles_location', '.location', '.job-location'],
+        salary: ['[data-test="salary"]', '.styles_salary', '.compensation', '.salary-range'],
+        description: ['[data-test="job-description"]', '.styles_description', '.job-description', '.job-listing-description'],
+      },
+    },
+    // ── Phase B Tier 2: USA Jobs ─────────────────────────────────────
+    {
+      platform: 'usajobs',
+      urlPattern: /usajobs\.gov\/job\//,
+      hostPattern: /usajobs\.gov$/,
+      applyButtonSelectors: [
+        'a[data-object-id="apply-button"]', '#apply-button', 'a.usajobs-apply-button',
+        'a.usa-button[href*="apply"]', '.usajobs-joa-apply-container a',
+      ],
+      saveButtonTarget: { position: 'adjacent', selector: '#apply-button, .usajobs-apply-button, .usajobs-joa-apply-container' },
+      jobMetaSelectors: {
+        title: ['h1#job-title', 'h1.usajobs-joa-banner__title', '.usajobs-joa-intro-required h1'],
+        company: ['.usajobs-joa-banner__dept', '.agency-name', '[itemprop="hiringOrganization"] [itemprop="name"]'],
+        location: ['.usajobs-joa-locations__location', '.usajobs-joa-locations', '[itemprop="jobLocation"]'],
+        salary: ['.usajobs-joa-summary__salary', '#salary-range', '.salary-range'],
+        description: ['#duties', '#job-description', '.usajobs-joa-section--duties', '#requirements'],
+      },
+    },
+    // ── Phase B Tier 2: Simply Hired ─────────────────────────────────
+    {
+      platform: 'simplyhired',
+      urlPattern: /simplyhired\.com\/(job|search)\//,
+      hostPattern: /simplyhired\.com$/,
+      applyButtonSelectors: [
+        'a[data-testid="apply-button"]', 'a.apply-button', '#apply-button',
+        'button.apply-button', 'a[class*="ApplyButton"]',
+      ],
+      saveButtonTarget: { position: 'adjacent', selector: 'a[data-testid="apply-button"], .apply-button, .viewjob-header' },
+      jobMetaSelectors: {
+        title: ['h1[data-testid="viewJobTitle"]', 'h1.jobposting-title', '.viewjob-title h1'],
+        company: ['[data-testid="viewJobCompanyName"]', '.viewjob-header-company a', '.company-name'],
+        location: ['[data-testid="viewJobLocation"]', '.viewjob-header-location', '.location'],
+        salary: ['[data-testid="viewJobSalary"]', '.viewjob-salary', '.salary-range'],
+        description: ['[data-testid="viewJobDescription"]', '.viewjob-jobDescription', '.job-description'],
+      },
+    },
+    // ── Phase B Tier 2: SmartRecruiters ──────────────────────────────
+    {
+      platform: 'smartrecruiters',
+      urlPattern: /(jobs|careers)\.smartrecruiters\.com\/.+/,
+      hostPattern: /smartrecruiters\.com$/,
+      applyButtonSelectors: [
+        'button.js-apply-button', '.apply-button', 'a[data-test="apply-link"]',
+        'button[data-test="apply-button"]', 'a.apply-btn', 'a[href*="/apply"]',
+      ],
+      saveButtonTarget: { position: 'adjacent', selector: '.js-apply-button, .apply-button, .job-header' },
+      jobMetaSelectors: {
+        title: ['h1.job-title', '.job-title h1', 'h1[class*="title"]', '[data-test="job-title"]'],
+        company: ['.company-name', '.job-company a', '[data-test="company-name"]', '.employer-name'],
+        location: ['.job-location', '.location', '[data-test="job-location"]'],
+        salary: ['.job-salary', '.salary-range', '[data-test="salary"]'],
+        description: ['.job-description', '.job-sections', '#job-description', '[data-test="job-description"]'],
       },
     },
   ];

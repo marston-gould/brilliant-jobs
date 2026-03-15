@@ -52,7 +52,27 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**EXT-BUILD-001-PA** — Phase A Tier 1: LinkedIn + Indeed + Glassdoor Optimized Selectors
+**EXT-BUILD-001-PB** — Phase B Tier 2: 11 Major Job Boards Optimized Selectors
+- Completed: 2026-03-15
+- Product version bumped: `v9.32` → `v9.33`
+- **10 new registry entries** in `extension/job-site-overlay.ts`:
+  - Google Jobs: `.KLsYvd` title, `.nJlQNd` company, `.Qk80Jf` location, `.YQ4gaf` salary, `.HBvzbc` description. URL: `google.com/search?*ibp=htl;jobs*`.
+  - ZipRecruiter: `h1.job_title`, `.company_name`, `.salary_range`, `.job_description`. URL: `ziprecruiter.com/jobs|c/`.
+  - Monster: `data-testid` selectors (jobTitle, company, location, salary, jobDescription). URL: `monster.com/job-openings|jobs/`.
+  - Built In: `font-barlow` title, `data-id` selectors, `.job-description`. URL: `builtin.com/job/`.
+  - Dice: Web component `apply-button-wc`, `data-cy` selectors (jobTitle, companyNameLink, compensationText). URL: `dice.com/job-detail/`.
+  - The Muse: `data-test` selectors, `JobIndividualHeader_title`. URL: `themuse.com/jobs|companies/*/jobs`.
+  - Wellfound: `styles_` prefixed classes (applyButton, title, companyName, salary). URL: `wellfound.com/jobs|company/*/jobs`.
+  - USA Jobs: `usajobs-joa-banner__title`, `#job-title`, `#duties`, `.usajobs-joa-summary__salary`. URL: `usajobs.gov/job/`.
+  - Simply Hired: `viewJob` data-testid selectors (viewJobTitle, viewJobCompanyName, viewJobSalary). URL: `simplyhired.com/job|search/`.
+  - SmartRecruiters: `js-apply-button`, `h1.job-title`, `.job-description`. URL: `(jobs|careers).smartrecruiters.com`.
+- **Handshake expanded**: Added salary + description selectors, URL pattern expanded to `/jobs` and `/postings`.
+- **manifest.json**: 9 new site URL patterns added to contentScript[2] matches.
+- **Total**: 20 platform entries in registry (9 ATS + 3 Tier 1 + 8 Tier 2 new + expanded Handshake + SmartRecruiters).
+- **Tests:** 84 validation tests (all passing)
+- **Deployed:** 69 extension files re-uploaded to Supabase Storage.
+
+**Previous: EXT-BUILD-001-PA** — Phase A Tier 1: LinkedIn + Indeed + Glassdoor
 - Completed: 2026-03-15
 - Product version bumped: `v9.31` → `v9.32`
 - ROADMAP.md updated: EXT-BUILD-001-PA → ✅
@@ -3679,11 +3699,10 @@ Deliverables:
 
 ## Next Session
 
-**EXT-BUILD-001 spec FULLY COMPLETE.** All 3 sessions, all 6 bugs, generic scraper, Phase A Tier 1 — all done.
+**Phase A + B complete.** 20 platforms with optimized selectors.
 
-Potential next workstreams:
-- Phase B: Tier 2 — 11 major boards (Google Jobs, ZipRecruiter, Monster, Built In, Dice, The Muse, Wellfound, USA Jobs, Handshake, Simply Hired, SmartRecruiters)
-- Phase C: Tier 3 — 34 niche/diversity/industry boards
+Remaining from spec:
+- Phase C: Tier 3 — 34 niche/diversity/industry boards from Teal's list
 - Phase D: Tier 4 — Browse-page injection for 11 ATS sites
 - CASA-001: Google CASA assessment + gmail.readonly upgrade
 - Any new feature work
@@ -3717,7 +3736,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.32`** | **EXT-BUILD-001-PA: Phase A Tier 1 LinkedIn+Indeed+Glassdoor optimized selectors** |
+| **Product (BJ_VERSION)** | **`v9.33`** | **EXT-BUILD-001-PB: Phase B Tier 2 — 11 major boards, 20 total platforms** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

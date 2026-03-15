@@ -106,7 +106,18 @@
         "https://www.indeed.com.au/*",
         "https://ca.indeed.com/*",
         "https://uk.indeed.com/*",
-        "https://au.indeed.com/*"
+        "https://au.indeed.com/*",
+        "https://www.google.com/search?*ibp=htl;jobs*",
+        "https://www.ziprecruiter.com/*",
+        "https://www.monster.com/*",
+        "https://www.builtin.com/*",
+        "https://builtin.com/*",
+        "https://www.dice.com/*",
+        "https://www.themuse.com/*",
+        "https://wellfound.com/*",
+        "https://www.wellfound.com/*",
+        "https://www.usajobs.gov/*",
+        "https://www.simplyhired.com/*"
       ],
       "js": [
         "contentScript.js"
