@@ -476,6 +476,11 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('[data-merch-stat="companies"]').forEach(function(el) {
           el.textContent = totalDisplay || stats.companies.toLocaleString() + '+';
         });
+        // Social proof bar (LP-RESTRUCTURE-S3) — sync live counts
+        var spJobsEl = document.getElementById('lp-active-jobs-sp');
+        if (spJobsEl && stats.jobs != null) spJobsEl.textContent = (Math.floor(stats.jobs / 1000) * 1000).toLocaleString() + '+';
+        var spHiringEl = document.getElementById('lp-companies-hiring-sp');
+        if (spHiringEl && stats.companies != null) spHiringEl.textContent = stats.companies.toLocaleString() + '+';
         // Market Intelligence cards
         var miJobs = document.getElementById('lp-mi-jobs');
         if (miJobs) miJobs.textContent = (Math.floor(stats.jobs / 1000)).toLocaleString() + 'K+';
@@ -595,39 +600,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // SOCIAL PROOF — Survey results (P13-11)
     // ============================================================
     (async () => {
-      const MIN_RESPONSES = 20;
+      // LP-RESTRUCTURE-S3: Social proof bar is now data-backed (scanning stats).
+      // Show bar immediately — stats are hydrated by applyStats above.
+      // The bar shows: career pages count, active jobs count, companies hiring count.
       try {
-        await loadSupabase();
-        const { data, error } = await sb.from('survey_social_proof').select('*').single();
-        if (error || !data || data.total_respondents < MIN_RESPONSES) return;
-
         const bar = document.getElementById('social-proof-bar');
-        if (!bar) return;
-
-        const rating = parseFloat(data.avg_rating);
-        if (rating > 0) {
-          const full = Math.floor(rating);
-          const half = rating - full >= 0.3;
-          let stars = '\u2605'.repeat(full) + (half ? '\u2605' : '') + '\u2606'.repeat(5 - full - (half ? 1 : 0));
-          document.getElementById('sp-stars').textContent = stars;
-          document.getElementById('sp-rating').textContent = rating.toFixed(1) + ' / 5';
-        }
-
-        document.getElementById('sp-count').textContent = data.total_respondents.toLocaleString();
-
-        const totalNps = (data.promoters || 0) + (data.passives || 0) + (data.detractors || 0);
-        if (totalNps > 0) {
-          const recommendPct = Math.round(((data.promoters + data.passives) / totalNps) * 100);
-          document.getElementById('sp-nps-pct').textContent = recommendPct + '%';
-        } else {
-          document.getElementById('sp-nps-badge').style.display = 'none';
-        }
-
-        bar.classList.remove('hidden');
+        if (bar) bar.classList.remove('hidden');
       } catch (e) {
         bjError('social_proof_error', e);
-        reportError('landing_app', e);
-        console.log('[BJ] Social proof skipped:', e.message);
       }
     })();
 

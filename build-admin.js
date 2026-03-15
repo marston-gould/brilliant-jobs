@@ -10,6 +10,7 @@ const jsFiles = [
   'js/admin-jobs.js',
   'js/admin-email.js',
   'js/admin-notifications.js',
+  'js/admin-landing.js',
   'js/admin-signals.js',
   'js/admin-cron.js',
   'js/admin-killswitch.js',
