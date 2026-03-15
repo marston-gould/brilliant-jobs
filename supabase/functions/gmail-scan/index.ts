@@ -138,6 +138,7 @@ async function scanGmail(
   checkpoint: Checkpoint,
   logger: Logger,
   gmailScanScope: string,
+  gmailScanLabel: string = "",
 ): Promise<{ inbox_count: number; new_history_id: string | null }> {
   const signals: RawSignal[] = [];
   let newHistoryId: string | null = null;
@@ -146,8 +147,15 @@ async function scanGmail(
     ? checkpoint.last_gmail_scan_at.split("T")[0].replace(/-/g, "/")
     : null;
 
-  // REM-S10: Apply scan scope — 'primary' restricts to inbox, 'all' searches all mail
-  const scopeFilter = gmailScanScope === "primary" ? " in:inbox" : "";
+  // REM-S10: Apply scan scope — 'primary' restricts to inbox, 'label' filters by label, 'all' searches all mail
+  let scopeFilter = "";
+  if (gmailScanScope === "primary") {
+    scopeFilter = " in:inbox";
+  } else if (gmailScanScope === "label" && gmailScanLabel) {
+    scopeFilter = ` label:${gmailScanLabel.replace(/\s+/g, "-")}`;
+  }
+  // 'all' = no scope filter
+
   const query = afterDate
     ? `${GMAIL_APPLICATION_QUERY}${scopeFilter} after:${afterDate}`
     : `${GMAIL_APPLICATION_QUERY}${scopeFilter}`;
@@ -413,14 +421,16 @@ serve(withCorrelation("gmail-scan", async (req, logger) => {
 
         // REM-S10/S11: Read user's scan scope preferences
         let gmailScope = "primary";
+        let gmailLabel = "";
         let calendarScope = "primary";
         try {
           const { data: piSettings } = await sb.from("pipeline_tracking_settings")
-            .select("gmail_scan_scope,calendar_scan_scope")
+            .select("gmail_scan_scope,gmail_scan_label,calendar_scan_scope")
             .eq("user_id", conn.user_id)
             .maybeSingle();
           if (piSettings) {
             gmailScope = piSettings.gmail_scan_scope || "primary";
+            gmailLabel = piSettings.gmail_scan_label || "";
             calendarScope = piSettings.calendar_scan_scope || "primary";
           }
         } catch (_) { /* non-fatal — default to primary */ }
@@ -428,7 +438,7 @@ serve(withCorrelation("gmail-scan", async (req, logger) => {
         // 1. Gmail inbox scan
         try {
           await updateCheckpoint(conn.user_id, { gmail_scan_status: "scanning" });
-          const { inbox_count, new_history_id } = await scanGmail(conn.user_id, tokens.access_token, checkpoint, logger, gmailScope);
+          const { inbox_count, new_history_id } = await scanGmail(conn.user_id, tokens.access_token, checkpoint, logger, gmailScope, gmailLabel);
           totalGmailInbox += inbox_count;
           await updateCheckpoint(conn.user_id, { gmail_scan_status: "idle", last_gmail_scan_at: new Date().toISOString(), ...(new_history_id ? { last_gmail_history_id: new_history_id } : {}), gmail_error_message: null });
         } catch (e) {

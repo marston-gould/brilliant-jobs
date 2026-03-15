@@ -289,6 +289,16 @@ renderAppQueue();
 renderAppHistory();
 loadPipelineIntelligenceSettings();
 
+// REM-S10/S11: Toggle label input visibility when Gmail scope changes
+var _gmailScopeSelect = document.getElementById('pi-gmail-scope');
+var _gmailLabelInput = document.getElementById('pi-gmail-label');
+if (_gmailScopeSelect && _gmailLabelInput) {
+  _gmailScopeSelect.addEventListener('change', function() {
+    _gmailLabelInput.style.display = (_gmailScopeSelect.value === 'label') ? '' : 'none';
+    if (_gmailScopeSelect.value === 'label') _gmailLabelInput.focus();
+  });
+}
+
 // Gmail
 // APR-001/FB-GHOST-BADGE-001: gmail-connect-btn was on Ghost Monitor page (removed)
 const _gcBtn = $('#gmail-connect-btn');
@@ -855,6 +865,10 @@ async function loadPipelineIntelligenceSettings() {
     if (el('pi-auto-move-behavior')) el('pi-auto-move-behavior').value = data.auto_move_behavior || 'aggressive';
     if (el('pi-scan-freq')) el('pi-scan-freq').value = String(data.scan_frequency_minutes || 360);
     if (el('pi-gmail-scope')) el('pi-gmail-scope').value = data.gmail_scan_scope || 'primary';
+    if (el('pi-gmail-label')) {
+      el('pi-gmail-label').value = data.gmail_scan_label || '';
+      el('pi-gmail-label').style.display = (data.gmail_scan_scope === 'label') ? '' : 'none';
+    }
     if (el('pi-cal-scope')) el('pi-cal-scope').value = data.calendar_scan_scope || 'primary';
     if (el('pi-notify-automove-email')) el('pi-notify-automove-email').checked = data.notify_automove_email === true;
     if (el('pi-notify-automove-sms')) el('pi-notify-automove-sms').checked = data.notify_automove_sms === true;
@@ -905,6 +919,7 @@ async function savePipelineIntelligenceSettings() {
     auto_move_behavior: el('pi-auto-move-behavior')?.value || 'aggressive',
     scan_frequency_minutes: parseInt(el('pi-scan-freq')?.value) || 360,
     gmail_scan_scope: el('pi-gmail-scope')?.value || 'primary',
+    gmail_scan_label: el('pi-gmail-label')?.value?.trim() || '',
     calendar_scan_scope: el('pi-cal-scope')?.value || 'primary',
     notify_automove_email: el('pi-notify-automove-email')?.checked ?? false,
     notify_automove_sms: el('pi-notify-automove-sms')?.checked ?? false,
