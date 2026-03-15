@@ -52,7 +52,30 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FB-INTPREP-001-S2** — Interview Prep Phase 2: Question Bank UI ✅
+**FB-INTPREP-001-S3** — Interview Prep Phase 3: Simulation Backend ✅
+- Completed: 2026-03-15
+- Product version bumped: `v9.50` → `v9.51`
+- **Migration v9.50-fb-intprep-001-s3-interview-sessions.sql:**
+  - `interview_sessions` table: uuid PK, user_id FK auth.users (CASCADE), job_id, pipeline_entry_id, messages jsonb DEFAULT '[]', scorecard jsonb, overall_score int CHECK 0-100, feedback_mode boolean DEFAULT true, question_count int CHECK 3-10 DEFAULT 6, status CHECK (in_progress/completed/abandoned), started_at, completed_at.
+  - 6 indexes: user_id, status (partial in_progress), job_id (partial), pipeline_entry (partial), started_at DESC, user+status+started composite.
+  - RLS: 3 user policies (SELECT/INSERT/UPDATE with auth.uid()), 1 service_role ALL.
+- **interview-simulate EF (NEW):**
+  - 4 actions: `start` (assemble context → Claude opening → create session), `message` (replay history → new turn → scorecard on completion), `abandon` (mark abandoned), `history` (list user sessions).
+  - Model: claude-sonnet-4-20250514 with ephemeral prompt caching (anthropic-beta: prompt-caching-2024-07-31). Cache hit logging.
+  - System prompt: XML-tagged context blocks (job_description, resume_text, match_analysis, company_context, interview_config). Feedback mode toggle ([COACH] tags on/off). Configurable question count (3-10).
+  - Structured JSON output per turn: `{ reply, is_complete, question_number }`. Scorecard on final turn: `{ overall_score, per_question_scores[], strengths[], improvements[], talking_points[], gap_coverage }`.
+  - Context assembly: JD from ats_jobs (HTML stripped, 8K cap), resume from resume_archive via active_resume_id (6K cap), focus_question support for Question Bank "Practice this".
+  - PostHog: simulation_started, simulation_completed (with score + duration), simulation_message_sent (turn_number, message_length), simulation_abandoned.
+  - Error handling: JSON parse fallback to plain reply, 404 on session not found, 400 on wrong status, 503 on missing API key.
+- **Gateway route #129** added. Total: 129 routes.
+- **Tests:** 67 validation tests (11 sections, all passing)
+- **Created:** supabase/migrations/v9.50-fb-intprep-001-s3-interview-sessions.sql, supabase/functions/interview-simulate/index.ts, tests/fb-intprep-001-s3-simulation-backend.test.js
+- **Modified:** supabase/functions/api-gateway/index.ts
+- **Pending manual steps (Marston):**
+  - `supabase db push` (migration v9.50)
+  - `SUPABASE_ACCESS_TOKEN=<token> npx supabase functions deploy interview-simulate api-gateway --project-ref qojhagupdnbtomfoxnsf`
+
+**Previous: FB-INTPREP-001-S2** — Interview Prep Phase 2: Question Bank UI ✅
 - Completed: 2026-03-15
 - Product version bumped: `v9.49` → `v9.50`
 - **Nav item:** "Interview Prep" added between Insights link and Account section. Lucide `graduation-cap` icon. `data-page="interview-prep"`.
@@ -3704,11 +3727,12 @@ None.
 
 **Next Session**
 
-**FB-INTPREP-001-S3** — Interview Prep Phase 3: Simulation Backend
-- interview_sessions table migration (user_id, job_id, pipeline_entry_id, messages jsonb, scorecard jsonb, overall_score, feedback_mode, question_count, status, started_at, completed_at)
-- interview-simulate Edge Function (multi-turn conversation with Claude Sonnet, prompt caching, scorecard generation on final turn)
-- Gateway route #129
-- Spec: FB-INTPREP-001_InterviewPrep.docx §4, §6.1, §10 Phase 3
+**FB-INTPREP-001-S4** — Interview Prep Phase 4: Simulation UI
+- Chat interface (modal/panel overlay) in dark theme
+- Real-time feedback toggle
+- Scorecard rendering inline after final message
+- My Sessions tab with session list (company, role, date, status, score, Resume/Review CTA)
+- Spec: FB-INTPREP-001_InterviewPrep.docx §5.4, §5.5, §10 Phase 4
 
 Potential next workstreams:
 - PostHog Google OAuth verification reminder (R5 in FB-PI-001 risk register — must submit for verification before public Gmail/Calendar launch)
@@ -3894,7 +3918,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.50`** | **FB-INTPREP-001-S2: Question Bank UI. Nav item + page shell + filters + cards + bookmarks.** |
+| **Product (BJ_VERSION)** | **`v9.51`** | **FB-INTPREP-001-S3: Simulation Backend. interview_sessions table + interview-simulate EF + gateway #129.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

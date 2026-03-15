@@ -246,9 +246,10 @@ const ROUTE_REGISTRY: Record<string, string> = {
   "check-pipeline-staleness":   "check-pipeline-staleness",   // FB-PI-001-S5: Staleness engine cron (#126)
   "extension-version":          "extension-version",          // EXT-BUILD-001-S2: Extension version check (#127)
   "interview-generate-questions":"interview-generate-questions",// FB-INTPREP-001-S1: Question bank batch generation (#128)
+  "interview-simulate":          "interview-simulate",          // FB-INTPREP-001-S3: AI mock interview simulation (#129)
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // TOTAL: 128 routes (127 prev + 1 FB-INTPREP-001-S1). Direct paths deprecated.
+  // TOTAL: 129 routes (128 prev + 1 FB-INTPREP-001-S3). Direct paths deprecated.
   // HOOK: Future EFs register here. Future: load from DB table for
   //       runtime updates without redeploy (api_consumers integration).
   // ═══════════════════════════════════════════════════════════════════════════
