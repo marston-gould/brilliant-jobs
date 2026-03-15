@@ -660,6 +660,24 @@ function initBilling() {
   initAutoRefillUI();
   loadHireFeeStatus();
   _initTierChangeListener();
+
+  // REFERRAL-CONSOL: Init referral hub inside Subscription page (#sub-referral-content)
+  if (typeof window.initReferralHub === 'function') {
+    window.initReferralHub();
+  }
+  // REFERRAL-CONSOL: PostHog referral_section_viewed when Earn Free Credits enters viewport
+  try {
+    var _refSection = document.getElementById('sub-referral-section');
+    if (_refSection && window.IntersectionObserver && window.posthog) {
+      var _refObs = new IntersectionObserver(function(entries) {
+        if (entries[0].isIntersecting) {
+          posthog.capture('referral_section_viewed', { surface: 'subscription_page' });
+          _refObs.disconnect();
+        }
+      }, { threshold: 0.3 });
+      _refObs.observe(_refSection);
+    }
+  } catch(_e) { /* non-critical */ }
 }
 
 // ═══════════════════════════════════════════════════════════

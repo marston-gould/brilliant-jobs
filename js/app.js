@@ -7,14 +7,14 @@ console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded');
 var _bjPageTitles = {
   brilliant: 'Get Started', setup: 'Setup', jobs: 'Jobs Feed', tuning: 'Search Tuning',
   resumes: 'Resumes', 'resume-builder': 'Resume Builder', applications: 'My Applications', notifications: 'Notifications',
-  stats: 'Stats', referrals: 'Referrals', settings: 'Settings',
+  stats: 'Stats', settings: 'Settings',
   subscription: 'Subscription', feedback: 'Feedback',
   'admin-landing': 'Landing Page'
 };
 var _bjPageSections = {
   brilliant: 'onboarding', setup: 'onboarding', jobs: 'search', tuning: 'search',
   resumes: 'search', 'resume-builder': 'search', applications: 'tracking', notifications: 'tracking',
-  stats: 'intelligence', referrals: 'growth',
+  stats: 'intelligence',
   settings: 'account', subscription: 'account', feedback: 'account',
   'admin-landing': 'intelligence'
 };
@@ -518,7 +518,13 @@ $$('.nav-item').forEach(item => {
         }
         return;
       }
-      if (_tab === 'referrals' && typeof initReferralHub === 'function') { if (window.bjTabGuard) bjTabGuard('referrals', initReferralHub); else initReferralHub(); }
+      // REFERRAL-CONSOL: referrals page removed — redirect to subscription + scroll to referral section
+      if (_tab === 'referrals') {
+        _tab = 'subscription';
+        window.history.replaceState(null, '', '?page=subscription');
+        // Fall through to subscription init below, then scroll
+        setTimeout(function() { var el = document.getElementById('sub-referral-section'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 200);
+      }
       // BUG-TAB-001: Subscription tab needs initBilling to populate plan/credits/pricing
       if (_tab === 'subscription' && typeof initBilling === 'function') { if (window.bjTabGuard) bjTabGuard('subscription', initBilling); else initBilling(); }
       // BUG-TAB-001: Settings tab needs applicant profile loaded
@@ -560,7 +566,7 @@ $$('.nav-item').forEach(item => {
         if (window.bjSkeleton) setTimeout(function() { bjSkeleton.hide('applications'); }, 150);
       }
       // Tabs without explicit init get skeleton hidden after a short delay (content is static HTML)
-      if (!['stats','feedback','referrals','resumes','resume-builder','applications','admin-landing'].includes(_tab) && window.bjSkeleton) {
+      if (!['stats','feedback','resumes','resume-builder','applications','admin-landing'].includes(_tab) && window.bjSkeleton) {
         setTimeout(function() { bjSkeleton.hide(_tab); }, 150);
       }
       // QA-011: Re-search feed when tuning changed (e.g. US-Only toggle)
@@ -602,7 +608,11 @@ if (lastTab && $(`#page-${lastTab}`)) {
   var _restoreInit = function() {
     if (lastTab === 'stats' && typeof initStatsPage === 'function') { if (window.bjTabGuard) bjTabGuard('stats', initStatsPage); else initStatsPage(); }
     // Canny feedback removed v9.44
-    if (lastTab === 'referrals' && typeof initReferralHub === 'function') { if (window.bjTabGuard) bjTabGuard('referrals', initReferralHub); else initReferralHub(); }
+    // REFERRAL-CONSOL: referrals page removed — redirect to subscription
+    if (lastTab === 'referrals') {
+      lastTab = 'subscription';
+      try { localStorage.setItem('bj_last_tab', 'subscription'); } catch(_e) {}
+    }
     // BUG-TAB-001: Restore subscription/settings tab init
     if (lastTab === 'subscription' && typeof initBilling === 'function') { if (window.bjTabGuard) bjTabGuard('subscription', initBilling); else initBilling(); }
     if (lastTab === 'settings' && typeof loadApplicantProfile === 'function') { if (window.bjTabGuard) bjTabGuard('settings', loadApplicantProfile); else loadApplicantProfile(); }
@@ -624,6 +634,22 @@ if (lastTab && $(`#page-${lastTab}`)) {
     _restoreInit();
   }
   }
+
+  // REFERRAL-CONSOL: Generic scrollTo URL param handler — after page render, scroll to target element
+  (function() {
+    var _scrollParams = new URLSearchParams(window.location.search);
+    var _scrollTarget = _scrollParams.get('scrollTo');
+    if (_scrollTarget) {
+      setTimeout(function() {
+        var el = document.getElementById(_scrollTarget);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Clean up URL param
+        _scrollParams.delete('scrollTo');
+        var _cleanUrl = window.location.pathname + (_scrollParams.toString() ? '?' + _scrollParams.toString() : '');
+        window.history.replaceState(null, '', _cleanUrl);
+      }, 300);
+    }
+  })();
 }
 
 // Extension detection — check if extension has updated the profile recently

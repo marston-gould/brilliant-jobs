@@ -52,7 +52,24 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**LP-RESTRUCTURE-S4** — Landing Page Restructure Session 4 — LP-RESTRUCTURE COMPLETE ✅
+**REFERRAL-CONSOL** — Referral Consolidation into Subscription Page ✅
+- Completed: 2026-03-15
+- Product version bumped: `v9.47` → `v9.48`
+- Removed standalone Referrals page + "Growth" nav section label + Referrals nav item from sidebar.
+- Removed `page-referrals` shell div from dashboard.html.
+- Added "Earn Free Credits" card to Subscription page between Auto-Refill and Pay-When-Hired. Contains `#sub-referral-content` render target.
+- `js/referrals.js` refactored: render target changed from `ref-hub-content` → `sub-referral-content`. Hero banner replaced with compact 3-column stat-grid (Referrals, Tier, Rewards Earned — "Invites Sent" dropped). Referral history wrapped in collapsible `<details>` (auto-open ≤5 rows). Leaderboard (~175 lines) and outreach tracking (~290 lines) code wrapped in `/* */` block comments with `PARKED: Referral Consolidation v9.48` prefix. `initReferralTracking()` call commented out. `renderRewardGrid()`/`startCountdown()`/`loadLeaderboard()` calls commented out in render function.
+- Preserved (NOT parked): `showReferralShareModal()`, `showUpgradeReferralIntro()`, `_introcopyreferrallink()`, `_dismissReferralIntro()`, `regenerateReferralCode()`, `initSidebarReferralLink()`, `process_tier_bonus` RPC.
+- `js/billing.js`: `initReferralHub()` called at end of `initBilling()` with typeof guard. IntersectionObserver fires `referral_section_viewed` PostHog event when Earn Free Credits section enters viewport.
+- `js/app.js`: `referrals` removed from `_bjPageTitles` and `_bjPageSections`. Tab handler redirects `_tab === 'referrals'` → subscription + scroll to `#sub-referral-section`. `lastTab === 'referrals'` → subscription + localStorage update. Removed from skeleton exclusion list. Generic `scrollTo` URL param handler added (reads `?scrollTo=elementId`, scrolls after 300ms, cleans URL).
+- `dashboard.html`: `sidebar-referral-link` onclick changed from `switchPage('referrals')` to `switchPage('subscription')` + setTimeout scroll to `#sub-referral-section`.
+- **No migrations, no EF changes, no new dependencies.**
+- Supabase RPCs still exist and are untouched: `get_leaderboard`, `get_referral_outreach`, `get_referral_correlation`, `update_referral_status`.
+- **Tests:** 71 validation tests (14 sections, all passing)
+- **Modified:** dashboard.html, js/referrals.js, js/billing.js, js/app.js, dist/dashboard.min.js, dist/dashboard-deferred.min.js, dist/admin.min.js, styles.css, ROADMAP.md, roadmap.html
+- **Created:** tests/referral-consolidation.test.js
+
+**Previous: LP-RESTRUCTURE-S4** — Landing Page Restructure Session 4 — LP-RESTRUCTURE COMPLETE ✅
 - Completed: 2026-03-15
 - Product version bumped: `v9.46` → `v9.47`
 - 375px mobile polish: benefit section padding/font reduced, `lp-section-cta` full-width, `hero-img-col` hidden at 375px, stats bar 2-col grid, social proof bar stacked with dividers hidden.
@@ -3638,7 +3655,12 @@ None.
 
 **Next Session**
 
-No specific session queued. FB-PI-001 is feature-complete. PC-002/003/004 is complete.
+**FB-INTPREP-001-S1** — Interview Prep Phase 1: Question Bank Backend
+- interview_questions table migration
+- interview-generate-questions Edge Function (batch, Claude Haiku)
+- Run initial batch generation for top 100 role clusters
+- PostgREST API for question queries with filter parameters
+- Spec: FB-INTPREP-001_InterviewPrep.docx §3, §6.2, §10 Phase 1
 
 Potential next workstreams:
 - PostHog Google OAuth verification reminder (R5 in FB-PI-001 risk register — must submit for verification before public Gmail/Calendar launch)
@@ -3824,7 +3846,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.35`** | **EXT-BUILD-001-PD: Phase D Tier 4 — ATS browse-page injection. All phases A-D COMPLETE. 59 platforms.** |
+| **Product (BJ_VERSION)** | **`v9.48`** | **REFERRAL-CONSOL: Referral Consolidation into Subscription Page. Standalone referrals page removed.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

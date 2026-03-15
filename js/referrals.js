@@ -42,7 +42,8 @@
 
   // ---- Init ----
   window.initReferralHub = async function () {
-    const container = document.getElementById('ref-hub-content');
+    // REFERRAL-CONSOL: render target changed from standalone page to embedded Subscription section
+    const container = document.getElementById('sub-referral-content');
     if (!container) return;
 
     container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim);">Loading referral data...</div>';
@@ -71,8 +72,8 @@
 
       renderReferralHub(container);
 
-      // AC #1-8: Init outreach tracking log + correlation card
-      await initReferralTracking();
+      // PARKED: Referral Consolidation — outreach tracking removed from active UI
+      // await initReferralTracking();
 
       // Phase 4A: Check and grant any pending tier bonuses
       if (referralStats && referralStats.current_tier > 0) {
@@ -95,7 +96,7 @@
     }
   };
 
-  // ---- Render ----
+  // ---- Render (REFERRAL-CONSOL: compact layout for Subscription page embed) ----
   function renderReferralHub(container) {
     const s = referralStats;
     if (!s) return;
@@ -103,77 +104,64 @@
     const tierPct = s.progress_to_next || 0;
     const nextTierAt = s.next_tier_at;
     const remaining = nextTierAt ? nextTierAt - s.referral_count : 0;
-    // Spec 3.3: /in/ format for referral links
     const refLink = s.referral_link || '';
 
     container.innerHTML = `
-      <!-- Hero Banner — spec 3.1: .referral-hero following .feed-hero/.setup-hero pattern -->
-      <div class="referral-hero">
-        <div class="referral-hero-title">
-          Share the signal. <span style="color:var(--warm);">Earn together.</span>
+      <!-- REFERRAL-CONSOL: Compact stat-grid replacing hero banner -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;">
+        <div style="text-align:center;padding:12px;background:var(--bg-input);border-radius:8px;">
+          <div style="font-size:20px;font-weight:700;color:var(--text);">${s.referral_count}</div>
+          <div style="font-size:11px;color:var(--text-dim);">Referrals</div>
         </div>
-        <div class="referral-hero-sub">
-          For each friend who signs up and runs their first search: you get 7 days of Pro + 25 AI credits. They get the same.
+        <div style="text-align:center;padding:12px;background:var(--bg-input);border-radius:8px;">
+          <div style="font-size:20px;font-weight:700;color:var(--accent);">${TIER_LABELS[s.current_tier] || '\u2014'}</div>
+          <div style="font-size:11px;color:var(--text-dim);">Tier</div>
         </div>
-        <div class="hero-stats">
-          <div class="hero-stat">
-            <div class="hero-stat-val">${s.referral_count}</div>
-            <div class="hero-stat-label">Referrals</div>
-          </div>
-          <div class="hero-stat">
-            <div class="hero-stat-val hs-accent">${TIER_LABELS[s.current_tier] || '\u2014'}</div>
-            <div class="hero-stat-label">Current Tier</div>
-          </div>
-          <div class="hero-stat">
-            <div class="hero-stat-val hs-green">${s.stats.rewarded}</div>
-            <div class="hero-stat-label">Rewards Earned</div>
-          </div>
-          <div class="hero-stat">
-            <div class="hero-stat-val hs-dim">${s.stats.total_invites}</div>
-            <div class="hero-stat-label">Invites Sent</div>
-          </div>
+        <div style="text-align:center;padding:12px;background:var(--bg-input);border-radius:8px;">
+          <div style="font-size:20px;font-weight:700;color:var(--warm);">${s.stats.rewarded}</div>
+          <div style="font-size:11px;color:var(--text-dim);">Rewards Earned</div>
         </div>
       </div>
 
-      <!-- Progress to Next Tier -->
+      <!-- Tier progress bar -->
       ${nextTierAt ? `
-      <div class="card" style="padding:16px 20px;margin-bottom:20px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <span style="font-size:13px;font-weight:600;">Progress to ${TIER_LABELS[s.current_tier + 1] || 'Next Tier'}</span>
-          <span style="font-size:13px;color:var(--text-dim);font-family:var(--mono);">${s.referral_count} / ${nextTierAt}</span>
+      <div style="margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-size:12px;font-weight:600;">Progress to ${TIER_LABELS[s.current_tier + 1] || 'Next Tier'}</span>
+          <span style="font-size:12px;color:var(--text-dim);font-family:var(--mono);">${s.referral_count} / ${nextTierAt}</span>
         </div>
-        <div class="progress-bar-bg" style="height:6px;">
+        <div class="progress-bar-bg" style="height:5px;">
           <div class="progress-bar-fill" style="width:${Math.min(tierPct, 100)}%;"></div>
         </div>
-        <div style="font-size:12px;color:var(--text-faint);margin-top:6px;">${remaining} more referral${remaining !== 1 ? 's' : ''} to unlock ${TIER_LABELS[s.current_tier + 1]} rewards</div>
+        <div style="font-size:11px;color:var(--text-faint);margin-top:4px;">${remaining} more referral${remaining !== 1 ? 's' : ''} to unlock ${TIER_LABELS[s.current_tier + 1]} rewards</div>
       </div>
       ` : `
-      <div class="card" style="padding:16px 20px;margin-bottom:20px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <span style="font-size:13px;font-weight:600;">Clearance \u2014 Max Tier Reached</span>
+      <div style="margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-size:12px;font-weight:600;">Clearance \u2014 Max Tier Reached</span>
         </div>
-        <div class="progress-bar-bg" style="height:6px;">
+        <div class="progress-bar-bg" style="height:5px;">
           <div class="progress-bar-fill" style="width:100%;background:var(--warm);"></div>
         </div>
       </div>
       `}
 
-      <!-- Share Your Link — spec: "Copy Your Link" / "Copy Code" CTAs -->
-      <div class="card" style="padding:16px 20px;margin-bottom:20px;">
-        <div class="card-title">Share Your Link</div>
-        <div style="display:flex;gap:8px;margin:12px 0;">
+      <!-- Share Your Link -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Share Your Link</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
           <input type="text" class="ref-link-input" value="${refLink}" readonly id="ref-link-input" onclick="this.select()" />
           <button class="btn btn-primary btn-sm" onclick="window._refCopyLink()" id="ref-copy-link-btn">Copy Your Link</button>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;margin:8px 0;font-size:13px;color:var(--text-dim);">
+        <div style="display:flex;align-items:center;gap:8px;margin:6px 0;font-size:12px;color:var(--text-dim);">
           <span>Your code:</span>
-          <span style="font-family:var(--mono);font-weight:700;color:var(--accent);font-size:15px;letter-spacing:1px;" id="ref-code-val">${s.referral_code}</span>
+          <span style="font-family:var(--mono);font-weight:700;color:var(--accent);font-size:14px;letter-spacing:1px;" id="ref-code-val">${s.referral_code}</span>
           <button class="btn btn-secondary btn-sm" onclick="window._refCopyCode()" style="margin-left:4px;">Copy Code</button>
-          <button class="btn btn-ghost btn-sm" id="ref-regenerate-btn" onclick="window.regenerateReferralCode()" style="margin-left:4px;font-size:11px;color:var(--text-faint);">Regenerate code</button>
+          <button class="btn btn-ghost btn-sm" id="ref-regenerate-btn" onclick="window.regenerateReferralCode()" style="margin-left:4px;font-size:10px;color:var(--text-faint);">Regenerate</button>
         </div>
-        <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
           <button class="btn btn-secondary btn-sm" onclick="window._refShareLinkedIn()" style="display:flex;align-items:center;gap:6px;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
             LinkedIn
           </button>
           <button class="btn btn-secondary btn-sm" onclick="window._refShareEmail()" style="display:flex;align-items:center;gap:6px;">
@@ -187,31 +175,31 @@
         </div>
       </div>
 
-      <!-- Milestones — spec 3.4: SVG icons, no emojis -->
-      <div class="card" style="padding:16px 20px;margin-bottom:20px;">
-        <div class="card-title">Milestones</div>
-        <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;">
+      <!-- Milestones -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Milestones</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
           ${ALL_BADGES.map(b => {
             const earned = (s.badges || []).find(x => x.name === b);
             const info = BADGE_LABELS[b];
             return `
-              <div style="position:relative;text-align:center;padding:16px 14px;border:1px solid ${earned ? 'var(--accent)' : 'var(--border)'};border-radius:10px;min-width:100px;flex:1;background:${earned ? 'rgba(61,130,246,0.06)' : 'transparent'};opacity:${earned ? '1' : '0.45'};">
-                <div style="color:${earned ? 'var(--accent)' : 'var(--text-faint)'};margin-bottom:6px;">${info.icon}</div>
-                <div style="font-size:12px;font-weight:600;">${info.name}</div>
-                <div style="font-size:10px;color:var(--text-faint);margin-top:2px;">${info.desc}</div>
-                ${earned ? '<div style="position:absolute;top:6px;right:8px;"><i data-lucide="check" class="icon-sm" style="stroke:var(--accent);stroke-width:3;fill:none;"></i></div>' : ''}
+              <div style="position:relative;text-align:center;padding:12px 10px;border:1px solid ${earned ? 'var(--accent)' : 'var(--border)'};border-radius:8px;min-width:85px;flex:1;background:${earned ? 'rgba(61,130,246,0.06)' : 'transparent'};opacity:${earned ? '1' : '0.45'};">
+                <div style="color:${earned ? 'var(--accent)' : 'var(--text-faint)'};margin-bottom:4px;">${info.icon}</div>
+                <div style="font-size:11px;font-weight:600;">${info.name}</div>
+                <div style="font-size:9px;color:var(--text-faint);margin-top:2px;">${info.desc}</div>
+                ${earned ? '<div style="position:absolute;top:4px;right:6px;"><i data-lucide="check" class="icon-xs" style="stroke:var(--accent);stroke-width:3;fill:none;"></i></div>' : ''}
               </div>
             `;
           }).join('')}
         </div>
       </div>
 
-      <!-- Referral History — uses admin-table pattern -->
-      <div class="card" style="padding:16px 20px;margin-bottom:20px;">
-        <div class="card-title">Referral History</div>
-        ${referralHistory.length === 0 ?
-          '<div class="ref-empty">0 referrals. Your link is ready \u2014 each activated signup earns you 7 days Pro + 25 credits.</div>' :
-          `<div style="overflow-x:auto;margin-top:12px;">
+      <!-- Referral History — collapsible via <details> when > 5 rows -->
+      ${referralHistory.length === 0 ?
+        '<div style="font-size:12px;color:var(--text-faint);padding:8px 0;">No referrals yet. Share your link to start earning.</div>' :
+        `<details${referralHistory.length <= 5 ? ' open' : ''}>
+          <summary style="font-size:13px;font-weight:600;cursor:pointer;margin-bottom:8px;">Referral History (${referralHistory.length})</summary>
+          <div style="overflow-x:auto;">
             <table class="admin-table">
               <thead>
                 <tr>
@@ -232,51 +220,20 @@
                 `).join('')}
               </tbody>
             </table>
-          </div>`
-        }
-      </div>
-
-      <!-- Leaderboard — Phase 3: period toggle, reward grid, countdown, 20-user threshold -->
-      <div class="card" style="padding:16px 20px;margin-bottom:20px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-          <div class="card-title" style="margin:0;">Leaderboard</div>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div id="ref-countdown" style="font-size:11px;color:var(--text-faint);font-family:var(--mono);display:flex;align-items:center;gap:4px;">
-              <i data-lucide="clock" class="icon-xs icon-stroke"></i>
-              <span id="ref-countdown-text"></span>
-            </div>
-            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim);cursor:pointer;">
-              <div class="toggle-switch${s.sharing_enabled ? ' active' : ''}">
-                <input type="checkbox" id="ref-optin-toggle" ${s.sharing_enabled ? 'checked' : ''} onchange="window._refToggleLeaderboard(this.checked);this.closest('.toggle-switch').classList.toggle('active',this.checked);" />
-                <div class="toggle-slider"></div>
-              </div>
-              <span style="font-weight:500;">Show my ranking</span>
-            </label>
           </div>
-        </div>
+        </details>`
+      }
 
-        <!-- Period toggle: Weekly | Monthly — uses admin-period-btn pattern -->
-        <div style="display:flex;gap:4px;margin-bottom:14px;" id="ref-period-toggle">
-          <button class="admin-period-btn active" data-lb-period="weekly" onclick="window._refSwitchPeriod('weekly')">Weekly</button>
-          <button class="admin-period-btn" data-lb-period="monthly" onclick="window._refSwitchPeriod('monthly')">Monthly</button>
-        </div>
-
-        <!-- Reward tier merchandising grid — spec 3.5 -->
-        <div id="ref-reward-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;"></div>
-
-        <div id="ref-leaderboard-body">
-          ${s.sharing_enabled ? '<div style="padding:12px;color:var(--text-dim);font-size:13px;">Loading leaderboard...</div>' : '<div class="ref-empty">Top referrers earn credits and Pro time every week. Show your ranking to compete.</div>'}
-        </div>
-      </div>
+      <!-- PARKED: Referral Consolidation — leaderboard removed from active UI -->
     `;
 
-    // Render reward grid and countdown for initial period
-    renderRewardGrid('weekly');
-    startCountdown();
+    // PARKED: Referral Consolidation — leaderboard init removed
+    // renderRewardGrid('weekly');
+    // startCountdown();
     if (typeof window.refreshIcons === 'function') window.refreshIcons();
 
-    // Load leaderboard if opted in
-    if (s.sharing_enabled) loadLeaderboard('weekly');
+    // PARKED: Referral Consolidation — leaderboard load removed
+    // if (s.sharing_enabled) loadLeaderboard('weekly');
   }
 
   // ---- Share Actions — spec Section 4: rewritten share messages ----
@@ -336,6 +293,8 @@ Or use my code: ${referralStats.referral_code}`);
     trackInvite('sms');
   };
 
+  // PARKED: Referral Consolidation v9.48 — leaderboard code removed from active UI
+  /*
   // ---- Leaderboard state ----
   let _lbPeriod = 'weekly';
   let _countdownInterval = null;
@@ -512,6 +471,8 @@ Or use my code: ${referralStats.referral_code}`);
     }
   }
 
+  */
+
   // ---- Helpers ----
   function maskEmail(email) {
     if (!email) return '\u2014';
@@ -591,6 +552,8 @@ Or use my code: ${referralStats.referral_code}`);
     return d.toLocaleDateString('en-US', opts);
   }
 
+  // PARKED: Referral Consolidation v9.48 — outreach tracking code removed from active UI
+  /*
   // ---- Status badge HTML ----
   function statusBadge(status) {
     const color = STATUS_COLORS[status] || '#64748b';
@@ -881,6 +844,8 @@ Or use my code: ${referralStats.referral_code}`);
       });
     }
   };
+
+  */
 
   // ──────────────────────────────────────────────────────────────
   // FB-TRIAL-001-S4: Post-Upgrade Referral Introduction (Part 5)
