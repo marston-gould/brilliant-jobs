@@ -441,21 +441,28 @@ document.addEventListener('DOMContentLoaded', function() {
           const heroJobs = document.getElementById('lp-hero-jobs');
           if (heroJobs) heroJobs.textContent = (Math.floor(stats.jobs / 1000) * 1000).toLocaleString() + '+';
         }
-        // "companies hiring now" = distinct companies with open jobs (~8.5K)
+        // "companies hiring now" = distinct companies with active jobs (~8.7K)
         if (stats.companies != null) {
-          document.getElementById('lp-companies').textContent = stats.companies.toLocaleString();
-          const stepComp = document.getElementById('lp-step-companies');
-          if (stepComp) stepComp.textContent = stats.companies.toLocaleString() + '+';
+          var hiringDisplay = stats.companies.toLocaleString() + '+';
+          // Stats bar: Companies Hiring Now
+          var hiringStatEl = document.getElementById('lp-companies-hiring-stat');
+          if (hiringStatEl) hiringStatEl.textContent = hiringDisplay;
+          // Hero sub inline span
+          var hiringHeroEl = document.getElementById('lp-companies-hiring');
+          if (hiringHeroEl) hiringHeroEl.textContent = hiringDisplay;
+          var stepComp = document.getElementById('lp-step-companies');
+          if (stepComp) stepComp.textContent = hiringDisplay;
         }
-        // "career pages tracked" = total companies in database (~39K)
-        // This is the number used in hero text and marketing copy
+        // "career pages monitored" = total companies in ats_companies (~39K)
+        // Used in stats bar, hero sub, and all data-stat="total-pages" spans
         var totalDisplay = stats.totalCompanies != null
           ? (Math.floor(stats.totalCompanies / 1000) * 1000).toLocaleString() + '+'
           : null;
         if (totalDisplay) {
-          var heroComp = document.getElementById('lp-hero-companies');
-          if (heroComp) heroComp.textContent = totalDisplay;
-          // Hydrate all elements with data-stat="total-pages"
+          // Stats bar: Career Pages Monitored
+          var lpCompEl = document.getElementById('lp-companies');
+          if (lpCompEl) lpCompEl.textContent = totalDisplay;
+          // Hydrate all elements with data-stat="total-pages" (hero, comparison table, FAQ, etc.)
           document.querySelectorAll('[data-stat="total-pages"]').forEach(function(el) {
             el.textContent = totalDisplay;
           });
@@ -565,7 +572,11 @@ document.addEventListener('DOMContentLoaded', function() {
           reportError('landing_app', e);
           console.log('[BJ] Stats fetch error:', e.message);
           document.getElementById('lp-active-jobs').textContent = '400,000+';
-          document.getElementById('lp-companies').textContent = '8,700+';
+          document.getElementById('lp-companies').textContent = '39,000+';
+          var hiringFallback = document.getElementById('lp-companies-hiring-stat');
+          if (hiringFallback) hiringFallback.textContent = '8,700+';
+          var hiringHeroFallback = document.getElementById('lp-companies-hiring');
+          if (hiringHeroFallback) hiringHeroFallback.textContent = '8,700+';
           document.getElementById('lp-metros').textContent = '199';
           document.querySelectorAll('.stat-num').forEach(el => {
             el.classList.remove('loading'); el.classList.add('loaded');

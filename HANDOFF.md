@@ -52,7 +52,17 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**BRANCH-AUDIT-001** — Full Branch Audit & Cleanup
+**LP-RESTRUCTURE-S1** — Landing Page Restructure Session 1
+- Completed: 2026-03-15
+- Product version bumped: `v9.40` → `v9.41`
+- `landing_sections` table deployed to prod: RLS (public SELECT, admin write), updated_at trigger, idx_landing_sections_visible_sort, 4 seed sections (all draft/hidden).
+- `landing-assets/` storage bucket created: public read, 5MB limit, images only.
+- Dual stats wired end-to-end: hero sub now "scan 39,000+ career pages daily, 8,700+ currently hiring". Stats bar: Career Pages Monitored (totalCompanies) + Companies Hiring Now (companies). `landing-app.js` applyStats updated for `lp-companies`, `lp-companies-hiring-stat`, `lp-companies-hiring`, all `data-stat="total-pages"` spans. Fallbacks updated.
+- DOM restructure: `#benefits` (9-card grid), `#benefits-short`, `#walkthrough` carousel all removed from index.html (173 lines removed). `#lp-benefit-sections` container added after `#why`, before ghost section.
+- **Tests:** 34 validation tests (all passing).
+- **Next:** LP-RESTRUCTURE-S2 — dynamic section renderer + hero screenshot.
+
+**Previous: BRANCH-AUDIT-001** — Full Branch Audit & Cleanup
 - Completed: 2026-03-15
 - Product version bumped: `v9.39` → `v9.40`
 - **157 branches audited across 2 passes. 155 deleted. staging protected (422).**
@@ -3747,7 +3757,7 @@ Remaining backlog:
   - S2 Templates & Generation — resume-generate EF, 3 templates, Download UI
   - S3 Keyword Optimization — resume-optimize EF, gap report UI, one-click insertion, match score display
   - S4 AI Rewrites — resume-rewrite-bullet EF, Improve with AI per bullet, accept/reject panel
-- **LP-RESTRUCTURE-S1 (NEXT)**: Landing Page Restructure Session 1 per POD_HANDOFF_LandingPageRestructure_v2.docx (in docs/specs/)
+- **LP-RESTRUCTURE-S2 (NEXT)**: Dynamic Section Renderer + Hero Screenshot. landing-app.js: fetch from landing_sections, render with orientation logic, DOMPurify. CSS: .section-img-left/.section-img-right. Hero screenshot layout (2-col desktop, stacked mobile). Move interactive preview up in DOM.
   - CREATE TABLE landing_sections + RLS policies + seed data (4 initial sections)
   - Create landing-assets/ Storage bucket
   - Update landing-stats to return dual company counts (career pages monitored ~39K + companies hiring now ~8.7K)
