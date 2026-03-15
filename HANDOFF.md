@@ -52,7 +52,21 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FB-INTPREP-001-S5** — Interview Prep Phase 5: Pipeline Integration ✅
+**FB-INTPREP-001-S6** — Interview Prep Phase 6: Feature Gating + Polish — FB-INTPREP-001 COMPLETE ✅
+- Completed: 2026-03-15
+- Product version bumped: `v9.53` → `v9.54`
+- **Question Bank gating:** `getUserTier()` check. FREE_QUESTION_LIMIT=5 visible for free users. Cards beyond limit get `filter:blur(4px);pointer-events:none;user-select:none`. Upgrade banner below blurred cards with count + subscription link.
+- **Bookmark gating:** Bookmark buttons wrapped in `_isPro` conditional — hidden entirely for free users.
+- **Simulation session gating:** `bj_ip_free_sessions_used` localStorage counter. 1 free session allowed. When gate hit: toast ("Your free interview session has been used") + `simulation_gate_hit` PostHog event. Counter incremented after successful start. Pro users bypass entirely.
+- **Pipeline CTA gating:** CTA visible for all users per spec (gating is functional inside `_ipStartMock`, not visual).
+- **PostHog:** `pipeline_prep_cta_clicked` event (pipeline_entry_id + job_id) wired in `_ipStartMock`. All 10 spec §8 events verified present across interview-prep.js + interview-simulate EF.
+- **Spec audit fix:** Removed 6 parked function names from BJ namespace exports array per spec §5.3 (`_refSwitchPeriod`, `_refToggleLeaderboard`, `initReferralTracking`, `_updateOutreachStatus`, `_saveReferralLink`, `_trackReferralLinkClick`).
+- **Tests:** 34 validation tests (7 sections, all passing)
+- **Modified:** js/interview-prep.js, js/referrals.js (namespace fix)
+- **Created:** tests/fb-intprep-001-s6-feature-gating.test.js
+- **FB-INTPREP-001 COMPLETE:** S1(66t) + S2(59t) + S3(67t) + S4(72t) + S5(28t) + S6(34t) = **326 tests, all passing.**
+
+**Previous: FB-INTPREP-001-S5** — Interview Prep Phase 5: Pipeline Integration ✅
 - Completed: 2026-03-15
 - Product version bumped: `v9.52` → `v9.53`
 - **"Prep →" CTA** on interview-stage pipeline cards: accent-styled button calling `_ipStartMock(jobId, dbId)` with `event.stopPropagation`. Only renders when `stage === 'interview'` (other stages keep Apply/View CTAs).
@@ -3750,13 +3764,12 @@ None.
 
 **Next Session**
 
-**FB-INTPREP-001-S6** — Interview Prep Phase 6: Feature Gating + Polish
-- Free/Pro tier gating: 5 questions visible per cluster (blurred remainder) for free users
-- Bookmark gating: Pro only
-- One free simulation session onboarding hook (localStorage counter)
-- Pipeline CTA visible but gated for free
-- PostHog pipeline_prep_cta_clicked event
-- Spec: FB-INTPREP-001_InterviewPrep.docx §8, §9, §10 Phase 6
+No specific session queued. FB-INTPREP-001 is feature-complete (6 phases, 326 tests). REFERRAL-CONSOL complete (71 tests).
+
+Pending manual steps (Marston):
+- `supabase db push` (migrations v9.48 + v9.50)
+- `SUPABASE_ACCESS_TOKEN=<token> npx supabase functions deploy interview-generate-questions interview-simulate api-gateway --project-ref qojhagupdnbtomfoxnsf`
+- Run initial question bank batch: `curl -X POST <gateway>/interview-generate-questions -H "Authorization: Bearer <service_role_key>" -H "Content-Type: application/json" -d '{"action":"generate","limit":20}'` (repeat 5x for top 100 clusters)
 
 Potential next workstreams:
 - PostHog Google OAuth verification reminder (R5 in FB-PI-001 risk register — must submit for verification before public Gmail/Calendar launch)
@@ -3942,7 +3955,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.53`** | **FB-INTPREP-001-S5: Pipeline Integration. Prep CTA + readiness badge + nav dot pulse.** |
+| **Product (BJ_VERSION)** | **`v9.54`** | **FB-INTPREP-001-S6: Feature Gating + Polish. FB-INTPREP-001 COMPLETE. 326 tests.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

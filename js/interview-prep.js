@@ -245,12 +245,17 @@
     // Render up to 100 cards (performance guard)
     var toShow = _filteredQuestions.slice(0, 100);
 
-    container.innerHTML = toShow.map(function(q) {
+    // FB-INTPREP-001-S6: Tier gating — free users see 5 questions, rest blurred
+    var _isPro = typeof getUserTier === 'function' && getUserTier() === 'pro';
+    var FREE_QUESTION_LIMIT = 5;
+
+    container.innerHTML = toShow.map(function(q, idx) {
       var cat = CAT_COLORS[q.category] || CAT_COLORS.behavioral;
       var diff = DIFF_COLORS[q.difficulty] || DIFF_COLORS.standard;
       var isBookmarked = _bookmarks.indexOf(q.id) !== -1;
+      var isGated = !_isPro && idx >= FREE_QUESTION_LIMIT;
 
-      return '<div class="card ip-question-card" style="padding:14px 16px;margin-bottom:10px;" data-qid="' + _esc(q.id) + '">' +
+      return '<div class="card ip-question-card" style="padding:14px 16px;margin-bottom:10px;' + (isGated ? 'filter:blur(4px);pointer-events:none;user-select:none;' : '') + '" data-qid="' + _esc(q.id) + '">' +
         '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">' +
           '<div style="flex:1;">' +
             '<div style="font-size:13px;line-height:1.5;color:var(--text);margin-bottom:8px;">' + _esc(q.question_text) + '</div>' +
@@ -263,14 +268,23 @@
               (q.role_cluster ? '<span style="font-size:10px;color:var(--text-faint);margin-left:4px;">' + _esc(q.role_cluster) + '</span>' : '') +
             '</div>' +
           '</div>' +
-          '<div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;align-items:center;">' +
+          (_isPro ? '<div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;align-items:center;">' +
             '<button class="ip-bookmark-btn" onclick="window._ipToggleBookmark(\'' + q.id + '\')" title="' + (isBookmarked ? 'Remove bookmark' : 'Bookmark') + '" style="background:none;border:none;cursor:pointer;padding:4px;color:' + (isBookmarked ? 'var(--accent)' : 'var(--text-faint)') + ';">' +
               '<i data-lucide="' + (isBookmarked ? 'bookmark-check' : 'bookmark') + '" class="icon-md icon-stroke"></i>' +
             '</button>' +
-          '</div>' +
+          '</div>' : '') +
         '</div>' +
       '</div>';
     }).join('');
+
+    // FB-INTPREP-001-S6: Upgrade banner after free limit
+    if (!_isPro && _filteredQuestions.length > FREE_QUESTION_LIMIT) {
+      container.innerHTML += '<div style="text-align:center;padding:20px;margin-top:-10px;position:relative;z-index:1;">' +
+        '<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;">Upgrade to Pro for full access</div>' +
+        '<div style="font-size:12px;color:var(--text-dim);margin-bottom:10px;">' + (_filteredQuestions.length - FREE_QUESTION_LIMIT) + ' more questions available with Pro</div>' +
+        '<button class="btn btn-primary btn-sm" onclick="if(window.showPage)window.showPage(\'subscription\')">Upgrade →</button>' +
+      '</div>';
+    }
 
     if (_filteredQuestions.length > 100) {
       container.innerHTML += '<div style="text-align:center;padding:12px;font-size:12px;color:var(--text-faint);">Showing 100 of ' + _filteredQuestions.length + ' questions. Use filters to narrow results.</div>';
@@ -380,6 +394,26 @@
   // ─── Start mock interview ───
   window._ipStartMock = async function(jobId, pipelineEntryId, focusQuestion) {
     try {
+      // FB-INTPREP-001-S6: Free session gate — 1 free, then require Pro
+      var _isPro = typeof getUserTier === 'function' && getUserTier() === 'pro';
+      if (!_isPro) {
+        var _freeUsed = 0;
+        try { _freeUsed = parseInt(localStorage.getItem('bj_ip_free_sessions_used') || '0', 10); } catch(_e) { /* ignore */ }
+        if (_freeUsed >= 1) {
+          if (typeof toast === 'function') toast('Your free interview session has been used. Upgrade to Pro for unlimited practice.', { type: 'warning', duration: 5000 });
+          if (window.posthog) posthog.capture('simulation_gate_hit', { sessions_used: _freeUsed });
+          return;
+        }
+      }
+
+      // FB-INTPREP-001-S6: pipeline_prep_cta_clicked PostHog event
+      if (jobId && window.posthog) {
+        posthog.capture('pipeline_prep_cta_clicked', {
+          pipeline_entry_id: pipelineEntryId || null,
+          job_id: jobId,
+        });
+      }
+
       var sb = window.bjSupabase || (window.supabase && window.supabase.createClient
         ? window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY) : null);
       if (!sb) return;
@@ -424,6 +458,11 @@
 
       _simSessionId = data.session_id;
       _updateSimHeader(null, null, data.question_number || 1, 6);
+
+      // FB-INTPREP-001-S6: Increment free session counter for non-Pro users
+      if (!_isPro) {
+        try { var _prev = parseInt(localStorage.getItem('bj_ip_free_sessions_used') || '0', 10); localStorage.setItem('bj_ip_free_sessions_used', String(_prev + 1)); } catch(_e) { /* ignore */ }
+      }
       if (chat) {
         chat.innerHTML = '';
         _appendMessage(chat, 'assistant', data.reply);

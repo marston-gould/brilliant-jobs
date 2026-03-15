@@ -1003,11 +1003,12 @@ Or use my code: ${referralStats.referral_code}`);
   };
 
   // CS-P1-004 FE-005: Register referrals.js exports with BJ namespace
+  // REFERRAL-CONSOL: Parked functions removed from exports (_refSwitchPeriod, _refToggleLeaderboard,
+  // initReferralTracking, _updateOutreachStatus, _saveReferralLink, _trackReferralLinkClick)
   [
     'initReferralHub', '_refCopyLink', '_refCopyCode', '_refShareLinkedIn',
-    '_refShareEmail', '_refShareSMS', '_refSwitchPeriod', '_refToggleLeaderboard',
-    'showReferralShareModal', 'initReferralTracking', '_updateOutreachStatus',
-    '_saveReferralLink', '_trackReferralLinkClick',
+    '_refShareEmail', '_refShareSMS',
+    'showReferralShareModal',
     // FB-TRIAL-001-S4
     'showUpgradeReferralIntro', '_introcopyreferrallink', '_dismissReferralIntro',
     'regenerateReferralCode', 'initSidebarReferralLink'
