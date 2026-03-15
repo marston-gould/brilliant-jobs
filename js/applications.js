@@ -835,6 +835,14 @@ async function loadPipelineIntelligenceSettings() {
     if (el('pi-ch-sms')) el('pi-ch-sms').checked = channels.includes('sms');
     const confRadios = document.querySelectorAll('input[name="pi-confidence"]');
     confRadios.forEach(r => { r.checked = parseFloat(r.value) === (data.confidence_threshold || 0.6); });
+    // FB-PI-001 S6: Populate new settings controls
+    if (el('pi-staleness-days')) {
+      el('pi-staleness-days').value = data.staleness_threshold_days || 7;
+      var valEl = document.getElementById('pi-staleness-days-val');
+      if (valEl) valEl.textContent = (data.staleness_threshold_days || 7) + ' days';
+    }
+    if (el('pi-auto-archive')) el('pi-auto-archive').checked = data.auto_archive_enabled !== false;
+    if (el('pi-auto-move-behavior')) el('pi-auto-move-behavior').value = data.auto_move_behavior || 'aggressive';
   } catch(e) { reportError('applications', e); console.log('[BJ] No pipeline intelligence settings yet');
   }
   // Show Gmail status
@@ -876,6 +884,11 @@ async function savePipelineIntelligenceSettings() {
       ...(el('pi-ch-inapp')?.checked ? ['in_app'] : []),
       ...(el('pi-ch-sms')?.checked ? ['sms'] : []),
     ],
+    // FB-PI-001 S6: New settings per spec §7.2
+    auto_move_behavior: el('pi-auto-move-behavior')?.value || 'aggressive',
+    staleness_threshold_days: parseInt(el('pi-staleness-days')?.value) || 7,
+    auto_archive_enabled: el('pi-auto-archive')?.checked ?? true,
+    auto_archive_days: 30,
     updated_at: new Date().toISOString(),
   };
   try {
@@ -885,6 +898,20 @@ async function savePipelineIntelligenceSettings() {
   } catch(e) { reportError('applications', e); console.error('[BJ] Pipeline settings save error:', e);
   }
 }
+
+
+// FB-PI-001 S6: Wire staleness threshold slider live value display
+(function() {
+  function wireStalnessSlider() {
+    var slider = document.getElementById('pi-staleness-days');
+    var valEl = document.getElementById('pi-staleness-days-val');
+    if (slider && valEl) {
+      slider.addEventListener('input', function() { valEl.textContent = slider.value + ' days'; });
+    }
+  }
+  document.addEventListener('DOMContentLoaded', wireStalnessSlider);
+  if (typeof window !== 'undefined') window.wireStalnessSlider = wireStalnessSlider;
+})();
 
 // Load settings when applications page is shown
 if (typeof _origInitApplications === 'undefined') {

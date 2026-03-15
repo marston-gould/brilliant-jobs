@@ -2950,9 +2950,14 @@ None.
 
 ## Last Completed Session
 
-**FB-PI-001-S6 — Settings + Polish + Tests (FINAL)**
+**Next Session**
 
-Entry gates: S1–S5 all complete ✅
+No specific session queued. FB-PI-001 is feature-complete.
+
+Potential next workstreams:
+- PC-002/003/004: Pipeline JS cleanup, deep links, final deploy verification
+- PostHog Google OAuth verification reminder (R5 in FB-PI-001 risk register — must submit for verification before public Gmail/Calendar launch)
+- Any new feature work
 
 Deliverables (spec §7.2, §10, §11):
 - Pipeline Intelligence settings extensions in dashboard.html/app.js: signal auto-move behavior toggle (Aggressive/Conservative/Manual), staleness threshold slider (3–30d), auto-archive toggle, scan frequency selector (1h/3h/6h/12h/24h), notification on auto-move toggles.
@@ -3127,7 +3132,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.13`** | **FB-PI-001-S5: Staleness Engine** |
+| **Product (BJ_VERSION)** | **`v9.14`** | **FB-PI-001-S6: FEATURE COMPLETE** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
@@ -3135,7 +3140,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 | **SPA Scaffold** | **`spa@1.0.0-scaffold`** | **SA-013** |
 | **Feature Flags** | **`infra@feature-flags-v1.0.0`** | **SA-025** |
 | **Event Bus** | **`infra@event-bus-v1.0.0`** | **SA-024** |
-| **API Gateway** | `infra@gateway-v1.0.0` | FB-PI-001-S5 (126 routes) |
+| **API Gateway** | `infra@gateway-v1.0.0` | FB-PI-001 complete (126 routes) |
 | **Capacity Model** | **`infra@capacity-model-v1.0.0`** | **SA-028** |
 | **Deploy Tracker** | **`infra@deploy-tracker-v1.0.0`** | **BI-01** |
 | **Build Analytics** | **`infra@build-analytics-v1.0.0`** | **BI-02** |
