@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.52';
+var BJ_VERSION = 'v9.53';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -16900,6 +16900,47 @@ async function renderPipeline() {
   const sf = safeReadLS('bj_saved_filters', []);
   const collapseStates = safeReadLS('bj_pl_collapse', {});
 
+  // FB-INTPREP-001-S5: Load interview readiness scores for pipeline entries
+  try {
+    const { data: simSessions } = await safeQuery(() => sb.from('interview_sessions')
+      .select('job_id, pipeline_entry_id, overall_score, status')
+      .eq('status', 'completed')
+      .not('overall_score', 'is', null)
+      .order('completed_at', { ascending: false })
+      .limit(200), { label: 'pipeline:interview_sessions', fallback: [] });
+    if (simSessions && simSessions.length > 0) {
+      // Attach best score to pipeline meta (by job_id or pipeline_entry_id)
+      for (const sim of simSessions) {
+        // Match by job_id
+        if (sim.job_id && meta[sim.job_id] && typeof meta[sim.job_id]._interviewReadinessScore !== 'number') {
+          meta[sim.job_id]._interviewReadinessScore = sim.overall_score;
+        }
+      }
+    }
+    // Nav dot pulse: check if any interview-stage entry lacks a simulation
+    var _interviewWithoutPrep = false;
+    var _simJobIds = new Set((simSessions || []).map(function(s) { return s.job_id; }).filter(Boolean));
+    for (var _jid in meta) {
+      if (meta[_jid].stage === 'interview' && !_simJobIds.has(_jid)) {
+        _interviewWithoutPrep = true;
+        break;
+      }
+    }
+    var _ipNavDot = document.querySelector('[data-page="interview-prep"] .nav-badge, [data-page="interview-prep"] .ip-nav-dot');
+    if (!_ipNavDot) {
+      // Create pulse dot if doesn't exist
+      var _ipNavItem = document.querySelector('[data-page="interview-prep"]');
+      if (_ipNavItem && _interviewWithoutPrep) {
+        var _dot = document.createElement('span');
+        _dot.className = 'ip-nav-dot';
+        _dot.style.cssText = 'width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;margin-left:6px;animation:pulse 2s infinite;';
+        _ipNavItem.appendChild(_dot);
+      }
+    } else {
+      _ipNavDot.style.display = _interviewWithoutPrep ? '' : 'none';
+    }
+  } catch (_simErr) { /* non-critical — readiness scores are supplementary */ }
+
   // Group by stage
   const stageJobs = {};
   PL_STAGES.forEach(s => { stageJobs[s] = []; });
@@ -17098,9 +17139,17 @@ async function renderPipeline() {
 
       html += '<td class="pl-match" style="' + matchColor + '">' + matchScore + '</td>';
 
-      // Apply CTA
+      // Apply CTA / Prep CTA (FB-INTPREP-001-S5: Interview stage gets Prep button)
       var applyUrl = m.jobUrl || (j ? (j.url && j.url.startsWith('http') ? j.url : j.url ? 'https://boards.greenhouse.io' + j.url : '') : '');
-      if (applyUrl && stage === 'saved') {
+      if (stage === 'interview') {
+        // Interview stage: Prep for this interview CTA + readiness badge
+        var _readinessBadge = '';
+        if (typeof m._interviewReadinessScore === 'number') {
+          var _rColor = m._interviewReadinessScore >= 75 ? 'var(--green,#22c55e)' : m._interviewReadinessScore >= 50 ? 'var(--accent)' : 'var(--warm)';
+          _readinessBadge = '<span style="font-size:10px;font-weight:700;color:' + _rColor + ';margin-right:6px;" title="Interview readiness score">' + m._interviewReadinessScore + '</span>';
+        }
+        html += '<td style="white-space:nowrap;">' + _readinessBadge + '<button onclick="event.stopPropagation();if(window._ipStartMock)window._ipStartMock(\'' + item.id + '\',\'' + (m._dbId || '') + '\')" style="display:inline-block;font-size:10px;font-weight:600;padding:4px 10px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;white-space:nowrap;">Prep →</button></td>';
+      } else if (applyUrl && stage === 'saved') {
         html += '<td><a href="' + applyUrl + '" target="_blank" rel="noopener" style="display:inline-block;text-decoration:none;font-size:10px;font-weight:600;padding:4px 10px;border-radius:6px;background:var(--accent);color:#fff;white-space:nowrap;" onclick="event.stopPropagation();movePipelineStage(\'' + item.id + '\',\'applied\')">Apply →</a></td>';
       } else if (applyUrl) {
         html += '<td><a href="' + applyUrl + '" target="_blank" rel="noopener" style="font-size:10px;color:var(--accent);text-decoration:none;" onclick="event.stopPropagation()">View →</a></td>';

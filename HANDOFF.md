@@ -52,7 +52,17 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FB-INTPREP-001-S4** — Interview Prep Phase 4: Simulation UI ✅
+**FB-INTPREP-001-S5** — Interview Prep Phase 5: Pipeline Integration ✅
+- Completed: 2026-03-15
+- Product version bumped: `v9.52` → `v9.53`
+- **"Prep →" CTA** on interview-stage pipeline cards: accent-styled button calling `_ipStartMock(jobId, dbId)` with `event.stopPropagation`. Only renders when `stage === 'interview'` (other stages keep Apply/View CTAs).
+- **Readiness score badge**: queries `interview_sessions` (status=completed, overall_score not null) during `renderPipeline()`. Attaches `_interviewReadinessScore` to pipeline meta by job_id. Renders inline before Prep button with color coding (≥75 green, ≥50 accent, <50 warm).
+- **Nav dot pulse**: builds `_simJobIds` Set from completed sessions. Checks all interview-stage entries — if any lack a simulation, creates pulsing `ip-nav-dot` span on the Interview Prep nav item. Hidden when all interview entries have simulations. CSS `@keyframes pulse` animation.
+- **Tests:** 28 validation tests (6 sections, all passing)
+- **Modified:** js/pipeline.js, src/input.css
+- **Created:** tests/fb-intprep-001-s5-pipeline-integration.test.js
+
+**Previous: FB-INTPREP-001-S4** — Interview Prep Phase 4: Simulation UI ✅
 - Completed: 2026-03-15
 - Product version bumped: `v9.51` → `v9.52`
 - **Chat modal overlay** (`#ip-sim-overlay` + `#ip-sim-modal`): top bar with title/progress/feedback toggle/hint/end early/close. Chat area with alternating user (right-aligned, accent bg) / assistant (left-aligned, input bg) message bubbles. `[COACH]...[/COACH]` tag extraction for inline coaching notes (muted italic, toggleable via checkbox). Typing indicator ("Interviewer is thinking..."). Textarea input with Enter-to-send (Shift+Enter newline), double-send prevention (`_simSending` flag).
@@ -3740,12 +3750,13 @@ None.
 
 **Next Session**
 
-**FB-INTPREP-001-S5** — Interview Prep Phase 5: Pipeline Integration
-- "Prep for this interview" CTA on Interview-stage pipeline cards (blue accent button)
-- Clicking launches simulation pre-loaded with that job's context
-- Readiness score badge on pipeline cards post-simulation
-- Nav dot pulse logic for Interview stage without simulation
-- Spec: FB-INTPREP-001_InterviewPrep.docx §5.6, §10 Phase 5
+**FB-INTPREP-001-S6** — Interview Prep Phase 6: Feature Gating + Polish
+- Free/Pro tier gating: 5 questions visible per cluster (blurred remainder) for free users
+- Bookmark gating: Pro only
+- One free simulation session onboarding hook (localStorage counter)
+- Pipeline CTA visible but gated for free
+- PostHog pipeline_prep_cta_clicked event
+- Spec: FB-INTPREP-001_InterviewPrep.docx §8, §9, §10 Phase 6
 
 Potential next workstreams:
 - PostHog Google OAuth verification reminder (R5 in FB-PI-001 risk register — must submit for verification before public Gmail/Calendar launch)
@@ -3931,7 +3942,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.52`** | **FB-INTPREP-001-S4: Simulation UI. Chat modal + scorecard + My Sessions tab.** |
+| **Product (BJ_VERSION)** | **`v9.53`** | **FB-INTPREP-001-S5: Pipeline Integration. Prep CTA + readiness badge + nav dot pulse.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

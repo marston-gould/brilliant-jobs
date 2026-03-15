@@ -3680,3 +3680,6 @@
     #ip-sim-input:focus { outline: none; border-color: var(--accent); }
     #ip-sim-chat::-webkit-scrollbar { width: 6px; }
     #ip-sim-chat::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    /* FB-INTPREP-001-S5: Nav dot pulse for interview prep */
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .ip-nav-dot { animation: pulse 2s infinite; }
