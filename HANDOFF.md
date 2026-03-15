@@ -3727,7 +3727,8 @@ Deliverables:
 
 Remaining backlog:
 - **RESUME-BUILDER-001-S1 ✅**: Upload/Parse/Store complete. resume-parse EF deployed. Migration v9.36 deployed. page-resume-builder live. 46 tests. v9.36.
-- **RESUME-BUILDER-001-S2 (NEXT)**: Templates & Generation. resume-generate EF. 3 ATS-compliant .docx templates (Classic/Modern Professional/Clean Minimal). Template selector UI + live preview. .docx and .pdf download. Target v9.37+.
+- **RESUME-BUILDER-001-S2 ✅**: Templates & Generation complete. resume-generate EF deployed. 3 templates. Download UI. 36 tests. v9.37.
+- **RESUME-BUILDER-001-S3 (NEXT)**: Keyword Optimization. resume-optimize EF. Gap report UI (present/missing/partial). One-click keyword insertion. Match Score real-time update. "Optimize for this job" on job cards. Target v9.38+.
 - CASA-001: Google CASA assessment + gmail.readonly upgrade
 - Any new feature work
 

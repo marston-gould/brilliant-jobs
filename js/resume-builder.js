@@ -17,6 +17,7 @@
     resumeId: null,      // uuid — set after first save
     parsedJson: null,    // structured resume data from EF
     dirty: false,        // unsaved edits in editor
+    template: 'modern',  // selected template id
   };
 
   // ─── Init (called when page becomes visible) ──────────────────────────────
@@ -451,6 +452,9 @@
     document.getElementById('rb-ats-warnings')?.classList.add('u-hidden');
     document.getElementById('rb-parsing')?.classList.add('u-hidden');
     document.getElementById('rb-saved-badge')?.classList.add('u-hidden');
+    document.getElementById('rb-generate-section')?.classList.add('u-hidden');
+    document.getElementById('rb-download-links')?.classList.add('u-hidden');
+    _state.template = 'modern';
     rbSwitchTab('upload');
   };
 
@@ -468,6 +472,7 @@
     document.getElementById('rb-parsing')?.classList.add('u-hidden');
     document.getElementById('rb-editor-section')?.classList.remove('u-hidden');
     rbShowEditorTab('contact');
+    rbShowGenerateSection();
   }
 
   function rbShowAtsWarnings (warnings) {
@@ -503,6 +508,97 @@
 
   function rbEsc (str) {
     return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // ─── S2: Template selection ──────────────────────────────────────────────────
+
+  window.rbSelectTemplate = function (tpl) {
+    _state.template = tpl;
+    document.querySelectorAll('.rb-template-card').forEach(c => {
+      c.classList.toggle('active', c.id === `rb-tpl-${tpl}`);
+    });
+  };
+
+  // ─── S2: Show generate card once editor is visible ───────────────────────────
+
+  function rbShowGenerateSection () {
+    const sec = document.getElementById('rb-generate-section');
+    if (sec) sec.classList.remove('u-hidden');
+  }
+
+  // ─── S2: Generate (call EF, then show download links) ────────────────────────
+
+  window.rbGenerate = async function () {
+    if (!_state.resumeId) {
+      rbShowError('rb-generate-error', 'Save your resume first before generating.');
+      return;
+    }
+    rbClearError('rb-generate-error');
+    rbSetGenerating(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const resp = await fetch('/api/resume-generate', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          resume_id: _state.resumeId,
+          template_id: _state.template || 'modern',
+        }),
+      });
+
+      const json = await resp.json();
+
+      if (!resp.ok) {
+        captureEvent('resume_generate_error', { status: resp.status, error: json?.error });
+        rbShowError('rb-generate-error', json?.error || 'Generation failed. Please try again.');
+        return;
+      }
+
+      // Show download links
+      rbShowDownloadLinks(json.docx_url, json.pdf_url, json.filename);
+      captureEvent('resume_generated', { resume_id: _state.resumeId, template: _state.template });
+      if (typeof showToast === 'function') showToast('Resume generated — ready to download', 'success');
+
+    } catch (err) {
+      reportError('resume_generate_exception', err);
+      rbShowError('rb-generate-error', 'An unexpected error occurred. Please try again.');
+    } finally {
+      rbSetGenerating(false);
+    }
+  };
+
+  function rbSetGenerating (active) {
+    const btn = document.getElementById('rb-generate-btn');
+    const spinner = document.getElementById('rb-generating');
+    const links = document.getElementById('rb-download-links');
+    if (btn) { btn.disabled = active; btn.textContent = active ? 'Generating…' : 'Generate Resume'; }
+    if (spinner) spinner.classList.toggle('u-hidden', !active);
+    if (active && links) links.classList.add('u-hidden');
+  }
+
+  function rbShowDownloadLinks (docxUrl, pdfUrl, filename) {
+    const linksEl = document.getElementById('rb-download-links');
+    const docxEl  = document.getElementById('rb-dl-docx');
+    const pdfEl   = document.getElementById('rb-dl-pdf');
+    if (!linksEl || !docxEl) return;
+
+    if (docxUrl) {
+      docxEl.href = docxUrl;
+      docxEl.setAttribute('download', filename || 'Resume.docx');
+      docxEl.classList.remove('u-hidden');
+    }
+    if (pdfUrl && pdfEl) {
+      pdfEl.href = pdfUrl;
+      pdfEl.setAttribute('download', (filename || 'Resume').replace('.docx', '.pdf'));
+      pdfEl.classList.remove('u-hidden');
+    }
+    linksEl.classList.remove('u-hidden');
   }
 
   // ─── Page init hook (called by showPage in app.js) ────────────────────────

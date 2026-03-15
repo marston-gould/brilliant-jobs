@@ -3602,3 +3602,28 @@
     .rb-remove-btn:hover { color: var(--danger, #ef4444); }
     .rb-add-btn { margin-top: 4px; }
     .rb-resume-id-badge { background: hsla(var(--accent-hsl), 0.1); color: var(--accent); font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 20px; margin-left: auto; }
+    /* RESUME-BUILDER-001-S2: Template selector + Download */
+    .rb-template-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+    @media (max-width: 600px) { .rb-template-grid { grid-template-columns: 1fr; } }
+    .rb-template-card { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px; background: var(--bg-input); border: 2px solid var(--border); border-radius: 10px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
+    .rb-template-card:hover { border-color: var(--accent); }
+    .rb-template-card.active { border-color: var(--accent); box-shadow: 0 0 0 3px hsla(var(--accent-hsl), 0.15); }
+    .rb-tpl-preview { width: 100%; background: #fff; border-radius: 4px; padding: 8px 6px; min-height: 80px; display: flex; flex-direction: column; gap: 4px; }
+    .rb-tpl-name-line { height: 5px; background: #1a1a2e; border-radius: 2px; width: 65%; }
+    .rb-tpl-name-line.rb-tpl-lg { width: 75%; height: 6px; }
+    .rb-tpl-contact-line { height: 3px; background: #ccc; border-radius: 2px; width: 90%; }
+    .rb-tpl-section-line { height: 3px; background: #555; border-radius: 2px; width: 40%; }
+    .rb-tpl-section-line.rb-tpl-accent { background: var(--accent); }
+    .rb-tpl-body-line { height: 2px; background: #ddd; border-radius: 1px; width: 95%; }
+    .rb-tpl-body-line.rb-tpl-short { width: 70%; }
+    .rb-tpl-label { font-size: 12px; font-weight: 700; color: var(--text); text-align: center; }
+    .rb-tpl-sub { font-size: 10px; color: var(--text-faint); text-align: center; }
+    .rb-download-links { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 16px; margin-bottom: 4px; }
+    .rb-dl-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; text-decoration: none; transition: opacity 0.15s; }
+    .rb-dl-btn svg { width: 16px; height: 16px; }
+    .rb-dl-primary { background: var(--accent); color: #fff; }
+    .rb-dl-primary:hover { opacity: 0.88; }
+    .rb-dl-secondary { background: var(--bg-input); border: 1px solid var(--border); color: var(--text); }
+    .rb-dl-secondary:hover { border-color: var(--accent); color: var(--accent); }
+    .rb-dl-hint { font-size: 11px; color: var(--text-faint); }
+    .u-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
