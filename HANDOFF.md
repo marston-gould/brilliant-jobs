@@ -52,7 +52,45 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**BI-07-FIX** — CI Gate Enforcement Follow-up (3 deferred items from BI-07)
+**SCA-REM-S1** — Spec Compliance Remediation Session 1
+- Completed: 2026-03-15
+- Product version bumped: `v9.17` → `v9.18` (JS/HTML changes — dashboard.html citizenship_status EEOC field added + ghost_alert filter removed, settings.js citizenshipStatus populate/read/PostHog; all HTML surfaces cache-busted)
+- ROADMAP.md updated: SCA-REM-S1 → ✅
+- roadmap.html updated: SCA-REM-S1 → `s: 'done'`, p: 100
+- **REM-S01 — citizenship_status 5th EEOC field (AF-001):**
+  - `dashboard.html`: Added `<select id="ap-eeo-citizenship">` with 7 options (blank + US Citizen, Permanent Resident, Non-citizen authorized to work, Require sponsorship, Prefer not to say, Decline to self-identify) after disability status field
+  - `js/settings.js` `_populateApplicantProfileForm()`: reads `eeo.citizenshipStatus`, sets `ap-eeo-citizenship` value
+  - `js/settings.js` `_readApplicantProfileForm()`: reads `ap-eeo-citizenship` into `eeo_preferences.citizenshipStatus`
+  - `js/settings.js` PostHog `applicant_profile_saved`: `has_eeo` check now includes `citizenshipStatus`
+  - `worker/index.js` already references `citizenshipStatus` from `eeo_preferences` — now receives real values instead of null
+  - All 5 EEOC fields now present: gender, ethnicity, veteranStatus, disabilityStatus, citizenshipStatus
+- **REM-S06 — Ghost option removed from notification log filter (FB-GHOST-001):**
+  - `dashboard.html`: `<option value="ghost_alert">Ghost alert</option>` removed from `#nc-nlog-filter-type` dropdown
+  - Ghost notification matrix rows (`data-notif="ghost_alert"`, `data-notif="ghost_report"`) preserved for existing data display
+- **SIM-REM-002 — Deploy script for 22 undeployed EFs:**
+  - `scripts/deploy-missing-efs.sh`: Deploys 5 user-facing (generate-cover-letter, extract-resume-profile, handle-referral-signup, recruiter-lookup, refresh-materialized-views) + 8 infrastructure (dedup-promote, capacity-model, deploy-tracker, cost-monitor, replica-health, event-bus, feature-flags, admin-cron-management) + api-gateway redeploy. 9 CrewAI agents commented out (deferred).
+- **QA-001 (Stats blank) + QA-011 (US-Only filter):** Confirmed already fixed in v9.03-v9.06 bugfix run. Stats use `status='open'` query. US-Only uses `_tuningDirty` flag mechanism.
+- **Skipped Items:**
+  - QA-008 (Chat button unclickable): Requires browser console investigation — code analysis shows initChatMode() is correctly structured. Most likely a JS error in earlier script blocking execution. Deferred to SCA-REM-S2 with browser debugging.
+  - QA-004 (Min salary auto-tab): No programmatic auto-tab exists. Browser native Tab order behavior. Awaiting Marston's decision on whether to change tabindex.
+- **Modified:**
+  - `dashboard.html` — ap-eeo-citizenship select added, ghost_alert filter option removed
+  - `js/settings.js` — citizenshipStatus in populate/read/PostHog
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `dist/admin.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — SCA-REM-S1 → ✅
+  - `roadmap.html` — SCA-REM-S1 → done/100
+- **Created:**
+  - `scripts/deploy-missing-efs.sh` — 22 EF deploy script
+  - `tests/sca-rem-s1-spec-compliance.test.js` — 27 validation tests
+- **Tests:** 27 validation tests (all passing)
+- **Pending manual steps (Marston):**
+  - `bash scripts/deploy-missing-efs.sh` (requires SUPABASE_ACCESS_TOKEN)
+  - Browser console debug of QA-008 (chat button) on production
+
+**Previous: BI-07-FIX** — CI Gate Enforcement Follow-up (3 deferred items from BI-07)
 - Completed: 2026-03-14
 - Product version bumped: `v9.16` → `v9.17` (JS changes — 8 source files empty catch fixes, globals.js/fingerprint.js/app.js/apply-workflow.js/cookie-consent.js/landing-app.js/trial-gate.js/admin-compliance.js; all HTML surfaces cache-busted)
 - ROADMAP.md updated: BI-07-FIX → ✅
@@ -3169,9 +3207,20 @@ Deliverables:
 
 ## Next Session
 
-No specific session queued. FB-PI-001 is feature-complete. PC-002/003/004 is complete.
+**SCA-REM-S2** — Spec Compliance Remediation Session 2 (QA Bug Fixes)
 
-Potential next workstreams:
+Potential items:
+- QA-008 [P0]: Chat button unclickable — browser console debug required
+- QA-004 [P1]: Min salary auto-tab behavior — pending Marston decision
+- QA-009 [P1]: WHO Browse no longer opens company page
+- QA-010 [P1]: Column sorter does not sort
+- QA-006+007 [P1]: Location normalization (remote, us / international)
+- QA-012 [P1]: Tuning Browse buttons go to blank area
+- QA-014 [P1]: Dismissed jobs section empty
+- REM-GHOST (S03-S06): PostHog events + config tiers + dropdown cleanup
+- Run `bash scripts/deploy-missing-efs.sh` if not done manually
+
+Also:
 - PostHog Google OAuth verification reminder (R5 in FB-PI-001 risk register)
 - Any new feature work
 
@@ -3204,7 +3253,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.17`** | **BI-07-FIX: ESLint enforcement + test assertions + extension build** |
+| **Product (BJ_VERSION)** | **`v9.18`** | **SCA-REM-S1: citizenship_status EEOC field + ghost filter cleanup + deploy script** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

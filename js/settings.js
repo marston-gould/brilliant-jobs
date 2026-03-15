@@ -1021,6 +1021,8 @@ function _populateApplicantProfileForm(p) {
   if (el) el.value = eeo.veteranStatus || '';
   el = document.getElementById('ap-eeo-disability');
   if (el) el.value = eeo.disabilityStatus || '';
+  el = document.getElementById('ap-eeo-citizenship');
+  if (el) el.value = eeo.citizenshipStatus || '';
 
   // EXT-AS-9: Show persistent saved indicator when profile has name + email
   var status = document.getElementById('ap-save-status');
@@ -1047,7 +1049,8 @@ function _readApplicantProfileForm() {
       gender: (document.getElementById('ap-eeo-gender')?.value || '').trim() || null,
       ethnicity: (document.getElementById('ap-eeo-ethnicity')?.value || '').trim() || null,
       veteranStatus: (document.getElementById('ap-eeo-veteran')?.value || '').trim() || null,
-      disabilityStatus: (document.getElementById('ap-eeo-disability')?.value || '').trim() || null
+      disabilityStatus: (document.getElementById('ap-eeo-disability')?.value || '').trim() || null,
+      citizenshipStatus: (document.getElementById('ap-eeo-citizenship')?.value || '').trim() || null
     }
   };
 }
@@ -1073,7 +1076,7 @@ async function saveApplicantProfile() {
     try { localStorage.setItem('bj_applicant_profile', JSON.stringify(profile)); } catch (e) { /* ignore */ }
     if (status) { status.style.display = 'inline'; status.textContent = 'Profile stored'; status.style.color = 'var(--green)'; }
     showToast('Applicant profile saved.', { type: 'success' });
-    if (typeof posthog !== 'undefined') posthog.capture('applicant_profile_saved', { has_phone: !!profile.phone, has_linkedin: !!profile.linkedin, has_location: !!profile.location, has_eeo: !!(profile.eeo_preferences && (profile.eeo_preferences.gender || profile.eeo_preferences.ethnicity || profile.eeo_preferences.veteranStatus || profile.eeo_preferences.disabilityStatus)) });
+    if (typeof posthog !== 'undefined') posthog.capture('applicant_profile_saved', { has_phone: !!profile.phone, has_linkedin: !!profile.linkedin, has_location: !!profile.location, has_eeo: !!(profile.eeo_preferences && (profile.eeo_preferences.gender || profile.eeo_preferences.ethnicity || profile.eeo_preferences.veteranStatus || profile.eeo_preferences.disabilityStatus || profile.eeo_preferences.citizenshipStatus)) });
     // AF-002: Check if setup is now complete after profile save
     if (typeof checkAndSetSetupComplete === 'function') checkAndSetSetupComplete();
   } catch (e) {
