@@ -52,7 +52,6 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-<<<<<<< HEAD
 **AIS-F4-S1 (Gap Fixes)** — Answer History + Personal Context + Credits ✅
 - Completed: 2026-03-15
 - Product version bumped: `v9.56` → `v9.57`
@@ -73,9 +72,6 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 - **Pending manual steps (Marston):**
   - `supabase db push` (migration v9.56-ais-f4-s1-answers-table)
   - `SUPABASE_ACCESS_TOKEN=<token> npx supabase functions deploy answer-form-question --project-ref qojhagupdnbtomfoxnsf`
-=======
-**AIS-F4-S1** — AI Q&A Gate Removal + Answer Review ✅
->>>>>>> b298dc3103325f62f4b7a8a26a1dc32a74d36f14
 - Completed: 2026-03-15
 - Product version bumped: `v9.55` → `v9.56`
 - **No admin gate to remove** — `answer-form-question` EF was already open to all JWT-authenticated users with a `DAILY_LIMIT=50` rate limit. The "admin-only" label referred to the extension popup toggle (not an EF gate). No EF changes needed.
@@ -3963,20 +3959,25 @@ Deliverables:
 
 Active workstream: **AIS-F4-S2 — Answer History + Personal Context**
 
+> ⚠️ NOTE: AIS-F4-S1 gap fixes already delivered all AIS-F4-S2 spec items:
+> answers table ✅, EF DB cache ✅, LinkedIn context ✅, credit model ✅.
+> AIS-F4-S2 session should verify these are fully wired and add any UI surface
+> for answer history browsing if spec requires it.
+
 ---
 
 ### AIS-F4-S2: Answer History + Personal Context
 
 **Entry Gate:**
-- [ ] Confirm `answers` table does not yet exist in Supabase
-- [ ] Confirm LinkedIn profile data is available from `linkedin_profiles` table (or falls back to resume text)
-- [ ] Confirm credit deduction: 0.5/answer, cached = free
+- [ ] Confirm `answers` table exists in Supabase (migration v9.56 applied)
+- [ ] Confirm EF persists answers (deployed)
+- [ ] Verify credit deduction RPC `deduct_credits` exists
 
 **Fix Items:**
-1. Migration: `answers` table (user_id, job_id, field_label, generated_answer, user_edited_answer, feedback CHECK up/down/null, credits_charged, cached, created_at). RLS: users manage own. Index on (user_id, job_id).
-2. `answer-form-question` EF: persist each generated answer to `answers` table. Read cached answers from `answers` table (by user_id + field_label similarity) before calling Anthropic. Wire LinkedIn profile + resume text into prompt.
-3. Credit deduction: 0.5 credits per new answer via `checkFeatureAccess`. Cached answers (same field_label within 7 days) = 0 credits.
-4. PostHog: `ai_answer_feedback` already fires from AIS-F4-S1 — ensure it also persists feedback to `answers` table via EF.
+1. Verify `deduct_credits` RPC exists — if not, create it (deducts `p_amount` from user credit balance)
+2. Dashboard UI: "Answer History" view showing past answers per job — user can rate (thumbs up/down) past answers, triggering `ai_answer_feedback` PostHog event and updating `answers.feedback` column
+3. Verify feedback from answer review panel (AIS-F4-S1) persists to `answers.user_edited_answer` when user edits before accepting
+4. PostHog: verify `ai_answer_feedback` event fires consistently from both extension review panel and any dashboard UI
 
 **Exit Gate:**
 - [ ] `answers` table exists with correct schema
@@ -4020,11 +4021,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-<<<<<<< HEAD
 | **Product (BJ_VERSION)** | **`v9.57`** | **AIS-F4-S1 gap fixes: answers table, DB cache, credits, LinkedIn context. 50 tests.** |
-=======
-| **Product (BJ_VERSION)** | **`v9.57`** | **AIS-F4-S1 complete: answer review panel + history + LinkedIn context + credits. 104 tests.** |
->>>>>>> b298dc3103325f62f4b7a8a26a1dc32a74d36f14
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
