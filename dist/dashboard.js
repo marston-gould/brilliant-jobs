@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.41';
+var BJ_VERSION = 'v9.42';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -1830,6 +1830,7 @@ window.requiredTierFor = requiredTier;
     'applications': ['pipeline', 'keywords', 'deferred'],
     'settings':     ['keywords', 'deferred'],
     'billing':      ['keywords', 'deferred'],
+    'subscription': ['keywords', 'deferred'],
     'rewrite':      ['keywords', 'deferred'],
     'apply':        ['keywords', 'deferred'],
     'chat':         ['keywords', 'deferred'],
@@ -2639,6 +2640,10 @@ $$('.nav-item').forEach(item => {
         return;
       }
       if (_tab === 'referrals' && typeof initReferralHub === 'function') { if (window.bjTabGuard) bjTabGuard('referrals', initReferralHub); else initReferralHub(); }
+      // BUG-TAB-001: Subscription tab needs initBilling to populate plan/credits/pricing
+      if (_tab === 'subscription' && typeof initBilling === 'function') { if (window.bjTabGuard) bjTabGuard('subscription', initBilling); else initBilling(); }
+      // BUG-TAB-001: Settings tab needs applicant profile loaded
+      if (_tab === 'settings' && typeof loadApplicantProfile === 'function') { if (window.bjTabGuard) bjTabGuard('settings', loadApplicantProfile); else loadApplicantProfile(); }
       // Refresh resumes when switching to resumes tab
       if (_tab === 'resumes') {
         if (window.bjTabGuard) bjTabGuard('resumes', function() {
@@ -2712,6 +2717,9 @@ if (lastTab && $(`#page-${lastTab}`)) {
     if (lastTab === 'stats' && typeof initStatsPage === 'function') { if (window.bjTabGuard) bjTabGuard('stats', initStatsPage); else initStatsPage(); }
     if (lastTab === 'feedback' && typeof initCannyFeedback === 'function') { if (window.bjTabGuard) bjTabGuard('feedback', initCannyFeedback); else initCannyFeedback(); }
     if (lastTab === 'referrals' && typeof initReferralHub === 'function') { if (window.bjTabGuard) bjTabGuard('referrals', initReferralHub); else initReferralHub(); }
+    // BUG-TAB-001: Restore subscription/settings tab init
+    if (lastTab === 'subscription' && typeof initBilling === 'function') { if (window.bjTabGuard) bjTabGuard('subscription', initBilling); else initBilling(); }
+    if (lastTab === 'settings' && typeof loadApplicantProfile === 'function') { if (window.bjTabGuard) bjTabGuard('settings', loadApplicantProfile); else loadApplicantProfile(); }
     // FB-GHOST-BADGE-001: ghost tab removed — fall through to applications
     if (lastTab === 'ghost') {
       localStorage.setItem('bj_active_tab', 'applications');

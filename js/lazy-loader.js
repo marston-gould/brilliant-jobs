@@ -52,6 +52,7 @@
     "applications": ["pipeline", "keywords", "deferred"],
     "settings": ["keywords", "deferred"],
     "billing": ["keywords", "deferred"],
+    "subscription": ["keywords", "deferred"],
     "rewrite": ["keywords", "deferred"],
     "apply": ["keywords", "deferred"],
     "chat": ["keywords", "deferred"],
