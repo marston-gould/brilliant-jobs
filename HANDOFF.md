@@ -52,7 +52,21 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**AIS-F3-S1** — Auto-Apply Consumer Gate Removal ✅
+**AIS-F4-S1** — AI Q&A Gate Removal + Answer Review ✅
+- Completed: 2026-03-15
+- Product version bumped: `v9.55` → `v9.56`
+- **No admin gate to remove** — `answer-form-question` EF was already open to all JWT-authenticated users with a `DAILY_LIMIT=50` rate limit. The "admin-only" label referred to the extension popup toggle (not an EF gate). No EF changes needed.
+- **`_fetchAiAnswersForReview()` in `extension/background.ts`:** New async helper. After user clicks "Submit Anyway" in score-gated or manual mode, intercepts before fill fires. Sends `bj:toolbar:collectQuestions` to content script to collect unmatched form fields. Fetches resume text from Supabase if `activeResumeId` present. Calls `answer-form-question` EF with questions + profile + resume_text. On success, sends `bj:toolbar:answerReview` to overlay and returns `true` (fill deferred). Returns `false` on no token / no questions / error → fill proceeds directly. Fires `ai_answer_generated` PostHog event.
+- **Modified `submit_anyway` in `applyConfirm` handler:** Sets `reviewMode = (mode === 'score-gated' || mode === 'manual')`. If `reviewMode && tabId`, calls `_fetchAiAnswersForReview`. If review shown → returns `{ status: 'answer_review_pending' }`. If not shown (no questions, error, non-review mode) → proceeds with direct fill as before.
+- **`bj:toolbar:answerReviewConfirm` handler in `extension/background.ts`:** Handles `accepted` (trigger fill with accepted answers + fire `ai_answer_feedback` per rated answer), `skipped` (trigger fill without answers), `regenerate` (call `_fetchAiAnswersForReview` again).
+- **`showAnswerReviewPanel(data)` in `extension/job-site-overlay.ts`:** Shadow DOM panel (400px, fixed right). Shows job title + question count in header. Per-answer: label, editable textarea pre-filled with AI answer, confidence badge (Cached / High / Medium), thumbs up/down feedback buttons. Footer: Accept & Submit (primary), Regenerate (↺), Skip. Closes on backdrop click. Exposed as `window._bjJobSiteOverlay.showAnswerReviewPanel`.
+- **`window._bjAnswerReviewAccept/Skip/Regenerate/Feedback`** — inline onclick handlers. Accept collects edited textarea values, sends `answerReviewConfirm` with `action: 'accepted'` + edited answers + feedback array. Skip sends `action: 'skipped'`. Regenerate sends `action: 'regenerate'`.
+- **`bj:toolbar:answerReview` bridged in `extension/contentScript.ts`:** Added to the background→overlay relay condition.
+- **`bj:toolbar:collectQuestions` handler in `extension/contentScript.ts`:** Queries visible text inputs, textareas, selects. Skips filled fields, hidden inputs, standard fields (name/email/phone/etc.). Extracts label from `label[for]`, placeholder, or parent element. Caps at 10. Returns `{ questions }`. Falls back to `{ questions: [] }` on error.
+- **PostHog events:** `ai_answer_generated` (questions_count, cached, credits_charged, surface: extension), `ai_answer_feedback` (field_label, rating: up/down, surface: extension), `auto_apply_tier_blocked` (existing from AIS-F3-S1).
+- **Tests:** 59 validation tests (all passing)
+- **Modified:** `extension/background.ts`, `extension/job-site-overlay.ts`, `extension/contentScript.ts`, `dist/dashboard.min.js`, `dist/dashboard-deferred.min.js`, `dist/admin.min.js`, `styles.css`, `ROADMAP.md`, `roadmap.html`
+- **Created:** `tests/ais-f4-s1-ai-qa-gate-removal.test.js`
 - Completed: 2026-03-15
 - Product version bumped: `v9.54` → `v9.55`
 - **Tier gate:** Added `auto_apply_daily: { free: 0, starter: 5, pro: Infinity }` to `TIER_GATES` in `tier-gating.js`. Free users are fully blocked from auto modes. Starter users get 5/day with midnight reset via localStorage (`bj_auto_apply_daily`). Pro users get unlimited.
@@ -3920,27 +3934,28 @@ Deliverables:
 
 **SPEC-AIS-001 Application Intelligence Suite — Phase A continues**
 
-Active workstream: **AIS-F4-S1 — AI Q&A Gate Removal + Answer Review**
+Active workstream: **AIS-F4-S2 — Answer History + Personal Context**
 
 ---
 
-### AIS-F4-S1: AI Q&A Gate Removal + Answer Review
+### AIS-F4-S2: Answer History + Personal Context
 
 **Entry Gate:**
-- [ ] Confirm `answer-form-question` EF exists and is admin-gated
-- [ ] Confirm `aiAnswerer.js` has admin gate to remove
-- [ ] Confirm Score-Gated and Manual modes have a review step location in apply flow
+- [ ] Confirm `answers` table does not yet exist in Supabase
+- [ ] Confirm LinkedIn profile data is available from `linkedin_profiles` table (or falls back to resume text)
+- [ ] Confirm credit deduction: 0.5/answer, cached = free
 
 **Fix Items:**
-1. Remove admin-only check from `answer-form-question` EF — wire `checkFeatureAccess` for `apply` feature instead
-2. Remove admin gate from `aiAnswerer.js` client-side (if present)
-3. Add pre-submit answer review panel for Score-Gated and Manual modes: shows AI-generated answers, user can edit, accept, or regenerate before submit
-4. PostHog: `ai_answer_generated` (job_id, field_label, cached, credits_charged), `ai_answer_feedback` (job_id, field_label, rating up/down)
+1. Migration: `answers` table (user_id, job_id, field_label, generated_answer, user_edited_answer, feedback CHECK up/down/null, credits_charged, cached, created_at). RLS: users manage own. Index on (user_id, job_id).
+2. `answer-form-question` EF: persist each generated answer to `answers` table. Read cached answers from `answers` table (by user_id + field_label similarity) before calling Anthropic. Wire LinkedIn profile + resume text into prompt.
+3. Credit deduction: 0.5 credits per new answer via `checkFeatureAccess`. Cached answers (same field_label within 7 days) = 0 credits.
+4. PostHog: `ai_answer_feedback` already fires from AIS-F4-S1 — ensure it also persists feedback to `answers` table via EF.
 
 **Exit Gate:**
-- [ ] Non-admin user can trigger AI Q&A answering in Score-Gated/Manual mode
-- [ ] Answer review panel renders with edit + accept + regenerate actions
-- [ ] PostHog events firing
+- [ ] `answers` table exists with correct schema
+- [ ] Generated answers persisted to DB
+- [ ] Cached answers returned free (0 credits)
+- [ ] LinkedIn profile + resume text in prompt context
 - [ ] Tests passing
 Phase B (Weeks 3-4): AIS-F8-S1 -> AIS-F8-S2 -> AIS-F1-S1 -> AIS-F1-S2 -> AIS-F1-S3 -> AIS-F1-S4
 Phase C (Weeks 5-6): AIS-F5-S1 -> AIS-F5-S2 -> AIS-F5-S3 -> AIS-F5-S4 -> AIS-F6-S1 -> AIS-F6-S2
@@ -3978,7 +3993,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.55`** | **AIS-F3-S1: Auto-Apply Consumer Gate Removal. 63 tests.** |
+| **Product (BJ_VERSION)** | **`v9.56`** | **AIS-F4-S1: AI Q&A gate removal + answer review panel. 59 tests.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
