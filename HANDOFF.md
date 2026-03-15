@@ -52,7 +52,15 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**COHORT-PRICING-S1** — Cohort-Based Pricing Configuration
+**QA-013-FIX** — DEFAULT_LEVELS label fix
+- Completed: 2026-03-15
+- Product version bumped: `v9.22` → `v9.23` (JS change — tuning.js DEFAULT_LEVELS label; all HTML surfaces cache-busted)
+- ROADMAP.md updated: QA-013-FIX → ✅
+- roadmap.html updated: QA-013-FIX → `s: 'done'`, p: 100
+- `js/tuning.js`: `DEFAULT_LEVELS[6].label` changed from `'Lead'` to `'Head'` to match spec. Keywords unchanged (`lead, principal, head of`). Only affects new accounts — existing users with customized `levelHierarchy` in `bj_tuning` are unaffected.
+- **Modified:** js/tuning.js, dist/dashboard.min.js, dist/dashboard-deferred.min.js, dist/admin.min.js, ROADMAP.md, roadmap.html
+
+**Previous: COHORT-PRICING-S1** — Cohort-Based Pricing Configuration
 - Completed: 2026-03-14
 - Product version bumped: `v9.21` → `v9.22` (JS/HTML/CSS changes — billing.js renderTierComparison refactored to DB-driven, admin-cohort-pricing.js new, admin.html cohort pricing panel, admin.js ADMIN_SUBPAGE_MAP entry, input.css .cp-input styles; all HTML surfaces cache-busted)
 - ROADMAP.md updated: COHORT-PRICING-S1 → ✅
@@ -3395,7 +3403,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.22`** | **COHORT-PRICING-S1: Cohort-based pricing configuration** |
+| **Product (BJ_VERSION)** | **`v9.23`** | **QA-013: DEFAULT_LEVELS "Lead" → "Head" label fix** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

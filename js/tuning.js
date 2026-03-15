@@ -151,7 +151,7 @@ const DEFAULT_LEVELS = [
   { label: 'Director', keywords: 'director', color: '#eab308' },
   { label: 'Assoc Director', keywords: 'associate director, asst director, assistant director', color: '#84cc16' },
   { label: 'Sr Manager', keywords: 'senior manager, sr manager, sr. manager', color: '#22c55e' },
-  { label: 'Lead', keywords: 'lead, principal, head of', color: '#06b6d4' },
+  { label: 'Head', keywords: 'lead, principal, head of', color: '#06b6d4' },
   { label: 'Manager', keywords: 'manager', color: '#14b8a6' },
   { label: 'Senior', keywords: 'senior, sr, sr.', color: '#3b82f6' },
   { label: 'Mid', keywords: 'associate, coordinator', color: '#8b5cf6' },
