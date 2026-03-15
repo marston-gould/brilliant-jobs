@@ -182,3 +182,12 @@
 | EXT-BUILD-001-PC | Chief Architect + Evolvability Strategist | Lead Platform Eng + Forward-Looking Dev |
 | EXT-BUILD-001-PD | Lead Platform Eng + System Architect—Scalability | Chief Architect + Forward-Looking Dev |
 | EXT-BUILD-001-PD | Chief Architect + System Architect—Scalability | Lead Platform Eng + Evolvability Strategist |
+
+## Pairing Assignments (Feature Build: ATS Resume Builder)
+
+| Session | Primary Pair | Pod 4 Reviewer |
+|---------|-------------|----------------|
+| RESUME-BUILDER-001-S1 | Senior Backend Eng + Lead Platform Eng | Chief Architect + Forward-Looking Dev |
+| RESUME-BUILDER-001-S2 | Senior Backend Eng + Lead Platform Eng | Lead Platform Eng + Evolvability Strategist |
+| RESUME-BUILDER-001-S3 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
+| RESUME-BUILDER-001-S4 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
