@@ -52,7 +52,16 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**EXT-BUILD-001-PB** — Phase B Tier 2: 11 Major Job Boards Optimized Selectors
+**EXT-BUILD-001-PC** — Phase C Tier 3: 34 Niche/Diversity/Industry Boards
+- Completed: 2026-03-15
+- Product version bumped: `v9.33` → `v9.34`
+- **34 new registry entries** in `extension/job-site-overlay.ts`: Black Career Network, Blacks in Technology, Black is Tech, Blackjobs, Black Tech Jobs, Black Tech Talent, Black Career Women's Network, Career Contessa, Diversity, Diversity Jobs, eFinancial Careers, Elpha, Fairygodboss, Gary's Guide, Girlboss, Good Gigs, Idealist, Int'l Assoc of Women, iRelaunch, Jopwell, Mac's List, Moms at Work, Pallet, POC IT Jobs, Power to Fly, ReacHIRE, Remote POC, Silicon Florist, Surge Women, Tech Jobs For Good, Tech Ladies, Women in Technology, Women Who Code, Zippia. Each has title+company+location+description selectors minimum. Several also have salary.
+- **manifest.json**: 39 new URL patterns added to contentScript[2] matches.
+- **Total**: 53 platform entries in registry + generic fallback = 54 total.
+- **Tests:** 106 validation tests (all passing)
+- **Deployed:** 69 extension files re-uploaded to Supabase Storage.
+
+**Previous: EXT-BUILD-001-PB** — Phase B Tier 2: 11 Major Job Boards
 - Completed: 2026-03-15
 - Product version bumped: `v9.32` → `v9.33`
 - **10 new registry entries** in `extension/job-site-overlay.ts`:
@@ -3699,11 +3708,10 @@ Deliverables:
 
 ## Next Session
 
-**Phase A + B complete.** 20 platforms with optimized selectors.
+**Phase A + B + C complete.** 53 platforms with optimized selectors + generic fallback.
 
 Remaining from spec:
-- Phase C: Tier 3 — 34 niche/diversity/industry boards from Teal's list
-- Phase D: Tier 4 — Browse-page injection for 11 ATS sites
+- Phase D: Tier 4 — Browse-page injection for 11 ATS sites (Greenhouse, Lever, Ashby, Workable, Recruitee, Handshake, iCIMS, Taleo, SmartRecruiters, Avature, BambooHR). Currently only activate on job detail pages — Phase D adds browse/search page injection.
 - CASA-001: Google CASA assessment + gmail.readonly upgrade
 - Any new feature work
 
@@ -3736,7 +3744,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.33`** | **EXT-BUILD-001-PB: Phase B Tier 2 — 11 major boards, 20 total platforms** |
+| **Product (BJ_VERSION)** | **`v9.34`** | **EXT-BUILD-001-PC: Phase C Tier 3 — 34 niche/diversity boards, 53 total platforms** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
