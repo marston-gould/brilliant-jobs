@@ -52,7 +52,29 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FB-INTPREP-001-S1** — Interview Prep Phase 1: Question Bank Backend ✅
+**FB-INTPREP-001-S2** — Interview Prep Phase 2: Question Bank UI ✅
+- Completed: 2026-03-15
+- Product version bumped: `v9.49` → `v9.50`
+- **Nav item:** "Interview Prep" added between Insights link and Account section. Lucide `graduation-cap` icon. `data-page="interview-prep"`.
+- **Page shell:** `#page-interview-prep` with two-tab bar (`#ip-tabs`): Question Bank (default active) + My Sessions (placeholder "Coming Soon" for Phase 4).
+- **Question Bank tab:**
+  - Filter bar: 3 dropdowns (`ip-filter-role`, `ip-filter-dept`, `ip-filter-level`) dynamically populated from loaded question data.
+  - Category pills: All | Behavioral | Technical | Situational | Case Study (`data-cat` attributes).
+  - Difficulty pills: All | Standard | Advanced (`data-diff` attributes).
+  - Search input: `#ip-search`, 200ms debounce, searches question_text + skill_tags + role_cluster.
+  - Bookmarks section: `#ip-bookmarks-section` (collapsible `<details>`, hidden when empty), `#ip-bookmarks-list`, `#ip-bookmark-count`. Stored in localStorage `bj_ip_bookmarks`.
+  - Question cards: `#ip-questions-list`, max 100 rendered. Each card: question text, colored category badge (CAT_COLORS), difficulty badge (DIFF_COLORS), skill tag chips (max 4), role cluster label, bookmark toggle (Lucide bookmark/bookmark-check).
+  - Results count: `#ip-results-count`.
+- **js/interview-prep.js (305L, NEW):** `initInterviewPrep()` entry point. `_loadQuestions()` from `interview_questions` table (limit 5000). `_applyFilters()` on all 6 dimensions. `_renderQuestions()` + `_renderBookmarks()`. `_ipToggleBookmark()`. XSS-safe `_esc()`. BJ namespace exports.
+- **build.js:** `interview-prep.js` added to deferred chunk (20 files total).
+- **app.js:** `interview-prep` added to `_bjPageTitles` (Intelligence section) + `_bjPageSections`. Tab handler with bjTabGuard. lastTab restore handler. Skeleton exclusion list updated.
+- **CSS:** `.ip-pill` (base + hover + active), `.ip-tab-panel` (display toggle), `.ip-question-card:hover` (accent border).
+- **PostHog events:** `interview_prep_page_viewed` (tab), `question_bank_searched` (query + all filter values), `question_bookmarked` (question_id, role_cluster, category).
+- **Tests:** 59 validation tests (13 sections, all passing)
+- **Modified:** dashboard.html, js/app.js, build.js, src/input.css
+- **Created:** js/interview-prep.js, tests/fb-intprep-001-s2-question-bank-ui.test.js
+
+**Previous: FB-INTPREP-001-S1** — Interview Prep Phase 1: Question Bank Backend ✅
 - Completed: 2026-03-15
 - Product version bumped: `v9.48` → `v9.49`
 - **Migration v9.48-fb-intprep-001-s1-question-bank.sql:**
@@ -3682,13 +3704,11 @@ None.
 
 **Next Session**
 
-**FB-INTPREP-001-S2** — Interview Prep Phase 2: Question Bank UI
-- Interview Prep nav item + page shell (Lucide graduation-cap icon, between Stats and Settings)
-- Question Bank tab with filters (role family dropdown, department dropdown, level dropdown), category pills, difficulty toggle
-- Search input with debounced query against question_text (question_tsv) and skill_tags
-- Question cards with category badge, difficulty badge, skill tag chips
-- Bookmark functionality (localStorage initially)
-- Spec: FB-INTPREP-001_InterviewPrep.docx §3.4, §5.2, §5.3, §10 Phase 2
+**FB-INTPREP-001-S3** — Interview Prep Phase 3: Simulation Backend
+- interview_sessions table migration (user_id, job_id, pipeline_entry_id, messages jsonb, scorecard jsonb, overall_score, feedback_mode, question_count, status, started_at, completed_at)
+- interview-simulate Edge Function (multi-turn conversation with Claude Sonnet, prompt caching, scorecard generation on final turn)
+- Gateway route #129
+- Spec: FB-INTPREP-001_InterviewPrep.docx §4, §6.1, §10 Phase 3
 
 Potential next workstreams:
 - PostHog Google OAuth verification reminder (R5 in FB-PI-001 risk register — must submit for verification before public Gmail/Calendar launch)
@@ -3874,7 +3894,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.49`** | **FB-INTPREP-001-S1: Question Bank Backend. interview_questions table + EF + gateway #128.** |
+| **Product (BJ_VERSION)** | **`v9.50`** | **FB-INTPREP-001-S2: Question Bank UI. Nav item + page shell + filters + cards + bookmarks.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

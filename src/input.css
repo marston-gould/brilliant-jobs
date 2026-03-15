@@ -3665,3 +3665,12 @@
     .rb-rewrite-loading { font-size: 12px; color: var(--text-dim); display: flex; align-items: center; gap: 8px; padding: 8px 0; }
     .rb-rewrite-error { font-size: 12px; color: #ef4444; padding: 6px 0; }
     .u-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+
+    /* FB-INTPREP-001-S2: Interview Prep pill buttons + tab panels */
+    .ip-pill { padding: 4px 12px; border-radius: 14px; font-size: 11px; font-weight: 600; border: 1px solid var(--border); background: transparent; color: var(--text-dim); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+    .ip-pill:hover { border-color: var(--accent); color: var(--accent); }
+    .ip-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .ip-tab-panel { display: none; }
+    .ip-tab-panel.active { display: block; }
+    .ip-question-card { transition: border-color 0.15s; }
+    .ip-question-card:hover { border-color: var(--accent); }

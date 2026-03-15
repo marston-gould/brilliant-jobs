@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v9.49 -->
+<!-- Brilliant Jobs Dashboard v9.50 -->
 <html lang="en">
 <head>
   <!-- CS-P1-009: Theme flash prevention — must be first script -->
@@ -19,21 +19,21 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="/js/vendor/supabase.min.js" defer></script>
-  <script src="/js/pipeline-migration.js?v=v9.49" defer></script>
-  <script src="/js/notification-center.js?v=v9.49" defer></script>
+  <script src="/js/pipeline-migration.js?v=v9.50" defer></script>
+  <script src="/js/notification-center.js?v=v9.50" defer></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" integrity="sha384-nFoSjZIoH3CCp8W639jJyQkuPHinJ2NHe7on1xvlUA7SuGfJAfvMldrsoAVm6ECz" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" integrity="sha384-eEu5CTj3qGvu9PdJuS+YlkNi7d2XxQROAFYOr59zgObtlcux1ae1Il3u7jvdCSWu" crossorigin="anonymous"></script>
   <!-- CS-014: CX-09 — ECharts lazy-loaded by stats.js when Stats tab opens -->
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js" integrity="sha384-TcLTgu6flPhnZ5dfHnHimsxNFjYWN0povfGgnOvgPJKbZe6IbuoC2ociiatSHl9E" crossorigin="anonymous"></script>
   <!-- CS-016 FIX-10: Code-split chunks — shell (globals+routing) + feed (job list) loaded eagerly; all other chunks lazy-loaded on tab switch -->
-  <script src="dist/dashboard-shell.min.js?v=v9.49" defer></script>
-  <script src="dist/dashboard-feed.min.js?v=v9.49" defer></script>
+  <script src="dist/dashboard-shell.min.js?v=v9.50" defer></script>
+  <script src="dist/dashboard-feed.min.js?v=v9.50" defer></script>
   <!-- CS-P1-002: dashboard inline scripts externalized (pdfjs, preload, feedback, insights, a11y) -->
-  <script src="js/dashboard-inline.js?v=v9.49" defer></script>
+  <script src="js/dashboard-inline.js?v=v9.50" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=v9.49">
+  <link rel="stylesheet" href="styles.css?v=v9.50">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -108,11 +108,11 @@
     </style>
   <!-- CSS extracted to styles.css in v3.28 -->
   <!-- A13: PostHog analytics — CS-P1-002: externalized for CSP compliance -->
-  <script src="js/posthog-dashboard.js?v=v9.49" defer></script>
-  <script src="js/posthog-perf.js?v=v9.49" defer></script>
-  <script src="js/feature-flags.js?v=v9.49" defer></script>
-  <script src="js/structured-logger.js?v=v9.49" defer></script>
-  <script src="js/theme.js?v=v9.49" defer></script>
+  <script src="js/posthog-dashboard.js?v=v9.50" defer></script>
+  <script src="js/posthog-perf.js?v=v9.50" defer></script>
+  <script src="js/feature-flags.js?v=v9.50" defer></script>
+  <script src="js/structured-logger.js?v=v9.50" defer></script>
+  <script src="js/theme.js?v=v9.50" defer></script>
 </head>
 <body>
 
@@ -192,6 +192,12 @@
         </a>
 
         <!-- REFERRAL-CONSOL: Growth section + Referrals nav item removed — referrals absorbed into Subscription page -->
+
+        <!-- FB-INTPREP-001-S2: Interview Prep nav item -->
+        <div class="nav-item" data-page="interview-prep">
+          <div class="nav-icon"><i data-lucide="graduation-cap" class="icon-md icon-stroke"></i></div>
+          <span>Interview Prep</span>
+        </div>
 
         <div class="nav-section-label">Account</div>
         <div class="nav-item" data-page="settings">
@@ -3543,6 +3549,82 @@
       <!-- Canny feedback page removed v9.44 — will build custom -->
 
       <!-- REFERRAL-CONSOL: Standalone referrals page removed — absorbed into Subscription page #sub-referral-section -->
+
+      <!-- ============ INTERVIEW PREP (FB-INTPREP-001-S2) ============ -->
+      <div class="page" id="page-interview-prep">
+        <div class="page-header">
+          <h2>Interview Prep</h2>
+          <p>Practice with role-specific questions generated from real job descriptions</p>
+        </div>
+
+        <!-- Two-tab bar: Question Bank | My Sessions -->
+        <div class="u-tab-bar" id="ip-tabs" style="margin-bottom:16px;">
+          <button class="u-tab active" data-ip-tab="question-bank">Question Bank</button>
+          <button class="u-tab" data-ip-tab="my-sessions">My Sessions</button>
+        </div>
+
+        <!-- ─── Question Bank Tab ─── -->
+        <div class="ip-tab-panel active" id="ip-panel-question-bank">
+
+          <!-- Filter bar -->
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+            <select id="ip-filter-role" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:12px;min-width:160px;">
+              <option value="">All Roles</option>
+            </select>
+            <select id="ip-filter-dept" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:12px;min-width:140px;">
+              <option value="">All Departments</option>
+            </select>
+            <select id="ip-filter-level" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:12px;min-width:120px;">
+              <option value="">All Levels</option>
+            </select>
+          </div>
+
+          <!-- Category pills -->
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;" id="ip-category-pills">
+            <button class="ip-pill active" data-cat="">All</button>
+            <button class="ip-pill" data-cat="behavioral">Behavioral</button>
+            <button class="ip-pill" data-cat="technical">Technical</button>
+            <button class="ip-pill" data-cat="situational">Situational</button>
+            <button class="ip-pill" data-cat="case_study">Case Study</button>
+          </div>
+
+          <!-- Difficulty toggle + search -->
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+            <div style="display:flex;gap:4px;" id="ip-difficulty-pills">
+              <button class="ip-pill active" data-diff="">All</button>
+              <button class="ip-pill" data-diff="standard">Standard</button>
+              <button class="ip-pill" data-diff="advanced">Advanced</button>
+            </div>
+            <input type="text" id="ip-search" placeholder="Search questions or skills..." style="flex:1;min-width:200px;padding:7px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:12px;" />
+          </div>
+
+          <!-- Bookmarked section (collapsible) -->
+          <details id="ip-bookmarks-section" style="margin-bottom:16px;display:none;">
+            <summary style="font-size:13px;font-weight:600;cursor:pointer;color:var(--accent);">
+              <i data-lucide="bookmark" class="icon-sm icon-stroke" style="vertical-align:middle;margin-right:4px;"></i>
+              Bookmarked Questions (<span id="ip-bookmark-count">0</span>)
+            </summary>
+            <div id="ip-bookmarks-list" style="margin-top:8px;"></div>
+          </details>
+
+          <!-- Question cards container -->
+          <div id="ip-questions-list">
+            <div style="text-align:center;padding:40px;color:var(--text-dim);">Loading questions...</div>
+          </div>
+
+          <!-- Results count -->
+          <div id="ip-results-count" style="font-size:11px;color:var(--text-faint);margin-top:8px;text-align:center;"></div>
+        </div>
+
+        <!-- ─── My Sessions Tab (placeholder for Phase 4) ─── -->
+        <div class="ip-tab-panel" id="ip-panel-my-sessions" style="display:none;">
+          <div class="card" style="padding:24px;text-align:center;">
+            <i data-lucide="message-square-quote" class="icon-xl" style="color:var(--text-faint);margin-bottom:12px;display:inline-block;"></i>
+            <div style="font-size:14px;font-weight:600;margin-bottom:6px;">AI Mock Interviews — Coming Soon</div>
+            <div style="font-size:12px;color:var(--text-dim);">Practice with a Claude-powered interviewer tailored to your specific job applications. Includes real-time coaching and a post-interview scorecard.</div>
+          </div>
+        </div>
+      </div>
 
       <!-- Admin Console moved to /admin (v6.27) -->
 

@@ -11,7 +11,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v9.49"></script>
+  <script src="/js/version.js?v=v9.50"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2267,6 +2267,7 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'LP-RESTRUCTURE-S4 Polish + Mobile + Testing + Deploy', d: '375px pass: section padding, cta full-width, hero-img hidden, stats 2-col, proof bar stacked. Stale version pin fix for S1/S2 tests. §8 checklist: 62 tests covering hero, dual stats, preview position, renderer, orientation, hidden/segment, removed sections, social proof, mobile breakpoints, page weight, admin page, RLS. LP-RESTRUCTURE COMPLETE: 169 total tests. v9.47. 2026-03-15.', p: 100, e: '1d' },
 { s: 'done', b: 'post-launch', n: 'REFERRAL-CONSOL Referral Consolidation into Subscription', d: 'Removed standalone Referrals page + Growth nav. Absorbed referral UI (stats, share, milestones, history) into Subscription as Earn Free Credits card. Compact stat-grid, collapsible history. Leaderboard + outreach tracking code parked. Deep link redirect. Generic scrollTo handler. 71 tests. v9.48. 2026-03-15.', p: 100, e: '1 session' },
 { s: 'done', b: 'post-launch', n: 'FB-INTPREP-001-S1 Question Bank Backend', d: 'interview_questions table (uuid PK, question_text, category/difficulty CHECK, role_cluster, department, level, skill_tags text[], source_cluster_size, generated_at, model_version, question_tsv tsvector GIN). 7 indexes. RLS authenticated read + service_role write. v_interview_question_clusters view. interview-generate-questions EF (generate/clusters/status, Haiku, cost-capped at 20 clusters/run). Gateway route #128. 66 tests. v9.49. 2026-03-15.', p: 100, e: '1 session' },
+{ s: 'done', b: 'post-launch', n: 'FB-INTPREP-001-S2 Question Bank UI', d: 'Interview Prep nav item (graduation-cap icon). Page shell with Question Bank + My Sessions tabs. Filter dropdowns (role/dept/level), category pills, difficulty pills, debounced search. Question cards with colored badges, skill chips, bookmark toggle (localStorage). 305L interview-prep.js in deferred chunk. app.js tab handler + restore. ip-pill/ip-tab-panel CSS. 59 tests. v9.50. 2026-03-15.', p: 100, e: '1 session' },
 { s: 'todo', b: 'post-launch', n: 'LP-IMAGES Landing Page Screenshots', d: 'Replace placeholder hero-dashboard-preview.webp and all benefit section image_url entries with real WebP screenshots once product is stable. Hero: job feed with salary data + match score badge. Benefit sections: 4 screenshots per section spec (sourcing, resume scoring, automated apply, pipeline). All images: WebP, lazy-loaded, inside browser-frame chrome.', p: 0, e: '1 session' },
 ];
 

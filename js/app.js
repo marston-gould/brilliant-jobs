@@ -7,14 +7,14 @@ console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded');
 var _bjPageTitles = {
   brilliant: 'Get Started', setup: 'Setup', jobs: 'Jobs Feed', tuning: 'Search Tuning',
   resumes: 'Resumes', 'resume-builder': 'Resume Builder', applications: 'My Applications', notifications: 'Notifications',
-  stats: 'Stats', settings: 'Settings',
+  stats: 'Stats', 'interview-prep': 'Interview Prep', settings: 'Settings',
   subscription: 'Subscription', feedback: 'Feedback',
   'admin-landing': 'Landing Page'
 };
 var _bjPageSections = {
   brilliant: 'onboarding', setup: 'onboarding', jobs: 'search', tuning: 'search',
   resumes: 'search', 'resume-builder': 'search', applications: 'tracking', notifications: 'tracking',
-  stats: 'intelligence',
+  stats: 'intelligence', 'interview-prep': 'intelligence',
   settings: 'account', subscription: 'account', feedback: 'account',
   'admin-landing': 'intelligence'
 };
@@ -503,6 +503,8 @@ $$('.nav-item').forEach(item => {
     var _initTab = function() {
       // Init stats charts when stats tab is shown
       if (_tab === 'stats' && typeof initStatsPage === 'function') { if (window.bjTabGuard) bjTabGuard('stats', initStatsPage); else initStatsPage(); }
+      // FB-INTPREP-001-S2: Interview Prep page init
+      if (_tab === 'interview-prep' && typeof initInterviewPrep === 'function') { if (window.bjTabGuard) bjTabGuard('interview-prep', initInterviewPrep); else initInterviewPrep(); }
       // Canny feedback removed v9.44
       // FB-GHOST-BADGE-001: Ghost Monitor page removed — redirect to Applications
       if (_tab === 'ghost') {
@@ -566,7 +568,7 @@ $$('.nav-item').forEach(item => {
         if (window.bjSkeleton) setTimeout(function() { bjSkeleton.hide('applications'); }, 150);
       }
       // Tabs without explicit init get skeleton hidden after a short delay (content is static HTML)
-      if (!['stats','feedback','resumes','resume-builder','applications','admin-landing'].includes(_tab) && window.bjSkeleton) {
+      if (!['stats','feedback','resumes','resume-builder','applications','interview-prep','admin-landing'].includes(_tab) && window.bjSkeleton) {
         setTimeout(function() { bjSkeleton.hide(_tab); }, 150);
       }
       // QA-011: Re-search feed when tuning changed (e.g. US-Only toggle)
@@ -607,6 +609,8 @@ if (lastTab && $(`#page-${lastTab}`)) {
   // CS-016 FIX-10: Lazy-load chunks for restored tab
   var _restoreInit = function() {
     if (lastTab === 'stats' && typeof initStatsPage === 'function') { if (window.bjTabGuard) bjTabGuard('stats', initStatsPage); else initStatsPage(); }
+    // FB-INTPREP-001-S2: Interview Prep restore
+    if (lastTab === 'interview-prep' && typeof initInterviewPrep === 'function') { if (window.bjTabGuard) bjTabGuard('interview-prep', initInterviewPrep); else initInterviewPrep(); }
     // Canny feedback removed v9.44
     // REFERRAL-CONSOL: referrals page removed — redirect to subscription
     if (lastTab === 'referrals') {
