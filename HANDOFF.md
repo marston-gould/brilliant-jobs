@@ -52,6 +52,7 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+<<<<<<< HEAD
 **AIS-F4-S1 (Gap Fixes)** — Answer History + Personal Context + Credits ✅
 - Completed: 2026-03-15
 - Product version bumped: `v9.56` → `v9.57`
@@ -72,6 +73,9 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 - **Pending manual steps (Marston):**
   - `supabase db push` (migration v9.56-ais-f4-s1-answers-table)
   - `SUPABASE_ACCESS_TOKEN=<token> npx supabase functions deploy answer-form-question --project-ref qojhagupdnbtomfoxnsf`
+=======
+**AIS-F4-S1** — AI Q&A Gate Removal + Answer Review ✅
+>>>>>>> b298dc3103325f62f4b7a8a26a1dc32a74d36f14
 - Completed: 2026-03-15
 - Product version bumped: `v9.55` → `v9.56`
 - **No admin gate to remove** — `answer-form-question` EF was already open to all JWT-authenticated users with a `DAILY_LIMIT=50` rate limit. The "admin-only" label referred to the extension popup toggle (not an EF gate). No EF changes needed.
@@ -83,9 +87,13 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 - **`bj:toolbar:answerReview` bridged in `extension/contentScript.ts`:** Added to the background→overlay relay condition.
 - **`bj:toolbar:collectQuestions` handler in `extension/contentScript.ts`:** Queries visible text inputs, textareas, selects. Skips filled fields, hidden inputs, standard fields (name/email/phone/etc.). Extracts label from `label[for]`, placeholder, or parent element. Caps at 10. Returns `{ questions }`. Falls back to `{ questions: [] }` on error.
 - **PostHog events:** `ai_answer_generated` (questions_count, cached, credits_charged, surface: extension), `ai_answer_feedback` (field_label, rating: up/down, surface: extension), `auto_apply_tier_blocked` (existing from AIS-F3-S1).
-- **Tests:** 59 validation tests (all passing)
-- **Modified:** `extension/background.ts`, `extension/job-site-overlay.ts`, `extension/contentScript.ts`, `dist/dashboard.min.js`, `dist/dashboard-deferred.min.js`, `dist/admin.min.js`, `styles.css`, `ROADMAP.md`, `roadmap.html`
-- **Created:** `tests/ais-f4-s1-ai-qa-gate-removal.test.js`
+- **Tests:** 59 (AIS-F4-S1 original) + 45 (gap fixes) = **104 validation tests** (all passing)
+- **Modified:** `extension/background.ts`, `extension/job-site-overlay.ts`, `extension/contentScript.ts`, `supabase/functions/answer-form-question/index.ts`, `dist/dashboard.min.js`, `dist/dashboard-deferred.min.js`, `dist/admin.min.js`, `styles.css`, `ROADMAP.md`, `roadmap.html`
+- **Created:** `tests/ais-f4-s1-ai-qa-gate-removal.test.js`, `tests/ais-f4-s1-gaps-answer-history.test.js`, `supabase/migrations/v9.56-ais-f4-s1-answers-table.sql`
+- **Gap fixes (v9.57):** `answers` table migration (user_id, job_id, field_label, generated_answer, user_edited_answer, feedback CHECK up/down, credits_charged, cached, RLS). `loadAnswerCache()` — reads answers within 7 days for same field_label, serves free. `persistAnswers()` — inserts all answers to DB post-generation. `deductCredits()` — calls `deduct_credits` RPC at 0.5/new answer (non-fatal). `fetchLinkedInProfile()` — reads `linkedin_profiles` table, injects name/headline/skills/experience into prompt. Fully-cached path returns early without hitting Anthropic (0 credits). Response now includes `cache_hits` and `credits_charged`.
+- **Pending manual steps (Marston):**
+  - `supabase db push` (migration v9.56-ais-f4-s1-answers-table.sql)
+  - `SUPABASE_ACCESS_TOKEN=<token> npx supabase functions deploy answer-form-question --project-ref qojhagupdnbtomfoxnsf`
 - Completed: 2026-03-15
 - Product version bumped: `v9.54` → `v9.55`
 - **Tier gate:** Added `auto_apply_daily: { free: 0, starter: 5, pro: Infinity }` to `TIER_GATES` in `tier-gating.js`. Free users are fully blocked from auto modes. Starter users get 5/day with midnight reset via localStorage (`bj_auto_apply_daily`). Pro users get unlimited.
@@ -4012,7 +4020,11 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
+<<<<<<< HEAD
 | **Product (BJ_VERSION)** | **`v9.57`** | **AIS-F4-S1 gap fixes: answers table, DB cache, credits, LinkedIn context. 50 tests.** |
+=======
+| **Product (BJ_VERSION)** | **`v9.57`** | **AIS-F4-S1 complete: answer review panel + history + LinkedIn context + credits. 104 tests.** |
+>>>>>>> b298dc3103325f62f4b7a8a26a1dc32a74d36f14
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
