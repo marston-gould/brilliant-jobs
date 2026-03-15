@@ -52,7 +52,18 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**EXT-BUILD-001-PC** — Phase C Tier 3: 34 Niche/Diversity/Industry Boards
+**EXT-BUILD-001-PD** — Phase D Tier 4: ATS Browse-Page Injection
+- Completed: 2026-03-15
+- Product version bumped: `v9.34` → `v9.35`
+- **6 existing ATS entries expanded** with `browseSelectors`: Greenhouse (`.opening`, `.opening-title a`), Lever (`.posting`, `.posting-title a`), Ashby (`.ashby-job-posting-brief-list a`), Workable (`[data-ui="job"]`), Recruitee (`.offer-item`), SmartRecruiters (`.opening-job`). URL patterns relaxed to match browse/listing pages.
+- **5 new ATS entries** with detail + browse selectors: iCIMS (`iCIMS_PrimaryButton`, `iCIMS_JobsTable tr`), Taleo (`requisitionTitle`, `tr.dataRow`), Avature (`.position-listing`), BambooHR (`fab-Button--apply`, `BambooHR-ATS-board__JobEntry`), Workday (`data-automation-id="applyButton"`, `data-automation-id="jobItem"`).
+- **`injectBrowsePageSaveButtons()`**: Detects browse pages (≥2 job cards via `browseSelectors.jobCard`), injects mini "💾 Save" button per card, extracts title/location/link from card selectors, sends `SAVE_JOB` to background. Optimistic UI (immediate green checkmark). Prevents duplicate injection. Resets `_browseButtonsInjected` on SPA navigation.
+- **`init()`** updated: checks for browseSelectors + card count before calling browse injection.
+- **Total**: 58 platform entries + generic fallback = 59 total. All 4 phases (A-D) COMPLETE.
+- **Tests:** 76 validation tests (all passing)
+- **Deployed:** 69 extension files re-uploaded to Supabase Storage.
+
+**Previous: EXT-BUILD-001-PC** — Phase C Tier 3: 34 Niche/Diversity/Industry Boards
 - Completed: 2026-03-15
 - Product version bumped: `v9.33` → `v9.34`
 - **34 new registry entries** in `extension/job-site-overlay.ts`: Black Career Network, Blacks in Technology, Black is Tech, Blackjobs, Black Tech Jobs, Black Tech Talent, Black Career Women's Network, Career Contessa, Diversity, Diversity Jobs, eFinancial Careers, Elpha, Fairygodboss, Gary's Guide, Girlboss, Good Gigs, Idealist, Int'l Assoc of Women, iRelaunch, Jopwell, Mac's List, Moms at Work, Pallet, POC IT Jobs, Power to Fly, ReacHIRE, Remote POC, Silicon Florist, Surge Women, Tech Jobs For Good, Tech Ladies, Women in Technology, Women Who Code, Zippia. Each has title+company+location+description selectors minimum. Several also have salary.
@@ -3708,10 +3719,13 @@ Deliverables:
 
 ## Next Session
 
-**Phase A + B + C complete.** 53 platforms with optimized selectors + generic fallback.
+**EXT-BUILD-001 spec FULLY EXECUTED.** All sessions (S1-S3), all bugs (B1-B6), all phases (A-D) complete.
+- 59 platforms with optimized selectors + generic fallback = 60 total coverage
+- Browse-page injection on 11 ATS sites
+- 6 bugs fixed, 3 EFs deployed, 127 gateway routes, 19 CI gates
+- 486 total tests across 10 test files
 
-Remaining from spec:
-- Phase D: Tier 4 — Browse-page injection for 11 ATS sites (Greenhouse, Lever, Ashby, Workable, Recruitee, Handshake, iCIMS, Taleo, SmartRecruiters, Avature, BambooHR). Currently only activate on job detail pages — Phase D adds browse/search page injection.
+Remaining backlog:
 - CASA-001: Google CASA assessment + gmail.readonly upgrade
 - Any new feature work
 
@@ -3744,7 +3758,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.34`** | **EXT-BUILD-001-PC: Phase C Tier 3 — 34 niche/diversity boards, 53 total platforms** |
+| **Product (BJ_VERSION)** | **`v9.35`** | **EXT-BUILD-001-PD: Phase D Tier 4 — ATS browse-page injection. All phases A-D COMPLETE. 59 platforms.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

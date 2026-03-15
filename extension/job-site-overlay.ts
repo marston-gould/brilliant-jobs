@@ -168,7 +168,7 @@
     },
     {
       platform: 'greenhouse',
-      urlPattern: /greenhouse\.io\/(embed\/)?job/,
+      urlPattern: /greenhouse\.io\/(embed\/)?(job|jobs)/,
       hostPattern: /greenhouse\.io$/,
       applyButtonSelectors: ['#submit_app', 'button[type="submit"]', 'input[type="submit"]', '.btn-submit'],
       saveButtonTarget: { position: 'before', selector: '#application-form, #app_body form, .application-form' },
@@ -176,10 +176,16 @@
         title: ['.app-title', 'h1.job-post-name', '[class*="opening-title"]'],
         company: ['.company-name', '[class*="company"]'],
       },
+      browseSelectors: {
+        jobCard: '.opening, .job-post, [class*="opening"]',
+        cardTitle: '.opening-title a, .job-post-title a, [class*="opening-title"] a',
+        cardLocation: '.location, .opening-location, [class*="location"]',
+        cardLink: '.opening-title a, .job-post-title a, a[data-mapped="true"]',
+      },
     },
     {
       platform: 'lever',
-      urlPattern: /jobs\.lever\.co\/.+/,
+      urlPattern: /jobs\.lever\.co\//,
       hostPattern: /lever\.co$/,
       applyButtonSelectors: ['.postings-btn-wrapper .postings-btn', '.postings-btn', 'a[data-qa="btn-apply"]', 'a.postings-btn[href*="apply"]'],
       saveButtonTarget: { position: 'adjacent', selector: '.postings-btn-wrapper' },
@@ -187,6 +193,12 @@
         title: ['.posting-headline h2', 'h2[data-qa="posting-name"]'],
         company: ['.posting-headline .company-name', '.posting-categories .sort-by-team'],
         location: ['.posting-categories .sort-by-location', '.location'],
+      },
+      browseSelectors: {
+        jobCard: '.posting, [class*="posting"]',
+        cardTitle: '.posting-title a, a[data-qa="posting-name"]',
+        cardLocation: '.posting-categories .sort-by-location, .location',
+        cardLink: '.posting-title a, a[data-qa="posting-name"]',
       },
     },
     // ── Phase A Tier 1: Glassdoor (optimized) ────────────────────────
@@ -263,7 +275,7 @@
     },
     {
       platform: 'ashby',
-      urlPattern: /jobs\.ashbyhq\.com\/.+/,
+      urlPattern: /jobs\.ashbyhq\.com\//,
       hostPattern: /ashbyhq\.com$/,
       applyButtonSelectors: ['button.ashby-apply-btn', 'button[class*="apply"]', 'a[href*="/application"]'],
       saveButtonTarget: { position: 'before', selector: '.ashby-job-posting-brief-info, .ashby-job-posting-brief' },
@@ -272,10 +284,16 @@
         company: ['.ashby-job-posting-company-name', '[class*="company-name"]'],
         location: ['.ashby-job-posting-location', '[class*="posting-location"]'],
       },
+      browseSelectors: {
+        jobCard: '.ashby-job-posting-brief-list a, [class*="job-posting-brief"]',
+        cardTitle: '.ashby-job-posting-brief-title, [class*="posting-brief-title"]',
+        cardLocation: '.ashby-job-posting-brief-location, [class*="posting-brief-location"]',
+        cardLink: 'a',
+      },
     },
     {
       platform: 'workable',
-      urlPattern: /apply\.workable\.com\/.+/,
+      urlPattern: /apply\.workable\.com\//,
       hostPattern: /workable\.com$/,
       applyButtonSelectors: ['button[data-ui="submit-application"]', 'button[data-ui="submit"]', 'button[type="submit"]'],
       saveButtonTarget: { position: 'before', selector: '[data-ui="job-overview"], [data-ui="job-details"]' },
@@ -284,10 +302,16 @@
         company: ['[data-ui="company-name"]', '[class*="company-name"]'],
         location: ['[data-ui="job-location"]'],
       },
+      browseSelectors: {
+        jobCard: '[data-ui="job"], [data-ui="job-item"], li[class*="job"]',
+        cardTitle: '[data-ui="job-title"] a, a[data-ui="job-title"]',
+        cardLocation: '[data-ui="job-location"]',
+        cardLink: '[data-ui="job-title"] a, a[data-ui="job-title"]',
+      },
     },
     {
       platform: 'recruitee',
-      urlPattern: /\.recruitee\.com\/o\//,
+      urlPattern: /\.recruitee\.com\/(o\/|careers|jobs)/,
       hostPattern: /recruitee\.com$/,
       applyButtonSelectors: ['.apply-button', 'button.btn-apply', 'a.apply-button', 'button[class*="apply"]'],
       saveButtonTarget: { position: 'adjacent', selector: '.apply-button, button.btn-apply' },
@@ -295,6 +319,12 @@
         title: ['.job-details__title', 'h1.offer-title'],
         company: ['.job-details__company', '.company-name'],
         location: ['.job-details__location', '.offer-location'],
+      },
+      browseSelectors: {
+        jobCard: '.offer-item, .job-item, [class*="offer-item"]',
+        cardTitle: '.offer-item__title a, .job-item__title a, [class*="offer-title"] a',
+        cardLocation: '.offer-item__location, [class*="offer-location"]',
+        cardLink: '.offer-item__title a, .job-item__title a',
       },
     },
     // ── Phase B Tier 2: Handshake (expanded) ──────────────────────────
@@ -482,7 +512,7 @@
     // ── Phase B Tier 2: SmartRecruiters ──────────────────────────────
     {
       platform: 'smartrecruiters',
-      urlPattern: /(jobs|careers)\.smartrecruiters\.com\/.+/,
+      urlPattern: /(jobs|careers)\.smartrecruiters\.com\//,
       hostPattern: /smartrecruiters\.com$/,
       applyButtonSelectors: [
         'button.js-apply-button', '.apply-button', 'a[data-test="apply-link"]',
@@ -495,6 +525,108 @@
         location: ['.job-location', '.location', '[data-test="job-location"]'],
         salary: ['.job-salary', '.salary-range', '[data-test="salary"]'],
         description: ['.job-description', '.job-sections', '#job-description', '[data-test="job-description"]'],
+      },
+      browseSelectors: {
+        jobCard: '.opening-job, .job-item, li[class*="opening"]',
+        cardTitle: '.opening-job-title a, .job-item-title a',
+        cardLocation: '.opening-job-location, .job-item-location',
+        cardLink: '.opening-job-title a, .job-item-title a',
+      },
+    },
+    // ── Phase D Tier 4: ATS browse-page injection (new entries) ─────
+    {
+      platform: 'icims',
+      urlPattern: /\.icims\.com\/(jobs|connect)/,
+      hostPattern: /icims\.com$/,
+      applyButtonSelectors: ['a.iCIMS_PrimaryButton', 'a[class*="apply"]', 'button[class*="apply"]', '#submit_btn', '.iCIMS_PrimaryButton'],
+      saveButtonTarget: { position: 'adjacent', selector: '.iCIMS_PrimaryButton, [class*="apply"], .iCIMS_InfoMsg_Job' },
+      jobMetaSelectors: {
+        title: ['.iCIMS_Header h1', 'h1.iCIMS_Header', '.iCIMS_JobTitle', 'h1[class*="title"]'],
+        company: ['.iCIMS_CompanyName', '[class*="company"]', '.iCIMS_InfoMsg_Job .iCIMS_InfoField_Content'],
+        location: ['.iCIMS_JobLocation', '[class*="location"]', '.iCIMS_InfoField_Content'],
+        description: ['.iCIMS_JobContent', '#job-description', '.iCIMS_Expandable_Text'],
+      },
+      browseSelectors: {
+        jobCard: '.iCIMS_JobsTable tr, .iCIMS_MainWrapper .row, [class*="job-item"]',
+        cardTitle: 'a.iCIMS_Anchor, a[class*="title"], td.title a',
+        cardLocation: 'td.location, [class*="location"]',
+        cardLink: 'a.iCIMS_Anchor, a[class*="title"]',
+      },
+    },
+    {
+      platform: 'taleo',
+      urlPattern: /\.taleo\.net\/(careersection|jobs)/,
+      hostPattern: /taleo\.net$/,
+      applyButtonSelectors: ['input[id*="apply"]', 'a[id*="apply"]', '#applyButton', 'a[class*="apply"]', 'input[value*="Apply" i]'],
+      saveButtonTarget: { position: 'before', selector: '#applyButton, [id*="apply"], .requisitionDescription' },
+      jobMetaSelectors: {
+        title: ['h1.requisitionTitle', 'h1[id*="title"]', '.requisitionTitle', '#requisitionTitle'],
+        company: ['.companyName', '[class*="company"]', '.ftlcompanyName'],
+        location: ['.requisitionLocation', '[class*="location"]', '#location'],
+        description: ['.requisitionDescription', '#requisitionDescription', '.jobdescription'],
+      },
+      browseSelectors: {
+        jobCard: 'tr.dataRow, tr[class*="data"], [class*="requisition-row"]',
+        cardTitle: 'a[id*="requisition"], a[class*="title"], td.colTitle a',
+        cardLocation: 'td[class*="location"], span[class*="location"]',
+        cardLink: 'a[id*="requisition"], a[class*="title"]',
+      },
+    },
+    {
+      platform: 'avature',
+      urlPattern: /\.avature\.net\/(jobs|careers|positions)/,
+      hostPattern: /avature\.net$/,
+      applyButtonSelectors: ['a.apply-button', 'button.apply-button', 'a[href*="apply"]', 'button[class*="apply"]'],
+      saveButtonTarget: { position: 'adjacent', selector: '.apply-button, .job-detail, .position-detail' },
+      jobMetaSelectors: {
+        title: ['h1.job-title', 'h1.position-title', 'h1[class*="title"]'],
+        company: ['.company-name', '[class*="company"]'],
+        location: ['.job-location', '.position-location', '[class*="location"]'],
+        description: ['.job-description', '.position-description', '[class*="description"]'],
+      },
+      browseSelectors: {
+        jobCard: '.job-listing, .position-listing, li[class*="position"]',
+        cardTitle: '.job-title a, .position-title a, a[class*="title"]',
+        cardLocation: '.job-location, .position-location, [class*="location"]',
+        cardLink: '.job-title a, .position-title a',
+      },
+    },
+    {
+      platform: 'bamboohr',
+      urlPattern: /\.bamboohr\.com\/(jobs|careers)/,
+      hostPattern: /bamboohr\.com$/,
+      applyButtonSelectors: ['a.fab-Button--apply', 'button.fab-Button--apply', 'a[href*="apply"]', 'button[class*="apply"]'],
+      saveButtonTarget: { position: 'adjacent', selector: '.fab-Button--apply, .JobDetails, .ResumableJob' },
+      jobMetaSelectors: {
+        title: ['h2.JobDetails__title', 'h1[class*="title"]', '.JobDetails__title'],
+        company: ['.JobDetails__company', '[class*="company"]'],
+        location: ['.JobDetails__location', '[class*="location"]'],
+        description: ['.JobDetails__description', '.JobDetails__content', '[class*="description"]'],
+      },
+      browseSelectors: {
+        jobCard: '.ResumableJob, li[class*="job"], .BambooHR-ATS-board__JobEntry',
+        cardTitle: '.ResumableJob__title a, a[class*="title"], .BambooHR-ATS-board__JobEntry a',
+        cardLocation: '.ResumableJob__location, [class*="location"]',
+        cardLink: '.ResumableJob__title a, .BambooHR-ATS-board__JobEntry a',
+      },
+    },
+    {
+      platform: 'workday',
+      urlPattern: /\.myworkdayjobs\.com\//,
+      hostPattern: /myworkdayjobs\.com$/,
+      applyButtonSelectors: ['button[data-automation-id="applyButton"]', 'a[data-automation-id="applyButton"]', 'button[aria-label*="Apply"]', 'a[href*="/apply"]'],
+      saveButtonTarget: { position: 'adjacent', selector: '[data-automation-id="applyButton"], [data-automation-id="jobPostingHeader"]' },
+      jobMetaSelectors: {
+        title: ['[data-automation-id="jobPostingHeader"] h2', 'h2[data-automation-id="jobTitle"]', '.css-1q2dra3 h2'],
+        company: ['[data-automation-id="companyName"]', '.css-1h46us2', '[class*="company"]'],
+        location: ['[data-automation-id="locations"]', '[data-automation-id="location"]', '.css-cygeeu'],
+        description: ['[data-automation-id="jobPostingDescription"]', '.css-hboir5', '#job-description'],
+      },
+      browseSelectors: {
+        jobCard: '[data-automation-id="jobItem"], li[class*="css-1q2dra3"]',
+        cardTitle: '[data-automation-id="jobTitle"] a, a[data-automation-id="jobTitle"]',
+        cardLocation: '[data-automation-id="locations"], [class*="location"]',
+        cardLink: '[data-automation-id="jobTitle"] a, a[data-automation-id="jobTitle"]',
       },
     },
     // ── Phase C Tier 3: Niche / Diversity / Industry Boards ──────────
@@ -1636,6 +1768,7 @@
     if (newUrl !== _lastUrl) {
       _lastUrl = newUrl;
       _saved = false; // Reset save state on navigation
+      _browseButtonsInjected = false; // Phase D: Reset browse buttons on SPA nav
       // Remove old save button
       var oldBtn = document.querySelector('[data-bj-save-injected]');
       if (oldBtn) oldBtn.remove();
@@ -1664,6 +1797,79 @@
 
   // ── Initial injection ─────────────────────────────────────────
   // Wait for DOM to be ready, then inject
+  // ── Phase D: Browse-page card-level Save buttons ──────────────
+  // On browse/listing pages, inject a small Save button on each job card.
+  var _browseButtonsInjected = false;
+
+  function injectBrowsePageSaveButtons() {
+    if (!currentSite.browseSelectors) return;
+    if (_browseButtonsInjected) return;
+
+    var cards = document.querySelectorAll(currentSite.browseSelectors.jobCard);
+    if (cards.length < 2) return; // Not a browse page — single card = detail page
+
+    _browseButtonsInjected = true;
+
+    cards.forEach(function (card) {
+      if ((card as HTMLElement).querySelector('.bj-browse-save-btn')) return; // Already injected
+
+      // Extract metadata from card
+      var titleEl = currentSite.browseSelectors.cardTitle
+        ? card.querySelector(currentSite.browseSelectors.cardTitle) : null;
+      var locEl = currentSite.browseSelectors.cardLocation
+        ? card.querySelector(currentSite.browseSelectors.cardLocation) : null;
+      var linkEl = currentSite.browseSelectors.cardLink
+        ? card.querySelector(currentSite.browseSelectors.cardLink) : null;
+
+      var title = titleEl ? (titleEl as HTMLElement).textContent.trim() : '';
+      var location = locEl ? (locEl as HTMLElement).textContent.trim() : '';
+      var link = linkEl ? ((linkEl as HTMLAnchorElement).href || '') : '';
+
+      if (!title) return; // Skip cards with no title
+
+      // Create mini Save button
+      var btn = document.createElement('button');
+      btn.className = 'bj-browse-save-btn';
+      btn.textContent = '💾 Save';
+      btn.style.cssText = 'background:#6366f1;color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:11px;font-weight:600;cursor:pointer;margin:4px 0;display:inline-block;';
+
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        var meta = {
+          url: link || window.location.href,
+          title: title,
+          company: currentSite.platform, // Best guess from ATS host
+          location: location,
+          platform: currentSite.platform,
+        };
+
+        sendMsg('SAVE_JOB', meta, function (resp) {
+          if (resp && resp.status === 'saved') {
+            btn.textContent = '✓ Saved';
+            btn.style.background = '#16a34a';
+          } else {
+            btn.textContent = '✓ Saved';
+            btn.style.background = '#16a34a';
+          }
+        });
+
+        // Optimistic UI
+        btn.textContent = '✓ Saved';
+        btn.style.background = '#16a34a';
+        btn.disabled = true;
+      });
+
+      // Inject button — try after title, fallback to end of card
+      if (titleEl && titleEl.parentElement) {
+        titleEl.parentElement.appendChild(btn);
+      } else {
+        (card as HTMLElement).appendChild(btn);
+      }
+    });
+  }
+
   function init() {
     // EXT-BUILD-001 B6: Remove toolbar-overlay if it loaded before us to prevent duplicate Save buttons
     var oldToolbar = document.getElementById('bj-toolbar-shadow-host');
@@ -1671,6 +1877,15 @@
       oldToolbar.remove();
     }
     (window as any)._bjToolbarOverlayActive = false;
+
+    // Phase D: Check if this is a browse page (multiple job cards)
+    if (currentSite.browseSelectors) {
+      var cards = document.querySelectorAll(currentSite.browseSelectors.jobCard);
+      if (cards.length >= 2) {
+        injectBrowsePageSaveButtons();
+        // Still inject single Save button + apply interception if detail elements exist
+      }
+    }
 
     injectSaveButton();
     interceptApplyButtons();

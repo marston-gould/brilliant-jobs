@@ -180,3 +180,4 @@
 | EXT-BUILD-001-PA | Lead Platform Eng + Forward-Looking Dev | Chief Architect + System Architect—Scalability |
 | EXT-BUILD-001-PB | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
 | EXT-BUILD-001-PC | Chief Architect + Evolvability Strategist | Lead Platform Eng + Forward-Looking Dev |
+| EXT-BUILD-001-PD | Lead Platform Eng + System Architect—Scalability | Chief Architect + Forward-Looking Dev |
