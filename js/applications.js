@@ -756,8 +756,18 @@ async function checkNavPulses() {
       .eq('user_id', currentUser.id)
       .eq('status', 'pending');
 
+    // PC-002: Also check for stale pipeline items (no update in 7+ days, active stages only)
+    const staleThreshold = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const activeStages = ['applied','responded','interview','screening'];
+    const { count: staleItems } = await sb
+      .from('user_pipeline')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', currentUser.id)
+      .in('stage', activeStages)
+      .lt('updated_at', staleThreshold);
+
     const appDot = document.querySelector('[data-page="applications"] .ext-status-dot');
-    if (pendingActions > 0 && appDot) {
+    if ((pendingActions > 0 || staleItems > 0) && appDot) {
       appDot.classList.add('pulse');
     }
 

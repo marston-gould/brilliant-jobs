@@ -1,6 +1,6 @@
 # Pod 3 + Pod 4 — Team Manifest
 
-> Last updated: 2026-03-13 | APR-002 complete
+> Last updated: 2026-03-14 | PC-002/003/004 complete
 
 ## Pod 3: Core Engineering (10 roles — original)
 
@@ -141,3 +141,11 @@
 | FB-PI-001-S4 | Senior Frontend Eng + Lead Platform Eng | Chief Architect + Evolvability Strategist |
 | FB-PI-001-S5 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
 | FB-PI-001-S6 | Full Pod 3 | Full Pod 4 |
+
+## Pairing Assignments (Pipeline Consolidation Cleanup)
+
+| Session | Primary Pair | Pod 4 Reviewer |
+|---------|-------------|----------------|
+| PC-002 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
+| PC-003 | QA/Test Eng + Forward-Looking Dev | Chief Architect + System Architect—Scalability |
+| PC-004 | DevOps + Lead Platform Eng | Evolvability Strategist |

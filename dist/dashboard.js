@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.15';
+var BJ_VERSION = 'v9.16';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -2655,19 +2655,6 @@ $$('.nav-item').forEach(item => {
           }
         }
       }
-      if (_tab === 'pipeline') {
-        if (typeof initPipeline === 'function') {
-          initPipeline().then(function() {
-            if (typeof renderPipeline === 'function') renderPipeline();
-            if (window.bjSkeleton) bjSkeleton.hide('pipeline');
-          }).catch(function(e) {
-            if (typeof reportError === 'function') reportError('app:pipeline-init', e);
-            if (window.bjSkeleton) bjSkeleton.hide('pipeline');
-          });
-        } else {
-          if (window.bjSkeleton) setTimeout(function() { bjSkeleton.hide('pipeline'); }, 150);
-        }
-      }
       // BUGFIX-005: My Applications tab needs pipeline rendered
       if (_tab === 'applications') {
         var savedAppTab = localStorage.getItem('bj_app_tab') || 'pipeline';
@@ -2675,7 +2662,7 @@ $$('.nav-item').forEach(item => {
         if (window.bjSkeleton) setTimeout(function() { bjSkeleton.hide('applications'); }, 150);
       }
       // Tabs without explicit init get skeleton hidden after a short delay (content is static HTML)
-      if (!['stats','feedback','referrals','resumes','pipeline','applications'].includes(_tab) && window.bjSkeleton) {
+      if (!['stats','feedback','referrals','resumes','applications'].includes(_tab) && window.bjSkeleton) {
         setTimeout(function() { bjSkeleton.hide(_tab); }, 150);
       }
       // QA-011: Re-search feed when tuning changed (e.g. US-Only toggle)
@@ -15576,8 +15563,8 @@ const PL_STAGE_LABELS = {
 let _pipelineCache = {};
 let _pipelineLoaded = false;
 
-// Overlay Pipeline S2: new pipeline table cache, keyed by source_url
-// Dual-write: all pipeline mutations write to both user_pipeline and pipeline tables
+// Pipeline table cache (Board view), keyed by source_url
+// PC-002: consolidated — pipeline table is the primary tracking surface
 let _newPipelineCache = {};   // { [source_url]: { id, stage, entry_source, activity_log, ... } }
 window._newPipelineCache = _newPipelineCache; // PC-001: expose for Board view + SPA bridge
 let _newPipelineLoaded = false;
@@ -16261,7 +16248,7 @@ async function loadPipelineFromSupabase() {
 }
 
 
-// ── Overlay Pipeline S2: Load new pipeline table into memory ──────────────
+// ── Load pipeline table into memory (Board view) ──────────────
 async function loadNewPipelineFromSupabase() {
   if (!currentUser?.id) return;
   try {
@@ -16283,8 +16270,8 @@ async function loadNewPipelineFromSupabase() {
   }
 }
 
-// ── Overlay Pipeline S2: Write to new pipeline table ─────────────────────
-// Called on every pipeline mutation — dual-write alongside user_pipeline
+// ── Write to pipeline table (Board view) ─────────────────────
+// Called on pipeline mutations — manages pipeline table entries
 // entry: { source_url, job_title, company_name, stage, entry_source, activity_log_entry?, ... }
 async function saveToNewPipeline(entry) {
   if (!currentUser?.id || !entry?.source_url) return;
@@ -16335,7 +16322,7 @@ async function saveToNewPipeline(entry) {
   }
 }
 
-// ── Overlay Pipeline S2: Get new pipeline row by source_url ──────────────
+// ── Get pipeline row by source_url (Board view) ──────────────
 function getNewPipelineEntry(sourceUrl) {
   return _newPipelineCache[sourceUrl] || null;
 }
@@ -16490,7 +16477,7 @@ async function migratePipelineToSupabase() {
 async function initPipeline() {
   await migratePipelineToSupabase();
   await loadPipelineFromSupabase();
-  await loadNewPipelineFromSupabase(); // S10: wire overlay pipeline load on init
+  await loadNewPipelineFromSupabase(); // PC-002: pipeline table load on init
   await loadPendingSignals();
   await loadPendingConfirmations(); // FB-PI-001 S4
   await loadAutoArchiveUndo();       // FB-PI-001 S5
@@ -21541,8 +21528,18 @@ async function checkNavPulses() {
       .eq('user_id', currentUser.id)
       .eq('status', 'pending');
 
+    // PC-002: Also check for stale pipeline items (no update in 7+ days, active stages only)
+    const staleThreshold = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const activeStages = ['applied','responded','interview','screening'];
+    const { count: staleItems } = await sb
+      .from('user_pipeline')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', currentUser.id)
+      .in('stage', activeStages)
+      .lt('updated_at', staleThreshold);
+
     const appDot = document.querySelector('[data-page="applications"] .ext-status-dot');
-    if (pendingActions > 0 && appDot) {
+    if ((pendingActions > 0 || staleItems > 0) && appDot) {
       appDot.classList.add('pulse');
     }
 

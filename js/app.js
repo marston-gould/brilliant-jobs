@@ -531,19 +531,6 @@ $$('.nav-item').forEach(item => {
           }
         }
       }
-      if (_tab === 'pipeline') {
-        if (typeof initPipeline === 'function') {
-          initPipeline().then(function() {
-            if (typeof renderPipeline === 'function') renderPipeline();
-            if (window.bjSkeleton) bjSkeleton.hide('pipeline');
-          }).catch(function(e) {
-            if (typeof reportError === 'function') reportError('app:pipeline-init', e);
-            if (window.bjSkeleton) bjSkeleton.hide('pipeline');
-          });
-        } else {
-          if (window.bjSkeleton) setTimeout(function() { bjSkeleton.hide('pipeline'); }, 150);
-        }
-      }
       // BUGFIX-005: My Applications tab needs pipeline rendered
       if (_tab === 'applications') {
         var savedAppTab = localStorage.getItem('bj_app_tab') || 'pipeline';
@@ -551,7 +538,7 @@ $$('.nav-item').forEach(item => {
         if (window.bjSkeleton) setTimeout(function() { bjSkeleton.hide('applications'); }, 150);
       }
       // Tabs without explicit init get skeleton hidden after a short delay (content is static HTML)
-      if (!['stats','feedback','referrals','resumes','pipeline','applications'].includes(_tab) && window.bjSkeleton) {
+      if (!['stats','feedback','referrals','resumes','applications'].includes(_tab) && window.bjSkeleton) {
         setTimeout(function() { bjSkeleton.hide(_tab); }, 150);
       }
       // QA-011: Re-search feed when tuning changed (e.g. US-Only toggle)

@@ -52,7 +52,45 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FB-GHOST-BADGE-001** — Ghost Intelligence Badges
+**PC-002/003/004** — Pipeline Consolidation Cleanup, Deep Links, Final Deploy
+- Completed: 2026-03-14
+- Product version bumped: `v9.15` → `v9.16` (JS changes — pipeline.js comment cleanup, app.js dead handler removal, applications.js nav pulse enhancement; all HTML surfaces cache-busted)
+- ROADMAP.md updated: PC-002 → ✅, PC-003 → ✅, PC-004 → ✅
+- roadmap.html updated: PC-002/003/004 → `s: 'done'`, p: 100
+- **PC-002 — JS Cleanup:**
+  - `pipeline.js`: 5 stale comments replaced — "Overlay Pipeline S2" (×3) → "Board view", "Dual-write" → "consolidated", "S10:" → "PC-002: pipeline table load on init". Section headers updated to current naming (Load/Write/Get pipeline table — Board view).
+  - `app.js`: Dead pipeline tab handler removed — `if (_tab === 'pipeline') { initPipeline()... }` block was unreachable since PC-001 deleted page-pipeline from dashboard.html. 'pipeline' removed from skeleton exclusion list (no longer a standalone page).
+  - `applications.js`: `checkNavPulses()` enhanced — applications nav dot now pulses for stale pipeline items (user_pipeline entries in active stages with no update for 7+ days) in addition to existing pending notification actions check.
+- **PC-003 — Deep Link Testing:**
+  - Verified `lastTab=ghost` → redirects to applications (FB-GHOST-BADGE-001)
+  - Verified `lastTab=pipeline` → redirects to applications (v9.06)
+  - Verified `switchAppTab` migrates board/queue/history → pipeline (FB-APPS-001)
+  - Verified no page-pipeline or page-ghost elements in dashboard.html
+  - Verified pipeline-overlay-tab.js deleted and no build.js references
+  - Verified hero card (j-saved-card) → Applications > Pipeline tab
+  - Verified showPage/switchPage window exports (v9.05)
+- **PC-004 — Final Deploy:**
+  - Version bumped v9.15 → v9.16 via bump-version.sh
+  - All bundles rebuilt: dashboard.min.js, dashboard-deferred.min.js, admin.min.js, styles.css
+  - All 15 HTML surfaces cache-busted at v9.16
+  - pre-commit-version-check ✅ (all surfaces in sync)
+- **Pod Team Manifest:** PC-002/003/004 pairing added (Lead Platform Eng + Forward-Looking Dev primary, Chief Architect + Evolvability Strategist reviewers)
+- **Modified:**
+  - `js/pipeline.js` — 5 stale comments updated to current naming
+  - `js/app.js` — dead pipeline tab handler removed, skeleton exclusion list cleaned
+  - `js/applications.js` — stale pipeline items added to nav pulse check
+  - `docs/scaling/pod-team-manifest.md` — PC-002/003/004 pairing, last-updated
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `dist/admin.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — PC-002, PC-003, PC-004 → ✅
+  - `roadmap.html` — PC-002/003/004 → done/100
+- **Created:**
+  - `tests/pc-002-003-004-pipeline-cleanup.test.js` — 60 validation tests (9 sections)
+- **Tests:** 60 validation tests (all passing)
+
+**Previous: FB-GHOST-BADGE-001** — Ghost Intelligence Badges
 - Completed: 2026-03-14
 - Product version bumped: `v9.01` → `v9.02` (JS/HTML changes — dashboard.html Ghost Monitor removed, apply-workflow.js ghost badge + self-report, app.js redirect, pipeline.js dead code removal; all HTML surfaces cache-busted)
 - ROADMAP.md updated: FB-GHOST-BADGE-001 → ✅
@@ -2952,10 +2990,9 @@ None.
 
 **Next Session**
 
-No specific session queued. FB-PI-001 is feature-complete.
+No specific session queued. FB-PI-001 is feature-complete. PC-002/003/004 is complete.
 
 Potential next workstreams:
-- PC-002/003/004: Pipeline JS cleanup, deep links, final deploy verification
 - PostHog Google OAuth verification reminder (R5 in FB-PI-001 risk register — must submit for verification before public Gmail/Calendar launch)
 - Any new feature work
 
@@ -3088,20 +3125,11 @@ Deliverables:
 
 ## Next Session
 
-**FB-PI-001-S2 — AI Classifier Edge Function**
+No specific session queued. FB-PI-001 is feature-complete. PC-002/003/004 is complete.
 
-Entry gates:
-- S1 migration (20260315000002) applied to prod ✅
-- pipeline_signal_inbox table exists with data flowing in ✅
-- gmail-scan EF deployed ✅
-
-Deliverables:
-- `classify-pipeline-signal` EF: reads pipeline_signal_inbox WHERE classification_status='pending' AND retry_count<3. Sends raw_subject + raw_snippet + raw_from + raw_date + source to Anthropic Sonnet with structured output schema. Returns signal_type, confidence, extracted_fields (company, role, date, interviewer_names, format, scheduling_link). Prompt cached (system prompt ephemeral). Max 10 per cron invocation. Sets classification_status='classified' or 'error'. Increments retry_count on error.
-- Gateway route #124.
-- pg_cron: classify-pipeline-signals every 15 minutes.
-- 8 signal types: ACK, REJ-PRE, INT, REJ-POST, OFFER, RESCHED, CAL-INT, CAL-OFFER.
-- Prompt with few-shot examples for all 8 types.
-- Tests: 70+ validation tests.
+Potential next workstreams:
+- PostHog Google OAuth verification reminder (R5 in FB-PI-001 risk register)
+- Any new feature work
 
 
 ## Deferred: SA-001 / SA-002 / SA-003 (Typesense)
@@ -3132,7 +3160,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.15`** | **FB-PI-001-S6: ALL SPEC ITEMS COMPLETE** |
+| **Product (BJ_VERSION)** | **`v9.16`** | **PC-002/003/004: Pipeline cleanup + deep links + deploy** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
