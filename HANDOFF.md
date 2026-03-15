@@ -52,7 +52,36 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**SCA-REM-S3** — Spec Compliance Remediation Session 3
+**SCA-REM-S4** — Spec Compliance Remediation Session 4
+- Completed: 2026-03-15
+- Product version bumped: `v9.20` → `v9.21` (JS/HTML changes — job-feed.js pagination keyboard nav, dashboard.html connect button centering; all HTML surfaces cache-busted)
+- ROADMAP.md updated: SCA-REM-S4 → ✅
+- roadmap.html updated: SCA-REM-S4 → `s: 'done'`, p: 100
+- **REM-S09 — PostHog PI taxonomy documentation:**
+  - `docs/posthog-pi-taxonomy.md`: 19 events documented across classify-pipeline-signal EF (5), process-pipeline-action EF (4), check-pipeline-staleness EF (1), pipeline.js client (9). Includes properties, triggers, dashboard recommendations (key funnels, key metrics).
+- **REM-S12 — Pagination keyboard navigation:**
+  - `js/job-feed.js` `renderPagination()`: `role="navigation"` + `aria-label="Job feed pagination"` on container. `keydown` listener: ArrowLeft/ArrowRight moves focus between non-disabled `.fp-btn` elements. `preventDefault()` on arrow keys.
+- **QA-002 — Connect buttons centered:**
+  - `dashboard.html`: Gmail/Calendar/Drive `setup-disconnected` divs get `style="text-align:center;"`. Buttons now horizontally centered within their integration cards.
+- **Confirmed not bugs:**
+  - QA-013 (career levels missing): `renderLevelTable()` called on load, `DEFAULT_LEVELS` seeds 5 levels (Director/Manager/Senior/Mid/Entry). Tuning card is collapsed by default — user needs to expand Title Rules card.
+  - QA-017 (theme toggle + credits): Already on same row via `display:flex` wrapper (line 230).
+- **Skipped Items:** None.
+- **Modified:**
+  - `js/job-feed.js` — pagination keyboard nav + a11y
+  - `dashboard.html` — setup-disconnected centering
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `dist/admin.min.js` — rebuilt
+  - `docs/scaling/pod-team-manifest.md` — SCA-REM-S4 pairing
+  - `ROADMAP.md` — SCA-REM-S4 → ✅
+  - `roadmap.html` — SCA-REM-S4 → done/100
+- **Created:**
+  - `docs/posthog-pi-taxonomy.md` — 19-event PI PostHog taxonomy
+  - `tests/sca-rem-s4-spec-compliance.test.js` — 23 validation tests
+- **Tests:** 23 validation tests (all passing)
+
+**Previous: SCA-REM-S3** — Spec Compliance Remediation Session 3
 - Completed: 2026-03-15
 - Product version bumped: `v9.19` → `v9.20` (JS changes — app.js browse chunk guard, sort-bar.js qbInputOrder trimmed; all HTML surfaces cache-busted)
 - ROADMAP.md updated: SCA-REM-S3 → ✅
@@ -3278,25 +3307,19 @@ Deliverables:
 
 ## Next Session
 
-**SCA-REM-S4** — Spec Compliance Remediation Session 4
-
-Remaining items from master schedule:
-- REM-S09 [MED]: PostHog taxonomy documentation for Pipeline Intelligence
-- REM-S10/S11 [MED]: Gmail + Calendar scan scope settings in PI settings UI
+Remaining spec compliance items (lower priority):
 - REM-S07 [HIGH]: process-pipeline-action notification dispatch on auto-move
 - REM-S08 [HIGH]: Supabase Realtime broadcast for pipeline stage changes
-- REM-S12 [LOW]: Keyboard navigation on pagination controls
-- QA-002 [P2]: Blue connect buttons not centered
-- QA-003 [P2]: HOW MUCH should be two separate sections
-- QA-005 [P2]: Trust Level/AI Content iconography
-- QA-013 [P2]: Career levels missing under Title
+- REM-S10/S11 [MED]: Gmail + Calendar scan scope settings in PI settings UI
+- QA-003 [P2]: HOW MUCH should be two separate sections (Min/Max)
+- QA-005 [P2]: Trust Level/AI Content iconography (replace emoji with SVG)
 - QA-015/016 [P2]: Merchandising redesign
-- QA-017 [P2]: Theme toggle + Credits layout
+- QA-018 [P3]: Credit icon
+- BP-001: Anthropic circuit breaker
+- BP-002: Extension tier awareness
 
 Also:
 - PostHog Google OAuth verification (R5 in FB-PI-001 risk register)
-- BP-001: Anthropic circuit breaker
-- BP-002: Extension tier awareness
 
 
 ## Deferred: SA-001 / SA-002 / SA-003 (Typesense)
@@ -3327,7 +3350,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.20`** | **SCA-REM-S3: ghost config table + browse chunk guard + salary auto-tab fix** |
+| **Product (BJ_VERSION)** | **`v9.21`** | **SCA-REM-S4: PI taxonomy doc + pagination a11y + connect button centering** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

@@ -2737,6 +2737,19 @@ function renderPagination(pageJobCount, total, currentPage) {
   }
 
   container.innerHTML = html;
+
+  // REM-S12: Keyboard navigation — arrow keys move focus between page buttons
+  container.setAttribute('role', 'navigation');
+  container.setAttribute('aria-label', 'Job feed pagination');
+  container.addEventListener('keydown', function(e) {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    var btns = Array.from(container.querySelectorAll('.fp-btn:not([disabled])'));
+    var idx = btns.indexOf(document.activeElement);
+    if (idx < 0) return;
+    e.preventDefault();
+    var next = e.key === 'ArrowRight' ? idx + 1 : idx - 1;
+    if (next >= 0 && next < btns.length) btns[next].focus();
+  });
 }
 
 // Build smart page range: [0, 1, '...', 5, 6, 7, '...', 19, 20]
