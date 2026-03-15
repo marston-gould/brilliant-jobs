@@ -1,16 +1,15 @@
 // supabase/functions/resume-generate/index.ts
-// RESUME-BUILDER-001-S2: Generate ATS-compliant .docx and plain-text .pdf
-// from parsed_json + template_id. Stores in Storage, updates resumes row.
+// RESUME-BUILDER-001-S2: Generate ATS-compliant .docx and .pdf from
+// a saved resume row. Uses docx-builder logic (pure TS, no LibreOffice).
 //
-// Input (JSON POST):
-//   { resume_id, template_id }
-//   template_id: 'classic' | 'modern' | 'minimal'
+// Input (application/json):
+//   { resume_id: string, template_id: 'classic' | 'modern' | 'minimal' }
 //
 // Output: { docx_url, pdf_url, filename }
 //
-// Credit cost: 0 — generation encourages usage
-// Templates: Classic (Times New Roman), Modern Professional (Calibri/Arial),
-//            Clean Minimal (Helvetica/Arial)
+// Credit cost: 0 — encourages usage
+// Three ATS-compliant templates: Classic, Modern Professional, Clean Minimal
+// All output: single-column, standard fonts, no tables/graphics, standard headings
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
@@ -19,179 +18,154 @@ import { corsHeaders } from '../_shared/cors.ts';
 const SB_URL = Deno.env.get('SUPABASE_URL')!;
 const SB_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-// ─── Template config ─────────────────────────────────────────────────────────
+// ─── ATS layout constants ─────────────────────────────────────────────────────
 
-const TEMPLATES: Record<string, { fontFamily: string; headingSize: number; nameSize: number; bodySize: number }> = {
-  classic:  { fontFamily: 'Times New Roman', headingSize: 14, nameSize: 20, bodySize: 11 },
-  modern:   { fontFamily: 'Calibri',         headingSize: 14, nameSize: 20, bodySize: 11 },
-  minimal:  { fontFamily: 'Arial',           headingSize: 13, nameSize: 20, bodySize: 10 },
+const FONTS: Record<string, { body: string; heading: string }> = {
+  classic:  { body: 'Times New Roman', heading: 'Times New Roman' },
+  modern:   { body: 'Calibri',         heading: 'Arial'            },
+  minimal:  { body: 'Arial',           heading: 'Arial'            },
 };
 
-// ─── Sanitise strings ─────────────────────────────────────────────────────────
+// ─── Plain-text resume builder (ATS-safe) ────────────────────────────────────
+// We generate a .docx using the Office Open XML format directly.
+// No tables, no text boxes, no graphics — pure single-column paragraphs.
 
-function s(v: unknown): string {
-  if (!v) return '';
-  // Replace smart quotes and em-dashes per ATS rules §3.4
-  return String(v)
-    .replace(/[\u2018\u2019]/g, "'")
-    .replace(/[\u201C\u201D]/g, '"')
-    .replace(/\u2014/g, '-')
-    .replace(/\u2013/g, '-')
-    .trim();
+interface ResumeData {
+  contact_info?: { name?: string; email?: string; phone?: string; linkedin?: string; location?: string; website?: string };
+  summary?: string;
+  work_experience?: Array<{ title?: string; company?: string; start_date?: string; end_date?: string; location?: string; bullets?: string[] }>;
+  education?: Array<{ institution?: string; degree?: string; field?: string; graduation_date?: string; gpa?: string }>;
+  skills?: string[];
+  certifications?: Array<{ name?: string; issuer?: string; date?: string }>;
+  languages?: string[];
+  projects?: Array<{ name?: string; description?: string; technologies?: string[] }>;
 }
 
-function safeName(first: string, last: string): string {
-  return `${first}_${last}`.replace(/[^a-zA-Z0-9_-]/g, '_').replace(/_+/g, '_');
-}
-
-// ─── DOCX builder (manual XML — no library required in Deno) ─────────────────
-// Generates a minimal but fully spec-compliant Open XML .docx
-
-function pt(n: number): number { return n * 20; } // points → half-points (twips)
-function ptStr(n: number): string { return String(pt(n)); }
-
-function xmlEsc(str: string): string {
-  return s(str)
+function escXml(s: string): string {
+  return String(s || '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
+    .replace(/'/g, '&apos;')
+    // Replace smart quotes and em-dashes per ATS rules
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/\u2013/g, '-')
+    .replace(/\u2014/g, '-');
 }
 
-function run(text: string, opts: { bold?: boolean; italic?: boolean; size?: number; font?: string } = {}): string {
-  const { bold, italic, size, font } = opts;
-  const rpr = [
-    font ? `<w:rFonts w:ascii="${xmlEsc(font)}" w:hAnsi="${xmlEsc(font)}" w:cs="${xmlEsc(font)}"/>` : '',
+function para(text: string, opts: {
+  bold?: boolean; fontSize?: number; spaceAfter?: number; spaceBefore?: number;
+  italic?: boolean; color?: string; fontName?: string;
+} = {}): string {
+  const { bold = false, fontSize = 22, spaceAfter = 80, spaceBefore = 0, italic = false, color, fontName } = opts;
+  const rPr = [
     bold ? '<w:b/><w:bCs/>' : '',
     italic ? '<w:i/><w:iCs/>' : '',
-    size ? `<w:sz w:val="${ptStr(size)}"/><w:szCs w:val="${ptStr(size)}"/>` : '',
+    `<w:sz w:val="${fontSize}"/><w:szCs w:val="${fontSize}"/>`,
+    fontName ? `<w:rFonts w:ascii="${escXml(fontName)}" w:hAnsi="${escXml(fontName)}" w:cs="${escXml(fontName)}"/>` : '',
+    color ? `<w:color w:val="${color}"/>` : '',
   ].filter(Boolean).join('');
-  return `<w:r>${rpr ? `<w:rPr>${rpr}</w:rPr>` : ''}<w:t xml:space="preserve">${xmlEsc(text)}</w:t></w:r>`;
+  return `<w:p><w:pPr><w:spacing w:before="${spaceBefore}" w:after="${spaceAfter}"/><w:jc w:val="left"/></w:pPr><w:r><w:rPr>${rPr}</w:rPr><w:t xml:space="preserve">${escXml(text)}</w:t></w:r></w:p>`;
 }
 
-function para(content: string, opts: { spacing?: number; indent?: number; keepNext?: boolean } = {}): string {
-  const { spacing = 0, indent = 0, keepNext = false } = opts;
-  const ppr = [
-    spacing ? `<w:spacing w:after="${spacing}"/>` : '',
-    indent ? `<w:ind w:left="${indent}"/>` : '',
-    keepNext ? '<w:keepNext/>' : '',
-    '<w:jc w:val="left"/>',
-  ].filter(Boolean).join('');
-  return `<w:p><w:pPr>${ppr}</w:pPr>${content}</w:p>`;
+function bullet(text: string, fontName: string): string {
+  return `<w:p><w:pPr><w:ind w:left="360" w:hanging="180"/><w:spacing w:before="0" w:after="40"/></w:pPr><w:r><w:rPr><w:sz w:val="20"/><w:szCs w:val="20"/><w:rFonts w:ascii="${escXml(fontName)}" w:hAnsi="${escXml(fontName)}"/></w:rPr><w:t xml:space="preserve">\u2022  ${escXml(text)}</w:t></w:r></w:p>`;
 }
 
-function sectionHeading(text: string, font: string, size: number): string {
-  return para(
-    run(text.toUpperCase(), { bold: true, size, font }),
-    { spacing: 60, keepNext: true }
-  ) + `<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="4" w:space="1" w:color="AAAAAA"/></w:pBdr><w:spacing w:after="80"/></w:pPr></w:p>`;
+function sectionHeading(text: string, template: string, fontName: string): string {
+  const isModern = template === 'modern';
+  // Modern adds an underline rule via border-bottom on paragraph
+  const pPr = isModern
+    ? `<w:pPr><w:pBdr><w:bottom w:val="single" w:sz="4" w:space="1" w:color="auto"/></w:pBdr><w:spacing w:before="200" w:after="80"/></w:pPr>`
+    : `<w:pPr><w:spacing w:before="200" w:after="80"/></w:pPr>`;
+  return `<w:p>${pPr}<w:r><w:rPr><w:b/><w:bCs/><w:sz w:val="26"/><w:szCs w:val="26"/><w:rFonts w:ascii="${escXml(fontName)}" w:hAnsi="${escXml(fontName)}"/><w:caps/></w:rPr><w:t>${escXml(text)}</w:t></w:r></w:p>`;
 }
 
-function bullet(text: string, font: string, size: number): string {
-  return `<w:p>
-    <w:pPr><w:ind w:left="360" w:hanging="180"/><w:spacing w:after="60"/></w:pPr>
-    ${run('\u2022  ', { font, size })}${run(s(text), { font, size })}
-  </w:p>`;
-}
+function buildDocxXml(data: ResumeData, template: string): string {
+  const font = FONTS[template] || FONTS.modern;
+  const paragraphs: string[] = [];
 
-interface ParsedJson {
-  contact_info?: { name?: string; email?: string; phone?: string; linkedin?: string; location?: string; website?: string };
-  summary?: string;
-  work_experience?: Array<{ company?: string; title?: string; start_date?: string; end_date?: string; location?: string; bullets?: string[] }>;
-  education?: Array<{ institution?: string; degree?: string; field?: string; graduation_date?: string }>;
-  skills?: string[];
-  certifications?: Array<{ name?: string; issuer?: string; date?: string }>;
-}
-
-function buildDocxXml(data: ParsedJson, template: string): string {
-  const cfg = TEMPLATES[template] || TEMPLATES.modern;
-  const { fontFamily: f, nameSize: ns, headingSize: hs, bodySize: bs } = cfg;
-
+  // ── Contact block ──
   const ci = data.contact_info || {};
-  const name = s(ci.name) || 'Your Name';
-  const contactParts = [ci.email, ci.phone, ci.location, ci.linkedin, ci.website].filter(Boolean).map(s).join('  \u2022  ');
+  const name = (ci.name || 'Your Name').trim();
+  paragraphs.push(para(name, { bold: true, fontSize: 40, spaceAfter: 40, fontName: font.heading }));
 
-  const parts: string[] = [];
-
-  // ── Name ──
-  parts.push(para(run(name, { bold: true, size: ns, font: f }), { spacing: 60 }));
-
-  // ── Contact line ──
-  if (contactParts) {
-    parts.push(para(run(contactParts, { size: bs, font: f }), { spacing: 120 }));
+  const contactParts: string[] = [];
+  if (ci.email) contactParts.push(ci.email);
+  if (ci.phone) contactParts.push(ci.phone);
+  if (ci.location) contactParts.push(ci.location);
+  if (ci.linkedin) contactParts.push(ci.linkedin);
+  if (ci.website) contactParts.push(ci.website);
+  if (contactParts.length) {
+    paragraphs.push(para(contactParts.join(' | '), { fontSize: 18, spaceAfter: 120, fontName: font.body }));
   }
 
-  // ── Summary ──
+  // ── Professional Summary ──
   if (data.summary) {
-    parts.push(sectionHeading('Professional Summary', f, hs));
-    parts.push(para(run(s(data.summary), { font: f, size: bs }), { spacing: 120 }));
+    paragraphs.push(sectionHeading('Professional Summary', template, font.heading));
+    paragraphs.push(para(data.summary, { fontSize: 20, spaceAfter: 80, fontName: font.body }));
   }
 
   // ── Skills ──
-  const skills = (data.skills || []).map(s).filter(Boolean);
-  if (skills.length) {
-    parts.push(sectionHeading('Skills', f, hs));
-    parts.push(para(run(skills.join(', '), { font: f, size: bs }), { spacing: 120 }));
+  if (data.skills?.length) {
+    paragraphs.push(sectionHeading('Skills', template, font.heading));
+    paragraphs.push(para(data.skills.join(', '), { fontSize: 20, spaceAfter: 80, fontName: font.body }));
   }
 
   // ── Work Experience ──
-  const exp = data.work_experience || [];
-  if (exp.length) {
-    parts.push(sectionHeading('Work Experience', f, hs));
-    for (const job of exp) {
-      const dates = [s(job.start_date), s(job.end_date)].filter(Boolean).join(' \u2013 ');
-      const titleLine = `${s(job.title)}${job.company ? '  \u2014  ' + s(job.company) : ''}`;
-      parts.push(para(
-        run(titleLine, { bold: true, font: f, size: bs }) +
-        (dates ? run('  ' + dates, { italic: true, font: f, size: bs }) : ''),
-        { spacing: 40, keepNext: true }
-      ));
-      if (job.location) {
-        parts.push(para(run(s(job.location), { italic: true, font: f, size: bs - 1 }), { spacing: 40 }));
+  if (data.work_experience?.length) {
+    paragraphs.push(sectionHeading('Work Experience', template, font.heading));
+    for (const job of data.work_experience) {
+      const titleLine = [job.title, job.company].filter(Boolean).join(' — ');
+      const dateLine = [job.start_date, job.end_date ? `${job.end_date}` : ''].filter(Boolean).join(' – ');
+      const locationDate = [dateLine, job.location].filter(Boolean).join(' | ');
+      paragraphs.push(para(titleLine, { bold: true, fontSize: 22, spaceAfter: 20, spaceBefore: 80, fontName: font.body }));
+      if (locationDate) {
+        paragraphs.push(para(locationDate, { italic: true, fontSize: 20, spaceAfter: 40, fontName: font.body }));
       }
       for (const b of (job.bullets || [])) {
-        parts.push(bullet(b, f, bs));
+        if (b.trim()) paragraphs.push(bullet(b, font.body));
       }
-      parts.push(para('', { spacing: 80 })); // spacer
     }
   }
 
   // ── Education ──
-  const edu = data.education || [];
-  if (edu.length) {
-    parts.push(sectionHeading('Education', f, hs));
-    for (const e of edu) {
-      const deg = [s(e.degree), s(e.field)].filter(Boolean).join(', ');
-      parts.push(para(
-        run(s(e.institution), { bold: true, font: f, size: bs }) +
-        (e.graduation_date ? run('  ' + s(e.graduation_date), { italic: true, font: f, size: bs }) : ''),
-        { spacing: 40, keepNext: true }
-      ));
-      if (deg) parts.push(para(run(deg, { font: f, size: bs }), { spacing: 80 }));
+  if (data.education?.length) {
+    paragraphs.push(sectionHeading('Education', template, font.heading));
+    for (const edu of data.education) {
+      const degreeField = [edu.degree, edu.field].filter(Boolean).join(', ');
+      paragraphs.push(para(edu.institution || '', { bold: true, fontSize: 22, spaceBefore: 80, spaceAfter: 20, fontName: font.body }));
+      if (degreeField) {
+        paragraphs.push(para(`${degreeField}${edu.graduation_date ? ' — ' + edu.graduation_date : ''}${edu.gpa ? ' | GPA: ' + edu.gpa : ''}`, { fontSize: 20, spaceAfter: 60, fontName: font.body }));
+      }
     }
   }
 
   // ── Certifications ──
-  const certs = data.certifications || [];
-  if (certs.length) {
-    parts.push(sectionHeading('Certifications', f, hs));
-    for (const c of certs) {
-      const line = [s(c.name), s(c.issuer), s(c.date)].filter(Boolean).join('  \u2022  ');
-      parts.push(para(run(line, { font: f, size: bs }), { spacing: 60 }));
+  if (data.certifications?.length) {
+    paragraphs.push(sectionHeading('Certifications', template, font.heading));
+    for (const cert of data.certifications) {
+      const certLine = [cert.name, cert.issuer, cert.date].filter(Boolean).join(' — ');
+      paragraphs.push(para(certLine, { fontSize: 20, spaceAfter: 60, fontName: font.body }));
     }
   }
 
-  const body = parts.join('\n');
+  // ── Languages ──
+  if (data.languages?.length) {
+    paragraphs.push(sectionHeading('Languages', template, font.heading));
+    paragraphs.push(para(data.languages.join(', '), { fontSize: 20, spaceAfter: 80, fontName: font.body }));
+  }
+
+  const body = paragraphs.join('\n');
 
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas"
-  xmlns:cx="http://schemas.microsoft.com/office/drawing/2014/chartex"
+  xmlns:mo="http://schemas.microsoft.com/office/mac/office/2008/main"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-  xmlns:aink="http://schemas.microsoft.com/office/drawing/2016/ink"
-  xmlns:am3d="http://schemas.microsoft.com/office/drawing/2017/model3d"
+  xmlns:mv="urn:schemas-microsoft-com:mac:vml"
   xmlns:o="urn:schemas-microsoft-com:office:office"
-  xmlns:oel="http://schemas.microsoft.com/office/2019/extlst"
   xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
   xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"
   xmlns:v="urn:schemas-microsoft-com:vml"
@@ -200,29 +174,23 @@ function buildDocxXml(data: ParsedJson, template: string): string {
   xmlns:w10="urn:schemas-microsoft-com:office:word"
   xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
   xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml"
-  xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml"
-  xmlns:w16cex="http://schemas.microsoft.com/office/word/2018/wordml/cex"
-  xmlns:w16cid="http://schemas.microsoft.com/office/word/2016/wordml/cid"
-  xmlns:w16="http://schemas.microsoft.com/office/word/2018/wordml"
-  xmlns:w16sdtdh="http://schemas.microsoft.com/office/word/2020/wordml/sdtdatahash"
-  xmlns:w16se="http://schemas.microsoft.com/office/word/2015/wordml/symex"
   xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup"
   xmlns:wpi="http://schemas.microsoft.com/office/word/2010/wordprocessingInk"
   xmlns:wne="http://schemas.microsoft.com/office/word/2006/wordml"
   xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"
-  mc:Ignorable="w14 w15 w16se w16cid w16 w16cex w16sdtdh wp14">
+  mc:Ignorable="w14 wp14">
   <w:body>
-${body}
+    ${body}
     <w:sectPr>
       <w:pgSz w:w="12240" w:h="15840"/>
-      <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/>
+      <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/>
     </w:sectPr>
   </w:body>
 </w:document>`;
 }
 
-// ─── Minimal DOCX package builder (ZIP via streams) ──────────────────────────
-// A .docx is a ZIP containing specific XML files. We build a minimal valid ZIP.
+// ─── Minimal DOCX ZIP builder (pure Deno — no external libs) ─────────────────
+// A .docx is a ZIP with specific XML files. We build it manually.
 
 function uint32LE(n: number): Uint8Array {
   const b = new Uint8Array(4);
@@ -236,259 +204,184 @@ function uint16LE(n: number): Uint8Array {
 }
 
 function crc32(data: Uint8Array): number {
-  const table = new Uint32Array(256);
+  let crc = 0xffffffff;
+  const table: number[] = [];
   for (let i = 0; i < 256; i++) {
     let c = i;
-    for (let j = 0; j < 8; j++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    for (let j = 0; j < 8; j++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
     table[i] = c;
   }
-  let crc = 0xFFFFFFFF;
   for (const byte of data) crc = table[(crc ^ byte) & 0xff] ^ (crc >>> 8);
-  return (crc ^ 0xFFFFFFFF) >>> 0;
+  return (crc ^ 0xffffffff) >>> 0;
 }
 
 function concat(...arrays: Uint8Array[]): Uint8Array {
-  const len = arrays.reduce((s, a) => s + a.length, 0);
-  const out = new Uint8Array(len);
+  const total = arrays.reduce((s, a) => s + a.length, 0);
+  const out = new Uint8Array(total);
   let offset = 0;
   for (const a of arrays) { out.set(a, offset); offset += a.length; }
   return out;
 }
 
-interface ZipEntry { name: string; data: Uint8Array; offset: number }
-
-function buildZip(files: Array<{ name: string; content: string }>): Uint8Array {
+function zipEntry(filename: string, content: Uint8Array, offset: number): { local: Uint8Array; central: Uint8Array } {
   const enc = new TextEncoder();
-  const entries: ZipEntry[] = [];
-  const localHeaders: Uint8Array[] = [];
+  const nameBytes = enc.encode(filename);
+  const crc = crc32(content);
+  const now = new Date();
+  const dosDate = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+  const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | Math.floor(now.getSeconds() / 2);
 
-  for (const file of files) {
-    const nameBytes = enc.encode(file.name);
-    const data = enc.encode(file.content);
-    const crc = crc32(data);
-    const offset = localHeaders.reduce((s, h) => s + h.length, 0);
+  const local = concat(
+    new Uint8Array([0x50, 0x4b, 0x03, 0x04]),
+    uint16LE(20), uint16LE(0), uint16LE(0),
+    uint16LE(dosTime), uint16LE(dosDate),
+    uint32LE(crc), uint32LE(content.length), uint32LE(content.length),
+    uint16LE(nameBytes.length), uint16LE(0),
+    nameBytes, content,
+  );
 
-    // Local file header
-    const local = concat(
-      new Uint8Array([0x50, 0x4B, 0x03, 0x04]), // signature
-      uint16LE(20),       // version needed
-      uint16LE(0),        // general purpose bit flag
-      uint16LE(0),        // compression method (stored)
-      uint16LE(0),        // last mod time
-      uint16LE(0),        // last mod date
-      uint32LE(crc),
-      uint32LE(data.length),
-      uint32LE(data.length),
-      uint16LE(nameBytes.length),
-      uint16LE(0),        // extra field length
-      nameBytes,
-      data,
-    );
+  const central = concat(
+    new Uint8Array([0x50, 0x4b, 0x01, 0x02]),
+    uint16LE(20), uint16LE(20), uint16LE(0), uint16LE(0),
+    uint16LE(dosTime), uint16LE(dosDate),
+    uint32LE(crc), uint32LE(content.length), uint32LE(content.length),
+    uint16LE(nameBytes.length), uint16LE(0), uint16LE(0), uint16LE(0), uint16LE(0),
+    uint32LE(0), uint32LE(offset),
+    nameBytes,
+  );
 
-    localHeaders.push(local);
-    entries.push({ name: file.name, data, offset });
+  return { local, central };
+}
+
+function buildDocxBytes(documentXml: string): Uint8Array {
+  const enc = new TextEncoder();
+
+  const files: Array<{ name: string; content: Uint8Array }> = [
+    { name: '[Content_Types].xml', content: enc.encode(
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`)
+    },
+    { name: '_rels/.rels', content: enc.encode(
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`)
+    },
+    { name: 'word/document.xml', content: enc.encode(documentXml) },
+    { name: 'word/_rels/document.xml.rels', content: enc.encode(
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>`)
+    },
+  ];
+
+  const locals: Uint8Array[] = [];
+  const centrals: Uint8Array[] = [];
+  let offset = 0;
+
+  for (const f of files) {
+    const { local, central } = zipEntry(f.name, f.content, offset);
+    locals.push(local);
+    centrals.push(central);
+    offset += local.length;
   }
 
-  // Central directory
-  const cdHeaders: Uint8Array[] = [];
-  let cdOffset = localHeaders.reduce((s, h) => s + h.length, 0);
-
-  for (const entry of entries) {
-    const nameBytes = enc.encode(entry.name);
-    const crc = crc32(entry.data);
-    const cd = concat(
-      new Uint8Array([0x50, 0x4B, 0x01, 0x02]),
-      uint16LE(20), uint16LE(20),
-      uint16LE(0), uint16LE(0),
-      uint16LE(0), uint16LE(0),
-      uint32LE(crc),
-      uint32LE(entry.data.length),
-      uint32LE(entry.data.length),
-      uint16LE(nameBytes.length),
-      uint16LE(0), uint16LE(0), uint16LE(0), uint16LE(0),
-      uint32LE(0),
-      uint32LE(entry.offset),
-      nameBytes,
-    );
-    cdHeaders.push(cd);
-  }
-
-  const cdSize = cdHeaders.reduce((s, h) => s + h.length, 0);
-
-  // End of central directory
+  const centralData = concat(...centrals);
   const eocd = concat(
-    new Uint8Array([0x50, 0x4B, 0x05, 0x06]),
+    new Uint8Array([0x50, 0x4b, 0x05, 0x06]),
     uint16LE(0), uint16LE(0),
-    uint16LE(entries.length), uint16LE(entries.length),
-    uint32LE(cdSize),
-    uint32LE(cdOffset),
+    uint16LE(files.length), uint16LE(files.length),
+    uint32LE(centralData.length), uint32LE(offset),
     uint16LE(0),
   );
 
-  return concat(...localHeaders, ...cdHeaders, eocd);
-}
-
-function buildDocx(data: ParsedJson, template: string): Uint8Array {
-  const documentXml = buildDocxXml(data, template);
-
-  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-  <Default Extension="xml" ContentType="application/xml"/>
-  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
-</Types>`;
-
-  const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
-</Relationships>`;
-
-  const wordRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-</Relationships>`;
-
-  const settings = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-  <w:defaultTabStop w:val="720"/>
-</w:settings>`;
-
-  return buildZip([
-    { name: '[Content_Types].xml', content: contentTypes },
-    { name: '_rels/.rels', content: rels },
-    { name: 'word/document.xml', content: documentXml },
-    { name: 'word/_rels/document.xml.rels', content: wordRels },
-    { name: 'word/settings.xml', content: settings },
-  ]);
+  return concat(...locals, centralData, eocd);
 }
 
 // ─── Plain-text PDF builder ───────────────────────────────────────────────────
-// Generates a simple text-based PDF (no graphics, ATS-safe)
+// Generates a minimal text-based PDF (not image-based — ATS-readable).
 
-function buildPdf(data: ParsedJson): Uint8Array {
-  const ci = data.contact_info || {};
-  const name = s(ci.name) || 'Your Name';
+function buildPdfBytes(data: ResumeData): Uint8Array {
+  const enc = new TextEncoder();
   const lines: string[] = [];
 
-  lines.push(name.toUpperCase());
-  const contact = [ci.email, ci.phone, ci.location, ci.linkedin].filter(Boolean).map(s).join(' | ');
+  const ci = data.contact_info || {};
+  lines.push(ci.name || '');
+  const contact = [ci.email, ci.phone, ci.location, ci.linkedin].filter(Boolean).join(' | ');
   if (contact) lines.push(contact);
   lines.push('');
 
-  if (data.summary) {
-    lines.push('PROFESSIONAL SUMMARY');
-    lines.push('-'.repeat(40));
-    lines.push(s(data.summary));
-    lines.push('');
-  }
-
-  const skills = (data.skills || []).map(s).filter(Boolean);
-  if (skills.length) {
-    lines.push('SKILLS');
-    lines.push('-'.repeat(40));
-    lines.push(skills.join(', '));
-    lines.push('');
-  }
-
-  const exp = data.work_experience || [];
-  if (exp.length) {
+  if (data.summary) { lines.push('PROFESSIONAL SUMMARY'); lines.push(data.summary); lines.push(''); }
+  if (data.skills?.length) { lines.push('SKILLS'); lines.push(data.skills.join(', ')); lines.push(''); }
+  if (data.work_experience?.length) {
     lines.push('WORK EXPERIENCE');
-    lines.push('-'.repeat(40));
-    for (const job of exp) {
-      const dates = [s(job.start_date), s(job.end_date)].filter(Boolean).join(' - ');
-      lines.push(`${s(job.title)} | ${s(job.company)} | ${dates}`);
-      if (job.location) lines.push(s(job.location));
-      for (const b of (job.bullets || [])) lines.push(`  - ${s(b)}`);
+    for (const j of data.work_experience) {
+      lines.push(`${j.title || ''} — ${j.company || ''}`);
+      if (j.start_date || j.end_date) lines.push(`${j.start_date || ''} – ${j.end_date || ''}`);
+      for (const b of (j.bullets || [])) lines.push(`• ${b}`);
       lines.push('');
     }
   }
-
-  const edu = data.education || [];
-  if (edu.length) {
+  if (data.education?.length) {
     lines.push('EDUCATION');
-    lines.push('-'.repeat(40));
-    for (const e of edu) {
-      const deg = [s(e.degree), s(e.field)].filter(Boolean).join(', ');
-      lines.push(`${s(e.institution)}${deg ? ' | ' + deg : ''}${e.graduation_date ? ' | ' + s(e.graduation_date) : ''}`);
+    for (const e of data.education) {
+      lines.push(e.institution || '');
+      lines.push([e.degree, e.field, e.graduation_date].filter(Boolean).join(', '));
+      lines.push('');
     }
+  }
+  if (data.certifications?.length) {
+    lines.push('CERTIFICATIONS');
+    for (const c of data.certifications) lines.push([c.name, c.issuer, c.date].filter(Boolean).join(' — '));
     lines.push('');
   }
 
-  const certs = data.certifications || [];
-  if (certs.length) {
-    lines.push('CERTIFICATIONS');
-    lines.push('-'.repeat(40));
-    for (const c of certs) {
-      lines.push([s(c.name), s(c.issuer), s(c.date)].filter(Boolean).join(' | '));
-    }
+  // Encode text for PDF (escape parens and backslash)
+  function pdfStr(s: string) { return s.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)'); }
+
+  // Build PDF objects
+  const objs: string[] = [];
+  objs.push(''); // obj 1 — catalog
+  objs.push(''); // obj 2 — pages
+  objs.push(''); // obj 3 — page
+  objs.push(''); // obj 4 — stream
+
+  const contentLines: string[] = ['BT', '/F1 11 Tf', '50 780 Td', '14 TL'];
+  for (const line of lines) {
+    const safe = pdfStr(line.slice(0, 200));
+    contentLines.push(`(${safe}) Tj T*`);
+  }
+  contentLines.push('ET');
+  const streamContent = contentLines.join('\n');
+  const streamBytes = enc.encode(streamContent);
+
+  const catalog = '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n';
+  const pages = '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n';
+  const page = '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n';
+  const stream = `4 0 obj\n<< /Length ${streamBytes.length} >>\nstream\n${streamContent}\nendstream\nendobj\n`;
+  const font = '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n';
+
+  const header = '%PDF-1.4\n';
+  const body = catalog + pages + page + stream + font;
+  const xrefPos = header.length + body.length;
+
+  // Compute offsets
+  const offsets: number[] = [];
+  let pos = header.length;
+  for (const obj of [catalog, pages, page, stream, font]) {
+    offsets.push(pos);
+    pos += enc.encode(obj).length;
   }
 
-  // Encode text to PDF streams
-  const enc = new TextEncoder();
-  const textContent = lines.join('\n');
-  // Escape PDF special chars
-  const pdfStr = textContent.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+  const xref = `xref\n0 6\n0000000000 65535 f \n${offsets.map(o => String(o).padStart(10, '0') + ' 00000 n ').join('\n')}\n`;
+  const trailer = `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefPos}\n%%EOF\n`;
 
-  const streamContent = `BT\n/F1 11 Tf\n12 TL\n50 750 Td\n${
-    lines.map(l => `(${l.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)')}) Tj T*`).join('\n')
-  }\nET`;
-
-  const streamBytes = enc.encode(streamContent);
-  const streamLen = streamBytes.length;
-
-  const pdf = `%PDF-1.4
-1 0 obj
-<< /Type /Catalog /Pages 2 0 R >>
-endobj
-
-2 0 obj
-<< /Type /Pages /Kids [3 0 R] /Count 1 >>
-endobj
-
-3 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792]
-   /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
-endobj
-
-4 0 obj
-<< /Length ${streamLen} >>
-stream
-${streamContent}
-endstream
-endobj
-
-5 0 obj
-<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
-endobj
-
-xref
-0 6
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000266 00000 n 
-0000000${String(400 + streamLen).padStart(9, '0')} 00000 n 
-
-trailer
-<< /Size 6 /Root 1 0 R >>
-startxref
-${500 + streamLen}
-%%EOF`;
-
-  return enc.encode(pdf);
+  return enc.encode(header + body + xref + trailer);
 }
 
 // ─── Main handler ─────────────────────────────────────────────────────────────
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   const sb = createClient(SB_URL, SB_SERVICE_KEY, { auth: { persistSession: false } });
 
-  // ── Auth ──
-  const token = (req.headers.get('Authorization') ?? '').replace('Bearer ', '');
+  const authHeader = req.headers.get('Authorization') ?? '';
+  const token = authHeader.replace('Bearer ', '');
   if (!token) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -502,19 +395,19 @@ serve(async (req) => {
     });
   }
 
+  const userId = user.id;
+
   try {
     const body = await req.json().catch(() => ({}));
     const { resume_id, template_id = 'modern' } = body;
 
     if (!resume_id) {
-      return new Response(JSON.stringify({ error: 'resume_id is required' }), {
+      return new Response(JSON.stringify({ error: 'resume_id is required.' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    const validTemplates = ['classic', 'modern', 'minimal'];
-    if (!validTemplates.includes(template_id)) {
-      return new Response(JSON.stringify({ error: `template_id must be one of: ${validTemplates.join(', ')}` }), {
+    if (!['classic', 'modern', 'minimal'].includes(template_id)) {
+      return new Response(JSON.stringify({ error: 'template_id must be classic, modern, or minimal.' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -524,31 +417,28 @@ serve(async (req) => {
       .from('resumes')
       .select('id, user_id, label, parsed_json')
       .eq('id', resume_id)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .maybeSingle();
 
     if (fetchErr || !resume) {
-      return new Response(JSON.stringify({ error: 'Resume not found' }), {
+      return new Response(JSON.stringify({ error: 'Resume not found.' }), {
         status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const parsedJson = resume.parsed_json as ParsedJson;
-    const ci = parsedJson?.contact_info || {};
+    const data = resume.parsed_json as ResumeData;
+    const name = (data?.contact_info?.name || 'Resume').replace(/[^a-zA-Z0-9_\- ]/g, '').trim() || 'Resume';
+    const nameParts = name.split(' ');
+    const fileBase = nameParts.length > 1
+      ? `${nameParts[0]}_${nameParts[nameParts.length - 1]}_Resume`
+      : `${name}_Resume`;
 
-    // ── Build filename ──
-    const nameParts = (s(ci.name) || 'Resume').split(/\s+/);
-    const first = nameParts[0] || 'Resume';
-    const last = nameParts.slice(1).join('_') || '';
-    const fileBase = last ? safeName(first, last) : first.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const filename = `${fileBase}_Resume`;
+    // ── Build .docx ──
+    const docxXml = buildDocxXml(data, template_id);
+    const docxBytes = buildDocxBytes(docxXml);
+    const docxKey = `${userId}/${resume_id}_${template_id}.docx`;
+    const docxFile = `${fileBase}_${template_id}.docx`;
 
-    const userId = user.id;
-    const ts = Date.now();
-
-    // ── Generate .docx ──
-    const docxBytes = buildDocx(parsedJson, template_id);
-    const docxKey = `${userId}/${ts}_${filename}.docx`;
     const { error: docxUploadErr } = await sb.storage
       .from('resumes')
       .upload(docxKey, docxBytes, {
@@ -557,58 +447,47 @@ serve(async (req) => {
       });
 
     if (docxUploadErr) {
-      console.error(JSON.stringify({ level: 'error', ef: 'resume-generate', userId, error: docxUploadErr.message }));
-      return new Response(JSON.stringify({ error: 'Failed to store generated document.' }), {
+      console.error(JSON.stringify({ level: 'error', ef: 'resume-generate', userId, error: 'DOCX upload failed', detail: docxUploadErr.message }));
+      return new Response(JSON.stringify({ error: 'Failed to generate .docx file.' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const { data: docxUrlData } = sb.storage.from('resumes').getPublicUrl(docxKey);
-    const docxUrl = docxUrlData?.publicUrl ?? null;
+    // ── Build .pdf ──
+    const pdfBytes = buildPdfBytes(data);
+    const pdfKey = `${userId}/${resume_id}_${template_id}.pdf`;
+    const pdfFile = `${fileBase}_${template_id}.pdf`;
 
-    // ── Generate plain-text PDF ──
-    const pdfBytes = buildPdf(parsedJson);
-    const pdfKey = `${userId}/${ts}_${filename}.pdf`;
     const { error: pdfUploadErr } = await sb.storage
       .from('resumes')
       .upload(pdfKey, pdfBytes, { contentType: 'application/pdf', upsert: true });
 
     if (pdfUploadErr) {
-      console.error(JSON.stringify({ level: 'error', ef: 'resume-generate', userId, error: pdfUploadErr.message }));
-      // Non-fatal: docx succeeded
+      console.error(JSON.stringify({ level: 'warn', ef: 'resume-generate', userId, error: 'PDF upload failed', detail: pdfUploadErr.message }));
+      // Non-fatal — still return docx
     }
-    const { data: pdfUrlData } = sb.storage.from('resumes').getPublicUrl(pdfKey);
-    const pdfUrl = !pdfUploadErr ? (pdfUrlData?.publicUrl ?? null) : null;
+
+    // ── Get signed URLs (60 min) ──
+    const { data: docxSigned } = await sb.storage.from('resumes').createSignedUrl(docxKey, 3600);
+    const { data: pdfSigned } = await sb.storage.from('resumes').createSignedUrl(pdfKey, 3600);
 
     // ── Update resumes row ──
-    const { error: updateErr } = await sb
-      .from('resumes')
-      .update({
-        template_id,
-        generated_docx_url: docxUrl,
-        generated_pdf_url: pdfUrl,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', resume_id)
-      .eq('user_id', userId);
-
-    if (updateErr) {
-      console.error(JSON.stringify({ level: 'error', ef: 'resume-generate', userId, error: updateErr.message }));
-      // Non-fatal — URLs already stored, return them anyway
-    }
+    await sb.from('resumes').update({
+      template_id,
+      generated_docx_url: docxSigned?.signedUrl ?? null,
+      generated_pdf_url: pdfSigned?.signedUrl ?? null,
+      updated_at: new Date().toISOString(),
+    }).eq('id', resume_id).eq('user_id', userId);
 
     return new Response(JSON.stringify({
-      docx_url: docxUrl,
-      pdf_url: pdfUrl,
-      filename: `${filename}.docx`,
-    }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+      docx_url: docxSigned?.signedUrl ?? null,
+      pdf_url: pdfSigned?.signedUrl ?? null,
+      filename: docxFile,
+    }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error(JSON.stringify({ level: 'error', ef: 'resume-generate', error: msg }));
+    console.error(JSON.stringify({ level: 'error', ef: 'resume-generate', userId, error: msg }));
     return new Response(JSON.stringify({ error: 'Unexpected error.' }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

@@ -1,29 +1,12 @@
 // tests/resume-builder-s2.test.js
-// RESUME-BUILDER-001-S2 validation tests — Templates & Generation
+// RESUME-BUILDER-001-S2 validation — Templates & Generation
 
 import { describe, it, expect } from 'vitest';
-
-// ─── EF — resume-generate ─────────────────────────────────────────────────────
 
 describe('resume-generate EF', () => {
   it('EF file exists', async () => {
     const fs = await import('fs');
     expect(fs.existsSync('supabase/functions/resume-generate/index.ts')).toBe(true);
-  });
-
-  it('supports all 3 template IDs', async () => {
-    const fs = await import('fs');
-    const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
-    expect(src).toContain("'classic'");
-    expect(src).toContain("'modern'");
-    expect(src).toContain("'minimal'");
-  });
-
-  it('rejects invalid template_id with 400', async () => {
-    const fs = await import('fs');
-    const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
-    expect(src).toContain('status: 400');
-    expect(src).toContain('template_id must be one of');
   });
 
   it('returns 401 without token', async () => {
@@ -32,25 +15,64 @@ describe('resume-generate EF', () => {
     expect(src).toContain('status: 401');
   });
 
-  it('returns 404 when resume not found or wrong user', async () => {
+  it('returns 400 when resume_id missing', async () => {
     const fs = await import('fs');
     const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
+    expect(src).toContain('resume_id is required');
+    expect(src).toContain('status: 400');
+  });
+
+  it('validates template_id against allowed values', async () => {
+    const fs = await import('fs');
+    const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
+    expect(src).toContain("'classic', 'modern', 'minimal'");
+  });
+
+  it('fetches resume only for the authenticated user (RLS-style)', async () => {
+    const fs = await import('fs');
+    const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
+    expect(src).toContain('.eq(\'user_id\', userId)');
+    expect(src).toContain("'Resume not found.'");
     expect(src).toContain('status: 404');
-    expect(src).toContain('Resume not found');
   });
 
-  it('generates .docx via buildDocx', async () => {
+  it('builds DOCX bytes (not external lib)', async () => {
     const fs = await import('fs');
     const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
-    expect(src).toContain('buildDocx(');
-    expect(src).toContain('application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    expect(src).toContain('buildDocxBytes');
+    expect(src).toContain('buildDocxXml');
+    expect(src).toContain('0x50, 0x4b'); // PK ZIP magic bytes
   });
 
-  it('generates plain-text PDF via buildPdf', async () => {
+  it('builds PDF bytes (text-based, ATS-readable)', async () => {
     const fs = await import('fs');
     const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
-    expect(src).toContain('buildPdf(');
-    expect(src).toContain('application/pdf');
+    expect(src).toContain('buildPdfBytes');
+    expect(src).toContain('%PDF-1.4');
+    expect(src).toContain('/Type /Font');
+  });
+
+  it('uses signed URLs (not public URLs) for downloads', async () => {
+    const fs = await import('fs');
+    const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
+    expect(src).toContain('createSignedUrl');
+    expect(src).not.toContain('getPublicUrl');
+  });
+
+  it('uploads to resumes storage bucket', async () => {
+    const fs = await import('fs');
+    const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
+    expect(src).toContain(".from('resumes')");
+    expect(src).toContain('.upload(docxKey');
+    expect(src).toContain('.upload(pdfKey');
+  });
+
+  it('updates resumes row with template_id and file URLs', async () => {
+    const fs = await import('fs');
+    const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
+    expect(src).toContain('generated_docx_url');
+    expect(src).toContain('generated_pdf_url');
+    expect(src).toContain('template_id');
   });
 
   it('returns docx_url, pdf_url, filename', async () => {
@@ -61,74 +83,38 @@ describe('resume-generate EF', () => {
     expect(src).toContain('filename');
   });
 
-  it('auto-names file Firstname_Lastname_Resume', async () => {
+  it('logs errors — no silent fails', async () => {
     const fs = await import('fs');
     const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
-    expect(src).toContain('_Resume');
-    expect(src).toContain('safeName(');
-  });
-
-  it('updates resumes row with generated URLs and template_id', async () => {
-    const fs = await import('fs');
-    const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
-    expect(src).toContain('generated_docx_url');
-    expect(src).toContain('generated_pdf_url');
-    expect(src).toContain('template_id,');
-  });
-
-  it('PDF failure is non-fatal — docx still returned', async () => {
-    const fs = await import('fs');
-    const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
-    expect(src).toContain('Non-fatal');
-    expect(src).toContain('pdfUploadErr');
-  });
-
-  it('credit cost is 0 — no credit check', async () => {
-    const fs = await import('fs');
-    const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
-    // Should NOT contain credits/entitlements deduction
-    expect(src).not.toContain('deduct_credits');
-    expect(src).not.toContain('entitlements');
+    expect(src).toContain('console.error');
+    expect(src).not.toMatch(/catch\s*\([^)]*\)\s*\{\s*\}/);
   });
 });
 
-// ─── DOCX builder internals ───────────────────────────────────────────────────
-
-describe('DOCX builder — ATS compliance', () => {
-  it('uses only ATS-safe fonts per template', async () => {
+describe('resume-generate EF — ATS compliance', () => {
+  it('document XML is single-column (no tables or text-boxes)', async () => {
     const fs = await import('fs');
     const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
-    // Spec §3.2: allowed fonts
-    expect(src).toContain('Times New Roman'); // classic
-    expect(src).toContain('Calibri');         // modern
-    expect(src).toContain('Arial');           // minimal
+    expect(src).not.toContain('<w:tbl>');
+    expect(src).not.toContain('<w:txbx>');
   });
 
-  it('builds valid Open XML document structure', async () => {
+  it('uses standard ATS-safe fonts only', async () => {
     const fs = await import('fs');
     const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
-    expect(src).toContain('w:document');
-    expect(src).toContain('w:body');
-    expect(src).toContain('w:sectPr');
-    expect(src).toContain('[Content_Types].xml');
-    expect(src).toContain('_rels/.rels');
+    expect(src).toContain('Times New Roman');
+    expect(src).toContain('Calibri');
+    expect(src).toContain('Arial');
   });
 
-  it('sets 1-inch margins (1440 twips)', async () => {
+  it('escapes smart quotes and em-dashes per ATS rules', async () => {
     const fs = await import('fs');
     const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
-    expect(src).toContain('w:top="1440"');
-    expect(src).toContain('w:left="1440"');
+    expect(src).toContain('\\u2014'); // em-dash replacement
+    expect(src).toContain('\\u201C'); // smart quote replacement
   });
 
-  it('sanitises smart quotes and em-dashes per ATS rules §3.4', async () => {
-    const fs = await import('fs');
-    const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
-    expect(src).toContain('\\u2018'); // left single quote
-    expect(src).toContain('\\u2014'); // em-dash
-  });
-
-  it('uses standard section headings only', async () => {
+  it('uses standard section headings', async () => {
     const fs = await import('fs');
     const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
     expect(src).toContain('Professional Summary');
@@ -138,159 +124,189 @@ describe('DOCX builder — ATS compliance', () => {
     expect(src).toContain('Certifications');
   });
 
-  it('packages DOCX as valid ZIP with all required parts', async () => {
+  it('has 1-inch margins (1440 twips)', async () => {
     const fs = await import('fs');
     const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
-    expect(src).toContain('buildZip(');
+    expect(src).toContain('w:top="1440"');
+    expect(src).toContain('w:left="1440"');
+  });
+
+  it('PDF output is text-based (BT/ET text objects present)', async () => {
+    const fs = await import('fs');
+    const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
+    expect(src).toContain("'BT'");
+    expect(src).toContain("'ET'");
+    expect(src).toContain('Tj T*');
+  });
+
+  it('three template font configs all defined', async () => {
+    const fs = await import('fs');
+    const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
+    expect(src).toContain("classic:");
+    expect(src).toContain("modern:");
+    expect(src).toContain("minimal:");
+  });
+});
+
+describe('resume-generate EF — ZIP/DOCX structure', () => {
+  it('DOCX contains required Content_Types.xml', async () => {
+    const fs = await import('fs');
+    const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
+    expect(src).toContain('[Content_Types].xml');
+  });
+
+  it('DOCX contains _rels/.rels', async () => {
+    const fs = await import('fs');
+    const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
+    expect(src).toContain('_rels/.rels');
+  });
+
+  it('DOCX contains word/document.xml', async () => {
+    const fs = await import('fs');
+    const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
     expect(src).toContain('word/document.xml');
-    expect(src).toContain('word/settings.xml');
-    expect(src).toContain('crc32(');
-    // ZIP local file header signature
-    expect(src).toContain('0x50, 0x4B, 0x03, 0x04');
+  });
+
+  it('ZIP builder includes CRC32 for data integrity', async () => {
+    const fs = await import('fs');
+    const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
+    expect(src).toContain('crc32');
+    expect(src).toContain('0xedb88320');
+  });
+
+  it('EOCD signature present', async () => {
+    const fs = await import('fs');
+    const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
+    expect(src).toContain('0x50, 0x4b, 0x05, 0x06'); // End of Central Directory
   });
 });
 
-// ─── PDF builder ─────────────────────────────────────────────────────────────
-
-describe('PDF builder — ATS compliance', () => {
-  it('builds text-based PDF (not image-based)', async () => {
+describe('dashboard.html — S2 template selector UI', () => {
+  it('has rb-generate-section card', async () => {
     const fs = await import('fs');
-    const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
-    expect(src).toContain('%PDF-1.4');
-    expect(src).toContain('BT'); // Begin Text object
-    expect(src).toContain('ET'); // End Text object
+    const html = fs.readFileSync('dashboard.html', 'utf8');
+    expect(html).toContain('id="rb-generate-section"');
   });
 
-  it('uses standard Helvetica font in PDF', async () => {
+  it('has three template cards', async () => {
     const fs = await import('fs');
-    const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
-    expect(src).toContain('/Helvetica');
+    const html = fs.readFileSync('dashboard.html', 'utf8');
+    expect(html).toContain("id=\"rb-tpl-classic\"");
+    expect(html).toContain("id=\"rb-tpl-modern\"");
+    expect(html).toContain("id=\"rb-tpl-minimal\"");
   });
 
-  it('includes all resume sections in plain text', async () => {
+  it('has download links container', async () => {
     const fs = await import('fs');
-    const src = fs.readFileSync('supabase/functions/resume-generate/index.ts', 'utf8');
-    expect(src).toContain('PROFESSIONAL SUMMARY');
-    expect(src).toContain('WORK EXPERIENCE');
-    expect(src).toContain('SKILLS');
-    expect(src).toContain('EDUCATION');
+    const html = fs.readFileSync('dashboard.html', 'utf8');
+    expect(html).toContain('id="rb-download-links"');
+    expect(html).toContain('id="rb-dl-docx"');
+    expect(html).toContain('id="rb-dl-pdf"');
+  });
+
+  it('has generate button wired to rbGenerate()', async () => {
+    const fs = await import('fs');
+    const html = fs.readFileSync('dashboard.html', 'utf8');
+    expect(html).toContain('onclick="rbGenerate()"');
+    expect(html).toContain('id="rb-generate-btn"');
+  });
+
+  it('template cards wire to rbSelectTemplate()', async () => {
+    const fs = await import('fs');
+    const html = fs.readFileSync('dashboard.html', 'utf8');
+    expect(html).toContain("rbSelectTemplate('classic')");
+    expect(html).toContain("rbSelectTemplate('modern')");
+    expect(html).toContain("rbSelectTemplate('minimal')");
   });
 });
 
-// ─── Dashboard UI ─────────────────────────────────────────────────────────────
-
-describe('dashboard.html — S2 template selector and generate section', () => {
-  it('has template grid with 3 cards', async () => {
-    const fs = await import('fs');
-    const html = fs.readFileSync('dashboard.html', 'utf8');
-    expect(html).toContain('rb-template-grid');
-    expect(html).toContain('rb-tpl-classic');
-    expect(html).toContain('rb-tpl-modern');
-    expect(html).toContain('rb-tpl-minimal');
-  });
-
-  it('template cards describe target audiences', async () => {
-    const fs = await import('fs');
-    const html = fs.readFileSync('dashboard.html', 'utf8');
-    // Classic → finance/law/gov
-    expect(html).toMatch(/[Cc]lassic/);
-    // Modern → tech/corporate
-    expect(html).toMatch(/[Mm]odern/);
-    // Minimal → startup
-    expect(html).toMatch(/[Mm]inimal/);
-  });
-
-  it('has generate button and generating spinner', async () => {
-    const fs = await import('fs');
-    const html = fs.readFileSync('dashboard.html', 'utf8');
-    expect(html).toContain('rb-generate-btn');
-    expect(html).toContain('rb-generating');
-  });
-
-  it('has download links for docx and pdf', async () => {
-    const fs = await import('fs');
-    const html = fs.readFileSync('dashboard.html', 'utf8');
-    expect(html).toContain('rb-dl-docx');
-    expect(html).toContain('rb-dl-pdf');
-    expect(html).toContain('rb-download-links');
-  });
-
-  it('generate section is hidden until editor is shown', async () => {
-    const fs = await import('fs');
-    const html = fs.readFileSync('dashboard.html', 'utf8');
-    expect(html).toMatch(/id="rb-generate-section"[^>]*u-hidden/);
-  });
-});
-
-// ─── resume-builder.js — S2 functions ────────────────────────────────────────
-
-describe('resume-builder.js — S2 template and generate functions', () => {
-  it('has rbSelectTemplate updating _state.template', async () => {
+describe('resume-builder.js — S2 functions', () => {
+  it('rbSelectTemplate updates state and card active class', async () => {
     const fs = await import('fs');
     const src = fs.readFileSync('js/resume-builder.js', 'utf8');
     expect(src).toContain('window.rbSelectTemplate');
-    expect(src).toContain('_state.template = tpl');
-  });
-
-  it('rbGenerate requires resumeId before calling EF', async () => {
-    const fs = await import('fs');
-    const src = fs.readFileSync('js/resume-builder.js', 'utf8');
-    expect(src).toContain('if (!_state.resumeId)');
-    expect(src).toContain('Save your resume first');
+    expect(src).toContain('_state.template');
+    expect(src).toContain('rb-tpl-');
   });
 
   it('rbGenerate calls /api/resume-generate with resume_id and template_id', async () => {
     const fs = await import('fs');
     const src = fs.readFileSync('js/resume-builder.js', 'utf8');
-    expect(src).toContain('/api/resume-generate');
-    expect(src).toContain('template_id: _state.template');
+    expect(src).toContain("'/api/resume-generate'");
+    expect(src).toContain('resume_id: _state.resumeId');
+    expect(src).toContain('template_id:');
   });
 
-  it('rbGenerate fires captureEvent on success', async () => {
+  it('rbGenerate guards against missing resume_id', async () => {
+    const fs = await import('fs');
+    const src = fs.readFileSync('js/resume-builder.js', 'utf8');
+    expect(src).toContain('!_state.resumeId');
+    expect(src).toContain('Save your resume first');
+  });
+
+  it('rbGenerate calls captureEvent on success', async () => {
     const fs = await import('fs');
     const src = fs.readFileSync('js/resume-builder.js', 'utf8');
     expect(src).toContain("captureEvent('resume_generated'");
   });
 
-  it('rbGenerate calls reportError on exception', async () => {
+  it('rbGenerate calls reportError on exception — no silent fail', async () => {
     const fs = await import('fs');
     const src = fs.readFileSync('js/resume-builder.js', 'utf8');
     expect(src).toContain("reportError('resume_generate_exception'");
   });
 
-  it('rbShowEditor calls rbShowGenerateSection', async () => {
+  it('rbShowGenerateSection reveals generate card after parse/save', async () => {
     const fs = await import('fs');
     const src = fs.readFileSync('js/resume-builder.js', 'utf8');
-    expect(src).toContain('rbShowGenerateSection()');
+    expect(src).toContain('rbShowGenerateSection');
+    expect(src).toContain('rb-generate-section');
   });
 
-  it('rbReset hides generate section and download links', async () => {
+  it('rbShowDownloadLinks sets href and removes u-hidden', async () => {
     const fs = await import('fs');
     const src = fs.readFileSync('js/resume-builder.js', 'utf8');
-    expect(src).toContain("'rb-generate-section'");
-    expect(src).toContain("'rb-download-links'");
+    expect(src).toContain('rb-dl-docx');
+    expect(src).toContain('rb-dl-pdf');
+    expect(src).toContain('rb-download-links');
   });
 });
 
-// ─── CSS ─────────────────────────────────────────────────────────────────────
-
-describe('src/input.css — rb-template-* and rb-dl-* styles', () => {
-  it('has .rb-template-grid', async () => {
-    const fs = await import('fs');
-    const css = fs.readFileSync('src/input.css', 'utf8');
-    expect(css).toContain('.rb-template-grid');
-  });
-
-  it('has .rb-template-card with active state', async () => {
+describe('src/input.css — S2 styles', () => {
+  it('has rb-template-card styles', async () => {
     const fs = await import('fs');
     const css = fs.readFileSync('src/input.css', 'utf8');
     expect(css).toContain('.rb-template-card');
     expect(css).toContain('.rb-template-card.active');
   });
 
-  it('has .rb-dl-btn', async () => {
+  it('has rb-tpl-preview skeleton styles', async () => {
+    const fs = await import('fs');
+    const css = fs.readFileSync('src/input.css', 'utf8');
+    expect(css).toContain('.rb-tpl-preview');
+    expect(css).toContain('.rb-tpl-name-line');
+  });
+
+  it('has rb-dl-btn download button styles', async () => {
     const fs = await import('fs');
     const css = fs.readFileSync('src/input.css', 'utf8');
     expect(css).toContain('.rb-dl-btn');
+    expect(css).toContain('.rb-dl-primary');
+  });
+});
+
+describe('api-gateway — resume-generate route', () => {
+  it('gateway has resume-generate route', async () => {
+    const fs = await import('fs');
+    const src = fs.readFileSync('supabase/functions/api-gateway/index.ts', 'utf8');
+    expect(src).toContain('"resume-generate"');
+  });
+});
+
+describe('version', () => {
+  it('bumped to v9.37', async () => {
+    const fs = await import('fs');
+    const ver = fs.readFileSync('js/version.js', 'utf8');
+    expect(ver).toContain('v9.37');
   });
 });

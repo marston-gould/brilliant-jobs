@@ -1,11 +1,24 @@
 ## v9.37 RESUME-BUILDER-001-S2: Templates & Generation (2026-03-15)
+- resume-generate EF: pure-TS DOCX builder (ZIP+OOXML, CRC32, no external libs), text-based PDF builder, 3 ATS templates (Classic/Modern/Minimal), signed URLs (60min), updates resumes row. 401/403/404/500 error surfaces.
+- ATS compliance: single-column, standard fonts (Times/Calibri/Arial), 1-inch margins, standard section headings, smart-quote/em-dash stripping, no tables or text-boxes.
+- All S2 JS pre-built: rbSelectTemplate, rbGenerate, rbShowGenerateSection, rbShowDownloadLinks, rbSetGenerating.
+- All S2 HTML+CSS pre-built: template grid with mini previews, generate/download card, rb-dl-btn, rb-tpl-* skeleton previews.
+- Duplicate CSS block removed from src/input.css.
+- 41 tests. v9.37.
+
+## v9.37 RESUME-BUILDER-001-S2: Templates & Generation (2026-03-15)
 - resume-generate EF: server-side DOCX generation (pure Open XML ZIP, no libraries). 3 ATS-compliant templates (Classic/Times New Roman, Modern/Calibri, Minimal/Arial). 1-inch margins, standard headings, smart-quote/em-dash sanitisation §3.4. Plain-text PDF fallback. Auto-filename Firstname_Lastname_Resume. Updates resumes row with generated_docx_url/generated_pdf_url/template_id. 0 credits.
 - dashboard.html: template selector grid (3 cards), generate button, generating spinner, download links (docx + pdf).
 - resume-builder.js: rbSelectTemplate, rbGenerate, rbSetGenerating, rbShowDownloadLinks, rbShowGenerateSection wired to rbShowEditor.
 - 36 tests. v9.37.
 
-## v9.37 Session NN: TITLE (2026-03-15)
-- DESCRIBE CHANGES HERE
+## v9.37 RESUME-BUILDER-001-S2: Templates & Generation (2026-03-15)
+- resume-generate EF: pure-TS DOCX builder (ZIP+OOXML, CRC32, no external libs), text-based PDF builder, 3 ATS templates (Classic/Modern/Minimal), signed URLs (60min), updates resumes row. 401/403/404/500 error surfaces.
+- ATS compliance: single-column, standard fonts (Times/Calibri/Arial), 1-inch margins, standard section headings, smart-quote/em-dash stripping, no tables or text-boxes.
+- All S2 JS pre-built: rbSelectTemplate, rbGenerate, rbShowGenerateSection, rbShowDownloadLinks, rbSetGenerating.
+- All S2 HTML+CSS pre-built: template grid with mini previews, generate/download card, rb-dl-btn, rb-tpl-* skeleton previews.
+- Duplicate CSS block removed from src/input.css.
+- 41 tests. v9.37.
 
 ## v9.36 RESUME-BUILDER-001-S1: Upload, Parse, Store (2026-03-15)
 - resume-parse EF: multipart upload (PDF/DOCX) + paste-text + JSON update paths. Anthropic Haiku extraction, plan limit enforcement (Free=1/Starter=3/Pro=10), ATS warning detection (tables, multi-column, non-standard headings), Storage upload to resumes/{user_id}/. 401/403/422/502 error surfaces. anthropicFetch circuit breaker.
