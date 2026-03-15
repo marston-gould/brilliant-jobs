@@ -490,8 +490,11 @@
               <input type="checkbox" class="cv-toggle" id="cv-settings-add-keywords" checked>
             </div>
             <div class="cv-toggle-row">
-              <span class="cv-toggle-label">Keep resume to one page</span>
-              <input type="checkbox" class="cv-toggle" id="cv-settings-keep-one-page" checked>
+              <span class="cv-toggle-label">Resume page limit</span>
+              <select id="cv-settings-page-limit" style="background:var(--bg-input,#27272a);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;">
+                <option value="1" selected>1 page (default)</option>
+                <option value="2">2 pages</option>
+              </select>
             </div>
           </div>
           <!-- Active Resume -->

@@ -52,7 +52,41 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**EXT-BUILD-001-S3** — CI Gate + Release Process + build-extension.js Three-Mode
+**EXT-BUILD-001-B5** — Resume Page Limit + Generic Heuristic Scraper
+- Completed: 2026-03-15
+- Product version bumped: `v9.30` → `v9.31`
+- ROADMAP.md updated: EXT-BUILD-001-B5 → ✅
+- roadmap.html updated: EXT-BUILD-001-B5 → `s: 'done'`, p: 100
+- **B5 — Resume page_limit default 1 page:**
+  - `extension/popup.html`: Replaced "Keep resume to one page" checkbox with `<select id="cv-settings-page-limit">` — options: "1 page (default)" / "2 pages".
+  - `extension/popup-consumer.ts`: `_loadRewritePreferences()` reads `page_limit` with migration from boolean `keepOnePage` (false→2, true/default→1). `_saveRewritePreferences()` stores both `page_limit` (new) and `keepOnePage` (backward compat). Settings listener updated to `cv-settings-page-limit`.
+  - `js/rewrite.js`: `_rwGetPageLimit()` helper reads from `bj_apply_settings.rewrite_preferences.page_limit`, defaults to 1. Passed in both `rewrite-resume-analyze` and `rewrite-resume-execute` request bodies.
+  - `extension/background.ts`: `_rewriteResumeForJob()` passes `page_limit` from `rewritePreferences` to rewrite EF, with `keepOnePage` fallback.
+  - `supabase/functions/rewrite-resume-extension/index.ts`: Extracts `page_limit` from request, defaults to 1. REWRITE_SYSTEM prompt gains Rule 8: "PAGE CONSTRAINT: The rewritten resume MUST fit within the specified page limit. If 1 page, ~500 words / ~3000 chars. If 2 pages, ~1000 words / ~6000 chars." User prompt includes `<page_constraint>` block with `effectivePageLimit`. EF deployed.
+- **Generic heuristic scraper fallback:**
+  - `extension/job-site-overlay.ts`: Removed early return on unrecognized sites. When `currentSite` is null, creates a generic fallback entry with: heuristic apply button selectors (`a[href*="apply"]`, `button[class*="apply"]`, `[data-testid*="apply"]`, etc.), title selectors (OG meta `og:title`, `h1`, `[class*="jobTitle"]`), company selectors (OG `og:site_name`, `[itemprop="hiringOrganization"]`), location selectors (`[itemprop="jobLocation"]`, `[class*="location"]`). Save button target uses broad selectors (`[role="main"]`, `main`, `article`, `.job-description`).
+  - `parseJobMeta()` enhanced: reads `content` attribute from `<meta>` tags (not just textContent). Adds JSON-LD structured data fallback for generic sites — parses `<script type="application/ld+json">` for `JobPosting` schema, extracts title, company (hiringOrganization.name), location (jobLocation.address). Non-fatal try/catch.
+  - Save + Scan buttons now appear on ANY job listing page on the internet. Known sites get optimized selectors; unknown sites get heuristic detection.
+- **Skipped Items:** None. All 6 known bugs (B1-B6) resolved.
+- **Modified:**
+  - `extension/popup.html` — B5 page_limit select
+  - `extension/popup-consumer.ts` — B5 page_limit load/save/listener
+  - `js/rewrite.js` — B5 _rwGetPageLimit + pass in analyze/execute
+  - `extension/background.ts` — B5 page_limit in rewrite EF call
+  - `supabase/functions/rewrite-resume-extension/index.ts` — B5 page constraint prompt
+  - `extension/job-site-overlay.ts` — generic fallback + parseJobMeta OG/JSON-LD
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `dist/admin.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — EXT-BUILD-001-B5 → ✅
+  - `roadmap.html` — EXT-BUILD-001-B5 → done/100
+- **Created:**
+  - `tests/ext-build-001-b5-generic-scraper.test.js` — 34 validation tests
+- **Tests:** 34 validation tests (all passing)
+- **Deployed:** rewrite-resume-extension EF. 69 extension files re-uploaded.
+
+**Previous: EXT-BUILD-001-S3** — CI Gate + Release Process + build-extension.js Three-Mode
 - Completed: 2026-03-15
 - Product version bumped: `v9.29` → `v9.30`
 - ROADMAP.md updated: EXT-BUILD-001-S3 → ✅
@@ -3591,12 +3625,10 @@ Deliverables:
 
 ## Next Session
 
-**EXT-BUILD-001 COMPLETE.** All 3 sessions done.
+**EXT-BUILD-001 FULLY COMPLETE.** All 3 sessions + all 6 bugs (B1-B6) done. Generic heuristic scraper live.
 
 Potential next workstreams:
-- B5 (resume default 1 page) — feature enhancement, separate session
-- 59-site optimized selector rollout (Phase A–D from spec)
-- Generic heuristic scraper fallback for unknown sites
+- 59-site optimized selector rollout (Phase A–D from spec): Tier 1 (LinkedIn+Indeed+Glassdoor), Tier 2 (11 major boards), Tier 3 (34 niche/diversity), Tier 4 (11 ATS browse-page injection)
 - Wire remaining 21 Anthropic-calling EFs to withAnthropicBreaker
 - CASA-001: Google CASA assessment + gmail.readonly upgrade
 - Any new feature work
@@ -3630,7 +3662,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.30`** | **EXT-BUILD-001-S3: CI gate + release process + three-mode. EXT-BUILD-001 COMPLETE.** |
+| **Product (BJ_VERSION)** | **`v9.31`** | **EXT-BUILD-001-B5: page_limit + generic scraper. All 6 bugs resolved.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

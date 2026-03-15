@@ -35,6 +35,16 @@ function _rwReset() {
   };
 }
 
+// EXT-BUILD-001 B5: Read page_limit preference (1 or 2, default 1)
+function _rwGetPageLimit() {
+  try {
+    var settings = JSON.parse(localStorage.getItem('bj_apply_settings') || '{}');
+    var rewritePrefs = settings.rewrite_preferences || {};
+    if (rewritePrefs.page_limit === 2) return 2;
+  } catch (_) {}
+  return 1;
+}
+
 // ════════════════════════════════════════════════════════════
 // PANEL OPEN / CLOSE
 // ════════════════════════════════════════════════════════════
@@ -134,6 +144,7 @@ async function _rwStartAnalysis() {
         resume_id: _rwState.resumeId,
         job_id: _rwState.jobId,
         original_score: _rwState.originalScore,
+        page_limit: _rwGetPageLimit(),
       }),
     });
 
@@ -228,6 +239,7 @@ async function _rwStartRewrite(feedback) {
         session_id: _rwState.sessionId,
         user_answers: _rwState.userAnswers,
         feedback: feedback || null,
+        page_limit: _rwGetPageLimit(),
       }),
     });
 

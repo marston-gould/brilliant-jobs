@@ -1711,6 +1711,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         gaps: scoreData.gaps || scoreData.gap_analysis || [],
         current_score: scoreData.score || 0,
         preferences: preferences,
+        page_limit: preferences?.page_limit || (preferences?.keepOnePage === false ? 2 : 1),
       }),
     }, { timeout: 60000, retries: 0 });
 

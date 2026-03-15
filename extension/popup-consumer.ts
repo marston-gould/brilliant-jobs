@@ -518,24 +518,30 @@ async function _loadSettingsPageData(): Promise<void> {
 async function _loadRewritePreferences(): Promise<void> {
   try {
     const stored = await chrome.storage.local.get('rewritePreferences');
-    const prefs = stored.rewritePreferences || { preserveTone: true, addKeywords: true, keepOnePage: true };
+    const prefs = stored.rewritePreferences || { preserveTone: true, addKeywords: true, keepOnePage: true, page_limit: 1 };
 
     const preserveTone = document.getElementById('cv-settings-preserve-tone') as HTMLInputElement | null;
     const addKeywords = document.getElementById('cv-settings-add-keywords') as HTMLInputElement | null;
-    const keepOnePage = document.getElementById('cv-settings-keep-one-page') as HTMLInputElement | null;
+    const pageLimit = document.getElementById('cv-settings-page-limit') as HTMLSelectElement | null;
 
     if (preserveTone) preserveTone.checked = prefs.preserveTone !== false;
     if (addKeywords) addKeywords.checked = prefs.addKeywords !== false;
-    if (keepOnePage) keepOnePage.checked = prefs.keepOnePage !== false;
+    // B5: page_limit — migrate from boolean keepOnePage to numeric page_limit
+    if (pageLimit) {
+      const limit = prefs.page_limit || (prefs.keepOnePage === false ? 2 : 1);
+      pageLimit.value = String(limit);
+    }
   } catch {}
 }
 
 async function _saveRewritePreferences(): Promise<void> {
   const preserveTone = (document.getElementById('cv-settings-preserve-tone') as HTMLInputElement | null)?.checked ?? true;
   const addKeywords = (document.getElementById('cv-settings-add-keywords') as HTMLInputElement | null)?.checked ?? true;
-  const keepOnePage = (document.getElementById('cv-settings-keep-one-page') as HTMLInputElement | null)?.checked ?? true;
+  const pageLimitEl = document.getElementById('cv-settings-page-limit') as HTMLSelectElement | null;
+  const page_limit = pageLimitEl ? parseInt(pageLimitEl.value, 10) || 1 : 1;
 
-  const prefs = { preserveTone, addKeywords, keepOnePage };
+  // B5: Store both page_limit (new) and keepOnePage (backward compat)
+  const prefs = { preserveTone, addKeywords, keepOnePage: page_limit === 1, page_limit };
   await chrome.storage.local.set({ rewritePreferences: prefs });
 
   // Sync to Supabase via background
@@ -624,8 +630,8 @@ async function _loadSettingsEEOC(): Promise<void> {
 }
 
 function _initSettingsListeners(): void {
-  // Rewrite preference toggles
-  ['cv-settings-preserve-tone', 'cv-settings-add-keywords', 'cv-settings-keep-one-page'].forEach(id => {
+  // Rewrite preference toggles + B5 page_limit select
+  ['cv-settings-preserve-tone', 'cv-settings-add-keywords', 'cv-settings-page-limit'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('change', () => _saveRewritePreferences());
   });

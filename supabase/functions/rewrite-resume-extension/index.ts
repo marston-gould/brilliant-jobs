@@ -78,6 +78,7 @@ RULES:
 5. Improve bullet points to emphasize transferable skills matching gaps.
 6. Keep the same length — don't add sections the original doesn't have.
 7. Use plain, strong verbs. Avoid: "leveraged", "spearheaded", "synergized", "cutting-edge".
+8. PAGE CONSTRAINT: The rewritten resume MUST fit within the specified page limit. If the limit is 1 page, aggressively trim low-relevance content to stay under ~500 words / ~3000 characters. If 2 pages, stay under ~1000 words / ~6000 characters. Prioritize the most relevant experience for the target role.
 
 OUTPUT FORMAT: Return ONLY valid JSON with these fields:
 {
@@ -122,7 +123,11 @@ serve(async (req) => {
       gaps,
       current_score,
       preferences,
+      page_limit,
     } = body;
+
+    // B5: page_limit — 1 (default) or 2
+    const effectivePageLimit = (page_limit === 2) ? 2 : 1;
 
     if (!resume_text || !job_description_text) {
       return json({ error: 'Missing required fields: resume_text, job_description_text' }, 400);
@@ -193,6 +198,10 @@ Current Match Score: ${current_score || 'N/A'}/100
 </identified_gaps>
 
 ${prefText}
+
+<page_constraint>
+Page limit: ${effectivePageLimit} page(s). The rewritten resume MUST NOT exceed this length.
+</page_constraint>
 
 Rewrite the resume to address the identified gaps while keeping the candidate's authentic voice. Return ONLY the JSON object.`;
 

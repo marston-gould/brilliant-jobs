@@ -161,7 +161,51 @@
       break;
     }
   }
-  if (!currentSite) return; // Not a recognized job page — bail
+  // EXT-BUILD-001: Generic heuristic fallback for unknown job sites.
+  // If no known site matches, create a generic entry with heuristic selectors.
+  // Save + Scan buttons should appear on ANY job listing page.
+  if (!currentSite) {
+    currentSite = {
+      platform: 'generic',
+      urlPattern: /.*/,
+      hostPattern: /.*/,
+      applyButtonSelectors: [
+        // Common apply button patterns across job sites
+        'a[href*="apply"]', 'button[class*="apply"]', 'a[class*="apply"]',
+        'button:has(> span)', // Many sites wrap button text in spans
+        '[data-action="apply"]', '[data-testid*="apply"]',
+        'input[type="submit"][value*="Apply" i]',
+        'button[type="submit"]',
+      ],
+      saveButtonTarget: {
+        position: 'before' as const,
+        // Heuristic: inject near the first apply-like button or main content area
+        selector: 'a[href*="apply"], button[class*="apply"], [role="main"], main, article, .job-description, .job-details, #content',
+      },
+      jobMetaSelectors: {
+        title: [
+          // Structured data first
+          '[property="og:title"]',
+          // Common heading patterns
+          'h1', '.job-title', '.posting-headline h2', '[data-testid="job-title"]',
+          '[class*="jobTitle"]', '[class*="job-title"]', '[class*="JobTitle"]',
+        ],
+        company: [
+          // Structured data
+          '[property="og:site_name"]',
+          // Common patterns
+          '.company-name', '[data-testid="company-name"]',
+          '[class*="companyName"]', '[class*="company-name"]', '[class*="CompanyName"]',
+          '[itemprop="hiringOrganization"] [itemprop="name"]',
+          '.employer-name', '.org-name',
+        ],
+        location: [
+          '[class*="location"]', '[class*="Location"]', '[data-testid*="location"]',
+          '[itemprop="jobLocation"]', '.job-location',
+        ],
+      },
+    };
+  }
 
   // ── Application mode state ────────────────────────────────────
   var _applicationMode = 'manual';
@@ -240,19 +284,44 @@
     var ms = currentSite.jobMetaSelectors;
     if (ms.title) {
       var titleEl = qFallback(ms.title);
-      if (titleEl) meta.title = titleEl.textContent.trim();
+      if (titleEl) {
+        // OG meta tags use content attribute, not textContent
+        meta.title = titleEl.getAttribute('content') || titleEl.textContent.trim();
+      }
     }
     if (ms.company) {
       var compEl = qFallback(ms.company);
-      if (compEl) meta.company = compEl.textContent.trim();
+      if (compEl) {
+        meta.company = compEl.getAttribute('content') || compEl.textContent.trim();
+      }
     }
     if (ms.location) {
       var locEl = qFallback(ms.location);
-      if (locEl) meta.location = locEl.textContent.trim();
+      if (locEl) {
+        meta.location = locEl.getAttribute('content') || locEl.textContent.trim();
+      }
     }
     // Fallback: use document title
     if (!meta.title) {
       meta.title = document.title.split(' - ')[0].split(' | ')[0].trim();
+    }
+    // Generic fallback: try JSON-LD structured data
+    if (currentSite.platform === 'generic' && (!meta.title || !meta.company)) {
+      try {
+        var ldScripts = document.querySelectorAll('script[type="application/ld+json"]');
+        for (var s = 0; s < ldScripts.length; s++) {
+          var ld = JSON.parse(ldScripts[s].textContent || '{}');
+          if (ld['@type'] === 'JobPosting') {
+            if (!meta.title && ld.title) meta.title = ld.title;
+            if (!meta.company && ld.hiringOrganization?.name) meta.company = ld.hiringOrganization.name;
+            if (!meta.location && ld.jobLocation?.address?.addressLocality) {
+              meta.location = ld.jobLocation.address.addressLocality;
+              if (ld.jobLocation.address.addressRegion) meta.location += ', ' + ld.jobLocation.address.addressRegion;
+            }
+            break;
+          }
+        }
+      } catch (_) { /* JSON-LD parse failure — non-fatal */ }
     }
     return meta;
   }
