@@ -7,7 +7,9 @@ var TIER_GATES = {
   level_fit: { free: false, starter: true, pro: true },
   pipeline_stats: { free: false, starter: "basic", pro: "full" },
   job_log: { free: false, starter: 10, pro: Infinity },
-  ai_scoring: { free: false, starter: false, pro: true }
+  ai_scoring: { free: false, starter: false, pro: true },
+  // AIS-F3-S1: Auto-apply daily submit limit (Free=0 blocked, Starter=5/day, Pro=unlimited)
+  auto_apply_daily: { free: 0, starter: 5, pro: Infinity }
 };
 function getUserTier() {
   if (typeof _userPricing !== "undefined" && _userPricing && _userPricing.tier) {
@@ -106,6 +108,58 @@ window.canAccessFeature = canAccess;
 window.getUserTier = getUserTier;
 window.isPaylUser = isPaylUser;
 window.requiredTierFor = requiredTier;
+const _AUTO_APPLY_STORAGE_KEY = "bj_auto_apply_daily";
+function _getAutoApplyDailyRecord() {
+  try {
+    const raw = localStorage.getItem(_AUTO_APPLY_STORAGE_KEY);
+    if (!raw) return { date: "", count: 0 };
+    const rec = JSON.parse(raw);
+    const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+    if (rec.date !== today) return { date: today, count: 0 };
+    return rec;
+  } catch (e) {
+    return { date: (/* @__PURE__ */ new Date()).toISOString().slice(0, 10), count: 0 };
+  }
+}
+function getAutoApplyDailyLimit() {
+  const tier = getUserTier();
+  const gate = TIER_GATES.auto_apply_daily;
+  const val = gate[tier];
+  if (val === void 0) return 0;
+  return val;
+}
+function getAutoApplyDailyRemaining() {
+  const limit = getAutoApplyDailyLimit();
+  if (limit === 0) return 0;
+  if (limit === Infinity) return Infinity;
+  const rec = _getAutoApplyDailyRecord();
+  return Math.max(0, limit - rec.count);
+}
+function incrementAutoApplyDailyCount() {
+  try {
+    const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+    const rec = _getAutoApplyDailyRecord();
+    rec.date = today;
+    rec.count = (rec.count || 0) + 1;
+    localStorage.setItem(_AUTO_APPLY_STORAGE_KEY, JSON.stringify(rec));
+  } catch (e) {
+    /* non-fatal: localStorage unavailable in private browsing — limit tracking degrades gracefully */
+  }
+  var tier = getUserTier();
+  var limit = getAutoApplyDailyLimit();
+  if (limit === 0) {
+    return { allowed: false, tier: tier, limit: 0, remaining: 0, requiresTier: 'starter' };
+  }
+  var remaining = getAutoApplyDailyRemaining();
+  if (remaining === 0) {
+    return { allowed: false, tier: tier, limit: limit, remaining: 0, requiresTier: tier === 'starter' ? 'pro' : 'starter' };
+  }
+  return { allowed: true, tier: tier, limit: limit, remaining: remaining, requiresTier: null };
+}
+window.getAutoApplyDailyLimit = getAutoApplyDailyLimit;
+window.getAutoApplyDailyRemaining = getAutoApplyDailyRemaining;
+window.incrementAutoApplyDailyCount = incrementAutoApplyDailyCount;
+window.checkAutoApplyTierGate = checkAutoApplyTierGate;
 (function() {
   ["canAccessFeature", "getUserTier", "isPaylUser", "removeTierGate", "requiredTierFor", "showTierGate"].forEach(function(name) {
     var fn = window[name];

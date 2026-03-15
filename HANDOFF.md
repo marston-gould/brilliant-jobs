@@ -52,7 +52,21 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FB-INTPREP-001-S6** — Interview Prep Phase 6: Feature Gating + Polish — FB-INTPREP-001 COMPLETE ✅
+**AIS-F3-S1** — Auto-Apply Consumer Gate Removal ✅
+- Completed: 2026-03-15
+- Product version bumped: `v9.54` → `v9.55`
+- **Tier gate:** Added `auto_apply_daily: { free: 0, starter: 5, pro: Infinity }` to `TIER_GATES` in `tier-gating.js`. Free users are fully blocked from auto modes. Starter users get 5/day with midnight reset via localStorage (`bj_auto_apply_daily`). Pro users get unlimited.
+- **New functions in tier-gating.js:** `_getAutoApplyDailyRecord()` (date-keyed localStorage), `getAutoApplyDailyLimit()`, `getAutoApplyDailyRemaining()`, `incrementAutoApplyDailyCount()`, `checkAutoApplyTierGate()` (returns `{ allowed, tier, limit, remaining, requiresTier }`). All exported to `window.*`.
+- **proceedToApply gate:** `_isAutoMode` flag set for all non-Manual, non-Score-Gated modes. `checkAutoApplyTierGate()` called before any auto-mode submission. Blocks with toast + `showTierGate()` overlay + `auto_apply_tier_blocked` PostHog event. Returns early, never submits.
+- **PostHog event:** `auto_apply_consumer_triggered` fires on every successful auto-mode apply attempt with `{ job_id, mode, tier, platform }`.
+- **`_updateFillStatusPanel(opts)`:** New function rendering inline status card in `#ais-fill-status-panel`. Statuses: `submitting` (spinner), `queued` (clock icon), `success` (green check, 8s auto-dismiss), `error` (warm color, actionable guidance + View Pending link). Dismissable via ×. Calls `reportError` on exception.
+- **Fill status panel:** `#ais-fill-status-panel` div added to `dashboard.html` inside `#app-tab-pipeline`, hidden by default.
+- **Error recovery UI:** All failure paths (rejected, timeout, generic error) call `_updateFillStatusPanel` with `status: 'error'` and `action: 'Retry from Pending Applications.'`. Previously these paths only showed toasts.
+- **Daily count increment:** `incrementAutoApplyDailyCount()` called on successful Recruitee direct path and before `_routeToWorker` on all other paths. Guarded by `_isAutoMode`.
+- **Anti-detection verified:** Worker `DELAY_BETWEEN` (30s default, configurable via `SUBMISSION_DELAY_MS`), `human-sim.js` randomized keystroke delays, `MAX_CONCURRENT` session cap, random viewport dimensions all confirmed active.
+- **Tests:** 63 validation tests (all passing)
+- **Modified:** `js/tier-gating.js`, `js/apply-workflow.js`, `dashboard.html`, `dist/dashboard.min.js`, `dist/dashboard-deferred.min.js`, `dist/admin.min.js`, `styles.css`, `ROADMAP.md`, `roadmap.html`
+- **Created:** `tests/ais-f3-s1-auto-apply-gate-removal.test.js`
 - Completed: 2026-03-15
 - Product version bumped: `v9.53` → `v9.54`
 - **Question Bank gating:** `getUserTier()` check. FREE_QUESTION_LIMIT=5 visible for free users. Cards beyond limit get `filter:blur(4px);pointer-events:none;user-select:none`. Upgrade banner below blurred cards with count + subscription link.
@@ -3904,41 +3918,30 @@ Deliverables:
 
 ## Next Session
 
-**SPEC-AIS-001 Application Intelligence Suite — 28 sessions planned and committed to repo.**
+**SPEC-AIS-001 Application Intelligence Suite — Phase A continues**
 
-Active workstream: **Phase A — Foundation**
+Active workstream: **AIS-F4-S1 — AI Q&A Gate Removal + Answer Review**
 
 ---
 
-### AIS-F3-S1: Auto-Apply Consumer Gate Removal
+### AIS-F4-S1: AI Q&A Gate Removal + Answer Review
 
 **Entry Gate:**
-- [ ] Confirm tierGate.js exists and Free/Starter/Pro limits are defined
-- [ ] Confirm admin flag location in auto-fill code path
-- [ ] Confirm inject-overlay.js real-time data structure for fill status panel
+- [ ] Confirm `answer-form-question` EF exists and is admin-gated
+- [ ] Confirm `aiAnswerer.js` has admin gate to remove
+- [ ] Confirm Score-Gated and Manual modes have a review step location in apply flow
 
 **Fix Items:**
-1. Remove admin-only check from auto-fill trigger
-2. Wire tierGate.js as sole access control (Free=0, Starter=5/day, Pro=unlimited)
-3. Application Mode integration: respect selected mode before auto-fill fires
-4. Fill status panel on Applications page: surface inject-overlay.js progress/success/error data
-5. Error recovery UI: surface fill failures with actionable guidance (not just PostHog)
-6. Anti-detection: verify 45-90s randomized delay + max 25/session + failure circuit breaker active
-7. PostHog event: auto_apply_consumer_triggered (platform, job_id, mode, tier)
+1. Remove admin-only check from `answer-form-question` EF — wire `checkFeatureAccess` for `apply` feature instead
+2. Remove admin gate from `aiAnswerer.js` client-side (if present)
+3. Add pre-submit answer review panel for Score-Gated and Manual modes: shows AI-generated answers, user can edit, accept, or regenerate before submit
+4. PostHog: `ai_answer_generated` (job_id, field_label, cached, credits_charged), `ai_answer_feedback` (job_id, field_label, rating up/down)
 
 **Exit Gate:**
-- [ ] Free user: auto-fill blocked, tier upgrade prompt shown
-- [ ] Starter: 5/day enforced, resets at midnight
-- [ ] Pro: fires, respects Application Mode
-- [ ] Fill status visible on Applications page
-- [ ] Error state shown to user on fill failure
+- [ ] Non-admin user can trigger AI Q&A answering in Score-Gated/Manual mode
+- [ ] Answer review panel renders with edit + accept + regenerate actions
+- [ ] PostHog events firing
 - [ ] Tests passing
-
----
-
-**Full AIS session sequence (28 sessions):**
-
-Phase A (Weeks 1-2): AIS-F3-S1 -> AIS-F4-S1 -> AIS-F4-S2 -> AIS-F2-S1 -> AIS-F2-S2
 Phase B (Weeks 3-4): AIS-F8-S1 -> AIS-F8-S2 -> AIS-F1-S1 -> AIS-F1-S2 -> AIS-F1-S3 -> AIS-F1-S4
 Phase C (Weeks 5-6): AIS-F5-S1 -> AIS-F5-S2 -> AIS-F5-S3 -> AIS-F5-S4 -> AIS-F6-S1 -> AIS-F6-S2
 Phase D (Weeks 7-11): AIS-F9-S1 -> AIS-F9-S2 -> AIS-F9-S3 -> AIS-F10-S1 -> AIS-F10-S2 -> AIS-F7-S1 -> AIS-F7-S2 -> AIS-F11-S1 -> AIS-F11-S2 -> AIS-F12-S1 -> AIS-F12-S2
@@ -3975,7 +3978,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.54`** | **FB-INTPREP-001-S6: Feature Gating + Polish. FB-INTPREP-001 COMPLETE. 326 tests.** |
+| **Product (BJ_VERSION)** | **`v9.55`** | **AIS-F3-S1: Auto-Apply Consumer Gate Removal. 63 tests.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

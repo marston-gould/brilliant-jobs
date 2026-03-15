@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.54';
+var BJ_VERSION = 'v9.55';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -1634,7 +1634,9 @@ var TIER_GATES: Record<TierFeature, TierGateConfig> = {
   level_fit:          { free: false, starter: true, pro: true },
   pipeline_stats:     { free: false, starter: 'basic', pro: 'full' },
   job_log:            { free: false, starter: 10, pro: Infinity },
-  ai_scoring:         { free: false, starter: false, pro: true }
+  ai_scoring:         { free: false, starter: false, pro: true },
+  // AIS-F3-S1: Auto-apply daily submit limit (Free=0 blocked, Starter=5/day, Pro=unlimited)
+  auto_apply_daily:   { free: 0, starter: 5, pro: Infinity }
 };
 
 function getUserTier(): TierName {
@@ -1752,6 +1754,67 @@ window.canAccessFeature = canAccess;
 window.getUserTier = getUserTier;
 window.isPaylUser = isPaylUser;
 window.requiredTierFor = requiredTier;
+
+// AIS-F3-S1: Auto-apply daily limit helpers
+// ──────────────────────────────────────────
+const _AUTO_APPLY_STORAGE_KEY = 'bj_auto_apply_daily';
+
+function _getAutoApplyDailyRecord(): { date: string; count: number } {
+  try {
+    const raw = localStorage.getItem(_AUTO_APPLY_STORAGE_KEY);
+    if (!raw) return { date: '', count: 0 };
+    const rec = JSON.parse(raw) as { date: string; count: number };
+    const today = new Date().toISOString().slice(0, 10);
+    if (rec.date !== today) return { date: today, count: 0 };
+    return rec;
+  } catch (e) {
+    return { date: new Date().toISOString().slice(0, 10), count: 0 };
+  }
+}
+
+function getAutoApplyDailyLimit(): number {
+  const tier = getUserTier() as 'free' | 'starter' | 'pro';
+  const gate = (TIER_GATES as Record<string, Record<string, number>>).auto_apply_daily;
+  const val = gate[tier];
+  if (val === undefined) return 0;
+  return val;
+}
+
+function getAutoApplyDailyRemaining(): number {
+  const limit = getAutoApplyDailyLimit();
+  if (limit === 0) return 0;
+  if (limit === Infinity) return Infinity;
+  const rec = _getAutoApplyDailyRecord();
+  return Math.max(0, limit - rec.count);
+}
+
+function incrementAutoApplyDailyCount(): void {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const rec = _getAutoApplyDailyRecord();
+    rec.date = today;
+    rec.count = (rec.count || 0) + 1;
+    localStorage.setItem(_AUTO_APPLY_STORAGE_KEY, JSON.stringify(rec));
+  } catch (e) { /* non-fatal */ }
+}
+
+function checkAutoApplyTierGate(): { allowed: boolean; tier: string; limit: number; remaining: number; requiresTier: string | null } {
+  const tier = getUserTier();
+  const limit = getAutoApplyDailyLimit();
+  if (limit === 0) {
+    return { allowed: false, tier, limit: 0, remaining: 0, requiresTier: 'starter' };
+  }
+  const remaining = getAutoApplyDailyRemaining();
+  if (remaining === 0) {
+    return { allowed: false, tier, limit, remaining: 0, requiresTier: tier === 'starter' ? 'pro' : 'starter' };
+  }
+  return { allowed: true, tier, limit, remaining, requiresTier: null };
+}
+
+window.getAutoApplyDailyLimit = getAutoApplyDailyLimit;
+window.getAutoApplyDailyRemaining = getAutoApplyDailyRemaining;
+window.incrementAutoApplyDailyCount = incrementAutoApplyDailyCount;
+window.checkAutoApplyTierGate = checkAutoApplyTierGate;
 
 // CS-P1-004 FE-005: Register tier-gating exports with BJ namespace
 (function(): void {
@@ -30887,6 +30950,57 @@ async function callSubmitApplication(pendingApp, resumeFileId, resumeFilename) {
   }
 }
 
+// AIS-F3-S1: Fill Status Panel — surface auto-apply progress/errors to Applications page
+// ═══════════════════════════════════════════════════════════════════════════════════════
+function _updateFillStatusPanel(opts) {
+  // opts: { status: 'submitting'|'queued'|'success'|'error', jobTitle, companyName, error, action }
+  try {
+    var panel = document.getElementById('ais-fill-status-panel');
+    if (!panel) return;
+
+    var statusConfig = {
+      submitting: { color: 'var(--accent)', icon: 'loader-2', label: 'Submitting…' },
+      queued:     { color: 'var(--accent)', icon: 'clock',    label: 'Queued for worker' },
+      success:    { color: 'var(--green)',  icon: 'circle-check', label: 'Submitted!' },
+      error:      { color: 'var(--warm)',   icon: 'circle-x',     label: 'Failed' },
+    };
+    var cfg = statusConfig[opts.status] || statusConfig.submitting;
+    var jobLabel = opts.jobTitle ? (opts.jobTitle + (opts.companyName ? ' @ ' + opts.companyName : '')) : (opts.companyName || 'Job');
+
+    var actionHtml = '';
+    if (opts.status === 'error' && opts.action) {
+      actionHtml = '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">' + escapeHtml(opts.action) + ' <a href="#" onclick="switchPage(\'applications\');return false;" style="color:var(--accent);">View Pending</a></div>';
+    }
+    if (opts.status === 'success') {
+      actionHtml = '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;"><a href="#" onclick="switchPage(\'applications\');return false;" style="color:var(--accent);">View in Pipeline →</a></div>';
+    }
+    var errorHtml = (opts.status === 'error' && opts.error) ? '<div style="font-size:11px;color:var(--warm);margin-top:2px;">' + escapeHtml(opts.error) + '</div>' : '';
+
+    panel.style.display = 'block';
+    panel.innerHTML =
+      '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;background:var(--bg-card);border-radius:8px;border-left:3px solid ' + cfg.color + ';">' +
+        '<i data-lucide="' + cfg.icon + '" style="width:16px;height:16px;flex-shrink:0;stroke:' + cfg.color + ';margin-top:2px;' + (opts.status === 'submitting' || opts.status === 'queued' ? 'animation:spin 1s linear infinite;' : '') + '"></i>' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-size:12px;font-weight:600;color:var(--text);">' + cfg.label + ': ' + escapeHtml(jobLabel) + '</div>' +
+          errorHtml + actionHtml +
+        '</div>' +
+        '<button onclick="document.getElementById(\'ais-fill-status-panel\').style.display=\'none\';" style="background:none;border:none;cursor:pointer;padding:0;color:var(--text-muted);font-size:16px;line-height:1;">×</button>' +
+      '</div>';
+
+    if (typeof window.refreshIcons === 'function') window.refreshIcons();
+
+    // Auto-clear success after 8 seconds
+    if (opts.status === 'success') {
+      setTimeout(function() {
+        var p = document.getElementById('ais-fill-status-panel');
+        if (p) p.style.display = 'none';
+      }, 8000);
+    }
+  } catch(e) {
+    reportError('apply-workflow:_updateFillStatusPanel', e);
+  }
+}
+
 function _guessAtsSource(url) {
   if (!url) return 'greenhouse';
   if (url.indexOf('greenhouse') >= 0) return 'greenhouse';
@@ -31229,6 +31343,25 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
 
   var mode = getApplyModeForJob(jobId);
 
+  // ── AIS-F3-S1: Tier gate — block auto modes for Free users or exhausted Starter ──
+  var _isAutoMode = mode !== APPLY_MODES.MANUAL && mode !== APPLY_MODES.SCORE_GATED;
+  if (_isAutoMode && typeof checkAutoApplyTierGate === 'function') {
+    var _gateResult = checkAutoApplyTierGate();
+    if (!_gateResult.allowed) {
+      var _gateMsg = _gateResult.limit === 0
+        ? 'Auto-apply requires a Starter or Pro plan.'
+        : 'You\'ve reached your ' + _gateResult.limit + ' auto-apply limit for today. Upgrade to Pro for unlimited.';
+      if (typeof showToast === 'function') showToast(_gateMsg, { type: 'warning', duration: 6000 });
+      if (typeof window.showTierGate === 'function') {
+        var _gateEl = document.getElementById('app-tab-pipeline') || document.getElementById('page-applications');
+        if (_gateEl) window.showTierGate(_gateEl, _gateResult.requiresTier, _gateMsg);
+      }
+      if (typeof capturePostHog === 'function') capturePostHog('auto_apply_tier_blocked', { mode: mode, tier: _gateResult.tier, limit: _gateResult.limit });
+      _applySubmitting = false;
+      return;
+    }
+  }
+
   // ── Mode 1: Manual — just open URL, update pipeline ──
   if (mode === APPLY_MODES.MANUAL) {
     if (jobUrl) window.open(jobUrl, '_blank');
@@ -31288,6 +31421,19 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
     return;
   }
 
+  // AIS-F3-S1: Emit PostHog event for auto-apply consumer trigger
+  if (_isAutoMode && typeof capturePostHog === 'function') {
+    capturePostHog('auto_apply_consumer_triggered', {
+      job_id: jobId,
+      mode: mode,
+      tier: (typeof getUserTier === 'function') ? getUserTier() : 'unknown',
+      platform: _guessAtsSource(jobUrl) || 'unknown',
+    });
+  }
+
+  // AIS-F3-S1: Update fill status panel
+  _updateFillStatusPanel({ status: 'submitting', jobTitle: jobTitle, companyName: companyName, mode: mode });
+
   // Create pipeline entry immediately so job appears on Board
   // upsert won't duplicate — keyed on user_id + job_id + ats_source
   if (typeof savePipelineEntry === 'function') {
@@ -31309,6 +31455,8 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
     var result = await callSubmitApplication(savedApp, resume.id, resume.filename);
 
     if (result.ok) {
+      if (_isAutoMode && typeof incrementAutoApplyDailyCount === 'function') incrementAutoApplyDailyCount();
+      _updateFillStatusPanel({ status: 'success', jobTitle: jobTitle, companyName: companyName });
       _updatePipelineApplied(jobId);
       if (typeof showToast === 'function') showToast('Applied to ' + (companyName || 'this job') + '!', { type: 'success' });
       _fireApplyNotification('apply_auto_submitted', {
@@ -31319,14 +31467,19 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
         company_name: companyName,
       });
     } else if (result.error === 'rejected') {
+      _updateFillStatusPanel({ status: 'error', jobTitle: jobTitle, companyName: companyName, error: 'Application rejected', action: 'Apply manually from the job card.' });
       if (typeof showToast === 'function') showToast('Application rejected: ' + (result.detail || 'Unknown reason') + '. You can retry.', { type: 'error', duration: 6000 });
     } else if (result.error === 'timeout') {
+      _updateFillStatusPanel({ status: 'error', jobTitle: jobTitle, companyName: companyName, error: 'ATS timed out', action: 'Retry from Pending Applications.' });
       if (typeof showToast === 'function') showToast('ATS timed out. Your application was saved — you can retry.', { type: 'error', duration: 6000 });
     } else {
+      _updateFillStatusPanel({ status: 'error', jobTitle: jobTitle, companyName: companyName, error: result.error || 'Submission failed', action: 'Retry from Pending Applications.' });
       if (typeof showToast === 'function') showToast('Submission failed: ' + (result.error || 'Unknown error') + '. Retry from Pending Applications.', { type: 'error', duration: 6000 });
     }
   } else {
     // All other ATS: route through headless worker (AS-1/2/3)
+    if (_isAutoMode && typeof incrementAutoApplyDailyCount === 'function') incrementAutoApplyDailyCount();
+    _updateFillStatusPanel({ status: 'queued', jobTitle: jobTitle, companyName: companyName });
     if (typeof showToast === 'function') showToast('Application queued — worker will submit to ' + (companyName || 'ATS') + '.', { duration: 5000 });
     await _routeToWorker(savedApp);
   }
@@ -32263,6 +32416,7 @@ window._activePollers = _activePollers;
 // AF-002: Setup gate exports
 window.isSetupComplete = isSetupComplete;
 window.showSetupGateModal = showSetupGateModal;
+window._updateFillStatusPanel = _updateFillStatusPanel;
 window.hideSetupGateModal = hideSetupGateModal;
 window.navigateToSetup = navigateToSetup;
 window.checkAndSetSetupComplete = checkAndSetSetupComplete;
