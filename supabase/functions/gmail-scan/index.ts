@@ -137,6 +137,7 @@ async function scanGmail(
   accessToken: string,
   checkpoint: Checkpoint,
   logger: Logger,
+  gmailScanScope: string,
 ): Promise<{ inbox_count: number; new_history_id: string | null }> {
   const signals: RawSignal[] = [];
   let newHistoryId: string | null = null;
@@ -144,9 +145,12 @@ async function scanGmail(
   const afterDate = checkpoint.last_gmail_scan_at
     ? checkpoint.last_gmail_scan_at.split("T")[0].replace(/-/g, "/")
     : null;
+
+  // REM-S10: Apply scan scope — 'primary' restricts to inbox, 'all' searches all mail
+  const scopeFilter = gmailScanScope === "primary" ? " in:inbox" : "";
   const query = afterDate
-    ? `${GMAIL_APPLICATION_QUERY} after:${afterDate}`
-    : GMAIL_APPLICATION_QUERY;
+    ? `${GMAIL_APPLICATION_QUERY}${scopeFilter} after:${afterDate}`
+    : `${GMAIL_APPLICATION_QUERY}${scopeFilter}`;
 
   const listRes = await fetch(
     `https://www.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=${GMAIL_MAX_MESSAGES}`,
@@ -207,6 +211,7 @@ async function scanCalendar(
   accessToken: string,
   checkpoint: Checkpoint,
   logger: Logger,
+  calendarScanScope: string,
 ): Promise<{ inbox_count: number }> {
   const signals: RawSignal[] = [];
 
@@ -215,49 +220,71 @@ async function scanCalendar(
     : new Date(Date.now() - CALENDAR_INITIAL_LOOKBACK_DAYS * 86400000).toISOString();
   const timeMax = new Date(Date.now() + 30 * 86400000).toISOString();
 
-  const calRes = await fetch(
-    `https://www.googleapis.com/calendar/v3/calendars/primary/events?` +
-    `timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&` +
-    `maxResults=${CALENDAR_MAX_EVENTS}&singleEvents=true&orderBy=startTime&` +
-    `fields=items(id,summary,description,organizer,attendees,start,end,conferenceData,htmlLink)`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
-  );
-  const calData = await calRes.json();
-
-  if (calData.error) {
-    if (calData.error.code === 403) { logger.info("Calendar scope not granted", { userId }); return { inbox_count: 0 }; }
-    if (calData.error.code === 429) { logger.warn("Calendar rate limit", { userId }); return { inbox_count: 0 }; }
-    throw new Error(`Calendar API: ${calData.error.message}`);
+  // REM-S11: Determine which calendars to scan
+  let calendarIds: string[] = ["primary"];
+  if (calendarScanScope === "all") {
+    try {
+      const listRes = await fetch(
+        `https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=reader&fields=items(id)`,
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
+      const listData = await listRes.json();
+      if (listData.items?.length) {
+        calendarIds = (listData.items as Array<{ id: string }>).map((c) => c.id);
+      }
+    } catch (e) {
+      logger.warn("Calendar list fetch failed, falling back to primary", { userId, error: (e as Error).message });
+    }
   }
 
-  for (const event of (calData.items || []) as Array<Record<string, unknown>>) {
+  for (const calId of calendarIds) {
     if (isOvertime()) { logger.warn("Overtime in calendar scan", { userId }); break; }
-    const title = (event.summary as string) || "";
-    const desc = (event.description as string) || "";
-    if (!matchesCalKW(title, desc)) continue;
-    const org = (event.organizer as Record<string, string>) || {};
-    const orgEmail = org.email || "";
-    if (!orgEmail || orgEmail.includes("calendar.google.com")) continue;
-    const startObj = (event.start as Record<string, string>) || {};
-    const eventStart = startObj.dateTime || startObj.date || null;
-    const attendees = ((event.attendees as Array<Record<string, string>>) || []).map((a) => a.email).filter(Boolean);
-    const confData = event.conferenceData as Record<string, unknown> | null;
-    const videoLink = confData?.entryPoints
-      ? (confData.entryPoints as Array<Record<string, string>>).find((ep) => ep.entryPointType === "video")?.uri || null
-      : null;
-    signals.push({
-      user_id: userId, source: "calendar", source_message_id: event.id as string,
-      raw_subject: title, raw_snippet: desc.slice(0, 500),
-      raw_from: orgEmail, raw_date: eventStart,
-      raw_metadata: {
-        organizer_email: orgEmail, organizer_domain: domainFromEmail(orgEmail),
-        attendees, video_link: videoLink,
-        event_start: startObj.dateTime || null,
-        event_end: ((event.end as Record<string, string>) || {}).dateTime || null,
-        html_link: event.htmlLink || null,
-      },
-    });
-  }
+
+    const calRes = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events?` +
+      `timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&` +
+      `maxResults=${CALENDAR_MAX_EVENTS}&singleEvents=true&orderBy=startTime&` +
+      `fields=items(id,summary,description,organizer,attendees,start,end,conferenceData,htmlLink)`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+    const calData = await calRes.json();
+
+    if (calData.error) {
+      if (calData.error.code === 403) { logger.info("Calendar scope not granted", { userId, calId }); continue; }
+      if (calData.error.code === 429) { logger.warn("Calendar rate limit", { userId, calId }); continue; }
+      logger.warn("Calendar API error", { userId, calId, error: calData.error.message });
+      continue;
+    }
+
+    for (const event of (calData.items || []) as Array<Record<string, unknown>>) {
+      if (isOvertime()) { logger.warn("Overtime in calendar scan", { userId }); break; }
+      const title = (event.summary as string) || "";
+      const desc = (event.description as string) || "";
+      if (!matchesCalKW(title, desc)) continue;
+      const org = (event.organizer as Record<string, string>) || {};
+      const orgEmail = org.email || "";
+      if (!orgEmail || orgEmail.includes("calendar.google.com")) continue;
+      const startObj = (event.start as Record<string, string>) || {};
+      const eventStart = startObj.dateTime || startObj.date || null;
+      const attendees = ((event.attendees as Array<Record<string, string>>) || []).map((a) => a.email).filter(Boolean);
+      const confData = event.conferenceData as Record<string, unknown> | null;
+      const videoLink = confData?.entryPoints
+        ? (confData.entryPoints as Array<Record<string, string>>).find((ep) => ep.entryPointType === "video")?.uri || null
+        : null;
+      signals.push({
+        user_id: userId, source: "calendar", source_message_id: event.id as string,
+        raw_subject: title, raw_snippet: desc.slice(0, 500),
+        raw_from: orgEmail, raw_date: eventStart,
+        raw_metadata: {
+          organizer_email: orgEmail, organizer_domain: domainFromEmail(orgEmail),
+          attendees, video_link: videoLink,
+          event_start: startObj.dateTime || null,
+          event_end: ((event.end as Record<string, string>) || {}).dateTime || null,
+          html_link: event.htmlLink || null,
+        },
+      });
+    }
+  } // end calendarIds loop
 
   const written = await writeToInbox(signals, logger);
   return { inbox_count: written };
@@ -384,10 +411,24 @@ serve(withCorrelation("gmail-scan", async (req, logger) => {
 
         const checkpoint = await getOrCreateCheckpoint(conn.user_id);
 
+        // REM-S10/S11: Read user's scan scope preferences
+        let gmailScope = "primary";
+        let calendarScope = "primary";
+        try {
+          const { data: piSettings } = await sb.from("pipeline_tracking_settings")
+            .select("gmail_scan_scope,calendar_scan_scope")
+            .eq("user_id", conn.user_id)
+            .maybeSingle();
+          if (piSettings) {
+            gmailScope = piSettings.gmail_scan_scope || "primary";
+            calendarScope = piSettings.calendar_scan_scope || "primary";
+          }
+        } catch (_) { /* non-fatal — default to primary */ }
+
         // 1. Gmail inbox scan
         try {
           await updateCheckpoint(conn.user_id, { gmail_scan_status: "scanning" });
-          const { inbox_count, new_history_id } = await scanGmail(conn.user_id, tokens.access_token, checkpoint, logger);
+          const { inbox_count, new_history_id } = await scanGmail(conn.user_id, tokens.access_token, checkpoint, logger, gmailScope);
           totalGmailInbox += inbox_count;
           await updateCheckpoint(conn.user_id, { gmail_scan_status: "idle", last_gmail_scan_at: new Date().toISOString(), ...(new_history_id ? { last_gmail_history_id: new_history_id } : {}), gmail_error_message: null });
         } catch (e) {
@@ -400,7 +441,7 @@ serve(withCorrelation("gmail-scan", async (req, logger) => {
         if (!isOvertime()) {
           try {
             await updateCheckpoint(conn.user_id, { calendar_scan_status: "scanning" });
-            const { inbox_count } = await scanCalendar(conn.user_id, tokens.access_token, checkpoint, logger);
+            const { inbox_count } = await scanCalendar(conn.user_id, tokens.access_token, checkpoint, logger, calendarScope);
             totalCalendarInbox += inbox_count;
             await updateCheckpoint(conn.user_id, { calendar_scan_status: inbox_count >= 0 ? "idle" : "idle", last_calendar_scan_at: new Date().toISOString(), calendar_error_message: null });
           } catch (e) {

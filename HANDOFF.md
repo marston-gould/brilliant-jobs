@@ -52,7 +52,33 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**SCA-REM-S5** — Spec Compliance Remediation Session 5
+**SCA-REM-S6** — Spec Compliance Remediation Session 6
+- Completed: 2026-03-15
+- Product version bumped: `v9.24` → `v9.25` (EF changes only — gmail-scan scope consumption; all HTML surfaces cache-busted)
+- ROADMAP.md updated: SCA-REM-S6 → ✅
+- roadmap.html updated: SCA-REM-S6 → `s: 'done'`, p: 100
+- **REM-S10 backend — Gmail scan scope consumption:**
+  - `supabase/functions/gmail-scan/index.ts` `scanGmail()`: accepts `gmailScanScope` param. When `"primary"`, appends `in:inbox` to Gmail query. When `"all"`, no inbox filter — searches all mail.
+  - Per-user loop reads `gmail_scan_scope` from `pipeline_tracking_settings` with fallback to `"primary"`. Non-fatal try/catch on settings read.
+- **REM-S11 backend — Calendar scan scope consumption:**
+  - `supabase/functions/gmail-scan/index.ts` `scanCalendar()`: accepts `calendarScanScope` param. When `"primary"`, scans primary calendar only (default). When `"all"`, fetches `calendarList` API (`minAccessRole=reader`), iterates all returned calendar IDs.
+  - Per-calendar errors (403, 429) now `continue` instead of throwing — one bad calendar doesn't block the rest.
+  - Falls back to primary if calendarList fetch fails.
+- **QA-003 — Salary Min/Max:** Confirmed already split into separate `qb-row` elements with distinct "Min $" and "Max $" labels. Not a bug.
+- **Skipped Items:** None.
+- **Modified:**
+  - `supabase/functions/gmail-scan/index.ts` — scan scope params, settings read, calendarList iteration
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `dist/admin.min.js` — rebuilt
+  - `ROADMAP.md` — SCA-REM-S6 → ✅
+  - `roadmap.html` — SCA-REM-S6 → done/100
+- **Created:**
+  - `tests/sca-rem-s6-spec-compliance.test.js` — 20 validation tests
+- **Tests:** 20 validation tests (all passing)
+- **Deployed:** gmail-scan EF redeployed
+
+**Previous: SCA-REM-S5** — Spec Compliance Remediation Session 5
 - Completed: 2026-03-15
 - Product version bumped: `v9.23` → `v9.24` (HTML change — pipeline_auto_move notification pref + filter; all HTML surfaces cache-busted)
 - ROADMAP.md updated: SCA-REM-S5 → ✅
@@ -3386,20 +3412,13 @@ Deliverables:
 
 ## Next Session
 
-Remaining spec compliance items:
-- REM-S10/S11 backend [MED]: gmail-scan EF read user's scan scope preference (UI already wired)
+Remaining spec compliance items (all LOW/P2/P3):
 - REM-S02 [LOW]: Extension EEOC read-only display
 - REM-S13 [LOW]: FilterBuilder.tsx browse button handlers
 - REM-S14 [LOW]: Generic filter browser US-Only context
-- QA-003 [P2]: HOW MUCH should be two separate sections (Min/Max)
 - QA-005 [P2]: Trust Level/AI Content iconography (replace emoji with SVG)
 - QA-015/016 [P2]: Merchandising redesign
 - QA-018 [P3]: Credit icon
-- BP-001: Anthropic circuit breaker
-- BP-002: Extension tier awareness
-
-Also:
-- PostHog Google OAuth verification (R5 in FB-PI-001 risk register)
 
 
 ## Deferred: SA-001 / SA-002 / SA-003 (Typesense)
@@ -3430,7 +3449,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.24`** | **SCA-REM-S5: auto-move notification + PI Realtime confirmed + scan scope UI confirmed** |
+| **Product (BJ_VERSION)** | **`v9.25`** | **SCA-REM-S6: gmail-scan EF scope consumption (gmail + calendar)** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

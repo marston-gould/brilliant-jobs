@@ -11,7 +11,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v9.24"></script>
+  <script src="/js/version.js?v=v9.25"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2238,6 +2238,7 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'COHORT-PRICING-S1 Cohort-Based Pricing Configuration', d: 'pricing_defaults table (DB-driven tiers replacing hardcoded billing.js). get_effective_pricing RPC rewritten: cohort-aware resolution with sparse JSONB override merging + promo expiry. billing.js renderTierComparison reads all_tiers from RPC with FALLBACK_TIERS rollback. Admin panel: Global Defaults editor, Cohort List + Edit Pricing, Per-Cohort Override Editor with live preview, Create New Cohort form, Pricing Change Log. fn_assign_signup_cohort trigger. pricing_audit_log. 3 seed cohorts. .cp-input CSS. 103 tests. v9.22. 2026-03-14.', p: 100, e: '4h' },
 { s: 'done', b: 'post-launch', n: 'QA-013-FIX DEFAULT_LEVELS label fix', d: 'Level 7 label "Lead" → "Head" to match spec. Keywords unchanged. Only affects new accounts. v9.23.', p: 100, e: '15m' },
 { s: 'done', b: 'post-launch', n: 'SCA-REM-S5 Spec Compliance Remediation S5', d: 'REM-S07: auto-move notification dispatch (notification_log insert + dashboard pref + filter). REM-S08: Realtime broadcast confirmed. REM-S10/S11: scan scope UI confirmed wired. 22 tests. v9.24.', p: 100, e: '1.5h' },
+{ s: 'done', b: 'post-launch', n: 'SCA-REM-S6 Spec Compliance Remediation S6', d: 'REM-S10/S11 backend: gmail-scan EF reads gmail_scan_scope + calendar_scan_scope from pipeline_tracking_settings. Primary=inbox filter. All=full mail + calendarList iteration. QA-003 salary split confirmed. 20 tests. v9.25.', p: 100, e: '1h' },
 ];
 
 

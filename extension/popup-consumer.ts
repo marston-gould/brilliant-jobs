@@ -501,6 +501,7 @@ async function _loadSettingsPageData(): Promise<void> {
   await _loadDailyLimit();
   _loadSettingsThreshold();
   _loadSettingsResume();
+  _loadSettingsEEOC();
 }
 
 async function _loadRewritePreferences(): Promise<void> {
@@ -582,6 +583,32 @@ async function _loadSettingsResume(): Promise<void> {
     resumeInfo.innerHTML = `<strong>${_escText(name)}</strong><br><span style="font-size:10px;color:var(--text-faint)">${_escText(meta)}</span>`;
   } catch {
     resumeInfo.textContent = 'Unable to load resume info';
+  }
+}
+
+// REM-S02: EEOC read-only display on extension settings
+async function _loadSettingsEEOC(): Promise<void> {
+  const container = document.getElementById('cv-settings-eeoc');
+  if (!container) return;
+  try {
+    const stored = await chrome.storage.local.get('applicantProfile');
+    const eeo = stored.applicantProfile?.eeo_preferences;
+    if (!eeo || (!eeo.gender && !eeo.ethnicity && !eeo.veteranStatus && !eeo.disabilityStatus && !eeo.citizenshipStatus)) {
+      container.innerHTML = '<span style="color:var(--text-faint);font-style:italic;">Not set — configure on the dashboard Applicant Profile tab</span>';
+      return;
+    }
+    const fields: Array<[string, string | null]> = [
+      ['Gender', eeo.gender],
+      ['Ethnicity', eeo.ethnicity],
+      ['Veteran', eeo.veteranStatus],
+      ['Disability', eeo.disabilityStatus],
+      ['Citizenship', eeo.citizenshipStatus],
+    ];
+    container.innerHTML = fields
+      .map(([label, val]) => `<div><strong>${label}:</strong> ${val ? _escText(val) : '<span style="color:var(--text-faint)">—</span>'}</div>`)
+      .join('');
+  } catch {
+    container.innerHTML = '<span style="color:var(--text-faint)">Unable to load</span>';
   }
 }
 
