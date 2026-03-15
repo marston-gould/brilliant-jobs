@@ -8,13 +8,15 @@ var _bjPageTitles = {
   brilliant: 'Get Started', setup: 'Setup', jobs: 'Jobs Feed', tuning: 'Search Tuning',
   resumes: 'Resumes', 'resume-builder': 'Resume Builder', applications: 'My Applications', notifications: 'Notifications',
   stats: 'Stats', referrals: 'Referrals', settings: 'Settings',
-  subscription: 'Subscription', feedback: 'Feedback'
+  subscription: 'Subscription', feedback: 'Feedback',
+  'admin-landing': 'Landing Page'
 };
 var _bjPageSections = {
   brilliant: 'onboarding', setup: 'onboarding', jobs: 'search', tuning: 'search',
   resumes: 'search', 'resume-builder': 'search', applications: 'tracking', notifications: 'tracking',
   stats: 'intelligence', referrals: 'growth',
-  settings: 'account', subscription: 'account', feedback: 'account'
+  settings: 'account', subscription: 'account', feedback: 'account',
+  'admin-landing': 'intelligence'
 };
 
 // Auth
@@ -69,6 +71,9 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
     // Show survey analytics tab (admin-only) in Feedback page
     var surveyTab = document.getElementById('fb-tab-surveys');
     if (surveyTab) surveyTab.style.display = '';
+    // Show landing page admin nav (LP-RESTRUCTURE-S3)
+    var navAdminLanding = document.getElementById('nav-admin-landing');
+    if (navAdminLanding) navAdminLanding.style.display = '';
   }
   // Re-apply active page (tab restore ran while #app was hidden)
   const activeTab = localStorage.getItem('bj_active_tab');
@@ -541,6 +546,13 @@ $$('.nav-item').forEach(item => {
         }
         if (window.bjSkeleton) setTimeout(function() { bjSkeleton.hide('resume-builder'); }, 150);
       }
+      // LP-RESTRUCTURE-S3: Landing Page admin init
+      if (_tab === 'admin-landing') {
+        if (typeof alInit === 'function') {
+          try { alInit(); } catch(e) { if (typeof reportError === 'function') reportError('app:admin-landing-init', e); }
+        }
+        if (window.bjSkeleton) setTimeout(function() { bjSkeleton.hide('admin-landing'); }, 150);
+      }
       // BUGFIX-005: My Applications tab needs pipeline rendered
       if (_tab === 'applications') {
         var savedAppTab = localStorage.getItem('bj_app_tab') || 'pipeline';
@@ -548,7 +560,7 @@ $$('.nav-item').forEach(item => {
         if (window.bjSkeleton) setTimeout(function() { bjSkeleton.hide('applications'); }, 150);
       }
       // Tabs without explicit init get skeleton hidden after a short delay (content is static HTML)
-      if (!['stats','feedback','referrals','resumes','resume-builder','applications'].includes(_tab) && window.bjSkeleton) {
+      if (!['stats','feedback','referrals','resumes','resume-builder','applications','admin-landing'].includes(_tab) && window.bjSkeleton) {
         setTimeout(function() { bjSkeleton.hide(_tab); }, 150);
       }
       // QA-011: Re-search feed when tuning changed (e.g. US-Only toggle)

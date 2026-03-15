@@ -52,7 +52,18 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**LP-RESTRUCTURE-S2** — Landing Page Restructure Session 2
+**LP-RESTRUCTURE-S3** — Landing Page Restructure Session 3
+- Completed: 2026-03-15
+- Product version bumped: `v9.45` → `v9.46`
+- `admin-landing.js` (329L): full admin UI — load from `landing_sections`, render list with drag handles, `alToggleVisible`, `alReorder` (drag-drop + Promise.all batch sort_order), `alOpenModal`/`alCloseModal`, `alSaveSection` (INSERT draft + UPDATE), `alUploadImage` to `landing-assets/` (5MB limit, getPublicUrl), `alSoftDelete` (archived_at), all errors via `reportError`, PostHog events, `escHtml` XSS guard.
+- `build-admin.js`: `admin-landing.js` added to admin bundle.
+- `dashboard.html`: `page-admin-landing` with section list, `+ Add Section` button, `Preview Landing Page` button (`?preview=true`), modal with all fields (subtitle/title/body/cta/orientation/segment/image upload), admin-only nav link (`display:none` by default).
+- `app.js`: `admin-landing` in `_bjPageTitles`/`_bjPageSections`, `alInit` wired to tab switch, `nav-admin-landing` shown for `role=admin`.
+- Social proof bar: replaced NPS-gated copy with data-backed copy (39K+ career pages, 60+ ATS platforms, live jobs + companies hiring), bar shown immediately, `applyStats` hydrates `lp-active-jobs-sp` and `lp-companies-hiring-sp`.
+- **Tests:** 39 validation tests (all passing).
+- **Next:** LP-RESTRUCTURE-S4 — Polish + Mobile + Testing + Deploy.
+
+**Previous: LP-RESTRUCTURE-S2** — Landing Page Restructure Session 2
 - Completed: 2026-03-15
 - Product version bumped: `v9.44` → `v9.45`
 - `landing-app.js`: `initLpBenefitSections` IIFE — fetches `landing_sections` (is_visible, !archived, sort_order), segment filter (bypassed on `?preview=true`), orientation logic (auto alternates image-right/image-left, manual overrides), DOMPurify body_text sanitize (strong/em/a/br only), `**bold**` markdown, browser-frame chrome, placeholder when no image_url, `escapeHtml`/`escapeAttr` XSS guards, `lp_sections_rendered` PostHog event, `reportError` on catch.
@@ -3766,7 +3777,7 @@ Remaining backlog:
   - S2 Templates & Generation — resume-generate EF, 3 templates, Download UI
   - S3 Keyword Optimization — resume-optimize EF, gap report UI, one-click insertion, match score display
   - S4 AI Rewrites — resume-rewrite-bullet EF, Improve with AI per bullet, accept/reject panel
-- **LP-RESTRUCTURE-S3 (NEXT)**: Admin Page + Social Proof. `page-admin-landing` in dashboard.html, `admin-landing.js` (list/edit/toggle/reorder/image-upload), drag-to-reorder sort_order batch update, landing-assets/ image upload, segment targeting dropdown, social proof bar on landing page.
+- **LP-RESTRUCTURE-S4 (NEXT)**: Polish + Mobile + Testing + Deploy. Mobile responsive pass (all new sections at 375px). Preview mode (`?preview=true`) admin verification. `+ Add Section` draft flow E2E test. Cross-browser smoke test. Lighthouse audit (no performance regression). Full testing checklist from spec §8. Deploy + tag.
   - CREATE TABLE landing_sections + RLS policies + seed data (4 initial sections)
   - Create landing-assets/ Storage bucket
   - Update landing-stats to return dual company counts (career pages monitored ~39K + companies hiring now ~8.7K)
