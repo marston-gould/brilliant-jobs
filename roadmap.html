@@ -11,7 +11,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v9.21"></script>
+  <script src="/js/version.js?v=v9.22"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2235,6 +2235,7 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'FB-PI-001-S4 Untracked App Confirmations', d: 'pipeline_pending_confirmations table. process-pipeline-action extended (untracked→pending_confirmations insert + untracked_app_detected PostHog). pipeline.js: loadPendingConfirmations, renderConfirmationCards (blue border, data-attr events), confirmPendingApp (creates user_pipeline), dismissPendingApp. dashboard.html: pi-confirmation-cards. 73 tests. v9.12. 2026-03-15.', p: 100, e: '6h' },
 { s: 'done', b: 'post-launch', n: 'FB-PI-001-S5 Staleness Engine', d: 'check-pipeline-staleness cron, staleness prompts, auto-archive 30d, snooze, backward stage movement, undo. 71 tests. v9.13.', p: 100, e: '6h' },
 { s: 'done', b: 'post-launch', n: 'FB-PI-001-S6 Settings + Polish + Tests', d: 'pi-auto-move-behavior, pi-staleness-days slider, pi-auto-archive toggle. save/load extended. auto_move_behavior DB column. 82-test cross-session suite. FB-PI-001 FEATURE COMPLETE. v9.15. 2026-03-15.', p: 100, e: '6h' },
+{ s: 'done', b: 'post-launch', n: 'COHORT-PRICING-S1 Cohort-Based Pricing Configuration', d: 'pricing_defaults table (DB-driven tiers replacing hardcoded billing.js). get_effective_pricing RPC rewritten: cohort-aware resolution with sparse JSONB override merging + promo expiry. billing.js renderTierComparison reads all_tiers from RPC with FALLBACK_TIERS rollback. Admin panel: Global Defaults editor, Cohort List + Edit Pricing, Per-Cohort Override Editor with live preview, Create New Cohort form, Pricing Change Log. fn_assign_signup_cohort trigger. pricing_audit_log. 3 seed cohorts. .cp-input CSS. 103 tests. v9.22. 2026-03-14.', p: 100, e: '4h' },
 ];
 
 

@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.21';
+var BJ_VERSION = 'v9.22';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -24466,11 +24466,32 @@ function renderTierComparison(pricing) {
   const container = document.getElementById('sub-tiers');
   if (!container) return;
   const currentTier = pricing.tier;
-  const tiers = [
-    { id: 'free', name: 'Free', price: 0, credits: 0, payg: 25, features: ['1 saved filter', '1 resume', 'Basic job feed'] },
-    { id: 'starter', name: 'Starter', price: 2000, credits: 100, payg: 15, features: ['10 saved filters', '5 resumes', 'AI resume scoring', 'SMS notifications', 'Boolean search'] },
-    { id: 'pro', name: 'Pro', price: 4000, credits: 300, payg: 10, features: ['10 saved filters', '5 resumes', 'AI resume scoring', 'AI resume rewrites', 'SMS notifications', 'Boolean search', 'Auto-apply', 'Network intelligence'] },
+
+  // COHORT-PRICING-S1: Read tiers from database via all_tiers in RPC response
+  // Fallback to hardcoded defaults if RPC doesn't return all_tiers (rollback safety)
+  const FALLBACK_TIERS = [
+    { tier: 'free', name: 'Free', subscription_price_cents: 0, included_credits: 0, payg_rate_cents: 25, features: ['1 saved filter', '1 resume', 'Basic job feed'] },
+    { tier: 'starter', name: 'Starter', subscription_price_cents: 2000, included_credits: 100, payg_rate_cents: 15, features: ['10 saved filters', '5 resumes', 'AI resume scoring', 'SMS notifications', 'Boolean search'] },
+    { tier: 'pro', name: 'Pro', subscription_price_cents: 4000, included_credits: 300, payg_rate_cents: 10, features: ['Unlimited filters', 'Unlimited resumes', 'AI resume scoring', 'AI resume rewrites', 'SMS notifications', 'Boolean search', 'Auto-apply', 'Network intelligence'] },
   ];
+
+  var dbTiers = (pricing.all_tiers && pricing.all_tiers.length > 0) ? pricing.all_tiers : null;
+  var tiers = dbTiers
+    ? dbTiers.filter(function(t) { return t.tier !== 'payl'; }).map(function(t) {
+        return {
+          id: t.tier,
+          name: t.name,
+          price: t.subscription_price_cents,
+          credits: t.included_credits,
+          payg: t.payg_rate_cents,
+          features: t.features || [],
+          promo_label: t.promo_label || null
+        };
+      })
+    : FALLBACK_TIERS.map(function(t) {
+        return { id: t.tier, name: t.name, price: t.subscription_price_cents, credits: t.included_credits, payg: t.payg_rate_cents, features: t.features, promo_label: null };
+      });
+
   // FB-PAYL-S2: Insert PAYL card between Free and Starter for non-Pro users
   var paylCard = '';
   if (typeof window.renderPaylTierCard === 'function' && currentTier !== 'pro') {
@@ -24479,9 +24500,12 @@ function renderTierComparison(pricing) {
   container.innerHTML = tiers.map((t, idx) => {
     const isCurrent = t.id === currentTier;
     const priceStr = t.price === 0 ? '$0' : '$' + (t.price / 100);
+    // COHORT-PRICING-S1: Show promo label badge when cohort override is active
+    var promoHtml = t.promo_label ? '<div style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(99,102,241,0.15);color:#6366f1;font-weight:600;margin-bottom:4px;display:inline-block">' + t.promo_label + '</div>' : '';
     var card = `
       <div class="sub-tier-card ${isCurrent ? 'sub-tier-current' : ''}" style="display:flex;flex-direction:column;">
         ${isCurrent ? '<div class="sub-tier-badge">Current</div>' : ''}
+        ${promoHtml}
         <div class="sub-tier-name">${t.name}</div>
         <div class="sub-tier-price">${priceStr}<span class="sub-tier-interval">/mo</span></div>
         <div class="sub-tier-credits">${t.credits > 0 ? t.credits + ' credits/mo' : 'No included credits'}</div>

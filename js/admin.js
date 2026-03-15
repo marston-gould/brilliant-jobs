@@ -98,6 +98,7 @@ var ADMIN_SUBPAGE_MAP = {
   'entitlements':   { section: 'audience',    label: 'Entitlements',   init: function(){ loadEntitlementsTab(); } },
   'users':          { section: 'audience',    label: 'Users',          init: function(){ loadUsersTab(); } },
   'feedback':       { section: 'audience',    label: 'Feedback',       init: function(){ loadFeedbackTab(); } },
+  'cohort-pricing': { section: 'audience',    label: 'Cohort Pricing', init: function(){ loadCohortPricingPanel(); } },
   // ── Business ──
   'revenue':        { section: 'business',    label: 'Revenue',        init: function(){ loadRevenueTab(); } },
   'stripe':         { section: 'business',    label: 'Stripe',         init: function(){ loadStripeTab(); } },

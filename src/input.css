@@ -3537,3 +3537,9 @@
     .notif-log-toolbar-right { display: flex; gap: 8px; align-items: center; }
     .btn-icon { background: none; border: none; cursor: pointer; padding: 4px; border-radius: 4px; color: var(--text-dim); transition: color 0.15s, background 0.15s; }
     .btn-icon:hover { color: var(--accent); background: hsla(var(--accent-hsl), 0.08); }
+
+    /* COHORT-PRICING-S1: Admin pricing panel inputs */
+    .cp-input { padding: 4px 8px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-family: var(--mono); font-size: 12px; }
+    .cp-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px hsla(var(--accent-hsl), 0.15); }
+    .cp-override:not(:placeholder-shown) { border-color: #6366f1; background: rgba(99, 102, 241, 0.06); }
+    .cp-override::placeholder { color: var(--text-faint); font-style: italic; }

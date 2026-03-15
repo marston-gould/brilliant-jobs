@@ -52,7 +52,52 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**SCA-REM-S4** — Spec Compliance Remediation Session 4
+**COHORT-PRICING-S1** — Cohort-Based Pricing Configuration
+- Completed: 2026-03-14
+- Product version bumped: `v9.21` → `v9.22` (JS/HTML/CSS changes — billing.js renderTierComparison refactored to DB-driven, admin-cohort-pricing.js new, admin.html cohort pricing panel, admin.js ADMIN_SUBPAGE_MAP entry, input.css .cp-input styles; all HTML surfaces cache-busted)
+- ROADMAP.md updated: COHORT-PRICING-S1 → ✅
+- roadmap.html updated: COHORT-PRICING-S1 → `s: 'done'`, p: 100
+- **Migration v8.97-cohort-pricing.sql:**
+  - `pricing_defaults` table: tier PK, subscription_price_cents, included_credits, payg_rate_cents, max_saved_filters, max_resumes, features JSONB, stripe_price_id, display_order, is_visible, scar_meta. Seeded 4 tiers (free/starter/pro/payl). RLS (admin write, authenticated read). updated_at trigger.
+  - `pricing_audit_log` table: changed_by, change_type CHECK (global_default/cohort_override/cohort_create/cohort_assign), target_id, before_value/after_value JSONB. RLS (admin only).
+  - `get_effective_pricing(uuid)` RPC rewritten: loads pricing_defaults for user's tier → merges cohort pricing_config overrides (sparse JSONB, only present keys win) → checks promo_expires_at → builds all_tiers array with per-tier cohort resolution → returns tier, cohort_id, resolved price/credits/payg, features, promo_label, all_tiers.
+  - `fn_assign_signup_cohort()` BEFORE INSERT trigger on profiles: matches active cohorts with criteria_type='signup_date_range' where now() falls in date range. Immutable — only assigns if cohort_id is NULL.
+  - `fn_update_pricing_default()`: admin-only RPC, updates pricing_defaults row, writes before/after to audit log.
+  - `fn_update_cohort_pricing()`: admin-only RPC, updates cohorts.pricing_config JSONB, writes to audit log.
+  - `fn_create_pricing_cohort()`: admin-only RPC, creates/upserts cohort with signup_date_range criteria, writes to audit log.
+  - 3 seed cohorts: `founding` (pre-June 2026, Pro at $29.99/400cr/$0.08 PAYG with "Founding Member" label), `early-bird` (Jun-Aug 2026, Pro at $34.99/350cr/$0.09), `general-launch` (Sep-Dec 2026, empty config = global defaults).
+- **billing.js refactored:**
+  - `renderTierComparison()`: reads `pricing.all_tiers` from RPC response instead of hardcoded array. Filters out PAYL tier from display. Maps DB fields (subscription_price_cents, included_credits, payg_rate_cents) to display fields. FALLBACK_TIERS const for rollback safety if RPC doesn't return all_tiers. Promo label badge (purple) shown when cohort override has promo_label.
+  - `renderCreditPacks()` already reads resolved payg_rate_cents from RPC — no change needed.
+- **Admin panel (js/admin-cohort-pricing.js):**
+  - `loadCohortPricingPanel()`: entry point, loads defaults + cohorts + audit log in parallel
+  - Global Defaults editor: inline-editable price/credits/PAYG per tier with Save button per row
+  - Cohort List: shows all signup_date_range cohorts with date range, status, override count, Edit Pricing button
+  - Per-Cohort Override Editor: opens inline with per-tier fields (price, credits, PAYG, promo label, expiry date). Blank = inherit global default. Live resolved preview updates on input (purple = overridden, gray = default). Handles expired promos.
+  - Create New Cohort form: ID slug, name, start/end dates. Validates date order.
+  - Pricing Change Log: last 30 entries from pricing_audit_log with color-coded type badges.
+- **CSS:** `.cp-input` base + focus styles, `.cp-override:not(:placeholder-shown)` purple border highlight, `.cp-override::placeholder` italic style.
+- **Pod Team Manifest:** COHORT-PRICING-S1: Lead Platform Eng + Senior Backend Eng (primary), Chief Architect + Evolvability Strategist (reviewers).
+- **Modified:**
+  - `supabase/migrations/v8.97-cohort-pricing.sql` — Full migration (pricing_defaults + audit log + 4 RPCs + trigger + seed cohorts + RLS + GRANTs)
+  - `js/billing.js` — renderTierComparison DB-driven refactor with FALLBACK_TIERS + promo badge
+  - `js/admin.js` — ADMIN_SUBPAGE_MAP cohort-pricing entry in audience section
+  - `admin.html` — admin-panel-cohort-pricing container + admin-cohort-pricing.js script tag
+  - `src/input.css` — .cp-input/.cp-override styles
+  - `docs/scaling/pod-team-manifest.md` — COHORT-PRICING-S1 pairing
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `dist/admin.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — COHORT-PRICING-S1 → ✅
+  - `roadmap.html` — COHORT-PRICING-S1 → done/100
+- **Created:**
+  - `js/admin-cohort-pricing.js` — Admin cohort pricing panel
+  - `supabase/migrations/v8.97-cohort-pricing.sql` — Full migration
+  - `tests/cohort-pricing-s1.test.js` — 103 validation tests (12 sections)
+- **Tests:** 103 validation tests (all passing)
+
+**Previous: SCA-REM-S4** — Spec Compliance Remediation Session 4
 - Completed: 2026-03-15
 - Product version bumped: `v9.20` → `v9.21` (JS/HTML changes — job-feed.js pagination keyboard nav, dashboard.html connect button centering; all HTML surfaces cache-busted)
 - ROADMAP.md updated: SCA-REM-S4 → ✅
@@ -3350,7 +3395,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.21`** | **SCA-REM-S4: PI taxonomy doc + pagination a11y + connect button centering** |
+| **Product (BJ_VERSION)** | **`v9.22`** | **COHORT-PRICING-S1: Cohort-based pricing configuration** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

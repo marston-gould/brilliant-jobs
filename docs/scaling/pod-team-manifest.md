@@ -158,3 +158,9 @@
 | SCA-REM-S2 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
 | SCA-REM-S3 | Chief Architect + Evolvability Strategist | Lead Platform Eng + System Architect—Scalability |
 | SCA-REM-S4 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
+
+## Pairing Assignments (Cohort-Based Pricing)
+
+| Session | Primary Pair | Pod 4 Reviewer |
+|---------|-------------|----------------|
+| COHORT-PRICING-S1 | Lead Platform Eng + Senior Backend Eng | Chief Architect + Evolvability Strategist |
