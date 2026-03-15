@@ -25,6 +25,15 @@
 (function () {
   'use strict';
 
+  // EXT-BUILD-001 B6: Skip toolbar injection if job-site-overlay (EXT-AS-3+) is handling this page.
+  // job-site-overlay.ts provides the full consumer UI (Save to Pipeline + Apply Interception + Score Gate).
+  // Running both would duplicate Save buttons.
+  if ((window as any)._bjJobSiteOverlay) {
+    return;
+  }
+  // Also set a flag so job-site-overlay can detect if it loaded second
+  (window as any)._bjToolbarOverlayActive = true;
+
   const TOOLBAR_ID = 'bj-job-toolbar';
   const TOOLBAR_SHADOW_HOST_ID = 'bj-toolbar-shadow-host';
 

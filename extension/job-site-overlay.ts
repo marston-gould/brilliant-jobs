@@ -722,6 +722,13 @@
   // ── Initial injection ─────────────────────────────────────────
   // Wait for DOM to be ready, then inject
   function init() {
+    // EXT-BUILD-001 B6: Remove toolbar-overlay if it loaded before us to prevent duplicate Save buttons
+    var oldToolbar = document.getElementById('bj-toolbar-shadow-host');
+    if (oldToolbar) {
+      oldToolbar.remove();
+    }
+    (window as any)._bjToolbarOverlayActive = false;
+
     injectSaveButton();
     interceptApplyButtons();
   }

@@ -304,9 +304,18 @@ function transformSource(
   source: string,
   channelMap: ChannelMap,
   cssClassMap: CSSClassMap,
-  buildId: string
+  buildId: string,
+  format: 'plain' | 'esm' | 'iife' = 'iife'
 ): string {
   let result = source;
+
+  // EXT-BUILD-001 S1.3: Format-aware export/import handling
+  // The source files from storage are already compiled JS (from build-dev.js).
+  // Plain: no modifications to exports (there shouldn't be any)
+  // ESM: preserve export default statements
+  // IIFE: strip all export/import keywords (already stripped by build-dev.js IIFE output)
+  // Note: build-dev.js already handles export stripping per format, so the source
+  // from storage should already be in the correct format. This is a safety net.
 
   // 1. Replace channel names (in string literals)
   for (const [original, replacement] of Object.entries(channelMap)) {
@@ -401,42 +410,73 @@ async function buildFingerprintedExtension(
 
   // Fetch the canonical extension source from Supabase Storage
   // Files are stored in 'extension-source' bucket by admin upload
-  const sourceFiles = [
-    "background.js",
-    "contentScript.js",
-    "content.js",
-    "popup.js",
-    "popup.html",
+  // EXT-BUILD-001 S1.2: Updated file list matching build-dev.js output (58 compiled + static)
+  // Format categories determine how transformSource handles export/import keywords
+
+  // Plain scripts — loaded via importScripts() or <script> in popup.html
+  // Must NOT have IIFE wrapping. Global scope declarations.
+  const plainFiles = [
     "supabase.js",
-    "help.html",
-    "human-sim.js",
-    "interceptor.js",
-    "interceptor-bridge.js",
     "popup-bridge.js",
+    "popup.js",
+    "popup-consumer.js",
     "popup-post.js",
-    "manifest.json",
-    "inject.css",
-    // Handlers
-    "handlers/lever.js",
+    "utils/fetchWithRetry.js",
+    "utils/crypto.js",
+    "utils/autoTracker.js",
+  ];
+
+  // ESM scripts — loaded via dynamic import() in contentScript.ts
+  // Must preserve `export default { fill }` for handler loading.
+  const esmFiles = [
+    "handlers/ashby.js",
+    "handlers/avature.js",
+    "handlers/bamboohr.js",
+    "handlers/generic.js",
     "handlers/greenhouse-legacy.js",
     "handlers/greenhouse-react.js",
-    "handlers/ashby.js",
-    "handlers/workable.js",
-    "handlers/recruitee.js",
-    "handlers/linkedin-easy-apply.js",
+    "handlers/icims.js",
     "handlers/indeed.js",
+    "handlers/jazzhr.js",
+    "handlers/lever.js",
+    "handlers/linkedin-easy-apply.js",
+    "handlers/recruitee.js",
+    "handlers/smartrecruiters.js",
+    "handlers/taleo.js",
+    "handlers/workable.js",
+    "handlers/workday-experience.js",
     "handlers/workday.js",
-    // Utils
+    "utils/fillMetrics.js",
+  ];
+
+  // IIFE scripts — loaded via manifest content_scripts / service_worker
+  // Full fingerprinting transform + dead code injection.
+  const iifeFiles = [
+    "background.js",
+    "contentScript.js",
+    "interceptor.js",
+    "interceptor-bridge.js",
+    "token-sync.js",
+    "content.js",
+    "job-site-overlay.js",
+    "inject-overlay.js",
+    "toolbar-overlay.js",
+    "human-sim.js",
+    // Additional IIFE utils
     "utils/originGuard.js",
-    "utils/crypto.js",
     "utils/tierGate.js",
     "utils/jdMatcher.js",
-    "utils/autoTracker.js",
     "utils/fieldFillerQueue.js",
     "utils/fileUpload.js",
     "utils/mutationWatcher.js",
     "utils/reactProps.js",
     "utils/applicationTracker.js",
+    "utils/indeedAntiBot.js",
+    "utils/multilingualLabels.js",
+    "utils/resilientDOM.js",
+    "utils/killSwitch.js",
+    "utils/errorReporter.js",
+    "utils/aiAnswerer.js",
     // Fields
     "fields/textInput.js",
     "fields/dropdown.js",
@@ -444,33 +484,66 @@ async function buildFingerprintedExtension(
     "fields/checkbox.js",
     "fields/radioGroup.js",
     "fields/dropdownSearchable.js",
+    // Selectors
+    "selectors/registry.js",
+    "selectors/job-site-registry.js",
   ];
 
-  const iconFiles = ["icon16.png", "icon48.png", "icon128.png"];
+  // Static files — copy with manifest/CSS/HTML transforms but no JS transform
+  const staticFiles = [
+    "manifest.json",
+    "popup.html",
+    "inject.css",
+    "help.html",
+    "version.json",
+  ];
+
+  const iconFiles = ["icon16.png", "icon48.png", "icon128.png", "icon16-outline.png", "icon48-outline.png", "icon128-outline.png"];
 
   const zip = new JSZip();
 
-  // Process each source file
-  for (const file of sourceFiles) {
+  // EXT-BUILD-001 S1.2/S1.3: Format-aware file processing
+  // Helper to download and process a file from storage
+  async function downloadFile(file: string): Promise<string | null> {
     const { data, error } = await sb.storage
       .from("extension-source")
       .download(`v4/${file}`);
-
     if (error || !data) {
       console.error(`Failed to fetch ${file}:`, error?.message);
-      continue;
+      return null;
     }
+    return await data.text();
+  }
 
-    const text = await data.text();
+  // Process Plain JS files — channel + CSS replacement, dead code, but NO export stripping
+  // These are global-scope scripts that must NOT be wrapped
+  for (const file of plainFiles) {
+    const text = await downloadFile(file);
+    if (text) zip.file(file, transformSource(text, channelMap, cssClassMap, buildId, 'plain'));
+  }
+
+  // Process ESM JS files — channel + CSS replacement, dead code, but PRESERVE export default
+  for (const file of esmFiles) {
+    const text = await downloadFile(file);
+    if (text) zip.file(file, transformSource(text, channelMap, cssClassMap, buildId, 'esm'));
+  }
+
+  // Process IIFE JS files — full transform including export stripping + dead code
+  for (const file of iifeFiles) {
+    const text = await downloadFile(file);
+    if (text) zip.file(file, transformSource(text, channelMap, cssClassMap, buildId, 'iife'));
+  }
+
+  // Process static files
+  for (const file of staticFiles) {
+    const text = await downloadFile(file);
+    if (!text) continue;
 
     if (file === "manifest.json") {
-      // Transform manifest with variations
       const manifest = JSON.parse(text);
       manifest.short_name = manifestVariation.short_name;
       manifest.description = manifestVariation.description;
-      // Inject build metadata (invisible to user)
       manifest._build = buildId;
-      // Ensure Indeed content_scripts have all_frames: true for iframe apply forms
       if (manifest.content_scripts) {
         for (const cs of manifest.content_scripts) {
           const hasIndeed = cs.matches?.some((m: string) => m.includes("indeed.com"));
@@ -481,11 +554,7 @@ async function buildFingerprintedExtension(
       }
       zip.file(file, JSON.stringify(manifest, null, 2));
     } else if (file === "inject.css") {
-      // Transform CSS classes
       zip.file(file, transformCSS(text, cssClassMap));
-    } else if (file.endsWith(".js")) {
-      // Transform JS source
-      zip.file(file, transformSource(text, channelMap, cssClassMap, buildId));
     } else {
       // HTML files — replace CSS class references
       let html = text;
@@ -506,12 +575,12 @@ async function buildFingerprintedExtension(
     }
   }
 
-  // Add build metadata file
+  // Add build metadata into version.json (overrides the static copy)
   zip.file(
     "version.json",
     JSON.stringify(
       {
-        version: "4.0.0",
+        version: "3.0.0",
         build: buildId,
         built_at: new Date().toISOString(),
         tier: userTier,

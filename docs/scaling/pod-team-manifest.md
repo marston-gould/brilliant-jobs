@@ -168,3 +168,9 @@
 | Session | Primary Pair | Pod 4 Reviewer |
 |---------|-------------|----------------|
 | COHORT-PRICING-S1 | Lead Platform Eng + Senior Backend Eng | Chief Architect + Evolvability Strategist |
+
+## Pairing Assignments (Extension Build Pipeline)
+
+| Session | Primary Pair | Pod 4 Reviewer |
+|---------|-------------|----------------|
+| EXT-BUILD-001-S1 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |

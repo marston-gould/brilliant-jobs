@@ -52,7 +52,48 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**BP-001 + BP-002** — Anthropic Circuit Breaker + Extension Tier Awareness
+**EXT-BUILD-001-S1** — Extension Build Pipeline: Upload + EF File List + B3 + B6
+- Completed: 2026-03-15
+- Product version bumped: `v9.27` → `v9.28`
+- ROADMAP.md updated: EXT-BUILD-001-S1 → ✅
+- roadmap.html updated: EXT-BUILD-001-S1 → `s: 'done'`, p: 100
+- **S1.1 — build-dev.js + upload-extension-source.js:**
+  - `extension/build-dev.js` (NEW): Clean dev build script. 3 compilation modes: Plain (importScripts/script — supabase.js, popup*.js, utils/fetchWithRetry, utils/crypto, utils/autoTracker), ESM (dynamic import — 17 handlers + utils/fillMetrics), IIFE (content_scripts — background, contentScript, interceptor*, token-sync, content, job-site-overlay, inject-overlay, toolbar-overlay, human-sim, plus extra utils/fields/selectors). 58 compiled files, 11 static files, 69 total, 0 errors. Manifest reference verification. popup.html .ts→.js replacement.
+  - `scripts/upload-extension-source.js` (NEW): Uploads dist/dev/ to Supabase Storage `extension-source/v4/`. MIME type mapping. Upsert mode. Bucket creation if needed. Verification of critical files post-upload.
+  - 69/69 files uploaded successfully to Supabase Storage via curl (Node DNS blocked in sandbox, curl works).
+- **S1.2 — build-extension EF file list update:**
+  - `supabase/functions/build-extension/index.ts`: Old flat `sourceFiles` array (v2.x, ~35 files) replaced with 4 categorized arrays: `plainFiles` (8), `esmFiles` (18), `iifeFiles` (32), `staticFiles` (5). Icon outline variants added. version.json override set to 3.0.0.
+- **S1.3 — EF transformSource format parameter:**
+  - `transformSource()` gains `format: 'plain' | 'esm' | 'iife'` parameter. Processing loop calls with correct format per file category. ESM handlers keep `export default` during fingerprinting. Plain scripts keep global scope. IIFE scripts get full transform.
+- **B3 — version.json sync:**
+  - `extension/version.json`: 2.21.0 → 3.0.0. Build reference updated. File list expanded from 29 to 63 entries (all 17 handlers, all utils, fields, selectors). Synced with manifest.json 3.0.0.
+- **B6 — LinkedIn job-site-overlay injection:**
+  - `extension/manifest.json`: `https://www.linkedin.com/*` added to content_scripts[2] matches (contentScript.js). LinkedIn is now first entry (highest traffic site). Previously only interceptor.js and interceptor-bridge.js ran on LinkedIn — now contentScript.js also runs, which injects job-site-overlay.js.
+  - `extension/toolbar-overlay.ts`: Guard added — checks `window._bjJobSiteOverlay` on init, returns early if job-site-overlay already active. Prevents duplicate Save buttons.
+  - `extension/job-site-overlay.ts`: On init, removes old toolbar-overlay shadow host (`bj-toolbar-shadow-host`) if present. Sets `_bjToolbarOverlayActive = false`. This ensures the new consumer UI (Save to Pipeline + Apply Interception + Score Gate) takes precedence.
+- **Skipped Items:** None.
+- **Modified:**
+  - `extension/build-dev.js` — new file
+  - `scripts/upload-extension-source.js` — new file
+  - `supabase/functions/build-extension/index.ts` — file list, format param, icons, version
+  - `extension/version.json` — 2.21.0 → 3.0.0
+  - `extension/manifest.json` — LinkedIn in contentScript matches
+  - `extension/toolbar-overlay.ts` — B6 guard
+  - `extension/job-site-overlay.ts` — B6 reconciliation
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `dist/admin.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — EXT-BUILD-001-S1 → ✅
+  - `roadmap.html` — EXT-BUILD-001-S1 → done/100
+- **Created:**
+  - `extension/build-dev.js` — Clean dev build script (3 modes)
+  - `scripts/upload-extension-source.js` — Supabase Storage upload script
+  - `tests/ext-build-001-s1-upload-pipeline.test.js` — 56 validation tests
+- **Tests:** 56 validation tests (all passing)
+- **Deployed:** build-extension EF redeployed. 69 files uploaded to Supabase Storage.
+
+**Previous: BP-001 + BP-002** — Anthropic Circuit Breaker + Extension Tier Awareness
 - Completed: 2026-03-15
 - Product version bumped: `v9.26` → `v9.27`
 - ROADMAP.md updated: BP-001 + BP-002 → ✅
@@ -3473,10 +3514,27 @@ Deliverables:
 
 ## Next Session
 
-All major items complete. Remaining backlog:
-- Wire remaining 21 Anthropic-calling EFs to withAnthropicBreaker (incremental, low risk)
-- PostHog Google OAuth verification (R5 in FB-PI-001 risk register — submit for verification before public Gmail/Calendar launch)
-- Gmail scan "label" scope mode (third dropdown option, "primary" and "all" are wired)
+**EXT-BUILD-001-S2** — Dashboard Download Button + Version Check
+
+Entry gate: S1 complete (build-dev.js produces clean build, files in Supabase Storage, EF deployed)
+
+Deliverables:
+- S2.1: Wire dashboard download button to build-extension EF (reconcile app.js vs extension-download.js paths)
+- S2.2: extension-version EF (lightweight GET, returns latest/min_supported/download_url, cached 1hr)
+- S2.3: background.ts version check (startup + 6hr alarm, badge '!' when behind)
+- S2.4: popup-consumer.ts update banner (download + dismiss)
+- Bug B1/B4: Resumes nav CSP violation (inline onclick → addEventListener)
+- Bug B2: app_config 404 (replace with extension-version EF call)
+
+Exit gate:
+- Dashboard download produces fingerprinted ZIP that loads in Chrome
+- Extension checks for updates on startup and every 6 hours
+- Popup shows update banner when behind, with working download button
+
+Remaining backlog:
+- EXT-BUILD-001-S3: CI gate + release process
+- Wire remaining 21 Anthropic-calling EFs to withAnthropicBreaker
+- CASA-001: Google CASA assessment + gmail.readonly upgrade
 - Any new feature work
 
 
@@ -3508,7 +3566,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.27`** | **BP-001 + BP-002: Anthropic circuit breaker + extension tier gate** |
+| **Product (BJ_VERSION)** | **`v9.28`** | **EXT-BUILD-001-S1: Upload pipeline + EF file list + B3 + B6** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

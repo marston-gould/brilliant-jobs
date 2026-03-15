@@ -11,7 +11,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v9.33"></script>
+  <script src="/js/version.js?v=v9.28"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2247,6 +2247,9 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'BP-001 Complete — 24/24 EFs Circuit Breaker', d: 'All 24 Anthropic-calling EFs wired to withAnthropicBreaker and deployed. v9.31→v9.32.', p: 100, e: '1.5h' },
 { s: 'done', b: 'post-launch', n: 'OAUTH-PREP Gmail Scope + Privacy Policy', d: 'gmail.metadata scope (temporary downgrade). Limited Use disclosure in privacy.html. Verification prep doc. v9.33.', p: 100, e: '30m' },
 { s: 'active', b: 'post-launch', n: 'CASA-001 Gmail Snippet Access', d: 'AI classifier test: 58% misclassification without snippet (7/12 ambiguous emails wrong — 4 rejections as ACK, 3 dropped as NONE). Requires CASA security assessment ($500-$4,500/yr) to use gmail.readonly. Blocked on budget approval.', p: 10, e: '4-6 weeks' },
+{ s: 'done', b: 'ext-build', n: 'EXT-BUILD-001-S1 Upload Pipeline + EF File List + B3 + B6', d: 'build-dev.js 3-mode clean build (58 files, 0 errors). upload-extension-source.js → 69 files to Supabase Storage. build-extension EF: 4 categorized file lists + format-aware transformSource. B3: version.json 3.0.0. B6: LinkedIn in contentScript matches + toolbar/overlay reconciliation. 56 tests. v9.28.', p: 100, e: '1 session' },
+{ s: 'todo', b: 'ext-build', n: 'EXT-BUILD-001-S2 Dashboard Download + Version Check', d: 'Wire download button, extension-version EF, background.ts version check, popup update banner.', p: 0, e: '1 session' },
+{ s: 'todo', b: 'ext-build', n: 'EXT-BUILD-001-S3 CI Gate + Release Process', d: 'gate-ext-build CI job, release docs, build-extension.js three-mode fix, test suite.', p: 0, e: '1 session' },
 ];
 
 
