@@ -359,10 +359,21 @@
       <tr><td><strong>Resend</strong></td><td>Email delivery</td><td>Email address and notification content</td></tr>
       <tr><td><strong>Vonage</strong></td><td>SMS notifications</td><td>Phone number and message content</td></tr>
       <tr><td><strong>PostHog</strong></td><td>Product analytics</td><td>Anonymized usage data — page views, feature usage, and session length. Only activated with your consent via our cookie banner.</td></tr>
-      <tr><td><strong>Google OAuth — Gmail</strong></td><td>Email integration for application tracking (Ghost Monitor)</td><td>Email metadata only (sender domain, subject line, date) — we never read message body content. Users connect and disconnect Gmail at any time from the Setup page. Disconnecting deletes all stored tokens and email data.</td></tr>
+      <tr><td><strong>Google OAuth — Gmail &amp; Calendar</strong></td><td>Pipeline Intelligence: email and calendar scanning for application tracking</td><td>Gmail: email metadata only (sender, subject, date) via <code>gmail.metadata</code> scope — we never read message body content. Calendar: event title, organizer, attendees, and time via <code>calendar.events.readonly</code> scope — used to detect interview scheduling. Users connect and disconnect at any time from Settings. Disconnecting deletes all stored tokens and scan data immediately.</td></tr>
     </tbody>
   </table>
   <p>Each of these services has its own privacy policy and maintains industry-standard security practices. We pursue Data Processing Agreements (DPAs) with all vendors who handle personal data. We chose them because they're good at what they do, not because they were cheap.</p>
+
+  <h2><span class="section-num">04b</span>Google API Services — Limited Use Disclosure</h2>
+  <p>Brilliant Jobs' use and transfer to any other app of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+  <p>Specifically, Brilliant Jobs:</p>
+  <ul class="legal-list">
+    <li><strong>Only uses Google user data for the purposes described in this privacy policy</strong> — detecting application-related emails and interview calendar events to update your job application pipeline.</li>
+    <li><strong>Does not transfer Google user data to third parties</strong> unless necessary to provide or improve the Pipeline Intelligence feature, to comply with applicable law, or as part of a merger/acquisition with adequate data protection.</li>
+    <li><strong>Does not use Google user data for advertising purposes.</strong> We do not serve ads. We do not profile you for advertisers. We do not sell, rent, or trade your email or calendar data.</li>
+    <li><strong>Does not allow humans to read your Google user data</strong> unless (a) you give explicit consent for a specific message, (b) it is necessary for security purposes (investigating abuse), (c) it is required by law, or (d) the data is aggregated and anonymized for internal operations.</li>
+    <li><strong>Limits data retention:</strong> Gmail scan data is retained for 90 days. Disconnecting Gmail/Calendar immediately deletes all stored tokens, scan checkpoints, and raw signal data.</li>
+  </ul>
 
   <h2><span class="section-num">05</span>Aggregated and Anonymized Data</h2>
   <p>We aggregate user-contributed data — application outcomes, employer response rates, salary information, survey responses — to produce community statistics, trend reports, and public content. Think of it as a collective bargaining agreement, but for information.</p>
