@@ -56,6 +56,7 @@ const chunks = {
     'js/rewrite.js',
     'js/resume-archive.js',
     'js/resume-metrics.js',
+    'js/resume-builder.js',
     'js/overlay-analytics.js',
     'js/chat.js',
     'js/apply-workflow.js',

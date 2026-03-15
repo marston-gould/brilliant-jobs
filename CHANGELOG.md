@@ -1,3 +1,11 @@
+## v9.36 RESUME-BUILDER-001-S1: Upload, Parse, Store (2026-03-15)
+- resume-parse EF: multipart upload (PDF/DOCX) + paste-text + JSON update paths. Anthropic Haiku extraction, plan limit enforcement (Free=1/Starter=3/Pro=10), ATS warning detection (tables, multi-column, non-standard headings), Storage upload to resumes/{user_id}/. 401/403/422/502 error surfaces. anthropicFetch circuit breaker.
+- Migration v9.36: resumes table + 4 RLS policies + updated_at trigger + fn_resume_count_for_user + Storage bucket policies (resumes/).
+- dashboard.html: page-resume-builder with upload/paste/scratch tabs, editable editor (contact/summary/experience/education/skills/certs), ATS warnings panel, parsing progress indicator.
+- app.js: resume-builder in _bjPageTitles/_bjPageSections, rbInit() nav hook, skeleton exclusion.
+- build.js: resume-builder.js added to bundle. Gateway: resume-parse route + S2/S3 stubs.
+- 46 tests. v9.36.
+
 ## v9.35 Session NN: TITLE (2026-03-15)
 - DESCRIBE CHANGES HERE
 

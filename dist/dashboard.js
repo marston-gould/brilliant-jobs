@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.35';
+var BJ_VERSION = 'v9.36';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -2130,13 +2130,13 @@ console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded');
 // CS-P1-007 DS1-6: Page metadata for virtual $pageview events (all 14 pages)
 var _bjPageTitles = {
   brilliant: 'Get Started', setup: 'Setup', jobs: 'Jobs Feed', tuning: 'Search Tuning',
-  resumes: 'Resumes', applications: 'My Applications', notifications: 'Notifications',
+  resumes: 'Resumes', 'resume-builder': 'Resume Builder', applications: 'My Applications', notifications: 'Notifications',
   stats: 'Stats', referrals: 'Referrals', settings: 'Settings',
   subscription: 'Subscription', feedback: 'Feedback'
 };
 var _bjPageSections = {
   brilliant: 'onboarding', setup: 'onboarding', jobs: 'search', tuning: 'search',
-  resumes: 'search', applications: 'tracking', notifications: 'tracking',
+  resumes: 'search', 'resume-builder': 'search', applications: 'tracking', notifications: 'tracking',
   stats: 'intelligence', referrals: 'growth',
   settings: 'account', subscription: 'account', feedback: 'account'
 };
@@ -2655,6 +2655,13 @@ $$('.nav-item').forEach(item => {
           }
         }
       }
+      // RESUME-BUILDER-001-S1: Resume Builder page init
+      if (_tab === 'resume-builder') {
+        if (typeof rbInit === 'function') {
+          try { rbInit(); } catch(e) { if (typeof reportError === 'function') reportError('app:resume-builder-init', e); }
+        }
+        if (window.bjSkeleton) setTimeout(function() { bjSkeleton.hide('resume-builder'); }, 150);
+      }
       // BUGFIX-005: My Applications tab needs pipeline rendered
       if (_tab === 'applications') {
         var savedAppTab = localStorage.getItem('bj_app_tab') || 'pipeline';
@@ -2662,7 +2669,7 @@ $$('.nav-item').forEach(item => {
         if (window.bjSkeleton) setTimeout(function() { bjSkeleton.hide('applications'); }, 150);
       }
       // Tabs without explicit init get skeleton hidden after a short delay (content is static HTML)
-      if (!['stats','feedback','referrals','resumes','applications'].includes(_tab) && window.bjSkeleton) {
+      if (!['stats','feedback','referrals','resumes','resume-builder','applications'].includes(_tab) && window.bjSkeleton) {
         setTimeout(function() { bjSkeleton.hide(_tab); }, 150);
       }
       // QA-011: Re-search feed when tuning changed (e.g. US-Only toggle)
@@ -26946,6 +26953,529 @@ window.addEventListener('resize', function() {
       window.BJ._registry[name] = { module: 'resume-metrics', registered: Date.now() };
     }
   });
+})();
+
+
+// === js/resume-builder.js ===
+// js/resume-builder.js
+// RESUME-BUILDER-001-S1: Upload, Parse, Store
+// Handles file upload, paste-text, scratch mode, Anthropic parse via EF,
+// editable parsed-data form, and save-to-account.
+
+/* global supabase, BJ_VERSION, captureEvent, reportError, showToast */
+
+(function () {
+  'use strict';
+
+  // ─── State ───────────────────────────────────────────────────────────────
+
+  let _state = {
+    mode: 'upload',      // 'upload' | 'paste' | 'scratch'
+    editorTab: 'contact',
+    file: null,          // File object
+    resumeId: null,      // uuid — set after first save
+    parsedJson: null,    // structured resume data from EF
+    dirty: false,        // unsaved edits in editor
+  };
+
+  // ─── Init (called when page becomes visible) ──────────────────────────────
+
+  window.rbInit = function () {
+    rbBindPasteCounter();
+  };
+
+  // ─── Tab switching ────────────────────────────────────────────────────────
+
+  window.rbSwitchTab = function (tab) {
+    _state.mode = tab;
+    document.querySelectorAll('.rb-tab').forEach(b => {
+      b.classList.toggle('active', b.id === `rb-tab-${tab}`);
+      b.setAttribute('aria-selected', b.id === `rb-tab-${tab}` ? 'true' : 'false');
+    });
+    document.querySelectorAll('.rb-panel').forEach(p => p.classList.add('u-hidden'));
+    const panel = document.getElementById(`rb-panel-${tab}`);
+    if (panel) panel.classList.remove('u-hidden');
+    rbClearError('rb-upload-error');
+  };
+
+  window.rbShowEditorTab = function (tab) {
+    _state.editorTab = tab;
+    document.querySelectorAll('.rb-etab').forEach(b => b.classList.toggle('active', b.dataset.etab === tab));
+    document.querySelectorAll('.rb-etab-panel').forEach(p => p.classList.add('u-hidden'));
+    const panel = document.getElementById(`rb-etab-${tab}`);
+    if (panel) panel.classList.remove('u-hidden');
+  };
+
+  // ─── File handling ────────────────────────────────────────────────────────
+
+  window.rbHandleFileSelect = function (input) {
+    const file = input.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      rbShowError('rb-upload-error', 'File is too large. Maximum size is 5MB.');
+      return;
+    }
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!['pdf', 'doc', 'docx'].includes(ext)) {
+      rbShowError('rb-upload-error', 'Please upload a PDF or DOCX file.');
+      return;
+    }
+    _state.file = file;
+    rbClearError('rb-upload-error');
+    document.getElementById('rb-file-name').textContent = file.name;
+    document.getElementById('rb-drop-zone').classList.add('u-hidden');
+    document.getElementById('rb-file-selected').classList.remove('u-hidden');
+  };
+
+  window.rbHandleDrop = function (e) {
+    e.preventDefault();
+    document.getElementById('rb-drop-zone')?.classList.remove('drag-over');
+    const file = e.dataTransfer?.files?.[0];
+    if (!file) return;
+    // Simulate selecting
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    const input = document.getElementById('rb-file-input');
+    input.files = dt.files;
+    rbHandleFileSelect(input);
+  };
+
+  window.rbClearFile = function () {
+    _state.file = null;
+    document.getElementById('rb-file-input').value = '';
+    document.getElementById('rb-drop-zone')?.classList.remove('u-hidden');
+    document.getElementById('rb-file-selected')?.classList.add('u-hidden');
+  };
+
+  // ─── Paste counter ────────────────────────────────────────────────────────
+
+  function rbBindPasteCounter () {
+    const ta = document.getElementById('rb-paste-area');
+    const counter = document.getElementById('rb-paste-count');
+    if (!ta || !counter) return;
+    ta.addEventListener('input', () => {
+      counter.textContent = `${ta.value.length.toLocaleString()} characters`;
+    });
+  }
+
+  // ─── Parse ────────────────────────────────────────────────────────────────
+
+  window.rbStartParse = async function () {
+    rbClearError('rb-upload-error');
+    const label = (document.getElementById('rb-label-input')?.value || '').trim() || 'My Resume';
+
+    // Validate input
+    if (_state.mode === 'upload' && !_state.file) {
+      rbShowError('rb-upload-error', 'Please select a file to upload.');
+      return;
+    }
+    if (_state.mode === 'paste') {
+      const text = document.getElementById('rb-paste-area')?.value?.trim() ?? '';
+      if (text.length < 50) {
+        rbShowError('rb-upload-error', 'Please paste at least 50 characters of resume text.');
+        return;
+      }
+    }
+    if (_state.mode === 'scratch') {
+      rbLoadBlankEditor(label);
+      return;
+    }
+
+    // Build form data
+    const formData = new FormData();
+    if (_state.mode === 'upload') {
+      formData.append('file', _state.file);
+    } else {
+      formData.append('paste_text', document.getElementById('rb-paste-area').value.trim());
+    }
+    formData.append('label', label);
+
+    rbSetParsing(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const resp = await fetch('/api/resume-parse', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: formData,
+      });
+
+      const json = await resp.json();
+
+      if (!resp.ok) {
+        captureEvent('resume_parse_error', { status: resp.status, error: json?.error });
+        rbShowError('rb-upload-error', json?.error || 'Parsing failed. Please try again.');
+        return;
+      }
+
+      _state.resumeId = json.resume_id;
+      _state.parsedJson = json.parsed_json;
+
+      // Show ATS warnings
+      if (json.ats_warnings?.length) {
+        rbShowAtsWarnings(json.ats_warnings);
+      }
+
+      // Populate editor
+      rbPopulateEditor(_state.parsedJson, label);
+      rbShowEditor();
+
+      captureEvent('resume_parsed', { resume_id: _state.resumeId, has_warnings: (json.ats_warnings?.length ?? 0) > 0 });
+      if (typeof showToast === 'function') showToast('Resume parsed successfully', 'success');
+
+    } catch (err) {
+      reportError('resume_parse_exception', err);
+      rbShowError('rb-upload-error', 'An unexpected error occurred. Please try again.');
+    } finally {
+      rbSetParsing(false);
+    }
+  };
+
+  // ─── Blank scratch editor ─────────────────────────────────────────────────
+
+  function rbLoadBlankEditor (label) {
+    _state.parsedJson = {
+      contact_info: { name: '', email: '', phone: '', linkedin: '', location: '', website: '' },
+      summary: '',
+      work_experience: [],
+      education: [],
+      skills: [],
+      certifications: [],
+      languages: [],
+      projects: [],
+    };
+    rbPopulateEditor(_state.parsedJson, label);
+    rbShowEditor();
+  }
+
+  // ─── Populate editor fields from parsed JSON ──────────────────────────────
+
+  function rbPopulateEditor (data, label) {
+    // Contact
+    const ci = data.contact_info || {};
+    rbSetVal('rb-f-name', ci.name);
+    rbSetVal('rb-f-email', ci.email);
+    rbSetVal('rb-f-phone', ci.phone);
+    rbSetVal('rb-f-linkedin', ci.linkedin);
+    rbSetVal('rb-f-location', ci.location);
+    rbSetVal('rb-f-website', ci.website);
+
+    // Summary
+    rbSetVal('rb-f-summary', data.summary);
+
+    // Skills
+    const skills = Array.isArray(data.skills) ? data.skills.join(', ') : (data.skills || '');
+    rbSetVal('rb-f-skills', skills);
+
+    // Label
+    if (label) rbSetVal('rb-label-input', label);
+
+    // Experience
+    rbRenderExperience(data.work_experience || []);
+
+    // Education
+    rbRenderEducation(data.education || []);
+
+    // Certs
+    rbRenderCerts(data.certifications || []);
+
+    _state.dirty = false;
+  }
+
+  // ─── Experience render ────────────────────────────────────────────────────
+
+  function rbRenderExperience (items) {
+    const list = document.getElementById('rb-experience-list');
+    if (!list) return;
+    list.innerHTML = items.map((job, i) => `
+      <div class="rb-exp-item" data-idx="${i}">
+        <div class="rb-exp-header">
+          <span class="rb-exp-title">${rbEsc(job.title || '')} &mdash; ${rbEsc(job.company || '')}</span>
+          <button class="rb-remove-btn" onclick="rbRemoveExperience(${i})" aria-label="Remove position">&times;</button>
+        </div>
+        <div class="rb-field-grid">
+          <div class="rb-field"><label class="rb-label">Job Title</label><input type="text" class="rb-input rb-exp-field" data-idx="${i}" data-key="title" value="${rbEsc(job.title || '')}"></div>
+          <div class="rb-field"><label class="rb-label">Company</label><input type="text" class="rb-input rb-exp-field" data-idx="${i}" data-key="company" value="${rbEsc(job.company || '')}"></div>
+          <div class="rb-field"><label class="rb-label">Start Date</label><input type="text" class="rb-input rb-exp-field" data-idx="${i}" data-key="start_date" placeholder="MM/YYYY" value="${rbEsc(job.start_date || '')}"></div>
+          <div class="rb-field"><label class="rb-label">End Date</label><input type="text" class="rb-input rb-exp-field" data-idx="${i}" data-key="end_date" placeholder="MM/YYYY or Present" value="${rbEsc(job.end_date || '')}"></div>
+          <div class="rb-field"><label class="rb-label">Location</label><input type="text" class="rb-input rb-exp-field" data-idx="${i}" data-key="location" value="${rbEsc(job.location || '')}"></div>
+        </div>
+        <div class="rb-field">
+          <label class="rb-label">Bullet Points <span class="rb-label-hint">(one per line)</span></label>
+          <textarea class="rb-textarea rb-exp-field" rows="4" data-idx="${i}" data-key="bullets">${rbEsc((job.bullets || []).join('\n'))}</textarea>
+        </div>
+      </div>
+    `).join('');
+    bindExpFieldChanges();
+  }
+
+  function bindExpFieldChanges () {
+    document.querySelectorAll('.rb-exp-field').forEach(el => {
+      el.addEventListener('input', () => {
+        const idx = parseInt(el.dataset.idx);
+        const key = el.dataset.key;
+        if (!_state.parsedJson.work_experience[idx]) return;
+        if (key === 'bullets') {
+          _state.parsedJson.work_experience[idx].bullets = el.value.split('\n').map(s => s.trim()).filter(Boolean);
+        } else {
+          _state.parsedJson.work_experience[idx][key] = el.value;
+        }
+        _state.dirty = true;
+      });
+    });
+  }
+
+  window.rbAddExperience = function () {
+    if (!_state.parsedJson) return;
+    _state.parsedJson.work_experience = _state.parsedJson.work_experience || [];
+    _state.parsedJson.work_experience.push({ company: '', title: '', start_date: '', end_date: 'Present', location: '', bullets: [] });
+    rbRenderExperience(_state.parsedJson.work_experience);
+    _state.dirty = true;
+  };
+
+  window.rbRemoveExperience = function (idx) {
+    _state.parsedJson.work_experience.splice(idx, 1);
+    rbRenderExperience(_state.parsedJson.work_experience);
+    _state.dirty = true;
+  };
+
+  // ─── Education render ─────────────────────────────────────────────────────
+
+  function rbRenderEducation (items) {
+    const list = document.getElementById('rb-education-list');
+    if (!list) return;
+    list.innerHTML = items.map((edu, i) => `
+      <div class="rb-edu-item" data-idx="${i}">
+        <div class="rb-exp-header">
+          <span class="rb-exp-title">${rbEsc(edu.institution || '')}</span>
+          <button class="rb-remove-btn" onclick="rbRemoveEducation(${i})" aria-label="Remove education">&times;</button>
+        </div>
+        <div class="rb-field-grid">
+          <div class="rb-field"><label class="rb-label">Institution</label><input type="text" class="rb-input rb-edu-field" data-idx="${i}" data-key="institution" value="${rbEsc(edu.institution || '')}"></div>
+          <div class="rb-field"><label class="rb-label">Degree</label><input type="text" class="rb-input rb-edu-field" data-idx="${i}" data-key="degree" value="${rbEsc(edu.degree || '')}"></div>
+          <div class="rb-field"><label class="rb-label">Field of Study</label><input type="text" class="rb-input rb-edu-field" data-idx="${i}" data-key="field" value="${rbEsc(edu.field || '')}"></div>
+          <div class="rb-field"><label class="rb-label">Graduation Date</label><input type="text" class="rb-input rb-edu-field" data-idx="${i}" data-key="graduation_date" placeholder="MM/YYYY" value="${rbEsc(edu.graduation_date || '')}"></div>
+        </div>
+      </div>
+    `).join('');
+    document.querySelectorAll('.rb-edu-field').forEach(el => {
+      el.addEventListener('input', () => {
+        const idx = parseInt(el.dataset.idx);
+        const key = el.dataset.key;
+        if (_state.parsedJson.education[idx]) {
+          _state.parsedJson.education[idx][key] = el.value;
+          _state.dirty = true;
+        }
+      });
+    });
+  }
+
+  window.rbAddEducation = function () {
+    if (!_state.parsedJson) return;
+    _state.parsedJson.education = _state.parsedJson.education || [];
+    _state.parsedJson.education.push({ institution: '', degree: '', field: '', graduation_date: '' });
+    rbRenderEducation(_state.parsedJson.education);
+    _state.dirty = true;
+  };
+
+  window.rbRemoveEducation = function (idx) {
+    _state.parsedJson.education.splice(idx, 1);
+    rbRenderEducation(_state.parsedJson.education);
+    _state.dirty = true;
+  };
+
+  // ─── Certs render ─────────────────────────────────────────────────────────
+
+  function rbRenderCerts (items) {
+    const list = document.getElementById('rb-certs-list');
+    if (!list) return;
+    list.innerHTML = items.map((cert, i) => `
+      <div class="rb-cert-item" data-idx="${i}">
+        <div class="rb-exp-header">
+          <span class="rb-exp-title">${rbEsc(cert.name || '')}</span>
+          <button class="rb-remove-btn" onclick="rbRemoveCert(${i})" aria-label="Remove certification">&times;</button>
+        </div>
+        <div class="rb-field-grid">
+          <div class="rb-field"><label class="rb-label">Certification Name</label><input type="text" class="rb-input rb-cert-field" data-idx="${i}" data-key="name" value="${rbEsc(cert.name || '')}"></div>
+          <div class="rb-field"><label class="rb-label">Issuing Body</label><input type="text" class="rb-input rb-cert-field" data-idx="${i}" data-key="issuer" value="${rbEsc(cert.issuer || '')}"></div>
+          <div class="rb-field"><label class="rb-label">Date</label><input type="text" class="rb-input rb-cert-field" data-idx="${i}" data-key="date" placeholder="MM/YYYY" value="${rbEsc(cert.date || '')}"></div>
+        </div>
+      </div>
+    `).join('');
+    document.querySelectorAll('.rb-cert-field').forEach(el => {
+      el.addEventListener('input', () => {
+        const idx = parseInt(el.dataset.idx);
+        const key = el.dataset.key;
+        if (_state.parsedJson.certifications[idx]) {
+          _state.parsedJson.certifications[idx][key] = el.value;
+          _state.dirty = true;
+        }
+      });
+    });
+  }
+
+  window.rbAddCert = function () {
+    if (!_state.parsedJson) return;
+    _state.parsedJson.certifications = _state.parsedJson.certifications || [];
+    _state.parsedJson.certifications.push({ name: '', issuer: '', date: '' });
+    rbRenderCerts(_state.parsedJson.certifications);
+    _state.dirty = true;
+  };
+
+  window.rbRemoveCert = function (idx) {
+    _state.parsedJson.certifications.splice(idx, 1);
+    rbRenderCerts(_state.parsedJson.certifications);
+    _state.dirty = true;
+  };
+
+  // ─── Save edits ───────────────────────────────────────────────────────────
+
+  window.rbSaveEdits = async function () {
+    if (!_state.parsedJson) return;
+    rbClearError('rb-editor-error');
+
+    // Collect contact
+    _state.parsedJson.contact_info = {
+      name: rbGetVal('rb-f-name'),
+      email: rbGetVal('rb-f-email'),
+      phone: rbGetVal('rb-f-phone'),
+      linkedin: rbGetVal('rb-f-linkedin'),
+      location: rbGetVal('rb-f-location'),
+      website: rbGetVal('rb-f-website'),
+    };
+    _state.parsedJson.summary = rbGetVal('rb-f-summary');
+
+    // Skills — accept comma or newline separated
+    const skillsRaw = rbGetVal('rb-f-skills');
+    _state.parsedJson.skills = skillsRaw.split(/[\n,]/).map(s => s.trim()).filter(Boolean);
+
+    const label = rbGetVal('rb-label-input') || 'My Resume';
+
+    const saveBtn = document.getElementById('rb-save-btn');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const body = {
+        paste_text: JSON.stringify(_state.parsedJson), // reuse parse EF to update row
+        label,
+        resume_id: _state.resumeId,
+      };
+
+      // For updates, call parse EF with resume_id to upsert parsed_json directly
+      const resp = await fetch('/api/resume-parse', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      const json = await resp.json();
+
+      if (!resp.ok) {
+        reportError('resume_save_error', new Error(json?.error));
+        rbShowError('rb-editor-error', json?.error || 'Save failed. Please try again.');
+        return;
+      }
+
+      _state.resumeId = json.resume_id;
+      _state.dirty = false;
+      document.getElementById('rb-saved-badge')?.classList.remove('u-hidden');
+      captureEvent('resume_saved', { resume_id: _state.resumeId });
+      if (typeof showToast === 'function') showToast('Resume saved', 'success');
+
+    } catch (err) {
+      reportError('resume_save_exception', err);
+      rbShowError('rb-editor-error', 'An unexpected error occurred. Please try again.');
+    } finally {
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Changes'; }
+    }
+  };
+
+  // ─── Reset ────────────────────────────────────────────────────────────────
+
+  window.rbReset = function () {
+    _state = { mode: 'upload', editorTab: 'contact', file: null, resumeId: null, parsedJson: null, dirty: false };
+    rbClearFile();
+    document.getElementById('rb-paste-area') && (document.getElementById('rb-paste-area').value = '');
+    document.getElementById('rb-label-input') && (document.getElementById('rb-label-input').value = '');
+    document.getElementById('rb-upload-section')?.classList.remove('u-hidden');
+    document.getElementById('rb-editor-section')?.classList.add('u-hidden');
+    document.getElementById('rb-ats-warnings')?.classList.add('u-hidden');
+    document.getElementById('rb-parsing')?.classList.add('u-hidden');
+    document.getElementById('rb-saved-badge')?.classList.add('u-hidden');
+    rbSwitchTab('upload');
+  };
+
+  // ─── UI helpers ───────────────────────────────────────────────────────────
+
+  function rbSetParsing (active) {
+    document.getElementById('rb-upload-section')?.classList.toggle('u-hidden', active);
+    document.getElementById('rb-parsing')?.classList.toggle('u-hidden', !active);
+    const btn = document.getElementById('rb-parse-btn');
+    if (btn) { btn.disabled = active; }
+  }
+
+  function rbShowEditor () {
+    document.getElementById('rb-upload-section')?.classList.add('u-hidden');
+    document.getElementById('rb-parsing')?.classList.add('u-hidden');
+    document.getElementById('rb-editor-section')?.classList.remove('u-hidden');
+    rbShowEditorTab('contact');
+  }
+
+  function rbShowAtsWarnings (warnings) {
+    const box = document.getElementById('rb-ats-warnings');
+    const list = document.getElementById('rb-warnings-list');
+    if (!box || !list) return;
+    list.innerHTML = warnings.map(w => `<li>${rbEsc(w)}</li>`).join('');
+    box.classList.remove('u-hidden');
+  }
+
+  function rbShowError (id, msg) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.remove('u-hidden');
+  }
+
+  function rbClearError (id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = '';
+    el.classList.add('u-hidden');
+  }
+
+  function rbSetVal (id, val) {
+    const el = document.getElementById(id);
+    if (el) el.value = val ?? '';
+  }
+
+  function rbGetVal (id) {
+    return (document.getElementById(id)?.value ?? '').trim();
+  }
+
+  function rbEsc (str) {
+    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // ─── Page init hook (called by showPage in app.js) ────────────────────────
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // Bind dirty check on unload
+    window.addEventListener('beforeunload', (e) => {
+      if (_state.dirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+  });
+
 })();
 
 

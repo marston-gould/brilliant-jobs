@@ -6,13 +6,13 @@ console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded');
 // CS-P1-007 DS1-6: Page metadata for virtual $pageview events (all 14 pages)
 var _bjPageTitles = {
   brilliant: 'Get Started', setup: 'Setup', jobs: 'Jobs Feed', tuning: 'Search Tuning',
-  resumes: 'Resumes', applications: 'My Applications', notifications: 'Notifications',
+  resumes: 'Resumes', 'resume-builder': 'Resume Builder', applications: 'My Applications', notifications: 'Notifications',
   stats: 'Stats', referrals: 'Referrals', settings: 'Settings',
   subscription: 'Subscription', feedback: 'Feedback'
 };
 var _bjPageSections = {
   brilliant: 'onboarding', setup: 'onboarding', jobs: 'search', tuning: 'search',
-  resumes: 'search', applications: 'tracking', notifications: 'tracking',
+  resumes: 'search', 'resume-builder': 'search', applications: 'tracking', notifications: 'tracking',
   stats: 'intelligence', referrals: 'growth',
   settings: 'account', subscription: 'account', feedback: 'account'
 };
@@ -531,6 +531,13 @@ $$('.nav-item').forEach(item => {
           }
         }
       }
+      // RESUME-BUILDER-001-S1: Resume Builder page init
+      if (_tab === 'resume-builder') {
+        if (typeof rbInit === 'function') {
+          try { rbInit(); } catch(e) { if (typeof reportError === 'function') reportError('app:resume-builder-init', e); }
+        }
+        if (window.bjSkeleton) setTimeout(function() { bjSkeleton.hide('resume-builder'); }, 150);
+      }
       // BUGFIX-005: My Applications tab needs pipeline rendered
       if (_tab === 'applications') {
         var savedAppTab = localStorage.getItem('bj_app_tab') || 'pipeline';
@@ -538,7 +545,7 @@ $$('.nav-item').forEach(item => {
         if (window.bjSkeleton) setTimeout(function() { bjSkeleton.hide('applications'); }, 150);
       }
       // Tabs without explicit init get skeleton hidden after a short delay (content is static HTML)
-      if (!['stats','feedback','referrals','resumes','applications'].includes(_tab) && window.bjSkeleton) {
+      if (!['stats','feedback','referrals','resumes','resume-builder','applications'].includes(_tab) && window.bjSkeleton) {
         setTimeout(function() { bjSkeleton.hide(_tab); }, 150);
       }
       // QA-011: Re-search feed when tuning changed (e.g. US-Only toggle)

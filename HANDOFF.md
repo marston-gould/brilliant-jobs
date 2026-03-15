@@ -3726,7 +3726,8 @@ Deliverables:
 - 486 total tests across 10 test files
 
 Remaining backlog:
-- **RESUME-BUILDER-001**: ATS-Friendly Resume Builder (P1). Spec in /mnt/project/POD_HANDOFF_ATSResumeBuilder.docx. 4 phases: S1 Upload/Parse/Store → S2 Templates/Generation → S3 Keyword Optimization → S4 AI Rewrites. Target v9.36+. New EFs: resume-parse, resume-generate, resume-optimize, resume-rewrite-bullet. New table: resumes. New page: page-resume-builder.
+- **RESUME-BUILDER-001-S1 ✅**: Upload/Parse/Store complete. resume-parse EF deployed. Migration v9.36 deployed. page-resume-builder live. 46 tests. v9.36.
+- **RESUME-BUILDER-001-S2 (NEXT)**: Templates & Generation. resume-generate EF. 3 ATS-compliant .docx templates (Classic/Modern Professional/Clean Minimal). Template selector UI + live preview. .docx and .pdf download. Target v9.37+.
 - CASA-001: Google CASA assessment + gmail.readonly upgrade
 - Any new feature work
 

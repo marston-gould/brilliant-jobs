@@ -86,7 +86,7 @@ const ROUTE_REGISTRY: Record<string, string> = {
   "auto-apply-trigger":       "auto-apply-trigger",       // SA-005
   "mock-ats-submit":          "mock-ats-submit",          // SA-005
 
-  // ── Resume & Cover Letter (6) ────────────────────────────────────────────
+  // ── Resume & Cover Letter (10) ───────────────────────────────────────────
   "score-resume":             "score-resume",             // SA-004
   "extract-resume-profile":   "extract-resume-profile",   // SA-005
   "rewrite-resume":           "rewrite-resume",           // SA-005
@@ -94,6 +94,10 @@ const ROUTE_REGISTRY: Record<string, string> = {
   "rewrite-resume-execute":   "rewrite-resume-execute",   // SA-005
   "rewrite-resume-extension": "rewrite-resume-extension", // EXT-AS-5
   "generate-cover-letter":    "generate-cover-letter",    // SA-005
+  "resume-parse":             "resume-parse",             // RESUME-BUILDER-001-S1
+  "resume-generate":          "resume-generate",          // RESUME-BUILDER-001-S2 (stub)
+  "resume-optimize":          "resume-optimize",          // RESUME-BUILDER-001-S3 (stub)
+  "resume-rewrite-bullet":    "resume-rewrite-bullet",    // RESUME-BUILDER-001-S4 (stub)
 
   // ── Scoring & Quality (3) ────────────────────────────────────────────────
   "score-job-fraud":          "score-job-fraud",          // SA-004

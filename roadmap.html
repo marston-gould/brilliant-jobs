@@ -11,7 +11,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v9.35"></script>
+  <script src="/js/version.js?v=v9.36"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2256,7 +2256,7 @@ const features = [
 { s: 'done', b: 'ext-build', n: 'EXT-BUILD-001-PC Phase C Tier 3 34 Niche/Diversity Boards', d: '34 boards from Teal list: Black Career Network, Blacks in Tech, Elpha, Fairygodboss, Power to Fly, Idealist, Tech Ladies, Women Who Code, Zippia + 25 more. Each has title+company+location+description. 39 new manifest patterns. 53 total platforms. 106 tests. v9.34.', p: 100, e: '0.5 session' },
 { s: 'done', b: 'ext-build', n: 'EXT-BUILD-001-PD Phase D Tier 4 ATS Browse-Page Injection', d: '6 ATS URL patterns expanded + browseSelectors. 5 new ATS entries (iCIMS, Taleo, Avature, BambooHR, Workday). injectBrowsePageSaveButtons() for card-level Save on browse pages. 58 platforms + generic = 59 total. Phases A-D COMPLETE. 32 tests. v9.35.', p: 100, e: '0.5 session' },
 { s: 'done', b: 'ext-build', n: 'EXT-BUILD-001-PD Phase D Tier 4 ATS Browse-Page Injection', d: '6 ATS expanded (Greenhouse/Lever/Ashby/Workable/Recruitee/SmartRecruiters) with browseSelectors. 5 new ATS (iCIMS/Taleo/Avature/BambooHR/Workday). Browse-page Save buttons on job cards. 58 platforms + generic = 59. All phases A-D COMPLETE. 76 tests. v9.35.', p: 100, e: '0.5 session' },
-{ s: 'todo', b: 'post-launch', n: 'RESUME-BUILDER-001-S1 Phase 1: Upload, Parse, Store', d: 'resume-parse EF. resumes table + RLS + Storage bucket. Upload UI on page-resume-builder. Editable parsed data form. Paste-text alternative input. ATS problem detection warnings during parse.', p: 0, e: '3-4d' },
+{ s: 'done', b: 'post-launch', n: 'RESUME-BUILDER-001-S1 Phase 1: Upload, Parse, Store', d: 'resume-parse EF (multipart+paste, Haiku, plan limits, ATS warnings, Storage). Migration v9.36 (resumes table, 4 RLS, fn_resume_count_for_user). page-resume-builder (upload/paste/scratch, 6-section editor, ATS warnings). app.js routing (rbInit, page maps). build.js. 46 tests. v9.36. 2026-03-15.', p: 100, e: '3-4d' },
 { s: 'todo', b: 'post-launch', n: 'RESUME-BUILDER-001-S2 Phase 2: Templates & Generation', d: '3 ATS-compliant .docx templates (Classic/Modern Professional/Clean Minimal). resume-generate EF. Template selector UI + live preview. .docx and .pdf download. Auto filename: Firstname_Lastname_Resume.docx.', p: 0, e: '2-3d' },
 { s: 'todo', b: 'post-launch', n: 'RESUME-BUILDER-001-S3 Phase 3: Keyword Optimization', d: 'resume-optimize EF. Gap report UI (present/missing/partial keywords). One-click keyword insertion. Match Score real-time update. "Optimize for this job" entry point on job cards. Core differentiator: JD already in ats_jobs.', p: 0, e: '2-3d' },
 { s: 'todo', b: 'post-launch', n: 'RESUME-BUILDER-001-S4 Phase 4: AI Rewrites', d: 'resume-rewrite-bullet EF. Per-bullet Improve button in experience editor. Accept/reject/edit UI for 2-3 alternatives. Credit consumption integration (1 credit/rewrite). Plan limits: Free=1, Starter=3, Pro=10.', p: 0, e: '1-2d' },
