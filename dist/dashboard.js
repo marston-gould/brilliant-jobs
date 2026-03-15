@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.18';
+var BJ_VERSION = 'v9.19';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -7192,6 +7192,26 @@ function renderSortPills() {
   $$('#sort-dropdown .sort-opt').forEach(opt => {
     const inUse = jobSortStack.some(s => s.field === opt.dataset.field);
     opt.classList.toggle('disabled', inUse);
+
+  // QA-010: Update table header sort indicators
+  const dbToSort = { title: 'title', company_name: 'company', location: 'location', first_seen_at: 'days', level: 'level', match: 'match', salary_max: 'salary', ghost_rate: 'ghost' };
+  $$('.job-table th[data-sort]').forEach(th => {
+    th.classList.remove('sorted');
+    var arrow = th.querySelector('.sort-arrow');
+    if (arrow) arrow.textContent = '↕';
+  });
+  if (jobSortStack.length > 0) {
+    var primarySort = jobSortStack[0];
+    var sortAttr = dbToSort[primarySort.field];
+    if (sortAttr) {
+      var activeTh = document.querySelector('.job-table th[data-sort="' + sortAttr + '"]');
+      if (activeTh) {
+        activeTh.classList.add('sorted');
+        var arrow = activeTh.querySelector('.sort-arrow');
+        if (arrow) arrow.textContent = primarySort.asc ? '↑' : '↓';
+      }
+    }
+  }
   });
 }
 
@@ -31112,6 +31132,17 @@ function buildGhostBadge(companyName) {
   var tooltip = (score.self_reported_count || 0) + ' self-reported, ' +
     (score.auto_inferred_count || 0) + ' auto-detected — weighted score: ' + count +
     '. Reports from the last 18 months.';
+
+  // REM-S03: Fire ghost_badge_viewed when badge renders on a card
+  if (window.posthog) {
+    try { posthog.capture('ghost_badge_viewed', {
+      company_name: key,
+      tier: tier,
+      effective_count: count,
+      self_reported_count: score.self_reported_count || 0,
+      auto_inferred_count: score.auto_inferred_count || 0
+    }); } catch(e) { if (typeof reportError === 'function') reportError('ghost:badge_viewed', e); }
+  }
 
   return '<span class="ghost-badge ghost-badge-' + tier + '" ' +
     'data-company="' + (typeof escapeHtml === 'function' ? escapeHtml(key) : key) + '" ' +

@@ -73,6 +73,26 @@ function renderSortPills() {
   $$('#sort-dropdown .sort-opt').forEach(opt => {
     const inUse = jobSortStack.some(s => s.field === opt.dataset.field);
     opt.classList.toggle('disabled', inUse);
+
+  // QA-010: Update table header sort indicators
+  const dbToSort = { title: 'title', company_name: 'company', location: 'location', first_seen_at: 'days', level: 'level', match: 'match', salary_max: 'salary', ghost_rate: 'ghost' };
+  $$('.job-table th[data-sort]').forEach(th => {
+    th.classList.remove('sorted');
+    var arrow = th.querySelector('.sort-arrow');
+    if (arrow) arrow.textContent = '↕';
+  });
+  if (jobSortStack.length > 0) {
+    var primarySort = jobSortStack[0];
+    var sortAttr = dbToSort[primarySort.field];
+    if (sortAttr) {
+      var activeTh = document.querySelector('.job-table th[data-sort="' + sortAttr + '"]');
+      if (activeTh) {
+        activeTh.classList.add('sorted');
+        var arrow = activeTh.querySelector('.sort-arrow');
+        if (arrow) arrow.textContent = primarySort.asc ? '↑' : '↓';
+      }
+    }
+  }
   });
 }
 

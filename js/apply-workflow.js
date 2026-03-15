@@ -2412,6 +2412,17 @@ function buildGhostBadge(companyName) {
     (score.auto_inferred_count || 0) + ' auto-detected — weighted score: ' + count +
     '. Reports from the last 18 months.';
 
+  // REM-S03: Fire ghost_badge_viewed when badge renders on a card
+  if (window.posthog) {
+    try { posthog.capture('ghost_badge_viewed', {
+      company_name: key,
+      tier: tier,
+      effective_count: count,
+      self_reported_count: score.self_reported_count || 0,
+      auto_inferred_count: score.auto_inferred_count || 0
+    }); } catch(e) { if (typeof reportError === 'function') reportError('ghost:badge_viewed', e); }
+  }
+
   return '<span class="ghost-badge ghost-badge-' + tier + '" ' +
     'data-company="' + (typeof escapeHtml === 'function' ? escapeHtml(key) : key) + '" ' +
     'title="' + (typeof escapeHtml === 'function' ? escapeHtml(tooltip) : tooltip) + '" ' +

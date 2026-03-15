@@ -11,7 +11,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v9.18"></script>
+  <script src="/js/version.js?v=v9.19"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2151,6 +2151,7 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'BI-07 CI Pipeline Enforcement & Gate Remediation', d: 'Branch protection on main (required status checks, no reviewers). Gate fixes: PostHog external script detection, 22 EFs added to auth registry, requireAdmin scanner pattern, TypeScript 137→0 errors, Badge secondary variant, LegacyPageWrapper removed, TabName updated, inline style ratchet 590, admin bundle limit 650KB. PR workflow helper. 52 tests. v7.79.', p: 100, e: '8h' },
 { s: 'done', b: 'post-launch', n: 'BI-07-FIX CI Gate Enforcement Follow-up', d: 'ESLint || true removed (eslint.config.mjs rewritten, 16 empty catches fixed, 5843→0 errors, --max-warnings 600 ratchet). SA-022 stale test assertions (16 files .js→.ts, cs021 handler/auth/size fixes, 129→53 failures). Extension build script (export stripping + bundle fallback, killSwitch.ts brace fix, 62 files 745→377KB). v9.17.', p: 100, e: '3h' },
 { s: 'done', b: 'post-launch', n: 'SCA-REM-S1 Spec Compliance Remediation S1', d: 'REM-S01: citizenship_status 5th EEOC field (dashboard form + settings.js populate/read/PostHog). REM-S06: ghost_alert removed from notif log filter. SIM-REM-002: deploy script for 22 undeployed EFs. QA-001+QA-011 confirmed already fixed. 27 tests. v9.18.', p: 100, e: '2h' },
+{ s: 'done', b: 'post-launch', n: 'SCA-REM-S2 Spec Compliance Remediation S2', d: 'QA-010: sort column visual feedback (sorted class + arrow direction). REM-S03: ghost_badge_viewed PostHog event. REM-S04: ghost_badge_tier_escalation PostHog event in ghost-score-refresh EF. QA-006/007+QA-014 confirmed already fixed. 24 tests. v9.19.', p: 100, e: '1.5h' },
 { s: 'done', b: 'post-launch', n: 'POD3-GS Get Started + Setup Page Consolidation', d: '9 BUG fixes: progress bar removed, Get Started display-only cards, live Supabase stats, shared connectionState, unified integration card pattern, hero width consistency, button sizing standardized. Calendar connect/disconnect added. 61 tests. v7.80.', p: 100, e: '6h' },
 { s: 'done', b: 'post-launch', n: 'GS-SETUP-V2 Single Page Consolidation', d: 'Kill Setup page entirely. Merge extension download, install guide, Gmail/Calendar/Drive connect/disconnect into Get Started inline. Delete page-setup div. Remove Setup nav. v8.81.', p: 100, e: '3h' },
 { s: 'done', b: 'post-launch', n: 'POD3-LAYOUT-001 Layout Balance Fixes', d: 'Fix 1: Filter/Chat toggle row vertical stack (no lopsided whitespace). Fix 2: Application Mode grid fixed 3-column (3x2, no orphaned cards). HTML-only. v8.87.', p: 100, e: '<30min' },

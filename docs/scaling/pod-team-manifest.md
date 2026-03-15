@@ -149,3 +149,10 @@
 | PC-002 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
 | PC-003 | QA/Test Eng + Forward-Looking Dev | Chief Architect + System Architect—Scalability |
 | PC-004 | DevOps + Lead Platform Eng | Evolvability Strategist |
+
+## Pairing Assignments (Spec Compliance Remediation)
+
+| Session | Primary Pair | Pod 4 Reviewer |
+|---------|-------------|----------------|
+| SCA-REM-S1 | Evolvability Strategist + Lead Platform Eng | Chief Architect + Forward-Looking Dev |
+| SCA-REM-S2 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |

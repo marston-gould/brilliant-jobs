@@ -29,6 +29,18 @@ serve(async (req) => {
   }
 
   try {
+    // REM-S04: Snapshot tiers before refresh to detect escalation/de-escalation
+    let oldTiers: Record<string, string> = {};
+    try {
+      const { data: oldScores } = await sb.from("ghost_company_scores")
+        .select("company_name, tier");
+      if (oldScores) {
+        for (const row of oldScores) {
+          oldTiers[row.company_name] = row.tier;
+        }
+      }
+    } catch (_) { /* non-fatal — skip tier change detection */ }
+
     // Run recalculation
     const { data: result, error: rpcErr } = await sb.rpc("fn_ghost_score_refresh");
 
@@ -45,6 +57,25 @@ serve(async (req) => {
       high:   row?.tier_high   ?? 0,
     };
 
+    // REM-S04: Detect tier changes and fire ghost_badge_tier_escalation
+    let tierChanges: Array<{ company_name: string; old_tier: string; new_tier: string }> = [];
+    try {
+      const { data: newScores } = await sb.from("ghost_company_scores")
+        .select("company_name, tier, effective_count");
+      if (newScores) {
+        for (const row of newScores) {
+          const oldTier = oldTiers[row.company_name];
+          if (oldTier && oldTier !== row.tier) {
+            tierChanges.push({
+              company_name: row.company_name,
+              old_tier: oldTier,
+              new_tier: row.tier,
+            });
+          }
+        }
+      }
+    } catch (_) { /* non-fatal */ }
+
     // PostHog
     if (POSTHOG_KEY) {
       try {
@@ -55,16 +86,37 @@ serve(async (req) => {
             api_key:     POSTHOG_KEY,
             distinct_id: "system",
             event:       "ghost_score_refresh",
-            properties:  { companies_updated: companiesUpdated, tier_distribution: tierDistribution },
+            properties:  { companies_updated: companiesUpdated, tier_distribution: tierDistribution, tier_changes_count: tierChanges.length },
           }),
         });
       } catch (_) { /* fire-and-forget */ }
+
+      // REM-S04: Fire individual tier escalation events
+      for (const change of tierChanges) {
+        try {
+          await fetch(`${POSTHOG_HOST}/capture/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              api_key:     POSTHOG_KEY,
+              distinct_id: "system",
+              event:       "ghost_badge_tier_escalation",
+              properties:  {
+                company_name: change.company_name,
+                old_tier:     change.old_tier,
+                new_tier:     change.new_tier,
+              },
+            }),
+          });
+        } catch (_) { /* fire-and-forget */ }
+      }
     }
 
     return new Response(JSON.stringify({
       success:            true,
       companies_updated:  companiesUpdated,
       tier_distribution:  tierDistribution,
+      tier_changes:       tierChanges.length,
     }), {
       status:  200,
       headers: { "Content-Type": "application/json" },
