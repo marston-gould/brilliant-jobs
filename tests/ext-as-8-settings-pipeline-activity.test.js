@@ -302,7 +302,7 @@ describe('EXT-AS-8: Settings Panel + Activity Feed + Pipeline View', () => {
   // Section 7: Extension Manifest
   // ──────────────────────────────────────────────────
   describe('7. Extension Manifest', () => {
-    const manifest = JSON.parse(readFile('extension/manifest.json'));
+    const manifest = JSON.parse(readFile('extension/manifest.tson'));
 
     it('7.1 manifest version bumped to 2.28.0', () => {
       expect(manifest.version).toBe('2.28.0');
@@ -358,7 +358,7 @@ describe('EXT-AS-8: Settings Panel + Activity Feed + Pipeline View', () => {
       'extension/popup.html',
       'extension/popup-consumer.ts',
       'extension/background.ts',
-      'extension/manifest.json',
+      'extension/manifest.tson',
       'docs/scaling/pod-team-manifest.md',
       'tests/ext-as-8-settings-pipeline-activity.test.js',
     ];

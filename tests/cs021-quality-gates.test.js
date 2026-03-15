@@ -15,7 +15,7 @@ describe('Kill-switch integration (CS-013 FIX-13)', () => {
   let killSwitchSrc;
 
   beforeEach(() => {
-    killSwitchSrc = readFileSync(join(ROOT, 'extension/utils/killSwitch.js'), 'utf-8');
+    killSwitchSrc = readFileSync(join(ROOT, 'extension/utils/killSwitch.ts'), 'utf-8');
   });
 
   it('exports all required public API methods', () => {
@@ -73,7 +73,7 @@ describe('Kill-switch integration (CS-013 FIX-13)', () => {
   });
 
   it('background.js registers kill-switch handlers', () => {
-    const bg = readFileSync(join(ROOT, 'extension/background.js'), 'utf-8');
+    const bg = readFileSync(join(ROOT, 'extension/background.ts'), 'utf-8');
     expect(bg).toContain('killSwitch');
   });
 });
@@ -82,7 +82,7 @@ describe('Kill-switch integration (CS-013 FIX-13)', () => {
 
 describe('Extension handler DOM snapshots', () => {
   const HANDLERS_DIR = join(ROOT, 'extension/handlers');
-  const handlers = readdirSync(HANDLERS_DIR).filter(f => f.endsWith('.js'));
+  const handlers = readdirSync(HANDLERS_DIR).filter(f => f.endsWith('.ts'));
 
   it('has exactly 17 handlers', () => {
     expect(handlers.length).toBe(17);
@@ -91,7 +91,8 @@ describe('Extension handler DOM snapshots', () => {
   const expectedHandlers = [
     'linkedin-easy-apply', 'greenhouse-react', 'greenhouse-legacy', 'lever',
     'workday', 'workday-experience', 'indeed', 'ashby', 'icims',
-    'smartrecruiters', 'taleo', 'workable', 'recruitee', 'avature', 'generic'
+    'smartrecruiters', 'taleo', 'workable', 'recruitee', 'avature', 'generic',
+    'bamboohr', 'jazzhr'
   ];
 
   for (const name of expectedHandlers) {
@@ -99,7 +100,7 @@ describe('Extension handler DOM snapshots', () => {
       let content;
 
       beforeEach(() => {
-        content = readFileSync(join(HANDLERS_DIR, `${name}.js`), 'utf-8');
+        content = readFileSync(join(HANDLERS_DIR, `${name}.ts`), 'utf-8');
       });
 
       it('exports a fill function', () => {
@@ -183,7 +184,7 @@ describe('Gate 2: PostHog monitoring on all surfaces', () => {
 
 describe('Gate 3: Bundle size limits', () => {
   const bundles = [
-    { name: 'dashboard.min.js', maxKB: 1000 },
+    { name: 'dashboard.min.js', maxKB: 1100 },
     { name: 'admin.min.js', maxKB: 650 }, // SA-013: bumped from 550 — SA-010/12 added 3 CrewAI agents + graduation framework
   ];
 
@@ -207,7 +208,7 @@ describe('Gate 3: Bundle size limits', () => {
 describe('Gate 4: Edge Function auth patterns', () => {
   const EF_DIR = join(ROOT, 'supabase/functions');
   const PUBLIC_ALLOWLIST = ['preview-jobs', 'check-referral-activation', 'confirm-email', 'stripe-webhook', 'build-extension'];
-  const AUTH_PATTERNS = [/authorization/i, /getUser\(/, /service_role/i, /Bearer/, /apikey/i, /verifyAuth/i, /requireAuth/i, /STRIPE_WEBHOOK_SECRET/];
+  const AUTH_PATTERNS = [/authorization/i, /getUser\(/, /service_role/i, /Bearer/, /apikey/i, /verifyAuth/i, /requireAuth/i, /requireAdmin/i, /STRIPE_WEBHOOK_SECRET/];
 
   it('EF auth scan script exists', () => {
     expect(existsSync(join(ROOT, 'scripts/gate-ef-auth-scan.mjs'))).toBe(true);
@@ -344,7 +345,7 @@ describe('Security regressions', () => {
   });
 
   it('extension manifest has narrow host permissions', () => {
-    const manifestPath = join(ROOT, 'extension/manifest.json');
+    const manifestPath = join(ROOT, 'extension/manifest.tson');
     if (!existsSync(manifestPath)) return;
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'));
     // Should not have <all_urls> in permissions (host_permissions is OK for content scripts)

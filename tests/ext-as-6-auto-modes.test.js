@@ -30,7 +30,7 @@ const read = (f) => readFileSync(join(ROOT, f), 'utf-8');
 const bgSrc = read('extension/background.ts');
 const csSrc = read('extension/contentScript.ts');
 const overlaySrc = read('extension/job-site-overlay.ts');
-const manifestSrc = read('extension/manifest.json');
+const manifestSrc = read('extension/manifest.tson');
 const podManifest = read('docs/scaling/pod-team-manifest.md');
 
 // ── 1. Daily Apply Limit Helpers ──────────────────────────────────
@@ -403,7 +403,7 @@ describe('13. File Inventory', () => {
   });
 
   it('13.4 manifest.json modified', () => {
-    expect(existsSync(join(ROOT, 'extension/manifest.json'))).toBe(true);
+    expect(existsSync(join(ROOT, 'extension/manifest.tson'))).toBe(true);
   });
 
   it('13.5 pod-team-manifest.md modified', () => {

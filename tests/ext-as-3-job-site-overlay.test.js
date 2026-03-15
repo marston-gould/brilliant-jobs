@@ -469,7 +469,7 @@ describe('10. File Inventory', () => {
     'extension/contentScript.ts',
     'extension/background.ts',
     'extension/build-extension.js',
-    'extension/manifest.json',
+    'extension/manifest.tson',
     'docs/scaling/pod-team-manifest.md',
   ];
 

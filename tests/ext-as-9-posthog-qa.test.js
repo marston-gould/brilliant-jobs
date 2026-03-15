@@ -19,7 +19,7 @@ import { readFileSync, existsSync } from 'fs';
 const BG = readFileSync('extension/background.ts', 'utf-8');
 const OVERLAY = readFileSync('extension/job-site-overlay.ts', 'utf-8');
 const ADMIN_AS = readFileSync('js/admin-autosubmit.js', 'utf-8');
-const MANIFEST = JSON.parse(readFileSync('extension/manifest.json', 'utf-8'));
+const MANIFEST = JSON.parse(readFileSync('extension/manifest.tson', 'utf-8'));
 
 describe('EXT-AS-9: PostHog Event Coverage', () => {
   // Spec Section 6: 14 PostHog events

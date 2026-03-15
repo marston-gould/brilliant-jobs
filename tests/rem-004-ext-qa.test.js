@@ -158,7 +158,7 @@ describe('Section 3: ContentScript Routing Coverage', () => {
 // ── Section 4: Manifest → Handler Mapping ───────────────────────────
 
 describe('Section 4: Manifest → Handler Mapping', () => {
-  const manifest = readJSON('extension/manifest.json');
+  const manifest = readJSON('extension/manifest.tson');
   const contentScript = readFile('extension/contentScript.ts');
 
   test('manifest version is 3', () => {
@@ -224,7 +224,7 @@ describe('Section 4: Manifest → Handler Mapping', () => {
 // ── Section 5: Manifest Permissions Justification ───────────────────
 
 describe('Section 5: Manifest Permissions', () => {
-  const manifest = readJSON('extension/manifest.json');
+  const manifest = readJSON('extension/manifest.tson');
 
   const EXPECTED_PERMISSIONS = [
     'activeTab', 'scripting', 'storage', 'tabs',
@@ -454,7 +454,7 @@ describe('Section 8: Background Service Worker', () => {
 // ── Section 9: Web Accessible Resources ─────────────────────────────
 
 describe('Section 9: Web Accessible Resources', () => {
-  const manifest = readJSON('extension/manifest.json');
+  const manifest = readJSON('extension/manifest.tson');
   const war = manifest.web_accessible_resources[0];
 
   test('handlers/*.js is in web_accessible_resources', () => {
@@ -494,21 +494,21 @@ describe('Section 10: Build Output', () => {
   });
 
   test('manifest.json is valid JSON', () => {
-    expect(() => readJSON('extension/manifest.json')).not.toThrow();
+    expect(() => readJSON('extension/manifest.tson')).not.toThrow();
   });
 
   test('manifest uses service_worker (MV3)', () => {
-    const manifest = readJSON('extension/manifest.json');
+    const manifest = readJSON('extension/manifest.tson');
     expect(manifest.background.service_worker).toBe('background.js');
   });
 
   test('no MV2 remnants (background.scripts)', () => {
-    const manifest = readJSON('extension/manifest.json');
+    const manifest = readJSON('extension/manifest.tson');
     expect(manifest.background.scripts).toBeUndefined();
   });
 
   test('externally_connectable is scoped to brilliantjobs.app', () => {
-    const manifest = readJSON('extension/manifest.json');
+    const manifest = readJSON('extension/manifest.tson');
     expect(manifest.externally_connectable.matches).toContain('https://brilliantjobs.app/*');
     expect(manifest.externally_connectable.matches).toContain('https://www.brilliantjobs.app/*');
     expect(manifest.externally_connectable.matches).toContain('https://staging.brilliantjobs.app/*');
@@ -516,7 +516,7 @@ describe('Section 10: Build Output', () => {
   });
 
   test('side_panel configured', () => {
-    const manifest = readJSON('extension/manifest.json');
+    const manifest = readJSON('extension/manifest.tson');
     expect(manifest.side_panel.default_path).toBe('popup.html');
   });
 });
@@ -558,7 +558,7 @@ describe('Section 11: Permissions Audit Document', () => {
 describe('Section 12: File Inventory', () => {
   const EXPECTED_FILES = [
     'docs/audit/ext-cws-001-permissions-audit.md',
-    'extension/manifest.json',
+    'extension/manifest.tson',
     'extension/contentScript.ts',
     'extension/background.ts',
     'extension/handlers/bamboohr.ts',

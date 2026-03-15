@@ -160,6 +160,22 @@ function generateDeadCode() {
 function transformSource(source, channelMap) {
   let result = source;
 
+  // BI-07-FIX: Strip ES module syntax — extension scripts are standalone Chrome scripts,
+  // not imported by other modules. SA-022 added export/import for TypeScript, but the
+  // fingerprinted build produces single-file scripts loaded directly by Chrome.
+  // 1. Remove entire import lines
+  result = result.replace(/^import\s+.*from\s+['"].*['"];?\s*$/gm, '');
+  result = result.replace(/^import\s+type\s+.*$/gm, '');
+  // 2. Remove entire "export default { ... };" and "export { ... };" lines (re-export lines)
+  result = result.replace(/^export\s+default\s+\{[^}]*\};?\s*$/gm, '');
+  result = result.replace(/^export\s+\{[^}]*\};?\s*$/gm, '');
+  // 2b. Remove "export default <identifier>;" (single-name default exports)
+  result = result.replace(/^export\s+default\s+[a-zA-Z_$][a-zA-Z0-9_$]*\s*;?\s*$/gm, '');
+  // 3. Strip "export default " before function/class declarations (keep the declaration)
+  result = result.replace(/^export\s+default\s+(async\s+)?(function|class)\s/gm, '$1$2 ');
+  // 4. Strip "export " before const/let/var/function/async/class/enum/interface/type
+  result = result.replace(/^export\s+(const|let|var|function|async|class|enum|interface|type)\s/gm, '$1 ');
+
   // Replace channel names — longest first to avoid partial matches
   const sorted = Object.keys(channelMap).sort((a, b) => b.length - a.length);
   for (const original of sorted) {
@@ -180,10 +196,10 @@ function transformSource(source, channelMap) {
 /** Process a single JS file: transform → minify → write */
 function processJsFile(srcPath, outPath, channelMap) {
   let source = readFileSync(srcPath, 'utf-8');
-  source = transformSource(source, channelMap);
+  const transformed = transformSource(source, channelMap);
 
   const tmpPath = outPath + '.tmp.ts';
-  writeFileSync(tmpPath, source);
+  writeFileSync(tmpPath, transformed);
 
   try {
     buildSync({
@@ -198,6 +214,32 @@ function processJsFile(srcPath, outPath, channelMap) {
       legalComments: 'none',
       charset: 'utf8',
     });
+  } catch (_transformErr) {
+    // BI-07-FIX: Fallback — some .ts files have structural issues after export stripping.
+    // Re-try with channel replacement only (no export stripping) + esbuild's native TS handling.
+    let fallback = source;
+    const sorted = Object.keys(channelMap).sort((a, b) => b.length - a.length);
+    for (const original of sorted) {
+      fallback = fallback.replaceAll(`'${original}'`, `'${channelMap[original]}'`);
+      fallback = fallback.replaceAll(`"${original}"`, `"${channelMap[original]}"`);
+    }
+    const nl = fallback.indexOf('\n');
+    if (nl > -1) fallback = fallback.slice(0, nl + 1) + generateDeadCode() + '\n' + fallback.slice(nl + 1);
+    writeFileSync(tmpPath, fallback);
+    buildSync({
+      entryPoints: [tmpPath],
+      outfile: outPath,
+      minify: true,
+      minifyWhitespace: true,
+      minifyIdentifiers: true,
+      minifySyntax: true,
+      target: 'chrome120',
+      bundle: true,            // bundle: true resolves export/import natively
+      format: 'iife',          // IIFE wraps everything, strips exports
+      legalComments: 'none',
+      charset: 'utf8',
+    });
+    console.warn(`  ⚠ ${srcPath}: used bundle+iife fallback (export stripping failed)`);
   } finally {
     try { unlinkSync(tmpPath); } catch (_) { /* temp file cleanup — best effort */ }
   }

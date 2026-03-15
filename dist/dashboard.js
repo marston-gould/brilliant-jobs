@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.16';
+var BJ_VERSION = 'v9.17';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -2859,7 +2859,7 @@ window.renderConnectionStatus = function() {
     if (gd.connected) window._connectionState.gdrive = true;
     var gc = JSON.parse(localStorage.getItem('bj_gcal') || '{}');
     if (gc.connected) window._connectionState.gcal = true;
-  } catch(e) {}
+  } catch(e) { /* gcal localStorage parse — non-critical */ }
 })();
 
 var REQUIRED_EXTENSION_VERSION = '2.23.0';
@@ -30243,7 +30243,7 @@ function _resolveResumeForJob(jobId) {
   try {
     var raw = localStorage.getItem('bj_resumes');
     if (raw && !raw.startsWith('enc:')) allResumes = JSON.parse(raw);
-  } catch(e) {}
+  } catch(e) { /* encrypted/corrupt localStorage — fallback to empty */ }
   allResumes = allResumes.filter(function(r) { return !r.archived && r.name; });
 
   if (allResumes.length === 0) return 'no_resumes';
@@ -30404,7 +30404,7 @@ function _showResumeNeededModal(jobId, jobTitle, companyName, jobUrl, mode) {
   try {
     var raw = localStorage.getItem('bj_resumes');
     if (raw && !raw.startsWith('enc:')) allResumes = JSON.parse(raw);
-  } catch(e) {}
+  } catch(e) { /* encrypted/corrupt localStorage — fallback to empty */ }
   allResumes = allResumes.filter(function(r) { return !r.archived && r.name; });
 
   var title = mode === 'upload' ? 'Upload a resume to apply' : 'Select a resume for this application';
@@ -33308,7 +33308,7 @@ async function initTrialGate() {
 
     // Cache trial_expires_at for _daysSinceExpiry() calls
     if (result.trial_expires_at) {
-      try { sessionStorage.setItem('bj_trial_expires_at', result.trial_expires_at); } catch (_e) {}
+      try { sessionStorage.setItem('bj_trial_expires_at', result.trial_expires_at); } catch (_e) { /* storage quota */ }
     }
 
     // ── TRIALING: render countdown banner + fire trial_started if fresh ──

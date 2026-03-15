@@ -193,7 +193,7 @@ describe('CS-022: Infrastructure Verification', () => {
   });
 
   it('kill-switch module exists in extension', () => {
-    expect(existsSync(join(ROOT, 'extension/utils/killSwitch.js'))).toBe(true);
+    expect(existsSync(join(ROOT, 'extension/utils/killSwitch.ts'))).toBe(true);
   });
 
   it('DOMPurify vendor file exists for XSS protection', () => {

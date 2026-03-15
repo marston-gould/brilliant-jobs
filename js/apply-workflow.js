@@ -1545,7 +1545,7 @@ function _resolveResumeForJob(jobId) {
   try {
     var raw = localStorage.getItem('bj_resumes');
     if (raw && !raw.startsWith('enc:')) allResumes = JSON.parse(raw);
-  } catch(e) {}
+  } catch(e) { /* encrypted/corrupt localStorage — fallback to empty */ }
   allResumes = allResumes.filter(function(r) { return !r.archived && r.name; });
 
   if (allResumes.length === 0) return 'no_resumes';
@@ -1706,7 +1706,7 @@ function _showResumeNeededModal(jobId, jobTitle, companyName, jobUrl, mode) {
   try {
     var raw = localStorage.getItem('bj_resumes');
     if (raw && !raw.startsWith('enc:')) allResumes = JSON.parse(raw);
-  } catch(e) {}
+  } catch(e) { /* encrypted/corrupt localStorage — fallback to empty */ }
   allResumes = allResumes.filter(function(r) { return !r.archived && r.name; });
 
   var title = mode === 'upload' ? 'Upload a resume to apply' : 'Select a resume for this application';

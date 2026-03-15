@@ -11,7 +11,7 @@ import {
   getHandlerEntry,
   getCriticalSelectors,
   getSelectorCounts,
-} from '../extension/selectors/registry.js';
+} from '../extension/selectors/registry.ts';
 
 const ROOT = join(__dirname, '..');
 const EXTENSION_DIR = join(ROOT, 'extension');

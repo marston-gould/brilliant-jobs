@@ -60,7 +60,7 @@ describe('privacy.html — completeness', () => {
 });
 
 // ── Extension Manifest Tests ──
-describe('extension/manifest.json — privacy linkage', () => {
+describe('extension/manifest.tson — privacy linkage', () => {
   let manifest;
   beforeEach(() => {
     manifest = JSON.parse(readFileSync(resolve(ROOT, 'extension', 'manifest.json'), 'utf8'));

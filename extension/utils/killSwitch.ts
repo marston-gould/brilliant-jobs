@@ -245,6 +245,7 @@ function _logKillEvent(layer, reason) {
   } catch {
     // Fail silently
   }
+}
 
 // ─── Public API ──────────────────────────────────────────────
 

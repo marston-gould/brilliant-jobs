@@ -735,7 +735,7 @@ window.renderConnectionStatus = function() {
     if (gd.connected) window._connectionState.gdrive = true;
     var gc = JSON.parse(localStorage.getItem('bj_gcal') || '{}');
     if (gc.connected) window._connectionState.gcal = true;
-  } catch(e) {}
+  } catch(e) { /* gcal localStorage parse — non-critical */ }
 })();
 
 var REQUIRED_EXTENSION_VERSION = '2.23.0';

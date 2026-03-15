@@ -47,7 +47,7 @@
     if (Object.keys(_utmParams).length) {
       sessionStorage.setItem('bj_utm', JSON.stringify(_utmParams));
     }
-  } catch (_) {}
+  } catch (_) { /* UTM storage best-effort */ }
 
   // ── Analytics loaders ──
   var _analyticsLoaded = false;
@@ -72,7 +72,7 @@
           first_utm_campaign: params.utm_campaign || null,
         });
       }
-    } catch (_) {}
+    } catch (_) { /* analytics load best-effort */ }
   }
 
   function loadPostHog() {

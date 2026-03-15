@@ -361,7 +361,7 @@ async function _initiateDeletion(userId, email) {
     });
 
     // Sign out all user sessions
-    try { await sb.auth.admin.signOut(userId, 'global'); } catch (_) {}
+    try { await sb.auth.admin.signOut(userId, 'global'); } catch (_) { /* best-effort signout */ }
 
     // Audit log
     _logAdminAction('admin_initiated_deletion', 'user', userId, { email: email, grace_expires_at: graceExpires });
@@ -413,7 +413,7 @@ async function _hardDeleteNow(userId, email) {
       if (files.data && files.data.length > 0) {
         await sb.storage.from('resumes').remove(files.data.map(function(f) { return userId + '/' + f.name; }));
       }
-    } catch (_) {}
+    } catch (_) { /* storage cleanup best-effort */ }
 
     // Delete auth user
     var authDel = await sb.auth.admin.deleteUser(userId);

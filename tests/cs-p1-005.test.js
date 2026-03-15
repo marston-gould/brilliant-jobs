@@ -37,7 +37,7 @@ describe('DO-001: PostHog SDK on all surfaces', () => {
   });
 
   test('Extension has PostHog capture', () => {
-    const bg = readFile('extension/background.js');
+    const bg = readFile('extension/background.ts');
     expect(bg).toContain('posthog');
   });
 

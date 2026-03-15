@@ -158,8 +158,8 @@ describe('DS1-12: Performance timing events', () => {
 // ES1-1: Extension PostHog Baseline Events
 // ═══════════════════════════════════════════════════════════
 describe('ES1-1: Extension PostHog baseline events', () => {
-  const bgJs = readFile('extension/background.js');
-  const popupJs = readFile('extension/popup.js');
+  const bgJs = readFile('extension/background.ts');
+  const popupJs = readFile('extension/popup.ts');
 
   test('Extension captures lifecycle event on install/update', () => {
     expect(bgJs).toContain("captureEvent('extension_lifecycle'");

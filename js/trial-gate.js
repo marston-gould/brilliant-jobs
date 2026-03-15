@@ -45,7 +45,7 @@ async function initTrialGate() {
 
     // Cache trial_expires_at for _daysSinceExpiry() calls
     if (result.trial_expires_at) {
-      try { sessionStorage.setItem('bj_trial_expires_at', result.trial_expires_at); } catch (_e) {}
+      try { sessionStorage.setItem('bj_trial_expires_at', result.trial_expires_at); } catch (_e) { /* storage quota */ }
     }
 
     // ── TRIALING: render countdown banner + fire trial_started if fresh ──

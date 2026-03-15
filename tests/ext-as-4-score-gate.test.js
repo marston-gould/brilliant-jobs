@@ -38,7 +38,7 @@ const contentScriptTs = read('extension/contentScript.ts');
 const overlayTs = read('extension/job-site-overlay.ts');
 const scoreResumeEf = read('supabase/functions/score-resume/index.ts');
 const podManifest = read('docs/scaling/pod-team-manifest.md');
-const manifestJson = read('extension/manifest.json');
+const manifestJson = read('extension/manifest.tson');
 const versionJs = read('js/version.js');
 
 // ─── Section 1: Score-resume EF — Direct JD Text Path ───
@@ -374,7 +374,7 @@ const expectedFiles = [
   'extension/job-site-overlay.ts',
   'extension/background.ts',
   'extension/contentScript.ts',
-  'extension/manifest.json',
+  'extension/manifest.tson',
   'supabase/functions/score-resume/index.ts',
   'docs/scaling/pod-team-manifest.md',
   'tests/ext-as-4-score-gate.test.js',

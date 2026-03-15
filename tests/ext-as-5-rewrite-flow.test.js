@@ -491,7 +491,7 @@ describe('12. Rewrite CSS', () => {
 // ═══════════════════════════════════════════════════════
 describe('13. Manifest, version, build', () => {
   it('13.1 manifest version bumped to 2.26.0', () => {
-    const m = read('extension/manifest.json');
+    const m = read('extension/manifest.tson');
     expect(m).toContain('"version": "2.26.0"');
   });
 
@@ -537,7 +537,7 @@ describe('15. File inventory', () => {
     'extension/background.ts',
     'extension/job-site-overlay.ts',
     'extension/contentScript.ts',
-    'extension/manifest.json',
+    'extension/manifest.tson',
     'supabase/functions/api-gateway/index.ts',
     'docs/scaling/pod-team-manifest.md',
     'tests/ext-as-5-rewrite-flow.test.js',

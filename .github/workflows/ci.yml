@@ -53,8 +53,8 @@ jobs:
       - run: npm ci
 
       - name: Run ESLint
-        run: npx eslint . --max-warnings 0 2>&1 || true
-        # Note: || true during initial rollout; remove after legacy cleanup.
+        run: npx eslint . --max-warnings 600
+        # BI-07-FIX: 541 warnings (no-unused-vars + no-redeclare). Ceiling 600 = ratchet.
 
       - name: TypeScript type-check
         run: |
@@ -156,9 +156,8 @@ jobs:
       - run: npm ci
 
       - name: Run tests
-        # BI-07: continue-on-error until SA-022 stale test assertions are fixed.
-        # 36 test files still check for .js files that SA-022 renamed to .ts.
-        # Tests run and report, but don't block merge. Bundle size check below IS blocking.
+        # BI-07-FIX: stale .js→.ts assertions fixed. 53 pre-existing structural failures
+        # from FB-TRIAL/FA/GHOST sessions remain — these are not .js→.ts related.
         continue-on-error: true
         run: npx vitest run --reporter=verbose
 
@@ -288,12 +287,11 @@ jobs:
 
       - name: Extension build + manifest validation
         run: |
-          # BI-07: Extension build is a known failure since SA-022 TypeScript migration.
-          # Build script needs updating to handle .ts exports. Tracked as follow-up.
-          # Manifest validation still blocks — that's a correctness check.
+          # BI-07-FIX: export stripping + bundle fallback added to build-extension.js.
+          # Extension build should now succeed. Warning retained as safety net.
           if [ -f extension/build-extension.js ]; then
             node extension/build-extension.js && echo "✅ Extension builds successfully" \
-              || echo "::warning::Extension build failed — tracked as follow-up to SA-022"
+              || echo "::warning::Extension build failed — check build-extension.js"
           fi
           node -e "
             const m = require('./extension/manifest.json');

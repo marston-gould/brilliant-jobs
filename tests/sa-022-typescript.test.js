@@ -7,7 +7,7 @@
  * Verifies:
  *   1. No .js source files in extension/ (TypeScript gate)
  *   2. All 54 expected .ts files exist in extension/
- *   3. extension/tsconfig.json exists and is valid
+ *   3. extension/tsconfig.tson exists and is valid
  *   4. extension/types/index.d.ts exports required type names
  *   5. _shared/types.ts exports all 8 required sections
  *   6. Zero `: any` in EF files (non-comment lines)
@@ -162,27 +162,27 @@ test(`All ${EXPECTED_TS_FILES.length} expected .ts files exist`, () => {
 });
 
 // ──────────────────────────────────────────────────────────
-// SECTION 3: extension/tsconfig.json
+// SECTION 3: extension/tsconfig.tson
 // ──────────────────────────────────────────────────────────
 console.log('\n[SA-022-3] Extension: tsconfig.json');
 
-test('extension/tsconfig.json exists', () => {
-  assert(fileExists('extension/tsconfig.json'), 'extension/tsconfig.json not found');
+test('extension/tsconfig.tson exists', () => {
+  assert(fileExists('extension/tsconfig.tson'), 'extension/tsconfig.tson not found');
 });
 
-test('extension/tsconfig.json is valid JSON', () => {
-  const content = readFile('extension/tsconfig.json');
+test('extension/tsconfig.tson is valid JSON', () => {
+  const content = readFile('extension/tsconfig.tson');
   const cfg = JSON.parse(content);
   assert(cfg.compilerOptions, 'Missing compilerOptions');
 });
 
-test('extension/tsconfig.json has strict: true', () => {
-  const cfg = JSON.parse(readFile('extension/tsconfig.json'));
+test('extension/tsconfig.tson has strict: true', () => {
+  const cfg = JSON.parse(readFile('extension/tsconfig.tson'));
   assert(cfg.compilerOptions.strict === true, 'strict: true not set');
 });
 
-test('extension/tsconfig.json has noImplicitAny: true', () => {
-  const cfg = JSON.parse(readFile('extension/tsconfig.json'));
+test('extension/tsconfig.tson has noImplicitAny: true', () => {
+  const cfg = JSON.parse(readFile('extension/tsconfig.tson'));
   assert(cfg.compilerOptions.noImplicitAny === true, 'noImplicitAny: true not set');
 });
 

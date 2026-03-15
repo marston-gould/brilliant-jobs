@@ -99,7 +99,7 @@ describe('0.181 — Extension E2E Live ATS Validation', () => {
 
   // 1g. Manifest has host_permissions for ATS platforms
   test('manifest.json contains host_permissions', () => {
-    const manifest = JSON.parse(readFile('extension/manifest.json'));
+    const manifest = JSON.parse(readFile('extension/manifest.tson'));
     expect(manifest.host_permissions).toBeDefined();
     expect(manifest.host_permissions.length).toBeGreaterThan(0);
   });
