@@ -52,7 +52,16 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**LP-RESTRUCTURE-S1** — Landing Page Restructure Session 1
+**LP-RESTRUCTURE-S2** — Landing Page Restructure Session 2
+- Completed: 2026-03-15
+- Product version bumped: `v9.44` → `v9.45`
+- `landing-app.js`: `initLpBenefitSections` IIFE — fetches `landing_sections` (is_visible, !archived, sort_order), segment filter (bypassed on `?preview=true`), orientation logic (auto alternates image-right/image-left, manual overrides), DOMPurify body_text sanitize (strong/em/a/br only), `**bold**` markdown, browser-frame chrome, placeholder when no image_url, `escapeHtml`/`escapeAttr` XSS guards, `lp_sections_rendered` PostHog event, `reportError` on catch.
+- `landing.css`: `.lp-benefit-section` flex layout, `.section-img-right` (row), `.section-img-left` (row-reverse), mobile stack at 768px, browser-frame dot styles, `.hero-with-screenshot` 2-col (hero-text-col + hero-img-col), hero stacks at 900px.
+- `index.html`: new-visitor hero wrapped in `hero-with-screenshot` 2-col, `hero-screenshot-frame` with lazy-loaded img + onerror hide fallback. Interactive preview restored at `#lp-preview` (after stats bar, before `#why`).
+- **Tests:** 34 validation tests (all passing).
+- **Next:** LP-RESTRUCTURE-S3 — Admin Page + Social Proof.
+
+**Previous: LP-RESTRUCTURE-S1** — Landing Page Restructure Session 1
 - Completed: 2026-03-15
 - Product version bumped: `v9.40` → `v9.41`
 - `landing_sections` table deployed to prod: RLS (public SELECT, admin write), updated_at trigger, idx_landing_sections_visible_sort, 4 seed sections (all draft/hidden).
@@ -3757,7 +3766,7 @@ Remaining backlog:
   - S2 Templates & Generation — resume-generate EF, 3 templates, Download UI
   - S3 Keyword Optimization — resume-optimize EF, gap report UI, one-click insertion, match score display
   - S4 AI Rewrites — resume-rewrite-bullet EF, Improve with AI per bullet, accept/reject panel
-- **LP-RESTRUCTURE-S2 (NEXT)**: Dynamic Section Renderer + Hero Screenshot. landing-app.js: fetch from landing_sections, render with orientation logic, DOMPurify. CSS: .section-img-left/.section-img-right. Hero screenshot layout (2-col desktop, stacked mobile). Move interactive preview up in DOM.
+- **LP-RESTRUCTURE-S3 (NEXT)**: Admin Page + Social Proof. `page-admin-landing` in dashboard.html, `admin-landing.js` (list/edit/toggle/reorder/image-upload), drag-to-reorder sort_order batch update, landing-assets/ image upload, segment targeting dropdown, social proof bar on landing page.
   - CREATE TABLE landing_sections + RLS policies + seed data (4 initial sections)
   - Create landing-assets/ Storage bucket
   - Update landing-stats to return dual company counts (career pages monitored ~39K + companies hiring now ~8.7K)

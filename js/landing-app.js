@@ -809,3 +809,169 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
 });
+
+// ============================================================
+// LP-RESTRUCTURE-S2: Dynamic Benefit Sections Renderer
+// Fetches landing_sections from PostgREST and renders into #lp-benefit-sections.
+// Orientation logic: 'auto' alternates image-right/image-left by position.
+// Manual 'image-left' or 'image-right' overrides position-based alternation.
+// Body text sanitized via DOMPurify (purify.min.js already loaded on page).
+// ============================================================
+(function initLpBenefitSections() {
+  'use strict';
+
+  var SUPABASE_URL = window.SUPABASE_URL || 'https://qojhagupdnbtomfoxnsf.supabase.co';
+  var SUPABASE_ANON_KEY = window.SUPABASE_KEY || window.SUPABASE_ANON_KEY || '';
+
+  function getVisitorSegment() {
+    // Re-use landing-segment.js detection if available
+    if (typeof window._bjSegment === 'string') return window._bjSegment;
+    try {
+      var s = localStorage.getItem('bj_segment');
+      return s || 'new';
+    } catch(e) { return 'new'; }
+  }
+
+  function sanitizeBodyText(raw) {
+    if (!raw) return '';
+    // DOMPurify is loaded as purify.min.js — available as window.DOMPurify
+    var purify = window.DOMPurify;
+    if (!purify) return raw.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    // Allow bold + links only, convert **bold** markdown
+    var md = raw
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" rel="noopener">$1</a>');
+    return purify.sanitize(md, { ALLOWED_TAGS: ['strong', 'em', 'a', 'br'], ALLOWED_ATTR: ['href', 'rel'] });
+  }
+
+  function getOrientationClass(section, position) {
+    var o = section.orientation || 'auto';
+    if (o === 'image-left') return 'section-img-left';
+    if (o === 'image-right') return 'section-img-right';
+    // auto: alternate — position 0 = image-right, position 1 = image-left, etc.
+    return position % 2 === 0 ? 'section-img-right' : 'section-img-left';
+  }
+
+  function renderSection(section, position) {
+    var orientClass = getOrientationClass(section, position);
+    var hasImage = section.image_url && section.image_url.trim().length > 0;
+
+    var imgHtml = hasImage
+      ? '<div class="lp-section-img-wrap">' +
+          '<div class="lp-section-browser-frame">' +
+            '<div class="lp-section-browser-dots"><span></span><span></span><span></span></div>' +
+            '<img src="' + escapeAttr(section.image_url) + '" ' +
+                 'alt="' + escapeAttr(section.image_alt || section.title) + '" ' +
+                 'loading="lazy" class="lp-section-screenshot">' +
+          '</div>' +
+        '</div>'
+      : '<div class="lp-section-img-wrap lp-section-img-placeholder">' +
+          '<div class="lp-section-browser-frame lp-section-browser-frame--empty">' +
+            '<div class="lp-section-browser-dots"><span></span><span></span><span></span></div>' +
+            '<div class="lp-section-placeholder-inner">Screenshot coming soon</div>' +
+          '</div>' +
+        '</div>';
+
+    var ctaHtml = section.cta_text && section.cta_url
+      ? '<a href="' + escapeAttr(section.cta_url) + '" class="btn btn-primary lp-section-cta">' +
+          escapeHtml(section.cta_text) + '</a>'
+      : '';
+
+    var bodyParagraphs = sanitizeBodyText(section.body_text)
+      .split(/\n\n+/)
+      .filter(Boolean)
+      .map(function(p) { return '<p>' + p + '</p>'; })
+      .join('');
+
+    var contentHtml =
+      '<div class="lp-section-content">' +
+        (section.subtitle ? '<div class="lp-section-subtitle">' + escapeHtml(section.subtitle) + '</div>' : '') +
+        '<h2 class="lp-section-title">' + escapeHtml(section.title) + '</h2>' +
+        '<div class="lp-section-body">' + bodyParagraphs + '</div>' +
+        ctaHtml +
+      '</div>';
+
+    var el = document.createElement('section');
+    el.className = 'lp-benefit-section section fade-up ' + orientClass;
+    el.setAttribute('data-section-id', section.id);
+    el.innerHTML = orientClass === 'section-img-left'
+      ? imgHtml + contentHtml
+      : contentHtml + imgHtml;
+
+    return el;
+  }
+
+  function escapeHtml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function escapeAttr(str) {
+    return String(str || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function filterBySegment(sections) {
+    var segment = getVisitorSegment();
+    var preview = window.location.search.indexOf('preview=true') >= 0;
+    if (preview) return sections; // admin preview — show all visible
+    return sections.filter(function(s) {
+      return s.segment === 'all' || s.segment === segment;
+    });
+  }
+
+  async function loadBenefitSections() {
+    var container = document.getElementById('lp-benefit-sections');
+    if (!container) return;
+
+    try {
+      var url = SUPABASE_URL + '/rest/v1/landing_sections' +
+        '?is_visible=eq.true&archived_at=is.null&order=sort_order.asc';
+
+      var res = await fetch(url, {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!res.ok) {
+        captureEvent('lp_sections_fetch_error', { status: res.status });
+        return;
+      }
+
+      var sections = await res.json();
+      sections = filterBySegment(sections);
+
+      if (!sections.length) return; // No visible sections — container stays empty
+
+      var fragment = document.createDocumentFragment();
+      sections.forEach(function(section, idx) {
+        fragment.appendChild(renderSection(section, idx));
+      });
+      container.appendChild(fragment);
+
+      // Trigger fade-up observer for newly added sections
+      if (window._bjFadeObserver && typeof window._bjFadeObserver.observe === 'function') {
+        container.querySelectorAll('.fade-up').forEach(function(el) {
+          window._bjFadeObserver.observe(el);
+        });
+      }
+
+      captureEvent('lp_sections_rendered', { count: sections.length, segment: getVisitorSegment() });
+
+    } catch(e) {
+      reportError('lp_benefit_sections', e);
+    }
+  }
+
+  // Run after DOM ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadBenefitSections);
+  } else {
+    loadBenefitSections();
+  }
+
+})();
