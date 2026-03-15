@@ -1,3 +1,11 @@
+## v9.38 RESUME-BUILDER-001-S3: Keyword Optimization (2026-03-15)
+- resume-optimize EF: Anthropic Haiku keyword extraction from ats_jobs JD, weighted gap analysis (skills 3x > education 2x > title 2x > certs 1.5x > soft_skills 1x > location 0.5x), partial match via acronym detection, 1-credit cost, persists match_score + keyword_gaps to resumes row. 401/402/404/422/502 error surfaces.
+- dashboard.html: rb-optimize-section card — job selector (loads from pipeline), score circle (conic-gradient, CSS custom props), gap pills (present/partial/missing), suggestions list, analyzing spinner.
+- resume-builder.js: rbOptimize, rbRenderGapReport, rbInsertKeyword (one-click adds to skills/certs), rbLoadJobSelector, rbOpenOptimizeForJob, rbSetOptimizing. rbInit calls rbLoadJobSelector. rbShowEditor reveals optimize section.
+- job-feed.js: 'Optimize Resume' button on every job card wired to rbOpenOptimizeForJob.
+- src/input.css: rb-gap-pill (present/partial/missing), rb-score-circle (conic-gradient), rb-match-score-bar, rb-gap-legend, rb-job-selector.
+- 51 tests. v9.38.
+
 ## v9.37 RESUME-BUILDER-001-S2: Templates & Generation (2026-03-15)
 - resume-generate EF: pure-TS DOCX builder (ZIP+OOXML, CRC32, no external libs), text-based PDF builder, 3 ATS templates (Classic/Modern/Minimal), signed URLs (60min), updates resumes row. 401/403/404/500 error surfaces.
 - ATS compliance: single-column, standard fonts (Times/Calibri/Arial), 1-inch margins, standard section headings, smart-quote/em-dash stripping, no tables or text-boxes.

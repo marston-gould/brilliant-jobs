@@ -3626,4 +3626,29 @@
     .rb-dl-secondary { background: var(--bg-input); border: 1px solid var(--border); color: var(--text); }
     .rb-dl-secondary:hover { border-color: var(--accent); color: var(--accent); }
     .rb-dl-hint { font-size: 11px; color: var(--text-faint); }
+    /* RESUME-BUILDER-001-S3: Keyword optimization */
+    .rb-optimize-card { }
+    .rb-job-selector { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 20px; flex-wrap: wrap; }
+    .rb-job-selector select { flex: 1; min-width: 200px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px; color: var(--text); }
+    .rb-match-score-bar { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; padding: 14px 18px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; }
+    .rb-score-circle { width: 56px; height: 56px; border-radius: 50%; background: conic-gradient(var(--score-color, var(--accent)) calc(var(--score-pct, 0) * 1%), var(--border) 0); display: flex; align-items: center; justify-content: center; flex-shrink: 0; position: relative; }
+    .rb-score-circle::before { content: ''; position: absolute; width: 44px; height: 44px; border-radius: 50%; background: var(--bg-card); }
+    .rb-score-num { position: relative; font-size: 14px; font-weight: 800; color: var(--text); }
+    .rb-score-label { font-size: 12px; font-weight: 600; color: var(--text-dim); }
+    .rb-score-desc { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
+    .rb-gap-list { display: flex; flex-direction: column; gap: 6px; }
+    .rb-gap-section { margin-bottom: 14px; }
+    .rb-gap-section-title { font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .rb-gap-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; margin: 3px; cursor: default; }
+    .rb-gap-pill.present { background: rgba(34,197,94,0.1); color: #16a34a; border: 1px solid rgba(34,197,94,0.25); }
+    .rb-gap-pill.partial  { background: rgba(245,158,11,0.1); color: #d97706; border: 1px solid rgba(245,158,11,0.25); }
+    .rb-gap-pill.missing  { background: rgba(239,68,68,0.08); color: #ef4444; border: 1px solid rgba(239,68,68,0.2); cursor: pointer; }
+    .rb-gap-pill.missing:hover { background: rgba(239,68,68,0.15); }
+    .rb-gap-pill-icon { font-size: 10px; }
+    .rb-gap-legend { display: flex; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }
+    .rb-gap-legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-dim); }
+    .rb-gap-legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .rb-gap-legend-dot.present { background: #16a34a; }
+    .rb-gap-legend-dot.partial  { background: #d97706; }
+    .rb-gap-legend-dot.missing  { background: #ef4444; }
     .u-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }

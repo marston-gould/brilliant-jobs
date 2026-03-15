@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.37';
+var BJ_VERSION = 'v9.38';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -6990,7 +6990,7 @@ function renderJobRows(jobs, total, page, filtersToRun) {
       <td class="jt-days" style="${daysClass}">${daysStr}</td>
       <td class="jt-match"${job._aiScoringExcluded ? ' style="opacity:0.3;" title="Match score excluded per your AI content preferences"' : ''}>${typeof matchBadgeWithBoost==='function'?matchBadgeWithBoost(jobMatchScores[job.greenhouse_id],job.greenhouse_id,job.title,job.company_name):matchBadge(jobMatchScores[job.greenhouse_id], job.greenhouse_id)}</td>
       <td class="jt-actions"><div style="white-space:nowrap;display:flex;gap:4px;align-items:center;">
-        ${saveBtn}${applyBtn}
+        ${saveBtn}${applyBtn}<button class="job-action-btn" onclick="if(typeof rbOpenOptimizeForJob==='function')rbOpenOptimizeForJob('${job.greenhouse_id}')" title="Optimize your resume for this job" style="font-size:11px;padding:4px 8px;">Optimize Resume</button>
       </div></td>
     </tr>
     <tr class="job-snippet-row"><td colspan="8">${trustBannerHtml(job.greenhouse_id)}${aiContentBannerHtml(job.greenhouse_id)}<span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td></tr>`;
@@ -26983,6 +26983,7 @@ window.addEventListener('resize', function() {
 
   window.rbInit = function () {
     rbBindPasteCounter();
+    rbLoadJobSelector();
   };
 
   // ─── Tab switching ────────────────────────────────────────────────────────
@@ -27402,7 +27403,7 @@ window.addEventListener('resize', function() {
   // ─── Reset ────────────────────────────────────────────────────────────────
 
   window.rbReset = function () {
-    _state = { mode: 'upload', editorTab: 'contact', file: null, resumeId: null, parsedJson: null, dirty: false };
+    _state = { mode: 'upload', editorTab: 'contact', file: null, resumeId: null, parsedJson: null, dirty: false, template: 'modern' };
     rbClearFile();
     document.getElementById('rb-paste-area') && (document.getElementById('rb-paste-area').value = '');
     document.getElementById('rb-label-input') && (document.getElementById('rb-label-input').value = '');
@@ -27558,6 +27559,214 @@ window.addEventListener('resize', function() {
       pdfEl.classList.remove('u-hidden');
     }
     linksEl.classList.remove('u-hidden');
+  }
+
+  // ─── S3: Optimize + Gap Report ───────────────────────────────────────────────
+
+  // Called when page opens — load pipeline jobs into the selector
+  window.rbLoadJobSelector = async function () {
+    const sel = document.getElementById('rb-job-select');
+    if (!sel) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      // Load pipeline jobs (saved jobs)
+      const { data: rows } = await supabase
+        .from('pipeline')
+        .select('job_id, ats_jobs(greenhouse_id, title, company_name)')
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (!rows?.length) {
+        sel.innerHTML = '<option value="">— Save jobs to your Pipeline first —</option>';
+        return;
+      }
+      sel.innerHTML = '<option value="">— Select a saved job —</option>' +
+        rows.map(r => {
+          const j = r.ats_jobs;
+          if (!j) return '';
+          const label = `${j.title || 'Untitled'} — ${j.company_name || ''}`;
+          return `<option value="${rbEsc(j.greenhouse_id)}">${rbEsc(label)}</option>`;
+        }).filter(Boolean).join('');
+    } catch (err) {
+      reportError('resume_builder_job_selector', err);
+    }
+  };
+
+  window.rbOptimize = async function () {
+    rbClearError('rb-optimize-error');
+    const sel = document.getElementById('rb-job-select');
+    const jobId = sel?.value?.trim();
+
+    if (!jobId) {
+      rbShowError('rb-optimize-error', 'Select a job to optimize against.');
+      return;
+    }
+    if (!_state.resumeId) {
+      rbShowError('rb-optimize-error', 'Save your resume first.');
+      return;
+    }
+
+    rbSetOptimizing(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const resp = await fetch('/api/resume-optimize', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ resume_id: _state.resumeId, target_job_id: jobId }),
+      });
+
+      const json = await resp.json();
+
+      if (!resp.ok) {
+        captureEvent('resume_optimize_error', { status: resp.status, error: json?.error });
+        rbShowError('rb-optimize-error', json?.error || 'Analysis failed. Please try again.');
+        return;
+      }
+
+      rbRenderGapReport(json);
+      captureEvent('resume_optimized', {
+        resume_id: _state.resumeId,
+        job_id: jobId,
+        match_score: json.match_score,
+        total_keywords: json.keyword_gaps?.length ?? 0,
+      });
+
+    } catch (err) {
+      reportError('resume_optimize_exception', err);
+      rbShowError('rb-optimize-error', 'An unexpected error occurred. Please try again.');
+    } finally {
+      rbSetOptimizing(false);
+    }
+  };
+
+  // Called from job feed: "Optimize Resume" button on job cards
+  window.rbOpenOptimizeForJob = function (jobId) {
+    if (typeof showPage === 'function') showPage('resume-builder');
+    // Wait for page to be visible, then pre-select the job
+    setTimeout(function () {
+      const sel = document.getElementById('rb-job-select');
+      if (sel) {
+        // Try to set value; if option not loaded yet, rbLoadJobSelector will populate
+        sel.value = jobId;
+        if (!sel.value) {
+          // Populate selector then set
+          rbLoadJobSelector().then(function () { sel.value = jobId; });
+        }
+      }
+      const sec = document.getElementById('rb-optimize-section');
+      if (sec) {
+        sec.classList.remove('u-hidden');
+        sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 300);
+  };
+
+  function rbRenderGapReport (data) {
+    const report = document.getElementById('rb-gap-report');
+    if (!report) return;
+
+    // Score circle
+    const score = data.match_score ?? 0;
+    const circle = document.getElementById('rb-score-circle');
+    const scoreNum = document.getElementById('rb-score-num');
+    const scoreTarget = document.getElementById('rb-score-target');
+    if (circle) {
+      const color = score >= 70 ? '#16a34a' : score >= 45 ? '#d97706' : '#ef4444';
+      circle.style.setProperty('--score-pct', String(score));
+      circle.style.setProperty('--score-color', color);
+    }
+    if (scoreNum) scoreNum.textContent = `${score}%`;
+    if (scoreTarget) scoreTarget.textContent = `vs. ${data.job_title || 'target job'} at ${data.company_name || ''}`;
+
+    // Pills by category
+    const pillsEl = document.getElementById('rb-gap-pills');
+    if (pillsEl) {
+      const byCategory = {};
+      for (const g of (data.keyword_gaps || [])) {
+        const cat = g.category || 'other';
+        if (!byCategory[cat]) byCategory[cat] = [];
+        byCategory[cat].push(g);
+      }
+      const catLabels = {
+        skill: 'Skills & Tools', education: 'Education', title: 'Job Title',
+        certification: 'Certifications', soft_skill: 'Soft Skills',
+        experience: 'Experience', location: 'Location',
+      };
+      let html = '';
+      for (const [cat, gaps] of Object.entries(byCategory)) {
+        if (!gaps.length) continue;
+        html += `<div class="rb-gap-section">
+          <div class="rb-gap-section-title">${rbEsc(catLabels[cat] || cat)}</div>
+          <div>`;
+        for (const g of gaps) {
+          const icon = g.status === 'present' ? '✓' : g.status === 'partial' ? '~' : '+';
+          const title = g.status === 'missing' && g.suggestion
+            ? `title="${rbEsc(g.suggestion)}" onclick="rbInsertKeyword(${JSON.stringify(rbEsc(g.keyword))}, '${g.category}')"`
+            : '';
+          html += `<span class="rb-gap-pill ${g.status}" ${title}><span class="rb-gap-pill-icon">${icon}</span>${rbEsc(g.keyword)}</span>`;
+        }
+        html += '</div></div>';
+      }
+      pillsEl.innerHTML = html;
+    }
+
+    // Suggestions list
+    const sugSec = document.getElementById('rb-suggestions-section');
+    const sugList = document.getElementById('rb-suggestions-list');
+    if (data.suggestions?.length && sugSec && sugList) {
+      sugList.innerHTML = data.suggestions.slice(0, 8).map(s => `<li>${rbEsc(s)}</li>`).join('');
+      sugSec.classList.remove('u-hidden');
+    }
+
+    report.classList.remove('u-hidden');
+  }
+
+  // One-click keyword insertion into parsed_json
+  window.rbInsertKeyword = function (keyword, category) {
+    if (!_state.parsedJson) return;
+    const kw = String(keyword).trim();
+    if (!kw) return;
+
+    if (category === 'skill' || category === 'tool') {
+      _state.parsedJson.skills = _state.parsedJson.skills || [];
+      if (!_state.parsedJson.skills.includes(kw)) {
+        _state.parsedJson.skills.push(kw);
+        // Update the skills textarea
+        const ta = document.getElementById('rb-f-skills');
+        if (ta) ta.value = _state.parsedJson.skills.join(', ');
+        _state.dirty = true;
+        if (typeof showToast === 'function') showToast(`"${kw}" added to Skills`, 'success');
+        captureEvent('resume_keyword_inserted', { keyword: kw, category });
+      }
+    } else if (category === 'certification') {
+      _state.parsedJson.certifications = _state.parsedJson.certifications || [];
+      _state.parsedJson.certifications.push({ name: kw, issuer: '', date: '' });
+      rbRenderCerts(_state.parsedJson.certifications);
+      _state.dirty = true;
+      if (typeof showToast === 'function') showToast(`"${kw}" added to Certifications`, 'success');
+      captureEvent('resume_keyword_inserted', { keyword: kw, category });
+    }
+    // For other categories — show a hint to add manually
+    else {
+      if (typeof showToast === 'function') showToast(`Add "${kw}" to your ${category === 'title' ? 'Summary' : category} section`, 'info');
+    }
+  };
+
+  function rbSetOptimizing (active) {
+    const btn = document.getElementById('rb-optimize-btn');
+    const spinner = document.getElementById('rb-optimizing');
+    const report = document.getElementById('rb-gap-report');
+    if (btn) { btn.disabled = active; btn.textContent = active ? 'Analyzing…' : 'Analyze'; }
+    if (spinner) spinner.classList.toggle('u-hidden', !active);
+    if (active && report) report.classList.add('u-hidden');
   }
 
   // ─── Page init hook (called by showPage in app.js) ────────────────────────

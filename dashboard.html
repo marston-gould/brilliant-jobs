@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v9.37 -->
+<!-- Brilliant Jobs Dashboard v9.38 -->
 <html lang="en">
 <head>
   <!-- CS-P1-009: Theme flash prevention — must be first script -->
@@ -19,22 +19,22 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="/js/vendor/supabase.min.js" defer></script>
-  <script src="/js/pipeline-migration.js?v=v9.37" defer></script>
-  <script src="/js/notification-center.js?v=v9.37" defer></script>
+  <script src="/js/pipeline-migration.js?v=v9.38" defer></script>
+  <script src="/js/notification-center.js?v=v9.38" defer></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" integrity="sha384-nFoSjZIoH3CCp8W639jJyQkuPHinJ2NHe7on1xvlUA7SuGfJAfvMldrsoAVm6ECz" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" integrity="sha384-eEu5CTj3qGvu9PdJuS+YlkNi7d2XxQROAFYOr59zgObtlcux1ae1Il3u7jvdCSWu" crossorigin="anonymous"></script>
   <!-- CS-014: CX-09 — ECharts lazy-loaded by stats.js when Stats tab opens -->
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js" integrity="sha384-TcLTgu6flPhnZ5dfHnHimsxNFjYWN0povfGgnOvgPJKbZe6IbuoC2ociiatSHl9E" crossorigin="anonymous"></script>
   <!-- CS-016 FIX-10: Code-split chunks — shell (globals+routing) + feed (job list) loaded eagerly; all other chunks lazy-loaded on tab switch -->
-  <script src="dist/dashboard-shell.min.js?v=v9.37" defer></script>
-  <script src="dist/dashboard-feed.min.js?v=v9.37" defer></script>
+  <script src="dist/dashboard-shell.min.js?v=v9.38" defer></script>
+  <script src="dist/dashboard-feed.min.js?v=v9.38" defer></script>
   <!-- CS-P1-002: dashboard inline scripts externalized (pdfjs, preload, feedback, insights, a11y) -->
-  <script src="js/dashboard-inline.js?v=v9.37" defer></script>
-  <script src="js/canny.js?v=v9.37" defer></script>
+  <script src="js/dashboard-inline.js?v=v9.38" defer></script>
+  <script src="js/canny.js?v=v9.38" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=v9.37">
+  <link rel="stylesheet" href="styles.css?v=v9.38">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -109,11 +109,11 @@
     </style>
   <!-- CSS extracted to styles.css in v3.28 -->
   <!-- A13: PostHog analytics — CS-P1-002: externalized for CSP compliance -->
-  <script src="js/posthog-dashboard.js?v=v9.37" defer></script>
-  <script src="js/posthog-perf.js?v=v9.37" defer></script>
-  <script src="js/feature-flags.js?v=v9.37" defer></script>
-  <script src="js/structured-logger.js?v=v9.37" defer></script>
-  <script src="js/theme.js?v=v9.37" defer></script>
+  <script src="js/posthog-dashboard.js?v=v9.38" defer></script>
+  <script src="js/posthog-perf.js?v=v9.38" defer></script>
+  <script src="js/feature-flags.js?v=v9.38" defer></script>
+  <script src="js/structured-logger.js?v=v9.38" defer></script>
+  <script src="js/theme.js?v=v9.38" defer></script>
 </head>
 <body>
 
@@ -1653,6 +1653,72 @@
               <div class="rb-actions">
                 <button class="btn btn-primary" id="rb-save-btn" onclick="rbSaveEdits()">Save Changes</button>
                 <button class="btn btn-outline" onclick="rbReset()">Start Over</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- RESUME-BUILDER-001-S3: Keyword Optimization -->
+          <div id="rb-optimize-section" class="rb-card u-hidden">
+            <div class="rb-card-header">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <span>Optimize for a Job</span>
+              <span class="rb-label-hint" style="margin-left:4px;font-size:11px;">1 credit</span>
+            </div>
+            <div class="rb-card-body">
+              <p style="font-size:13px;color:var(--text-dim);margin:0 0 16px;">Select a job from your feed. We'll compare your resume against its full JD and show exactly which keywords are missing.</p>
+
+              <!-- Job selector -->
+              <div class="rb-job-selector">
+                <div style="flex:1;">
+                  <label class="rb-label" for="rb-job-select">Target job</label>
+                  <select id="rb-job-select" class="rb-input">
+                    <option value="">— Select a saved job from your Pipeline —</option>
+                  </select>
+                </div>
+                <button class="btn btn-primary" id="rb-optimize-btn" onclick="rbOptimize()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="width:15px;height:15px;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+                  Analyze
+                </button>
+              </div>
+
+              <!-- Optimize error -->
+              <div id="rb-optimize-error" class="rb-error u-hidden" role="alert"></div>
+
+              <!-- Analyzing progress -->
+              <div id="rb-optimizing" class="rb-parsing u-hidden" aria-live="polite" aria-busy="true">
+                <div class="rb-spinner"></div>
+                <div class="rb-parsing-label">Analyzing keywords&hellip;</div>
+                <div class="rb-parsing-sub">Extracting keywords from the job description &mdash; takes about 5 seconds.</div>
+              </div>
+
+              <!-- Gap report -->
+              <div id="rb-gap-report" class="u-hidden">
+                <!-- Match score bar -->
+                <div class="rb-match-score-bar" id="rb-score-bar">
+                  <div class="rb-score-circle" id="rb-score-circle" style="--score-pct:0;--score-color:#ef4444;">
+                    <span class="rb-score-num" id="rb-score-num">0%</span>
+                  </div>
+                  <div>
+                    <div class="rb-score-label" id="rb-score-label">Match Score</div>
+                    <div class="rb-score-desc" id="rb-score-target"></div>
+                  </div>
+                </div>
+
+                <!-- Legend -->
+                <div class="rb-gap-legend">
+                  <div class="rb-gap-legend-item"><div class="rb-gap-legend-dot present"></div> Present</div>
+                  <div class="rb-gap-legend-item"><div class="rb-gap-legend-dot partial"></div> Partial match</div>
+                  <div class="rb-gap-legend-item"><div class="rb-gap-legend-dot missing"></div> Missing &mdash; click to add</div>
+                </div>
+
+                <!-- Keywords by category -->
+                <div id="rb-gap-pills"></div>
+
+                <!-- Suggestions -->
+                <div id="rb-suggestions-section" class="u-hidden" style="margin-top:16px;">
+                  <div class="rb-label" style="margin-bottom:8px;">Suggested fixes</div>
+                  <ul id="rb-suggestions-list" style="margin:0;padding-left:18px;font-size:12px;color:var(--text-dim);line-height:1.8;"></ul>
+                </div>
               </div>
             </div>
           </div>

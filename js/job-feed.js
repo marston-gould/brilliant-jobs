@@ -2655,7 +2655,7 @@ function renderJobRows(jobs, total, page, filtersToRun) {
       <td class="jt-days" style="${daysClass}">${daysStr}</td>
       <td class="jt-match"${job._aiScoringExcluded ? ' style="opacity:0.3;" title="Match score excluded per your AI content preferences"' : ''}>${typeof matchBadgeWithBoost==='function'?matchBadgeWithBoost(jobMatchScores[job.greenhouse_id],job.greenhouse_id,job.title,job.company_name):matchBadge(jobMatchScores[job.greenhouse_id], job.greenhouse_id)}</td>
       <td class="jt-actions"><div style="white-space:nowrap;display:flex;gap:4px;align-items:center;">
-        ${saveBtn}${applyBtn}
+        ${saveBtn}${applyBtn}<button class="job-action-btn" onclick="if(typeof rbOpenOptimizeForJob==='function')rbOpenOptimizeForJob('${job.greenhouse_id}')" title="Optimize your resume for this job" style="font-size:11px;padding:4px 8px;">Optimize Resume</button>
       </div></td>
     </tr>
     <tr class="job-snippet-row"><td colspan="8">${trustBannerHtml(job.greenhouse_id)}${aiContentBannerHtml(job.greenhouse_id)}<span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td></tr>`;
