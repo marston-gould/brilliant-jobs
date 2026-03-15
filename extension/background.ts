@@ -1637,6 +1637,102 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return scoreResult;
   }
 
+  // ── AIS-F4-S1: _fetchAiAnswersForReview — Fetch AI answers for pre-submit review panel ──
+  // Called when user clicks "Submit Anyway" in score-gated mode, and for manual mode.
+  // Fetches the form's custom questions via content script, calls answer-form-question EF,
+  // then sends bj:toolbar:answerReview to the overlay for user review before fill fires.
+  async function _fetchAiAnswersForReview(
+    tabId: number,
+    payload: Record<string, unknown>
+  ): Promise<boolean> {
+    try {
+      // Get auth token
+      const authData = await chrome.storage.local.get(['authToken', 'applicantProfile', 'applySettings']);
+      const authToken = authData.authToken as string | undefined;
+      if (!authToken) return false; // No token — skip review, proceed directly
+
+      const profile = authData.applicantProfile || {};
+      const activeResumeId = authData.applySettings?.activeResumeId;
+
+      // Request unmatched questions from content script
+      const questionsResult = await new Promise<Record<string, unknown>>((resolve) => {
+        const timeout = setTimeout(() => resolve({ questions: [] }), 3000);
+        chrome.tabs.sendMessage(tabId, { type: 'bj:toolbar:collectQuestions' }, (resp) => {
+          clearTimeout(timeout);
+          resolve(resp || { questions: [] });
+        });
+      });
+
+      const questions = (questionsResult.questions as unknown[]) || [];
+      if (!questions.length) return false; // No custom questions — skip review
+
+      // Fetch resume text if we have a resume ID
+      let resumeText = '';
+      if (activeResumeId) {
+        try {
+          const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+          const resumeResp = await fetch(
+            `${SB_URL}/rest/v1/resume_archive?id=eq.${activeResumeId}&select=extracted_text`,
+            { headers: { 'Authorization': `Bearer ${authToken}`, 'apikey': authToken } }
+          );
+          if (resumeResp.ok) {
+            const rows = await resumeResp.json();
+            resumeText = rows?.[0]?.extracted_text || '';
+          }
+        } catch (_) { /* non-fatal */ }
+      }
+
+      // Call answer-form-question EF
+      const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+      const efResp = await fetch(`${SB_URL}/functions/v1/answer-form-question`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          questions,
+          profile,
+          resume_text: resumeText,
+          job_title: payload.jobTitle || '',
+          company_name: payload.company || '',
+        }),
+      });
+
+      if (!efResp.ok) return false;
+
+      const efData = await efResp.json();
+      const answers = efData.answers || [];
+      if (!answers.length) return false;
+
+      // PostHog: ai_answer_generated
+      captureEvent('ai_answer_generated', {
+        job_id: payload.jobId || '',
+        questions_count: questions.length,
+        cached: efData.cache_hits || 0,
+        credits_charged: efData.credits_charged || 0,
+        surface: 'extension',
+      });
+
+      // Send answer review panel to overlay
+      chrome.tabs.sendMessage(tabId, {
+        type: 'bj:toolbar:answerReview',
+        payload: {
+          answers,
+          jobTitle: payload.jobTitle || '',
+          company: payload.company || '',
+          originalAction: payload.action || 'submit_anyway',
+          mode: payload.mode || 'score-gated',
+        },
+      });
+
+      return true; // Review panel shown — don't proceed with fill yet
+    } catch (e) {
+      captureEvent('extension_catch_error', { context: '_fetchAiAnswersForReview', error: (e as Error).message });
+      return false; // On error, skip review and let fill proceed
+    }
+  }
+
   // ── EXT-AS-5: _rewriteResumeForJob — Quick AI rewrite via extension rewrite EF ──
   async function _rewriteResumeForJob(
     tabId: number,
@@ -2200,9 +2296,19 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
 
         if (action === 'submit_anyway') {
-          // User wants to submit with current (below-threshold) resume
-          // Send ats:fill to the content script tab to proceed with native apply
+          // AIS-F4-S1: Try to fetch AI answers for pre-submit review (score-gated + manual modes)
           const tabId = sender?.tab?.id;
+          const reviewMode = p.mode === 'score-gated' || p.mode === 'manual';
+          if (tabId && reviewMode) {
+            const reviewShown = await _fetchAiAnswersForReview(tabId, p);
+            if (reviewShown) {
+              // Review panel is now showing — fill will be triggered by answerReviewConfirm
+              sendResponse({ status: 'answer_review_pending' });
+              return;
+            }
+          }
+
+          // No review (no questions, error, or non-review mode) — proceed with fill directly
           if (tabId) {
             chrome.tabs.sendMessage(tabId, {
               type: 'bj:toolbar:applyStatus',
@@ -2275,6 +2381,68 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       } catch (e) {
         console.warn('[BJ] applyConfirm error:', (e as Error).message);
         captureEvent('extension_catch_error', { context: 'applyConfirm', error: (e as Error).message });
+        sendResponse({ status: 'error', error: (e as Error).message });
+      }
+    })();
+    return true;
+  }
+
+  // ── AIS-F4-S1: bj:toolbar:answerReviewConfirm — User accepted/skipped answer review ──
+  if (msg.type === 'bj:toolbar:answerReviewConfirm') {
+    (async () => {
+      try {
+        const p = msg.payload || {};
+        const tabId = sender?.tab?.id;
+        const action = p.action as string; // 'accepted' | 'skipped' | 'regenerate'
+
+        if (action === 'regenerate') {
+          // Re-fetch answers and show review again
+          if (tabId) {
+            const reviewShown = await _fetchAiAnswersForReview(tabId, p);
+            if (!reviewShown) {
+              // Fallback: proceed with fill if regen fails
+              chrome.tabs.sendMessage(tabId, {
+                type: 'bj:toolbar:applyStatus',
+                payload: { status: 'filling', action: 'submit_anyway' },
+              });
+            }
+          }
+          sendResponse({ status: 'regenerating' });
+          return;
+        }
+
+        // 'accepted' or 'skipped' — proceed with fill
+        if (tabId) {
+          chrome.tabs.sendMessage(tabId, {
+            type: 'bj:toolbar:applyStatus',
+            payload: {
+              status: 'filling',
+              action: 'submit_anyway',
+              // Pass accepted answers so content script can pre-fill them
+              acceptedAnswers: action === 'accepted' ? (p.answers || []) : [],
+            },
+          });
+        }
+
+        // PostHog: ai_answer_feedback if user rated answers
+        if (p.feedback && Array.isArray(p.feedback)) {
+          for (const fb of p.feedback as Array<{field_label: string; rating: string}>) {
+            captureEvent('ai_answer_feedback', {
+              job_id: p.jobId || '',
+              field_label: fb.field_label,
+              rating: fb.rating, // 'up' or 'down'
+              surface: 'extension',
+            });
+          }
+        }
+
+        _logSubmissionAttempt({
+          jobUrl: p.jobUrl || '', jobTitle: p.jobTitle, companyName: p.company,
+          atsSource: p.platform, method: 'extension_score_gate', status: 'submitted',
+        });
+        sendResponse({ status: 'submitting' });
+      } catch (e) {
+        captureEvent('extension_catch_error', { context: 'answerReviewConfirm', error: (e as Error).message });
         sendResponse({ status: 'error', error: (e as Error).message });
       }
     })();

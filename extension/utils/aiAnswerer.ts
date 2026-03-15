@@ -83,6 +83,25 @@ export async function answerCustomQuestions(questions, profile, resume, jobConte
     return questions.map(q => ({ id: q.id, answer: '', confidence: 'low' }));
   }
 
+  // AIS-F4-S1: Tier gate — AI Q&A requires Starter or Pro (not Free)
+  try {
+    const tierData = await new Promise<Record<string, unknown>>((resolve) => {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.get('userRole', (data) => resolve(data as Record<string, unknown>));
+      } else {
+        resolve({});
+      }
+    });
+    const userRole = (tierData.userRole as string) || 'free';
+    const isEligible = userRole === 'pro' || userRole === 'starter' || userRole === 'admin' || userRole === 'payl';
+    if (!isEligible) {
+      console.log('[aiAnswerer] Free tier — skipping AI answers (Starter/Pro required)');
+      return questions.map(q => ({ id: q.id, answer: '', confidence: 'tier_blocked' }));
+    }
+  } catch (_) {
+    // Non-fatal — proceed if storage check fails
+  }
+
   // ── Check cache for hits ──
   const cache = await loadCache();
   const results = [];

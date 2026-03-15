@@ -143,18 +143,19 @@ function incrementAutoApplyDailyCount() {
     rec.count = (rec.count || 0) + 1;
     localStorage.setItem(_AUTO_APPLY_STORAGE_KEY, JSON.stringify(rec));
   } catch (e) {
-    /* non-fatal: localStorage unavailable in private browsing — limit tracking degrades gracefully */
   }
-  var tier = getUserTier();
-  var limit = getAutoApplyDailyLimit();
+}
+function checkAutoApplyTierGate() {
+  const tier = getUserTier();
+  const limit = getAutoApplyDailyLimit();
   if (limit === 0) {
-    return { allowed: false, tier: tier, limit: 0, remaining: 0, requiresTier: 'starter' };
+    return { allowed: false, tier, limit: 0, remaining: 0, requiresTier: "starter" };
   }
-  var remaining = getAutoApplyDailyRemaining();
+  const remaining = getAutoApplyDailyRemaining();
   if (remaining === 0) {
-    return { allowed: false, tier: tier, limit: limit, remaining: 0, requiresTier: tier === 'starter' ? 'pro' : 'starter' };
+    return { allowed: false, tier, limit, remaining: 0, requiresTier: tier === "starter" ? "pro" : "starter" };
   }
-  return { allowed: true, tier: tier, limit: limit, remaining: remaining, requiresTier: null };
+  return { allowed: true, tier, limit, remaining, requiresTier: null };
 }
 window.getAutoApplyDailyLimit = getAutoApplyDailyLimit;
 window.getAutoApplyDailyRemaining = getAutoApplyDailyRemaining;
