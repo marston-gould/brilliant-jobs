@@ -352,6 +352,35 @@ async function processSignal(signal: SignalRow): Promise<{
       confidence: signal.confidence_score,
     });
 
+    // REM-S07: Dispatch notification to user about auto-move
+    try {
+      const companyName = signal.extracted_fields?.company_name || entry.company || "";
+      const roleName = signal.extracted_fields?.role_title || entry.role || "";
+      await sb.from("notification_log").insert({
+        user_id: signal.user_id,
+        notification_type: "pipeline_auto_move",
+        channel: "in_app",
+        status: "sent",
+        company_name: companyName,
+        subject: `Pipeline auto-moved: ${companyName || "application"} → ${targetStage}`,
+        payload: {
+          signal_id: signal.id,
+          signal_type: signal.signal_type,
+          from_stage: currentStage,
+          to_stage: targetStage,
+          source: signal.signal_source,
+          confidence_score: signal.confidence_score,
+          confidence_level: signal.confidence_level,
+          role_title: roleName,
+          match_type,
+          application_id: entry.id,
+        },
+      });
+    } catch (notifErr) {
+      // Non-fatal: auto-move succeeded, notification insert is best-effort
+      console.error("[process-pipeline-action] Notification insert failed:", (notifErr as Error).message);
+    }
+
     // §5.3 step 5: Supabase Realtime broadcast on pipeline_signals channel
     // Connected dashboard clients subscribe to this channel and refresh
     await sb.channel("pipeline_signals").send({

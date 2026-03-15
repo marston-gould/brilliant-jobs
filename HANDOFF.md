@@ -52,7 +52,33 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**QA-013-FIX** — DEFAULT_LEVELS label fix
+**SCA-REM-S5** — Spec Compliance Remediation Session 5
+- Completed: 2026-03-15
+- Product version bumped: `v9.23` → `v9.24` (HTML change — pipeline_auto_move notification pref + filter; all HTML surfaces cache-busted)
+- ROADMAP.md updated: SCA-REM-S5 → ✅
+- roadmap.html updated: SCA-REM-S5 → `s: 'done'`, p: 100
+- **REM-S07 — Auto-move notification dispatch (FB-PI-001 §5.3):**
+  - `supabase/functions/process-pipeline-action/index.ts`: After successful auto-move, inserts `pipeline_auto_move` row into `notification_log` with `channel: "in_app"`, `status: "sent"`, and full payload (signal_id, signal_type, from_stage, to_stage, source, confidence_score, confidence_level, role_title, match_type, application_id). Non-fatal try/catch — auto-move success is not blocked by notification failure.
+  - `dashboard.html`: Added `<tr data-notif="pipeline_auto_move">` preference row ("Auto-move notifications") with email toggle. Added `<option value="pipeline_auto_move">Auto-move</option>` to notification log filter dropdown.
+  - process-pipeline-action EF redeployed to production.
+- **REM-S08 — Supabase Realtime broadcast:** Confirmed already implemented at lines 357-368 of process-pipeline-action. Broadcasts `stage_changed` event on `pipeline_signals` channel with user_id, signal_id, signal_type, from_stage, to_stage, source.
+- **REM-S10/S11 — Gmail + Calendar scan scope settings:** UI confirmed fully wired. HTML dropdowns (`pi-gmail-scope`, `pi-cal-scope`) exist. `applications.js` loads (`gmail_scan_scope`, `calendar_scan_scope`) and saves to PI settings. Backend consumption (gmail-scan EF reading the user's scope preference) deferred to next PI session.
+- **Skipped Items:**
+  - REM-S10/S11 backend: gmail-scan EF does not yet read `gmail_scan_scope` / `calendar_scan_scope` from user settings. UI saves correctly, but the EF ignores the preference. Deferred.
+- **Modified:**
+  - `supabase/functions/process-pipeline-action/index.ts` — notification_log insert after auto-move
+  - `dashboard.html` — pipeline_auto_move pref row + filter option
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `dist/admin.min.js` — rebuilt
+  - `ROADMAP.md` — SCA-REM-S5 → ✅
+  - `roadmap.html` — SCA-REM-S5 → done/100
+- **Created:**
+  - `tests/sca-rem-s5-spec-compliance.test.js` — 22 validation tests
+- **Tests:** 22 validation tests (all passing)
+- **Deployed:** process-pipeline-action EF redeployed
+
+**Previous: QA-013-FIX** — DEFAULT_LEVELS label fix
 - Completed: 2026-03-15
 - Product version bumped: `v9.22` → `v9.23` (JS change — tuning.js DEFAULT_LEVELS label; all HTML surfaces cache-busted)
 - ROADMAP.md updated: QA-013-FIX → ✅
@@ -3360,10 +3386,11 @@ Deliverables:
 
 ## Next Session
 
-Remaining spec compliance items (lower priority):
-- REM-S07 [HIGH]: process-pipeline-action notification dispatch on auto-move
-- REM-S08 [HIGH]: Supabase Realtime broadcast for pipeline stage changes
-- REM-S10/S11 [MED]: Gmail + Calendar scan scope settings in PI settings UI
+Remaining spec compliance items:
+- REM-S10/S11 backend [MED]: gmail-scan EF read user's scan scope preference (UI already wired)
+- REM-S02 [LOW]: Extension EEOC read-only display
+- REM-S13 [LOW]: FilterBuilder.tsx browse button handlers
+- REM-S14 [LOW]: Generic filter browser US-Only context
 - QA-003 [P2]: HOW MUCH should be two separate sections (Min/Max)
 - QA-005 [P2]: Trust Level/AI Content iconography (replace emoji with SVG)
 - QA-015/016 [P2]: Merchandising redesign
@@ -3403,7 +3430,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.23`** | **QA-013: DEFAULT_LEVELS "Lead" → "Head" label fix** |
+| **Product (BJ_VERSION)** | **`v9.24`** | **SCA-REM-S5: auto-move notification + PI Realtime confirmed + scan scope UI confirmed** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
