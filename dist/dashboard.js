@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.43';
+var BJ_VERSION = 'v9.44';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -2623,8 +2623,7 @@ $$('.nav-item').forEach(item => {
     var _initTab = function() {
       // Init stats charts when stats tab is shown
       if (_tab === 'stats' && typeof initStatsPage === 'function') { if (window.bjTabGuard) bjTabGuard('stats', initStatsPage); else initStatsPage(); }
-      // Admin moved to /admin page (v6.26)
-      if (_tab === 'feedback' && typeof initCannyFeedback === 'function') { if (window.bjTabGuard) bjTabGuard('feedback', initCannyFeedback); else initCannyFeedback(); }
+      // Canny feedback removed v9.44
       // FB-GHOST-BADGE-001: Ghost Monitor page removed — redirect to Applications
       if (_tab === 'ghost') {
         // Redirect any deep links / bookmarks to Applications page
@@ -2715,7 +2714,7 @@ if (lastTab && $(`#page-${lastTab}`)) {
   // CS-016 FIX-10: Lazy-load chunks for restored tab
   var _restoreInit = function() {
     if (lastTab === 'stats' && typeof initStatsPage === 'function') { if (window.bjTabGuard) bjTabGuard('stats', initStatsPage); else initStatsPage(); }
-    if (lastTab === 'feedback' && typeof initCannyFeedback === 'function') { if (window.bjTabGuard) bjTabGuard('feedback', initCannyFeedback); else initCannyFeedback(); }
+    // Canny feedback removed v9.44
     if (lastTab === 'referrals' && typeof initReferralHub === 'function') { if (window.bjTabGuard) bjTabGuard('referrals', initReferralHub); else initReferralHub(); }
     // BUG-TAB-001: Restore subscription/settings tab init
     if (lastTab === 'subscription' && typeof initBilling === 'function') { if (window.bjTabGuard) bjTabGuard('subscription', initBilling); else initBilling(); }
@@ -35179,7 +35178,7 @@ window.initBillingToggle = initBillingToggle;
       }
 
       // Fetch from Supabase — most recent build for this user
-      const { data, error } = await window._bjSupabase
+      const { data, error } = await sb
         .from('extension_builds')
         .select('channel_map, build_id')
         .order('created_at', { ascending: false })
@@ -35235,14 +35234,14 @@ window.initBillingToggle = initBillingToggle;
         status.className = 'text-amber-400 text-sm mt-2';
       }
 
-      const session = await window._bjSupabase.auth.getSession();
+      const session = await sb.auth.getSession();
       const token = session?.data?.session?.access_token;
       if (!token) {
         throw new Error('Not authenticated. Please log in first.');
       }
 
       const response = await fetch(
-        `${window._bjSupabaseUrl}/functions/v1/build-extension`,
+        `${SUPABASE_URL}/functions/v1/build-extension`,
         {
           method: 'POST',
           headers: {
@@ -35272,7 +35271,7 @@ window.initBillingToggle = initBillingToggle;
       URL.revokeObjectURL(url);
 
       // Fetch and cache the new channel map
-      const { data: buildData } = await window._bjSupabase
+      const { data: buildData } = await sb
         .from('extension_builds')
         .select('channel_map')
         .eq('build_id', buildId)
@@ -35295,7 +35294,7 @@ window.initBillingToggle = initBillingToggle;
       }
 
       // Track download timestamp
-      await window._bjSupabase
+      await sb
         .from('extension_builds')
         .update({ downloaded_at: new Date().toISOString() })
         .eq('build_id', buildId);
@@ -35323,7 +35322,7 @@ window.initBillingToggle = initBillingToggle;
     if (!container) return;
 
     try {
-      const { data, error } = await window._bjSupabase
+      const { data, error } = await sb
         .from('extension_builds')
         .select('build_id, created_at, tier_at_build, installed_at, last_seen_at')
         .order('created_at', { ascending: false })

@@ -498,8 +498,7 @@ $$('.nav-item').forEach(item => {
     var _initTab = function() {
       // Init stats charts when stats tab is shown
       if (_tab === 'stats' && typeof initStatsPage === 'function') { if (window.bjTabGuard) bjTabGuard('stats', initStatsPage); else initStatsPage(); }
-      // Admin moved to /admin page (v6.26)
-      if (_tab === 'feedback' && typeof initCannyFeedback === 'function') { if (window.bjTabGuard) bjTabGuard('feedback', initCannyFeedback); else initCannyFeedback(); }
+      // Canny feedback removed v9.44
       // FB-GHOST-BADGE-001: Ghost Monitor page removed — redirect to Applications
       if (_tab === 'ghost') {
         // Redirect any deep links / bookmarks to Applications page
@@ -590,7 +589,7 @@ if (lastTab && $(`#page-${lastTab}`)) {
   // CS-016 FIX-10: Lazy-load chunks for restored tab
   var _restoreInit = function() {
     if (lastTab === 'stats' && typeof initStatsPage === 'function') { if (window.bjTabGuard) bjTabGuard('stats', initStatsPage); else initStatsPage(); }
-    if (lastTab === 'feedback' && typeof initCannyFeedback === 'function') { if (window.bjTabGuard) bjTabGuard('feedback', initCannyFeedback); else initCannyFeedback(); }
+    // Canny feedback removed v9.44
     if (lastTab === 'referrals' && typeof initReferralHub === 'function') { if (window.bjTabGuard) bjTabGuard('referrals', initReferralHub); else initReferralHub(); }
     // BUG-TAB-001: Restore subscription/settings tab init
     if (lastTab === 'subscription' && typeof initBilling === 'function') { if (window.bjTabGuard) bjTabGuard('subscription', initBilling); else initBilling(); }

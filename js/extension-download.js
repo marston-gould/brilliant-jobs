@@ -40,7 +40,7 @@
       }
 
       // Fetch from Supabase — most recent build for this user
-      const { data, error } = await window._bjSupabase
+      const { data, error } = await sb
         .from('extension_builds')
         .select('channel_map, build_id')
         .order('created_at', { ascending: false })
@@ -96,14 +96,14 @@
         status.className = 'text-amber-400 text-sm mt-2';
       }
 
-      const session = await window._bjSupabase.auth.getSession();
+      const session = await sb.auth.getSession();
       const token = session?.data?.session?.access_token;
       if (!token) {
         throw new Error('Not authenticated. Please log in first.');
       }
 
       const response = await fetch(
-        `${window._bjSupabaseUrl}/functions/v1/build-extension`,
+        `${SUPABASE_URL}/functions/v1/build-extension`,
         {
           method: 'POST',
           headers: {
@@ -133,7 +133,7 @@
       URL.revokeObjectURL(url);
 
       // Fetch and cache the new channel map
-      const { data: buildData } = await window._bjSupabase
+      const { data: buildData } = await sb
         .from('extension_builds')
         .select('channel_map')
         .eq('build_id', buildId)
@@ -156,7 +156,7 @@
       }
 
       // Track download timestamp
-      await window._bjSupabase
+      await sb
         .from('extension_builds')
         .update({ downloaded_at: new Date().toISOString() })
         .eq('build_id', buildId);
@@ -184,7 +184,7 @@
     if (!container) return;
 
     try {
-      const { data, error } = await window._bjSupabase
+      const { data, error } = await sb
         .from('extension_builds')
         .select('build_id, created_at, tier_at_build, installed_at, last_seen_at')
         .order('created_at', { ascending: false })

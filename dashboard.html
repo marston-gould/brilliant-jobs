@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v9.43 -->
+<!-- Brilliant Jobs Dashboard v9.44 -->
 <html lang="en">
 <head>
   <!-- CS-P1-009: Theme flash prevention — must be first script -->
@@ -19,22 +19,21 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="/js/vendor/supabase.min.js" defer></script>
-  <script src="/js/pipeline-migration.js?v=v9.43" defer></script>
-  <script src="/js/notification-center.js?v=v9.43" defer></script>
+  <script src="/js/pipeline-migration.js?v=v9.44" defer></script>
+  <script src="/js/notification-center.js?v=v9.44" defer></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" integrity="sha384-nFoSjZIoH3CCp8W639jJyQkuPHinJ2NHe7on1xvlUA7SuGfJAfvMldrsoAVm6ECz" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" integrity="sha384-eEu5CTj3qGvu9PdJuS+YlkNi7d2XxQROAFYOr59zgObtlcux1ae1Il3u7jvdCSWu" crossorigin="anonymous"></script>
   <!-- CS-014: CX-09 — ECharts lazy-loaded by stats.js when Stats tab opens -->
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js" integrity="sha384-TcLTgu6flPhnZ5dfHnHimsxNFjYWN0povfGgnOvgPJKbZe6IbuoC2ociiatSHl9E" crossorigin="anonymous"></script>
   <!-- CS-016 FIX-10: Code-split chunks — shell (globals+routing) + feed (job list) loaded eagerly; all other chunks lazy-loaded on tab switch -->
-  <script src="dist/dashboard-shell.min.js?v=v9.43" defer></script>
-  <script src="dist/dashboard-feed.min.js?v=v9.43" defer></script>
+  <script src="dist/dashboard-shell.min.js?v=v9.44" defer></script>
+  <script src="dist/dashboard-feed.min.js?v=v9.44" defer></script>
   <!-- CS-P1-002: dashboard inline scripts externalized (pdfjs, preload, feedback, insights, a11y) -->
-  <script src="js/dashboard-inline.js?v=v9.43" defer></script>
-  <script src="js/canny.js?v=v9.43" defer></script>
+  <script src="js/dashboard-inline.js?v=v9.44" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=v9.43">
+  <link rel="stylesheet" href="styles.css?v=v9.44">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -109,11 +108,11 @@
     </style>
   <!-- CSS extracted to styles.css in v3.28 -->
   <!-- A13: PostHog analytics — CS-P1-002: externalized for CSP compliance -->
-  <script src="js/posthog-dashboard.js?v=v9.43" defer></script>
-  <script src="js/posthog-perf.js?v=v9.43" defer></script>
-  <script src="js/feature-flags.js?v=v9.43" defer></script>
-  <script src="js/structured-logger.js?v=v9.43" defer></script>
-  <script src="js/theme.js?v=v9.43" defer></script>
+  <script src="js/posthog-dashboard.js?v=v9.44" defer></script>
+  <script src="js/posthog-perf.js?v=v9.44" defer></script>
+  <script src="js/feature-flags.js?v=v9.44" defer></script>
+  <script src="js/structured-logger.js?v=v9.44" defer></script>
+  <script src="js/theme.js?v=v9.44" defer></script>
 </head>
 <body>
 
@@ -212,10 +211,7 @@
           <div class="nav-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
           <span>Notifications</span>
         </div>
-        <div class="nav-item" data-page="feedback">
-          <div class="nav-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
-          <span>Feedback</span>
-        </div>
+        <!-- Canny feedback removed v9.44 — will build custom -->
         <a href="/admin" class="nav-item" id="nav-admin" style="display:none;text-decoration:none;color:rgba(255,255,255,0.85)">
           <div class="nav-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg></div>
           <span>Admin</span>
@@ -2811,6 +2807,7 @@
           <!-- end panel-nc-log -->
 
         </div>
+      </div><!-- /page-notifications -->
 
       <!-- ============ GHOST MONITOR ============ -->
       <!-- ============ STATS ============ -->
@@ -2998,8 +2995,6 @@
 
 
         </div>
-      </div>
-      </div>
       </div>
       </div>
 
@@ -3537,79 +3532,7 @@
       </div>
 
       <!-- ============ FEEDBACK (P13-13 Canny) ============ -->
-      <div class="page" id="page-feedback">
-        <div class="page-header">
-          <h2>Feedback</h2>
-          <p>Survey data, feature requests, and bug reports</p>
-        </div>
-        <div class="page-body">
-        <div style="display:flex;gap:8px;margin-bottom:20px">
-          <button class="admin-tab" id="fb-tab-surveys" onclick="switchFeedbackTab('surveys')" style="display:none;">Surveys</button>
-          <button class="admin-tab active" id="fb-tab-features" onclick="switchFeedbackTab('features')">Feature Requests</button>
-          <button class="admin-tab" id="fb-tab-bugs" onclick="switchFeedbackTab('bugs')">Bug Reports</button>
-          <a href="https://brilliant-jobs.canny.io/changelog" target="_blank" rel="noopener" style="margin-left:auto;font-size:13px;color:var(--accent);text-decoration:none;display:flex;align-items:center;gap:4px;">
-            Changelog <i data-lucide="external-link" class="icon-xs icon-stroke"></i>
-          </a>
-        </div>
-
-        <!-- Surveys Panel (moved from Admin) -->
-        <div class="feedback-panel" id="fb-panel-surveys">
-          <div style="display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap" id="fb-survey-period-toggle">
-            <button class="admin-period-btn active" data-fb-survey-days="30">30d</button>
-            <button class="admin-period-btn" data-fb-survey-days="90">90d</button>
-            <button class="admin-period-btn" data-fb-survey-days="365">1y</button>
-            <button class="admin-period-btn" data-fb-survey-days="0">All</button>
-          </div>
-          <div class="stat-grid" style="margin-bottom:20px;">
-            <div class="stat-card"><div class="stat-label">Total Responses</div><div class="stat-val" id="sv-total">—</div></div>
-            <div class="stat-card"><div class="stat-label">Unique Respondents</div><div class="stat-val" id="sv-respondents">—</div></div>
-            <div class="stat-card"><div class="stat-label">Avg Completion</div><div class="stat-val" id="sv-completion">—</div></div>
-            <div class="stat-card"><div class="stat-label">Avg NPS</div><div class="stat-val" id="sv-nps">—</div></div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
-            <div class="card u-p-16">
-              <div class="card-title">Responses by Version</div>
-              <div id="sv-chart-versions" style="height:260px;"></div>
-            </div>
-            <div class="card u-p-16">
-              <div class="card-title">Completion Funnel</div>
-              <div id="sv-chart-funnel" style="height:260px;"></div>
-            </div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
-            <div class="card u-p-16">
-              <div class="card-title">Daily Response Volume</div>
-              <div id="sv-chart-daily" style="height:220px;"></div>
-            </div>
-            <div class="card u-p-16">
-              <div class="card-title">NPS Trend</div>
-              <div id="sv-chart-nps" style="height:220px;"></div>
-            </div>
-          </div>
-          <div class="card u-p-16">
-            <div class="card-title">Recent Responses</div>
-            <table class="admin-table" style="width:100%">
-              <thead><tr><th>Date</th><th>Version</th><th>User</th><th>Questions</th><th>NPS</th><th>Rating</th></tr></thead>
-              <tbody id="sv-responses-body"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Feature Requests Panel (Canny) -->
-        <div class="feedback-panel active" id="fb-panel-features">
-          <div id="canny-widget-container-features" style="min-height:400px;">
-            <div data-canny id="canny-embed"></div>
-          </div>
-        </div>
-
-        <!-- Bug Reports Panel (Canny) -->
-        <div class="feedback-panel u-hidden" id="fb-panel-bugs">
-          <div id="canny-widget-container-bugs" style="min-height:400px;">
-            <div data-canny id="canny-embed-bugs"></div>
-          </div>
-        </div>
-      
-        </div></div>
+      <!-- Canny feedback page removed v9.44 — will build custom -->
 
       <!-- ============ REFERRAL HUB ============ -->
       <div class="page" id="page-referrals">
