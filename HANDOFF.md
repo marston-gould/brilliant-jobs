@@ -52,7 +52,36 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**SCA-REM-S6** — Spec Compliance Remediation Session 6
+**SCA-REM-S7** — Merchandising + Final Cleanup
+- Completed: 2026-03-15
+- Product version bumped: `v9.25` → `v9.26` (JS/HTML changes — merch card loader in app.js, CR badge in dashboard.html; all HTML surfaces cache-busted)
+- ROADMAP.md updated: SCA-REM-S7 → ✅
+- roadmap.html updated: SCA-REM-S7 → `s: 'done'`, p: 100
+- **QA-015/016 — Dynamic merchandising card:**
+  - `js/app.js`: Async merch card loader. Fetches `merch_placements` → `merch_rules` → `merch_content` from Supabase. Rotates entries per session (sessionStorage `bj_merch_idx` + modulo). Populates type_label/type_color/title/sub/cta_text/cta_action. CTA supports `nav:` (page switch) and `url:` (external link). PostHog `merch_impression` event. Error-handled with `reportError`.
+  - Production data seeded: placement `intel-card-merch` on `/dashboard`, rule for all audiences, 2 content entries:
+    1. **Referral** — "Refer a friend, get a free week" → `nav:referrals`
+    2. **PAYL** — "No job yet? No charge." → `nav:billing`
+  - Admin-configurable via existing Merchandising admin panel (Growth → Merchandising). Add/edit/remove entries without code deploy.
+- **QA-018 — CR badge:** `dashboard.html` — "CR" text badge added before credit-balance-badge. Recognizable label replaces removed SVG icon.
+- **REM-S13 — FilterBuilder.tsx browse buttons:** `onBrowse` callback prop on FilterBuilderProps + FilterRowProps. Browse buttons on What/What-Not/Who/Who-Not rows. Positioned absolute right inside FilterRow.
+- **REM-S14 — FilterBuilder US-Only context:** `usOnly` prop shows "US-Only filter active" banner with 🇺🇸 flag when tuning is active.
+- **Confirmed already done:** REM-S02 (extension EEOC), QA-005 (trust icons use Lucide SVGs), QA-003 (salary already split).
+- **Skipped Items:** None. All spec compliance items resolved.
+- **Modified:**
+  - `js/app.js` — merch card loader
+  - `dashboard.html` — CR badge
+  - `src/app/pages/dashboard/feed/components/FilterBuilder.tsx` — onBrowse + usOnly
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `dist/admin.min.js` — rebuilt
+  - `ROADMAP.md` — SCA-REM-S7 → ✅
+  - `roadmap.html` — SCA-REM-S7 → done/100
+- **Created:**
+  - `tests/sca-rem-s7-merch.test.js` — 26 validation tests
+- **Tests:** 26 validation tests (all passing)
+
+**Previous: SCA-REM-S6** — Spec Compliance Remediation Session 6
 - Completed: 2026-03-15
 - Product version bumped: `v9.24` → `v9.25` (EF changes only — gmail-scan scope consumption; all HTML surfaces cache-busted)
 - ROADMAP.md updated: SCA-REM-S6 → ✅
@@ -3412,13 +3441,15 @@ Deliverables:
 
 ## Next Session
 
-Remaining spec compliance items (all LOW/P2/P3):
-- REM-S02 [LOW]: Extension EEOC read-only display
-- REM-S13 [LOW]: FilterBuilder.tsx browse button handlers
-- REM-S14 [LOW]: Generic filter browser US-Only context
-- QA-005 [P2]: Trust Level/AI Content iconography (replace emoji with SVG)
-- QA-015/016 [P2]: Merchandising redesign
-- QA-018 [P3]: Credit icon
+**Spec Compliance Audit Remediation — COMPLETE**
+
+All 14 REM items, 18 QA items, and SIM-REM-002 resolved across SCA-REM S1–S7 (v9.17 → v9.26). 179 tests.
+
+Future work (backlog, not blocking):
+- REM-S10/S11 EF: gmail-scan reads user scope prefs but "label" mode (custom Gmail label) not yet implemented — only "primary" and "all"
+- BP-001: Anthropic circuit breaker
+- BP-002: Extension tier awareness
+- PostHog Google OAuth verification (R5 in FB-PI-001 risk register)
 
 
 ## Deferred: SA-001 / SA-002 / SA-003 (Typesense)
@@ -3449,7 +3480,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.25`** | **SCA-REM-S6: gmail-scan EF scope consumption (gmail + calendar)** |
+| **Product (BJ_VERSION)** | **`v9.26`** | **SCA-REM-S7: Dynamic merch card + CR badge + FilterBuilder browse + US-Only context** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

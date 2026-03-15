@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.25';
+var BJ_VERSION = 'v9.26';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -3920,6 +3920,66 @@ window._enrichmentBadgeHtml = function(sf) {
       }).catch(function() { _browseGuardActive = false; });
     }
   }, true); // useCapture to fire before browsers.js handlers
+})();
+
+// QA-015/016: Dynamic merch card — fetches from merch_content and rotates
+(async function() {
+  var card = document.getElementById('intel-card-merch');
+  if (!card || typeof sb === 'undefined') return;
+  try {
+    // 1. Get placement
+    var { data: placements } = await sb.from('merch_placements')
+      .select('id').eq('element_id', 'intel-card-merch').eq('is_active', true).limit(1);
+    if (!placements || !placements.length) return;
+
+    // 2. Get active rules for this placement
+    var { data: rules } = await sb.from('merch_rules')
+      .select('id').eq('placement_id', placements[0].id).eq('is_active', true).order('priority');
+    if (!rules || !rules.length) return;
+
+    // 3. Get content entries
+    var ruleIds = rules.map(function(r) { return r.id; });
+    var { data: entries } = await sb.from('merch_content')
+      .select('content,sort_order').in('rule_id', ruleIds).eq('is_active', true).order('sort_order');
+    if (!entries || !entries.length) return;
+
+    // 4. Rotate: increment session index each page load
+    var idx = parseInt(sessionStorage.getItem('bj_merch_idx') || '0') % entries.length;
+    sessionStorage.setItem('bj_merch_idx', String(idx + 1));
+    var c = entries[idx].content;
+
+    // 5. Populate card
+    var colorMap = { green: 'var(--green)', accent: 'var(--accent)', red: 'var(--red)', warm: 'var(--warm)' };
+    var color = colorMap[c.type_color] || 'var(--accent)';
+    var dimColor = c.type_color === 'green' ? 'rgba(34,197,94,0.1)' : 'var(--accent-dim)';
+
+    var typeEl = card.querySelector('.intel-card-type');
+    var titleEl = document.getElementById('intel-merch-title');
+    var subEl = document.getElementById('intel-merch-sub');
+    var ctaEl = card.querySelector('.intel-card-cta');
+
+    if (typeEl) { typeEl.textContent = c.type_label || 'Pro Tip'; typeEl.style.background = dimColor; typeEl.style.color = color; }
+    if (titleEl) titleEl.textContent = c.title || '';
+    if (subEl) subEl.textContent = c.sub || '';
+    if (ctaEl) {
+      ctaEl.textContent = c.cta_text || '';
+      ctaEl.onclick = function(e) {
+        e.preventDefault();
+        if (c.cta_action && c.cta_action.startsWith('nav:')) {
+          var page = c.cta_action.replace('nav:', '');
+          var navBtn = document.querySelector('[data-page=' + page + ']');
+          if (navBtn) navBtn.click();
+        } else if (c.cta_action && c.cta_action.startsWith('url:')) {
+          window.open(c.cta_action.replace('url:', ''), '_blank');
+        }
+      };
+    }
+    if (window.posthog) posthog.capture('merch_impression', {
+      slot: 'feed-intel', content_title: c.title, sort_order: entries[idx].sort_order
+    });
+  } catch (e) {
+    if (typeof reportError === 'function') reportError('merch:feed-intel', e);
+  }
 })();
 
 
