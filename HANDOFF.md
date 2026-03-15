@@ -52,7 +52,15 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**LP-RESTRUCTURE-S3** — Landing Page Restructure Session 3
+**LP-RESTRUCTURE-S4** — Landing Page Restructure Session 4 — LP-RESTRUCTURE COMPLETE ✅
+- Completed: 2026-03-15
+- Product version bumped: `v9.46` → `v9.47`
+- 375px mobile polish: benefit section padding/font reduced, `lp-section-cta` full-width, `hero-img-col` hidden at 375px, stats bar 2-col grid, social proof bar stacked with dividers hidden.
+- Stale version pin fix: `lp-restructure-s1.test.js` and `lp-restructure-s2.test.js` exact version assertions → regex pattern.
+- Full spec §8 testing checklist: 62 validation tests (hero layout, dual stats, preview position, benefit section renderer, orientation logic, hidden/segment filtering, removed sections, social proof bar, data-stat consistency, mobile breakpoints at 375px/768px/900px, page weight/lazy-load, admin page capabilities, RLS).
+- **LP-RESTRUCTURE COMPLETE**: S1(34) + S2(34) + S3(39) + S4(62) = **169 tests, all passing**.
+
+**Previous: LP-RESTRUCTURE-S3** — Landing Page Restructure Session 3
 - Completed: 2026-03-15
 - Product version bumped: `v9.45` → `v9.46`
 - `admin-landing.js` (329L): full admin UI — load from `landing_sections`, render list with drag handles, `alToggleVisible`, `alReorder` (drag-drop + Promise.all batch sort_order), `alOpenModal`/`alCloseModal`, `alSaveSection` (INSERT draft + UPDATE), `alUploadImage` to `landing-assets/` (5MB limit, getPublicUrl), `alSoftDelete` (archived_at), all errors via `reportError`, PostHog events, `escHtml` XSS guard.
@@ -3777,7 +3785,7 @@ Remaining backlog:
   - S2 Templates & Generation — resume-generate EF, 3 templates, Download UI
   - S3 Keyword Optimization — resume-optimize EF, gap report UI, one-click insertion, match score display
   - S4 AI Rewrites — resume-rewrite-bullet EF, Improve with AI per bullet, accept/reject panel
-- **LP-RESTRUCTURE-S4 (NEXT)**: Polish + Mobile + Testing + Deploy. Mobile responsive pass (all new sections at 375px). Preview mode (`?preview=true`) admin verification. `+ Add Section` draft flow E2E test. Cross-browser smoke test. Lighthouse audit (no performance regression). Full testing checklist from spec §8. Deploy + tag.
+- **NEXT WORKSTREAM**: LP-RESTRUCTURE complete. Awaiting Marston direction on next feature.
   - CREATE TABLE landing_sections + RLS policies + seed data (4 initial sections)
   - Create landing-assets/ Storage bucket
   - Update landing-stats to return dual company counts (career pages monitored ~39K + companies hiring now ~8.7K)

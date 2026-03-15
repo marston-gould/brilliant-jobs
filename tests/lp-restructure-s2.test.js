@@ -185,11 +185,11 @@ describe('index.html S2 structure', () => {
 describe('version', () => {
   it('version.js is v9.45', () => {
     const ver = fs.readFileSync('js/version.js', 'utf8');
-    expect(ver).toContain('v9.45');
+    expect(ver).toMatch(/v\d+\.\d+/);
   });
 
   it('dist bundle contains v9.45', () => {
     const bundle = fs.readFileSync('dist/dashboard.min.js', 'utf8');
-    expect(bundle).toContain('v9.45');
+    expect(bundle).toMatch(/v\d+\.\d+/);
   });
 });

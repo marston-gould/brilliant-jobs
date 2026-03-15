@@ -1257,3 +1257,76 @@ html:not([data-segment]) footer.segment-new { display: block; }
     margin: 0 auto;
   }
 }
+
+/* ============================================================
+   LP-RESTRUCTURE-S4: 375px Polish Pass
+   ============================================================ */
+
+/* Benefit sections at 375px */
+@media (max-width: 375px) {
+  .lp-benefit-section {
+    padding: 32px 4%;
+    gap: 20px;
+  }
+
+  .lp-section-title {
+    font-size: 18px;
+  }
+
+  .lp-section-subtitle {
+    font-size: 11px;
+  }
+
+  .lp-section-body {
+    font-size: 14px;
+  }
+
+  .lp-section-cta {
+    width: 100%;
+    text-align: center;
+  }
+
+  .lp-section-browser-frame--empty {
+    min-height: 160px;
+  }
+}
+
+/* Hero screenshot at 375px */
+@media (max-width: 375px) {
+  .hero-with-screenshot {
+    gap: 24px;
+  }
+
+  .hero-img-col {
+    display: none; /* hide screenshot at 375px — text is priority */
+  }
+}
+
+/* Admin landing page modal at 375px */
+@media (max-width: 375px) {
+  #al-modal {
+    padding: 16px !important;
+    border-radius: 8px !important;
+  }
+}
+
+/* Stats bar at 375px — reduce to 2-col grid */
+@media (max-width: 375px) {
+  .stats-row {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+  }
+}
+
+/* Social proof bar at 375px — stack */
+@media (max-width: 375px) {
+  .social-proof-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .sp-divider {
+    display: none;
+  }
+}
