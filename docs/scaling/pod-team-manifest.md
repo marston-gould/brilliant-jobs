@@ -161,6 +161,7 @@
 | SCA-REM-S5 | Chief Architect + Lead Platform Eng | Evolvability Strategist + Forward-Looking Dev |
 | SCA-REM-S6 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + System Architect—Scalability |
 | SCA-REM-S7 | Chief Architect + Evolvability Strategist | Lead Platform Eng + Forward-Looking Dev |
+| BP-001+002 | Chief Architect + System Architect—Scalability | Lead Platform Eng + Forward-Looking Dev |
 
 ## Pairing Assignments (Cohort-Based Pricing)
 

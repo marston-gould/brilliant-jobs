@@ -8,6 +8,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { API_VERSION } from '../_shared/api-version.ts';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { checkFeatureAccess, buildDeniedResponse, buildSampleHeaders } from '../_shared/checkFeatureAccess.ts';
+import { withAnthropicBreaker } from '../_shared/anthropic.ts';
 
 const SB_URL = Deno.env.get('SUPABASE_URL')!;
 const SB_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -256,27 +257,38 @@ serve(async (req: Request) => {
       });
     }
 
-    // ─── Call Claude Haiku ───
-    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-  'x-api-version': API_VERSION,
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-beta': 'prompt-caching-2024-07-31',
-      },
-      body: JSON.stringify({
-        model: HAIKU_MODEL,
-        max_tokens: 500,
-        system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
-        messages: trimmed,
-      }),
+    // ─── Call Claude Haiku (BP-001: circuit breaker) ───
+    const breakerResult = await withAnthropicBreaker(sb, 'chat-job-search', async () => {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+    'x-api-version': API_VERSION,
+          'x-api-key': ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+          'anthropic-beta': 'prompt-caching-2024-07-31',
+        },
+        body: JSON.stringify({
+          model: HAIKU_MODEL,
+          max_tokens: 500,
+          system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
+          messages: trimmed,
+        }),
+      });
+      if (!res.ok) throw new Error(`Anthropic ${res.status}`);
+      return res;
     });
 
-    if (!anthropicRes.ok) {
-      const errText = await anthropicRes.text();
-      console.error('Anthropic API error:', anthropicRes.status, errText);
+    if (breakerResult.circuitOpen) {
+      return new Response(JSON.stringify({
+        error: 'ai_unavailable',
+        message: 'The AI assistant is temporarily unavailable. Please try again in a few minutes.',
+      }), { status: 503, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
+    }
+
+    const anthropicRes = breakerResult.result;
+    if (!anthropicRes) {
+      console.error('Anthropic API error:', breakerResult.error);
       return new Response(JSON.stringify({
         error: 'ai_unavailable',
         message: 'The AI assistant is temporarily unavailable. Please try again or switch to filter mode.',

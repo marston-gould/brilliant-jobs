@@ -1869,6 +1869,33 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
 
         // Mode routing (EXT-AS-4: score-gated and auto-score-gate flows)
+
+        // BP-002: Tier gate — automated modes require Pro subscription
+        const PRO_ONLY_MODES = ['auto-apply', 'auto-score-gate', 'one-click'];
+        if (PRO_ONLY_MODES.includes(mode)) {
+          const tierData = await new Promise<Record<string, unknown>>((resolve) => {
+            chrome.storage.local.get('userRole', (data) => resolve(data as Record<string, unknown>));
+          });
+          const userRole = (tierData.userRole as string) || '';
+          const hasPro = userRole === 'pro' || userRole === 'admin';
+          if (!hasPro) {
+            const tabId = sender?.tab?.id;
+            if (tabId) {
+              chrome.tabs.sendMessage(tabId, {
+                type: 'bj:toolbar:upgradeRequired',
+                payload: {
+                  feature: mode,
+                  message: `${mode.replace(/-/g, ' ')} requires a Pro subscription`,
+                  dashboardUrl: 'https://brilliantjobs.app/dashboard#billing',
+                },
+              });
+            }
+            captureEvent('tier_gate_blocked', { mode, userRole, surface: 'extension' });
+            sendResponse({ status: 'upgrade_required', mode });
+            return;
+          }
+        }
+
         if (mode === 'score-gated' || mode === 'auto-score-gate') {
           // Get the sender tab ID for message routing
           const tabId = sender?.tab?.id;

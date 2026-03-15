@@ -10,6 +10,7 @@
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { withAnthropicBreaker } from "../_shared/anthropic.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -243,34 +244,46 @@ async function classifySignal(
 
   const userMessage = parts.join("\n");
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
-      "anthropic-beta": "prompt-caching-2024-07-31",  // FB-TRIAL-001-S6 caching infra
-    },
-    body: JSON.stringify({
-      model: SONNET_MODEL,
-      max_tokens: 400,
-      system: [
-        {
-          type: "text",
-          text: CLASSIFIER_SYSTEM_PROMPT,
-          cache_control: { type: "ephemeral" },  // HOOK H-PI-02: cached system prompt
-        },
-      ],
-      messages: [
-        { role: "user", content: userMessage },
-      ],
-    }),
+  // BP-001: Circuit breaker wraps Anthropic classification call
+  const breakerResult = await withAnthropicBreaker(sb, 'classify-pipeline-signal', async () => {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "anthropic-beta": "prompt-caching-2024-07-31",
+      },
+      body: JSON.stringify({
+        model: SONNET_MODEL,
+        max_tokens: 400,
+        system: [
+          {
+            type: "text",
+            text: CLASSIFIER_SYSTEM_PROMPT,
+            cache_control: { type: "ephemeral" },
+          },
+        ],
+        messages: [
+          { role: "user", content: userMessage },
+        ],
+      }),
+    });
+    if (!r.ok) {
+      const errText = await r.text();
+      throw new Error(`Anthropic API ${r.status}: ${errText.slice(0, 200)}`);
+    }
+    return r;
   });
 
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Anthropic API ${res.status}: ${errText.slice(0, 200)}`);
+  if (breakerResult.circuitOpen) {
+    throw new Error("Circuit breaker open — Anthropic API temporarily unavailable");
   }
+  if (!breakerResult.result) {
+    throw new Error(breakerResult.error || "Anthropic call failed");
+  }
+
+  const res = breakerResult.result;
 
   const data = await res.json();
   const rawText = (data.content || [])

@@ -11,7 +11,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v9.26"></script>
+  <script src="/js/version.js?v=v9.27"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2240,6 +2240,7 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'SCA-REM-S5 Spec Compliance Remediation S5', d: 'REM-S07: auto-move notification dispatch (notification_log insert + dashboard pref + filter). REM-S08: Realtime broadcast confirmed. REM-S10/S11: scan scope UI confirmed wired. 22 tests. v9.24.', p: 100, e: '1.5h' },
 { s: 'done', b: 'post-launch', n: 'SCA-REM-S6 Spec Compliance Remediation S6', d: 'REM-S10/S11 backend: gmail-scan EF reads gmail_scan_scope + calendar_scan_scope from pipeline_tracking_settings. Primary=inbox filter. All=full mail + calendarList iteration. QA-003 salary split confirmed. 20 tests. v9.25.', p: 100, e: '1h' },
 { s: 'done', b: 'post-launch', n: 'SCA-REM-S7 Merchandising + Final Cleanup', d: 'QA-015/016: Dynamic merch card — fetches merch_placements→rules→content, rotates per session. 2 seed entries: Referral CTA + Pay After You Land. Admin-configurable. QA-018: CR badge. REM-S13: FilterBuilder browse. REM-S14: US-Only context. 26 tests. v9.26.', p: 100, e: '1.5h' },
+{ s: 'done', b: 'post-launch', n: 'BP-001 + BP-002 Circuit Breaker + Tier Gate', d: 'BP-001: Anthropic circuit breaker — _shared/anthropic.ts, ai_circuit_breaker table, ai_usage_log extended. 3 EFs wired (score-resume, chat-job-search, classify-pipeline-signal). BP-002: Extension tier gate for auto-apply/auto-score-gate/one-click modes. Upgrade toast in overlay. 40 tests. v9.27.', p: 100, e: '2h' },
 ];
 
 

@@ -52,7 +52,39 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**SCA-REM-S7** — Merchandising + Final Cleanup
+**BP-001 + BP-002** — Anthropic Circuit Breaker + Extension Tier Awareness
+- Completed: 2026-03-15
+- Product version bumped: `v9.26` → `v9.27`
+- ROADMAP.md updated: BP-001 + BP-002 → ✅
+- roadmap.html updated: BP-001 + BP-002 → `s: 'done'`, p: 100
+- **BP-001 — Anthropic circuit breaker:**
+  - `supabase/functions/_shared/anthropic.ts`: Two APIs — `anthropicFetch()` (full replacement: circuit breaker + retry + rate limit + usage logging) and `withAnthropicBreaker()` (lightweight wrapper for EFs keeping existing call logic)
+  - `ai_circuit_breaker` table: persistent state per service. 5-failure threshold opens circuit. 2-min cooldown → half-open probe. Success resets.
+  - `ai_usage_log` table extended: `caller_ef`, `model`, `input_tokens`, `output_tokens`, `duration_ms`, `error` columns. 30-day cleanup cron.
+  - 3 EFs wired with `withAnthropicBreaker`: score-resume (503 on circuit open), chat-job-search (503), classify-pipeline-signal (throws → caught by batch error handler)
+  - All 3 EFs deployed to production
+  - Remaining 21 EFs can adopt incrementally — import + 3-line wrap
+- **BP-002 — Extension tier awareness:**
+  - `extension/background.ts`: `PRO_ONLY_MODES` array (`auto-apply`, `auto-score-gate`, `one-click`). Reads `userRole` from `chrome.storage.local` (set during login in popup.ts). Non-pro users get `bj:toolbar:upgradeRequired` message to overlay + `upgrade_required` response. `tier_gate_blocked` PostHog event.
+  - `extension/job-site-overlay.ts`: `upgradeRequired` handler shows styled toast with "Upgrade to Pro" CTA linking to billing page. 10s auto-dismiss.
+- **Skipped Items:** None.
+- **Modified:**
+  - `supabase/functions/_shared/anthropic.ts` — new file
+  - `supabase/functions/score-resume/index.ts` — withAnthropicBreaker
+  - `supabase/functions/chat-job-search/index.ts` — withAnthropicBreaker
+  - `supabase/functions/classify-pipeline-signal/index.ts` — withAnthropicBreaker
+  - `extension/background.ts` — PRO_ONLY_MODES tier gate
+  - `extension/job-site-overlay.ts` — upgradeRequired toast
+  - `dist/*.min.js` — rebuilt
+  - `ROADMAP.md`, `roadmap.html`, `HANDOFF.md`
+- **Created:**
+  - `supabase/functions/_shared/anthropic.ts`
+  - `supabase/migrations/20260315000005_bp_001_circuit_breaker.sql`
+  - `tests/bp-001-002-circuit-breaker-tier.test.js` — 40 tests
+- **Tests:** 40 validation tests (all passing)
+- **Deployed:** score-resume, chat-job-search, classify-pipeline-signal EFs
+
+**Previous: SCA-REM-S7** — Merchandising + Final Cleanup
 - Completed: 2026-03-15
 - Product version bumped: `v9.25` → `v9.26` (JS/HTML changes — merch card loader in app.js, CR badge in dashboard.html; all HTML surfaces cache-busted)
 - ROADMAP.md updated: SCA-REM-S7 → ✅
@@ -3441,15 +3473,11 @@ Deliverables:
 
 ## Next Session
 
-**Spec Compliance Audit Remediation — COMPLETE**
-
-All 14 REM items, 18 QA items, and SIM-REM-002 resolved across SCA-REM S1–S7 (v9.17 → v9.26). 179 tests.
-
-Future work (backlog, not blocking):
-- REM-S10/S11 EF: gmail-scan reads user scope prefs but "label" mode (custom Gmail label) not yet implemented — only "primary" and "all"
-- BP-001: Anthropic circuit breaker
-- BP-002: Extension tier awareness
-- PostHog Google OAuth verification (R5 in FB-PI-001 risk register)
+All major items complete. Remaining backlog:
+- Wire remaining 21 Anthropic-calling EFs to withAnthropicBreaker (incremental, low risk)
+- PostHog Google OAuth verification (R5 in FB-PI-001 risk register — submit for verification before public Gmail/Calendar launch)
+- Gmail scan "label" scope mode (third dropdown option, "primary" and "all" are wired)
+- Any new feature work
 
 
 ## Deferred: SA-001 / SA-002 / SA-003 (Typesense)
@@ -3480,7 +3508,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.26`** | **SCA-REM-S7: Dynamic merch card + CR badge + FilterBuilder browse + US-Only context** |
+| **Product (BJ_VERSION)** | **`v9.27`** | **BP-001 + BP-002: Anthropic circuit breaker + extension tier gate** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

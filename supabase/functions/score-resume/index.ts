@@ -8,6 +8,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { checkFeatureAccess, buildDeniedResponse, buildSampleHeaders } from '../_shared/checkFeatureAccess.ts';
+import { withAnthropicBreaker } from '../_shared/anthropic.ts';
 
 const SB_URL = Deno.env.get('SUPABASE_URL')!;
 const SB_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -811,9 +812,17 @@ Assess. Return ONLY JSON.`;
       const systemPrompt = mode === 'corpus' ? SYSTEM_PROMPT_CORPUS : SYSTEM_PROMPT_SINGLE;
       const userPrompt = `<resume_text>\n${resume_text.slice(0, 8000)}\n</resume_text>\n\n<filter_name>${filter_name || 'General'}</filter_name>\n\n<job_descriptions count="${jds.length}">\n${jdBlock}\n</job_descriptions>\n\n<instructions>\nScore the resume (0-100). Return ONLY a JSON object, no markdown fences, no preamble.\n</instructions>`;
 
-      const anthropicRes = await callAnthropic(HAIKU_MODEL, systemPrompt, userPrompt, 3000, 0);
+      // BP-001: Circuit breaker wraps Anthropic call
+      const breakerResult = await withAnthropicBreaker(sb, 'score-resume', () =>
+        callAnthropic(HAIKU_MODEL, systemPrompt, userPrompt, 3000, 0)
+      );
 
-      if (!anthropicRes.ok) {
+      if (breakerResult.circuitOpen) {
+        return new Response(JSON.stringify({ error: 'AI service temporarily unavailable — please retry in a few minutes' }), { status: 503, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
+      }
+
+      const anthropicRes = breakerResult.result;
+      if (!anthropicRes || !anthropicRes.ok) {
         return new Response(JSON.stringify({ error: 'AI scoring failed' }), { status: 502, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
       }
 

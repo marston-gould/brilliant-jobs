@@ -994,6 +994,25 @@
       var sr = evt.data.payload || {};
       showSetupRequiredOverlay(sr.dashboardUrl || 'https://brilliantjobs.app/dashboard#settings');
     }
+
+    // BP-002: Tier gate — show upgrade prompt for pro-only features
+    if (evt.data.type === 'bj:toolbar:upgradeRequired') {
+      var ur = evt.data.payload || {};
+      var shadow = getShadowRoot();
+      var existing = shadow.getElementById('bj-upgrade-toast');
+      if (existing) existing.remove();
+      var toast = document.createElement('div');
+      toast.id = 'bj-upgrade-toast';
+      toast.setAttribute('style', 'position:fixed;top:16px;right:16px;z-index:2147483647;background:#1e1b4b;color:#fff;padding:14px 18px;border-radius:10px;font-size:13px;max-width:320px;box-shadow:0 8px 32px rgba(0,0,0,0.3);font-family:-apple-system,BlinkMacSystemFont,sans-serif;line-height:1.5;');
+      toast.innerHTML = '<div style="font-weight:700;margin-bottom:6px;">⚡ Pro Feature</div>' +
+        '<div style="font-size:12px;opacity:0.85;margin-bottom:10px;">' + (ur.message || 'This feature requires a Pro subscription.') + '</div>' +
+        '<div style="display:flex;gap:8px;">' +
+        '<a href="' + (ur.dashboardUrl || 'https://brilliantjobs.app/dashboard#billing') + '" target="_blank" style="background:#6366f1;color:#fff;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;cursor:pointer;">Upgrade to Pro</a>' +
+        '<button onclick="this.closest(\'#bj-upgrade-toast\').remove()" style="background:rgba(255,255,255,0.15);color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;">Dismiss</button>' +
+        '</div>';
+      shadow.appendChild(toast);
+      setTimeout(function() { var t = shadow.getElementById('bj-upgrade-toast'); if (t) t.remove(); }, 10000);
+    }
   });
 
   // ── EXT-AS-5: Rewrite Progress Popup ──────────────────────────
