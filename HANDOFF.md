@@ -52,15 +52,21 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**RESUME-BUILDER-001-S4** — AI Rewrites — RESUME-BUILDER-001 COMPLETE
+**BRANCH-AUDIT-001** — Full Branch Audit & Cleanup
+- Completed: 2026-03-15
+- Product version bumped: `v9.39` → `v9.40`
+- **157 branches audited across 2 passes. 155 deleted. staging protected (422).**
+- Code rescued and applied to main:
+  - Quotable insights: `.quotable` CSS + `ai-block` wrappers + `<figure class="quotable">` elements → 6 Data Lab pages (salary-data, hiring-trends, career-level-data, jobs-by-industry, market-dynamics, data-lab)
+  - `resolve-boards` EF source rescued from orphaned prod deploy → `supabase/functions/resolve-boards/index.ts` (309 lines)
+  - `count:'exact'` → `count:'planned'` in `js/job-feed.js` (5 occurrences — prevents Supabase query timeouts)
+  - `ai_scored_at` stamping added to `score-ai-content` EF (column existed in DB, EF wasn't writing it)
+  - `v5.91` notification migration copied from root `/migrations/` → `supabase/migrations/` (86 lines, tables already live in prod)
+- **Superseded verification method**: file-level existence checks + content grep against main for every branch before deletion
+
+**Previous: RESUME-BUILDER-001-S4** — AI Rewrites — RESUME-BUILDER-001 COMPLETE
 - Completed: 2026-03-15
 - Product version bumped: `v9.38` → `v9.39`
-- resume-rewrite-bullet EF: Anthropic Sonnet, 1-credit cost, 2-3 bullet alternatives, forbids fabrication, requires action verbs.
-- resume-builder.js: `rbImproveBullets` (Improve with AI button per experience item), `rbAcceptRewrite` (replaces bullet in parsedJson + textarea + marks dirty).
-- CSS: rb-improve-btn, rb-rewrite-panel, rb-rewrite-option, rb-rewrite-accept.
-- gateway: resume-rewrite-bullet promoted from stub. api-gateway redeployed.
-- **RESUME-BUILDER-001 FEATURE COMPLETE**: S1(v9.36/46t) + S2(v9.37/41t) + S3(v9.38/51t) + S4(v9.39/32t) = 170 tests total.
-- **Test fix (2026-03-15)**: Stale version assertions in S1/S2/S3 tests updated from exact version pins to regex pattern match — all 170 tests now passing.
 
 **Previous: EXT-BUILD-001-PD** — Phase D Tier 4: ATS Browse-Page Injection
 - Completed: 2026-03-15
@@ -3741,7 +3747,7 @@ Remaining backlog:
   - S2 Templates & Generation — resume-generate EF, 3 templates, Download UI
   - S3 Keyword Optimization — resume-optimize EF, gap report UI, one-click insertion, match score display
   - S4 AI Rewrites — resume-rewrite-bullet EF, Improve with AI per bullet, accept/reject panel
-- **LP-RESTRUCTURE-S1 (NEXT)**: Landing Page Restructure Session 1 per POD_HANDOFF_LandingPageRestructure_v2.docx
+- **LP-RESTRUCTURE-S1 (NEXT)**: Landing Page Restructure Session 1 per POD_HANDOFF_LandingPageRestructure_v2.docx (in docs/specs/)
   - CREATE TABLE landing_sections + RLS policies + seed data (4 initial sections)
   - Create landing-assets/ Storage bucket
   - Update landing-stats to return dual company counts (career pages monitored ~39K + companies hiring now ~8.7K)

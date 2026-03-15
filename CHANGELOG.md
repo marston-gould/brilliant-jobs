@@ -1,3 +1,6 @@
+## v9.40 Session NN: TITLE (2026-03-15)
+- DESCRIBE CHANGES HERE
+
 ## v9.39 RESUME-BUILDER-001-S4: AI Rewrites (2026-03-15)
 - resume-rewrite-bullet EF: Anthropic call, 1-credit cost, 2-3 bullet alternatives, system prompt forbids fabrication, requires action verbs. 401/402/400/502 error surfaces.
 - resume-builder.js: rbImproveBullets (per-experience Improve with AI button), rbAcceptRewrite (replaces bullet in parsedJson + textarea + marks dirty). Fixed literal \n in split/join (was breaking esbuild).

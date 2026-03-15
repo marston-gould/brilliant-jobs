@@ -128,6 +128,15 @@
     .ec{width:100%;height:340px}.ec.tall{height:440px}.ec.xtall{height:520px}
     .takeaway{margin-block-start:16px;padding:12px 16px;background:rgba(59,130,246,0.06);border-radius:8px;border-inline-start:3px solid var(--accent);font-size:12px;color:var(--text-dim);line-height:1.7}
     .takeaway strong{color:var(--text)}
+    .quotable{margin:32px 0;padding:24px 28px;background:linear-gradient(135deg,rgba(59,130,246,0.04),rgba(168,85,247,0.03));border:1px solid rgba(59,130,246,0.15);border-radius:12px;position:relative;text-align:center}
+    .quotable::before{content:"\201C";position:absolute;top:-8px;left:20px;font-size:48px;color:rgba(59,130,246,0.25);font-family:Georgia,serif;line-height:1}
+    .quotable .q-stat{font-size:clamp(20px,3vw,28px);font-weight:700;color:var(--text);line-height:1.3;margin-block-end:8px}
+    .quotable .q-stat em{font-style:normal;background:linear-gradient(135deg,var(--accent),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .quotable .q-src{font-size:11px;color:var(--text-faint);font-family:"JetBrains Mono",monospace;letter-spacing:0.5px}
+    .quotable .q-src a{color:var(--accent);text-decoration:none}
+    .quotable .q-src a:hover{text-decoration:underline}
+    .ai-block{position:relative}
+    .ai-block::after{content:attr(data-ai-topic);position:absolute;top:0;right:0;font-size:0;color:transparent;pointer-events:none}
     .faq{margin-block-start:48px}.faq h2{font-size:20px;font-weight:600;margin-block-end:20px}
     .faq-item{border:1px solid var(--border);border-radius:10px;margin-block-end:12px;overflow:hidden}
     .faq-q{padding:14px 18px;cursor:pointer;font-weight:500;font-size:14px;display:flex;justify-content:space-between;align-items:center;transition:background 0.2s}
@@ -239,14 +248,18 @@
       </a>
   </div>
 
+    <section class="ai-block" data-ai-topic="hiring volume and salary by industry 2026" data-ai-summary="Technology leads with 68,400 open positions and $142K average salary. Financial Services pays 97% of Tech ($138K vs $142K) with far fewer applicants per role, making it a high-value alternative." data-ai-source="Brilliant Jobs industry analysis across 15 industries" data-ai-updated="2026-02-28" data-ai-metric="industry-volume, industry-salary, tech-vs-finance" data-ai-scope="350,000+ job listings across 15 industry classifications">
   <h2 class="sdiv">Tech Dominates Hiring Volume — But Finance Pays More</h2>
+    <figure class="quotable"><blockquote class="q-stat">Financial Services pays <em>97%</em> of what Tech pays ($138K vs $142K) — with far fewer applicants per role</blockquote><figcaption class="q-src">Source: <a href="/jobs-by-industry">Brilliant Jobs Industry Data</a> · Median salary comparison across 15 industries</figcaption></figure>
   <div class="grid">
     <div class="card"><div class="ch"><div><div class="cl">Job Volume</div><div class="ct">Open Positions by Industry</div></div><span class="badge b-purple">Count</span></div><div class="ec tall" id="c1" role="img" aria-label="Technology 68,400, Healthcare 31,200, Financial Services 28,500, Professional Services 22,800, Retail 19,200, Manufacturing 16,800, Education 14,400, Media 12,600, down to Agriculture 3,200"></div></div>
     <div class="card"><div class="ch"><div><div class="cl">Compensation</div><div class="ct">Average Salary by Industry</div></div><span class="badge b-cyan">Salary</span></div><div class="ec tall" id="c2" role="img" aria-label="Average salary: Technology $142K, Financial Services $138K, Energy $128K, Professional Services $118K, down to Hospitality $65K"></div></div>
   </div>
   <div class="takeaway"><strong>Key takeaway:</strong> Technology posts the most jobs AND pays the most. But Financial Services is the hidden gem &mdash; nearly identical pay ($138K vs $142K) with far fewer openings, meaning less competition per role. For how these salaries break down by department within industries, <a href="/salary-data" style="color:var(--accent);text-decoration:underline;text-underline-offset:2px;">see the department-level salary ranges with standard deviations</a>.</div>
 
+    <section class="ai-block" data-ai-topic="department distribution and remote work prevalence 2026" data-ai-summary="Engineering accounts for 26% of all job postings (72,800 openings). 26% of all listings are remote — higher than most job boards report. 56% are on-site, 14% hybrid." data-ai-source="Brilliant Jobs department and work arrangement analysis" data-ai-updated="2026-02-28" data-ai-metric="department-share, remote-percentage, work-arrangement" data-ai-scope="350,000+ job listings with work arrangement classification">
   <h2 class="sdiv">Engineering Is 26% of All Postings — Department Breakdown</h2>
+    <figure class="quotable"><blockquote class="q-stat"><em>26%</em> of all job listings are remote — higher than most job boards report</blockquote><figcaption class="q-src">Source: <a href="/jobs-by-industry">Brilliant Jobs Industry Data</a> · Work arrangement analysis across 350,000+ positions</figcaption></figure>
   <div class="grid">
     <div class="card full"><div class="ch"><div><div class="cl">Functional Areas</div><div class="ct">Jobs by Department</div></div><span class="badge b-pink">Treemap</span></div><div class="ec tall" id="c3" role="img" aria-label="Treemap: Engineering 72,800, Sales 38,400, Marketing 28,600, Operations 24,200, Product 19,800, Finance 16,400, HR 14,200, Data 13,800, Customer Success 12,400, Design 11,600, Legal 6,200"></div></div>
     <div class="card full"><div class="ch"><div><div class="cl">Work Arrangement</div><div class="ct">Remote vs On-Site vs Hybrid</div></div><span class="badge b-cyan">Donut</span></div><div class="ec" id="c4" role="img" aria-label="56% on-site (156,400), 26% remote (72,600), 14% hybrid (39,200), 4% unspecified"></div></div>
@@ -364,7 +377,7 @@ document.addEventListener('DOMContentLoaded',async function(){
 </script>
 </main>
 <a href="/dashboard" class="dash-link" id="dash-link">&larr; Dashboard</a>
-<script src="/js/version.js?v=v9.39"></script>
+<script src="/js/version.js?v=v9.40"></script>
 <script src="/js/seo-stats.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.98.0/dist/umd/supabase.min.js" integrity="sha384-Sm2s7OXxsAMTyJ4iIyRBgVpeGUvMPk2lRQnnZhE78Wej7oggIoolKt+SCt0XJbUB" crossorigin="anonymous" defer></script>
 <script>

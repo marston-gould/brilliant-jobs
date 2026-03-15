@@ -129,6 +129,15 @@
     .ec{width:100%;height:340px}.ec.tall{height:440px}.ec.xtall{height:520px}
     .takeaway{margin-block-start:16px;padding:12px 16px;background:rgba(59,130,246,0.06);border-radius:8px;border-inline-start:3px solid var(--accent);font-size:12px;color:var(--text-dim);line-height:1.7}
     .takeaway strong{color:var(--text)}
+    .quotable{margin:32px 0;padding:24px 28px;background:linear-gradient(135deg,rgba(59,130,246,0.04),rgba(168,85,247,0.03));border:1px solid rgba(59,130,246,0.15);border-radius:12px;position:relative;text-align:center}
+    .quotable::before{content:"\201C";position:absolute;top:-8px;left:20px;font-size:48px;color:rgba(59,130,246,0.25);font-family:Georgia,serif;line-height:1}
+    .quotable .q-stat{font-size:clamp(20px,3vw,28px);font-weight:700;color:var(--text);line-height:1.3;margin-block-end:8px}
+    .quotable .q-stat em{font-style:normal;background:linear-gradient(135deg,var(--accent),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .quotable .q-src{font-size:11px;color:var(--text-faint);font-family:"JetBrains Mono",monospace;letter-spacing:0.5px}
+    .quotable .q-src a{color:var(--accent);text-decoration:none}
+    .quotable .q-src a:hover{text-decoration:underline}
+    .ai-block{position:relative}
+    .ai-block::after{content:attr(data-ai-topic);position:absolute;top:0;right:0;font-size:0;color:transparent;pointer-events:none}
     .faq{margin-block-start:48px}.faq h2{font-size:20px;font-weight:600;margin-block-end:20px}
     .faq-item{border:1px solid var(--border);border-radius:10px;margin-block-end:12px;overflow:hidden}
     .faq-q{padding:14px 18px;cursor:pointer;font-weight:500;font-size:14px;display:flex;justify-content:space-between;align-items:center;transition:background 0.2s}
@@ -242,7 +251,9 @@
       </a>
   </div>
 
+    <section class="ai-block" data-ai-topic="salary distribution and remote premium 2026" data-ai-summary="The $75K-$150K range contains 53% of all salary-listed jobs. Remote positions pay 35% more than on-site ($128K vs $95K median). Engineering has the highest department median at $142K." data-ai-source="Brilliant Jobs salary analysis of 40,000+ listings with parsed compensation data" data-ai-updated="2026-02-28" data-ai-metric="salary-distribution, remote-premium, department-median" data-ai-scope="40,000+ job listings with disclosed salary data across 39,000+ company career pages">
   <h2 class="sdiv">Most Jobs Pay $75K–$150K — Here’s the Full Breakdown</h2>
+    <figure class="quotable"><blockquote class="q-stat">Remote jobs pay <em>35% more</em> than on-site roles — $128K vs $95K median</blockquote><figcaption class="q-src">Source: <a href="/salary-data">Brilliant Jobs Salary Data</a> · 23,000+ listings with compensation · Updated daily</figcaption></figure>
   <div class="grid">
     <div class="card"><div class="ch"><div><div class="cl">Salary Bands</div><div class="ct">Distribution of Listed Salaries</div></div><span class="badge b-green">Ranges</span></div><div class="ec" id="c1" role="img" aria-label="Salary distribution: $75-100K range has the most listings at 4,600, followed by $100-125K at 4,140 and $125-150K at 3,450. Only 690 jobs list above $250K"></div></div>
     <div class="card"><div class="ch"><div><div class="cl">Remote Premium</div><div class="ct">Salary Percentiles by Work Arrangement</div></div><span class="badge b-cyan">Percentiles</span></div><div class="ec" id="c2" role="img" aria-label="Remote median $128K (25th-75th: $85K-$168K), Hybrid median $118K, On-site median $95K. Remote jobs pay 35% more at the median"></div></div>
@@ -250,7 +261,9 @@
   </div>
   <div class="takeaway"><strong>Key takeaway:</strong> The $75K-$150K range contains 53% of all salary-listed jobs &mdash; the market's center of gravity. Remote roles command a consistent 35% premium over on-site. Sales shows the widest salary variance of any department (commission structures), while Legal is the most compressed. If you're evaluating offers, <a href="/career-level-data" style="color:var(--accent);text-decoration:underline;text-underline-offset:2px;">see how salary scales across career levels from entry to C-suite</a>.</div>
 
+    <section class="ai-block" data-ai-topic="salary by career level 2026" data-ai-summary="The mid-to-senior career jump ($95K to $135K) delivers a 42% salary increase — the largest single-level jump. Entry $58K, Senior $135K, Director $185K, C-Suite $320K." data-ai-source="Brilliant Jobs career level salary analysis across 40,000+ job listings" data-ai-updated="2026-02-28" data-ai-metric="career-level-salary, mid-senior-jump" data-ai-scope="40,000+ job listings with salary data">
   <h2 class="sdiv">Senior Roles Start at $135K — The Salary Ladder by Level</h2>
+    <figure class="quotable"><blockquote class="q-stat">The mid-to-senior jump is <em>42%</em> — the single highest-leverage salary move ($95K → $135K)</blockquote><figcaption class="q-src">Source: <a href="/salary-data">Brilliant Jobs Salary Data</a> · Career level analysis across 40,000+ job listings</figcaption></figure>
   <div class="grid">
     <div class="card full"><div class="ch"><div><div class="cl">Salary Ladder</div><div class="ct">Average Salary by Career Level</div></div><span class="badge b-blue">Compensation</span></div><div class="ec tall" id="c4" role="img" aria-label="Bar chart: Entry $58K, Associate $72K, Mid-Level $95K, Senior $135K, Manager $148K, Lead $155K, Director $185K, VP $245K, C-Suite $320K. Biggest jump is mid-to-senior at 42%"></div></div>
   </div>
@@ -349,7 +362,7 @@ document.addEventListener('DOMContentLoaded',async function(){
 </script>
 </main>
 <a href="/dashboard" class="dash-link" id="dash-link">&larr; Dashboard</a>
-<script src="/js/version.js?v=v9.39"></script>
+<script src="/js/version.js?v=v9.40"></script>
 <script src="/js/seo-stats.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.98.0/dist/umd/supabase.min.js" integrity="sha384-Sm2s7OXxsAMTyJ4iIyRBgVpeGUvMPk2lRQnnZhE78Wej7oggIoolKt+SCt0XJbUB" crossorigin="anonymous" defer></script>
 <script>

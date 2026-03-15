@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.39';
+var BJ_VERSION = 'v9.40';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -5382,7 +5382,7 @@ async function searchJobs(page = 0) {
       const _sortKey = jobSortStack.map(s => s.field + (s.asc ? 'A' : 'D')).join(',');
       const feedCacheKey = 'feed:' + _filterCacheKey('single', filtersToRun[0]) + ':s' + _sortKey + ':p' + page;
       const feedResult = await cachedQuery(feedCacheKey, async function() {
-        let query = sb.from('ats_jobs').select('*', { count: 'exact' });
+        let query = sb.from('ats_jobs').select('*', { count: 'planned' });
         query = buildFilterQuery(filtersToRun[0], query, filtersToRun[0]._locationIds);
         if (hiddenIds.length > 0) {
           query = query.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
@@ -5497,7 +5497,7 @@ async function searchJobs(page = 0) {
       // FA-004: raised per-filter limit. FA-005 server-side UNION is preferred.
       const perFilter = Math.min(Math.ceil(2000 / filtersToRun.length), 500);
       const promises = filtersToRun.map(sf => {
-        let q = sb.from('ats_jobs').select('*', { count: 'exact' });
+        let q = sb.from('ats_jobs').select('*', { count: 'planned' });
         q = buildFilterQuery(sf, q, sf._locationIds);
         if (hiddenIds.length > 0) {
           q = q.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
@@ -5907,12 +5907,12 @@ async function updateJobStatsFromFilters(filters) {
         // but may confuse users when TOTAL >> table count. filter-count bar now shows post-filter
         // truth (v7.68). Consider adding a tooltip to the TOTAL stat card explaining the difference.
         const sfNoWhen = Object.assign({}, sf, { whenPills: [] });
-        let q = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+        let q = sb.from('ats_jobs').select('greenhouse_id', { count: 'planned', head: true });
         q = buildFilterQuery(sfNoWhen, q, locIds);
         q = excludeHidden(q);
 
         // NEW TODAY: all matching jobs updated in last 24h (also without WHEN, uses its own time window)
-        let q2 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+        let q2 = sb.from('ats_jobs').select('greenhouse_id', { count: 'planned', head: true });
         q2 = buildFilterQuery(sfNoWhen, q2, locIds);
         q2 = excludeHidden(q2);
         q2 = q2.gte('first_seen_at', last24h.toISOString());
@@ -5923,7 +5923,7 @@ async function updateJobStatsFromFilters(filters) {
         ];
 
         if (lastViewDate) {
-          let qLogin = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+          let qLogin = sb.from('ats_jobs').select('greenhouse_id', { count: 'planned', head: true });
           qLogin = buildFilterQuery(sf, qLogin, locIds);
           qLogin = excludeHidden(qLogin);
           qLogin = qLogin.gte('first_seen_at', lastViewDate.toISOString());

@@ -149,6 +149,15 @@
       .stat-grid,.stats{grid-template-columns:repeat(2,1fr)!important}
       .summary{font-size:12px;padding:12px 14px}
     }
+    .quotable{margin:32px 0;padding:24px 28px;background:linear-gradient(135deg,rgba(59,130,246,0.04),rgba(168,85,247,0.03));border:1px solid rgba(59,130,246,0.15);border-radius:12px;position:relative;text-align:center}
+    .quotable::before{content:"\201C";position:absolute;top:-8px;left:20px;font-size:48px;color:rgba(59,130,246,0.25);font-family:Georgia,serif;line-height:1}
+    .quotable .q-stat{font-size:clamp(20px,3vw,28px);font-weight:700;color:var(--text);line-height:1.3;margin-block-end:8px}
+    .quotable .q-stat em{font-style:normal;background:linear-gradient(135deg,var(--accent),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .quotable .q-src{font-size:11px;color:var(--text-faint);font-family:"JetBrains Mono",monospace;letter-spacing:0.5px}
+    .quotable .q-src a{color:var(--accent);text-decoration:none}
+    .quotable .q-src a:hover{text-decoration:underline}
+    .ai-block{position:relative}
+    .ai-block::after{content:attr(data-ai-topic);position:absolute;top:0;right:0;font-size:0;color:transparent;pointer-events:none}
   </style>
 </head>
 <body>
@@ -195,7 +204,9 @@
       </a>
   </div>
 
+    <section class="ai-block" data-ai-topic="industry-department hiring matrix 2026" data-ai-summary="Healthcare and Finance are hiring more engineers than ever, signaling cross-industry digital transformation. Technology dominates Engineering and Data & AI hiring, but demand is spreading across all sectors." data-ai-source="Brilliant Jobs market dynamics industry×department analysis" data-ai-updated="2026-02-28" data-ai-metric="industry-department-matrix, digital-transformation" data-ai-scope="350,000+ job listings with industry and department classification">
   <h2 class="sdiv">Engineering Dominates Tech; Sales Leads Finance</h2>
+    <figure class="quotable"><blockquote class="q-stat">Healthcare and Finance are hiring <em>more engineers than ever</em> — cross-industry digital transformation is accelerating</blockquote><figcaption class="q-src">Source: <a href="/market-dynamics">Brilliant Jobs Market Dynamics</a> · Industry×department hiring matrix · Updated weekly</figcaption></figure>
   <div class="card">
     <div class="ch"><div><div class="cl">Heatmap</div><div class="ct">Where are companies hiring, by sector?</div></div><span class="badge b-blue">Industry &times; Dept</span></div>
     <div class="timeline-bar" id="tb1"><button id="pb1">&#9654; Play</button><input type="range" min="0" max="1" value="0" id="sl1"><span class="week-label" id="wl1">—</span></div>
@@ -211,7 +222,9 @@
   </div>
   <div class="takeaway"><strong>Key insight:</strong> Senior and Mid-level roles dominate across all departments. Entry-level hiring is concentrated in Sales and Customer Success, while C-Suite and VP openings cluster in Finance and Operations.</div>
 
+    <section class="ai-block" data-ai-topic="geographic distribution of job openings 2026" data-ai-summary="California, Texas, New York, and Florida account for the majority of U.S. job volume. Mountain West is the fastest-growing region as remote work redistributes hiring geographically." data-ai-source="Brilliant Jobs state-level hiring analysis" data-ai-updated="2026-02-28" data-ai-metric="state-volume, geographic-concentration, growth-regions" data-ai-scope="350,000+ job listings with U.S. state-level classification">
   <h2 class="sdiv">California and New York Have 35% of All Openings</h2>
+    <figure class="quotable"><blockquote class="q-stat">California, Texas, New York, and Florida account for the <em>majority of U.S. job volume</em> — but Mountain West is the fastest-growing region</blockquote><figcaption class="q-src">Source: <a href="/market-dynamics">Brilliant Jobs Market Dynamics</a> · State-level hiring analysis across 350,000+ positions</figcaption></figure>
   <div class="card">
     <div class="ch"><div><div class="cl">Choropleth</div><div class="ct">Where are the open jobs across the U.S.?</div></div><span class="badge b-green">By State</span></div>
     <div style="display:flex;gap:8px;margin-block-end:12px">
@@ -755,7 +768,7 @@ window.addEventListener('DOMContentLoaded',function(){
       }).catch(function(){});
   })();
 </script>
-<script src="/js/version.js?v=v9.39"></script>
+<script src="/js/version.js?v=v9.40"></script>
 </body>
 </html>
 
