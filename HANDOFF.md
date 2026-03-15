@@ -52,7 +52,26 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**AIS-F4-S1** — AI Q&A Gate Removal + Answer Review ✅
+**AIS-F4-S1 (Gap Fixes)** — Answer History + Personal Context + Credits ✅
+- Completed: 2026-03-15
+- Product version bumped: `v9.56` → `v9.57`
+- **Gap fix:** Initial AIS-F4-S1 was missing spec items 19/20/credit model. All now complete.
+- **Migration `v9.56-ais-f4-s1-answers-table.sql`:** `answers` table — user_id FK, job_id, job_title, company_name, field_label, field_type, generated_answer, user_edited_answer, feedback CHECK(up/down/null), credits_charged numeric, cached boolean, created_at. RLS: users_manage_own_answers + service_role. Indexes on (user_id), (user_id, field_label, created_at DESC), (user_id, job_id).
+- **`loadAnswerCache()`:** Reads answers table within `ANSWER_CACHE_DAYS=7` for given user + field labels. Returns `Map<label→answer>`. Non-fatal warn on error.
+- **Fully-cached path:** When `missedQuestions.length === 0`, returns immediately without calling Anthropic. Response includes `cache_hits`, `credits_charged: 0`. Rate limit not consumed.
+- **`persistAnswers()`:** Inserts new answers to DB after generation. `credits_charged: isCached ? 0 : CREDITS_PER_ANSWER`. `cached` flag set correctly.
+- **`deductCredits()`:** Calls `deduct_credits` RPC with `p_feature: "ai_answer"` for `newAnswers.length * 0.5` credits. Non-fatal.
+- **`CREDITS_PER_ANSWER = 0.5`** — 0.5 credits per new AI answer. Cached answers are free.
+- **`fetchLinkedInProfile()`:** Reads `linkedin_profiles` table for user (display_name, headline, skills_array, experience_json). Passed as second arg to `buildUserPrompt`.
+- **`buildUserPrompt` updated:** Accepts optional `linkedIn` param. Injects `## LinkedIn Profile` section (name, headline, skills, recent experience) when available.
+- **`job_id` added to `AnswerRequest` interface** and threaded through to `persistAnswers`.
+- **Response fields:** `cache_hits` and `credits_charged` added to all success responses.
+- **Tests:** 50 validation tests (all passing)
+- **Modified:** `supabase/functions/answer-form-question/index.ts`, `dist/dashboard.min.js`, `dist/dashboard-deferred.min.js`, `dist/admin.min.js`, `styles.css`, `ROADMAP.md`, `roadmap.html`
+- **Created:** `supabase/migrations/v9.56-ais-f4-s1-answers-table.sql`, `tests/ais-f4-s1-gap-fixes.test.js`
+- **Pending manual steps (Marston):**
+  - `supabase db push` (migration v9.56-ais-f4-s1-answers-table)
+  - `SUPABASE_ACCESS_TOKEN=<token> npx supabase functions deploy answer-form-question --project-ref qojhagupdnbtomfoxnsf`
 - Completed: 2026-03-15
 - Product version bumped: `v9.55` → `v9.56`
 - **No admin gate to remove** — `answer-form-question` EF was already open to all JWT-authenticated users with a `DAILY_LIMIT=50` rate limit. The "admin-only" label referred to the extension popup toggle (not an EF gate). No EF changes needed.
@@ -3993,7 +4012,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.56`** | **AIS-F4-S1: AI Q&A gate removal + answer review panel. 59 tests.** |
+| **Product (BJ_VERSION)** | **`v9.57`** | **AIS-F4-S1 gap fixes: answers table, DB cache, credits, LinkedIn context. 50 tests.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
