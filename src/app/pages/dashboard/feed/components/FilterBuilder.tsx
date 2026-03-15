@@ -30,21 +30,38 @@ interface FilterBuilderProps {
   onSaveFilter: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
+  /** REM-S13: Browse button callback. Dimension is 'title'|'company'|'location'|'skill'|'dept'|'level'|'jd_keyword'. */
+  onBrowse?: (dimension: string, mode: 'include' | 'exclude') => void;
+  /** REM-S14: When true, browse overlays show US-Only context banner. */
+  usOnly?: boolean;
 }
 
 interface FilterRowProps {
   label: string;
   labelClass?: string;
   children: React.ReactNode;
+  /** REM-S13: Browse button handler for this row */
+  onBrowse?: () => void;
 }
 
-function FilterRow({ label, labelClass, children }: FilterRowProps) {
+function FilterRow({ label, labelClass, children, onBrowse }: FilterRowProps) {
   return (
     <div className="flex items-start gap-2">
       <span className={`text-xs font-semibold w-10 pt-2 flex-shrink-0 text-right ${labelClass || 'text-text-dim'}`}>
         {label}
       </span>
-      <div className="flex-1">{children}</div>
+      <div className="flex-1 relative">
+        {children}
+        {onBrowse && (
+          <button
+            type="button"
+            onClick={onBrowse}
+            className="absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-accent hover:text-accent/80 font-medium px-1.5 py-0.5 rounded hover:bg-accent/10 transition-colors"
+          >
+            Browse
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -56,6 +73,8 @@ export function FilterBuilder({
   onSaveFilter,
   collapsed = false,
   onToggleCollapse,
+  onBrowse,
+  usOnly,
 }: FilterBuilderProps) {
   const update = useCallback(
     (field: keyof FilterValues, value: string | boolean) => {
@@ -99,9 +118,16 @@ export function FilterBuilder({
       {/* Filter rows */}
       {!collapsed && (
         <div className="px-3 pb-3 space-y-2">
+          {/* REM-S14: US-Only context banner when tuning is active */}
+          {usOnly && (
+            <div className="flex items-center gap-1.5 px-2 py-1.5 text-[10px] text-accent bg-accent/5 border border-accent/15 rounded-md">
+              <span>🇺🇸</span>
+              <span>US-Only filter active — browse results show US-based data only</span>
+            </div>
+          )}
           {/* What / Not */}
           <div className="grid grid-cols-2 gap-2">
-            <FilterRow label="What">
+            <FilterRow label="What" onBrowse={onBrowse ? () => onBrowse('title', 'include') : undefined}>
               <input
                 type="text"
                 className="w-full px-2 py-1.5 text-xs bg-bg-input border border-border rounded-md text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
@@ -111,7 +137,7 @@ export function FilterBuilder({
                 onKeyDown={handleKeyDown}
               />
             </FilterRow>
-            <FilterRow label="Not" labelClass="text-red-400/70">
+            <FilterRow label="Not" labelClass="text-red-400/70" onBrowse={onBrowse ? () => onBrowse('title', 'exclude') : undefined}>
               <input
                 type="text"
                 className="w-full px-2 py-1.5 text-xs bg-bg-input border border-border rounded-md text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
@@ -149,7 +175,7 @@ export function FilterBuilder({
 
           {/* Who / Not */}
           <div className="grid grid-cols-2 gap-2">
-            <FilterRow label="Who">
+            <FilterRow label="Who" onBrowse={onBrowse ? () => onBrowse('company', 'include') : undefined}>
               <input
                 type="text"
                 className="w-full px-2 py-1.5 text-xs bg-bg-input border border-border rounded-md text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
@@ -159,7 +185,7 @@ export function FilterBuilder({
                 onKeyDown={handleKeyDown}
               />
             </FilterRow>
-            <FilterRow label="Not" labelClass="text-red-400/70">
+            <FilterRow label="Not" labelClass="text-red-400/70" onBrowse={onBrowse ? () => onBrowse('company', 'exclude') : undefined}>
               <input
                 type="text"
                 className="w-full px-2 py-1.5 text-xs bg-bg-input border border-border rounded-md text-text placeholder:text-text-faint focus:border-accent focus:outline-none"

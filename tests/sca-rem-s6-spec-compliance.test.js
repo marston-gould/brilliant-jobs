@@ -91,8 +91,95 @@ describe('REM-S11: Calendar scan scope backend', () => {
 });
 
 // ═══════════════════════════════════════════════════════════
-// QA-003: Salary Min/Max already split (confirmed)
+// REM-S13: FilterBuilder.tsx browse buttons
 // ═══════════════════════════════════════════════════════════
+describe('REM-S13: FilterBuilder.tsx browse buttons', () => {
+  const fb = read('src/app/pages/dashboard/feed/components/FilterBuilder.tsx');
+
+  it('FilterBuilderProps has onBrowse callback', () => {
+    expect(fb).toContain('onBrowse?:');
+  });
+
+  it('FilterRowProps has onBrowse callback', () => {
+    expect(fb).toMatch(/interface FilterRowProps[\s\S]*?onBrowse\?/);
+  });
+
+  it('FilterRow renders Browse button when onBrowse provided', () => {
+    expect(fb).toContain('onBrowse && (');
+    expect(fb).toContain('onClick={onBrowse}');
+  });
+
+  it('What row has browse for title include', () => {
+    expect(fb).toContain("onBrowse('title', 'include')");
+  });
+
+  it('What-Not row has browse for title exclude', () => {
+    expect(fb).toContain("onBrowse('title', 'exclude')");
+  });
+
+  it('Who row has browse for company include', () => {
+    expect(fb).toContain("onBrowse('company', 'include')");
+  });
+
+  it('Who-Not row has browse for company exclude', () => {
+    expect(fb).toContain("onBrowse('company', 'exclude')");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════
+// REM-S14: FilterBuilder US-Only context
+// ═══════════════════════════════════════════════════════════
+describe('REM-S14: FilterBuilder US-Only context', () => {
+  const fb = read('src/app/pages/dashboard/feed/components/FilterBuilder.tsx');
+
+  it('FilterBuilderProps has usOnly prop', () => {
+    expect(fb).toContain('usOnly?:');
+  });
+
+  it('shows US-Only banner when usOnly is true', () => {
+    expect(fb).toContain('US-Only filter active');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════
+// QA-018: Credit icon — CR badge
+// ═══════════════════════════════════════════════════════════
+describe('QA-018: Credit icon CR badge', () => {
+  it('has CR text badge before credit count', () => {
+    expect(dashboard).toContain('>CR</span>');
+  });
+
+  it('CR badge appears before credit-balance-badge', () => {
+    const crIdx = dashboard.indexOf('>CR</span>');
+    const countIdx = dashboard.indexOf('credit-balance-badge');
+    expect(crIdx).toBeGreaterThan(0);
+    expect(countIdx).toBeGreaterThan(crIdx);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════
+// REM-S02: Extension EEOC (confirmed already done)
+// ═══════════════════════════════════════════════════════════
+describe('REM-S02: Extension EEOC display (confirmed done)', () => {
+  const popup = read('extension/popup.html');
+  const consumer = read('extension/popup-consumer.ts');
+
+  it('popup.html has EEOC settings card', () => {
+    expect(popup).toContain('cv-settings-eeoc');
+  });
+
+  it('popup-consumer.ts has _loadSettingsEEOC function', () => {
+    expect(consumer).toContain('_loadSettingsEEOC');
+  });
+
+  it('displays all 5 EEOC fields', () => {
+    expect(consumer).toContain("'Gender'");
+    expect(consumer).toContain("'Ethnicity'");
+    expect(consumer).toContain("'Veteran'");
+    expect(consumer).toContain("'Disability'");
+    expect(consumer).toContain("'Citizenship'");
+  });
+});
 describe('QA-003: Salary Min/Max split (confirmed working)', () => {
   it('has separate Min $ row', () => {
     expect(dashboard).toContain('qb-input-pay-min');
