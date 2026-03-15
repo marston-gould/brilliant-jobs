@@ -25,44 +25,145 @@
   // ── Job Site Registry (inline for MAIN world script) ──────────
   // Mirrors selectors/job-site-registry.ts — injected as IIFE, no imports.
   var JOB_SITE_REGISTRY = [
+    // ── Phase A Tier 1: LinkedIn (optimized) ──────────────────────────
     {
       platform: 'linkedin',
-      urlPattern: /linkedin\.com\/jobs\/(view|collections|search)/,
+      urlPattern: /linkedin\.com\/(jobs\/(view|collections|search)|in\/[^/]+\/|company\/[^/]+\/jobs)/,
       hostPattern: /linkedin\.com$/,
       applyButtonSelectors: [
         'button.jobs-apply-button',
+        'button.jobs-apply-button--top-card',
         '.jobs-s-apply button',
         'button[data-control-name="jobdetails_topcard_inapply"]',
         '.jobs-apply-button--top-card',
+        // 2025+ redesign selectors
+        'button[aria-label*="Apply"]',
+        'button[aria-label*="Easy Apply"]',
+        '.job-details-jobs-unified-top-card__container--two-pane button[class*="apply"]',
+        '.jobs-details__main-content button[class*="apply"]',
       ],
       saveButtonTarget: {
         position: 'adjacent',
-        selector: '.jobs-save-button, button[data-control-name="save_job"]',
+        selector: '.jobs-save-button, button[data-control-name="save_job"], button[aria-label*="Save"]',
       },
       jobMetaSelectors: {
-        title: ['.job-details-jobs-unified-top-card__job-title', 'h1.t-24', '.jobs-unified-top-card__job-title'],
-        company: ['.job-details-jobs-unified-top-card__company-name a', '.jobs-unified-top-card__company-name a', '.job-details-jobs-unified-top-card__company-name'],
-        location: ['.job-details-jobs-unified-top-card__bullet', '.jobs-unified-top-card__bullet'],
+        title: [
+          '.job-details-jobs-unified-top-card__job-title a',
+          '.job-details-jobs-unified-top-card__job-title h1',
+          '.job-details-jobs-unified-top-card__job-title',
+          'h1.t-24', 'h1.t-24.t-bold',
+          '.jobs-unified-top-card__job-title',
+          '.top-card-layout__title',
+          'h1[class*="topcard__title"]',
+          'h2.top-card-layout__title',
+        ],
+        company: [
+          '.job-details-jobs-unified-top-card__company-name a',
+          '.job-details-jobs-unified-top-card__company-name',
+          '.jobs-unified-top-card__company-name a',
+          '.jobs-unified-top-card__company-name',
+          '.top-card-layout__card-layout .topcard__org-name-link',
+          'a[data-tracking-control-name="public_jobs_topcard-org-name"]',
+          '.topcard__flavor--black-link',
+        ],
+        location: [
+          '.job-details-jobs-unified-top-card__bullet',
+          '.jobs-unified-top-card__bullet',
+          '.job-details-jobs-unified-top-card__primary-description-container .t-black--light',
+          '.top-card-layout__card-layout .topcard__flavor--bullet',
+          'span.topcard__flavor--bullet',
+        ],
+        salary: [
+          '.job-details-jobs-unified-top-card__job-insight--highlight span',
+          '.job-details-jobs-unified-top-card__salary-info',
+          '.salary-main-rail__compensation-value',
+          '.compensation__salary',
+          '.job-details-preferences-and-skills .job-details-jobs-unified-top-card__job-insight span[class*="white-space-pre-wrap"]',
+        ],
+        description: [
+          '.jobs-description__content .jobs-box__html-content',
+          '.jobs-description-content__text',
+          '#job-details > span',
+          '#job-details',
+          '.jobs-description__content',
+          '.description__text',
+          '.show-more-less-html__markup',
+        ],
+        workType: [
+          '.job-details-jobs-unified-top-card__workplace-type',
+          '.jobs-unified-top-card__workplace-type',
+          '.ui-label[class*="workplace-type"]',
+        ],
       },
     },
+    // ── Phase A Tier 1: Indeed (optimized) ───────────────────────────
     {
       platform: 'indeed',
-      urlPattern: /indeed\.com\/viewjob|indeed\.com\/jobs\?|indeed\.com\/rc\/clk/,
+      urlPattern: /indeed\.com\/(viewjob|jobs\?|rc\/clk|cmp\/[^/]+\/jobs|job\/)/,
       hostPattern: /indeed\.com$/,
       applyButtonSelectors: [
         '#indeedApplyButton',
-        'button[id*="apply"]',
-        '.jobsearch-IndeedApplyButton-newDesign button',
+        'button[id*="indeedApply"]',
         'button[data-testid="indeedApplyButton"]',
+        '.jobsearch-IndeedApplyButton-newDesign button',
+        '.ia-IndeedApplyButton button',
+        'button[class*="IndeedApply"]',
+        // External apply
+        'a.ia-IndeedApplyButton',
+        '#applyButtonLinkContainer a',
+        'button[aria-label*="Apply"]',
       ],
       saveButtonTarget: {
         position: 'after',
-        selector: '#jobsearch-ViewJobButtons-container, .jobsearch-ViewJobButtons-container',
+        selector: '#jobsearch-ViewJobButtons-container, .jobsearch-ViewJobButtons-container, [data-testid="jobsearch-ViewJobButtons-container"]',
       },
       jobMetaSelectors: {
-        title: ['.jobsearch-JobInfoHeader-title', 'h1[data-testid="jobsearch-JobInfoHeader-title"]', '.icl-u-xs-mb--xs h1'],
-        company: ['[data-testid="inlineHeader-companyName"] a', '.jobsearch-InlineCompanyRating a', '[data-company-name="true"]'],
-        location: ['[data-testid="job-location"]', '[data-testid="inlineHeader-companyLocation"]'],
+        title: [
+          'h1[data-testid="jobsearch-JobInfoHeader-title"]',
+          '.jobsearch-JobInfoHeader-title',
+          'h1.icl-u-xs-mb--xs',
+          '.icl-u-xs-mb--xs h1',
+          'h2.jobTitle',
+          '[data-testid="jobTitle"]',
+          'h1[class*="JobTitle"]',
+        ],
+        company: [
+          '[data-testid="inlineHeader-companyName"] a',
+          '[data-testid="inlineHeader-companyName"]',
+          '.jobsearch-InlineCompanyRating a',
+          '.jobsearch-InlineCompanyRating div:first-child a',
+          '[data-company-name="true"]',
+          '.companyName',
+          'a[data-tn-element="companyName"]',
+          '[data-testid="company-name"]',
+        ],
+        location: [
+          '[data-testid="job-location"]',
+          '[data-testid="inlineHeader-companyLocation"]',
+          '.jobsearch-JobInfoHeader-subtitle .css-1p0sjhy',
+          '.companyLocation',
+          '[data-testid="jobsearch-CompanyInfoContainer"] [data-testid="companyLocation"]',
+        ],
+        salary: [
+          '#salaryInfoAndJobType span[class*="attribute_snippet"]',
+          '[data-testid="attribute_snippet_testid"]',
+          '.jobsearch-JobMetadataHeader-item .attribute_snippet',
+          '.salary-snippet-container .attribute_snippet',
+          '#salaryInfoAndJobType',
+          '.jobsearch-JobDescriptionSection-sectionItem [class*="salary"]',
+          '.metadata .salary-snippet',
+        ],
+        description: [
+          '#jobDescriptionText',
+          '.jobsearch-jobDescriptionText',
+          '[data-testid="jobDescriptionText"]',
+          '.jobsearch-JobComponent-description',
+        ],
+        jobType: [
+          '.jobsearch-JobMetadataHeader-item .attribute_snippet[class*="job-type"]',
+          '[data-testid="attribute_snippet_testid"]',
+          '.jobMetaDataGroup [class*="metadata"]',
+        ],
       },
     },
     {
@@ -88,16 +189,76 @@
         location: ['.posting-categories .sort-by-location', '.location'],
       },
     },
+    // ── Phase A Tier 1: Glassdoor (optimized) ────────────────────────
     {
       platform: 'glassdoor',
-      urlPattern: /glassdoor\.(com|co\.\w+)\/job-listing/,
+      urlPattern: /glassdoor\.(com|co\.\w+)\/(job-listing|Job|partner\/jobListing)/,
       hostPattern: /glassdoor\.(com|co\.\w+)$/,
-      applyButtonSelectors: ['button[data-test="apply-button"]', 'button[data-test="applyButton"]', '.apply-button-wrapper button', '.applyButton'],
-      saveButtonTarget: { position: 'after', selector: '[data-test="location"], [data-test="employer-location"]' },
+      applyButtonSelectors: [
+        'button[data-test="apply-button"]',
+        'button[data-test="applyButton"]',
+        '.apply-button-wrapper button',
+        '.applyButton',
+        'button[data-brandviews="MODULE:n=jobs.applyStart"]',
+        'a[data-test="apply-link"]',
+        '.job-details-apply-button button',
+        'button[class*="ApplyButton"]',
+      ],
+      saveButtonTarget: {
+        position: 'after',
+        selector: '[data-test="location"], [data-test="employer-location"], .job-details-header, [data-test="job-details-header"]',
+      },
       jobMetaSelectors: {
-        title: ['[data-test="job-details-header"] h1', '[data-test="jobTitle"]', '.JobDetails_jobTitle__Rw_gn'],
-        company: ['[data-test="employer-name"]', '.EmployerProfile_compactEmployerName__LE242'],
-        location: ['[data-test="location"]', '[data-test="employer-location"]'],
+        title: [
+          '[data-test="job-details-header"] h1',
+          '[data-test="jobTitle"]',
+          '.JobDetails_jobTitle__Rw_gn',
+          'h1[class*="jobTitle"]',
+          '.job-title',
+          '.e1tk4kwz5',
+          '.css-1vg6q84 h1',
+        ],
+        company: [
+          '[data-test="employer-name"]',
+          '.EmployerProfile_compactEmployerName__LE242',
+          '[data-test="employerName"]',
+          '.e1tk4kwz1',
+          '.employer-name',
+          '.css-87uc0g',
+          'a[data-test="employer-name-link"]',
+        ],
+        location: [
+          '[data-test="location"]',
+          '[data-test="employer-location"]',
+          '.e1tk4kwz2',
+          '.css-56kyx5',
+          '.location',
+          '[data-test="job-location"]',
+        ],
+        salary: [
+          '[data-test="detailSalary"]',
+          '.salary-estimate .css-1bluz6i',
+          '.SalaryEstimate_salaryRange__brHFy',
+          '.e1wijj240',
+          '.css-1xe2xww',
+          '[data-test="salaryEstimate"]',
+          '.salaryEstimate',
+          '.css-1hbqxax',
+        ],
+        description: [
+          '.jobDescriptionContent',
+          '[data-test="jobDescriptionContent"]',
+          '.desc',
+          '.JobDetails_jobDescription__6VBRr',
+          '.css-dwl48b',
+          '#JobDescriptionContainer',
+        ],
+        rating: [
+          '[data-test="detailRating"]',
+          '.e1tk4kwz4',
+          '.css-1m5m32b',
+          '.employer-rating',
+        ],
       },
     },
     {
@@ -203,6 +364,16 @@
           '[class*="location"]', '[class*="Location"]', '[data-testid*="location"]',
           '[itemprop="jobLocation"]', '.job-location',
         ],
+        salary: [
+          '[class*="salary"]', '[class*="Salary"]', '[class*="compensation"]',
+          '[data-testid*="salary"]', '[itemprop="baseSalary"]',
+          '.pay-range', '.salary-range', '.compensation-range',
+        ],
+        description: [
+          '.job-description', '.jobDescription', '[class*="jobDescription"]',
+          '[data-testid*="description"]', '[itemprop="description"]',
+          '#job-description', '.description', 'article',
+        ],
       },
     };
   }
@@ -279,6 +450,11 @@
       title: '',
       company: '',
       location: '',
+      salary: '',
+      description: '',
+      workType: '',
+      jobType: '',
+      rating: '',
       platform: currentSite.platform,
     };
     var ms = currentSite.jobMetaSelectors;
@@ -301,9 +477,47 @@
         meta.location = locEl.getAttribute('content') || locEl.textContent.trim();
       }
     }
+    // Phase A: Extract salary
+    if (ms.salary) {
+      var salEl = qFallback(ms.salary);
+      if (salEl) {
+        meta.salary = salEl.getAttribute('content') || salEl.textContent.trim();
+      }
+    }
+    // Phase A: Extract job description (first 2000 chars)
+    if (ms.description) {
+      var descEl = qFallback(ms.description);
+      if (descEl) {
+        meta.description = (descEl.textContent || '').trim().slice(0, 2000);
+      }
+    }
+    // Phase A: Extract work type (remote/hybrid/onsite)
+    if (ms.workType) {
+      var wtEl = qFallback(ms.workType);
+      if (wtEl) meta.workType = wtEl.textContent.trim();
+    }
+    // Phase A: Extract job type (full-time/part-time/contract)
+    if (ms.jobType) {
+      var jtEl = qFallback(ms.jobType);
+      if (jtEl) meta.jobType = jtEl.textContent.trim();
+    }
+    // Phase A: Extract company rating
+    if (ms.rating) {
+      var rtEl = qFallback(ms.rating);
+      if (rtEl) meta.rating = rtEl.textContent.trim();
+    }
     // Fallback: use document title
     if (!meta.title) {
       meta.title = document.title.split(' - ')[0].split(' | ')[0].trim();
+    }
+    // Salary fallback: regex scan visible text near top of page for salary patterns
+    if (!meta.salary) {
+      try {
+        var bodyText = (document.body.innerText || '').slice(0, 5000);
+        var salaryMatch = bodyText.match(/\$[\d,]+(?:\.\d{2})?\s*[-–—to]+\s*\$[\d,]+(?:\.\d{2})?(?:\s*(?:\/?\s*(?:yr|year|hr|hour|annually|per\s+year|per\s+hour|a\s+year)))?/i)
+          || bodyText.match(/\$[\d,]+(?:\.\d{2})?\s*(?:\/?\s*(?:yr|year|hr|hour|annually|per\s+year|per\s+hour|a\s+year|k))/i);
+        if (salaryMatch) meta.salary = salaryMatch[0].trim();
+      } catch (_) {}
     }
     // Generic fallback: try JSON-LD structured data
     if (currentSite.platform === 'generic' && (!meta.title || !meta.company)) {
@@ -317,6 +531,21 @@
             if (!meta.location && ld.jobLocation?.address?.addressLocality) {
               meta.location = ld.jobLocation.address.addressLocality;
               if (ld.jobLocation.address.addressRegion) meta.location += ', ' + ld.jobLocation.address.addressRegion;
+            }
+            if (!meta.salary && ld.baseSalary?.value) {
+              var sv = ld.baseSalary.value;
+              if (typeof sv === 'object' && sv.minValue && sv.maxValue) {
+                meta.salary = '$' + sv.minValue.toLocaleString() + ' - $' + sv.maxValue.toLocaleString();
+                if (sv.unitText) meta.salary += '/' + sv.unitText;
+              } else if (typeof sv === 'number') {
+                meta.salary = '$' + sv.toLocaleString();
+              }
+            }
+            if (!meta.description && ld.description) {
+              meta.description = ld.description.replace(/<[^>]*>/g, '').trim().slice(0, 2000);
+            }
+            if (!meta.jobType && ld.employmentType) {
+              meta.jobType = Array.isArray(ld.employmentType) ? ld.employmentType.join(', ') : ld.employmentType;
             }
             break;
           }

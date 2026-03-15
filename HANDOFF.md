@@ -52,7 +52,61 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**EXT-BUILD-001-B5** — Resume Page Limit + Generic Heuristic Scraper
+**EXT-BUILD-001-PA** — Phase A Tier 1: LinkedIn + Indeed + Glassdoor Optimized Selectors
+- Completed: 2026-03-15
+- Product version bumped: `v9.31` → `v9.32`
+- ROADMAP.md updated: EXT-BUILD-001-PA → ✅
+- roadmap.html updated: EXT-BUILD-001-PA → `s: 'done'`, p: 100
+- **LinkedIn optimized selectors:**
+  - 9 apply button selectors (incl. 2025+ redesign `aria-label*="Easy Apply"`, `jobs-details__main-content`)
+  - 9 title selectors (unified top card, `h1.t-24`, `top-card-layout__title`, `topcard__title`)
+  - 7 company selectors (unified top card `a`, `topcard__org-name-link`, `topcard__flavor--black-link`)
+  - 5 location selectors (bullet + primary description container + `topcard__flavor--bullet`)
+  - 5 salary selectors (job insight highlight, salary-info, compensation)
+  - 7 description selectors (jobs-description content, `#job-details`, `show-more-less-html__markup`)
+  - 3 workType selectors (workplace-type)
+  - URL pattern expanded: `/in/` profile pages + `/company/*/jobs` pages
+- **Indeed optimized selectors:**
+  - 9 apply button selectors (indeedApplyButton, `ia-IndeedApplyButton`, external apply, `aria-label*="Apply"`)
+  - 7 title selectors (JobInfoHeader-title, `h2.jobTitle`, `[data-testid="jobTitle"]`)
+  - 8 company selectors (inlineHeader-companyName, InlineCompanyRating, `[data-company-name]`, `[data-tn-element="companyName"]`)
+  - 5 location selectors (job-location, companyLocation)
+  - 7 salary selectors (#salaryInfoAndJobType, attribute_snippet, salary-snippet)
+  - 4 description selectors (#jobDescriptionText, jobsearch-jobDescriptionText)
+  - 3 jobType selectors
+  - URL pattern expanded: `/job/`, `/cmp/*/jobs`
+- **Glassdoor optimized selectors:**
+  - 8 apply button selectors (data-test, data-brandviews, ApplyButton, apply-link)
+  - 7 title selectors (job-details-header h1, jobTitle, JobDetails_jobTitle, e1tk4kwz5)
+  - 7 company selectors (employer-name, EmployerProfile_compactEmployerName, e1tk4kwz1)
+  - 6 location selectors (data-test location, e1tk4kwz2)
+  - 8 salary selectors (detailSalary, SalaryEstimate_salaryRange, salaryEstimate)
+  - 6 description selectors (jobDescriptionContent, JobDetails_jobDescription)
+  - 4 rating selectors (detailRating, employer-rating)
+  - URL pattern expanded: `/Job/`, `/partner/jobListing`
+- **parseJobMeta expanded:**
+  - Now extracts 8 fields: title, company, location, salary, description, workType, jobType, rating
+  - Salary regex fallback: scans first 5000 chars of body text for `$X,XXX - $X,XXX/yr` patterns
+  - JSON-LD fallback: extracts baseSalary (minValue/maxValue/unitText), employmentType, description from JobPosting schema
+- **manifest.json expanded:**
+  - Indeed regional: co.uk, ca, com.au, ca.indeed.com, uk.indeed.com, au.indeed.com, indeed.com (bare)
+  - Glassdoor regional: ca, com.au, de, fr, co.in
+- **Generic fallback expanded:** salary + description selectors added
+- **Modified:**
+  - `extension/job-site-overlay.ts` — optimized Tier 1 selectors, parseJobMeta 8-field extraction
+  - `extension/manifest.json` — regional URL patterns
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `dist/admin.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — EXT-BUILD-001-PA → ✅
+  - `roadmap.html` — EXT-BUILD-001-PA → done/100
+- **Created:**
+  - `tests/ext-build-001-phase-a-tier1.test.js` — 36 validation tests
+- **Tests:** 36 validation tests (all passing)
+- **Deployed:** 69 extension files re-uploaded to Supabase Storage.
+
+**Previous: EXT-BUILD-001-B5** — Resume Page Limit + Generic Heuristic Scraper
 - Completed: 2026-03-15
 - Product version bumped: `v9.30` → `v9.31`
 - ROADMAP.md updated: EXT-BUILD-001-B5 → ✅
@@ -3625,11 +3679,12 @@ Deliverables:
 
 ## Next Session
 
-**EXT-BUILD-001 FULLY COMPLETE.** All 3 sessions + all 6 bugs (B1-B6) done. Generic heuristic scraper live.
+**EXT-BUILD-001 spec FULLY COMPLETE.** All 3 sessions, all 6 bugs, generic scraper, Phase A Tier 1 — all done.
 
 Potential next workstreams:
-- 59-site optimized selector rollout (Phase A–D from spec): Tier 1 (LinkedIn+Indeed+Glassdoor), Tier 2 (11 major boards), Tier 3 (34 niche/diversity), Tier 4 (11 ATS browse-page injection)
-- Wire remaining 21 Anthropic-calling EFs to withAnthropicBreaker
+- Phase B: Tier 2 — 11 major boards (Google Jobs, ZipRecruiter, Monster, Built In, Dice, The Muse, Wellfound, USA Jobs, Handshake, Simply Hired, SmartRecruiters)
+- Phase C: Tier 3 — 34 niche/diversity/industry boards
+- Phase D: Tier 4 — Browse-page injection for 11 ATS sites
 - CASA-001: Google CASA assessment + gmail.readonly upgrade
 - Any new feature work
 
@@ -3662,7 +3717,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.31`** | **EXT-BUILD-001-B5: page_limit + generic scraper. All 6 bugs resolved.** |
+| **Product (BJ_VERSION)** | **`v9.32`** | **EXT-BUILD-001-PA: Phase A Tier 1 LinkedIn+Indeed+Glassdoor optimized selectors** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

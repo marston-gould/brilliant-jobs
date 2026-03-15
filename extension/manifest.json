@@ -93,8 +93,20 @@
         "https://*.applytojob.com/*",
         "https://www.glassdoor.com/*",
         "https://www.glassdoor.co.uk/*",
+        "https://www.glassdoor.ca/*",
+        "https://www.glassdoor.com.au/*",
+        "https://www.glassdoor.de/*",
+        "https://www.glassdoor.fr/*",
+        "https://www.glassdoor.co.in/*",
         "https://*.joinhandshake.com/*",
-        "https://www.indeed.com/*"
+        "https://www.indeed.com/*",
+        "https://indeed.com/*",
+        "https://www.indeed.co.uk/*",
+        "https://www.indeed.ca/*",
+        "https://www.indeed.com.au/*",
+        "https://ca.indeed.com/*",
+        "https://uk.indeed.com/*",
+        "https://au.indeed.com/*"
       ],
       "js": [
         "contentScript.js"
