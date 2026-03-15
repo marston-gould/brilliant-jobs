@@ -377,10 +377,79 @@ jobs:
       - name: Fitness Functions Summary
         run: echo "✅ All 8 architecture fitness functions passed" >> $GITHUB_STEP_SUMMARY
 
+  # ─── Gate 10: Extension Build Verification (EXT-BUILD-001-S3) ──
+  ext-build:
+    name: "Gate 10: Extension Build"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Install esbuild
+        run: npm install esbuild
+
+      - name: Run extension build
+        run: node extension/build-dev.js
+
+      - name: Verify file count
+        run: |
+          TOTAL=$(find extension/dist/dev -type f | wc -l)
+          echo "Extension build output: $TOTAL files"
+          if [ "$TOTAL" -lt 60 ]; then
+            echo "::error::Extension build produced only $TOTAL files (expected ≥60)"
+            exit 1
+          fi
+          echo "✅ Extension build: $TOTAL files" >> $GITHUB_STEP_SUMMARY
+
+      - name: Verify manifest references
+        run: |
+          cd extension/dist/dev
+          # Check service_worker
+          SW=$(python3 -c "import json; m=json.load(open('manifest.json')); print(m.get('background',{}).get('service_worker',''))")
+          if [ -n "$SW" ] && [ ! -f "$SW" ]; then
+            echo "::error::service_worker reference missing: $SW"
+            exit 1
+          fi
+          # Check content_scripts
+          python3 -c "
+          import json, os, sys
+          m = json.load(open('manifest.json'))
+          missing = []
+          for cs in m.get('content_scripts', []):
+            for js in cs.get('js', []):
+              if not os.path.exists(js):
+                missing.append(js)
+          if missing:
+            print('Missing content_script files:', missing)
+            sys.exit(1)
+          print('All manifest references resolve')
+          "
+          echo "✅ All manifest references resolve" >> $GITHUB_STEP_SUMMARY
+
+      - name: Verify ESM handlers have exports
+        run: |
+          MISSING=""
+          for h in extension/dist/dev/handlers/*.js; do
+            if ! grep -q "export" "$h" 2>/dev/null; then
+              MISSING="$MISSING $(basename $h)"
+            fi
+          done
+          if [ -n "$MISSING" ]; then
+            echo "::error::Handlers missing export statements:$MISSING"
+            exit 1
+          fi
+          echo "✅ All handlers have export statements" >> $GITHUB_STEP_SUMMARY
+
   # ─── Summary Gate: All must pass ───────────────────────────────────
   all-gates:
     name: "All Quality Gates"
-    needs: [lint, monitoring, test, ef-auth, secret-scan, design-check, build, compliance, fitness-functions]
+    needs: [lint, monitoring, test, ef-auth, secret-scan, design-check, build, compliance, fitness-functions, ext-build]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -394,7 +463,8 @@ jobs:
           needs.design-check.result != 'success' ||
           needs.build.result != 'success' ||
           needs.compliance.result != 'success' ||
-          needs.fitness-functions.result != 'success'
+          needs.fitness-functions.result != 'success' ||
+          needs.ext-build.result != 'success'
         run: |
           echo "❌ One or more quality gates failed" >> $GITHUB_STEP_SUMMARY
           exit 1
@@ -409,5 +479,6 @@ jobs:
           needs.design-check.result == 'success' &&
           needs.build.result == 'success' &&
           needs.compliance.result == 'success' &&
-          needs.fitness-functions.result == 'success'
-        run: echo "✅ All 18 quality gates passed (10 quality gates + 8 fitness functions)" >> $GITHUB_STEP_SUMMARY
+          needs.fitness-functions.result == 'success' &&
+          needs.ext-build.result == 'success'
+        run: echo "✅ All 19 quality gates passed (10 quality gates + 8 fitness functions + 1 extension build)" >> $GITHUB_STEP_SUMMARY

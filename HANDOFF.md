@@ -52,7 +52,37 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**EXT-BUILD-001-S2** — Dashboard Download + Version Check + Bugs B1/B2/B4
+**EXT-BUILD-001-S3** — CI Gate + Release Process + build-extension.js Three-Mode
+- Completed: 2026-03-15
+- Product version bumped: `v9.29` → `v9.30`
+- ROADMAP.md updated: EXT-BUILD-001-S3 → ✅
+- roadmap.html updated: EXT-BUILD-001-S3 → `s: 'done'`, p: 100
+- **S3.1 — CI gate `gate-ext-build`:**
+  - `.github/workflows/ci.yml`: New `ext-build` job (Gate 10). Steps: checkout, setup node 20, npm ci, npm install esbuild, `node extension/build-dev.js`, verify ≥60 files, verify all manifest references resolve (service_worker + content_scripts via python3), verify all ESM handlers have export statements. BLOCKING — added to `all-gates` needs array + both check conditions. Total: 19 quality gates (10 quality + 8 fitness + 1 extension build).
+- **S3.2 — Release process documentation:**
+  - `docs/extension-release-process.md` (NEW): 7-step release process (edit TS → build-dev.js → upload → deploy EF → update version EF → bump manifest → users get update). File map (6 key files). CI gate description. Three compilation modes documented. Fingerprinting section (channel map, CSS class randomization, dead code, string obfuscation).
+- **S3.3 — build-extension.js three-mode fix:**
+  - `extension/build-extension.js`: Replaced flat `JS_FILES` with categorized arrays: `PLAIN_FILES` (5 popup/supabase scripts), `IIFE_FILES` (10 content/background scripts), `PLAIN_UTILS` (3: fetchWithRetry, crypto, autoTracker), `ESM_UTILS` (1: fillMetrics). Added `SELECTORS_FILES` runtime discovery. `transformSource()` accepts `format` parameter — ESM mode preserves ALL export statements. `processJsFile()` accepts `format` — ESM uses `bundle: true, format: 'esm'`, IIFE uses `bundle: true, format: 'iife'`, Plain uses `bundle: false`. Handlers processed as ESM, preserving `export default { fill }`. Verified: 67 files, 844KB → 343KB (59% smaller), 0 errors.
+- **S3.4 — Test suite:**
+  - `tests/ext-build-001-s3-ci-release.test.js`: 44 validation tests (6 sections: CI gate, release docs, build-extension.js three-mode, build output format verification, EF file list parity, file inventory).
+- **Skipped Items:** B5 (resume default 1 page) — deferred to separate session per spec.
+- **Modified:**
+  - `.github/workflows/ci.yml` — ext-build gate + all-gates expansion (19 gates)
+  - `extension/build-extension.js` — three-mode categorized build
+  - `docs/scaling/pod-team-manifest.md` — S3 pairing
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `dist/admin.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — EXT-BUILD-001-S3 → ✅
+  - `roadmap.html` — EXT-BUILD-001-S3 → done/100
+- **Created:**
+  - `docs/extension-release-process.md` — 7-step release process
+  - `tests/ext-build-001-s3-ci-release.test.js` — 44 validation tests
+- **Tests:** 44 validation tests (all passing)
+- **EXT-BUILD-001 COMPLETE** — All 3 sessions done. Full extension build pipeline operational: clean build → upload → fingerprinted distribution → version check → auto-update → CI gate → release process documented.
+
+**Previous: EXT-BUILD-001-S2** — Dashboard Download + Version Check + Bugs B1/B2/B4
 - Completed: 2026-03-15
 - Product version bumped: `v9.28` → `v9.29`
 - ROADMAP.md updated: EXT-BUILD-001-S2 → ✅
@@ -3561,24 +3591,12 @@ Deliverables:
 
 ## Next Session
 
-**EXT-BUILD-001-S3** — CI Gate + Release Process + Regression Prevention
+**EXT-BUILD-001 COMPLETE.** All 3 sessions done.
 
-Entry gate: S2 complete (download button works, version check running, popup banner functional)
-
-Deliverables:
-- S3.1: CI gate `gate-ext-build` in `.github/workflows/ci.yml` — runs `node extension/build-dev.js`, verifies exit 0, checks manifest refs, verifies file count. BLOCKING.
-- S3.2: Release process documentation in `docs/extension-release-process.md` + HANDOFF.md lifecycle update
-- S3.3: `extension/build-extension.js` three-mode fix matching build-dev.js (Plain/ESM/IIFE)
-- S3.4: Test suite `tests/ext-build-001-pipeline.test.js` — build output format, EF file list match, version endpoint
-- Bug B5 (resume default 1 page): if session capacity allows
-
-Exit gate:
-- CI blocks PRs that break extension build
-- Release process documented
-- build-extension.js (fingerprinted) works with three-mode compilation
-- Test suite covers build output format verification
-
-Remaining backlog:
+Potential next workstreams:
+- B5 (resume default 1 page) — feature enhancement, separate session
+- 59-site optimized selector rollout (Phase A–D from spec)
+- Generic heuristic scraper fallback for unknown sites
 - Wire remaining 21 Anthropic-calling EFs to withAnthropicBreaker
 - CASA-001: Google CASA assessment + gmail.readonly upgrade
 - Any new feature work
@@ -3612,7 +3630,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.29`** | **EXT-BUILD-001-S2: Dashboard download + version check + B1/B2/B4** |
+| **Product (BJ_VERSION)** | **`v9.30`** | **EXT-BUILD-001-S3: CI gate + release process + three-mode. EXT-BUILD-001 COMPLETE.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

@@ -175,3 +175,4 @@
 |---------|-------------|----------------|
 | EXT-BUILD-001-S1 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
 | EXT-BUILD-001-S2 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + System Architect—Scalability |
+| EXT-BUILD-001-S3 | Chief Architect + Evolvability Strategist | Lead Platform Eng + System Architect—Scalability |

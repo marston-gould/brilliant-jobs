@@ -33,21 +33,25 @@ const DIST_ROOT = join(__dirname, 'dist');
 // CONFIGURATION
 // ═══════════════════════════════════════════════════════════
 
-// JS files to process (minify + randomize)
-const JS_FILES = [
-  'background.ts',
-  'content.ts',
-  'contentScript.ts',
-  'human-sim.ts',
-  'interceptor.ts',
-  'interceptor-bridge.ts',
-  'job-site-overlay.ts',
-  'popup.ts',
-  'popup-bridge.ts',
-  'popup-consumer.ts',
-  'popup-post.ts',
-  'supabase.ts',
+// EXT-BUILD-001-S3: Three-mode file classification (matches build-dev.js)
+// Plain: importScripts() / <script> — globals, no IIFE wrap
+const PLAIN_FILES = [
+  'supabase.ts', 'popup-bridge.ts', 'popup.ts', 'popup-consumer.ts', 'popup-post.ts',
 ];
+// ESM: dynamic import() in contentScript — preserve export default
+const ESM_FILES = []; // handlers discovered at runtime below
+// IIFE: manifest content_scripts / service_worker — full isolation
+const IIFE_FILES = [
+  'background.ts', 'content.ts', 'contentScript.ts', 'human-sim.ts',
+  'interceptor.ts', 'interceptor-bridge.ts', 'job-site-overlay.ts',
+  'inject-overlay.ts', 'toolbar-overlay.ts', 'token-sync.ts',
+];
+
+// All root-level JS files for backward compat (used by filenameMap generation)
+const JS_FILES = [...PLAIN_FILES, ...IIFE_FILES];
+
+// Plain utils (loaded via importScripts in service worker)
+const PLAIN_UTILS = ['fetchWithRetry.ts', 'crypto.ts', 'autoTracker.ts'];
 
 // Subdirectory JS files (discovered at runtime)
 const HANDLER_FILES = existsSync(join(__dirname, 'handlers'))
@@ -56,6 +60,11 @@ const UTILS_FILES = existsSync(join(__dirname, 'utils'))
   ? readdirSync(join(__dirname, 'utils')).filter(f => f.endsWith('.ts')) : [];
 const FIELDS_FILES = existsSync(join(__dirname, 'fields'))
   ? readdirSync(join(__dirname, 'fields')).filter(f => f.endsWith('.ts')) : [];
+const SELECTORS_FILES = existsSync(join(__dirname, 'selectors'))
+  ? readdirSync(join(__dirname, 'selectors')).filter(f => f.endsWith('.ts')) : [];
+
+// ESM utils (loaded via dynamic import — must preserve exports)
+const ESM_UTILS = ['fillMetrics.ts'];
 
 // Static files to copy as-is
 const STATIC_FILES = [
@@ -122,6 +131,7 @@ function generateFilenameMap() {
   for (const f of HANDLER_FILES) map[`handlers/${f}`] = `h_${randomHex(5)}.js`;
   for (const f of UTILS_FILES) map[`utils/${f}`] = `u_${randomHex(5)}.js`;
   for (const f of FIELDS_FILES) map[`fields/${f}`] = `f_${randomHex(5)}.js`;
+  for (const f of SELECTORS_FILES) map[`selectors/${f}`] = `s_${randomHex(5)}.js`;
   return map;
 }
 
@@ -156,25 +166,32 @@ function generateDeadCode() {
 // FILE PROCESSING
 // ═══════════════════════════════════════════════════════════
 
-/** Apply channel name replacements and dead code injection to source */
-function transformSource(source, channelMap) {
+/** Apply channel name replacements and dead code injection to source
+ *  EXT-BUILD-001-S3: format parameter controls export/import handling
+ *  - 'plain': strip all exports (global scope)
+ *  - 'esm': preserve export default + export { }, strip bare imports only
+ *  - 'iife': strip all export/import (IIFE isolation)
+ */
+function transformSource(source, channelMap, format = 'iife') {
   let result = source;
 
-  // BI-07-FIX: Strip ES module syntax — extension scripts are standalone Chrome scripts,
-  // not imported by other modules. SA-022 added export/import for TypeScript, but the
-  // fingerprinted build produces single-file scripts loaded directly by Chrome.
-  // 1. Remove entire import lines
-  result = result.replace(/^import\s+.*from\s+['"].*['"];?\s*$/gm, '');
+  // Strip import type lines (all modes)
   result = result.replace(/^import\s+type\s+.*$/gm, '');
-  // 2. Remove entire "export default { ... };" and "export { ... };" lines (re-export lines)
-  result = result.replace(/^export\s+default\s+\{[^}]*\};?\s*$/gm, '');
-  result = result.replace(/^export\s+\{[^}]*\};?\s*$/gm, '');
-  // 2b. Remove "export default <identifier>;" (single-name default exports)
-  result = result.replace(/^export\s+default\s+[a-zA-Z_$][a-zA-Z0-9_$]*\s*;?\s*$/gm, '');
-  // 3. Strip "export default " before function/class declarations (keep the declaration)
-  result = result.replace(/^export\s+default\s+(async\s+)?(function|class)\s/gm, '$1$2 ');
-  // 4. Strip "export " before const/let/var/function/async/class/enum/interface/type
-  result = result.replace(/^export\s+(const|let|var|function|async|class|enum|interface|type)\s/gm, '$1 ');
+  // Strip import lines (all modes — esbuild bundling handles deps)
+  result = result.replace(/^import\s+.*from\s+['"].*['"];?\s*$/gm, '');
+  result = result.replace(/^import\s+['"].*['"];?\s*$/gm, '');
+
+  if (format === 'esm') {
+    // ESM: preserve ALL export statements (export default, export {}, export function)
+    // Only imports stripped (above)
+  } else {
+    // Plain + IIFE: strip all export keywords
+    result = result.replace(/^export\s+default\s+\{[^}]*\};?\s*$/gm, '');
+    result = result.replace(/^export\s+\{[^}]*\};?\s*$/gm, '');
+    result = result.replace(/^export\s+default\s+[a-zA-Z_$][a-zA-Z0-9_$]*\s*;?\s*$/gm, '');
+    result = result.replace(/^export\s+default\s+(async\s+)?(function|class)\s/gm, '$1$2 ');
+    result = result.replace(/^export\s+(const|let|var|function|async|class|enum|interface|type)\s/gm, '$1 ');
+  }
 
   // Replace channel names — longest first to avoid partial matches
   const sorted = Object.keys(channelMap).sort((a, b) => b.length - a.length);
@@ -193,16 +210,18 @@ function transformSource(source, channelMap) {
   return result;
 }
 
-/** Process a single JS file: transform → minify → write */
-function processJsFile(srcPath, outPath, channelMap) {
+/** Process a single JS file: transform → minify → write
+ *  EXT-BUILD-001-S3: format parameter controls esbuild output format
+ */
+function processJsFile(srcPath, outPath, channelMap, format = 'iife') {
   let source = readFileSync(srcPath, 'utf-8');
-  const transformed = transformSource(source, channelMap);
+  const transformed = transformSource(source, channelMap, format);
 
   const tmpPath = outPath + '.tmp.ts';
   writeFileSync(tmpPath, transformed);
 
   try {
-    buildSync({
+    const esbuildOpts = {
       entryPoints: [tmpPath],
       outfile: outPath,
       minify: true,
@@ -210,13 +229,24 @@ function processJsFile(srcPath, outPath, channelMap) {
       minifyIdentifiers: true,
       minifySyntax: true,
       target: 'chrome120',
-      bundle: false,
       legalComments: 'none',
       charset: 'utf8',
-    });
+    };
+
+    if (format === 'esm') {
+      esbuildOpts.bundle = true;
+      esbuildOpts.format = 'esm';
+    } else if (format === 'iife') {
+      esbuildOpts.bundle = true;
+      esbuildOpts.format = 'iife';
+    } else {
+      // Plain — no bundling, just transpile
+      esbuildOpts.bundle = false;
+    }
+
+    buildSync(esbuildOpts);
   } catch (_transformErr) {
-    // BI-07-FIX: Fallback — some .ts files have structural issues after export stripping.
-    // Re-try with channel replacement only (no export stripping) + esbuild's native TS handling.
+    // Fallback — retry with channel replacement only + esbuild's native TS handling
     let fallback = source;
     const sorted = Object.keys(channelMap).sort((a, b) => b.length - a.length);
     for (const original of sorted) {
@@ -234,12 +264,12 @@ function processJsFile(srcPath, outPath, channelMap) {
       minifyIdentifiers: true,
       minifySyntax: true,
       target: 'chrome120',
-      bundle: true,            // bundle: true resolves export/import natively
-      format: 'iife',          // IIFE wraps everything, strips exports
+      bundle: true,
+      format: format === 'esm' ? 'esm' : 'iife',
       legalComments: 'none',
       charset: 'utf8',
     });
-    console.warn(`  ⚠ ${srcPath}: used bundle+iife fallback (export stripping failed)`);
+    console.warn(`  ⚠ ${srcPath}: used fallback (primary transform failed)`);
   } finally {
     try { unlinkSync(tmpPath); } catch (_) { /* temp file cleanup — best effort */ }
   }
@@ -300,20 +330,31 @@ function buildOne() {
   let fileCount = 0;
 
   // Helper: process a file and accumulate stats
-  function process(srcPath, relKey) {
+  function process(srcPath, relKey, format = 'iife') {
     if (!existsSync(srcPath)) { console.warn(`  ⚠ Skipping: ${relKey}`); return; }
     const outPath = join(buildDir, filenameMap[relKey]);
-    processJsFile(srcPath, outPath, channelMap);
+    processJsFile(srcPath, outPath, channelMap, format);
     totalOrigSize += readFileSync(srcPath).length;
     totalMinSize += readFileSync(outPath).length;
     fileCount++;
   }
 
-  // Process all JS
-  for (const f of JS_FILES) process(join(__dirname, f), f);
-  for (const f of HANDLER_FILES) process(join(__dirname, 'handlers', f), `handlers/${f}`);
-  for (const f of UTILS_FILES) process(join(__dirname, 'utils', f), `utils/${f}`);
-  for (const f of FIELDS_FILES) process(join(__dirname, 'fields', f), `fields/${f}`);
+  // EXT-BUILD-001-S3: Process files by format category
+  // Plain files (global scope, no IIFE)
+  for (const f of PLAIN_FILES) process(join(__dirname, f), f, 'plain');
+  // IIFE files (content_scripts / service_worker)
+  for (const f of IIFE_FILES) process(join(__dirname, f), f, 'iife');
+  // ESM handlers (preserve export default)
+  for (const f of HANDLER_FILES) process(join(__dirname, 'handlers', f), `handlers/${f}`, 'esm');
+  // Utils: plain utils stay plain, ESM utils stay ESM, rest are IIFE
+  for (const f of UTILS_FILES) {
+    const format = PLAIN_UTILS.includes(f) ? 'plain' : ESM_UTILS.includes(f) ? 'esm' : 'iife';
+    process(join(__dirname, 'utils', f), `utils/${f}`, format);
+  }
+  // Fields: IIFE
+  for (const f of FIELDS_FILES) process(join(__dirname, 'fields', f), `fields/${f}`, 'iife');
+  // Selectors: IIFE
+  for (const f of SELECTORS_FILES) process(join(__dirname, 'selectors', f), `selectors/${f}`, 'iife');
 
   // Build manifest + popup.html with randomized refs
   const manifest = buildManifest(buildDir, filenameMap);
