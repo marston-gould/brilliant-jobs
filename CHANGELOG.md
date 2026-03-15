@@ -1,3 +1,24 @@
+## v9.39 RESUME-BUILDER-001-S4: AI Rewrites (2026-03-15)
+- resume-rewrite-bullet EF: Anthropic call, 1-credit cost, 2-3 bullet alternatives, system prompt forbids fabrication, requires action verbs. 401/402/400/502 error surfaces.
+- resume-builder.js: rbImproveBullets (per-experience Improve with AI button), rbAcceptRewrite (replaces bullet in parsedJson + textarea + marks dirty). Fixed literal \n in split/join (was breaking esbuild).
+- CSS: rb-improve-btn, rb-rewrite-panel, rb-rewrite-option, rb-rewrite-accept pre-built.
+- gateway: resume-rewrite-bullet route promoted from stub.
+- 32 tests. RESUME-BUILDER-001 all 4 sessions COMPLETE. v9.39.
+
+## v9.39 RESUME-BUILDER-001-S4: AI Rewrites (2026-03-15)
+- resume-rewrite-bullet EF: Anthropic call, 1-credit cost, 2-3 bullet alternatives, system prompt forbids fabrication, requires action verbs. 401/402/400/502 error surfaces.
+- resume-builder.js: rbImproveBullets (per-experience Improve with AI button), rbAcceptRewrite (replaces bullet in parsedJson + textarea + marks dirty). Fixed literal \n in split/join (was breaking esbuild).
+- CSS: rb-improve-btn, rb-rewrite-panel, rb-rewrite-option, rb-rewrite-accept pre-built.
+- gateway: resume-rewrite-bullet route promoted from stub.
+- 32 tests. RESUME-BUILDER-001 all 4 sessions COMPLETE. v9.39.
+
+## v9.39 RESUME-BUILDER-001-S4: AI Rewrites (2026-03-15)
+- resume-rewrite-bullet EF: Anthropic call, 1-credit cost, 2-3 bullet alternatives, system prompt forbids fabrication, requires action verbs. 401/402/400/502 error surfaces.
+- resume-builder.js: rbImproveBullets (per-experience Improve with AI button), rbAcceptRewrite (replaces bullet in parsedJson + textarea + marks dirty). Fixed literal \n in split/join (was breaking esbuild).
+- CSS: rb-improve-btn, rb-rewrite-panel, rb-rewrite-option, rb-rewrite-accept pre-built.
+- gateway: resume-rewrite-bullet route promoted from stub.
+- 32 tests. RESUME-BUILDER-001 all 4 sessions COMPLETE. v9.39.
+
 ## v9.38 RESUME-BUILDER-001-S3: Keyword Optimization (2026-03-15)
 - resume-optimize EF: Anthropic Haiku keyword extraction from ats_jobs JD, weighted gap analysis (skills 3x > education 2x > title 2x > certs 1.5x > soft_skills 1x > location 0.5x), partial match via acronym detection, 1-credit cost, persists match_score + keyword_gaps to resumes row. 401/402/404/422/502 error surfaces.
 - dashboard.html: rb-optimize-section card — job selector (loads from pipeline), score circle (conic-gradient, CSS custom props), gap pills (present/partial/missing), suggestions list, analyzing spinner.

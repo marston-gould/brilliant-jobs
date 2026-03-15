@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.38';
+var BJ_VERSION = 'v9.39';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -27205,8 +27205,12 @@ window.addEventListener('resize', function() {
           <div class="rb-field"><label class="rb-label">Location</label><input type="text" class="rb-input rb-exp-field" data-idx="${i}" data-key="location" value="${rbEsc(job.location || '')}"></div>
         </div>
         <div class="rb-field">
-          <label class="rb-label">Bullet Points <span class="rb-label-hint">(one per line)</span></label>
-          <textarea class="rb-textarea rb-exp-field" rows="4" data-idx="${i}" data-key="bullets">${rbEsc((job.bullets || []).join('\n'))}</textarea>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <label class="rb-label" style="margin-bottom:0;">Bullet Points <span class="rb-label-hint">(one per line)</span></label>
+            <button class="rb-improve-btn" onclick="rbImproveBullets(${i})" id="rb-improve-btn-${i}">✦ Improve with AI</button>
+          </div>
+          <textarea class="rb-textarea rb-exp-field" rows="4" data-idx="${i}" data-key="bullets" id="rb-bullets-${i}">${rbEsc((job.bullets || []).join('\n'))}</textarea>
+          <div id="rb-rewrite-panel-${i}" class="rb-rewrite-panel u-hidden"></div>
         </div>
       </div>
     `).join('');
@@ -27768,6 +27772,130 @@ window.addEventListener('resize', function() {
     if (spinner) spinner.classList.toggle('u-hidden', !active);
     if (active && report) report.classList.add('u-hidden');
   }
+
+  // ─── S4: AI Bullet Rewrites ──────────────────────────────────────────────────
+
+  window.rbImproveBullets = async function (jobIdx) {
+    if (!_state.parsedJson || !_state.resumeId) {
+      if (typeof showToast === 'function') showToast('Save your resume first', 'warning');
+      return;
+    }
+
+    const job = _state.parsedJson.work_experience?.[jobIdx];
+    if (!job) return;
+
+    const ta = document.getElementById(`rb-bullets-${jobIdx}`);
+    const bullets = (ta?.value || '').split('\n').map(s => s.trim()).filter(Boolean);
+    if (bullets.length === 0) {
+      if (typeof showToast === 'function') showToast('Add at least one bullet point first', 'warning');
+      return;
+    }
+
+    const panel = document.getElementById(`rb-rewrite-panel-${jobIdx}`);
+    const btn = document.getElementById(`rb-improve-btn-${jobIdx}`);
+    if (!panel) return;
+
+    // Gather target keywords from gap report if available, else from skills
+    const skills = _state.parsedJson.skills || [];
+    const targetKeywords = skills.slice(0, 10);
+
+    const jobContext = [job.title, job.company].filter(Boolean).join(' at ');
+
+    panel.classList.remove('u-hidden');
+    panel.innerHTML = `<div class="rb-rewrite-loading"><div class="rb-generate-spinner"></div>Generating rewrites for ${bullets.length} bullet${bullets.length > 1 ? 's' : ''}…</div>`;
+    if (btn) { btn.disabled = true; btn.textContent = 'Working…'; }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      // Rewrite all bullets — one request per bullet (max 3 bullets to limit credit spend)
+      const bulletsToRewrite = bullets.slice(0, 3);
+      const results = await Promise.allSettled(
+        bulletsToRewrite.map(bullet =>
+          fetch('/api/resume-rewrite-bullet', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ resume_id: _state.resumeId, bullet, target_keywords: targetKeywords, job_context: jobContext }),
+          }).then(r => r.json())
+        )
+      );
+
+      let html = `<div class="rb-rewrite-panel-title">✦ AI Rewrites — click Accept to replace</div>`;
+      let anySuccess = false;
+
+      results.forEach((result, idx) => {
+        const originalBullet = bulletsToRewrite[idx];
+        if (result.status === 'fulfilled' && result.value.alternatives?.length) {
+          anySuccess = true;
+          html += `<div style="margin-bottom:14px;"><div style="font-size:11px;color:var(--text-faint);margin-bottom:6px;font-style:italic;">Original: ${rbEsc(originalBullet)}</div>`;
+          result.value.alternatives.forEach((alt, altIdx) => {
+            html += `<div class="rb-rewrite-option">
+              <span class="rb-rewrite-text">${rbEsc(alt)}</span>
+              <button class="rb-rewrite-accept" data-accept-idx="1" data-job-idx="${jobIdx}" data-bullet-idx="${idx}" data-alt="${rbEsc(alt)}">Accept</button>
+            </div>`;
+          });
+          html += `</div>`;
+        } else {
+          const errMsg = result.status === 'fulfilled' ? (result.value.error || 'Failed') : 'Network error';
+          html += `<div class="rb-rewrite-error">Bullet ${idx + 1}: ${rbEsc(errMsg)}</div>`;
+        }
+      });
+
+      if (bullets.length > 3) {
+        html += `<div style="font-size:11px;color:var(--text-faint);margin-top:8px;">Showing rewrites for first 3 bullets (${bullets.length - 3} more not shown).</div>`;
+      }
+
+      html += '<div style="text-align:right;margin-top:12px;"><button class="btn btn-sm btn-outline" data-dismiss-panel="' + jobIdx + '">Dismiss</button></div>';
+      panel.innerHTML = html;
+      // Bind dismiss buttons
+      panel.querySelectorAll('[data-dismiss-panel]').forEach(function(b) {
+        b.addEventListener('click', function() { panel.classList.add('u-hidden'); });
+      });
+      // Bind accept buttons
+      panel.querySelectorAll('[data-accept-idx]').forEach(function(b) {
+        b.addEventListener('click', function() {
+          rbAcceptRewrite(parseInt(b.dataset.jobIdx), parseInt(b.dataset.bulletIdx), b.dataset.alt);
+        });
+      });
+
+      if (anySuccess) {
+        captureEvent('resume_bullets_rewritten', { job_idx: jobIdx, bullet_count: bulletsToRewrite.length });
+      }
+
+    } catch (err) {
+      reportError('resume_rewrite_exception', err);
+      panel.innerHTML = '<div class="rb-rewrite-error">An unexpected error occurred. Please try again.</div>' +
+        '<div style="text-align:right;margin-top:8px;"><button class="btn btn-sm btn-outline" data-dismiss-panel="' + jobIdx + '">Dismiss</button></div>';
+      panel.querySelectorAll('[data-dismiss-panel]').forEach(function(b) {
+        b.addEventListener('click', function() { panel.classList.add('u-hidden'); });
+      });
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '✦ Improve with AI'; }
+    }
+  };
+
+  // Accept a single rewrite — replaces that bullet in the textarea
+  window.rbAcceptRewrite = function (jobIdx, bulletIdx, newText) {
+    const ta = document.getElementById(`rb-bullets-${jobIdx}`);
+    if (!ta) return;
+    const bullets = ta.value.split('\n').map(s => s.trim()).filter(Boolean);
+    if (bulletIdx < bullets.length) {
+      bullets[bulletIdx] = newText;
+    } else {
+      bullets.push(newText);
+    }
+    ta.value = bullets.join('\n');
+    // Sync to parsedJson
+    if (_state.parsedJson?.work_experience?.[jobIdx]) {
+      _state.parsedJson.work_experience[jobIdx].bullets = bullets;
+      _state.dirty = true;
+    }
+    if (typeof showToast === 'function') showToast('Bullet updated', 'success');
+    captureEvent('resume_rewrite_accepted', { job_idx: jobIdx, bullet_idx: bulletIdx });
+    // Collapse the panel
+    document.getElementById(`rb-rewrite-panel-${jobIdx}`)?.classList.add('u-hidden');
+  };
 
   // ─── Page init hook (called by showPage in app.js) ────────────────────────
 

@@ -3651,4 +3651,17 @@
     .rb-gap-legend-dot.present { background: #16a34a; }
     .rb-gap-legend-dot.partial  { background: #d97706; }
     .rb-gap-legend-dot.missing  { background: #ef4444; }
+    /* RESUME-BUILDER-001-S4: AI bullet rewrites */
+    .rb-improve-btn { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 600; color: var(--accent); cursor: pointer; margin-left: 8px; transition: background 0.15s; white-space: nowrap; }
+    .rb-improve-btn:hover { background: hsla(var(--accent-hsl), 0.1); }
+    .rb-improve-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .rb-rewrite-panel { background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-top: 8px; }
+    .rb-rewrite-panel-title { font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 10px; }
+    .rb-rewrite-option { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 8px; background: var(--bg-card); cursor: default; }
+    .rb-rewrite-option:last-child { margin-bottom: 0; }
+    .rb-rewrite-text { flex: 1; font-size: 12px; color: var(--text); line-height: 1.6; }
+    .rb-rewrite-accept { background: var(--accent); border: none; color: #fff; border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: opacity 0.15s; }
+    .rb-rewrite-accept:hover { opacity: 0.85; }
+    .rb-rewrite-loading { font-size: 12px; color: var(--text-dim); display: flex; align-items: center; gap: 8px; padding: 8px 0; }
+    .rb-rewrite-error { font-size: 12px; color: #ef4444; padding: 6px 0; }
     .u-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }

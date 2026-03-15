@@ -97,7 +97,7 @@ const ROUTE_REGISTRY: Record<string, string> = {
   "resume-parse":             "resume-parse",             // RESUME-BUILDER-001-S1
   "resume-generate":          "resume-generate",          // RESUME-BUILDER-001-S2 (stub)
   "resume-optimize":          "resume-optimize",          // RESUME-BUILDER-001-S3 (stub)
-  "resume-rewrite-bullet":    "resume-rewrite-bullet",    // RESUME-BUILDER-001-S4 (stub)
+  "resume-rewrite-bullet":    "resume-rewrite-bullet",    // RESUME-BUILDER-001-S4
 
   // ── Scoring & Quality (3) ────────────────────────────────────────────────
   "score-job-fraud":          "score-job-fraud",          // SA-004
