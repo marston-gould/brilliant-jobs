@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.51';
+var BJ_VERSION = 'v9.52';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -35803,8 +35803,387 @@ window.initBillingToggle = initBillingToggle;
       .replace(/"/g, '&quot;');
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // FB-INTPREP-001-S4: Simulation UI — Chat Modal + Sessions List
+  // ═══════════════════════════════════════════════════════════════
+
+  var _simSessionId = null;
+  var _simSending = false;
+
+  // ─── Start mock interview ───
+  window._ipStartMock = async function(jobId, pipelineEntryId, focusQuestion) {
+    try {
+      var sb = window.bjSupabase || (window.supabase && window.supabase.createClient
+        ? window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY) : null);
+      if (!sb) return;
+
+      var session = await sb.auth.getSession();
+      var token = session && session.data && session.data.session && session.data.session.access_token;
+      if (!token) { if (typeof toast === 'function') toast('Please log in to start a mock interview.', { type: 'warning' }); return; }
+
+      var feedbackToggle = document.getElementById('ip-sim-feedback-toggle');
+      var feedbackMode = feedbackToggle ? feedbackToggle.checked : true;
+
+      // Show modal
+      var overlay = document.getElementById('ip-sim-overlay');
+      if (overlay) overlay.style.display = '';
+      var chat = document.getElementById('ip-sim-chat');
+      if (chat) chat.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-dim);">Starting interview...</div>';
+      var scoreArea = document.getElementById('ip-sim-scorecard');
+      if (scoreArea) scoreArea.style.display = 'none';
+      var inputArea = document.getElementById('ip-sim-input-area');
+      if (inputArea) inputArea.style.display = 'flex';
+
+      var resp = await fetch(window.SUPABASE_URL + '/functions/v1/api-gateway/interview-simulate', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'start',
+          job_id: jobId || null,
+          pipeline_entry_id: pipelineEntryId || null,
+          feedback_mode: feedbackMode,
+          question_count: 6,
+          source: focusQuestion ? 'question_bank' : (jobId ? 'pipeline' : 'standalone'),
+          focus_question: focusQuestion || null,
+        }),
+      });
+
+      var data = await resp.json();
+      if (!resp.ok || data.error) {
+        reportError('interview-prep:start', data.error || 'Start failed');
+        if (chat) chat.innerHTML = '<div style="text-align:center;padding:20px;color:var(--warm);">Failed to start interview. ' + _esc(data.error || '') + '</div>';
+        return;
+      }
+
+      _simSessionId = data.session_id;
+      _updateSimHeader(null, null, data.question_number || 1, 6);
+      if (chat) {
+        chat.innerHTML = '';
+        _appendMessage(chat, 'assistant', data.reply);
+      }
+      if (typeof window.refreshIcons === 'function') window.refreshIcons();
+    } catch (err) {
+      reportError('interview-prep:start', err);
+    }
+  };
+
+  // ─── Send message ───
+  window._ipSendMessage = async function() {
+    if (_simSending || !_simSessionId) return;
+    var input = document.getElementById('ip-sim-input');
+    var message = input ? input.value.trim() : '';
+    if (!message) return;
+
+    _simSending = true;
+    if (input) input.value = '';
+    var sendBtn = document.getElementById('ip-sim-send');
+    if (sendBtn) sendBtn.disabled = true;
+
+    var chat = document.getElementById('ip-sim-chat');
+    _appendMessage(chat, 'user', message);
+
+    // Show typing indicator
+    var typingEl = document.createElement('div');
+    typingEl.id = 'ip-sim-typing';
+    typingEl.style.cssText = 'padding:10px 14px;font-size:12px;color:var(--text-faint);font-style:italic;';
+    typingEl.textContent = 'Interviewer is thinking...';
+    if (chat) chat.appendChild(typingEl);
+    if (chat) chat.scrollTop = chat.scrollHeight;
+
+    try {
+      var sb = window.bjSupabase || (window.supabase && window.supabase.createClient
+        ? window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY) : null);
+      var session = await sb.auth.getSession();
+      var token = session && session.data && session.data.session && session.data.session.access_token;
+
+      var resp = await fetch(window.SUPABASE_URL + '/functions/v1/api-gateway/interview-simulate', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'message', session_id: _simSessionId, message: message }),
+      });
+
+      var data = await resp.json();
+
+      // Remove typing indicator
+      var typing = document.getElementById('ip-sim-typing');
+      if (typing) typing.remove();
+
+      if (!resp.ok || data.error) {
+        _appendMessage(chat, 'system', 'Error: ' + (data.error || 'Failed to get response'));
+        reportError('interview-prep:message', data.error);
+      } else {
+        _appendMessage(chat, 'assistant', data.reply);
+        _updateSimHeader(null, null, data.question_number, 6);
+
+        if (data.is_complete && data.scorecard) {
+          _renderScorecard(data.scorecard);
+          var inputArea = document.getElementById('ip-sim-input-area');
+          if (inputArea) inputArea.style.display = 'none';
+        }
+      }
+    } catch (err) {
+      var typing = document.getElementById('ip-sim-typing');
+      if (typing) typing.remove();
+      _appendMessage(chat, 'system', 'Network error. Please try again.');
+      reportError('interview-prep:message', err);
+    }
+
+    _simSending = false;
+    if (sendBtn) sendBtn.disabled = false;
+    if (input) input.focus();
+    if (chat) chat.scrollTop = chat.scrollHeight;
+    if (typeof window.refreshIcons === 'function') window.refreshIcons();
+  };
+
+  // ─── Hint request ───
+  window._ipRequestHint = async function() {
+    if (_simSending || !_simSessionId) return;
+    _simSending = true;
+    try {
+      var sb = window.bjSupabase || (window.supabase && window.supabase.createClient
+        ? window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY) : null);
+      var session = await sb.auth.getSession();
+      var token = session && session.data && session.data.session && session.data.session.access_token;
+
+      var resp = await fetch(window.SUPABASE_URL + '/functions/v1/api-gateway/interview-simulate', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'message', session_id: _simSessionId, message: '[HINT REQUEST] I need a hint for this question. Give me a brief prompt to guide my answer without giving the full answer.' }),
+      });
+      var data = await resp.json();
+      var chat = document.getElementById('ip-sim-chat');
+      if (data.reply) _appendMessage(chat, 'hint', data.reply);
+      if (window.posthog) posthog.capture('simulation_hint_requested', { session_id: _simSessionId });
+    } catch (err) { reportError('interview-prep:hint', err); }
+    _simSending = false;
+  };
+
+  // ─── End early ───
+  window._ipEndEarly = async function() {
+    if (!_simSessionId) return;
+    if (!confirm('End this interview early? You won\'t receive a scorecard.')) return;
+    try {
+      var sb = window.bjSupabase || (window.supabase && window.supabase.createClient
+        ? window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY) : null);
+      var session = await sb.auth.getSession();
+      var token = session && session.data && session.data.session && session.data.session.access_token;
+
+      await fetch(window.SUPABASE_URL + '/functions/v1/api-gateway/interview-simulate', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'abandon', session_id: _simSessionId }),
+      });
+    } catch (err) { reportError('interview-prep:abandon', err); }
+    window._ipCloseSimulation();
+  };
+
+  // ─── Close modal ───
+  window._ipCloseSimulation = function() {
+    var overlay = document.getElementById('ip-sim-overlay');
+    if (overlay) overlay.style.display = 'none';
+    _simSessionId = null;
+    _simSending = false;
+    // Refresh sessions list if on My Sessions tab
+    _loadSessions();
+  };
+
+  // ─── Chat message rendering ───
+  function _appendMessage(container, role, content) {
+    if (!container) return;
+    var div = document.createElement('div');
+    var feedbackToggle = document.getElementById('ip-sim-feedback-toggle');
+    var showCoaching = feedbackToggle ? feedbackToggle.checked : true;
+
+    // Extract coaching notes
+    var mainContent = content;
+    var coachNote = '';
+    if (role === 'assistant' && showCoaching) {
+      var coachMatch = content.match(/\[COACH\]([\s\S]*?)\[\/COACH\]/);
+      if (coachMatch) {
+        coachNote = coachMatch[1].trim();
+        mainContent = content.replace(/\[COACH\][\s\S]*?\[\/COACH\]/, '').trim();
+      }
+    } else if (role === 'assistant' && !showCoaching) {
+      mainContent = content.replace(/\[COACH\][\s\S]*?\[\/COACH\]/, '').trim();
+    }
+
+    var bgColor = role === 'user' ? 'var(--accent)' : role === 'hint' ? 'rgba(245,158,11,0.15)' : role === 'system' ? 'rgba(239,68,68,0.1)' : 'var(--bg-input)';
+    var textColor = role === 'user' ? '#fff' : 'var(--text)';
+    var align = role === 'user' ? 'flex-end' : 'flex-start';
+    var maxW = '85%';
+
+    div.style.cssText = 'display:flex;justify-content:' + align + ';';
+    div.innerHTML = '<div style="max-width:' + maxW + ';padding:10px 14px;border-radius:12px;background:' + bgColor + ';color:' + textColor + ';font-size:13px;line-height:1.5;white-space:pre-wrap;">' +
+      _esc(mainContent) +
+    '</div>';
+    container.appendChild(div);
+
+    // Coaching note
+    if (coachNote) {
+      var noteDiv = document.createElement('div');
+      noteDiv.style.cssText = 'padding:4px 14px 4px 28px;font-size:11px;color:var(--accent);font-style:italic;';
+      noteDiv.textContent = coachNote;
+      container.appendChild(noteDiv);
+    }
+
+    container.scrollTop = container.scrollHeight;
+  }
+
+  // ─── Header update ───
+  function _updateSimHeader(company, role, questionNum, totalQuestions) {
+    var title = document.getElementById('ip-sim-title');
+    var progress = document.getElementById('ip-sim-progress');
+    if (title && (company || role)) title.textContent = (company || '') + (company && role ? ' — ' : '') + (role || 'Mock Interview');
+    if (progress && questionNum) progress.textContent = 'Question ' + questionNum + ' of ' + totalQuestions;
+  }
+
+  // ─── Scorecard rendering ───
+  function _renderScorecard(scorecard) {
+    var area = document.getElementById('ip-sim-scorecard');
+    if (!area || !scorecard) return;
+    area.style.display = '';
+
+    var scoreColor = scorecard.overall_score >= 75 ? 'var(--green,#22c55e)' : scorecard.overall_score >= 50 ? 'var(--accent)' : 'var(--warm)';
+
+    area.innerHTML =
+      '<div style="text-align:center;margin-bottom:16px;">' +
+        '<div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">Readiness Score</div>' +
+        '<div style="font-size:36px;font-weight:800;color:' + scoreColor + ';">' + (scorecard.overall_score || 0) + '</div>' +
+      '</div>' +
+      (scorecard.strengths && scorecard.strengths.length ? '<div style="margin-bottom:12px;"><div style="font-size:12px;font-weight:600;color:var(--green,#22c55e);margin-bottom:4px;">Strengths</div>' + scorecard.strengths.map(function(s) { return '<div style="font-size:12px;color:var(--text-dim);padding:2px 0;">• ' + _esc(s) + '</div>'; }).join('') + '</div>' : '') +
+      (scorecard.improvements && scorecard.improvements.length ? '<div style="margin-bottom:12px;"><div style="font-size:12px;font-weight:600;color:var(--warm);margin-bottom:4px;">Areas to Improve</div>' + scorecard.improvements.map(function(s) { return '<div style="font-size:12px;color:var(--text-dim);padding:2px 0;">• ' + _esc(s) + '</div>'; }).join('') + '</div>' : '') +
+      (scorecard.talking_points && scorecard.talking_points.length ? '<div style="margin-bottom:12px;"><div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:4px;">Talking Points for the Real Interview</div>' + scorecard.talking_points.map(function(s) { return '<div style="font-size:12px;color:var(--text-dim);padding:2px 0;">• ' + _esc(s) + '</div>'; }).join('') + '</div>' : '') +
+      (scorecard.gap_coverage ? '<div style="font-size:11px;color:var(--text-faint);margin-top:8px;"><strong>Gap Coverage:</strong> ' + _esc(scorecard.gap_coverage) + '</div>' : '') +
+      '<div style="text-align:center;margin-top:16px;"><button class="btn btn-primary btn-sm" onclick="window._ipCloseSimulation()">Save & Close</button></div>';
+  }
+
+  // ─── Load sessions list (My Sessions tab) ───
+  async function _loadSessions() {
+    var container = document.getElementById('ip-sessions-list');
+    if (!container) return;
+
+    try {
+      var sb = window.bjSupabase || (window.supabase && window.supabase.createClient
+        ? window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY) : null);
+      if (!sb) return;
+
+      var { data, error } = await sb
+        .from('interview_sessions')
+        .select('id, job_id, status, overall_score, feedback_mode, question_count, started_at, completed_at, scorecard')
+        .order('started_at', { ascending: false })
+        .limit(20);
+
+      if (error) {
+        reportError('interview-prep:sessions', error);
+        container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-dim);">Unable to load sessions.</div>';
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-dim);">' +
+          '<i data-lucide="message-square-quote" class="icon-xl" style="color:var(--text-faint);margin-bottom:8px;display:inline-block;"></i>' +
+          '<div style="font-size:13px;">No sessions yet. Start a mock interview to practice!</div>' +
+        '</div>';
+        if (typeof window.refreshIcons === 'function') window.refreshIcons();
+        return;
+      }
+
+      container.innerHTML = data.map(function(s) {
+        var statusColor = s.status === 'completed' ? 'var(--green,#22c55e)' : s.status === 'abandoned' ? 'var(--text-faint)' : 'var(--accent)';
+        var statusLabel = s.status === 'completed' ? 'Completed' : s.status === 'abandoned' ? 'Abandoned' : 'In Progress';
+        var dateStr = new Date(s.started_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        var scoreHtml = s.overall_score != null ? '<span style="font-size:18px;font-weight:700;color:' + (s.overall_score >= 75 ? 'var(--green,#22c55e)' : s.overall_score >= 50 ? 'var(--accent)' : 'var(--warm)') + ';">' + s.overall_score + '</span>' : '';
+
+        return '<div class="card ip-session-card" style="padding:12px 16px;margin-bottom:8px;cursor:pointer;" data-sid="' + s.id + '">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+            '<div>' +
+              '<div style="font-size:13px;font-weight:600;color:var(--text);">' + (s.job_id ? 'Job #' + _esc(String(s.job_id).slice(0, 8)) : 'Standalone Practice') + '</div>' +
+              '<div style="font-size:11px;color:var(--text-dim);">' + dateStr + ' · <span style="color:' + statusColor + ';">' + statusLabel + '</span></div>' +
+            '</div>' +
+            '<div style="display:flex;align-items:center;gap:12px;">' +
+              scoreHtml +
+              (s.status === 'in_progress' ? '<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();window._ipResumeMock(\'' + s.id + '\')">Resume</button>' : '') +
+              (s.status === 'completed' ? '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();window._ipToggleSessionDetail(\'' + s.id + '\')">Review</button>' : '') +
+            '</div>' +
+          '</div>' +
+          '<div id="ip-session-detail-' + s.id + '" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);"></div>' +
+        '</div>';
+      }).join('');
+
+      // Attach scorecard data for expand
+      data.forEach(function(s) {
+        if (s.scorecard) {
+          var detailEl = document.getElementById('ip-session-detail-' + s.id);
+          if (detailEl) detailEl.setAttribute('data-scorecard', JSON.stringify(s.scorecard));
+        }
+      });
+
+      if (typeof window.refreshIcons === 'function') window.refreshIcons();
+    } catch (err) {
+      reportError('interview-prep:sessions', err);
+    }
+  }
+
+  // ─── Toggle session detail (inline scorecard) ───
+  window._ipToggleSessionDetail = function(sessionId) {
+    var detail = document.getElementById('ip-session-detail-' + sessionId);
+    if (!detail) return;
+    if (detail.style.display !== 'none') {
+      detail.style.display = 'none';
+      return;
+    }
+    detail.style.display = '';
+    var scorecardStr = detail.getAttribute('data-scorecard');
+    if (scorecardStr && !detail.dataset.rendered) {
+      try {
+        var sc = JSON.parse(scorecardStr);
+        detail.innerHTML =
+          '<div style="font-size:12px;font-weight:600;margin-bottom:6px;">Score: <span style="color:var(--accent);">' + (sc.overall_score || '—') + '/100</span></div>' +
+          (sc.strengths && sc.strengths.length ? '<div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;"><strong style="color:var(--green,#22c55e);">Strengths:</strong> ' + sc.strengths.map(_esc).join(', ') + '</div>' : '') +
+          (sc.improvements && sc.improvements.length ? '<div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;"><strong style="color:var(--warm);">Improve:</strong> ' + sc.improvements.map(_esc).join(', ') + '</div>' : '') +
+          (sc.gap_coverage ? '<div style="font-size:11px;color:var(--text-faint);"><strong>Gap Coverage:</strong> ' + _esc(sc.gap_coverage) + '</div>' : '');
+        detail.dataset.rendered = 'true';
+      } catch (e) { reportError('interview-prep:scorecard-parse', e); }
+    }
+
+    if (window.posthog) posthog.capture('scorecard_viewed', { session_id: sessionId, source: 'my_sessions' });
+  };
+
+  // ─── Resume in-progress session (stub — opens modal, loads history) ───
+  window._ipResumeMock = function(sessionId) {
+    // For now, show a toast — full resume requires loading message history
+    if (typeof toast === 'function') toast('Resume functionality coming in a future update.', { type: 'info', duration: 3000 });
+  };
+
+  // ─── Enter key to send ───
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey && document.activeElement && document.activeElement.id === 'ip-sim-input') {
+      e.preventDefault();
+      window._ipSendMessage();
+    }
+  });
+
+  // ─── Load sessions when My Sessions tab is shown ───
+  var _sessionsTabInited = false;
+  var _origInitIp = window.initInterviewPrep;
+  window.initInterviewPrep = async function() {
+    await _origInitIp();
+    // Wire session loading to tab switch
+    if (!_sessionsTabInited) {
+      var tabs = document.querySelectorAll('#ip-tabs .u-tab');
+      tabs.forEach(function(tab) {
+        tab.addEventListener('click', function() {
+          if (tab.dataset.ipTab === 'my-sessions') _loadSessions();
+        });
+      });
+      _sessionsTabInited = true;
+    }
+  };
+
   // ─── BJ namespace exports ───
-  ['initInterviewPrep', '_ipToggleBookmark'].forEach(function(name) {
+  ['initInterviewPrep', '_ipToggleBookmark', '_ipStartMock', '_ipSendMessage',
+   '_ipRequestHint', '_ipEndEarly', '_ipCloseSimulation', '_ipToggleSessionDetail',
+   '_ipResumeMock'].forEach(function(name) {
     if (typeof window[name] === 'function') {
       window.BJ[name] = window[name];
       window.BJ._registry[name] = { module: 'interview-prep', registered: Date.now() };

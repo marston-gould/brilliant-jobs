@@ -3674,3 +3674,9 @@
     .ip-tab-panel.active { display: block; }
     .ip-question-card { transition: border-color 0.15s; }
     .ip-question-card:hover { border-color: var(--accent); }
+    /* FB-INTPREP-001-S4: Simulation UI styles */
+    .ip-session-card { transition: border-color 0.15s; }
+    .ip-session-card:hover { border-color: var(--accent); }
+    #ip-sim-input:focus { outline: none; border-color: var(--accent); }
+    #ip-sim-chat::-webkit-scrollbar { width: 6px; }
+    #ip-sim-chat::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }

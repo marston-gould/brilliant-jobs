@@ -52,7 +52,20 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FB-INTPREP-001-S3** — Interview Prep Phase 3: Simulation Backend ✅
+**FB-INTPREP-001-S4** — Interview Prep Phase 4: Simulation UI ✅
+- Completed: 2026-03-15
+- Product version bumped: `v9.51` → `v9.52`
+- **Chat modal overlay** (`#ip-sim-overlay` + `#ip-sim-modal`): top bar with title/progress/feedback toggle/hint/end early/close. Chat area with alternating user (right-aligned, accent bg) / assistant (left-aligned, input bg) message bubbles. `[COACH]...[/COACH]` tag extraction for inline coaching notes (muted italic, toggleable via checkbox). Typing indicator ("Interviewer is thinking..."). Textarea input with Enter-to-send (Shift+Enter newline), double-send prevention (`_simSending` flag).
+- **Scorecard rendering** (`#ip-sim-scorecard`): overall score with color coding (≥75 green, ≥50 accent, <50 warm), strengths/improvements/talking_points bullet lists, gap_coverage summary, "Save & Close" CTA. Input area hidden on completion.
+- **My Sessions tab**: "Start Mock Interview" button (`_ipStartMock`). Session list loaded from `interview_sessions` table (20 most recent). Each row: job reference, date, status badge (color-coded: green completed, accent in_progress, faint abandoned), overall score. "Resume" button for in_progress, "Review" button for completed with inline scorecard expand via `data-scorecard` JSON attribute. Sessions auto-refresh on tab switch + modal close.
+- **Hint**: sends `[HINT REQUEST]` prefixed message to EF. PostHog `simulation_hint_requested`.
+- **End Early**: confirm dialog → `abandon` action. Closes modal.
+- **7 functions exported to BJ namespace**: `_ipStartMock`, `_ipSendMessage`, `_ipRequestHint`, `_ipEndEarly`, `_ipCloseSimulation`, `_ipToggleSessionDetail`, `_ipResumeMock`.
+- **CSS**: `.ip-session-card:hover`, `#ip-sim-input:focus`, chat scrollbar styling.
+- **Tests:** 72 validation tests (12 sections, all passing)
+- **Modified:** js/interview-prep.js (305→615L), dashboard.html, src/input.css
+
+**Previous: FB-INTPREP-001-S3** — Interview Prep Phase 3: Simulation Backend ✅
 - Completed: 2026-03-15
 - Product version bumped: `v9.50` → `v9.51`
 - **Migration v9.50-fb-intprep-001-s3-interview-sessions.sql:**
@@ -3727,12 +3740,12 @@ None.
 
 **Next Session**
 
-**FB-INTPREP-001-S4** — Interview Prep Phase 4: Simulation UI
-- Chat interface (modal/panel overlay) in dark theme
-- Real-time feedback toggle
-- Scorecard rendering inline after final message
-- My Sessions tab with session list (company, role, date, status, score, Resume/Review CTA)
-- Spec: FB-INTPREP-001_InterviewPrep.docx §5.4, §5.5, §10 Phase 4
+**FB-INTPREP-001-S5** — Interview Prep Phase 5: Pipeline Integration
+- "Prep for this interview" CTA on Interview-stage pipeline cards (blue accent button)
+- Clicking launches simulation pre-loaded with that job's context
+- Readiness score badge on pipeline cards post-simulation
+- Nav dot pulse logic for Interview stage without simulation
+- Spec: FB-INTPREP-001_InterviewPrep.docx §5.6, §10 Phase 5
 
 Potential next workstreams:
 - PostHog Google OAuth verification reminder (R5 in FB-PI-001 risk register — must submit for verification before public Gmail/Calendar launch)
@@ -3918,7 +3931,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.51`** | **FB-INTPREP-001-S3: Simulation Backend. interview_sessions table + interview-simulate EF + gateway #129.** |
+| **Product (BJ_VERSION)** | **`v9.52`** | **FB-INTPREP-001-S4: Simulation UI. Chat modal + scorecard + My Sessions tab.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

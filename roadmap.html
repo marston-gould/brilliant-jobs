@@ -11,7 +11,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v9.51"></script>
+  <script src="/js/version.js?v=v9.52"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2269,6 +2269,7 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'FB-INTPREP-001-S1 Question Bank Backend', d: 'interview_questions table (uuid PK, question_text, category/difficulty CHECK, role_cluster, department, level, skill_tags text[], source_cluster_size, generated_at, model_version, question_tsv tsvector GIN). 7 indexes. RLS authenticated read + service_role write. v_interview_question_clusters view. interview-generate-questions EF (generate/clusters/status, Haiku, cost-capped at 20 clusters/run). Gateway route #128. 66 tests. v9.49. 2026-03-15.', p: 100, e: '1 session' },
 { s: 'done', b: 'post-launch', n: 'FB-INTPREP-001-S2 Question Bank UI', d: 'Interview Prep nav item (graduation-cap icon). Page shell with Question Bank + My Sessions tabs. Filter dropdowns (role/dept/level), category pills, difficulty pills, debounced search. Question cards with colored badges, skill chips, bookmark toggle (localStorage). 305L interview-prep.js in deferred chunk. app.js tab handler + restore. ip-pill/ip-tab-panel CSS. 59 tests. v9.50. 2026-03-15.', p: 100, e: '1 session' },
 { s: 'done', b: 'post-launch', n: 'FB-INTPREP-001-S3 Simulation Backend', d: 'interview_sessions table (user_id FK, messages jsonb, scorecard jsonb, overall_score 0-100, status check, feedback_mode, question_count). 6 indexes. RLS user CRUD own. interview-simulate EF (start/message/abandon/history, Sonnet with prompt caching, XML-tagged system prompt, structured JSON output, scorecard on final turn). Context: JD 8K cap, resume 6K cap, focus_question support. Gateway route #129. 67 tests. v9.51. 2026-03-15.', p: 100, e: '1 session' },
+{ s: 'done', b: 'post-launch', n: 'FB-INTPREP-001-S4 Simulation UI', d: 'Chat modal overlay with top bar (progress, feedback toggle, hint, end early). Alternating message bubbles. COACH tag extraction for coaching notes. Typing indicator. Enter-to-send. Scorecard rendering (score color-coded, strengths/improvements/talking_points/gap_coverage, Save+Close). My Sessions tab: session list with status badges, inline scorecard expand, Resume/Review CTAs. Hint request + End Early + abandon. 7 BJ exports. 72 tests. v9.52. 2026-03-15.', p: 100, e: '1 session' },
 { s: 'todo', b: 'post-launch', n: 'LP-IMAGES Landing Page Screenshots', d: 'Replace placeholder hero-dashboard-preview.webp and all benefit section image_url entries with real WebP screenshots once product is stable. Hero: job feed with salary data + match score badge. Benefit sections: 4 screenshots per section spec (sourcing, resume scoring, automated apply, pipeline). All images: WebP, lazy-loaded, inside browser-frame chrome.', p: 0, e: '1 session' },
 ];
 
