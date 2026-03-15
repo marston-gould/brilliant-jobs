@@ -272,7 +272,7 @@ renderSortPills();
 const qbInputWhat = $('#qb-input-what');
 
 
-const qbInputOrder = ['qb-input-what', 'qb-input-where', 'qb-input-when', 'qb-input-who', 'qb-input-pay-min'];
+const qbInputOrder = ['qb-input-what', 'qb-input-where', 'qb-input-when', 'qb-input-who'];
 
 
 

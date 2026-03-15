@@ -52,7 +52,38 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**SCA-REM-S2** — Spec Compliance Remediation Session 2
+**SCA-REM-S3** — Spec Compliance Remediation Session 3
+- Completed: 2026-03-15
+- Product version bumped: `v9.19` → `v9.20` (JS changes — app.js browse chunk guard, sort-bar.js qbInputOrder trimmed; all HTML surfaces cache-busted)
+- ROADMAP.md updated: SCA-REM-S3 → ✅
+- roadmap.html updated: SCA-REM-S3 → `s: 'done'`, p: 100
+- **REM-S05 — Ghost tier thresholds configurable (FB-GHOST-001 §4):**
+  - Migration `20260315000004_rem_s05_ghost_config.sql`: `ghost_config` table (key PK, value numeric, description, updated_at). RLS: authenticated read, service_role write.
+  - Seeded: `tier_medium_threshold=5`, `tier_high_threshold=16`
+  - `fn_ghost_score_refresh()` rewritten: reads thresholds from `ghost_config` with `COALESCE` fallback to defaults. No longer has hardcoded `16`/`5` in CASE statement.
+  - Tier adjustment now requires a Supabase dashboard edit, not a migration deploy cycle.
+  - Migration applied to production. Verified: 2 config rows seeded.
+- **QA-009/QA-012 — Browse button chunk-loading guard:**
+  - `js/app.js`: Delegated click handler on `.browse-companies-btn` using capture phase. If `openFilterBrowser` doesn't exist (keywords chunk not loaded), stops propagation, loads `keywords` chunk via `bjLoadChunk`, then re-fires the click. Guard prevents re-entrant clicks.
+  - Fixes: WHO Browse (QA-009), Tuning Location/Company/Industry Browse (QA-012) — all browse buttons in `browsers.js` which lives in the `keywords` lazy chunk.
+- **QA-004 — Min salary auto-tab removed:**
+  - `js/sort-bar.js`: `qbInputOrder` changed from `['qb-input-what', 'qb-input-where', 'qb-input-when', 'qb-input-who', 'qb-input-pay-min']` to `['qb-input-what', 'qb-input-where', 'qb-input-when', 'qb-input-who']`. Programmatic focus-advance after Enter key no longer jumps to salary fields.
+- **Skipped Items:** None.
+- **Modified:**
+  - `js/app.js` — browse chunk-loading guard
+  - `js/sort-bar.js` — qbInputOrder trimmed (pay-min removed)
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `dist/admin.min.js` — rebuilt
+  - `docs/scaling/pod-team-manifest.md` — SCA-REM-S3 pairing
+  - `ROADMAP.md` — SCA-REM-S3 → ✅
+  - `roadmap.html` — SCA-REM-S3 → done/100
+- **Created:**
+  - `supabase/migrations/20260315000004_rem_s05_ghost_config.sql` — ghost_config table + fn rewrite
+  - `tests/sca-rem-s3-spec-compliance.test.js` — 25 validation tests
+- **Tests:** 25 validation tests (all passing)
+
+**Previous: SCA-REM-S2** — Spec Compliance Remediation Session 2
 - Completed: 2026-03-15
 - Product version bumped: `v9.18` → `v9.19` (JS changes — sort-bar.js header visual feedback, apply-workflow.js ghost_badge_viewed event; all HTML surfaces cache-busted)
 - ROADMAP.md updated: SCA-REM-S2 → ✅
@@ -3247,19 +3278,25 @@ Deliverables:
 
 ## Next Session
 
-**SCA-REM-S3** — Spec Compliance Remediation Session 3
+**SCA-REM-S4** — Spec Compliance Remediation Session 4
 
-Priority items from master schedule:
-- REM-S05 [MED]: Ghost tier thresholds hardcoded → configurable (ghost_config table or feature_flags)
-- QA-008 [P0]: Chat button — re-test on v9.19 (console was clean on v9.18)
-- QA-009 [P1]: WHO Browse — verify in browser (code looks correct, may be chunk-loading race)
-- QA-012 [P1]: Tuning Browse blank — same chunk-loading race investigation
-- QA-004 [P1]: Min salary auto-tab — pending Marston decision
-- REM-PI items (S07-S11): Pipeline Intelligence notifications + Realtime + scan scopes
+Remaining items from master schedule:
+- REM-S09 [MED]: PostHog taxonomy documentation for Pipeline Intelligence
+- REM-S10/S11 [MED]: Gmail + Calendar scan scope settings in PI settings UI
+- REM-S07 [HIGH]: process-pipeline-action notification dispatch on auto-move
+- REM-S08 [HIGH]: Supabase Realtime broadcast for pipeline stage changes
+- REM-S12 [LOW]: Keyboard navigation on pagination controls
+- QA-002 [P2]: Blue connect buttons not centered
+- QA-003 [P2]: HOW MUCH should be two separate sections
+- QA-005 [P2]: Trust Level/AI Content iconography
+- QA-013 [P2]: Career levels missing under Title
+- QA-015/016 [P2]: Merchandising redesign
+- QA-017 [P2]: Theme toggle + Credits layout
 
 Also:
-- PostHog Google OAuth verification reminder (R5 in FB-PI-001 risk register)
-- Any new feature work
+- PostHog Google OAuth verification (R5 in FB-PI-001 risk register)
+- BP-001: Anthropic circuit breaker
+- BP-002: Extension tier awareness
 
 
 ## Deferred: SA-001 / SA-002 / SA-003 (Typesense)
@@ -3290,7 +3327,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.19`** | **SCA-REM-S2: sort visual feedback + ghost PostHog events (badge_viewed + tier_escalation)** |
+| **Product (BJ_VERSION)** | **`v9.20`** | **SCA-REM-S3: ghost config table + browse chunk guard + salary auto-tab fix** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

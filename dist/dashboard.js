@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.19';
+var BJ_VERSION = 'v9.20';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -3899,6 +3899,29 @@ window._enrichmentBadgeHtml = function(sf) {
   } catch(e) { /* silent — version check is best-effort */ }
 })();
 
+// QA-009/QA-012: Browse button chunk-loading guard
+// Browse handlers are in browsers.js (keywords chunk). If user clicks a browse
+// button before the chunk loads, nothing happens. This delegated handler
+// ensures the chunk loads first, then re-fires the click.
+(function() {
+  var _browseGuardActive = false;
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.browse-companies-btn');
+    if (!btn || _browseGuardActive) return;
+    // If openCompanyBrowser exists, browsers.js has loaded — let its handler run
+    if (typeof window.openFilterBrowser === 'function') return;
+    // Chunk not loaded yet — load it, then re-click
+    e.stopPropagation();
+    if (typeof bjLoadChunk === 'function') {
+      _browseGuardActive = true;
+      bjLoadChunk('keywords').then(function() {
+        _browseGuardActive = false;
+        btn.click();
+      }).catch(function() { _browseGuardActive = false; });
+    }
+  }, true); // useCapture to fire before browsers.js handlers
+})();
+
 
 // === js/integrations.js ===
 // ============================================================
@@ -7391,7 +7414,7 @@ renderSortPills();
 const qbInputWhat = $('#qb-input-what');
 
 
-const qbInputOrder = ['qb-input-what', 'qb-input-where', 'qb-input-when', 'qb-input-who', 'qb-input-pay-min'];
+const qbInputOrder = ['qb-input-what', 'qb-input-where', 'qb-input-when', 'qb-input-who'];
 
 
 
