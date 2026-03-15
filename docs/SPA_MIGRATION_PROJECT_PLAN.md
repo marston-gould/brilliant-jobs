@@ -7,9 +7,10 @@ Replace the legacy `dashboard.html` (3,969 lines) + `admin.html` (1,207 lines) +
 ## Why
 
 1. **AI-maintainability.** AI agents (CrewAI, Claude pods) cannot reliably edit a 4000-line HTML file where a missing `</div>` on line 2810 breaks 5 pages. Isolated typed components are what AI is good at.
-2. **Developer velocity.** New features on the monolith require surgery. New features on components require composition.
-3. **Valuation.** React + TypeScript + Tailwind is what acquirers expect. A vanilla JS monolith gets flagged as tech debt and discounted on the term sheet.
-4. **Pod parallelism.** Two pods can't touch `dashboard.html` simultaneously. With components, they work on different files.
+2. **CrewAI operations.** CrewAI will operate the website through admin panels. AI agents need: single-file components with clear props and return types, TypeScript for understanding data shapes without guessing, predictable file locations (`src/app/pages/admin/[panel]/[Component].tsx`), no global state mutations (`window.` variables) that create invisible side effects. The legacy admin (47 vanilla JS files mutating shared globals) is the worst possible surface for AI operations.
+3. **Developer velocity.** New features on the monolith require surgery. New features on components require composition.
+4. **Valuation.** React + TypeScript + Tailwind is what acquirers expect. A vanilla JS monolith gets flagged as tech debt and discounted on the term sheet.
+5. **Pod parallelism.** Two pods can't touch `dashboard.html` simultaneously. With components, they work on different files.
 
 ## Scope
 
@@ -74,20 +75,73 @@ Replace the legacy `dashboard.html` (3,969 lines) + `admin.html` (1,207 lines) +
 - Supabase Realtime subscriptions (pipeline signals, tier changes)
 - **Exit gate:** Full notification center working in SPA
 
-## Phase 2: Core User Pages (15 sessions)
+## Phase 2: Admin Pages — CrewAI Operating Surface (10 sessions)
 
-### S4–S5: Feed page (2 sessions)
+> **These come first.** CrewAI agents operate through admin. This is the surface that must be AI-ready before anything else.
+
+### S4: Admin shell + core
+- Admin layout, tab system, period toggles
+- User management, health dashboard
+- Legacy: `admin.js` (1,199), `admin-shell.js` (292)
+
+### S5: Admin notifications + analytics
+- Notification admin panel
+- Notification analytics
+- Legacy: `admin-notifications.js` (2,713), `admin-notif-analytics.js` (690)
+
+### S6: Admin SEO + content
+- GSC integration, entity extraction, CWV
+- Content management, editorial
+- Legacy: `admin-seo.js` (1,506), `admin-content.js` (184)
+
+### S7: Admin biz ops + compliance
+- Business operations dashboard
+- Compliance checks
+- Legacy: `admin-biz-ops.js` (951), `admin-compliance.js` (882)
+
+### S8: Admin deploy + monitoring
+- Deploy tracker, command center, reports, alerting, visibility
+- Monitoring, capacity, DB activity
+- Legacy: 7 files, ~2,100 lines total
+
+### S9: Admin jobs + enrichment + companies
+- Job management, enrichment pipeline
+- Company data
+- Legacy: `admin-jobs.js` (375), `admin-enrichment.js` (383), `admin-companies.js` (286)
+
+### S10: Admin financial
+- Stripe dashboard, revenue, cohort pricing, cost monitor
+- Legacy: `admin-stripe.js` (336), `admin-revenue.js` (172), `admin-cohort-pricing.js` (378), `admin-cost-monitor.js` (153)
+
+### S11: Admin AI + errors
+- CrewAI dashboard, EF health, client errors, error replay
+- Legacy: `admin-crewai.js` (522), `admin-ef-health.js` (239), `admin-client-errors.js` (414), `admin-error-replay.js` (214)
+
+### S12: Admin remaining
+- Merchandising, killswitch, AB tests, templates, blocks
+- Autosubmit, ghost, signals, chat analytics, build analytics
+- Feed health, cache health, referrals, PAYL, email, subscription
+- Legacy: ~15 files, ~3,600 lines total
+
+### S13: Admin cleanup + verification
+- Cross-panel navigation
+- Admin feature flags
+- Full regression test
+
+## Phase 3: Core User Pages (15 sessions)
+
+### S14–S15: Feed page (2 sessions)
 - FeedPage already has 377 lines + 60 components (most complete SPA page)
 - Port remaining: query builder pills, saved filters, sort bar, job table, job modal, fraud badges, trust filter, AI content filter, hide/save/apply actions, pagination, merch cards, feed hero stats
 - Legacy: `job-feed.js` (2,874), `sort-bar.js` (287), `query-builder.js` (1,059), `us-filter.js` (158)
 
-### S6–S7: Browsers (2 sessions)
+### S16–S17: Browsers (2 sessions)
 - Company browser, location browser, industry browser, filter browser
 - Alpha navigation, pill-wall layout, search, include/exclude toggles
 - US-Only banners
 - Legacy: `keywords.js` (4,377), `browsers.js` (1,374), `location.js` (1,948)
 
-### S8–S9: Resumes (2 sessions)
+### S18–S19: Resumes (2 sessions)
 - Resume grid, upload zone, PDF/DOCX parsing
 - Score panel (AI scoring, gap analysis)
 - Rewrite panel (side panel, diff view, Q&A)
@@ -95,12 +149,12 @@ Replace the legacy `dashboard.html` (3,969 lines) + `admin.html` (1,207 lines) +
 - Resume metrics
 - Legacy: `resumes.js` (1,811), `rewrite.js` (811), `resume-archive.js` (305), `resume-metrics.js` (274)
 
-### S10: Resume Builder (1 session)
+### S20: Resume Builder (1 session)
 - Template selector, section editor, live preview
 - Export to DOCX/PDF
 - Legacy: `resume-builder.js` (953)
 
-### S11–S12: Pipeline + Applications (2 sessions)
+### S21–S22: Pipeline + Applications (2 sessions)
 - Pipeline stages (accordion, drag-to-move)
 - Signal cards (confirm/dismiss/snooze/correct)
 - Application queue + history tables
@@ -109,33 +163,33 @@ Replace the legacy `dashboard.html` (3,969 lines) + `admin.html` (1,207 lines) +
 - Apply workflow (auto/manual/one-click modes)
 - Legacy: `pipeline.js` (1,880), `applications.js` (968), `apply-workflow.js` (2,535)
 
-### S13: Tuning (1 session)
+### S23: Tuning (1 session)
 - Tuning cards (collapsible)
 - Level hierarchy editor
 - Remote/salary/date preferences
 - Job count previews
 - Legacy: `tuning.js` (1,528)
 
-### S14: Stats (1 session)
+### S24: Stats (1 session)
 - ECharts integration (lazy-loaded)
 - Filter pills, period toggle
 - Resume metrics tab, overlay analytics tab
 - Legacy: `stats.js` (1,301), `overlay-analytics.js` (249)
 
-### S15: Chat (1 session)
+### S25: Chat (1 session)
 - Chat interface with message history
 - Filter extraction from AI responses
 - Mode toggle (filters ↔ chat)
 - Legacy: `chat.js` (1,658)
 
-### S16: Settings (1 session)
+### S26: Settings (1 session)
 - Appearance (theme toggle)
 - Account (change password, export, delete)
 - Applicant profile (name, email, phone, EEOC)
 - Apply settings (mode, resume, daily limit)
 - Legacy: `settings.js` (1,157)
 
-### S17: Billing (1 session)
+### S27: Billing (1 session)
 - Plan card, credit balance, usage breakdown
 - Tier selector (Free/Starter/Pro + annual toggle)
 - Credit packs + auto-refill
@@ -143,62 +197,11 @@ Replace the legacy `dashboard.html` (3,969 lines) + `admin.html` (1,207 lines) +
 - Hire fee (PAYL)
 - Legacy: `billing.js` (712), `upgrade.js` (276), `payl.js` (195), `trial-gate.js` (186)
 
-### S18: Referrals (1 session)
+### S28: Referrals (1 session)
 - Referral hub (link, code, sharing)
 - Outreach tracking (status, channels)
 - Correlation stats
 - Legacy: `referrals.js` (1,056), `referral-outreach.js` (515)
-
-## Phase 3: Admin Pages (10 sessions)
-
-### S19: Admin shell + core
-- Admin layout, tab system, period toggles
-- User management, health dashboard
-- Legacy: `admin.js` (1,199), `admin-shell.js` (292)
-
-### S20: Admin notifications + analytics
-- Notification admin panel
-- Notification analytics
-- Legacy: `admin-notifications.js` (2,713), `admin-notif-analytics.js` (690)
-
-### S21: Admin SEO + content
-- GSC integration, entity extraction, CWV
-- Content management, editorial
-- Legacy: `admin-seo.js` (1,506), `admin-content.js` (184)
-
-### S22: Admin biz ops + compliance
-- Business operations dashboard
-- Compliance checks
-- Legacy: `admin-biz-ops.js` (951), `admin-compliance.js` (882)
-
-### S23: Admin deploy + monitoring
-- Deploy tracker, command center, reports, alerting, visibility
-- Monitoring, capacity, DB activity
-- Legacy: 7 files, ~2,100 lines total
-
-### S24: Admin jobs + enrichment + companies
-- Job management, enrichment pipeline
-- Company data
-- Legacy: `admin-jobs.js` (375), `admin-enrichment.js` (383), `admin-companies.js` (286)
-
-### S25: Admin financial
-- Stripe dashboard, revenue, cohort pricing, cost monitor
-- Legacy: `admin-stripe.js` (336), `admin-revenue.js` (172), `admin-cohort-pricing.js` (378), `admin-cost-monitor.js` (153)
-
-### S26: Admin AI + errors
-- CrewAI dashboard, EF health, client errors, error replay
-- Legacy: `admin-crewai.js` (522), `admin-ef-health.js` (239), `admin-client-errors.js` (414), `admin-error-replay.js` (214)
-
-### S27: Admin remaining
-- Merchandising, killswitch, AB tests, templates, blocks
-- Autosubmit, ghost, signals, chat analytics, build analytics
-- Feed health, cache health, referrals, PAYL, email, subscription
-- Legacy: ~15 files, ~3,600 lines total
-
-### S28: Admin cleanup + verification
-- Cross-panel navigation
-- Admin feature flags
-- Full regression test
 
 ## Phase 4: Cutover (5 sessions)
 
@@ -234,14 +237,16 @@ Replace the legacy `dashboard.html` (3,969 lines) + `admin.html` (1,207 lines) +
 | Phase | Sessions | Focus |
 |---|---|---|
 | Foundation | 3 | Build system, routing, shell, infra |
-| Core pages | 15 | All user-facing dashboard pages |
-| Admin pages | 10 | All admin panels |
+| **Admin pages** | **10** | **CrewAI operating surface — do first** |
+| Core user pages | 15 | Dashboard pages users interact with |
 | Cutover | 5 | Testing, performance, deploy, cleanup |
 | **Total** | **33** | |
 
 Buffer for unknowns: +7 sessions (edge cases, legacy quirks, merge conflicts with ongoing feature work).
 
 **Realistic total: 33–40 sessions.**
+
+> **Why admin first:** CrewAI agents will operate the website through admin panels. They need typed, isolated React components they can reliably read and modify. The legacy admin (47 vanilla JS files, 20K lines) is the worst surface for AI agents to work on. Migrating admin first means CrewAI can start operating sooner and more reliably.
 
 ## Rules of Engagement
 
@@ -255,17 +260,25 @@ Buffer for unknowns: +7 sessions (edge cases, legacy quirks, merge conflicts wit
 
 ## Priority Order (if interrupted)
 
-If you can only do 10 sessions post-launch, do these:
+If you can only do 15 sessions post-launch, do these:
 1. S1: Foundation (must have)
 2. S2: Shared infra (must have)
-3. S4–S5: Feed (highest traffic page)
-4. S16: Settings (user config)
-5. S17: Billing (revenue path)
-6. S11–S12: Pipeline + Applications (core tracking)
-7. S18: Referrals (growth)
-8. S13: Tuning (user config)
+3. S3: Notifications (real-time backbone)
+4. **S19–S28: Admin (10 sessions) — CrewAI's primary operating surface**
+5. S4–S5: Feed (highest traffic user page)
+6. S17: Billing (revenue path)
 
-That gives you the 8 most important pages in 10 sessions. Admin stays legacy — nobody sees it but you.
+CrewAI will be using admin as their main method of operating the website. Admin pages must be typed, isolated React components that AI agents can reliably read, modify, and extend. The legacy admin.html (1,207 lines + 47 JS files, 20K lines) is the highest-priority migration target after foundation, not the lowest.
+
+**Revised phase order for CrewAI-first:**
+
+| Phase | Sessions | Focus |
+|---|---|---|
+| Foundation | 3 | Build system, routing, shell, infra |
+| Admin pages | 10 | CrewAI operating surface — highest priority |
+| Core user pages | 15 | Dashboard pages users interact with |
+| Cutover | 5 | Testing, performance, deploy, cleanup |
+| **Total** | **33** | |
 
 ## Current State (v9.44)
 
