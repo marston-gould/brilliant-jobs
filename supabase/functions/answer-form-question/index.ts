@@ -13,6 +13,7 @@
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { withAnthropicBreaker } from "../_shared/anthropic.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -344,7 +345,19 @@ serve(async (req) => {
 
     console.log(`[answer-form-question] Answering ${questions.length} questions for user ${userId}`);
 
-    const aiResult = await callHaiku(systemPrompt, userPrompt);
+    // BP-001: Circuit breaker
+    const _br = await withAnthropicBreaker(sb, 'answer-form-question', async () => {
+      const r = await callHaiku(systemPrompt, userPrompt);
+      if (!r.ok) throw new Error(r.error || 'AI call failed');
+      return r;
+    });
+    if (_br.circuitOpen) {
+      return new Response(
+        JSON.stringify({ error: "AI service temporarily unavailable — please retry in a few minutes" }),
+        { status: 503, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
+      );
+    }
+    const aiResult = _br.result || { ok: false, text: '', error: _br.error };
 
     if (!aiResult.ok) {
       return new Response(

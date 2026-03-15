@@ -20,6 +20,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { withCorrelation } from "../_shared/middleware.ts";
 import { requireAdmin, AdminAuthError } from "../_shared/admin-auth.ts";
 import { warnIfDirectAccess } from "../_shared/gateway-deprecation.ts";
+import { withAnthropicBreaker } from "../_shared/anthropic.ts";
 
 // ─── Environment ─────────────────────────────────────────────────────────────
 

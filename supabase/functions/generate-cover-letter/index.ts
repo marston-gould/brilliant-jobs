@@ -6,6 +6,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { withAnthropicBreaker } from "../_shared/anthropic.ts";
 
 const SB_URL = Deno.env.get('SUPABASE_URL')!;
 const SB_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -192,17 +193,26 @@ serve(async (req: Request) => {
       ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
       : 'the candidate';
 
-    // Generate
+    // Generate (BP-001: circuit breaker)
     const startMs = Date.now();
-    const result = await generateCoverLetter({
-      resumeText,
-      jobDescription,
-      jobTitle: jobTitle || 'the role',
-      companyName: companyName || 'the company',
-      userName,
-      tone,
-      emphasis,
-    });
+    const _br = await withAnthropicBreaker(supabase, 'generate-cover-letter', () =>
+      generateCoverLetter({
+        resumeText,
+        jobDescription,
+        jobTitle: jobTitle || 'the role',
+        companyName: companyName || 'the company',
+        userName,
+        tone,
+        emphasis,
+      })
+    );
+    if (_br.circuitOpen) {
+      return new Response(JSON.stringify({ error: 'AI service temporarily unavailable — please retry in a few minutes' }), { status: 503, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
+    }
+    if (!_br.result) {
+      return new Response(JSON.stringify({ error: 'Cover letter generation failed', detail: _br.error }), { status: 502, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
+    }
+    const result = _br.result;
     const elapsedMs = Date.now() - startMs;
 
     // Log to cover_letter_generations table (non-blocking)

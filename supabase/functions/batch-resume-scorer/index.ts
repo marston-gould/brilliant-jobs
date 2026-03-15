@@ -4,6 +4,7 @@
 // Expired_free users who've consumed their score sample get queued here.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { withAnthropicBreaker } from "../_shared/anthropic.ts";
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;

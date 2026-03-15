@@ -6,6 +6,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { withAnthropicBreaker } from "../_shared/anthropic.ts";
 import {
   Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType,
   TabStopType, TabStopPosition, LevelFormat, BorderStyle,
@@ -529,7 +530,16 @@ Rewrite the resume incorporating all accepted recommendations. Return ONLY JSON.
 
     // Agent 1: Resume Writer
     console.log(`[rewrite-resume] Resume Writer starting for user=${user.id}`);
-    const resumeResult = await callAnthropic(SONNET_MODEL, AGENT_RESUME_WRITER, rewriteInput, 4000, 0.3);
+    // BP-001: Circuit breaker
+    const _br1 = await withAnthropicBreaker(sb, 'rewrite-resume', async () => {
+      const r = await callAnthropic(SONNET_MODEL, AGENT_RESUME_WRITER, rewriteInput, 4000, 0.3);
+      if (!r.ok) throw new Error(r.error || 'AI call failed');
+      return r;
+    });
+    if (_br1.circuitOpen) {
+      return new Response(JSON.stringify({ error: 'AI service temporarily unavailable — please retry in a few minutes' }), { status: 503, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
+    }
+    const resumeResult = _br1.result || { ok: false, text: '', error: _br1.error };
 
     if (!resumeResult.ok) {
       return new Response(JSON.stringify({ error: 'Resume Writer failed', detail: resumeResult.error }), {

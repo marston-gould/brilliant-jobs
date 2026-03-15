@@ -18,6 +18,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { createLogger } from "../_shared/logger.ts";
+import { withAnthropicBreaker } from "../_shared/anthropic.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -325,12 +326,20 @@ Deno.serve(async (req) => {
 
         for (const job of newMatches) {
           try {
-            const scoreResult = await quickScore(
-              resumeText,
-              job.title,
-              job.content || "",
-              job.company_name || ""
+            // BP-001: Circuit breaker
+            const _br = await withAnthropicBreaker(sb, 'auto-apply-trigger', () =>
+              quickScore(
+                resumeText,
+                job.title,
+                job.content || "",
+                job.company_name || ""
+              )
             );
+            if (_br.circuitOpen) {
+              logger.warn("Circuit breaker open — skipping remaining scores", { userId: user.user_id, remaining: newMatches.length - stats.scored });
+              break;
+            }
+            const scoreResult = _br.result || null;
             stats.scored++;
 
             if (!scoreResult) continue;

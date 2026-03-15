@@ -5,6 +5,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireAdmin, authErrorResponse } from "../_shared/admin-auth.ts";
+import { withAnthropicBreaker } from "../_shared/anthropic.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

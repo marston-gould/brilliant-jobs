@@ -17,6 +17,7 @@
 // Returns: { ok: true, score: number, label: string, source: 'cached'|'computed'|'unavailable' }
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { withAnthropicBreaker } from "../_shared/anthropic.ts";
 
 const SB_URL = Deno.env.get('SUPABASE_URL')!;
 const SB_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;

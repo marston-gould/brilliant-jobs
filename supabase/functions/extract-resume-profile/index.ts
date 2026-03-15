@@ -5,6 +5,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { withAnthropicBreaker } from "../_shared/anthropic.ts";
 
 const SB_URL = Deno.env.get('SUPABASE_URL')!;
 const SB_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -54,19 +55,31 @@ serve(async (req) => {
 Resume:
 ${resume_text.slice(0, 8000)}`;
 
-    const aiResp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: HAIKU_MODEL,
-        max_tokens: 1024,
-        messages: [{ role: 'user', content: prompt }],
-      }),
+    // BP-001: Circuit breaker
+    const _br = await withAnthropicBreaker(sb, 'extract-resume-profile', async () => {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: HAIKU_MODEL,
+          max_tokens: 1024,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      });
+      if (!r.ok) throw new Error(`Anthropic ${r.status}`);
+      return r;
     });
+    if (_br.circuitOpen) {
+      return new Response(JSON.stringify({ error: 'AI service temporarily unavailable' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (!_br.result) {
+      return new Response(JSON.stringify({ error: 'AI extraction failed' }), { status: 502, headers: { 'Content-Type': 'application/json' } });
+    }
+    const aiResp = _br.result;
 
     const aiData = await aiResp.json();
     const text = aiData.content?.[0]?.text || '';
