@@ -58,7 +58,9 @@ async function scoreWithHaiku(resumeText: string, jdText: string): Promise<{ sco
   const userPrompt = `RESUME:\n${truncate(resumeText, 3000)}\n\nJOB DESCRIPTION:\n${truncate(jdText, 2000)}\n\nRespond with JSON only: {"score": <0-100>}`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+        // BP-001: Circuit breaker
+    const _br = await withAnthropicBreaker(sbUser, 'match-score-overlay', async () => {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'x-api-key': ANTHROPIC_API_KEY,
@@ -73,6 +75,16 @@ async function scoreWithHaiku(resumeText: string, jdText: string): Promise<{ sco
         messages: [{ role: 'user', content: userPrompt }],
       }),
     });
+      if (!r.ok) throw new Error(`Anthropic ${r.status}`);
+      return r;
+    });
+    if (_br.circuitOpen) {
+      return new Response(JSON.stringify({ error: 'AI service temporarily unavailable' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (!_br.result) {
+      throw new Error(_br.error || 'Anthropic call failed');
+    }
+    const res = _br.result;
 
     if (!res.ok) {
       console.error('[match-score-overlay] Haiku error:', res.status, await res.text());

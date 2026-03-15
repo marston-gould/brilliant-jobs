@@ -122,7 +122,10 @@ serve(async (req: Request) => {
       .join('\n');
 
     // ─── Call Claude Haiku ───
-    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+        // BP-001: Circuit breaker
+    const _sbBr = createClient(SB_URL, SB_KEY);
+    const _br = await withAnthropicBreaker(_sbBr, 'prompt-to-filter', async () => {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -139,6 +142,14 @@ serve(async (req: Request) => {
         }],
       }),
     });
+      if (!r.ok) throw new Error(`Anthropic ${r.status}`);
+      return r;
+    });
+    if (_br.circuitOpen) {
+      return new Response(JSON.stringify({ error: 'AI service temporarily unavailable' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (!_br.result) throw new Error(_br.error || 'Anthropic call failed');
+    const anthropicRes = _br.result;
 
     if (!anthropicRes.ok) {
       console.error('Anthropic API error:', anthropicRes.status);

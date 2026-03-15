@@ -218,7 +218,16 @@ ${text}
 
 Analyze this ${contentLabel.toLowerCase()} for AI-generated content. Return ONLY JSON.`;
 
-  const result = await callAnthropic(SYSTEM_PROMPT, userPrompt, 800, 0);
+  // BP-001: Circuit breaker
+    const _br = await withAnthropicBreaker(sb, 'score-ai-content', async () => {
+      const r = await callAnthropic(SYSTEM_PROMPT, userPrompt, 800, 0);
+      if (!r.ok) throw new Error(r.error || 'AI call failed');
+      return r;
+    });
+    if (_br.circuitOpen) {
+      return new Response(JSON.stringify({ error: 'AI service temporarily unavailable' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+    }
+    const result = _br.result || { ok: false, text: '', error: _br.error };
 
   if (!result.ok) {
     baseResult.summary = 'Scoring failed — API error.';

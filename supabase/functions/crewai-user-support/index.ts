@@ -116,7 +116,9 @@ Priority guide:
 - medium: non-blocking issue, moderate votes
 - low: minor request, low votes, edge case`;
 
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      // BP-001: Circuit breaker
+    const _br = await withAnthropicBreaker(sb, 'crewai-user-support', async () => {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -129,6 +131,16 @@ Priority guide:
       messages: [{ role: 'user', content: prompt }],
     }),
   });
+      if (!r.ok) throw new Error(`Anthropic ${r.status}`);
+      return r;
+    });
+    if (_br.circuitOpen) {
+      return new Response(JSON.stringify({ error: 'AI service temporarily unavailable' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (!_br.result) {
+      throw new Error(_br.error || 'Anthropic call failed');
+    }
+    const resp = _br.result;
 
   if (!resp.ok) {
     return {

@@ -67,7 +67,9 @@ async function enrichJob(
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 15_000)
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+        // BP-001: Circuit breaker
+    const _br = await withAnthropicBreaker(supabase, 'enrich-jd-ai', async () => {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       signal: controller.signal,
       headers: {
@@ -84,7 +86,13 @@ async function enrichJob(
       }),
     })
 
-    clearTimeout(timeout)
+    ;
+      if (!r.ok) throw new Error(`Anthropic ${r.status}`);
+      return r;
+    });
+    if (_br.circuitOpen) throw new Error('Circuit breaker open');
+    if (!_br.result) throw new Error(_br.error || 'Anthropic call failed');
+    const response = _br.result;clearTimeout(timeout)
 
     if (!response.ok) {
       const errText = await response.text()

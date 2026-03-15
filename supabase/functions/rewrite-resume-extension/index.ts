@@ -197,7 +197,16 @@ ${prefText}
 Rewrite the resume to address the identified gaps while keeping the candidate's authentic voice. Return ONLY the JSON object.`;
 
     // ─── Call AI ───
-    const result = await callAnthropic(SONNET, REWRITE_SYSTEM, rewriteInput, 4000, 0.25);
+    // BP-001: Circuit breaker
+    const _br = await withAnthropicBreaker(sb, 'rewrite-resume-extension', async () => {
+      const r = await callAnthropic(SONNET, REWRITE_SYSTEM, rewriteInput, 4000, 0.25);
+      if (!r.ok) throw new Error(r.error || 'AI call failed');
+      return r;
+    });
+    if (_br.circuitOpen) {
+      return new Response(JSON.stringify({ error: 'AI service temporarily unavailable' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+    }
+    const result = _br.result || { ok: false, text: '', error: _br.error };
 
     if (!result.ok) {
       return json({ error: 'Rewrite failed', detail: result.error }, 502);

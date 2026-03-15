@@ -76,16 +76,25 @@ async function handleSubmit(sb: ReturnType<typeof createClient>): Promise<Respon
 
   const requests = rows.map(buildBatchItem);
 
-  const batchRes = await fetch(BATCH_API_URL, {
-    method: 'POST',
-    headers: ANTHROPIC_HEADERS,
-    body: JSON.stringify({ requests }),
+  // BP-001: Circuit breaker on batch submission
+  const _br = await withAnthropicBreaker(sb, 'batch-resume-scorer', async () => {
+    const r = await fetch(BATCH_API_URL, {
+      method: 'POST',
+      headers: ANTHROPIC_HEADERS,
+      body: JSON.stringify({ requests }),
+    });
+    if (!r.ok) throw new Error(`Batch API ${r.status}`);
+    return r;
   });
 
-  if (!batchRes.ok) {
-    const errText = await batchRes.text();
-    console.error('[batch-resume-scorer:submit] Batch API error:', batchRes.status, errText);
-    return new Response(JSON.stringify({ error: 'batch_api_failed', status: batchRes.status }), { status: 502, headers: { 'Content-Type': 'application/json' } });
+  if (_br.circuitOpen) {
+    return new Response(JSON.stringify({ error: 'AI service temporarily unavailable' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+  }
+
+  const batchRes = _br.result;
+  if (!batchRes) {
+    console.error('[batch-resume-scorer:submit] Batch API error:', _br.error);
+    return new Response(JSON.stringify({ error: 'batch_api_failed' }), { status: 502, headers: { 'Content-Type': 'application/json' } });
   }
 
   const batch = await batchRes.json();

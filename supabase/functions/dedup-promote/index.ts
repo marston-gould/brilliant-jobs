@@ -216,7 +216,9 @@ serve(withCorrelation("dedup-promote", async (req: Request, logger: Logger) => {
             const plainText = stripHtml(job.content).substring(0, MAX_CONTENT_CHARS);
 
             // Call Anthropic API
-            const aiResp = await fetch("https://api.anthropic.com/v1/messages", {
+                        // BP-001: Circuit breaker
+            const _br = await withAnthropicBreaker(supabase, 'dedup-promote', async () => {
+              const r = await fetch("https://api.anthropic.com/v1/messages", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -230,6 +232,12 @@ serve(withCorrelation("dedup-promote", async (req: Request, logger: Logger) => {
                 messages: [{ role: "user", content: `Job title: ${job.title}\n\n${plainText}` }],
               }),
             });
+              if (!r.ok) throw new Error(`Anthropic ${r.status}`);
+              return r;
+            });
+            if (_br.circuitOpen) throw new Error('Circuit breaker open');
+            if (!_br.result) throw new Error(_br.error || 'Anthropic call failed');
+            const aiResp = _br.result;
 
             if (!aiResp.ok) {
               const errText = await aiResp.text();

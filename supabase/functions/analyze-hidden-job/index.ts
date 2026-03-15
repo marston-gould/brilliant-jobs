@@ -125,7 +125,9 @@ ${resume_text ? resume_text.slice(0, 6000) : 'No resume provided — analyze bas
 
 Analyze why this job was a poor match for this person and suggest specific negative filter terms. Return ONLY JSON.`;
 
-    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+        // BP-001: Circuit breaker
+    const _br = await withAnthropicBreaker(sb, 'analyze-hidden-job', async () => {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'x-api-key': ANTHROPIC_API_KEY,
@@ -140,6 +142,16 @@ Analyze why this job was a poor match for this person and suggest specific negat
         messages: [{ role: 'user', content: userPrompt }]
       })
     });
+      if (!r.ok) throw new Error(`Anthropic ${r.status}`);
+      return r;
+    });
+    if (_br.circuitOpen) {
+      return new Response(JSON.stringify({ error: 'AI service temporarily unavailable' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (!_br.result) {
+      throw new Error(_br.error || 'Anthropic call failed');
+    }
+    const anthropicRes = _br.result;
 
     if (!anthropicRes.ok) {
       console.error('[analyze-hidden] Anthropic error:', anthropicRes.status);

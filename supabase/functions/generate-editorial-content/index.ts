@@ -489,7 +489,10 @@ Deno.serve(async (req) => {
         }
 
         // Call Claude API
-        const response = await fetch("https://api.anthropic.com/v1/messages", {
+                // BP-001: Circuit breaker
+        const _sbBr = createClient(supabaseUrl, serviceKey);
+        const _br = await withAnthropicBreaker(_sbBr, 'generate-editorial-content', async () => {
+          const r = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -508,6 +511,14 @@ Deno.serve(async (req) => {
             ],
           }),
         });
+          if (!r.ok) throw new Error(`Anthropic ${r.status}`);
+          return r;
+        });
+        if (_br.circuitOpen) {
+          return new Response(JSON.stringify({ error: 'AI service temporarily unavailable' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+        }
+        if (!_br.result) throw new Error(_br.error || 'Anthropic call failed');
+        const response = _br.result;
 
         const latencyMs = Date.now() - startTime;
 

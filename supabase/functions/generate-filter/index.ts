@@ -127,7 +127,9 @@ serve(async (req) => {
         { status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
     }
 
-    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+        // BP-001: Circuit breaker
+    const _br = await withAnthropicBreaker(sb, 'generate-filter', async () => {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'x-api-key': ANTHROPIC_API_KEY,
@@ -142,6 +144,16 @@ serve(async (req) => {
         messages: [{ role: 'user', content: `<resume>\n${resume_text.slice(0, 8000)}\n</resume>\n\nAnalyze this resume and generate optimal job search filter criteria. Return ONLY JSON.` }]
       })
     });
+      if (!r.ok) throw new Error(`Anthropic ${r.status}`);
+      return r;
+    });
+    if (_br.circuitOpen) {
+      return new Response(JSON.stringify({ error: 'AI service temporarily unavailable' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (!_br.result) {
+      throw new Error(_br.error || 'Anthropic call failed');
+    }
+    const anthropicRes = _br.result;
 
     if (!anthropicRes.ok) {
       const errBody = await anthropicRes.text();

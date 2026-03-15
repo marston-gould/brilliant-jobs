@@ -206,7 +206,16 @@ ${original_score != null ? `<current_match_score>${original_score}%</current_mat
 
 Analyze the gaps between this resume and this specific job description. Return ONLY JSON.`;
 
-    const gapResult = await callAnthropic(HAIKU, GAP_ANALYZER_SYSTEM, gapInput, 2500, 0);
+    // BP-001: Circuit breaker
+    const _br = await withAnthropicBreaker(sb, 'rewrite-resume-analyze', async () => {
+      const r = await callAnthropic(HAIKU, GAP_ANALYZER_SYSTEM, gapInput, 2500, 0);
+      if (!r.ok) throw new Error(r.error || 'AI call failed');
+      return r;
+    });
+    if (_br.circuitOpen) {
+      return new Response(JSON.stringify({ error: 'AI service temporarily unavailable' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+    }
+    const gapResult = _br.result || { ok: false, text: '', error: _br.error };
 
     if (!gapResult.ok) {
       await sb.from('rewrite_sessions').update({ status: 'failed' }).eq('id', session_id);
