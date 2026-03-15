@@ -357,9 +357,9 @@ describe('api-gateway — resume-optimize route', () => {
 });
 
 describe('version', () => {
-  it('bumped to v9.38', async () => {
+  it('version.js exists and contains a version string', async () => {
     const fs = await import('fs');
-    expect(fs.readFileSync('js/version.js', 'utf8')).toContain('v9.38');
+    expect(fs.readFileSync('js/version.js', 'utf8')).toMatch(/BJ_VERSION\s*=\s*"v\d+\.\d+"/);
   });
 
   it('bundle contains rbOptimize', async () => {

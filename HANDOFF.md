@@ -52,7 +52,17 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**EXT-BUILD-001-PD** — Phase D Tier 4: ATS Browse-Page Injection
+**RESUME-BUILDER-001-S4** — AI Rewrites — RESUME-BUILDER-001 COMPLETE
+- Completed: 2026-03-15
+- Product version bumped: `v9.38` → `v9.39`
+- resume-rewrite-bullet EF: Anthropic Sonnet, 1-credit cost, 2-3 bullet alternatives, forbids fabrication, requires action verbs.
+- resume-builder.js: `rbImproveBullets` (Improve with AI button per experience item), `rbAcceptRewrite` (replaces bullet in parsedJson + textarea + marks dirty).
+- CSS: rb-improve-btn, rb-rewrite-panel, rb-rewrite-option, rb-rewrite-accept.
+- gateway: resume-rewrite-bullet promoted from stub. api-gateway redeployed.
+- **RESUME-BUILDER-001 FEATURE COMPLETE**: S1(v9.36/46t) + S2(v9.37/41t) + S3(v9.38/51t) + S4(v9.39/32t) = 170 tests total.
+- **Test fix (2026-03-15)**: Stale version assertions in S1/S2/S3 tests updated from exact version pins to regex pattern match — all 170 tests now passing.
+
+**Previous: EXT-BUILD-001-PD** — Phase D Tier 4: ATS Browse-Page Injection
 - Completed: 2026-03-15
 - Product version bumped: `v9.34` → `v9.35`
 - **6 existing ATS entries expanded** with `browseSelectors`: Greenhouse (`.opening`, `.opening-title a`), Lever (`.posting`, `.posting-title a`), Ashby (`.ashby-job-posting-brief-list a`), Workable (`[data-ui="job"]`), Recruitee (`.offer-item`), SmartRecruiters (`.opening-job`). URL patterns relaxed to match browse/listing pages.
@@ -3726,9 +3736,18 @@ Deliverables:
 - 486 total tests across 10 test files
 
 Remaining backlog:
-- **RESUME-BUILDER-001-S1 ✅**: Upload/Parse/Store complete. resume-parse EF deployed. Migration v9.36 deployed. page-resume-builder live. 46 tests. v9.36.
-- **RESUME-BUILDER-001-S2 ✅**: Templates & Generation complete. resume-generate EF deployed. 3 templates. Download UI. 36 tests. v9.37.
-- **RESUME-BUILDER-001-S3 (NEXT)**: Keyword Optimization. resume-optimize EF. Gap report UI (present/missing/partial). One-click keyword insertion. Match Score real-time update. "Optimize for this job" on job cards. Target v9.38+.
+- **RESUME-BUILDER-001 ✅ COMPLETE**: All 4 sessions shipped. 170 tests passing (46+41+51+32). v9.36–v9.39.
+  - S1 Upload/Parse/Store — resume-parse EF, migration v9.36, page-resume-builder live
+  - S2 Templates & Generation — resume-generate EF, 3 templates, Download UI
+  - S3 Keyword Optimization — resume-optimize EF, gap report UI, one-click insertion, match score display
+  - S4 AI Rewrites — resume-rewrite-bullet EF, Improve with AI per bullet, accept/reject panel
+- **LP-RESTRUCTURE-S1 (NEXT)**: Landing Page Restructure Session 1 per POD_HANDOFF_LandingPageRestructure_v2.docx
+  - CREATE TABLE landing_sections + RLS policies + seed data (4 initial sections)
+  - Create landing-assets/ Storage bucket
+  - Update landing-stats to return dual company counts (career pages monitored ~39K + companies hiring now ~8.7K)
+  - Restructure index.html: remove benefit grid (#benefits), benefits-short, walkthrough carousel
+  - Add #lp-benefit-sections container in correct DOM position (after comparison table, before ghost section)
+  - Update stats bar and hero to display both metrics
 - CASA-001: Google CASA assessment + gmail.readonly upgrade
 - Any new feature work
 
