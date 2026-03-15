@@ -3249,3 +3249,86 @@ chrome.alarms.onAlarm.addListener((alarm) => {
     _bjKillSwitch.checkDbFlag();
   }
 });
+
+// ── EXT-BUILD-001-S2: Version Check ────────────────────────────────────────
+// Checks extension-version EF on startup and every 6 hours.
+// Sets badge '!' when behind. Sends versionUpdate message to popup.
+
+const _VERSION_CHECK_ALARM = 'bjVersionCheck';
+const _VERSION_EF_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/extension-version';
+const _ANON_KEY_VC = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
+
+function _compareSemver(a: string, b: string): number {
+  const pa = a.replace(/^v/, '').split('.').map(Number);
+  const pb = b.replace(/^v/, '').split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] || 0) < (pb[i] || 0)) return -1;
+    if ((pa[i] || 0) > (pb[i] || 0)) return 1;
+  }
+  return 0;
+}
+
+async function _checkExtensionVersion(): Promise<void> {
+  try {
+    const currentVersion = chrome.runtime.getManifest().version;
+
+    const res = await fetch(_VERSION_EF_URL, {
+      headers: { 'Authorization': `Bearer ${_ANON_KEY_VC}` },
+    });
+    if (!res.ok) return;
+
+    const data = await res.json();
+    const latestVersion = data.latest;
+    if (!latestVersion) return;
+
+    const isBehind = _compareSemver(currentVersion, latestVersion) < 0;
+
+    // Store version data for popup to read
+    await chrome.storage.local.set({
+      _bjVersionCheck: {
+        current: currentVersion,
+        latest: latestVersion,
+        min_supported: data.min_supported || '2.21.0',
+        download_url: data.download_url || 'https://brilliantjobs.app/#get-started',
+        isBehind,
+        checkedAt: Date.now(),
+      },
+    });
+
+    if (isBehind) {
+      // Set badge on extension icon
+      chrome.action.setBadgeText({ text: '!' });
+      chrome.action.setBadgeBackgroundColor({ color: '#f59e0b' }); // amber
+    } else {
+      chrome.action.setBadgeText({ text: '' });
+    }
+
+    // Notify any open popup
+    chrome.runtime.sendMessage({
+      type: 'versionUpdate',
+      current: currentVersion,
+      latest: latestVersion,
+      isBehind,
+      download_url: data.download_url,
+    }).catch(() => { /* popup not open — ignore */ });
+
+    if (typeof captureEvent === 'function') {
+      captureEvent('ext_version_check', { current: currentVersion, latest: latestVersion, is_behind: isBehind });
+    }
+  } catch (e) {
+    if (typeof reportError === 'function') {
+      reportError('version_check', e);
+    }
+  }
+}
+
+// Check on startup (5s delay for service worker warm-up)
+setTimeout(_checkExtensionVersion, 5000);
+
+// Check every 6 hours
+chrome.alarms.create(_VERSION_CHECK_ALARM, { periodInMinutes: 360 });
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === _VERSION_CHECK_ALARM) {
+    _checkExtensionVersion();
+  }
+});

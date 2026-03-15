@@ -66,6 +66,9 @@ async function initConsumerPopup(role: string): Promise<void> {
   // EXT-AS-8: Bottom nav routing + settings listeners
   _initBottomNav();
   _initSettingsListeners();
+
+  // EXT-BUILD-001 S2.4: Update banner
+  _initUpdateBanner();
 }
 
 function _switchView(showLegacy: boolean): void {
@@ -443,8 +446,16 @@ function _initBottomNav(): void {
   const navItems = document.querySelectorAll('.cv-nav-item[data-nav]');
   navItems.forEach(btn => {
     const nav = (btn as HTMLElement).getAttribute('data-nav');
-    // Resumes: keep external link (onclick already set in HTML)
-    if (nav === 'resumes') return;
+    // EXT-BUILD-001 B1/B4: Resumes nav opens dashboard Resumes page via chrome.tabs.create
+    // (inline onclick removed from HTML — CSP violation in MV3)
+    if (nav === 'resumes') {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        chrome.tabs.create({ url: 'https://brilliantjobs.app/#resumes' });
+      });
+      return;
+    }
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -775,6 +786,122 @@ function phCapture(event: string, props: Record<string, unknown>): void {
       (window as any).posthog.capture(event, props);
     }
   } catch {}
+}
+
+// ============================================================
+// EXT-BUILD-001 S2.4: Update Banner
+// ============================================================
+
+function _initUpdateBanner(): void {
+  const banner = document.getElementById('cv-update-banner');
+  if (!banner) return;
+
+  // Check cached version data on popup open
+  chrome.storage.local.get('_bjVersionCheck', (result) => {
+    const vd = result._bjVersionCheck;
+    if (!vd || !vd.isBehind) return;
+
+    // Check if user dismissed this version
+    chrome.storage.local.get('_bjVersionDismissed', (dismissResult) => {
+      if (dismissResult._bjVersionDismissed === vd.latest) return;
+      _showUpdateBanner(vd.current, vd.latest, vd.download_url);
+    });
+  });
+
+  // Listen for real-time version updates from background
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.type === 'versionUpdate' && msg.isBehind) {
+      chrome.storage.local.get('_bjVersionDismissed', (dismissResult) => {
+        if (dismissResult._bjVersionDismissed === msg.latest) return;
+        _showUpdateBanner(msg.current, msg.latest, msg.download_url);
+      });
+    }
+  });
+
+  // Dismiss button
+  const dismissBtn = document.getElementById('cv-update-dismiss');
+  if (dismissBtn) {
+    dismissBtn.addEventListener('click', () => {
+      banner.style.display = 'none';
+      // Get current latest to persist dismissal
+      chrome.storage.local.get('_bjVersionCheck', (r) => {
+        if (r._bjVersionCheck?.latest) {
+          chrome.storage.local.set({ _bjVersionDismissed: r._bjVersionCheck.latest });
+        }
+      });
+      phCapture('update_banner_dismissed', {});
+    });
+  }
+
+  // Download button
+  const dlBtn = document.getElementById('cv-update-download-btn');
+  if (dlBtn) {
+    dlBtn.addEventListener('click', async () => {
+      const statusEl = document.getElementById('cv-update-status');
+      try {
+        (dlBtn as HTMLButtonElement).disabled = true;
+        dlBtn.textContent = 'Building...';
+        if (statusEl) statusEl.textContent = 'Generating your personalized build...';
+
+        // Get auth token
+        const storage = await chrome.storage.local.get(['accessToken']);
+        const token = storage.accessToken;
+        if (!token) {
+          if (statusEl) statusEl.textContent = 'Not logged in. Open dashboard to log in first.';
+          return;
+        }
+
+        const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+        const res = await fetch(`${SB_URL}/functions/v1/build-extension`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error((err as any).error || `Build failed (${res.status})`);
+        }
+
+        const blob = await res.blob();
+        const buildId = res.headers.get('X-Build-Id') || 'unknown';
+        const url = URL.createObjectURL(blob);
+
+        // Trigger download
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `brilliant-jobs-extension-${buildId.slice(3, 11)}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        dlBtn.textContent = 'Downloaded!';
+        if (statusEl) statusEl.textContent = 'Unzip and reload in chrome://extensions';
+        phCapture('update_downloaded_from_popup', { build_id: buildId });
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (statusEl) statusEl.textContent = '✗ ' + msg;
+        dlBtn.textContent = 'Download Update';
+        (dlBtn as HTMLButtonElement).disabled = false;
+      }
+    });
+  }
+}
+
+function _showUpdateBanner(current: string, latest: string, downloadUrl?: string): void {
+  const banner = document.getElementById('cv-update-banner');
+  if (!banner) return;
+
+  const currentEl = document.getElementById('cv-update-current');
+  const latestEl = document.getElementById('cv-update-latest');
+  if (currentEl) currentEl.textContent = current;
+  if (latestEl) latestEl.textContent = latest;
+
+  banner.style.display = '';
+  phCapture('update_banner_shown', { current, latest });
 }
 
 // ============================================================

@@ -52,7 +52,54 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**EXT-BUILD-001-S1** — Extension Build Pipeline: Upload + EF File List + B3 + B6
+**EXT-BUILD-001-S2** — Dashboard Download + Version Check + Bugs B1/B2/B4
+- Completed: 2026-03-15
+- Product version bumped: `v9.28` → `v9.29`
+- ROADMAP.md updated: EXT-BUILD-001-S2 → ✅
+- roadmap.html updated: EXT-BUILD-001-S2 → `s: 'done'`, p: 100
+- **S2.1 — Dashboard download button wiring:**
+  - `js/app.js`: Removed broken `/api/build-extension` handler (Vercel route never existed). Replaced with delegation to `window._bjExtensionDownload.downloadBuild()` from extension-download.js. `bjLoadChunk('deferred')` fallback if module not loaded.
+  - `js/extension-download.js`: Button ID reconciliation — supports both `#extension-download-btn` and `#download-btn`. `_bjBound` guard prevents double-binding.
+  - `build.js`: `js/extension-download.js` added to deferred chunk (18 files total).
+- **S2.2 — extension-version EF:**
+  - `supabase/functions/extension-version/index.ts` (NEW): Lightweight GET endpoint, no auth required. Returns `{ latest: "3.0.0", min_supported: "2.21.0", download_url, changelog_url, updated_at }`. `Cache-Control: public, max-age=3600`. CORS `*`.
+  - Gateway route #127 added. Total: 127 routes.
+  - Deployed and verified: direct EF returns correct JSON.
+- **S2.3 — Background version check:**
+  - `extension/background.ts`: `_checkExtensionVersion()` calls extension-version EF. `_compareSemver()` compares current vs latest. When behind: `chrome.action.setBadgeText({ text: '!' })` with amber `#f59e0b`. Stores `_bjVersionCheck` to `chrome.storage.local`. Sends `{ type: 'versionUpdate', current, latest, isBehind }` to popup. `ext_version_check` PostHog event.
+  - Startup check after 5s delay. `bjVersionCheck` alarm every 360 minutes (6 hours).
+- **S2.4 — Popup update banner:**
+  - `extension/popup.html`: `#cv-update-banner` container with version labels, download button, dismiss button, status text. Hidden by default.
+  - `extension/popup-consumer.ts`: `_initUpdateBanner()` reads `_bjVersionCheck` from chrome.storage.local on popup open. Listens for `versionUpdate` runtime messages. Dismiss persists `_bjVersionDismissed` per version. Download button calls build-extension EF directly with auth token, triggers ZIP download. PostHog: `update_banner_shown`, `update_banner_dismissed`, `update_downloaded_from_popup`.
+- **B1/B4 — Resumes nav CSP violation:**
+  - `extension/popup.html`: Removed `onclick="window.open(...)"` from `data-nav="resumes"` button. MV3 CSP blocks ALL inline event handlers.
+  - `extension/popup-consumer.ts`: `_initBottomNav()` now handles `data-nav="resumes"` via `chrome.tabs.create({ url: 'https://brilliantjobs.app/#resumes' })`.
+- **B2 — app_config 404:**
+  - `extension/popup-post.ts`: Replaced `rest/v1/app_config?select=value&key=eq.extension_latest_version` (table doesn't exist, returns 404) with `functions/v1/extension-version` EF call. Reads `data.latest` from response.
+- **Skipped Items:** None. B5 (resume default 1 page) deferred to S3 or separate session per spec.
+- **Modified:**
+  - `js/app.js` — download handler replaced with delegation
+  - `js/extension-download.js` — button ID reconciliation
+  - `build.js` — extension-download.js added to deferred chunk
+  - `supabase/functions/extension-version/index.ts` — new file
+  - `supabase/functions/api-gateway/index.ts` — route #127, 127 total
+  - `extension/background.ts` — version check + alarm + badge + popup message
+  - `extension/popup.html` — update banner + B1 onclick removal
+  - `extension/popup-consumer.ts` — _initUpdateBanner + B1 chrome.tabs.create
+  - `extension/popup-post.ts` — B2 extension-version EF
+  - `dist/dashboard.min.js` — rebuilt
+  - `dist/dashboard-deferred.min.js` — rebuilt
+  - `dist/admin.min.js` — rebuilt
+  - `styles.css` — Tailwind rebuild
+  - `ROADMAP.md` — EXT-BUILD-001-S2 → ✅
+  - `roadmap.html` — EXT-BUILD-001-S2 → done/100
+- **Created:**
+  - `supabase/functions/extension-version/index.ts` — Version check EF
+  - `tests/ext-build-001-s2-download-version.test.js` — 50 validation tests
+- **Tests:** 50 validation tests (all passing)
+- **Deployed:** extension-version EF, api-gateway (127 routes). 69 extension files re-uploaded to Supabase Storage.
+
+**Previous: EXT-BUILD-001-S1** — Extension Build Pipeline: Upload + EF File List + B3 + B6
 - Completed: 2026-03-15
 - Product version bumped: `v9.27` → `v9.28`
 - ROADMAP.md updated: EXT-BUILD-001-S1 → ✅
@@ -3514,25 +3561,24 @@ Deliverables:
 
 ## Next Session
 
-**EXT-BUILD-001-S2** — Dashboard Download Button + Version Check
+**EXT-BUILD-001-S3** — CI Gate + Release Process + Regression Prevention
 
-Entry gate: S1 complete (build-dev.js produces clean build, files in Supabase Storage, EF deployed)
+Entry gate: S2 complete (download button works, version check running, popup banner functional)
 
 Deliverables:
-- S2.1: Wire dashboard download button to build-extension EF (reconcile app.js vs extension-download.js paths)
-- S2.2: extension-version EF (lightweight GET, returns latest/min_supported/download_url, cached 1hr)
-- S2.3: background.ts version check (startup + 6hr alarm, badge '!' when behind)
-- S2.4: popup-consumer.ts update banner (download + dismiss)
-- Bug B1/B4: Resumes nav CSP violation (inline onclick → addEventListener)
-- Bug B2: app_config 404 (replace with extension-version EF call)
+- S3.1: CI gate `gate-ext-build` in `.github/workflows/ci.yml` — runs `node extension/build-dev.js`, verifies exit 0, checks manifest refs, verifies file count. BLOCKING.
+- S3.2: Release process documentation in `docs/extension-release-process.md` + HANDOFF.md lifecycle update
+- S3.3: `extension/build-extension.js` three-mode fix matching build-dev.js (Plain/ESM/IIFE)
+- S3.4: Test suite `tests/ext-build-001-pipeline.test.js` — build output format, EF file list match, version endpoint
+- Bug B5 (resume default 1 page): if session capacity allows
 
 Exit gate:
-- Dashboard download produces fingerprinted ZIP that loads in Chrome
-- Extension checks for updates on startup and every 6 hours
-- Popup shows update banner when behind, with working download button
+- CI blocks PRs that break extension build
+- Release process documented
+- build-extension.js (fingerprinted) works with three-mode compilation
+- Test suite covers build output format verification
 
 Remaining backlog:
-- EXT-BUILD-001-S3: CI gate + release process
 - Wire remaining 21 Anthropic-calling EFs to withAnthropicBreaker
 - CASA-001: Google CASA assessment + gmail.readonly upgrade
 - Any new feature work
@@ -3566,7 +3612,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.28`** | **EXT-BUILD-001-S1: Upload pipeline + EF file list + B3 + B6** |
+| **Product (BJ_VERSION)** | **`v9.29`** | **EXT-BUILD-001-S2: Dashboard download + version check + B1/B2/B4** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
@@ -3574,7 +3620,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 | **SPA Scaffold** | **`spa@1.0.0-scaffold`** | **SA-013** |
 | **Feature Flags** | **`infra@feature-flags-v1.0.0`** | **SA-025** |
 | **Event Bus** | **`infra@event-bus-v1.0.0`** | **SA-024** |
-| **API Gateway** | `infra@gateway-v1.0.0` | FB-PI-001 complete (126 routes) |
+| **API Gateway** | `infra@gateway-v1.0.0` | EXT-BUILD-001-S2 (127 routes) |
 | **Capacity Model** | **`infra@capacity-model-v1.0.0`** | **SA-028** |
 | **Deploy Tracker** | **`infra@deploy-tracker-v1.0.0`** | **BI-01** |
 | **Build Analytics** | **`infra@build-analytics-v1.0.0`** | **BI-02** |

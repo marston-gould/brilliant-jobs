@@ -345,6 +345,20 @@
   <main id="app-content" style="display: none;" role="main">
     <!-- EXT-AS-2: Consumer Application Mode View -->
     <div id="consumer-view">
+      <!-- EXT-BUILD-001 S2.4: Update banner (hidden by default) -->
+      <div id="cv-update-banner" style="display:none;background:linear-gradient(135deg,#f59e0b22,#f59e0b11);border:1px solid #f59e0b44;border-radius:10px;padding:10px 14px;margin:8px 12px 0;position:relative;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <div style="width:8px;height:8px;border-radius:50%;background:#f59e0b;animation:pulse 2s infinite;"></div>
+          <span style="font-size:12px;font-weight:600;color:#f59e0b;">Update available</span>
+          <button id="cv-update-dismiss" style="position:absolute;top:6px;right:8px;background:none;border:none;color:#f59e0b88;font-size:14px;cursor:pointer;padding:2px 4px;line-height:1;">&times;</button>
+        </div>
+        <div style="font-size:11px;color:var(--text-secondary,#a1a1aa);margin-bottom:8px;">
+          v<span id="cv-update-current">—</span> → v<span id="cv-update-latest">—</span>
+        </div>
+        <button id="cv-update-download-btn" style="background:#f59e0b;color:#000;border:none;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:600;cursor:pointer;width:100%;">Download Update</button>
+        <div id="cv-update-status" style="font-size:10px;color:#a1a1aa;margin-top:4px;text-align:center;"></div>
+      </div>
+
       <!-- EXT-AS-8: Page Home (default view) -->
       <div class="cv-page active" id="cv-page-home">
       <div class="cv-mode-section">
@@ -521,7 +535,7 @@
       <div class="cv-bottom-nav">
         <button class="cv-nav-item active" data-nav="home"><span class="cv-nav-icon">🏠</span>Home</button>
         <button class="cv-nav-item" data-nav="pipeline"><span class="cv-nav-icon">📋</span>Pipeline</button>
-        <button class="cv-nav-item" data-nav="resumes" onclick="window.open('https://brilliantjobs.app','_blank')"><span class="cv-nav-icon">📄</span>Resumes</button>
+        <button class="cv-nav-item" data-nav="resumes"><span class="cv-nav-icon">📄</span>Resumes</button>
         <button class="cv-nav-item" data-nav="settings"><span class="cv-nav-icon">⚙️</span>Settings</button>
       </div>
     </div>

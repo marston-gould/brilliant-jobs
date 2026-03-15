@@ -889,35 +889,25 @@ $('#j-saved-card').addEventListener('click', () => {
   if (typeof switchAppTab === 'function') switchAppTab('pipeline');
 });
 
-// Download
+// Download — EXT-BUILD-001-S2: Delegate to extension-download.js (in deferred chunk)
+// The old handler called /api/build-extension (Vercel route that doesn't exist).
+// extension-download.js calls the Supabase build-extension EF directly.
 $('#download-btn').addEventListener('click', async () => {
-  const btn = $('#download-btn');
-  const status = $('#download-status');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;"></span> Preparing download...';
-  status.textContent = '';
-  try {
-    const { data: { session } } = await sb.auth.getSession();
-    const res = await fetch('/api/build-extension', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` }
-    });
-    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || `Failed (${res.status})`); }
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = 'brilliant-jobs-extension.zip';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-    status.textContent = 'Download started. Follow the installation guide below.';
-    const instanceId = res.headers.get('X-Instance-Id') || 'bj-' + Math.random().toString(36).slice(2, 10);
-    $('#instance-card').style.display = 'block';
-    $('#ext-instance-id').textContent = instanceId;
-    $('#ext-built-at').textContent = new Date().toLocaleDateString();
-    // DS1A-13: Show guided install walkthrough after download
-    var installGuide = document.getElementById('ext-install-guide');
-    if (installGuide) { installGuide.style.display = ''; installGuide.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
-    if (window.posthog) posthog.capture('extension_downloaded');
-  } catch (e) { status.textContent = 'Error: ' + e.message; }
-  btn.disabled = false; btn.textContent = 'Download Extension';
+  if (typeof window._bjExtensionDownload !== 'undefined' && window._bjExtensionDownload.downloadBuild) {
+    window._bjExtensionDownload.downloadBuild();
+  } else {
+    // Fallback if deferred chunk hasn't loaded yet — load it then retry
+    try {
+      await bjLoadChunk('deferred');
+      if (window._bjExtensionDownload && window._bjExtensionDownload.downloadBuild) {
+        window._bjExtensionDownload.downloadBuild();
+      }
+    } catch (e) {
+      reportError('download_btn', e);
+      var status = $('#download-status');
+      if (status) status.textContent = 'Error: download module not loaded. Refresh and try again.';
+    }
+  }
 });
 
 // DS1A-13: Guided install step tracking

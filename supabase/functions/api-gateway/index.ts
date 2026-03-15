@@ -240,9 +240,10 @@ const ROUTE_REGISTRY: Record<string, string> = {
   "classify-pipeline-signal":   "classify-pipeline-signal",   // FB-PI-001-S2: AI signal classifier (#124)
   "process-pipeline-action":    "process-pipeline-action",    // FB-PI-001-S3: Stage transitions + matching (#125)
   "check-pipeline-staleness":   "check-pipeline-staleness",   // FB-PI-001-S5: Staleness engine cron (#126)
+  "extension-version":          "extension-version",          // EXT-BUILD-001-S2: Extension version check (#127)
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // TOTAL: 126 routes (93 SA-005 + 1 SA-007 + 1 SA-008 + 1 SA-009 + 2 SA-010 + 2 SA-011 + 2 SA-012 + 1 SA-018 + 2 SA-020 + 1 SA-021 + 1 SA-024 + 1 SA-028 + 1 BI-01 + 3 FB-PAYL + 1 EXT-AS-5 + 1 AF-006 + 1 FB-TRIAL-S4 + 2 FB-TRIAL-S5 + 1 FB-TRIAL-S6). Direct paths deprecated.
+  // TOTAL: 127 routes (126 prev + 1 EXT-BUILD-001-S2). Direct paths deprecated.
   // HOOK: Future EFs register here. Future: load from DB table for
   //       runtime updates without redeploy (api_consumers integration).
   // ═══════════════════════════════════════════════════════════════════════════

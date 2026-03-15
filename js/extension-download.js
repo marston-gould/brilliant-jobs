@@ -82,8 +82,9 @@
     if (_downloading) return;
     _downloading = true;
 
-    const btn = document.getElementById('extension-download-btn');
-    const status = document.getElementById('extension-download-status');
+    // EXT-BUILD-001-S2: Support both old (#extension-download-btn) and current (#download-btn) IDs
+    const btn = document.getElementById('extension-download-btn') || document.getElementById('download-btn');
+    const status = document.getElementById('extension-download-status') || document.getElementById('download-status');
 
     try {
       if (btn) {
@@ -232,10 +233,11 @@
   // ─── Initialize ─────────────────────────────────────────────
 
   function initExtensionDownload() {
-    // Bind download button
-    const btn = document.getElementById('extension-download-btn');
-    if (btn) {
+    // Bind download button — support both IDs
+    const btn = document.getElementById('extension-download-btn') || document.getElementById('download-btn');
+    if (btn && !btn._bjBound) {
       btn.addEventListener('click', downloadExtensionBuild);
+      btn._bjBound = true;
     }
 
     // Load channel map for comms

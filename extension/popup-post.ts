@@ -134,33 +134,32 @@
   })();
 
   // ============================================================
-  // ES1-5: Version Mismatch Check
+  // ES1-5 + EXT-BUILD-001-S2 B2: Version Mismatch Check
   // ============================================================
-  // Queries app_config for the latest expected extension version.
-  // Shows a banner if the installed version is behind.
+  // Calls extension-version EF via api-gateway (replaces broken app_config table query).
+  // Background.ts also checks version on startup + 6hr alarm — this is the popup fallback.
   (async function checkExtensionVersion() {
     try {
       const localRes = await fetch(chrome.runtime.getURL('version.json'));
-      const localVer = (await localRes.json()).version; // e.g. "2.20.0"
+      const localVer = (await localRes.json()).version; // e.g. "3.0.0"
 
       const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
       const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
 
       const res = await fetch(
-        `${SB_URL}/rest/v1/app_config?select=value&key=eq.extension_latest_version`,
-        { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
+        `${SB_URL}/functions/v1/extension-version`,
+        { headers: { 'Authorization': `Bearer ${SB_KEY}` } }
       );
       if (!res.ok) return;
 
-      const rows = await res.json();
-      if (!rows || rows.length === 0) return;
-
-      const expectedVer = rows[0].value; // e.g. "2.21.0"
+      const data = await res.json();
+      const expectedVer = data.latest;
+      if (!expectedVer) return;
 
       // Compare semver: split and compare numerically
       function compareSemver(a, b) {
-        const pa = a.split('.').map(Number);
-        const pb = b.split('.').map(Number);
+        const pa = a.replace(/^v/, '').split('.').map(Number);
+        const pb = b.replace(/^v/, '').split('.').map(Number);
         for (let i = 0; i < 3; i++) {
           if ((pa[i] || 0) < (pb[i] || 0)) return -1;
           if ((pa[i] || 0) > (pb[i] || 0)) return 1;

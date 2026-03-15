@@ -64,6 +64,7 @@ const chunks = {
     'js/payl.js',
     'js/trial-gate.js',
     'js/upgrade.js',         // FB-TRIAL-001-S6: billing toggle for upgrade page
+    'js/extension-download.js', // EXT-BUILD-001-S2: fingerprinted extension download + channel map
   ],
 };
 
