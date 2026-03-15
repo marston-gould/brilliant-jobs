@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.14';
+var BJ_VERSION = 'v9.15';
 (function(): void {
   function populateVersion(): void {
     document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
@@ -15742,6 +15742,199 @@ if (typeof window !== 'undefined') {
   window.renderConfirmationCards = renderConfirmationCards;
 }
 
+// ── §7.1 Amber: Low-confidence signal cards (tracked apps, low confidence) ─
+// These are pipeline_signals with action_taken='prompted', matched_application_id SET,
+// and confidence_level='low'
+
+var _lowConfidenceSignals = [];
+
+async function loadLowConfidenceSignals() {
+  if (!currentUser?.id) return;
+  try {
+    var { data, error } = await sb.from('pipeline_signals')
+      .select('id,pipeline_entry_id,matched_application_id,signal_type,confidence_score,confidence_level,extracted_fields,evidence_preview,proposed_stage,created_at')
+      .eq('user_id', currentUser.id)
+      .eq('action_taken', 'prompted')
+      .eq('confidence_level', 'low')
+      .not('matched_application_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(10);
+    if (error) throw error;
+    _lowConfidenceSignals = data || [];
+    renderLowConfidenceCards();
+  } catch(e) { reportError('pipeline:low_confidence', e); }
+}
+
+function renderLowConfidenceCards() {
+  var container = document.getElementById('pi-low-confidence-cards');
+  if (!container) return;
+  if (!_lowConfidenceSignals.length) { container.innerHTML = ''; container.style.display = 'none'; return; }
+  container.style.display = 'block';
+
+  var SIG_LABELS = {
+    'INT': 'sent you an interview invite',
+    'CAL-INT': 'sent you an interview invite via calendar',
+    'REJ-PRE': 'rejected your application',
+    'REJ-POST': 'rejected your application after your interview',
+    'OFFER': 'sent you a job offer',
+    'RESCHED': 'rescheduled your interview',
+    'ACK': 'acknowledged your application',
+  };
+
+  var STAGE_OPTIONS = ['applied','responded','interview','offer','rejected'].map(function(s) {
+    return '<option value="'+s+'">'+s.charAt(0).toUpperCase()+s.slice(1)+'</option>';
+  }).join('');
+
+  var html = _lowConfidenceSignals.map(function(s) {
+    var fields = s.extracted_fields || {};
+    var company = escHtml(fields.company || 'this company');
+    var action = SIG_LABELS[s.signal_type] || 'sent you an update';
+    var preview = escHtml(s.evidence_preview || '');
+    var suggestedStage = s.proposed_stage || 'responded';
+    return '<div class="pi-amber-card" data-signal-id="'+s.id+'" style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:var(--bg-card);border:1px solid #F59E0B;border-left:3px solid #F59E0B;border-radius:8px;margin-bottom:8px;">'
+      + '<div style="flex:1;min-width:0;">'
+      +   '<div style="font-size:13px;color:var(--text);">We think <strong>'+company+'</strong> may have '+action+'.</div>'
+      +   (preview ? '<div style="font-size:11px;color:var(--text-secondary);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+preview+'</div>' : '')
+      +   '<div style="margin-top:6px;font-size:11px;color:var(--text-secondary);">Suggested: <strong>'+suggestedStage+'</strong> · Confidence: '+(Math.round((s.confidence_score||0)*100))+'%</div>'
+      + '</div>'
+      + '<div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0;">'
+      +   '<button class="pi-amber-confirm" data-id="'+s.id+'" data-stage="'+suggestedStage+'" style="font-size:11px;padding:3px 10px;background:#F59E0B;color:#000;border:none;border-radius:5px;cursor:pointer;white-space:nowrap;">Confirm</button>'
+      +   '<select class="pi-amber-stage" style="font-size:11px;padding:3px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);">'+STAGE_OPTIONS+'</select>'
+      +   '<button class="pi-amber-correct" data-id="'+s.id+'" style="font-size:11px;padding:3px 10px;background:transparent;color:var(--text-secondary);border:1px solid var(--border);border-radius:5px;cursor:pointer;white-space:nowrap;">Different stage</button>'
+      +   '<button class="pi-amber-wrong" data-id="'+s.id+'" style="font-size:11px;padding:3px 10px;background:transparent;color:var(--text-secondary);border:1px solid var(--border);border-radius:5px;cursor:pointer;">Wrong</button>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+
+  container.innerHTML = '<div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em;">Signals to Confirm</div>' + html;
+
+  container.onclick = function(e) {
+    var confirmBtn = e.target.closest('.pi-amber-confirm');
+    var correctBtn = e.target.closest('.pi-amber-correct');
+    var wrongBtn = e.target.closest('.pi-amber-wrong');
+    var card = e.target.closest('.pi-amber-card');
+    if (confirmBtn) {
+      resolveAmberSignal(confirmBtn.getAttribute('data-id'), 'confirm', confirmBtn.getAttribute('data-stage'));
+    } else if (correctBtn && card) {
+      var stage = card.querySelector('.pi-amber-stage').value;
+      resolveAmberSignal(correctBtn.getAttribute('data-id'), 'correct', stage);
+    } else if (wrongBtn) {
+      resolveAmberSignal(wrongBtn.getAttribute('data-id'), 'dismiss', null);
+    }
+  };
+}
+
+async function resolveAmberSignal(signalId, action, stage) {
+  try {
+    var resp = await fetch(window.sb?.supabaseUrl + '/functions/v1/confirm-pipeline-signal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (await sb.auth.getSession()).data?.session?.access_token },
+      body: JSON.stringify({ signal_id: signalId, action: action, corrected_stage: stage }),
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    if (typeof posthog !== 'undefined') posthog.capture('low_confidence_signal_resolved', { action: action, stage: stage });
+    _lowConfidenceSignals = _lowConfidenceSignals.filter(function(s) { return s.id !== signalId; });
+    renderLowConfidenceCards();
+    if (action !== 'dismiss') renderPipeline();
+  } catch(e) { reportError('pipeline:amber_resolve', e); toastError('Failed to update signal'); }
+}
+
+// ── §7.1 Green: Auto-move notification cards (informational + undo) ────────
+// These are pipeline_signals with action_taken='auto_moved', created within 48h,
+// NOT auto_archive (those are handled by undoAutoArchive in S5)
+
+var _autoMoveNotifications = [];
+
+async function loadAutoMoveNotifications() {
+  if (!currentUser?.id) return;
+  try {
+    var cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+    var { data, error } = await sb.from('pipeline_signals')
+      .select('id,signal_type,extracted_fields,evidence_preview,target_stage,previous_stage,evidence_metadata,created_at')
+      .eq('user_id', currentUser.id)
+      .eq('action_taken', 'auto_moved')
+      .gt('created_at', cutoff)
+      .order('created_at', { ascending: false })
+      .limit(5);
+    if (error) throw error;
+    // Exclude staleness auto-archives (those have auto_archive=true in evidence_metadata)
+    _autoMoveNotifications = (data || []).filter(function(s) {
+      return !(s.evidence_metadata && s.evidence_metadata.auto_archive);
+    });
+    renderAutoMoveNotifications();
+  } catch(e) { reportError('pipeline:automove_notif', e); }
+}
+
+function renderAutoMoveNotifications() {
+  var container = document.getElementById('pi-automove-cards');
+  if (!container) return;
+  if (!_autoMoveNotifications.length) { container.innerHTML = ''; container.style.display = 'none'; return; }
+  container.style.display = 'block';
+
+  var html = _autoMoveNotifications.map(function(s) {
+    var fields = s.extracted_fields || {};
+    var company = escHtml(fields.company || (s.evidence_metadata && s.evidence_metadata.company) || 'Company');
+    var role = fields.role ? ' — ' + escHtml(fields.role) : '';
+    var stage = escHtml(s.target_stage || 'next stage');
+    var dateStr = s.created_at ? new Date(s.created_at).toLocaleDateString('en-US', {month:'short',day:'numeric'}) : '';
+    var preview = escHtml(s.evidence_preview || '');
+    return '<div class="pi-green-card" data-signal-id="'+s.id+'" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#065F46;color:#fff;border-radius:8px;margin-bottom:6px;font-size:12px;">'
+      + '<div style="flex:1;min-width:0;">'
+      +   '<span style="font-weight:600;">'+company+role+'</span> moved to <strong>'+stage+'</strong> based on an email'+(dateStr?' received '+dateStr:'')+'.'
+      +   (preview ? '<div style="font-size:11px;opacity:.8;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+preview+'</div>' : '')
+      + '</div>'
+      + '<button class="pi-green-undo" data-id="'+s.id+'" data-prev-stage="'+(escHtml(s.previous_stage||'applied'))+'" style="font-size:11px;padding:3px 10px;background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:5px;cursor:pointer;white-space:nowrap;flex-shrink:0;">Undo</button>'
+      + '<button class="pi-green-dismiss" data-id="'+s.id+'" style="font-size:11px;padding:3px 6px;background:transparent;color:rgba(255,255,255,.6);border:none;cursor:pointer;flex-shrink:0;">✕</button>'
+      + '</div>';
+  }).join('');
+
+  container.innerHTML = html;
+
+  container.onclick = function(e) {
+    var undoBtn = e.target.closest('.pi-green-undo');
+    var dismissBtn = e.target.closest('.pi-green-dismiss');
+    if (undoBtn) {
+      undoAutoMoveNotification(undoBtn.getAttribute('data-id'), undoBtn.getAttribute('data-prev-stage'));
+    } else if (dismissBtn) {
+      dismissAutoMoveNotification(dismissBtn.getAttribute('data-id'));
+    }
+  };
+}
+
+async function undoAutoMoveNotification(signalId, prevStage) {
+  try {
+    var { data: sig } = await sb.from('pipeline_signals').select('pipeline_entry_id,matched_application_id').eq('id', signalId).single();
+    var entryId = sig?.pipeline_entry_id || sig?.matched_application_id;
+    if (entryId) {
+      var now = new Date().toISOString();
+      var upd = { stage: prevStage, stage_changed_at: now };
+      await sb.from('user_pipeline').update(upd).eq('id', entryId).eq('user_id', currentUser.id);
+    }
+    await sb.from('pipeline_signals').update({ action_taken: 'dismissed' }).eq('id', signalId);
+    if (typeof posthog !== 'undefined') posthog.capture('auto_move_undone', { prev_stage: prevStage });
+    toastSuccess('Stage reverted to ' + prevStage);
+    _autoMoveNotifications = _autoMoveNotifications.filter(function(s) { return s.id !== signalId; });
+    renderAutoMoveNotifications();
+    renderPipeline();
+  } catch(e) { reportError('pipeline:undo_automove', e); toastError('Failed to undo'); }
+}
+
+async function dismissAutoMoveNotification(signalId) {
+  // Just remove from local view — don't change signal status (it's already auto_moved)
+  _autoMoveNotifications = _autoMoveNotifications.filter(function(s) { return s.id !== signalId; });
+  renderAutoMoveNotifications();
+}
+
+if (typeof window !== 'undefined') {
+  window.loadLowConfidenceSignals = loadLowConfidenceSignals;
+  window.renderLowConfidenceCards = renderLowConfidenceCards;
+  window.resolveAmberSignal = resolveAmberSignal;
+  window.loadAutoMoveNotifications = loadAutoMoveNotifications;
+  window.renderAutoMoveNotifications = renderAutoMoveNotifications;
+  window.undoAutoMoveNotification = undoAutoMoveNotification;
+  window.dismissAutoMoveNotification = dismissAutoMoveNotification;
+}
+
 // ── FB-PI-001 S5: Staleness prompt cards + undo ─────────────────────────────
 // Staleness signals are pipeline_signals with evidence_metadata.staleness_prompt=true
 // They surface in loadPendingSignals() and are rendered here separately.
@@ -16301,9 +16494,23 @@ async function initPipeline() {
   await loadPendingSignals();
   await loadPendingConfirmations(); // FB-PI-001 S4
   await loadAutoArchiveUndo();       // FB-PI-001 S5
+  await loadLowConfidenceSignals();  // FB-PI-001 S7.1 amber
+  await loadAutoMoveNotifications(); // FB-PI-001 S7.1 green
   // BUGFIX: Update hero Pipeline count after data loads (was never set on init)
   var heroSaved = $('#j-saved');
   if (heroSaved) heroSaved.textContent = savedJobIds.length.toLocaleString();
+
+  // §5.3 step 5: Subscribe to Supabase Realtime for live dashboard updates
+  if (currentUser?.id && typeof sb !== 'undefined' && sb.channel) {
+    sb.channel('pipeline_signals')
+      .on('broadcast', { event: 'stage_changed' }, function(payload) {
+        if (payload?.payload?.user_id !== currentUser.id) return;
+        // Refresh pipeline view + auto-move notifications on real-time update
+        renderPipeline();
+        loadAutoMoveNotifications();
+      })
+      .subscribe();
+  }
 }
 
 // ── Move job to a new stage ──────────────────────────────────
@@ -21421,6 +21628,13 @@ async function loadPipelineIntelligenceSettings() {
     }
     if (el('pi-auto-archive')) el('pi-auto-archive').checked = data.auto_archive_enabled !== false;
     if (el('pi-auto-move-behavior')) el('pi-auto-move-behavior').value = data.auto_move_behavior || 'aggressive';
+    if (el('pi-scan-freq')) el('pi-scan-freq').value = String(data.scan_frequency_minutes || 360);
+    if (el('pi-gmail-scope')) el('pi-gmail-scope').value = data.gmail_scan_scope || 'primary';
+    if (el('pi-cal-scope')) el('pi-cal-scope').value = data.calendar_scan_scope || 'primary';
+    if (el('pi-notify-automove-email')) el('pi-notify-automove-email').checked = data.notify_automove_email === true;
+    if (el('pi-notify-automove-sms')) el('pi-notify-automove-sms').checked = data.notify_automove_sms === true;
+    if (el('pi-notify-automove-push')) el('pi-notify-automove-push').checked = data.notify_automove_push === true;
+    if (el('pi-notify-automove-inapp')) el('pi-notify-automove-inapp').checked = data.notify_automove_inapp !== false;
   } catch(e) { reportError('applications', e); console.log('[BJ] No pipeline intelligence settings yet');
   }
   // Show Gmail status
@@ -21462,8 +21676,15 @@ async function savePipelineIntelligenceSettings() {
       ...(el('pi-ch-inapp')?.checked ? ['in_app'] : []),
       ...(el('pi-ch-sms')?.checked ? ['sms'] : []),
     ],
-    // FB-PI-001 S6: New settings per spec §7.2
+    // FB-PI-001 §7.2: Complete settings per spec
     auto_move_behavior: el('pi-auto-move-behavior')?.value || 'aggressive',
+    scan_frequency_minutes: parseInt(el('pi-scan-freq')?.value) || 360,
+    gmail_scan_scope: el('pi-gmail-scope')?.value || 'primary',
+    calendar_scan_scope: el('pi-cal-scope')?.value || 'primary',
+    notify_automove_email: el('pi-notify-automove-email')?.checked ?? false,
+    notify_automove_sms: el('pi-notify-automove-sms')?.checked ?? false,
+    notify_automove_push: el('pi-notify-automove-push')?.checked ?? false,
+    notify_automove_inapp: el('pi-notify-automove-inapp')?.checked ?? true,
     staleness_threshold_days: parseInt(el('pi-staleness-days')?.value) || 7,
     auto_archive_enabled: el('pi-auto-archive')?.checked ?? true,
     auto_archive_days: 30,

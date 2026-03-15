@@ -352,6 +352,21 @@ async function processSignal(signal: SignalRow): Promise<{
       confidence: signal.confidence_score,
     });
 
+    // §5.3 step 5: Supabase Realtime broadcast on pipeline_signals channel
+    // Connected dashboard clients subscribe to this channel and refresh
+    await sb.channel("pipeline_signals").send({
+      type: "broadcast",
+      event: "stage_changed",
+      payload: {
+        user_id: signal.user_id,
+        signal_id: signal.id,
+        signal_type: signal.signal_type,
+        from_stage: currentStage,
+        to_stage: targetStage,
+        source: signal.signal_source,
+      },
+    });
+
     return { action: "auto_moved", match_type, stage: targetStage };
 
   } else {

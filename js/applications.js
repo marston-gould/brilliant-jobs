@@ -843,6 +843,13 @@ async function loadPipelineIntelligenceSettings() {
     }
     if (el('pi-auto-archive')) el('pi-auto-archive').checked = data.auto_archive_enabled !== false;
     if (el('pi-auto-move-behavior')) el('pi-auto-move-behavior').value = data.auto_move_behavior || 'aggressive';
+    if (el('pi-scan-freq')) el('pi-scan-freq').value = String(data.scan_frequency_minutes || 360);
+    if (el('pi-gmail-scope')) el('pi-gmail-scope').value = data.gmail_scan_scope || 'primary';
+    if (el('pi-cal-scope')) el('pi-cal-scope').value = data.calendar_scan_scope || 'primary';
+    if (el('pi-notify-automove-email')) el('pi-notify-automove-email').checked = data.notify_automove_email === true;
+    if (el('pi-notify-automove-sms')) el('pi-notify-automove-sms').checked = data.notify_automove_sms === true;
+    if (el('pi-notify-automove-push')) el('pi-notify-automove-push').checked = data.notify_automove_push === true;
+    if (el('pi-notify-automove-inapp')) el('pi-notify-automove-inapp').checked = data.notify_automove_inapp !== false;
   } catch(e) { reportError('applications', e); console.log('[BJ] No pipeline intelligence settings yet');
   }
   // Show Gmail status
@@ -884,8 +891,15 @@ async function savePipelineIntelligenceSettings() {
       ...(el('pi-ch-inapp')?.checked ? ['in_app'] : []),
       ...(el('pi-ch-sms')?.checked ? ['sms'] : []),
     ],
-    // FB-PI-001 S6: New settings per spec §7.2
+    // FB-PI-001 §7.2: Complete settings per spec
     auto_move_behavior: el('pi-auto-move-behavior')?.value || 'aggressive',
+    scan_frequency_minutes: parseInt(el('pi-scan-freq')?.value) || 360,
+    gmail_scan_scope: el('pi-gmail-scope')?.value || 'primary',
+    calendar_scan_scope: el('pi-cal-scope')?.value || 'primary',
+    notify_automove_email: el('pi-notify-automove-email')?.checked ?? false,
+    notify_automove_sms: el('pi-notify-automove-sms')?.checked ?? false,
+    notify_automove_push: el('pi-notify-automove-push')?.checked ?? false,
+    notify_automove_inapp: el('pi-notify-automove-inapp')?.checked ?? true,
     staleness_threshold_days: parseInt(el('pi-staleness-days')?.value) || 7,
     auto_archive_enabled: el('pi-auto-archive')?.checked ?? true,
     auto_archive_days: 30,
