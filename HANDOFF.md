@@ -3904,27 +3904,47 @@ Deliverables:
 
 ## Next Session
 
-**EXT-BUILD-001 spec FULLY EXECUTED.** All sessions (S1-S3), all bugs (B1-B6), all phases (A-D) complete.
-- 59 platforms with optimized selectors + generic fallback = 60 total coverage
-- Browse-page injection on 11 ATS sites
-- 6 bugs fixed, 3 EFs deployed, 127 gateway routes, 19 CI gates
-- 486 total tests across 10 test files
+**SPEC-AIS-001 Application Intelligence Suite — 28 sessions planned and committed to repo.**
 
-Remaining backlog:
-- **RESUME-BUILDER-001 ✅ COMPLETE**: All 4 sessions shipped. 170 tests passing (46+41+51+32). v9.36–v9.39.
-  - S1 Upload/Parse/Store — resume-parse EF, migration v9.36, page-resume-builder live
-  - S2 Templates & Generation — resume-generate EF, 3 templates, Download UI
-  - S3 Keyword Optimization — resume-optimize EF, gap report UI, one-click insertion, match score display
-  - S4 AI Rewrites — resume-rewrite-bullet EF, Improve with AI per bullet, accept/reject panel
-- **NEXT WORKSTREAM**: LP-RESTRUCTURE complete. Awaiting Marston direction on next feature.
-  - CREATE TABLE landing_sections + RLS policies + seed data (4 initial sections)
-  - Create landing-assets/ Storage bucket
-  - Update landing-stats to return dual company counts (career pages monitored ~39K + companies hiring now ~8.7K)
-  - Restructure index.html: remove benefit grid (#benefits), benefits-short, walkthrough carousel
-  - Add #lp-benefit-sections container in correct DOM position (after comparison table, before ghost section)
-  - Update stats bar and hero to display both metrics
+Active workstream: **Phase A — Foundation**
+
+---
+
+### AIS-F3-S1: Auto-Apply Consumer Gate Removal
+
+**Entry Gate:**
+- [ ] Confirm tierGate.js exists and Free/Starter/Pro limits are defined
+- [ ] Confirm admin flag location in auto-fill code path
+- [ ] Confirm inject-overlay.js real-time data structure for fill status panel
+
+**Fix Items:**
+1. Remove admin-only check from auto-fill trigger
+2. Wire tierGate.js as sole access control (Free=0, Starter=5/day, Pro=unlimited)
+3. Application Mode integration: respect selected mode before auto-fill fires
+4. Fill status panel on Applications page: surface inject-overlay.js progress/success/error data
+5. Error recovery UI: surface fill failures with actionable guidance (not just PostHog)
+6. Anti-detection: verify 45-90s randomized delay + max 25/session + failure circuit breaker active
+7. PostHog event: auto_apply_consumer_triggered (platform, job_id, mode, tier)
+
+**Exit Gate:**
+- [ ] Free user: auto-fill blocked, tier upgrade prompt shown
+- [ ] Starter: 5/day enforced, resets at midnight
+- [ ] Pro: fires, respects Application Mode
+- [ ] Fill status visible on Applications page
+- [ ] Error state shown to user on fill failure
+- [ ] Tests passing
+
+---
+
+**Full AIS session sequence (28 sessions):**
+
+Phase A (Weeks 1-2): AIS-F3-S1 -> AIS-F4-S1 -> AIS-F4-S2 -> AIS-F2-S1 -> AIS-F2-S2
+Phase B (Weeks 3-4): AIS-F8-S1 -> AIS-F8-S2 -> AIS-F1-S1 -> AIS-F1-S2 -> AIS-F1-S3 -> AIS-F1-S4
+Phase C (Weeks 5-6): AIS-F5-S1 -> AIS-F5-S2 -> AIS-F5-S3 -> AIS-F5-S4 -> AIS-F6-S1 -> AIS-F6-S2
+Phase D (Weeks 7-11): AIS-F9-S1 -> AIS-F9-S2 -> AIS-F9-S3 -> AIS-F10-S1 -> AIS-F10-S2 -> AIS-F7-S1 -> AIS-F7-S2 -> AIS-F11-S1 -> AIS-F11-S2 -> AIS-F12-S1 -> AIS-F12-S2
+
+**Other backlog:**
 - CASA-001: Google CASA assessment + gmail.readonly upgrade
-- Any new feature work
 
 
 ## Deferred: SA-001 / SA-002 / SA-003 (Typesense)
