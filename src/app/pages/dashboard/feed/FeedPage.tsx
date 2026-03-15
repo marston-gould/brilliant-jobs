@@ -193,6 +193,24 @@ export function FeedPage() {
     });
   }, []);
 
+  // REM-S13: Bridge to legacy openFilterBrowser for browse buttons
+  const handleBrowse = useCallback((dimension: string, mode: 'include' | 'exclude') => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    if (typeof w.openFilterBrowser === 'function') {
+      w.openFilterBrowser(dimension, mode);
+    } else if (typeof w.openCompanyBrowser === 'function' && (dimension === 'company')) {
+      w.openCompanyBrowser(mode);
+    }
+  }, []);
+
+  // REM-S14: Read US-Only from legacy tuning state
+  const usOnly = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tuning = (window as any).tuningSettings;
+    return !!(tuning && tuning.usOnly);
+  }, [state.jobs]);
+
   // ── Job action handlers ───────────────────────────────
 
   const handleSave = useCallback((jobId: string) => {
@@ -280,6 +298,8 @@ export function FeedPage() {
             onSaveFilter={handleSaveFilter}
             collapsed={filterBuilderCollapsed}
             onToggleCollapse={() => setFilterBuilderCollapsed(prev => !prev)}
+            onBrowse={handleBrowse}
+            usOnly={usOnly}
           />
 
           {/* Saved searches */}
