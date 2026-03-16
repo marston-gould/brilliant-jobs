@@ -59,12 +59,41 @@ serve(async (req) => {
     const now = new Date();
     const resetDate = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
 
+    // SPEC-COHORT-001-REM §7.1: earliest award expiry for tooltip
+    const { data: nextExpiry } = await sb
+      .from('bj_credit_ledger')
+      .select('expires_at')
+      .eq('user_id', user.id)
+      .eq('bucket', 'award')
+      .eq('event_type', 'award_grant')
+      .eq('voided', false)
+      .gt('amount', 0)
+      .not('expires_at', 'is', null)
+      .gt('expires_at', new Date().toISOString())
+      .order('expires_at', { ascending: true })
+      .limit(1)
+      .single();
+
+    // SPEC-COHORT-001-REM §7.1 §3.2: passive debits today for platform usage row
+    const todayStart = new Date();
+    todayStart.setUTCHours(0, 0, 0, 0);
+    const passiveFeatures = ['auto-apply-trigger', 'analyze-hidden-job', 'score-ai-content'];
+    const { count: platformUsage } = await sb
+      .from('bj_credit_ledger')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('event_type', 'feature_debit')
+      .in('feature', passiveFeatures)
+      .gte('created_at', todayStart.toISOString());
+
     return new Response(
       JSON.stringify({
         ...balance,
         reset_date: resetDate,
         cohort_slug: (profile?.cohort_tiers as Record<string, unknown>)?.slug ?? 'free',
         credits_monthly: (profile?.cohort_tiers as Record<string, unknown>)?.credits_monthly ?? 0,
+        earliest_award_expiry: nextExpiry?.expires_at ?? null,
+        platform_usage_today: platformUsage ?? 0,
       }),
       { status: 200, headers: { ...CORS, 'Content-Type': 'application/json' } },
     );

@@ -30,12 +30,31 @@ serve(async (req) => {
     const { data: { user }, error: authErr } = await createClient(SB_URL, 
       Deno.env.get('SUPABASE_ANON_KEY')!
     ).auth.getUser(token);
-    if (authErr || !user) return new Response
-    // SPEC-COHORT-001-S2: Credit gate
-    const credit_extract_resume_profile = await creditGate(sb, user.id, 'extract-resume-profile');
-    if (!credit_extract_resume_profile.allowed) return credit_extract_resume_profile.response!;(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: CORS_HEADERS });
+    if (authErr || !user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: CORS_HEADERS });
 
-    const { resume_text } = await req.json();
+    const body = await req.json();
+    const { resume_text, resume_hash } = body;
+
+    // SPEC-COHORT-001-REM §3.1: First upload of a given resume is free; re-parse costs 1cr.
+    // Check if this user has ever parsed this resume hash before.
+    let isFirstUpload = true;
+    if (resume_hash) {
+      const { count } = await sb
+        .from('bj_credit_ledger')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('feature', 'extract-resume-profile')
+        .eq('source_ref', resume_hash);
+      isFirstUpload = (count ?? 0) === 0;
+    }
+
+    if (!isFirstUpload) {
+      // Re-parse: gate normally
+      const credit_extract_resume_profile = await creditGate(sb, user.id, 'extract-resume-profile');
+      if (!credit_extract_resume_profile.allowed) return credit_extract_resume_profile.response!;
+    }
+    // First upload: free — no credit gate
+
     if (!resume_text || resume_text.length < 50) {
       return new Response(JSON.stringify({ error: 'Resume text too short' }), { status: 400, headers: CORS_HEADERS });
     }

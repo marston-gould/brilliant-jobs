@@ -59,10 +59,13 @@ serve(async (req) => {
     // If user_id provided: replenish just that user. Otherwise: replenish all due users.
     const targetUserId: string | null = body.user_id ?? null;
 
-    const periodStart = new Date();
-    periodStart.setDate(1);
-    periodStart.setHours(0, 0, 0, 0);
-    const newPeriodStart = new Date(periodStart.getFullYear(), periodStart.getMonth() + 1, 1);
+    // SPEC-COHORT-001-REM §5.2: Use billing anniversary from subscriptions.current_period_end,
+    // not calendar month. When called by pg_cron (no user_id), process users whose
+    // current_period_end falls today. When called for a specific user, process that user.
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
 
     let usersQuery = sb
       .from('profiles')
@@ -71,8 +74,24 @@ serve(async (req) => {
     if (targetUserId) {
       usersQuery = usersQuery.eq('id', targetUserId) as typeof usersQuery;
     } else {
-      usersQuery = usersQuery.not('cohort_tier_id', 'is', null) as typeof usersQuery;
+      // Join to user_subscriptions to find users whose billing period ends today
+      const { data: dueSubs } = await sb
+        .from('user_subscriptions')
+        .select('user_id')
+        .gte('current_period_end', today.toISOString())
+        .lt('current_period_end', tomorrow.toISOString())
+        .eq('status', 'active');
+      const dueUserIds = (dueSubs ?? []).map((s: Record<string, string>) => s.user_id);
+      if (dueUserIds.length === 0 && !targetUserId) {
+        return new Response(JSON.stringify({ processed: 0, errors: 0, message: 'No users due for replenishment today' }),
+          { status: 200, headers: { ...CORS, 'Content-Type': 'application/json' } });
+      }
+      usersQuery = usersQuery.in('id', dueUserIds) as typeof usersQuery;
     }
+
+    // Period boundaries: use actual billing period from subscription if available
+    const periodStart = today;
+    const newPeriodStart = tomorrow;
 
     const { data: users, error: usersErr } = await usersQuery;
     if (usersErr) throw usersErr;
@@ -162,6 +181,23 @@ serve(async (req) => {
         } catch (_) {}
       }
     }
+
+    // SPEC-COHORT-001-REM §5.2: replenishment_cron_completed PostHog health check
+    try {
+      const phKey = Deno.env.get('POSTHOG_API_KEY');
+      if (phKey && !targetUserId) { // Only fire on cron runs, not individual user calls
+        await fetch('https://app.posthog.com/capture/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            api_key: phKey,
+            distinct_id: 'system',
+            event: 'replenishment_cron_completed',
+            properties: { processed, errors },
+          }),
+        });
+      }
+    } catch (_) {}
 
     return new Response(
       JSON.stringify({ processed, errors, results: targetUserId ? results : undefined }),

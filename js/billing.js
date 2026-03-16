@@ -92,6 +92,21 @@ function renderBucketBreakdown(bal) {
     resetEl.textContent = 'Resets ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
 
+  // SPEC-COHORT-001-REM §7.1: Bonus credits tooltip showing earliest expiry
+  const awardsEl = document.getElementById('sub-bucket-awards');
+  if (awardsEl && bal.earliest_award_expiry) {
+    const exp = new Date(bal.earliest_award_expiry);
+    awardsEl.title = 'Expires ' + exp.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  // SPEC-COHORT-001-REM §7.1 §3.2: Platform usage row (passive debits today)
+  const platformEl = document.getElementById('sub-platform-usage');
+  const platformAmt = document.getElementById('sub-platform-usage-amount');
+  if (platformEl && platformAmt && bal.platform_usage_today !== undefined) {
+    platformAmt.textContent = bal.platform_usage_today;
+    platformEl.classList.toggle('u-hidden', bal.platform_usage_today === 0);
+  }
+
   // Nav badge
   renderCreditBadge(total);
 }

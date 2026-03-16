@@ -3840,6 +3840,18 @@ None.
 
 ## Last Completed Session
 
+**SPEC-COHORT-001-REM** — Spec Gap Remediation ✅
+- v9.79→v9.80 — Closed all 15 gaps identified in post-delivery spec audit.
+- **P0 (2 fixed):** GAP-1: fn_debit_credits rewritten with correct rolled→base→award debit order (oldest award expiry first, FOR UPDATE lock). GAP-2: cohort_id column name difference is intentional (cohort_tier_id avoids collision with promo cohorts.id) — documented.
+- **P1 (6 fixed):** GAP-3: fn_cohort_prorate RPC + stripe-webhook calls it on tier change. GAP-4: replenish-credits uses billing anniversary (subscriptions.current_period_end) + daily pg_cron + replenishment_cron_completed PostHog. GAP-5: extract-resume-profile first-upload-free via resume_hash check in bj_credit_ledger. GAP-6: 6 operational cap columns on cohort_tiers (max_auto_apply_daily, max_saved_jobs, max_pipeline_items, max_recruiter_lookups_daily, csv_export_enabled, api_access_enabled) with per-cohort seeds matching spec §6. GAP-7: cohort_feature_caps table (per-cohort daily cap overrides for passive EFs) + free-cohort stricter caps seeded. GAP-8: fn_cohort_grant_on_signup trigger on profiles AFTER INSERT.
+- **P2 (3 fixed):** GAP-9: cron_run_log table + fn_expire_awards_monitored wrapper (logs failures for PostHog health check). GAP-10: replenishment_cron_completed PostHog in replenish-credits. GAP-11: feature_execution_failed PostHog in creditRefund.
+- **P3 (2 fixed, 2 deferred):** GAP-12: platform_usage_today in get-user-balance + UI row. GAP-13: earliest_award_expiry in get-user-balance + tooltip on awards row. GAP-14 (upgrade CTA specific cost) + GAP-15 (admin_audit_log for cohort mutations) deferred to SPEC-ADMIN-002.
+- All 15 EFs redeployed. 63/63 tests passing.
+
+---
+
+## Last Completed Session
+
 **SPEC-COHORT-001-S3** — Cohort & Credit System: Stripe + Balance UI ✅
 - v9.78→v9.79 — stripe-webhook `handleSubscriptionUpdated`: looks up cohort_tier by slug (pro/starter/free), updates profiles.cohort_tier_id + cohort_tier_assigned_at, calls replenish-credits EF (non-fatal on error). award-grant EF (route #132): service-role + admin JWT, validates user_id required + amount positive integer ≤10000, fn_grant_award_credits RPC, PostHog award_credits_granted with source/granted_by. creditGate.ts: fires credits_low PostHog after debit when balance ≤ 20% of monthly allotment (non-fatal, reads cohort_tiers.credits_monthly). dashboard.html: balance card replaced with 3-bucket layout — rolled/base/awards rows (u-hidden when 0), reset date element, sub-bucket-total with existing sub-balance-number. billing.js: loadBucketBalance() calls get-user-balance EF with access token (falls back to loadCreditBalance on error), renderBucketBreakdown() renders all 3 rows + reset date + nav badge, checkLowCreditAlertPct() uses 20% threshold from bal.credits_monthly, all exported to BJ namespace, called in initBilling(). CSS: sub-bucket-row/amount/total/reset-date rules added. 57 tests all passing. All 11 EFs redeployed.
 - **SPEC-COHORT-001 COMPLETE** — 3 sessions, schema + EF layer + Stripe/UI. 104 + 91 + 57 = 252 total tests.
@@ -4083,7 +4095,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.79`** | **SPEC-COHORT-001-S3 COMPLETE: Stripe cohort sync, award-grant EF, 3-bucket balance UI, credits_low event. 57 tests. SPEC-COHORT-001 COMPLETE (252 total tests).** |
+| **Product (BJ_VERSION)** | **`v9.80`** | **SPEC-COHORT-001-REM: 15 spec gaps closed. Debit order, proration, billing anniversary, first-upload-free, operational caps, signup trigger, monitoring. 63 tests.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

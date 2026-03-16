@@ -150,15 +150,18 @@ export async function creditRefund(
   });
   if (error) {
     console.error(`[creditRefund] Failed to refund ${cost} credits for ${featureKey}:`, error.message);
-    // PostHog capture via captureEvent if available
     try {
       await captureEvent(userId, 'credit_refund_failed', {
-        feature: featureKey,
-        cost,
-        error: error.message,
+        feature: featureKey, cost, error: error.message,
       });
     } catch (_) { /* best effort */ }
   }
+  // SPEC-COHORT-001-REM §4.2 step 7: always fire feature_execution_failed
+  try {
+    await captureEvent(userId, 'feature_execution_failed', {
+      feature: featureKey, cost,
+    });
+  } catch (_) { /* non-fatal */ }
 }
 
 // ─── passiveCap ──────────────────────────────────────────────────────────────
@@ -169,15 +172,37 @@ export async function passiveCap(
   userId: string,
   featureKey: string,
 ): Promise<PassiveCapResult> {
-  // 1. Read daily_cap from feature_costs
-  const { data: fc } = await sb
-    .from('feature_costs')
-    .select('daily_cap, credit_cost')
-    .eq('feature_key', featureKey)
+  // SPEC-COHORT-001-REM §4.3: Check cohort-specific cap override first,
+  // then fall back to feature_costs.daily_cap.
+  const { data: profile } = await sb
+    .from('profiles')
+    .select('cohort_tier_id')
+    .eq('id', userId)
     .single();
 
-  const dailyCap = fc?.daily_cap ?? null;
-  const creditCost = fc?.credit_cost ?? 1;
+  let dailyCap: number | null = null;
+  let creditCost = 1;
+
+  if (profile?.cohort_tier_id) {
+    const { data: cohortCap } = await sb
+      .from('cohort_feature_caps')
+      .select('daily_cap')
+      .eq('cohort_tier_id', profile.cohort_tier_id)
+      .eq('feature_key', featureKey)
+      .single();
+    if (cohortCap) dailyCap = cohortCap.daily_cap;
+  }
+
+  if (dailyCap === null) {
+    // Fall back to feature_costs global cap
+    const { data: fc } = await sb
+      .from('feature_costs')
+      .select('daily_cap, credit_cost')
+      .eq('feature_key', featureKey)
+      .single();
+    dailyCap = fc?.daily_cap ?? null;
+    creditCost = fc?.credit_cost ?? 1;
+  }
 
   if (dailyCap === null) {
     // No cap configured — just debit and proceed

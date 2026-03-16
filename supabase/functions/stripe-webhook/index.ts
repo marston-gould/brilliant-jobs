@@ -202,16 +202,26 @@ async function handleSubscriptionUpdated(sb: SupabaseClient, event: unknown, log
     if (cohortTier?.id) {
       const { data: currentProfile } = await sb
         .from('profiles')
-        .select('cohort_tier_id')
+        .select('cohort_tier_id, cohort_tiers(slug)')
         .eq('id', existing.user_id)
         .single();
 
       const tierChanged = currentProfile?.cohort_tier_id !== cohortTier.id;
+      const oldSlug = (currentProfile?.cohort_tiers as Record<string, string>)?.slug ?? 'free';
 
       await sb
         .from('profiles')
         .update({ cohort_tier_id: cohortTier.id, cohort_tier_assigned_at: new Date().toISOString() })
         .eq('id', existing.user_id);
+
+      // SPEC-COHORT-001-REM §5.3: Prorated credit delta on mid-cycle tier change
+      if (tierChanged && oldSlug !== newSlug) {
+        await sb.rpc('fn_cohort_prorate', {
+          p_user_id: existing.user_id,
+          p_old_tier_slug: oldSlug,
+          p_new_tier_slug: newSlug,
+        }).catch((e: Error) => logger.warn('fn_cohort_prorate failed', { error: e.message }));
+      }
 
       // Replenish credits when tier changes or subscription renews
       if (tierChanged || sub.status === 'active') {
