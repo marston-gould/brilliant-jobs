@@ -101,11 +101,32 @@ export async function creditGate(
     .limit(1)
     .single();
 
+  const newBalance = data as Record<string, number>;
+
+  // Fire credits_low PostHog event when balance drops below 20% of monthly allotment
+  try {
+    const { data: profile } = await sb
+      .from('profiles')
+      .select('cohort_tiers(credits_monthly)')
+      .eq('id', userId)
+      .single();
+    const monthly = (profile?.cohort_tiers as Record<string, number>)?.credits_monthly ?? 0;
+    const total = newBalance?.total ?? 0;
+    if (monthly > 0 && total <= Math.floor(monthly * 0.2)) {
+      await captureEvent(userId, 'credits_low', {
+        balance: total,
+        monthly_allotment: monthly,
+        pct_remaining: Math.round((total / monthly) * 100),
+        feature: featureKey,
+      });
+    }
+  } catch (_) { /* non-fatal */ }
+
   return {
     allowed: true,
     cost,
     debitId: ledgerRow?.id,
-    balance: data as Record<string, number>,
+    balance: newBalance,
   };
 }
 

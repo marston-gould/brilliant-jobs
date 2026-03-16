@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.78';
+var BJ_VERSION = 'v9.79';
 
 
 // === js/globals.ts ===
@@ -25387,6 +25387,76 @@ async function loadCreditBalance() {
   }
 }
 
+// SPEC-COHORT-001-S3: Load 3-bucket balance from get-user-balance EF
+async function loadBucketBalance() {
+  if (!currentUser?.id) return;
+  try {
+    const token = (await sb.auth.getSession()).data.session?.access_token;
+    if (!token) return;
+    const res = await fetch('/functions/v1/api-gateway/get-user-balance', {
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+    });
+    if (!res.ok) return;
+    const bal = await res.json();
+    _creditBalance = bal.total ?? 0;
+    renderCreditBadge(_creditBalance);
+    renderBucketBreakdown(bal);
+    checkLowCreditAlertPct(bal);
+  } catch (e) {
+    reportError('billing:bucket', e);
+    // Fall back to legacy single-balance load
+    loadCreditBalance();
+  }
+}
+
+function renderBucketBreakdown(bal) {
+  if (!bal) return;
+  const total = bal.total ?? 0;
+  const rolled = bal.rolled ?? 0;
+  const base = bal.base ?? 0;
+  const awards = bal.awards ?? 0;
+
+  // Total badge
+  const numEl = document.getElementById('sub-balance-number');
+  if (numEl) {
+    numEl.textContent = total.toLocaleString();
+    numEl.className = 'sub-balance-number';
+    if (total > 50) numEl.classList.add('credit-green');
+    else if (total >= 10) numEl.classList.add('credit-amber');
+    else numEl.classList.add('credit-red');
+  }
+
+  // Rolled row — only show if > 0
+  const rolledRow = document.getElementById('sub-bucket-rolled');
+  const rolledAmt = document.getElementById('sub-bucket-rolled-amount');
+  if (rolledRow && rolledAmt) {
+    rolledAmt.textContent = rolled.toLocaleString();
+    rolledRow.classList.toggle('u-hidden', rolled === 0);
+  }
+
+  // Base row
+  const baseAmt = document.getElementById('sub-bucket-base-amount');
+  if (baseAmt) baseAmt.textContent = base.toLocaleString();
+
+  // Awards row — only show if > 0
+  const awardsRow = document.getElementById('sub-bucket-awards');
+  const awardsAmt = document.getElementById('sub-bucket-awards-amount');
+  if (awardsRow && awardsAmt) {
+    awardsAmt.textContent = awards.toLocaleString();
+    awardsRow.classList.toggle('u-hidden', awards === 0);
+  }
+
+  // Reset date
+  const resetEl = document.getElementById('sub-reset-date');
+  if (resetEl && bal.reset_date) {
+    const d = new Date(bal.reset_date);
+    resetEl.textContent = 'Resets ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  // Nav badge
+  renderCreditBadge(total);
+}
+
 async function loadUserPricing() {
   if (!currentUser?.id) return;
   try {
@@ -25569,6 +25639,35 @@ function checkLowCreditAlert(balance) {
     if (countEl) countEl.textContent = balance;
     alertEl.style.display = 'flex';
     alertEl.classList.remove('sub-alert-critical');
+  } else {
+    alertEl.style.display = 'none';
+  }
+}
+
+// SPEC-COHORT-001-S3: Percentage-based low credit alert using 3-bucket balance
+function checkLowCreditAlertPct(bal) {
+  const alertEl = document.getElementById('sub-credit-alert');
+  const countEl = document.getElementById('sub-alert-count');
+  const msgEl = document.getElementById('sub-alert-msg');
+  if (!alertEl) return;
+  if (_isAdmin) { alertEl.style.display = 'none'; return; }
+
+  const total = bal.total ?? 0;
+  const monthly = bal.credits_monthly ?? 0;
+  const threshold = monthly > 0 ? Math.floor(monthly * 0.2) : 10;
+
+  if (total === 0) {
+    if (countEl) countEl.textContent = '0';
+    if (msgEl) msgEl.innerHTML = "You're out of credits. <strong>Upgrade or buy more to continue using AI features.</strong>";
+    alertEl.style.display = 'flex';
+    alertEl.classList.add('sub-alert-critical');
+    alertEl.classList.remove('u-hidden');
+  } else if (total <= threshold) {
+    if (countEl) countEl.textContent = total;
+    if (msgEl) msgEl.textContent = 'You have ' + total + ' credits remaining.';
+    alertEl.style.display = 'flex';
+    alertEl.classList.remove('sub-alert-critical');
+    alertEl.classList.remove('u-hidden');
   } else {
     alertEl.style.display = 'none';
   }
@@ -26014,6 +26113,7 @@ function initBilling() {
   // Check admin status from profile (already fetched in app.js init)
   _isAdmin = (window._bjUserRole === 'admin');
   loadCreditBalance();
+  loadBucketBalance(); // SPEC-COHORT-001-S3: 3-bucket breakdown
   loadUserPricing();
   loadUserSubscription();
   loadCreditHistory();
@@ -26082,7 +26182,7 @@ function _initTierChangeListener() {
 
 // CS-P1-004 FE-005: Register billing exports with BJ namespace
 (function() {
-  ['getUserCredits'].forEach(function(name) {
+  ['getUserCredits', 'loadBucketBalance', 'renderBucketBreakdown', 'checkLowCreditAlertPct'].forEach(function(name) {
     if (typeof window[name] === 'function') {
       window.BJ[name] = window[name];
       window.BJ._registry[name] = { module: 'billing', registered: Date.now() };

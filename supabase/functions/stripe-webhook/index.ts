@@ -190,6 +190,48 @@ async function handleSubscriptionUpdated(sb: SupabaseClient, event: unknown, log
       .eq('id', existing.user_id);
   }
 
+  // ─── SPEC-COHORT-001-S3: Sync cohort_tier_id and replenish credits ───
+  try {
+    const newSlug = tier === 'pro' ? 'pro' : tier === 'starter' ? 'starter' : 'free';
+    const { data: cohortTier } = await sb
+      .from('cohort_tiers')
+      .select('id')
+      .eq('slug', newSlug)
+      .single();
+
+    if (cohortTier?.id) {
+      const { data: currentProfile } = await sb
+        .from('profiles')
+        .select('cohort_tier_id')
+        .eq('id', existing.user_id)
+        .single();
+
+      const tierChanged = currentProfile?.cohort_tier_id !== cohortTier.id;
+
+      await sb
+        .from('profiles')
+        .update({ cohort_tier_id: cohortTier.id, cohort_tier_assigned_at: new Date().toISOString() })
+        .eq('id', existing.user_id);
+
+      // Replenish credits when tier changes or subscription renews
+      if (tierChanged || sub.status === 'active') {
+        const SB_URL = Deno.env.get('SUPABASE_URL')!;
+        const SB_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+        await fetch(`${SB_URL}/functions/v1/replenish-credits`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${SB_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ user_id: existing.user_id }),
+        }).catch(e => logger.warn('replenish-credits call failed', { error: e.message }));
+      }
+    }
+  } catch (cohortErr) {
+    logger.error('cohort_tier_id sync failed', { error: (cohortErr as Error).message });
+    // Non-fatal — subscription update itself succeeded
+  }
+
   // If tier changed (upgrade/downgrade), grant the difference in credits
   if (previousTier && previousTier !== tier) {
     const newCredits = parseInt(sub.metadata?.credits || '0');

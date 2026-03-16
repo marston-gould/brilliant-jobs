@@ -2586,6 +2586,13 @@
     .sub-balance-number { font-family: var(--mono); font-size: 36px; font-weight: 700; letter-spacing: -1px; }
     .sub-balance-label { font-size: 12px; color: var(--text-dim); margin-block-end: 12px; }
     .sub-burn-rate { font-size: 12px; color: var(--text-dim); line-height: 1.6; margin-block-end: 8px; }
+    /* SPEC-COHORT-001-S3: 3-bucket balance breakdown */
+    .sub-bucket-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-dim); padding: 3px 0; border-bottom: 1px solid var(--border-faint); }
+    .sub-bucket-row:last-of-type { border-bottom: none; }
+    .sub-bucket-amount { font-family: var(--mono); font-weight: 600; color: var(--text); }
+    .sub-bucket-total { display: flex; align-items: baseline; gap: 6px; margin-top: 8px; }
+    .sub-bucket-total .sub-balance-number { font-size: 32px; }
+    .sub-reset-date { font-size: 11px; color: var(--text-faint); margin-top: 4px; }
     .sub-usage-breakdown { margin-block-start: 8px; }
     .sub-usage-row {
       display: flex; justify-content: space-between; padding: 4px 0;
