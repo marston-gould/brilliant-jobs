@@ -1007,6 +1007,7 @@ const params = new URLSearchParams(window.location.search);
 const context = params.get('context') || 'periodic';
 const reason = params.get('reason') || null;  // from uninstall page
 const version = params.get('v') || null;      // explicit version override
+const deliverySource = params.get('src') || 'direct'; // overlay, merch, email, sms, my_surveys, direct
 
 // ─── QUESTION BANK VERSIONS ───
 // Add new versions as needed for different cohorts.
@@ -1386,6 +1387,26 @@ document.addEventListener('click', (e) => {
 
 // ─── SUBMIT ───
 
+// SDV-S1: Credit confirmation toast
+function _showCreditToast(amount) {
+  const existing = document.getElementById('survey-credit-toast');
+  if (existing) existing.remove();
+  const toast = document.createElement('div');
+  toast.id = 'survey-credit-toast';
+  toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#22c55e;color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;font-weight:600;font-family:Outfit,sans-serif;z-index:9999;box-shadow:0 4px 16px rgba(34,197,94,0.3);opacity:0;transform:translateY(10px);transition:opacity 0.3s,transform 0.3s;';
+  toast.textContent = '+' + amount + ' credits earned';
+  document.body.appendChild(toast);
+  requestAnimationFrame(function() {
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateY(0)';
+  });
+  setTimeout(function() {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(10px)';
+    setTimeout(function() { toast.remove(); }, 300);
+  }, 5000);
+}
+
 async function submitSurvey() {
   const surveyType = context === 'churn' ? 'exit_survey' : context === 'nps' ? 'nps_survey' : context === 'ghost' ? 'ghost_survey' : 'user_survey';
 
@@ -1401,7 +1422,7 @@ async function submitSurvey() {
         authHeader = `Bearer ${session.access_token}`;
       }
     }
-  } catch (e) { /* no session, submit as anon */ }
+  } catch (e) { console.warn('[survey] session parse failed, submitting as anon:', e); }
 
   const payload = {
     type: surveyType,
@@ -1427,6 +1448,65 @@ async function submitSurvey() {
     });
   } catch (e) {
     console.warn('Survey submit failed:', e);
+  }
+
+  // ─── SDV-S1: Credit reward grant ───────────────────────────────────────────
+  // Look up credit_reward from survey_campaigns for this survey_version.
+  // Exit surveys award 0 credits — user is leaving, credits have no retention value.
+  let creditAmount = 0;
+  if (userId && context !== 'churn') {
+    try {
+      const campaignRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/survey_campaigns?survey_version=eq.${encodeURIComponent(surveyVersion)}&select=credit_reward&is_active=eq.true&limit=1`,
+        { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': authHeader } }
+      );
+      const campaigns = await campaignRes.json();
+      if (campaigns && campaigns.length > 0 && campaigns[0].credit_reward > 0) {
+        creditAmount = campaigns[0].credit_reward;
+
+        // Call grant_survey_credits RPC (idempotent — safe to call multiple times)
+        const grantRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/grant_survey_credits`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': authHeader
+          },
+          body: JSON.stringify({
+            p_user_id: userId,
+            p_amount: creditAmount,
+            p_survey_version: surveyVersion
+          })
+        });
+
+        if (grantRes.ok) {
+          // Show credit confirmation toast
+          _showCreditToast(creditAmount);
+
+          // PostHog: survey_credits_granted
+          try {
+            if (typeof posthog !== 'undefined') {
+              posthog.capture('survey_credits_granted', {
+                survey_version: surveyVersion,
+                credit_amount: creditAmount,
+                channel: deliverySource
+              });
+            }
+          } catch (_ph) { /* PostHog fire-and-forget */ }
+        }
+      }
+    } catch (e) {
+      // Credit grant is non-fatal — survey submission already succeeded
+      console.warn('Credit grant failed:', e);
+      try {
+        if (typeof posthog !== 'undefined') {
+          posthog.capture('survey_credit_grant_failed', {
+            survey_version: surveyVersion,
+            error: String(e)
+          });
+        }
+      } catch (_ph) { /* non-fatal */ }
+    }
   }
 
   document.getElementById('formSection').classList.add('hidden');
@@ -1480,7 +1560,7 @@ async function submitSurvey() {
     document.getElementById('thankYouGhost').classList.add('visible');
   } else {
     document.getElementById('thankYouPeriodic').classList.add('visible');
-    // TODO: API call to unlock Pro features for 7 days
+    // SDV-S1: Credit reward handled above via grant_survey_credits RPC
   }
 }
 

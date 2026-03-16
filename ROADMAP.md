@@ -3756,3 +3756,15 @@ Phase S is complete when ALL of the following are true:
 |----|------|--------|-------|
 | FB-FEED-CARDS-001-S1 | Card-based feed layout. 3-action model (Dismiss/Pipeline/Apply). Inline signal badges (Verified/AI/Ghost). Preview JD toggle with 3-line snippet. Removed Bulk Apply, Save All, checkboxes, Optimize Resume from feed. Sort bar buttons. Card skeleton loader. 4 PostHog events. | ✅ | v9.99 |
 | FB-FEED-CARDS-001-S2 | Pipeline: Optimize Resume per-job in Saved stage. Bulk Apply toolbar (checkboxes, select-all, progress indicator, PostHog). Sort indicator refresh on new .sort-btn elements. Trust Level + AI Content toggles removed from feed toolbar (replaced by inline signal badges). unsaveFromPipeline confirmed no tuning signal. All 6 PostHog events wired. | ✅ | v10.00 |
+
+## FB-SURVEY-DELIVERY-001: Survey Delivery System
+
+| ID | Item | Status | Notes |
+|----|------|--------|-------|
+| SDV-S1 | Schema + Credit Grant Wiring — survey_campaigns table, survey_links table, grant_survey_credits RPC (idempotent). submitSurvey() wired to RPC. Credit confirmation toast. PostHog survey_credits_granted event. 7 campaign seeds (NPS/Periodic/4 micro/Exit with spec priorities). 50 tests. | ✅ | v10.02 |
+| SDV-S2 | Question Bank Extraction + My Surveys Tab — js/survey-questions.js shared module. My Surveys subtab in Notification Center. Available + completed sections. | 🔲 | |
+| SDV-S3 | Overlay Delivery + Priority Engine — js/survey-delivery.js. Eligibility, session gating, priority resolution. | 🔲 | |
+| SDV-S4 | Micro-Survey Priority Fix + Merch Integration — Debounced priority queue. survey_cta merch content type. | 🔲 | |
+| SDV-S5 | Email Delivery EF — send-survey-invite EF. pg_cron schedules. Resend dispatch. | 🔲 | |
+| SDV-S6 | SMS Delivery + Short URL Resolution — Vonage SMS. resolve-survey-link EF. /s/{token} Vercel rewrite. | 🔲 | |
+| SDV-S7 | PostHog Instrumentation + Integration Test + Close — All 12 events. E2E walkthrough. Fitness score. | 🔲 | |

@@ -3850,7 +3850,28 @@ None.
 
 ## Last Completed Session
 
-**HOTFIX-MERGE-001** — Conflict Marker Cleanup + UX Fixes ✅
+**FB-SURVEY-DELIVERY-001 SDV-S1** — Schema + Credit Grant Wiring ✅
+- v10.01→v10.02 — Survey delivery foundation.
+- **Migration v10.01-fb-survey-delivery-001-s1.sql:**
+  - `survey_campaigns` table: survey_version (UNIQUE), survey_type CHECK (nps/periodic/micro/exit), title, description, estimated_minutes, credit_reward, priority CHECK (1-10), is_active, channels text[] (overlay/merch/email/sms), target_audience JSONB (Hook: schema-free, new dimensions without migration), frequency_days, expires_at, scar_meta JSONB. 3 indexes (active+priority, type, version). RLS: authenticated read, service_role full.
+  - `survey_links` table: 6-char token PK, user_id FK, survey_version, channel CHECK (email/sms), expires_at, used_at. 2 indexes (user, expires partial). RLS: user reads own, service_role full.
+  - `grant_survey_credits(p_user_id, p_amount, p_survey_version)` RPC: SECURITY DEFINER, idempotent via credit_transactions WHERE source='survey_reward' AND feature=p_survey_version. Updates profiles.credit_balance. Inserts credit_transactions log. Returns new balance as smallint. GRANT to authenticated + service_role.
+  - 7 campaign seeds: NPS (P2, 3 credits, 30d freq), Periodic (P3, 5 credits, 14d), Paywall Friction micro (P1 highest, 1 credit, 7d), Apply Confidence micro (P4, 1 credit), Search Relevance micro (P5, 1 credit), Data Value micro (P6 lowest, 1 credit), Exit (P2, 0 credits, 180d). ON CONFLICT DO NOTHING.
+- **survey.html changes:**
+  - `deliverySource` reads `src` URL param (overlay/merch/email/sms/my_surveys/direct).
+  - After feedback POST, looks up credit_reward from survey_campaigns for this survey_version.
+  - Calls grant_survey_credits RPC (non-fatal try/catch — survey submission always succeeds even if credit grant fails).
+  - `_showCreditToast(amount)`: green (#22c55e) fixed-position toast "+N credits earned", 5s auto-dismiss with fade animation.
+  - PostHog `survey_credits_granted` event with survey_version, credit_amount, channel (deliverySource).
+  - PostHog `survey_credit_grant_failed` on error.
+  - Skips credit grant for exit surveys (context==='churn') and anonymous users (no userId).
+  - Old TODO at line 1483 replaced with SDV-S1 completion note.
+  - Silent catch on session parse replaced with console.warn (Marston principle: no silent fails).
+- **Tests:** 50 validation tests (tests/sdv-s1-schema-credit-grant.test.js) — all passing.
+- **Pending manual steps (Marston):**
+  - `supabase db push` (migration v10.01-fb-survey-delivery-001-s1.sql)
+
+**Previous: HOTFIX-MERGE-001** — Conflict Marker Cleanup + UX Fixes ✅
 - v9.84→v9.85→v9.86
 - (v9.85) Removed unresolved git merge conflict markers (=======, >>>>>>>) from 9 HTML files left by botched revert of unauthorized mobile-responsive changes (commits d3f89059/68c5da5f reverted by 0686e90e through d1fc88dd, but revert left conflict markers in committed files).
 - Affected files: dashboard.html, index.html, admin.html, compare.html, ghost-report.html, hiring-trends.html, career-level-data.html, data-lab.html, jobs-by-industry.html.
@@ -4118,17 +4139,24 @@ Deliverables:
 
 ## Next Session
 
-No specific session queued. SPEC-COHORT-001 is complete (3 sessions, 252 tests).
+**FB-SURVEY-DELIVERY-001 SDV-S2** — Question Bank Extraction + My Surveys Tab
 
-**Potential next workstreams:**
-- CASA-001: Google CASA assessment + gmail.readonly upgrade (OAuth scope verification for production launch)
-- Any new feature work
+**Entry Gate:**
+- SDV-S1 complete: survey_campaigns table seeded, credit grant wired ✅
+- `supabase db push` applied (migration v10.01) — Marston manual step
+- Notification Center subtab infrastructure confirmed operational (Preferences | Log tabs at dashboard.html line 2561)
 
-**Pending backlog:**
-- SPEC-ADMIN-002: Admin Control Panel spec (CRUD for users, cohorts, billing, content, filters/prompts, audit log)
-**Other backlog:**
-- SPEC-COHORT-001-S3: Stripe integration + balance UI
-- CASA-001: Google CASA assessment + gmail.readonly upgrade
+**Scope:**
+- Extract all question banks from survey.html (exitQuestions, periodicQuestions_v2, npsQuestions, ghostQuestions) and micro-surveys.js into shared module `js/survey-questions.js`
+- Refactor both source files to import from the shared module
+- Build My Surveys subtab in Notification Center: available surveys section (cards with credit badge, take survey CTA) and completed surveys section (collapsed cards with expand/collapse, response rendering from feedback table, pagination)
+- PostHog events: survey_history_viewed, survey_response_expanded
+
+**Exit Gate:**
+- Shared module imported by both survey.html and micro-surveys.js with no regressions
+- My Surveys tab renders available and completed sections correctly
+- All SDV-S2 tests passing
+- Three-file close
 
 
 ## Deferred: SA-001 / SA-002 / SA-003 (Typesense)
@@ -4159,7 +4187,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.86`** | **HOTFIX-MERGE-001: Conflict markers + AI Interview panel + layout reorder + saved search resurrection fix.** |
+| **Product (BJ_VERSION)** | **`v10.02`** | **FB-SURVEY-DELIVERY-001 SDV-S1: survey_campaigns + survey_links + grant_survey_credits RPC + credit toast + PostHog.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
