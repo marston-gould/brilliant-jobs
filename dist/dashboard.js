@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.87';
+var BJ_VERSION = 'v9.88';
 
 
 // === js/globals.ts ===
@@ -5536,7 +5536,7 @@ async function searchJobs(page = 0) {
       const _sortKey = jobSortStack.map(s => s.field + (s.asc ? 'A' : 'D')).join(',');
       const feedCacheKey = 'feed:' + _filterCacheKey('single', filtersToRun[0]) + ':s' + _sortKey + ':p' + page;
       const feedResult = await cachedQuery(feedCacheKey, async function() {
-        let query = sb.from('ats_jobs').select('*', { count: 'exact' });
+        let query = sb.from('ats_jobs').select('*', { count: 'planned' });
         query = buildFilterQuery(filtersToRun[0], query, filtersToRun[0]._locationIds);
         if (hiddenIds.length > 0) {
           query = query.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
@@ -5651,7 +5651,7 @@ async function searchJobs(page = 0) {
       // FA-004: raised per-filter limit. FA-005 server-side UNION is preferred.
       const perFilter = Math.min(Math.ceil(2000 / filtersToRun.length), 500);
       const promises = filtersToRun.map(sf => {
-        let q = sb.from('ats_jobs').select('*', { count: 'exact' });
+        let q = sb.from('ats_jobs').select('*', { count: 'planned' });
         q = buildFilterQuery(sf, q, sf._locationIds);
         if (hiddenIds.length > 0) {
           q = q.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
@@ -5821,18 +5821,27 @@ async function searchJobs(page = 0) {
     const exclusionsActive = currentJobs.length !== beforeExclusions;
 
     // v7.18+v7.68: Sync counts after ALL client-side filters
-    // _feedTotalCount = exact DB count; currentJobs.length = this page after client filters
+    // _feedTotalCount = DB planned count (can be inaccurate for complex queries);
+    // currentJobs.length = this page after client filters
     // For single-page results (no more pages), use currentJobs.length as truth
-    // For multi-page, use DB total but note client filters may reduce each page
+    // For multi-page, use DB planned count but correct obvious underestimates
     var pageJobCount = currentJobs.length;
     if (_feedTotalCount > 0 && pageJobCount < JOBS_PER_PAGE && page === 0) {
       // All results fit on one page — actual total IS what we see after client filters
       totalCount = pageJobCount;
       _feedTotalCount = pageJobCount;
     } else if (page === 0 && pageJobCount >= JOBS_PER_PAGE) {
-      // Full first page — DB total is the right number for display
+      // Full first page — DB planned count may underestimate.
+      // If planned count is LESS than a full page, it's clearly wrong — use a safe minimum.
+      if (_feedTotalCount < pageJobCount) {
+        _feedTotalCount = pageJobCount + JOBS_PER_PAGE; // at least 2 pages
+      }
       totalCount = _feedTotalCount;
     } else {
+      // Subsequent pages — trust DB count but floor at what we've already seen
+      if (_feedTotalCount < (page + 1) * JOBS_PER_PAGE) {
+        _feedTotalCount = (page + 1) * JOBS_PER_PAGE + pageJobCount;
+      }
       totalCount = _feedTotalCount;
     }
     var $jt = $('#j-total');

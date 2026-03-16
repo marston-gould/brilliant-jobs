@@ -1,1 +1,1 @@
-var BJ_VERSION = "v9.87";
+var BJ_VERSION = "v9.88";
