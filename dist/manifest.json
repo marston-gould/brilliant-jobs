@@ -31,7 +31,7 @@
   },
   "full": {
     "file": "dashboard.min.js",
-    "hash": "6b816758",
+    "hash": "5cfa8535",
     "size": 1133325
   },
   "styles": {
@@ -39,5 +39,5 @@
     "hash": "564c5982",
     "size": 128113
   },
-  "_buildHash": "f591f198"
+  "_buildHash": "e5ccb555"
 }
