@@ -58,6 +58,12 @@ async function loadCronPanel() {
     '    <button class="admin-btn admin-btn-sm" data-cron-filter="amber">🟡 Stale</button>',
     '    <button class="admin-btn admin-btn-sm" data-cron-filter="green">🟢 Healthy</button>',
     '    <button class="admin-btn admin-btn-sm" data-cron-filter="disabled">⚫ Disabled</button>',
+    '    <span style="border-left:1px solid var(--border);margin:0 4px;"></span>',
+    '    <button class="admin-btn admin-btn-sm" id="cron-strategy-toggle" style="background:var(--warm);color:#000;border-color:var(--warm);">💰 Cost Strategy</button>',
+    '  </div>',
+    '  <div id="cron-strategy-panel" style="display:none;">',
+    '    <div id="cron-strategy-summary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;"></div>',
+    '    <div id="cron-strategy-table" style="overflow-x:auto;"></div>',
     '  </div>',
     '  <div id="cron-table-container" style="overflow-x:auto;"><div class="admin-loading">Loading cron data…</div></div>',
     '</div>',
@@ -125,6 +131,23 @@ async function loadCronPanel() {
 
   await _loadAlertConfigs();
   await _refreshCronPanel();
+
+  // Cost Strategy toggle
+  document.getElementById('cron-strategy-toggle').addEventListener('click', function() {
+    var panel = document.getElementById('cron-strategy-panel');
+    var table = document.getElementById('cron-table-container');
+    if (panel.style.display === 'none') {
+      panel.style.display = 'block';
+      table.style.display = 'none';
+      this.classList.add('admin-btn-active');
+      _loadCronStrategy();
+    } else {
+      panel.style.display = 'none';
+      table.style.display = 'block';
+      this.classList.remove('admin-btn-active');
+    }
+  });
+
   if (_cronRefreshTimer) clearInterval(_cronRefreshTimer);
   _cronRefreshTimer = setInterval(_refreshCronPanel, 60000);
 }
@@ -400,6 +423,147 @@ function _cleanupCronPanel() {
 
 window.loadCronPanel = loadCronPanel;
 window._cleanupCronPanel = _cleanupCronPanel;
+
+// ═══════════════════════════════════════════════════════════
+// CRON-COST-OPT: Cost Strategy Panel
+// ═══════════════════════════════════════════════════════════
+
+var _cronRegistryData = [];
+
+async function _loadCronStrategy() {
+  var sb = loadSupabase();
+  var summaryEl = document.getElementById('cron-strategy-summary');
+  var tableEl = document.getElementById('cron-strategy-table');
+  if (!summaryEl || !tableEl) return;
+
+  summaryEl.innerHTML = '<div class="admin-loading" style="grid-column:1/-1;">Loading cost data…</div>';
+
+  try {
+    var { data, error } = await sb.from('cron_registry')
+      .select('*')
+      .order('category')
+      .order('est_daily_cost', { ascending: false });
+    if (error) throw error;
+    _cronRegistryData = data || [];
+  } catch (e) {
+    summaryEl.innerHTML = '<div style="color:var(--red);grid-column:1/-1;">Failed to load: ' + (e.message || e) + '</div>';
+    return;
+  }
+
+  var totalDaily = 0, aiCount = 0, revenueCount = 0, disabledCount = 0;
+  _cronRegistryData.forEach(function(r) {
+    totalDaily += parseFloat(r.est_daily_cost) || 0;
+    if (r.calls_anthropic) aiCount++;
+    if (r.requires_revenue) revenueCount++;
+    if (r.mode === 'disabled') disabledCount++;
+  });
+
+  summaryEl.innerHTML = [
+    '<div class="stat-card"><div class="stat-val" style="color:var(--warm);">$' + totalDaily.toFixed(2) + '</div><div class="stat-label">Est. Daily Cost</div></div>',
+    '<div class="stat-card"><div class="stat-val" style="color:var(--red);">' + aiCount + '</div><div class="stat-label">AI-Powered Crons</div></div>',
+    '<div class="stat-card"><div class="stat-val" style="color:var(--purple);">' + revenueCount + '</div><div class="stat-label">Need Revenue</div></div>',
+    '<div class="stat-card"><div class="stat-val" style="color:var(--text-faint);">' + disabledCount + '</div><div class="stat-label">Disabled</div></div>',
+  ].join('');
+
+  var categories = {};
+  _cronRegistryData.forEach(function(r) {
+    var cat = r.category || 'other';
+    if (!categories[cat]) categories[cat] = [];
+    categories[cat].push(r);
+  });
+
+  var catOrder = ['ai_enrichment','data_pipeline','notifications','monitoring','maintenance','billing','analytics','other'];
+  var catLabels = { ai_enrichment:'🤖 AI / Anthropic', data_pipeline:'📡 Data Pipeline', notifications:'🔔 Notifications', monitoring:'📊 Monitoring', maintenance:'🧹 Maintenance', billing:'💳 Billing', analytics:'📈 Analytics', other:'📦 Other' };
+
+  var html = '';
+  catOrder.forEach(function(cat) {
+    var items = categories[cat];
+    if (!items || items.length === 0) return;
+    var catCost = items.reduce(function(s, r) { return s + (parseFloat(r.est_daily_cost) || 0); }, 0);
+
+    html += '<div style="margin-bottom:20px;">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:2px solid var(--border);">';
+    html += '<span style="font-size:14px;font-weight:700;">' + (catLabels[cat] || cat) + ' <span style="font-size:12px;font-weight:400;color:var(--text-faint);">(' + items.length + ')</span></span>';
+    html += catCost > 0 ? '<span style="font-size:13px;font-weight:600;color:var(--warm);">$' + catCost.toFixed(2) + '/day</span>' : '';
+    html += '</div>';
+    html += '<table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:var(--bg-input);">';
+    html += '<th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--text-faint);font-weight:600;">Job</th>';
+    html += '<th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--text-faint);font-weight:600;width:100px;">Schedule</th>';
+    html += '<th style="padding:6px 10px;text-align:center;font-size:11px;color:var(--text-faint);font-weight:600;width:130px;">Mode</th>';
+    html += '<th style="padding:6px 10px;text-align:right;font-size:11px;color:var(--text-faint);font-weight:600;width:80px;">Cost/Day</th>';
+    html += '<th style="padding:6px 10px;text-align:center;font-size:11px;color:var(--text-faint);font-weight:600;width:80px;">Daily Cap</th>';
+    html += '<th style="padding:6px 10px;text-align:center;font-size:11px;color:var(--text-faint);font-weight:600;width:60px;">Flags</th>';
+    html += '</tr></thead><tbody>';
+
+    items.forEach(function(r) {
+      var cost = parseFloat(r.est_daily_cost) || 0;
+      var costColor = cost > 0.5 ? 'var(--red)' : cost > 0 ? 'var(--warm)' : 'var(--text-faint)';
+      var modeColor = r.mode === 'cron' ? 'var(--green)' : r.mode === 'on_demand' ? 'var(--accent)' : 'var(--text-faint)';
+
+      html += '<tr style="border-bottom:1px solid var(--border);">';
+      html += '<td style="padding:8px 10px;"><div style="font-weight:600;">' + _escHtml(r.job_name) + '</div><div style="font-size:11px;color:var(--text-faint);">' + _escHtml(r.description || '') + '</div></td>';
+      html += '<td style="padding:8px 10px;font-family:monospace;font-size:11px;color:var(--text-dim);">' + _escHtml(r.schedule || '—') + '</td>';
+      html += '<td style="padding:8px 10px;text-align:center;"><select class="cron-mode-sel" data-rid="' + r.id + '" data-jn="' + _escHtml(r.job_name) + '" data-cid="' + (r.cron_job_id||'') + '" style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-input);color:' + modeColor + ';font-size:12px;font-weight:600;cursor:pointer;">';
+      html += '<option value="cron"' + (r.mode==='cron'?' selected':'') + '>⏱ Cron</option>';
+      html += '<option value="on_demand"' + (r.mode==='on_demand'?' selected':'') + '>👆 On-Demand</option>';
+      html += '<option value="disabled"' + (r.mode==='disabled'?' selected':'') + '>⛔ Disabled</option></select></td>';
+      html += '<td style="padding:8px 10px;text-align:right;font-family:monospace;font-weight:600;color:' + costColor + ';">' + (cost > 0 ? '$' + cost.toFixed(2) : '—') + '</td>';
+      html += '<td style="padding:8px 10px;text-align:center;">';
+      if (r.calls_anthropic) {
+        html += '<input type="number" class="cron-cap-inp" data-rid="' + r.id + '" value="' + (r.daily_cap||'') + '" placeholder="∞" style="width:56px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--bg-input);color:var(--text);font-size:12px;text-align:center;">';
+      } else { html += '—'; }
+      html += '</td>';
+      html += '<td style="padding:8px 10px;text-align:center;font-size:11px;">';
+      if (r.calls_anthropic) html += '<span title="Uses Anthropic AI">🤖</span> ';
+      if (r.requires_revenue) html += '<span title="Needs revenue">💰</span>';
+      html += '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+  });
+
+  tableEl.innerHTML = html;
+
+  // Wire mode selects
+  tableEl.querySelectorAll('.cron-mode-sel').forEach(function(sel) {
+    sel.addEventListener('change', function() {
+      _setCronMode(parseInt(this.dataset.rid), this.dataset.jn, this.dataset.cid ? parseInt(this.dataset.cid) : null, this.value);
+    });
+  });
+  // Wire cap inputs (debounced)
+  var _ct = {};
+  tableEl.querySelectorAll('.cron-cap-inp').forEach(function(inp) {
+    inp.addEventListener('input', function() {
+      var id = parseInt(this.dataset.rid), v = this.value ? parseInt(this.value) : null;
+      clearTimeout(_ct[id]);
+      _ct[id] = setTimeout(function() { _setCronCap(id, v); }, 800);
+    });
+  });
+}
+
+async function _setCronMode(regId, jobName, cronJobId, mode) {
+  var sb = loadSupabase();
+  try {
+    await sb.from('cron_registry').update({ mode: mode, updated_at: new Date().toISOString() }).eq('id', regId);
+    if ((mode === 'disabled' || mode === 'on_demand') && cronJobId) {
+      await _cronMgmtCall('toggle', { jobid: cronJobId, active: false });
+    } else if (mode === 'cron' && cronJobId) {
+      await _cronMgmtCall('toggle', { jobid: cronJobId, active: true });
+    }
+    var labels = { cron: 'cron', on_demand: 'on-demand', disabled: 'disabled' };
+    if (typeof toastSuccess === 'function') toastSuccess(jobName + ' → ' + labels[mode]);
+    _loadCronStrategy();
+  } catch (e) {
+    if (typeof reportError === 'function') reportError('cron-strategy:mode', e);
+    if (typeof toastWarning === 'function') toastWarning('Failed: ' + e.message);
+  }
+}
+
+async function _setCronCap(regId, cap) {
+  var sb = loadSupabase();
+  try {
+    await sb.from('cron_registry').update({ daily_cap: cap, updated_at: new Date().toISOString() }).eq('id', regId);
+  } catch (e) { if (typeof reportError === 'function') reportError('cron-strategy:cap', e); }
+}
 
 (function() {
   ['_cleanupCronPanel','_cronData','loadCronPanel'].forEach(function(name) {
