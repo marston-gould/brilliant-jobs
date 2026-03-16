@@ -1913,6 +1913,9 @@
             <button class="btn btn-sm app-top-tab active u-btn-pill" id="app-top-tab-pipeline" onclick="switchAppTab('pipeline')">
               Pipeline
             </button>
+            <button class="btn btn-sm app-top-tab u-btn-pill" id="app-top-tab-review-queue" onclick="switchAppTab('review-queue')">
+              Review Queue <span id="review-queue-badge" style="display:none;background:var(--accent);color:#fff;font-size:9px;padding:1px 5px;border-radius:10px;margin-left:4px;"></span>
+            </button>
             <button class="btn btn-sm app-top-tab u-btn-pill" id="app-top-tab-settings" onclick="switchAppTab('settings')">
               Settings
             </button>
@@ -2115,6 +2118,26 @@
             </div>
 
           </div><!-- /app-tab-pipeline -->
+
+          <!-- AIS-F6-S2: REVIEW QUEUE TAB -->
+          <div id="app-tab-review-queue" class="u-hidden">
+            <div style="padding:16px 0 8px;display:flex;align-items:center;justify-content:space-between;">
+              <div>
+                <div style="font-size:14px;font-weight:700;">Review Queue</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Applications parked for review before submitting</div>
+              </div>
+              <button class="btn btn-sm" onclick="loadReviewQueue()" style="font-size:11px;">Refresh</button>
+            </div>
+            <div id="review-queue-list" style="margin-top:8px;">
+              <div class="u-empty-state" id="review-queue-empty" style="display:none;">
+                <i data-lucide="inbox" class="icon-xl" style="stroke:var(--text-muted);margin-bottom:8px;display:block;margin-left:auto;margin-right:auto;"></i>
+                <div style="font-size:13px;color:var(--text-muted);">No applications in review queue</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Jobs saved for later will appear here</div>
+              </div>
+              <div id="review-queue-loading" style="text-align:center;padding:24px;color:var(--text-muted);font-size:12px;">Loading…</div>
+              <div id="review-queue-items"></div>
+            </div>
+          </div><!-- /app-tab-review-queue -->
 
           <!-- ===================== SETTINGS TAB ===================== -->
           <div id="app-tab-settings" class="u-hidden">
