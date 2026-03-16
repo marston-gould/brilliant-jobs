@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v10.04';
+var BJ_VERSION = 'v10.05';
 // Populate version display elements after DOM is ready
 (function() {
   var el = document.getElementById('nav-version');
@@ -7172,8 +7172,9 @@ function renderJobRows(jobs, total, page, filtersToRun) {
     // Preview JD snippet
     let snippetHtml = '';
     if (showPreview) {
-      const matchScore = jobMatchScores[job.greenhouse_id];
-      const matchBadgeHtml = matchScore ? `<span style="display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;background:var(--accent);color:#fff;margin-bottom:4px;">${matchScore}% match</span>` : '';
+      const matchData = jobMatchScores[job.greenhouse_id];
+      const matchPct = matchData && typeof matchData === 'object' ? matchData.score : (typeof matchData === 'number' ? matchData : null);
+      const matchBadgeHtml = matchPct ? `<span style="display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;background:var(--accent);color:#fff;margin-bottom:4px;">${matchPct}% match</span>` : '';
       snippetHtml = `<div style="border-top:0.5px solid var(--border);padding:8px 0 0 48px;margin-top:8px;">
         ${matchBadgeHtml}
         <div class="jc-snippet" data-preview-id="${escapeHtml(job.greenhouse_id)}" style="font-size:12px;color:var(--text-faint);line-height:1.6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;"></div>
