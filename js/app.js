@@ -1684,8 +1684,8 @@ async function processReferralAttribution(user) {
 // Used in onclick= attributes throughout dashboard.html and resume-archive.js
 window.showPage = function(pageName) {
   // FB-RESUME-CONSOLIDATION-001: redirect old page names to consolidated Resumes tab
-  if (pageName === 'resume-builder') { window.showPage('resumes'); setTimeout(function(){ switchResumeTab('builder'); }, 50); return; }
-  if (pageName === 'linkedin') { window.showPage('resumes'); setTimeout(function(){ switchResumeTab('linkedin'); }, 50); return; }
+  if (pageName === 'resume-builder') { window.showPage('resumes'); setTimeout(function(){ switchResumeView('builder'); }, 50); return; }
+  if (pageName === 'linkedin') { window.showPage('resumes'); setTimeout(function(){ switchResumeView('linkedin'); }, 50); return; }
 
   var navItem = document.querySelector('.nav-item[data-page="' + pageName + '"]');
   if (navItem) { navItem.click(); return; }
@@ -1698,7 +1698,7 @@ window.switchPage = window.showPage;
 window.BJ.switchPage = window.showPage;
 
 // FB-RESUME-CONSOLIDATION-001: Switch between My Resumes / Builder / LinkedIn tabs
-window.switchResumeTab = function(tabId) {
+window.switchResumeView = function(tabId) {
   // Hide all tab panels
   document.querySelectorAll('.resume-tab-panel').forEach(function(p) { p.style.display = 'none'; p.classList.remove('active'); });
   // Show target
