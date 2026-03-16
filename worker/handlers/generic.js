@@ -74,8 +74,18 @@ export async function fillGeneric(page, jobUrl, profile, resumePath, opts = {}) 
       }
     }
 
-    // AIS-F8-S2: Cover letter auto-attach — fill cover letter field if present
-    if (opts?.coverLetter) {
+    // AIS-F8-S2 + ATS-004: Cover letter auto-attach
+    const clField = await page.$('textarea[name*="cover"], textarea[id*="cover"], textarea[placeholder*="cover"], textarea[aria-label*="cover"]');
+    if (clField) {
+      if (opts?.capturePostHog) opts.capturePostHog('cover_letter_field_detected', { ats_type: 'generic', field_type: 'text' });
+      if (opts?.coverLetter) {
+        await heuristicFill(page, ['cover.?letter', 'why.*interested', 'motivation.*letter', 'letter.*interest'], opts.coverLetter, log);
+        if (opts?.capturePostHog) opts.capturePostHog('cover_letter_attached', { ats_type: 'generic', method: 'headless' });
+      } else {
+        if (opts?.capturePostHog) opts.capturePostHog('cover_letter_field_skipped', { ats_type: 'generic', reason: 'no_letter_available' });
+      }
+    } else if (opts?.coverLetter) {
+      // No field found but we have a letter — try heuristic anyway
       await heuristicFill(page, ['cover.?letter', 'why.*interested', 'motivation.*letter', 'letter.*interest'], opts.coverLetter, log);
     }
 

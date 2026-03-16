@@ -326,6 +326,7 @@ function renderResumes() {
           <button onclick="openAssignPopover(${i}, this)" title="Manage filter assignment"><i data-lucide="link" class="icon-sm icon-stroke"></i></button>
           <button onclick="downloadResume(${i})" title="Download PDF"><i data-lucide="download" class="icon-sm icon-stroke"></i></button>
           <button onclick="downloadResumeDocx(${i})" title="Download as .docx (ATS-optimized)"><i data-lucide="file-text" class="icon-sm icon-stroke"></i></button>
+          <button onclick="generateCoverLetterForResume(${i})" title="Generate cover letter"><i data-lucide="mail" class="icon-sm icon-stroke"></i></button>
           <button onclick="renameResume(${i})" title="Rename"><i data-lucide="pencil" class="icon-sm icon-stroke"></i></button>
           <button onclick="archiveResume(${i})" title="Archive"><i data-lucide="archive" class="icon-sm icon-stroke"></i></button>
         </div>
@@ -846,12 +847,36 @@ async function extractTextFromPDF(file) {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     let fullText = '';
+    let imageCount = 0;
+    let fonts = new Set();
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const content = await page.getTextContent();
       const pageText = content.items.map(item => item.str).join(' ');
       fullText += pageText + '\n';
+      // ATS-001: Collect font names
+      content.items.forEach(item => {
+        if (item.fontName) fonts.add(item.fontName.replace(/^[A-Z]{6}\+/, '')); // Strip subset prefix
+      });
+      // ATS-001: Count images via operator list
+      try {
+        const ops = await page.getOperatorList();
+        if (ops && ops.fnArray) {
+          for (let j = 0; j < ops.fnArray.length; j++) {
+            // OPS.paintImageXObject = 85, OPS.paintJpegXObject = 82, OPS.paintImageMaskXObject = 83
+            if (ops.fnArray[j] === 85 || ops.fnArray[j] === 82 || ops.fnArray[j] === 83) {
+              imageCount++;
+            }
+          }
+        }
+      } catch (_opErr) { /* non-fatal — some PDFs block operator access */ }
     }
+    // Store metadata for format check
+    window._lastPdfMetadata = {
+      fonts: Array.from(fonts),
+      imageCount: imageCount,
+      pageCount: pdf.numPages,
+    };
     return fullText.trim();
   } catch (e) {
     reportError('resumes', e);
@@ -1133,7 +1158,7 @@ async function validateResumeFormat(resumeId, text) {
         'Content-Type': 'application/json',
         'apikey': SUPABASE_KEY,
       },
-      body: JSON.stringify({ resume_text: text, resume_id: resumeId }),
+      body: JSON.stringify({ resume_text: text, resume_id: resumeId, metadata: window._lastPdfMetadata || null }),
     });
 
     if (!resp.ok) {
@@ -1165,6 +1190,29 @@ async function validateResumeFormat(resumeId, text) {
         blocking_count: (data.issues || []).filter(function(i) { return i.severity === 'blocking'; }).length,
         warning_count: (data.issues || []).filter(function(i) { return i.severity === 'warning'; }).length,
       });
+      // ATS-001: Per-issue events
+      (data.issues || []).forEach(function(issue) {
+        capturePostHog('resume_format_issue_detected', {
+          resume_id: resumeId,
+          check_type: issue.check,
+          severity: issue.severity,
+        });
+      });
+      // ATS-001: ATS-ready event
+      if (data.is_ats_ready) {
+        capturePostHog('resume_format_ats_ready', {
+          resume_id: resumeId,
+          format_score: data.format_score,
+        });
+      }
+      // ATS-007: Non-standard headers detected
+      var nonStdHeaders = (data.headers_detected || []).filter(function(h) { return h.suggestion !== null; });
+      if (nonStdHeaders.length > 0) {
+        capturePostHog('resume_nonstandard_headers_detected', {
+          resume_id: resumeId,
+          headers: nonStdHeaders.map(function(h) { return h.original; }),
+        });
+      }
     }
 
     console.log('[format-check] Resume', resumeId, 'score=' + data.format_score, 'ats_ready=' + data.is_ats_ready, 'issues=' + (data.issues || []).length);
@@ -1594,6 +1642,96 @@ window.downloadResumeDocx = async function(idx) {
   } catch (e) {
     reportError('resumes:docx-export', e);
     showToast('Export failed: ' + e.message, { type: 'error' });
+  }
+};
+
+// ATS-004: Generate cover letter for a resume (manual mode)
+window.generateCoverLetterForResume = async function(idx) {
+  var r = resumes[idx];
+  if (!r) return;
+
+  // Need a job to generate against — check if resume has an assigned filter with a recent job
+  var resumeId = r.archiveId || r.id;
+  if (!currentUser) {
+    showToast('Please sign in to generate a cover letter.', { type: 'error' });
+    return;
+  }
+
+  try {
+    var session = await sb.auth.getSession();
+    if (!session || !session.data || !session.data.session) {
+      showToast('Please sign in.', { type: 'error' });
+      return;
+    }
+    var token = session.data.session.access_token;
+
+    // Try to get a job from the user's pipeline
+    var jobTitle = '';
+    var companyName = '';
+    var jobDescription = '';
+
+    // Check if resume has associated filter with a recent pipeline entry
+    if (r.filterIds && r.filterIds.length > 0) {
+      var pipeRes = await sb.from('user_pipeline').select('job_title, company_name').eq('user_id', currentUser.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
+      if (pipeRes.data) {
+        jobTitle = pipeRes.data.job_title || '';
+        companyName = pipeRes.data.company_name || '';
+      }
+    }
+
+    if (!jobTitle) {
+      // Prompt user for job info
+      jobTitle = prompt('Job title for cover letter:') || '';
+      if (!jobTitle) return;
+      companyName = prompt('Company name:') || '';
+    }
+
+    showToast('Generating cover letter for ' + (companyName || 'this role') + '...', { type: 'info', duration: 15000 });
+
+    var resp = await fetch(SUPABASE_URL + '/functions/v1/api-gateway/generate-cover-letter', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+      },
+      body: JSON.stringify({
+        job_title: jobTitle,
+        company_name: companyName,
+        job_description: jobDescription,
+        resume_id: resumeId,
+        tone: 'professional',
+      }),
+    });
+
+    if (!resp.ok) {
+      var errData = await resp.json().catch(function() { return {}; });
+      showToast(errData.error || 'Cover letter generation failed.', { type: 'error' });
+      return;
+    }
+
+    var data = await resp.json();
+    showToast('Cover letter generated! ' + (data.word_count || '') + ' words.', { type: 'success', duration: 5000 });
+
+    // Copy to clipboard
+    if (data.content && navigator.clipboard) {
+      navigator.clipboard.writeText(data.content).then(function() {
+        showToast('Cover letter copied to clipboard.', { type: 'success' });
+      }).catch(function() {});
+    }
+
+    if (typeof capturePostHog === 'function') {
+      capturePostHog('cover_letter_generated', {
+        resume_id: resumeId,
+        job_title: jobTitle,
+        company_name: companyName,
+        word_count: data.word_count || 0,
+        source: 'resume_card_manual',
+      });
+    }
+  } catch (e) {
+    reportError('resumes:cover-letter', e);
+    showToast('Cover letter generation failed: ' + e.message, { type: 'error' });
   }
 };
 

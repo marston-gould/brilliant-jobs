@@ -2929,6 +2929,8 @@
     .sg-cat-header { font-size:11px;font-weight:600;color:var(--text-dim);margin-bottom:4px; }
     .sg-cat-count { font-size:10px;font-weight:400;color:var(--text-faint); }
     .sg-cat-items { display:flex;flex-wrap:wrap;gap:4px; }
+    .sg-add-keyword-btn { background:none;border:1px solid var(--accent);color:var(--accent);border-radius:3px;font-size:9px;padding:0 3px;margin-left:2px;cursor:pointer;font-weight:700;line-height:1.2;vertical-align:middle; }
+    .sg-add-keyword-btn:hover { background:var(--accent);color:#fff; }
 
     .sg-footer { padding:16px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap; }
     .sg-btn { font-size:12px;font-weight:600;padding:8px 14px;border-radius:8px;border:none;cursor:pointer;font-family:var(--sans);transition:background 0.15s; }

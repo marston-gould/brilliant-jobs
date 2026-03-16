@@ -462,6 +462,16 @@ Rewrite again, fixing all truthfulness issues. Return ONLY JSON.`;
       console.warn('[execute] Rewrite notification error (non-blocking):', notifyErr);
     }
 
+    // ─── ATS-006/007: Log acronym and header metrics ───
+    const acronymCount = (rewriteData.acronym_pairs_added || []).length;
+    const headerCount = (rewriteData.headers_standardized || []).length;
+    if (acronymCount > 0) {
+      console.log(`[execute] ATS-006: ${acronymCount} acronym pairs added — ${(rewriteData.acronym_pairs_added || []).join(', ')}`);
+    }
+    if (headerCount > 0) {
+      console.log(`[execute] ATS-007: ${headerCount} headers standardized — ${(rewriteData.headers_standardized || []).join(', ')}`);
+    }
+
     // ─── Response ───
     return json({
       success: true,

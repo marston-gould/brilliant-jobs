@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.75';
+var BJ_VERSION = 'v9.76';
 
 
 // === js/globals.ts ===

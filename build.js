@@ -71,6 +71,7 @@ const chunks = {
     'js/cover-letter.js',       // AIS-F8-S1: Cover letter generator UI
     'js/interview-prep.js',     // FB-INTPREP-001-S2: Interview Prep question bank UI
     'js/linkedin.js',           // SPEC-LPG-001-S2: LinkedIn Profile Optimizer
+    'js/linkedin-alignment.js', // FB-ATS-001-S4: LinkedIn Keyword Alignment Nudge
   ],
 };
 

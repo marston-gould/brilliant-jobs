@@ -333,6 +333,10 @@ function _pollApplicationStatus(appId) {
             platform: 'dashboard',
           });
         }
+        // ATS-005: Check LinkedIn keyword alignment after successful submission
+        if (typeof checkLinkedInAlignment === 'function') {
+          checkLinkedInAlignment(localApp ? localApp.job_id : null, localApp ? localApp.job_title : '', localApp ? localApp.company_name : '');
+        }
         // Refresh list after a brief delay
         setTimeout(function() { loadPendingApplications().then(renderPendingApplications); }, 2000);
       } else if (data.status === 'failed') {
@@ -1073,6 +1077,10 @@ async function _fireApplyNotification(type, opts) {
 // ═══════════════════════════════════════════════════════════
 
 function showScoreGateModal(jobId, jobTitle, companyName, jobUrl, scoreResult) {
+  // Store context for ATS-003 keyword add handler
+  window._lastScoreGateJobId = jobId;
+  window._lastScoreGateJobTitle = jobTitle;
+  window._lastScoreGateCompany = companyName;
   // Remove any existing modal
   var existing = document.getElementById('score-gate-modal');
   if (existing) existing.remove();
@@ -1138,7 +1146,8 @@ function showScoreGateModal(jobId, jobTitle, companyName, jobUrl, scoreResult) {
           var isPartial = item.resume_evidence === 'partial';
           var chipClass = isMatch ? 'sg-strong-chip' : isPartial ? 'sg-partial-chip' : 'sg-missing-chip';
           var chipIcon = isMatch ? '\u2713' : isPartial ? '\u2248' : '\u2717';
-          breakdownHtml += '<span class="' + chipClass + '">' + chipIcon + ' ' + escapeHtml(item.skill) + '</span>';
+          var addBtn = (!isMatch && !isPartial) ? ' <button class="sg-add-keyword-btn" onclick="event.stopPropagation();_sgAddKeyword(\'' + escapeHtml(item.skill).replace(/'/g, "\\'") + '\',\'' + escapeHtml(catKey) + '\')" title="Trigger targeted rewrite for this keyword">+</button>' : '';
+          breakdownHtml += '<span class="' + chipClass + '">' + chipIcon + ' ' + escapeHtml(item.skill) + addBtn + '</span>';
         }
         breakdownHtml += '</div></div>';
       }
@@ -1151,7 +1160,7 @@ function showScoreGateModal(jobId, jobTitle, companyName, jobUrl, scoreResult) {
       }
       if (keyGaps.length > 0) {
         breakdownHtml += '<div class="sg-missing"><span class="sg-missing-label">Missing:</span> ' + 
-          keyGaps.map(function(s) { return '<span class="sg-missing-chip">' + escapeHtml(s) + '</span>'; }).join(' ') + 
+          keyGaps.map(function(s) { return '<span class="sg-missing-chip">' + escapeHtml(s) + ' <button class="sg-add-keyword-btn" onclick="event.stopPropagation();_sgAddKeyword(\'' + escapeHtml(s).replace(/'/g, "\\'") + '\',\'general\')" title="Trigger targeted rewrite for this keyword">+</button></span>'; }).join(' ') + 
           '</div>';
       }
     }
@@ -1188,6 +1197,7 @@ function showScoreGateModal(jobId, jobTitle, companyName, jobUrl, scoreResult) {
             '<div class="sg-score-val">' + scoreDisplay + '</div>' +
             '<div class="sg-score-label">' + scoreLabel + '</div>' +
           '</div>' +
+          (function() { var r = _getActiveResume(); return (r && typeof buildFormatBadge === 'function') ? buildFormatBadge(r) : ''; })() +
           '<div class="sg-threshold-info">' +
             (hasScore 
               ? 'Your resume scores <strong>' + score + '</strong> against this job. Your threshold is <strong>' + threshold + '</strong>.'
@@ -1231,6 +1241,21 @@ function closeScoreGateModal() {
     modal.remove();
   }
 }
+
+// ATS-003: Add keyword to resume via targeted rewrite
+window._sgAddKeyword = function(keyword, category) {
+  if (typeof capturePostHog === 'function') {
+    capturePostHog('keyword_add_clicked', { keyword: keyword, category: category });
+  }
+  // Close score gate modal and trigger rewrite with the keyword context
+  closeScoreGateModal();
+  // If triggerRewrite is available, use it — the rewrite prompt will pick up the keyword
+  if (typeof triggerRewrite === 'function' && typeof _lastScoreGateJobId !== 'undefined') {
+    triggerRewrite(_lastScoreGateJobId, _lastScoreGateJobTitle || '', _lastScoreGateCompany || '');
+  } else if (typeof showToast === 'function') {
+    showToast('Navigate to Resumes tab and use AI Rewrite to add "' + keyword + '" to your resume.', { type: 'info', duration: 6000 });
+  }
+};
 
 // ═══════════════════════════════════════════════════════════
 // D5: scoreAndRecheck — Call score-resume EF (1 credit)
@@ -1592,6 +1617,11 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
   await loadPendingApplications();
   renderPendingApplications();
   _applySubmitting = false;
+
+  // ATS-005: Check LinkedIn keyword alignment after any successful submission
+  if (typeof checkLinkedInAlignment === 'function') {
+    checkLinkedInAlignment(jobId, jobTitle, companyName);
+  }
 }
 
 function _updatePipelineApplied(jobId) {

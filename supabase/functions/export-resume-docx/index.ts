@@ -240,6 +240,15 @@ serve(async (req) => {
 
     console.log(`[export-resume-docx] user=${user.id} resume=${resume_id} size=${docxBytes.length} bytes`);
 
+    // ATS-002: Log generation for PostHog (fire-and-forget)
+    try {
+      await sb.from('agent_action_log').insert({
+        agent_id: 'export-resume-docx',
+        action_type: 'resume_docx_generated',
+        payload: { user_id: user.id, resume_id, file_size: docxBytes.length },
+      });
+    } catch (_logErr: unknown) { /* non-fatal */ }
+
     return json({
       docx_url: signedData.signedUrl,
       filename: `${displayName.replace(/[^a-zA-Z0-9_-]/g, '_')}.docx`,

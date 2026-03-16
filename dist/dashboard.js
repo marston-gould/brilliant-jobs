@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.75';
+var BJ_VERSION = 'v9.76';
 
 
 // === js/globals.ts ===
@@ -19608,6 +19608,7 @@ function renderResumes() {
           <button onclick="openAssignPopover(${i}, this)" title="Manage filter assignment"><i data-lucide="link" class="icon-sm icon-stroke"></i></button>
           <button onclick="downloadResume(${i})" title="Download PDF"><i data-lucide="download" class="icon-sm icon-stroke"></i></button>
           <button onclick="downloadResumeDocx(${i})" title="Download as .docx (ATS-optimized)"><i data-lucide="file-text" class="icon-sm icon-stroke"></i></button>
+          <button onclick="generateCoverLetterForResume(${i})" title="Generate cover letter"><i data-lucide="mail" class="icon-sm icon-stroke"></i></button>
           <button onclick="renameResume(${i})" title="Rename"><i data-lucide="pencil" class="icon-sm icon-stroke"></i></button>
           <button onclick="archiveResume(${i})" title="Archive"><i data-lucide="archive" class="icon-sm icon-stroke"></i></button>
         </div>
@@ -20128,12 +20129,36 @@ async function extractTextFromPDF(file) {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     let fullText = '';
+    let imageCount = 0;
+    let fonts = new Set();
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const content = await page.getTextContent();
       const pageText = content.items.map(item => item.str).join(' ');
       fullText += pageText + '\n';
+      // ATS-001: Collect font names
+      content.items.forEach(item => {
+        if (item.fontName) fonts.add(item.fontName.replace(/^[A-Z]{6}\+/, '')); // Strip subset prefix
+      });
+      // ATS-001: Count images via operator list
+      try {
+        const ops = await page.getOperatorList();
+        if (ops && ops.fnArray) {
+          for (let j = 0; j < ops.fnArray.length; j++) {
+            // OPS.paintImageXObject = 85, OPS.paintJpegXObject = 82, OPS.paintImageMaskXObject = 83
+            if (ops.fnArray[j] === 85 || ops.fnArray[j] === 82 || ops.fnArray[j] === 83) {
+              imageCount++;
+            }
+          }
+        }
+      } catch (_opErr) { /* non-fatal — some PDFs block operator access */ }
     }
+    // Store metadata for format check
+    window._lastPdfMetadata = {
+      fonts: Array.from(fonts),
+      imageCount: imageCount,
+      pageCount: pdf.numPages,
+    };
     return fullText.trim();
   } catch (e) {
     reportError('resumes', e);
@@ -20415,7 +20440,7 @@ async function validateResumeFormat(resumeId, text) {
         'Content-Type': 'application/json',
         'apikey': SUPABASE_KEY,
       },
-      body: JSON.stringify({ resume_text: text, resume_id: resumeId }),
+      body: JSON.stringify({ resume_text: text, resume_id: resumeId, metadata: window._lastPdfMetadata || null }),
     });
 
     if (!resp.ok) {
@@ -20447,6 +20472,29 @@ async function validateResumeFormat(resumeId, text) {
         blocking_count: (data.issues || []).filter(function(i) { return i.severity === 'blocking'; }).length,
         warning_count: (data.issues || []).filter(function(i) { return i.severity === 'warning'; }).length,
       });
+      // ATS-001: Per-issue events
+      (data.issues || []).forEach(function(issue) {
+        capturePostHog('resume_format_issue_detected', {
+          resume_id: resumeId,
+          check_type: issue.check,
+          severity: issue.severity,
+        });
+      });
+      // ATS-001: ATS-ready event
+      if (data.is_ats_ready) {
+        capturePostHog('resume_format_ats_ready', {
+          resume_id: resumeId,
+          format_score: data.format_score,
+        });
+      }
+      // ATS-007: Non-standard headers detected
+      var nonStdHeaders = (data.headers_detected || []).filter(function(h) { return h.suggestion !== null; });
+      if (nonStdHeaders.length > 0) {
+        capturePostHog('resume_nonstandard_headers_detected', {
+          resume_id: resumeId,
+          headers: nonStdHeaders.map(function(h) { return h.original; }),
+        });
+      }
     }
 
     console.log('[format-check] Resume', resumeId, 'score=' + data.format_score, 'ats_ready=' + data.is_ats_ready, 'issues=' + (data.issues || []).length);
@@ -20876,6 +20924,96 @@ window.downloadResumeDocx = async function(idx) {
   } catch (e) {
     reportError('resumes:docx-export', e);
     showToast('Export failed: ' + e.message, { type: 'error' });
+  }
+};
+
+// ATS-004: Generate cover letter for a resume (manual mode)
+window.generateCoverLetterForResume = async function(idx) {
+  var r = resumes[idx];
+  if (!r) return;
+
+  // Need a job to generate against — check if resume has an assigned filter with a recent job
+  var resumeId = r.archiveId || r.id;
+  if (!currentUser) {
+    showToast('Please sign in to generate a cover letter.', { type: 'error' });
+    return;
+  }
+
+  try {
+    var session = await sb.auth.getSession();
+    if (!session || !session.data || !session.data.session) {
+      showToast('Please sign in.', { type: 'error' });
+      return;
+    }
+    var token = session.data.session.access_token;
+
+    // Try to get a job from the user's pipeline
+    var jobTitle = '';
+    var companyName = '';
+    var jobDescription = '';
+
+    // Check if resume has associated filter with a recent pipeline entry
+    if (r.filterIds && r.filterIds.length > 0) {
+      var pipeRes = await sb.from('user_pipeline').select('job_title, company_name').eq('user_id', currentUser.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
+      if (pipeRes.data) {
+        jobTitle = pipeRes.data.job_title || '';
+        companyName = pipeRes.data.company_name || '';
+      }
+    }
+
+    if (!jobTitle) {
+      // Prompt user for job info
+      jobTitle = prompt('Job title for cover letter:') || '';
+      if (!jobTitle) return;
+      companyName = prompt('Company name:') || '';
+    }
+
+    showToast('Generating cover letter for ' + (companyName || 'this role') + '...', { type: 'info', duration: 15000 });
+
+    var resp = await fetch(SUPABASE_URL + '/functions/v1/api-gateway/generate-cover-letter', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+      },
+      body: JSON.stringify({
+        job_title: jobTitle,
+        company_name: companyName,
+        job_description: jobDescription,
+        resume_id: resumeId,
+        tone: 'professional',
+      }),
+    });
+
+    if (!resp.ok) {
+      var errData = await resp.json().catch(function() { return {}; });
+      showToast(errData.error || 'Cover letter generation failed.', { type: 'error' });
+      return;
+    }
+
+    var data = await resp.json();
+    showToast('Cover letter generated! ' + (data.word_count || '') + ' words.', { type: 'success', duration: 5000 });
+
+    // Copy to clipboard
+    if (data.content && navigator.clipboard) {
+      navigator.clipboard.writeText(data.content).then(function() {
+        showToast('Cover letter copied to clipboard.', { type: 'success' });
+      }).catch(function() {});
+    }
+
+    if (typeof capturePostHog === 'function') {
+      capturePostHog('cover_letter_generated', {
+        resume_id: resumeId,
+        job_title: jobTitle,
+        company_name: companyName,
+        word_count: data.word_count || 0,
+        source: 'resume_card_manual',
+      });
+    }
+  } catch (e) {
+    reportError('resumes:cover-letter', e);
+    showToast('Cover letter generation failed: ' + e.message, { type: 'error' });
   }
 };
 
@@ -26693,6 +26831,21 @@ async function _rwAcceptAll() {
         acronym_pairs_added: (_rwState.acronymPairsAdded || []).length,
         headers_standardized: (_rwState.headersStandardized || []).length,
       });
+      // ATS-006: Specific acronym event
+      if ((_rwState.acronymPairsAdded || []).length > 0) {
+        capturePostHog('rewrite_acronym_pairs_added', {
+          resume_id: _rwState.resumeId,
+          count: _rwState.acronymPairsAdded.length,
+          pairs: _rwState.acronymPairsAdded,
+        });
+      }
+      // ATS-007: Specific header standardization event
+      if ((_rwState.headersStandardized || []).length > 0) {
+        capturePostHog('resume_headers_standardized', {
+          resume_id: _rwState.resumeId,
+          count: _rwState.headersStandardized.length,
+        });
+      }
     }
     closeRewritePanel();
 
@@ -31283,6 +31436,10 @@ function _pollApplicationStatus(appId) {
             platform: 'dashboard',
           });
         }
+        // ATS-005: Check LinkedIn keyword alignment after successful submission
+        if (typeof checkLinkedInAlignment === 'function') {
+          checkLinkedInAlignment(localApp ? localApp.job_id : null, localApp ? localApp.job_title : '', localApp ? localApp.company_name : '');
+        }
         // Refresh list after a brief delay
         setTimeout(function() { loadPendingApplications().then(renderPendingApplications); }, 2000);
       } else if (data.status === 'failed') {
@@ -32023,6 +32180,10 @@ async function _fireApplyNotification(type, opts) {
 // ═══════════════════════════════════════════════════════════
 
 function showScoreGateModal(jobId, jobTitle, companyName, jobUrl, scoreResult) {
+  // Store context for ATS-003 keyword add handler
+  window._lastScoreGateJobId = jobId;
+  window._lastScoreGateJobTitle = jobTitle;
+  window._lastScoreGateCompany = companyName;
   // Remove any existing modal
   var existing = document.getElementById('score-gate-modal');
   if (existing) existing.remove();
@@ -32088,7 +32249,8 @@ function showScoreGateModal(jobId, jobTitle, companyName, jobUrl, scoreResult) {
           var isPartial = item.resume_evidence === 'partial';
           var chipClass = isMatch ? 'sg-strong-chip' : isPartial ? 'sg-partial-chip' : 'sg-missing-chip';
           var chipIcon = isMatch ? '\u2713' : isPartial ? '\u2248' : '\u2717';
-          breakdownHtml += '<span class="' + chipClass + '">' + chipIcon + ' ' + escapeHtml(item.skill) + '</span>';
+          var addBtn = (!isMatch && !isPartial) ? ' <button class="sg-add-keyword-btn" onclick="event.stopPropagation();_sgAddKeyword(\'' + escapeHtml(item.skill).replace(/'/g, "\\'") + '\',\'' + escapeHtml(catKey) + '\')" title="Trigger targeted rewrite for this keyword">+</button>' : '';
+          breakdownHtml += '<span class="' + chipClass + '">' + chipIcon + ' ' + escapeHtml(item.skill) + addBtn + '</span>';
         }
         breakdownHtml += '</div></div>';
       }
@@ -32101,7 +32263,7 @@ function showScoreGateModal(jobId, jobTitle, companyName, jobUrl, scoreResult) {
       }
       if (keyGaps.length > 0) {
         breakdownHtml += '<div class="sg-missing"><span class="sg-missing-label">Missing:</span> ' + 
-          keyGaps.map(function(s) { return '<span class="sg-missing-chip">' + escapeHtml(s) + '</span>'; }).join(' ') + 
+          keyGaps.map(function(s) { return '<span class="sg-missing-chip">' + escapeHtml(s) + ' <button class="sg-add-keyword-btn" onclick="event.stopPropagation();_sgAddKeyword(\'' + escapeHtml(s).replace(/'/g, "\\'") + '\',\'general\')" title="Trigger targeted rewrite for this keyword">+</button></span>'; }).join(' ') + 
           '</div>';
       }
     }
@@ -32138,6 +32300,7 @@ function showScoreGateModal(jobId, jobTitle, companyName, jobUrl, scoreResult) {
             '<div class="sg-score-val">' + scoreDisplay + '</div>' +
             '<div class="sg-score-label">' + scoreLabel + '</div>' +
           '</div>' +
+          (function() { var r = _getActiveResume(); return (r && typeof buildFormatBadge === 'function') ? buildFormatBadge(r) : ''; })() +
           '<div class="sg-threshold-info">' +
             (hasScore 
               ? 'Your resume scores <strong>' + score + '</strong> against this job. Your threshold is <strong>' + threshold + '</strong>.'
@@ -32181,6 +32344,21 @@ function closeScoreGateModal() {
     modal.remove();
   }
 }
+
+// ATS-003: Add keyword to resume via targeted rewrite
+window._sgAddKeyword = function(keyword, category) {
+  if (typeof capturePostHog === 'function') {
+    capturePostHog('keyword_add_clicked', { keyword: keyword, category: category });
+  }
+  // Close score gate modal and trigger rewrite with the keyword context
+  closeScoreGateModal();
+  // If triggerRewrite is available, use it — the rewrite prompt will pick up the keyword
+  if (typeof triggerRewrite === 'function' && typeof _lastScoreGateJobId !== 'undefined') {
+    triggerRewrite(_lastScoreGateJobId, _lastScoreGateJobTitle || '', _lastScoreGateCompany || '');
+  } else if (typeof showToast === 'function') {
+    showToast('Navigate to Resumes tab and use AI Rewrite to add "' + keyword + '" to your resume.', { type: 'info', duration: 6000 });
+  }
+};
 
 // ═══════════════════════════════════════════════════════════
 // D5: scoreAndRecheck — Call score-resume EF (1 credit)
@@ -32542,6 +32720,11 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
   await loadPendingApplications();
   renderPendingApplications();
   _applySubmitting = false;
+
+  // ATS-005: Check LinkedIn keyword alignment after any successful submission
+  if (typeof checkLinkedInAlignment === 'function') {
+    checkLinkedInAlignment(jobId, jobTitle, companyName);
+  }
 }
 
 function _updatePipelineApplied(jobId) {
@@ -38856,3 +39039,193 @@ window._ipShowHistoryPanel = function() {
     window.BJ.initLinkedInTab = window.initLinkedInTab;
   }
 })();
+
+
+// === js/linkedin-alignment.js ===
+// ═══════════════════════════════════════════════════════════
+// ATS-005: LinkedIn Keyword Alignment Nudge
+// Post-apply coaching — compares resume keywords against stored
+// LinkedIn profile data and surfaces keyword gaps with suggestions.
+// ═══════════════════════════════════════════════════════════
+
+var _linkedinAlignmentCheckedToday = false;
+
+/**
+ * Check if we should show a LinkedIn alignment nudge after a successful application.
+ * Called from apply-workflow.js after worker_submission_complete or direct submit.
+ * 
+ * @param {string} jobId - The job that was just applied to
+ * @param {string} jobTitle - Job title for context
+ * @param {string} companyName - Company for context
+ */
+window.checkLinkedInAlignment = async function(jobId, jobTitle, companyName) {
+  // Once-per-day cap
+  if (_linkedinAlignmentCheckedToday) return;
+  var lastCheck = localStorage.getItem('bj_linkedin_alignment_last');
+  if (lastCheck) {
+    var lastDate = new Date(lastCheck).toDateString();
+    var today = new Date().toDateString();
+    if (lastDate === today) { _linkedinAlignmentCheckedToday = true; return; }
+  }
+
+  // Check if user has LinkedIn profile data
+  if (typeof sb === 'undefined' || typeof currentUser === 'undefined' || !currentUser) return;
+
+  try {
+    var liRes = await sb.from('linkedin_profiles').select('skills_array, experience_json, headline').eq('user_id', currentUser.id).maybeSingle();
+    if (!liRes.data || !liRes.data.skills_array || liRes.data.skills_array.length === 0) return;
+
+    var linkedInSkills = (liRes.data.skills_array || []).map(function(s) { return s.toLowerCase().trim(); });
+    var linkedInHeadline = (liRes.data.headline || '').toLowerCase();
+    var linkedInExperience = '';
+    if (Array.isArray(liRes.data.experience_json)) {
+      linkedInExperience = liRes.data.experience_json.map(function(e) {
+        return [e.title || '', e.company || '', (e.bullets || []).join(' ')].join(' ');
+      }).join(' ').toLowerCase();
+    }
+    var linkedInText = linkedInSkills.join(' ') + ' ' + linkedInHeadline + ' ' + linkedInExperience;
+
+    // Get resume keywords from the most recent scoring
+    var resumeKeywords = [];
+    if (typeof readinessCache !== 'undefined' && readinessCache) {
+      // Extract all matched keywords from readiness cache
+      var indices = Object.keys(readinessCache);
+      for (var i = 0; i < indices.length; i++) {
+        var data = readinessCache[indices[i]];
+        if (!data || !data.filters) continue;
+        var filterNames = Object.keys(data.filters);
+        for (var fi = 0; fi < filterNames.length; fi++) {
+          var fs = data.filters[filterNames[fi]];
+          if (fs.topMatched) {
+            for (var mi = 0; mi < fs.topMatched.length; mi++) {
+              var term = typeof fs.topMatched[mi] === 'object' ? fs.topMatched[mi].term : fs.topMatched[mi];
+              if (term) resumeKeywords.push(term.toLowerCase().trim());
+            }
+          }
+        }
+      }
+    }
+
+    // Also pull from last score result if available
+    if (typeof jobMatchScores !== 'undefined' && jobMatchScores && jobMatchScores[jobId]) {
+      var scoreResult = jobMatchScores[jobId];
+      var matches = scoreResult.key_matches || [];
+      for (var ki = 0; ki < matches.length; ki++) {
+        resumeKeywords.push(matches[ki].toLowerCase().trim());
+      }
+    }
+
+    // Deduplicate
+    resumeKeywords = resumeKeywords.filter(function(v, i, a) { return a.indexOf(v) === i; });
+
+    if (resumeKeywords.length === 0) return;
+
+    // Find keywords on resume but NOT on LinkedIn
+    var gaps = [];
+    for (var gi = 0; gi < resumeKeywords.length; gi++) {
+      var kw = resumeKeywords[gi];
+      if (kw.length < 2) continue;
+      // Check if keyword appears anywhere in LinkedIn text
+      if (linkedInText.indexOf(kw) === -1) {
+        gaps.push(kw);
+      }
+    }
+
+    // Minimum 3 gaps to show nudge
+    if (gaps.length < 3) return;
+
+    // Cap at 8 most important gaps
+    gaps = gaps.slice(0, 8);
+
+    // Mark as checked today
+    localStorage.setItem('bj_linkedin_alignment_last', new Date().toISOString());
+    _linkedinAlignmentCheckedToday = true;
+
+    // Suggest where to add each gap keyword on LinkedIn
+    var suggestions = gaps.map(function(gap) {
+      // Heuristic: tools/technologies → Skills section, soft skills → Summary, role-specific → Experience
+      var isToolish = /^[a-z0-9.+#]+$/i.test(gap) || /sql|api|aws|gcp|react|python|java|node|docker|kubernetes|jira|figma|tableau|excel|git/i.test(gap);
+      var isSoftSkill = /leadership|communication|collaboration|management|strategy|planning|mentoring|coaching|problem.solving|analytical|creative/i.test(gap);
+      if (isToolish) return { keyword: gap, section: 'Skills', suggestion: 'Add "' + gap + '" to your Skills section' };
+      if (isSoftSkill) return { keyword: gap, section: 'Summary', suggestion: 'Mention "' + gap + '" in your LinkedIn summary' };
+      return { keyword: gap, section: 'Experience', suggestion: 'Reference "' + gap + '" in a recent experience bullet' };
+    });
+
+    // Show the nudge
+    _showLinkedInAlignmentNudge(jobTitle, companyName, suggestions);
+
+    // PostHog
+    if (typeof capturePostHog === 'function') {
+      capturePostHog('linkedin_alignment_nudge_shown', {
+        job_id: jobId,
+        gap_count: gaps.length,
+        keywords: gaps,
+      });
+    }
+
+  } catch (e) {
+    if (typeof reportError === 'function') reportError('linkedin-alignment', e);
+    console.warn('[linkedin-alignment] Error:', e.message);
+  }
+};
+
+/**
+ * Render the LinkedIn alignment nudge notification card
+ */
+function _showLinkedInAlignmentNudge(jobTitle, companyName, suggestions) {
+  // Remove existing
+  var existing = document.getElementById('bj-linkedin-alignment-nudge');
+  if (existing) existing.remove();
+
+  var gapChips = suggestions.map(function(s) {
+    var sectionColor = s.section === 'Skills' ? 'var(--accent)' : s.section === 'Summary' ? 'var(--indigo)' : 'var(--green)';
+    return '<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid var(--border);">' +
+      '<span style="font-size:11px;font-weight:600;color:var(--text);min-width:100px;">' + (typeof escapeHtml === 'function' ? escapeHtml(s.keyword) : s.keyword) + '</span>' +
+      '<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:' + sectionColor + '15;color:' + sectionColor + ';font-weight:500;">' + s.section + '</span>' +
+      '<span style="font-size:10px;color:var(--text-dim);flex:1;">' + (typeof escapeHtml === 'function' ? escapeHtml(s.suggestion) : s.suggestion) + '</span>' +
+    '</div>';
+  }).join('');
+
+  var nudge = document.createElement('div');
+  nudge.id = 'bj-linkedin-alignment-nudge';
+  nudge.style.cssText = 'position:fixed;bottom:20px;right:20px;width:400px;max-width:90vw;background:var(--card);border:1px solid var(--accent);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.15);z-index:9990;overflow:hidden;animation:slideUp 0.3s ease;';
+  nudge.innerHTML =
+    '<div style="padding:14px 16px;background:linear-gradient(135deg,#1a3a6e,#2553a0);color:#fff;">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;">' +
+        '<div style="font-size:13px;font-weight:700;"><i data-lucide="linkedin" class="icon-sm" style="display:inline-block;vertical-align:middle;margin-right:6px;"></i>LinkedIn Keyword Gap</div>' +
+        '<button onclick="document.getElementById(\'bj-linkedin-alignment-nudge\').remove()" style="background:none;border:none;color:#fff;cursor:pointer;font-size:16px;padding:0 4px;">&times;</button>' +
+      '</div>' +
+      '<div style="font-size:11px;opacity:0.85;margin-top:4px;">Your resume for ' + (typeof escapeHtml === 'function' ? escapeHtml(companyName) : companyName) + ' has keywords missing from your LinkedIn</div>' +
+    '</div>' +
+    '<div style="padding:12px 16px;max-height:300px;overflow-y:auto;">' +
+      gapChips +
+    '</div>' +
+    '<div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;">' +
+      '<button onclick="_dismissLinkedInNudge(\'role_type\')" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text-dim);cursor:pointer;">Don\'t show for this role type</button>' +
+      '<button onclick="_dismissLinkedInNudge(\'dismiss\')" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text-dim);cursor:pointer;">Dismiss</button>' +
+      '<a href="https://www.linkedin.com/in/me/" target="_blank" rel="noopener" onclick="_trackLinkedInCta()" style="font-size:11px;padding:4px 12px;border-radius:6px;background:var(--accent);color:#fff;text-decoration:none;font-weight:600;cursor:pointer;">Update LinkedIn</a>' +
+    '</div>';
+
+  document.body.appendChild(nudge);
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+
+  // Auto-dismiss after 30 seconds
+  setTimeout(function() {
+    var el = document.getElementById('bj-linkedin-alignment-nudge');
+    if (el) el.remove();
+  }, 30000);
+}
+
+window._dismissLinkedInNudge = function(type) {
+  var el = document.getElementById('bj-linkedin-alignment-nudge');
+  if (el) el.remove();
+  if (typeof capturePostHog === 'function') {
+    capturePostHog('linkedin_alignment_nudge_dismissed', { type: type });
+  }
+};
+
+window._trackLinkedInCta = function() {
+  if (typeof capturePostHog === 'function') {
+    capturePostHog('linkedin_alignment_cta_clicked', {});
+  }
+};

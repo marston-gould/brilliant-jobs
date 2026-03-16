@@ -2009,6 +2009,31 @@
       html.push('  </div>');
     }
 
+    // ATS-003: Keyword match rate bar (extension)
+    var keyMatches = (data.key_matches || []);
+    var keyGaps = (data.key_gaps || []);
+    if (data.gap_analysis && Array.isArray(data.gap_analysis)) {
+      keyGaps = data.gap_analysis.map(function(ga: any) { return ga.requirement || ga.gap || ga.skill || ''; }).filter(function(s: string) { return s; });
+    }
+    var totalKw = keyMatches.length + keyGaps.length;
+    if (totalKw > 0) {
+      var kwPct = Math.round((keyMatches.length / totalKw) * 100);
+      var kwColor = kwPct >= 75 ? '#22c55e' : kwPct >= 50 ? '#eab308' : '#dc2626';
+      html.push('  <div style="margin:10px 0 6px;">');
+      html.push('    <div style="font-size:11px;font-weight:600;color:#e5e5e5;margin-bottom:3px;">' + keyMatches.length + ' of ' + totalKw + ' keywords matched (' + kwPct + '%)</div>');
+      html.push('    <div style="height:6px;border-radius:3px;background:rgba(255,255,255,0.1);overflow:hidden;"><div style="height:100%;width:' + kwPct + '%;background:' + kwColor + ';border-radius:3px;transition:width 0.3s;"></div></div>');
+      html.push('  </div>');
+      // Keyword chips (max 6 matched + 6 missing)
+      html.push('  <div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px;">');
+      for (var km = 0; km < Math.min(6, keyMatches.length); km++) {
+        html.push('    <span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(34,197,94,0.15);color:#22c55e;">✓ ' + _escText(keyMatches[km]) + '</span>');
+      }
+      for (var kg = 0; kg < Math.min(6, keyGaps.length); kg++) {
+        html.push('    <span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(239,68,68,0.15);color:#dc2626;">✗ ' + _escText(typeof keyGaps[kg] === 'string' ? keyGaps[kg] : '') + '</span>');
+      }
+      html.push('  </div>');
+    }
+
     // Action buttons
     html.push('  <div class="bj-sg-actions">');
     if (!isAbove) {
@@ -2373,6 +2398,21 @@
       html.push('  </div>');
     }
 
+    // ATS-003: Keywords integrated before/after
+    var kwIntegrated = data.keywords_integrated || [];
+    var acronymPairs = data.acronym_pairs_added || [];
+    if (kwIntegrated.length > 0 || acronymPairs.length > 0) {
+      html.push('  <div style="font-size:12px;font-weight:600;color:#374151;margin-top:8px;">Keywords Added to Resume</div>');
+      html.push('  <div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;">');
+      for (var ki = 0; ki < kwIntegrated.length; ki++) {
+        html.push('    <span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(34,197,94,0.15);color:#22c55e;">+ ' + _escText(kwIntegrated[ki]) + '</span>');
+      }
+      for (var ai = 0; ai < acronymPairs.length; ai++) {
+        html.push('    <span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(99,102,241,0.15);color:#6366f1;">↔ ' + _escText(acronymPairs[ai]) + '</span>');
+      }
+      html.push('  </div>');
+    }
+
     // Changes diff (max 5)
     if (changes.length > 0) {
       html.push('  <div style="font-size:12px;font-weight:600;color:#374151;margin-top:8px;">Changes (' + changes.length + ')</div>');
@@ -2396,6 +2436,7 @@
     // Action buttons
     html.push('  <div class="bj-sg-actions">');
     html.push('    <button class="bj-sg-btn primary" id="bj-rr-submit-btn">Submit Rewritten Resume</button>');
+    html.push('    <button class="bj-sg-btn secondary" id="bj-rr-docx-btn">Download as .docx</button>');
     html.push('    <button class="bj-sg-btn secondary" id="bj-rr-original-btn">Submit Original Instead</button>');
     html.push('    <button class="bj-sg-btn ghost" id="bj-rr-cancel-btn">Cancel — Don\'t Apply</button>');
     html.push('  </div>');
@@ -2427,6 +2468,19 @@
       hideRewriteReviewPopup();
       showToast('Submitting original resume...');
       _sendRewriteDecision('submit_original', data);
+    });
+
+    // ATS-002: .docx download from extension rewrite review
+    var docxBtn = shadow.querySelector('#bj-rr-docx-btn');
+    if (docxBtn) docxBtn.addEventListener('click', function () {
+      showToast('Opening dashboard to download .docx...');
+      sendMsg('POSTHOG_CAPTURE', { event: 'resume_download_format', properties: { format: 'docx', source: 'extension_rewrite_review' } });
+      // Open dashboard resumes tab — the downloadResumeDocx function is dashboard-only
+      if (typeof chrome !== 'undefined' && chrome.tabs) {
+        chrome.tabs.create({ url: 'https://brilliantjobs.app/#resumes' });
+      } else {
+        window.open('https://brilliantjobs.app/#resumes', '_blank');
+      }
     });
 
     var cancelBtn = shadow.querySelector('#bj-rr-cancel-btn');

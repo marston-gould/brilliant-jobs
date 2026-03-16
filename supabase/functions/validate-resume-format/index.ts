@@ -130,6 +130,27 @@ function analyzeResumeFormat(text: string, metadata?: Record<string, unknown>): 
     }
   }
 
+  // Check 4b: Embedded images/icons (from metadata if available)
+  if (metadata && typeof metadata.imageCount === 'number' && metadata.imageCount > 0) {
+    // A resume header logo is fine (1 image), but multiple body images suggest graphic-heavy design
+    if (metadata.imageCount > 2) {
+      issues.push({
+        check: 'embedded_images',
+        severity: 'warning',
+        message: `Your resume contains ${metadata.imageCount} embedded images or icons. ATS cannot read image content. Ensure all important information is in text, not graphics.`,
+        detail: `${metadata.imageCount} image objects detected in PDF.`,
+      });
+    } else if (metadata.imageCount > 0) {
+      // 1-2 images — just note it, might be a header logo
+      issues.push({
+        check: 'embedded_images',
+        severity: 'warning',
+        message: 'Your resume contains embedded images. ATS cannot read image content. If these are icons or infographics with important information, consider replacing them with text.',
+        detail: `${metadata.imageCount} image object(s) detected.`,
+      });
+    }
+  }
+
   // Check 5: Contact info only in header/footer region
   // If email/phone found only in first 2 lines or last 2 lines
   const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;

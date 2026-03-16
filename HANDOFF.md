@@ -52,7 +52,21 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FB-ATS-001-S3** — ATS Pass Rate Improvement: .docx Export (ATS-002) + Cover Letter Auto-Generation (ATS-004) ✅
+**FB-ATS-001-S4** — ATS Pass Rate Improvement: LinkedIn Keyword Alignment Nudge (ATS-005) + Full Spec Gap Remediation ✅
+- v9.75→v9.76 — ATS-005: linkedin-alignment.js module (added to deferred build chunk). checkLinkedInAlignment() reads linkedin_profiles (skills_array, experience_json, headline) and compares against resume keywords from readinessCache + jobMatchScores. Minimum 3-gap threshold. Once-per-day cap via localStorage bj_linkedin_alignment_last. Heuristic section suggestions: tools→Skills, soft skills→Summary, default→Experience. Fixed-position nudge card (400px, bottom-right) with per-keyword chips + section badges + Update LinkedIn CTA + dismiss + role-type suppress. 30s auto-dismiss. PostHog: linkedin_alignment_nudge_shown, dismissed, cta_clicked. Wired into apply-workflow.js at two points: worker_submission_complete success path + proceedToApply completion.
+- **Full spec gap remediation (21 gaps identified, 20 fixed):**
+  - ATS-006: Created acronym-dictionary.json (100+ acronym→expansion pairs). Added post-rewrite validation logging in execute EF.
+  - ATS-007: Created header-standardization-map.json. Added resume_nonstandard_headers_detected PostHog event in resumes.js format check.
+  - ATS-003: Added "+" Add to Resume button per missing keyword in score gate modal (categorized + flat views). _sgAddKeyword handler triggers rewrite + fires keyword_add_clicked PostHog. Extension score gate popup gains keyword match rate bar + keyword chips. Extension rewrite review gains keywords_integrated + acronym_pairs_added before/after display.
+  - ATS-001: Added resume_format_issue_detected per-issue PostHog event. Added resume_format_ats_ready PostHog event. Added format badge to score gate modal via buildFormatBadge().
+  - ATS-002: Added resume_docx_generated log to export-resume-docx EF. Added .docx download button to extension rewrite review popup.
+  - ATS-004: Added cover_letter_field_detected, cover_letter_attached, cover_letter_field_skipped PostHog events to greenhouse, lever, generic worker handlers. Added generateCoverLetterForResume() manual mode function with mail icon on resume cards.
+  - ATS-006/007: Added rewrite_acronym_pairs_added + resume_headers_standardized specific PostHog events in rewrite.js.
+  - **1 known limitation:** ATS-001 embedded images/icons detection requires PDF binary analysis — we only have extracted text. Documented as future enhancement when PDF binary parsing is added.
+- 198 tests across 4 sessions (45 + 61 + 52 + 40), all passing.
+- **FB-ATS-001 COMPLETE** — all 7 fix plans shipped.
+
+**Previous: FB-ATS-001-S3** — ATS-002 .docx Export + ATS-004 Cover Letter Auto-Generation ✅
 - v9.74→v9.75 — ATS-002: New export-resume-docx EF. Pure OOXML builder (no libraries) — single-column, Arial font, US Letter, 1-inch margins. Parses raw resume text into sections by detecting header-like lines (uppercase/title case), bullet points, and paragraphs. Builds valid .docx ZIP, uploads to Supabase Storage resumes/docx-exports/, returns signed URL (1hr expiry). Gateway route added. Client: downloadResumeDocx() async function, file-text icon button on resume cards, toast feedback, PostHog resume_download_format with format:'docx'. ATS-004: Auto-generate cover letter in proceedToApply() when _isAutoMode && !coverLetterId. Calls existing generate-cover-letter EF (AIS-F8-S1) with job_title, company_name, resume_id, tone:'professional'. Stores coverLetterId on success for pending_applications attachment. All 15+ ATS handlers already fill cover letter fields (AIS-F8-S2). Non-fatal try/catch with reportError. PostHog cover_letter_auto_generated with job_id, company, mode, word_count. 52 tests.
 
 **Previous: FB-ATS-001-S2** — ATS-003 Keyword Match Rate Breakdown + ATS-001 Format Health Check ✅
@@ -4060,7 +4074,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.75`** | **FB-ATS-001-S3: ATS-002 .docx Export + ATS-004 Cover Letter Auto-Generation. 52 tests.** |
+| **Product (BJ_VERSION)** | **`v9.76`** | **FB-ATS-001-S4: ATS-005 LinkedIn Alignment + full spec gap remediation. 198 total tests. FB-ATS-001 COMPLETE.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
