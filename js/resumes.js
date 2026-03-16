@@ -318,7 +318,7 @@ function renderResumes() {
         <div class="nri-icon ${icon.cls}">${isPlaceholder ? '?' : icon.text}</div>
         <div class="nri-info">
           <div class="nri-name" title="${escapeHtml(r.name||'')}">${escapeHtml(r.name)}${gdriveIcon}${tierBadge}${aiBadge}${scoreHistory}${rescoreBtn}</div>
-          <div class="nri-meta">${!isPlaceholder ? r.size + ' \u00b7 ' + r.uploadedAt : 'Placeholder'} \u00b7 ${assignedIds.length} filter${assignedIds.length !== 1 ? 's' : ''}${assignedLevels.length > 0 ? ' \u00b7 ' + assignedLevels.join(', ') : ''}${jobsApplied > 0 ? ' \u00b7 ' + jobsApplied + ' applied' : ''}</div>
+          <div class="nri-meta">${!isPlaceholder ? r.size + ' \u00b7 ' + r.uploadedAt : 'Placeholder'} \u00b7 ${assignedIds.length} filter${assignedIds.length !== 1 ? 's' : ''}${assignedLevels.length > 0 ? ' \u00b7 ' + assignedLevels.join(', ') : ''}${jobsApplied > 0 ? ' \u00b7 ' + jobsApplied + ' applied' : ''}${typeof buildFormatBadge === 'function' ? buildFormatBadge(r) : ''}</div>
         </div>
         <div class="nri-filters">${filterDots}</div>
         <div class="nri-score ${scoreClass}">${scoreDisplay}</div>
@@ -1021,6 +1021,8 @@ async function addResume(file) {
     if (text && text.length >= 100) {
       persistResumeTextToDB(id, text);
       scoreResumeAI(id, text);
+      // ATS-001: Run format health check
+      validateResumeFormat(id, text);
     }
   });
 }
@@ -1108,6 +1110,138 @@ async function scoreResumeAI(resumeId, text) {
     }
   }
 }
+
+// ═══════════════════════════════════════════════════════════
+// ATS-001: Resume Format Health Check
+// Calls validate-resume-format EF to detect ATS-hostile formatting
+// ═══════════════════════════════════════════════════════════
+
+async function validateResumeFormat(resumeId, text) {
+  try {
+    var session = await sb.auth.getSession();
+    if (!session || !session.data || !session.data.session) {
+      console.warn('[format-check] No session, skipping format validation');
+      return;
+    }
+    var token = session.data.session.access_token;
+
+    var resp = await fetch(SUPABASE_URL + '/functions/v1/api-gateway/validate-resume-format', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+      },
+      body: JSON.stringify({ resume_text: text, resume_id: resumeId }),
+    });
+
+    if (!resp.ok) {
+      console.warn('[format-check] EF returned', resp.status);
+      return;
+    }
+
+    var data = await resp.json();
+    var idx = resumes.findIndex(function(r) { return r.id === resumeId; });
+    if (idx < 0) return;
+
+    resumes[idx].formatCheck = {
+      score: data.format_score,
+      issues: data.issues || [],
+      isAtsReady: data.is_ats_ready,
+      headersDetected: data.headers_detected || [],
+      checkedAt: new Date().toISOString(),
+    };
+    saveResumes();
+    renderResumes();
+
+    // PostHog
+    if (typeof capturePostHog === 'function') {
+      capturePostHog('resume_format_check_run', {
+        resume_id: resumeId,
+        format_score: data.format_score,
+        issue_count: (data.issues || []).length,
+        is_ats_ready: data.is_ats_ready,
+        blocking_count: (data.issues || []).filter(function(i) { return i.severity === 'blocking'; }).length,
+        warning_count: (data.issues || []).filter(function(i) { return i.severity === 'warning'; }).length,
+      });
+    }
+
+    console.log('[format-check] Resume', resumeId, 'score=' + data.format_score, 'ats_ready=' + data.is_ats_ready, 'issues=' + (data.issues || []).length);
+  } catch (e) {
+    reportError('format-check', e);
+    console.warn('[format-check] Error:', e.message);
+  }
+}
+
+// Build ATS format badge HTML for resume cards
+function buildFormatBadge(resume) {
+  if (!resume.formatCheck) return '';
+  var fc = resume.formatCheck;
+  if (fc.isAtsReady) {
+    return '<span style="font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(34,197,94,0.1);color:var(--green);font-weight:600;margin-left:4px;" title="Format score: ' + fc.score + '/100">' +
+      '<i data-lucide="shield-check" class="icon-xs" style="display:inline-block;vertical-align:middle;margin-right:2px;"></i>ATS-Ready</span>';
+  }
+  var blockingCount = (fc.issues || []).filter(function(i) { return i.severity === 'blocking'; }).length;
+  if (blockingCount > 0) {
+    return '<span style="font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(239,68,68,0.1);color:var(--red);font-weight:600;margin-left:4px;cursor:pointer;" ' +
+      'title="' + blockingCount + ' formatting issue(s) may cause ATS rejection. Click for details." ' +
+      'onclick="event.stopPropagation();showFormatIssues(\'' + resume.id + '\')">' +
+      '<i data-lucide="triangle-alert" class="icon-xs" style="display:inline-block;vertical-align:middle;margin-right:2px;"></i>Format Issues</span>';
+  }
+  var warningCount = (fc.issues || []).filter(function(i) { return i.severity === 'warning'; }).length;
+  if (warningCount > 0) {
+    return '<span style="font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(234,179,8,0.1);color:var(--warm);font-weight:600;margin-left:4px;cursor:pointer;" ' +
+      'title="' + warningCount + ' minor formatting warning(s). Click for details." ' +
+      'onclick="event.stopPropagation();showFormatIssues(\'' + resume.id + '\')">' +
+      '<i data-lucide="info" class="icon-xs" style="display:inline-block;vertical-align:middle;margin-right:2px;"></i>' + warningCount + ' Warning' + (warningCount > 1 ? 's' : '') + '</span>';
+  }
+  return '';
+}
+
+// Show format issues detail popup
+window.showFormatIssues = function(resumeId) {
+  var r = resumes.find(function(r) { return r.id === resumeId; });
+  if (!r || !r.formatCheck || !r.formatCheck.issues || r.formatCheck.issues.length === 0) return;
+
+  var existing = document.getElementById('bj-format-issues-overlay');
+  if (existing) existing.remove();
+
+  var fc = r.formatCheck;
+  var issuesHtml = fc.issues.map(function(issue) {
+    var icon = issue.severity === 'blocking' ? '<i data-lucide="circle-x" class="icon-sm" style="display:inline-block;vertical-align:middle;color:var(--red);margin-right:6px;"></i>' :
+      '<i data-lucide="triangle-alert" class="icon-sm" style="display:inline-block;vertical-align:middle;color:var(--warm);margin-right:6px;"></i>';
+    var sevLabel = issue.severity === 'blocking' ? '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(239,68,68,0.12);color:var(--red);font-weight:600;">Blocking</span>' :
+      '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(234,179,8,0.12);color:var(--warm);font-weight:600;">Warning</span>';
+    return '<div style="padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--bg-input);">' +
+      '<div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">' + icon + sevLabel + '</div>' +
+      '<div style="font-size:12px;color:var(--text);line-height:1.5;">' + escapeHtml(issue.message) + '</div>' +
+      '</div>';
+  }).join('');
+
+  // Header badge
+  var scoreColor = fc.score >= 80 ? 'var(--green)' : fc.score >= 50 ? 'var(--warm)' : 'var(--red)';
+
+  var overlay = document.createElement('div');
+  overlay.id = 'bj-format-issues-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99990;display:flex;align-items:center;justify-content:center;';
+  overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = '<div style="background:var(--card);border-radius:12px;padding:24px;max-width:480px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.3);">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">' +
+      '<div style="font-size:15px;font-weight:700;color:var(--text);">ATS Format Check</div>' +
+      '<div style="font-family:var(--mono);font-size:20px;font-weight:700;color:' + scoreColor + ';">' + fc.score + '/100</div>' +
+    '</div>' +
+    issuesHtml +
+    '<div style="margin-top:16px;text-align:right;">' +
+      '<button onclick="document.getElementById(\'bj-format-issues-overlay\').remove()" style="padding:8px 16px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);cursor:pointer;font-size:12px;">Close</button>' +
+    '</div>' +
+  '</div>';
+
+  document.body.appendChild(overlay);
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+};
+
+window.buildFormatBadge = buildFormatBadge;
+window.validateResumeFormat = validateResumeFormat;
 
 // v6.39: Rescore with rate limiting, cooldown, and score history
 var RESCORE_COOLDOWN_MS = 60000; // 60-second cooldown between rescores

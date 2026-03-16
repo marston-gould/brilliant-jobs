@@ -102,6 +102,7 @@ const ROUTE_REGISTRY: Record<string, string> = {
   "resume-optimize":          "resume-optimize",          // RESUME-BUILDER-001-S3 (stub)
   "resume-rewrite-bullet":    "resume-rewrite-bullet",    // RESUME-BUILDER-001-S4
   "optimize-linkedin-profile": "optimize-linkedin-profile", // SPEC-LPG-001-S2
+  "validate-resume-format": "validate-resume-format", // FB-ATS-001-S2
 
   // ── Scoring & Quality (3) ────────────────────────────────────────────────
   "score-job-fraud":          "score-job-fraud",          // SA-004

@@ -11,7 +11,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v9.73"></script>
+  <script src="/js/version.js?v=v9.74"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2335,7 +2335,7 @@ const features = [
 { s: 'todo', b: 'post-launch', n: 'LP-IMAGES Landing Page Screenshots', d: 'Replace placeholder hero-dashboard-preview.webp and all benefit section image_url entries with real WebP screenshots once product is stable. Hero: job feed with salary data + match score badge. Benefit sections: 4 screenshots per section spec (sourcing, resume scoring, automated apply, pipeline). All images: WebP, lazy-loaded, inside browser-frame chrome.', p: 0, e: '1 session' },
 // FB-ATS-001: ATS Pass Rate Improvement Suite
 { s: 'done', b: 'post-launch', n: 'FB-ATS-001-S1 ATS-006 + ATS-007: Acronym Dual Inclusion + Section Header Standardization', d: 'Prompt engineering updates to rewrite-resume-execute + rewrite-resume-extension EFs. ATS-006: ACRONYM RULE — both full term and acronym on first use for all technical terms. ATS-007: SECTION HEADERS — replace non-standard headers with ATS-standard equivalents. Quality checker updated with ACRONYM COMPLIANCE + HEADER STANDARDIZATION checks. Response includes acronym_pairs_added + headers_standardized arrays. PostHog tracking in rewrite.js. 45 tests.', p: 100, e: '1 session' },
-{ s: 'todo', b: 'post-launch', n: 'FB-ATS-001-S2 ATS-003 + ATS-001: Keyword Match Rate Breakdown + Format Health Check', d: 'ATS-003: Keyword-by-keyword checklist UI consuming existing score-resume response. Match rate bar. Category grouping. Quick Fix actions. ATS-001: New validate-resume-format EF. Detect multi-column, tables, images, non-standard fonts, scanned PDFs. ATS-Ready badge.', p: 0, e: '1 session' },
+{ s: 'done', b: 'post-launch', n: 'FB-ATS-001-S2 ATS-003 + ATS-001: Keyword Match Rate Breakdown + Format Health Check', d: 'ATS-003: Match rate progress bar + categorized core_requirements checklist (technical/soft/tool/domain/cert) in score gate modal + readiness panel. PostHog keyword_breakdown_viewed. ATS-001: validate-resume-format EF (7 checks: scanned PDF, multi-column, tables, non-standard fonts, header/footer contact, encoding, non-standard headers). Gateway route. Format badge on resume cards (ATS-Ready/Issues/Warnings). showFormatIssues popup. Auto-runs after text extraction. 61 tests.', p: 100, e: '1 session' },
 { s: 'todo', b: 'post-launch', n: 'FB-ATS-001-S3 ATS-002 + ATS-004: DOCX Export + Cover Letter Generation', d: 'ATS-002: New export-resume-docx EF. ATS-optimized template. Format toggle. ATS-004: New generate-cover-letter EF. Auto-attach during form fill. 15+4 ATS handler updates for cover letter fields.', p: 0, e: '1 session' },
 { s: 'todo', b: 'post-launch', n: 'FB-ATS-001-S4 ATS-005: LinkedIn Keyword Alignment Nudge', d: 'Post-apply coaching. Compare resume keywords against stored LinkedIn profile data. Notification card with keyword gap list + suggestions. Once-per-day cap. Minimum 3-gap threshold.', p: 0, e: '1 session' },
 ];

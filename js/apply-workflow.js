@@ -1093,24 +1093,80 @@ function showScoreGateModal(jobId, jobTitle, companyName, jobUrl, scoreResult) {
   var scoreLabel = hasScore ? (score >= 75 ? 'Strong' : score >= 50 ? 'Partial' : 'Weak') : 'Unscored';
 
   var breakdownHtml = '';
-  if (scoreResult && scoreResult.recommendations) {
-    var missing = scoreResult.recommendations.missing_skills || [];
-    var strong = scoreResult.recommendations.strong_matches || [];
+  if (scoreResult) {
     breakdownHtml = '<div class="sg-breakdown">';
     if (scoreResult.analysis_summary) {
       breakdownHtml += '<div class="sg-summary">' + escapeHtml(scoreResult.analysis_summary) + '</div>';
     }
-    if (strong.length > 0) {
-      breakdownHtml += '<div class="sg-strong"><span class="sg-strong-label">✓ Matches:</span> ' +
-        strong.slice(0, 5).map(function(s) { return '<span class="sg-strong-chip">' + escapeHtml(s) + '</span>'; }).join(' ') +
-        '</div>';
+
+    // ATS-003: Keyword match rate bar
+    var keyMatches = scoreResult.key_matches || (scoreResult.recommendations ? scoreResult.recommendations.strong_matches : null) || [];
+    var keyGaps = scoreResult.key_gaps || (scoreResult.recommendations ? scoreResult.recommendations.missing_skills : null) || [];
+    var totalKeywords = keyMatches.length + keyGaps.length;
+    if (totalKeywords > 0) {
+      var matchPct = Math.round((keyMatches.length / totalKeywords) * 100);
+      var barColor = matchPct >= 75 ? 'var(--green)' : matchPct >= 50 ? 'var(--warm)' : 'var(--red)';
+      breakdownHtml += '<div class="sg-match-rate">';
+      breakdownHtml += '<div class="sg-match-rate-label">' + keyMatches.length + ' of ' + totalKeywords + ' keywords matched (' + matchPct + '%)</div>';
+      breakdownHtml += '<div class="sg-match-rate-track"><div class="sg-match-rate-fill" style="width:' + matchPct + '%;background:' + barColor + ';"></div></div>';
+      breakdownHtml += '</div>';
     }
-    if (missing.length > 0) {
-      breakdownHtml += '<div class="sg-missing"><span class="sg-missing-label">Missing:</span> ' + 
-        missing.map(function(s) { return '<span class="sg-missing-chip">' + escapeHtml(s) + '</span>'; }).join(' ') + 
-        '</div>';
+
+    // ATS-003: Categorized keyword checklist
+    var coreReqs = scoreResult.core_requirements || [];
+    if (coreReqs.length > 0) {
+      // Group by category
+      var categories = {};
+      for (var ci = 0; ci < coreReqs.length; ci++) {
+        var cr = coreReqs[ci];
+        var cat = cr.category || 'other';
+        if (!categories[cat]) categories[cat] = [];
+        categories[cat].push(cr);
+      }
+      var catLabels = { technical: 'Technical Skills', soft: 'Soft Skills', tool: 'Tools & Platforms', domain: 'Domain Knowledge', certification: 'Certifications', other: 'Other Requirements' };
+      var catKeys = Object.keys(categories);
+      for (var cci = 0; cci < catKeys.length; cci++) {
+        var catKey = catKeys[cci];
+        var items = categories[catKey];
+        var catMatched = items.filter(function(i) { return i.resume_evidence === 'strong' || i.resume_evidence === 'partial'; }).length;
+        breakdownHtml += '<div class="sg-cat-group">';
+        breakdownHtml += '<div class="sg-cat-header">' + escapeHtml(catLabels[catKey] || catKey) + ' <span class="sg-cat-count">' + catMatched + '/' + items.length + '</span></div>';
+        breakdownHtml += '<div class="sg-cat-items">';
+        for (var ii = 0; ii < items.length; ii++) {
+          var item = items[ii];
+          var isMatch = item.resume_evidence === 'strong';
+          var isPartial = item.resume_evidence === 'partial';
+          var chipClass = isMatch ? 'sg-strong-chip' : isPartial ? 'sg-partial-chip' : 'sg-missing-chip';
+          var chipIcon = isMatch ? '\u2713' : isPartial ? '\u2248' : '\u2717';
+          breakdownHtml += '<span class="' + chipClass + '">' + chipIcon + ' ' + escapeHtml(item.skill) + '</span>';
+        }
+        breakdownHtml += '</div></div>';
+      }
+    } else {
+      // Fallback to flat key_matches / key_gaps display
+      if (keyMatches.length > 0) {
+        breakdownHtml += '<div class="sg-strong"><span class="sg-strong-label">\u2713 Matches:</span> ' +
+          keyMatches.slice(0, 5).map(function(s) { return '<span class="sg-strong-chip">' + escapeHtml(s) + '</span>'; }).join(' ') +
+          '</div>';
+      }
+      if (keyGaps.length > 0) {
+        breakdownHtml += '<div class="sg-missing"><span class="sg-missing-label">Missing:</span> ' + 
+          keyGaps.map(function(s) { return '<span class="sg-missing-chip">' + escapeHtml(s) + '</span>'; }).join(' ') + 
+          '</div>';
+      }
     }
     breakdownHtml += '</div>';
+
+    // ATS-003: PostHog keyword breakdown viewed
+    if (totalKeywords > 0 && typeof capturePostHog === 'function') {
+      capturePostHog('keyword_breakdown_viewed', {
+        job_id: jobId,
+        match_rate: matchPct,
+        matched_count: keyMatches.length,
+        missing_count: keyGaps.length,
+        has_categories: coreReqs.length > 0,
+      });
+    }
   }
 
   var modal = document.createElement('div');

@@ -52,7 +52,10 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FB-ATS-001-S1** — ATS Pass Rate Improvement: Acronym Dual Inclusion (ATS-006) + Section Header Standardization (ATS-007) ✅
+**FB-ATS-001-S2** — ATS Pass Rate Improvement: Keyword Match Rate Breakdown (ATS-003) + Resume Format Health Check (ATS-001) ✅
+- v9.73→v9.74 — ATS-003: Score gate modal enhanced with keyword match rate progress bar ("8 of 12 keywords matched (67%)") color-coded green/warm/red. Categorized core_requirements checklist grouped by technical/soft/tool/domain/certification with per-category match counts. Partial evidence shown with ≈ icon. Fallback to flat key_matches/key_gaps when no categories. Match rate bar also added to readiness results per-filter breakdown in keywords.js. PostHog keyword_breakdown_viewed event. CSS: sg-match-rate, sg-cat-group, sg-partial-chip classes. ATS-001: New validate-resume-format EF with 7 detection checks (scanned_pdf, multi_column, tables_detected, non_standard_fonts, header_footer_contact, encoding_issues, non_standard_headers). ATS-safe font list (23 fonts). Section header standardization map integrated from ATS-007. Format score: 100 - 30*blocking - 10*warnings, clamped 0-100. is_ats_ready when 0 blocking + ≤1 warning. Gateway route added. Client: validateResumeFormat() called after text extraction. formatCheck stored on resume object. buildFormatBadge() renders ATS-Ready (green shield-check) / Format Issues (red triangle-alert) / Warnings (amber info) on resume cards. showFormatIssues() popup with per-issue severity badges. PostHog resume_format_check_run. 61 tests.
+
+**Previous: FB-ATS-001-S1** — ATS-006 Acronym Dual Inclusion + ATS-007 Section Header Standardization ✅
 - v9.72→v9.73 — Prompt engineering updates to rewrite-resume-execute + rewrite-resume-extension EFs. REWRITER_SYSTEM gains Rule 7 (ACRONYM RULE: include both full term and acronym on first use for all technical terms, skip universally known abbreviations AI/IT/HR/CEO/CTO/CFO/VP/MBA/PhD) and Rule 8 (SECTION HEADERS: replace non-standard headers with ATS-standard equivalents — Work Experience, Skills, Education, Professional Summary, Certifications, Projects, Awards). QUALITY_CHECKER_SYSTEM gains checks 6 (ACRONYM COMPLIANCE) and 7 (HEADER STANDARDIZATION). Extension REWRITE_SYSTEM gains Rules 9 + 10 (same content). Output format extended: acronym_pairs_added[] and headers_standardized[] in both EFs. Response objects include new arrays with || [] defaults. Notification payload includes acronymPairsAdded + headersStandardized counts. rewrite.js: _rwState stores new fields from EF response. resume_rewrite_completed PostHog event extended with acronym_pairs_added + headers_standardized counts. 45 tests.
 
 **Previous: SPEC-LPG-001-S2** — LinkedIn Profile Optimizer (F3) ✅
@@ -3999,26 +4002,29 @@ Deliverables:
 
 ## Next Session
 
-**FB-ATS-001-S2** — ATS Pass Rate Improvement: Keyword Match Rate Breakdown UI (ATS-003) + Resume Format Health Check (ATS-001)
+**FB-ATS-001-S3** — ATS Pass Rate Improvement: .docx Export (ATS-002) + Cover Letter Generation (ATS-004)
 
 **Entry Gate:**
-- [x] FB-ATS-001-S1 complete (ATS-006 + ATS-007 prompt changes deployed)
-- [x] score-resume EF returning keywords_found and keywords_missing arrays
-- [x] Resume upload flow functional
+- [x] FB-ATS-001-S2 complete (keyword breakdown + format check deployed)
+- [x] score-resume and rewrite-resume EFs operational
+- [x] Apply workflow with mode routing operational
+- [x] ATS handlers functional (15 extension + 4 worker)
 
 **Fix Items:**
-1. ATS-003: Keyword Match Rate Breakdown UI — pure frontend consuming existing score-resume response data. Match rate bar ("8 of 12 keywords matched — 67%"). Keyword-by-keyword checklist (green ✓ matched, red ✗ missing). Category grouping (Hard Skills, Soft Skills, Tools, Certifications). "Add to Resume" button per missing keyword triggers targeted rewrite. Dashboard score modal + extension score gate popup + rewrite review.
-2. ATS-001: Resume Format Health Check — new validate-resume-format EF. Detect multi-column layout, tables for layout, embedded images/icons, non-standard fonts, scanned/image-only PDF, headers/footers with key info. ATS-Ready / Format Issues badge on resume cards. Integration with score gate popup. PostHog events.
-3. Tests: 50+ validation tests
+1. ATS-002: .docx Export — new export-resume-docx EF. Accepts resume_id, builds .docx from structured resume data using ATS-optimized template (single column, Arial 11pt, standard headers). Format toggle (PDF/DOCX) on resume download button. Extension rewrite review: .docx download option.
+2. ATS-004: Cover Letter Generation — new generate-cover-letter EF. Claude Haiku. 250-350 words, 3-4 paragraphs, references specific company/role/JD requirements. New cover_letters Supabase table. Auto-generate in auto apply modes. ATS handler updates (15 extension + 4 worker) to detect and fill cover letter upload/text fields. Manual mode: generate from resume card.
+3. Tests: 60+ validation tests
 4. Three-file close
 
 **Exit Gate:**
-- [ ] Keyword match rate breakdown visible on score display surfaces
-- [ ] Format health check runs at upload time
-- [ ] ATS-Ready badge on clean resumes, amber card on format issues
+- [ ] .docx download from resume card works, opens clean in Word
+- [ ] Cover letter auto-generated and attached in auto apply mode
+- [ ] Cover letter references specific company and role
+- [ ] ATS handlers fill cover letter fields
 - [ ] Tests passing
 
 **Other backlog:**
+- FB-ATS-001-S4: ATS-005 LinkedIn Keyword Alignment Nudge
 - SPEC-LPG-001-S3: LinkedIn Summary Generator (F4) + Integration Polish
 - CASA-001: Google CASA assessment + gmail.readonly upgrade
 
@@ -4051,7 +4057,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.73`** | **FB-ATS-001-S1: ATS-006 Acronym Dual Inclusion + ATS-007 Section Header Standardization. 45 tests.** |
+| **Product (BJ_VERSION)** | **`v9.74`** | **FB-ATS-001-S2: ATS-003 Keyword Match Rate Breakdown + ATS-001 Format Health Check. 61 tests.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
