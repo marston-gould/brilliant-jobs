@@ -85,17 +85,17 @@ export function buildUSOnlyQuery(query: any): any {
     `and(loc_country.is.null,loc_state.in.(${BJ_US_STATES}))`,
 
     // Tier 3: loc_country NULL but explicit US text in location string
-    'and(loc_country.is.null,location.ilike.%United States%)',
-    'and(loc_country.is.null,location.ilike.% USA%)',
-    'and(loc_country.is.null,location.ilike.%, US %)',
-    'and(loc_country.is.null,location.ilike.%- US)',
-    'and(loc_country.is.null,location.ilike.%- US %)',
+    // IMPORTANT: Use * wildcard (not %) inside .or()/and() — PostgREST parser chokes on %
+    'and(loc_country.is.null,location.ilike.*United States*)',
+    'and(loc_country.is.null,location.ilike.* USA*)',
+    'and(loc_country.is.null,location.ilike.*- US)',
+    'and(loc_country.is.null,location.ilike.*- US *)',
 
     // Tier 4: loc_country NULL, bare/generic Remote — benefit of doubt on a US platform
     'and(loc_country.is.null,location.eq.Remote)',
     'and(loc_country.is.null,location.eq.Anywhere)',
-    'and(loc_country.is.null,location.ilike.Work From Home%)',
-    'and(loc_country.is.null,location.ilike.Remote Work%)',
+    'and(loc_country.is.null,location.ilike.Work From Home*)',
+    'and(loc_country.is.null,location.ilike.Remote Work*)',
   ].join(','));
 
   // ── Canada exclusion (preserving NULLs) ────────────────────────────────

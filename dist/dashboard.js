@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.89';
+var BJ_VERSION = 'v9.90';
 
 
 // === js/globals.ts ===
@@ -4405,6 +4405,9 @@ var BJ_NON_US_TEXT_EXCLUSIONS = [
 function buildUSOnlyQuery(query) {
   // ── Layer B: Tiered Inclusion OR clause ────────────────────────────────
   // Jobs must match at least one of these to pass through.
+  // IMPORTANT: Use * wildcard (not %) inside .or() / and() expressions.
+  // PostgREST treats % as a special character in its logic tree parser,
+  // causing 400 "failed to parse logic tree" errors. * works correctly.
   query = query.or([
     // Tier 1: loc_country definitively resolved to US
     'loc_country.eq.US',
@@ -4413,21 +4416,17 @@ function buildUSOnlyQuery(query) {
     'and(loc_country.is.null,loc_state.in.(' + BJ_US_STATES + '))',
 
     // Tier 3: loc_country NULL but explicit US text in location string
-    'and(loc_country.is.null,location.ilike.%United States%)',
-    'and(loc_country.is.null,location.ilike.% USA%)',
-    // NOTE: Patterns %(USA)%, %(US)% removed — literal parentheses in values
-    // break PostgREST's .or() logic tree parser (400 error).
-    // Comma+US patterns use ilike with trailing space to avoid parser ambiguity.
-    'and(loc_country.is.null,location.ilike.%, US %)',     // "Remote, US Only" / "Remote, US -"
-    'and(loc_country.is.null,location.ilike.%- US)',       // "Remote - US" — end of string
-    'and(loc_country.is.null,location.ilike.%- US %)',     // "Remote - US Only"
+    'and(loc_country.is.null,location.ilike.*United States*)',
+    'and(loc_country.is.null,location.ilike.* USA*)',
+    'and(loc_country.is.null,location.ilike.*- US)',
+    'and(loc_country.is.null,location.ilike.*- US *)',
 
     // Tier 4: loc_country NULL, bare/generic Remote — benefit of doubt on a US platform
     // Only matches unqualified remote strings. "Remote - Europe" does NOT match these.
     'and(loc_country.is.null,location.eq.Remote)',
     'and(loc_country.is.null,location.eq.Anywhere)',
-    'and(loc_country.is.null,location.ilike.Work From Home%)',
-    'and(loc_country.is.null,location.ilike.Remote Work%)',
+    'and(loc_country.is.null,location.ilike.Work From Home*)',
+    'and(loc_country.is.null,location.ilike.Remote Work*)',
   ].join(','));
 
   // ── Canada exclusion (preserving NULLs) ────────────────────────────────
