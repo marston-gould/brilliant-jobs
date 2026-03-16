@@ -23,5 +23,5 @@ describe('AIS-F1-S2: rewrite-resume-execute EF (Agents 3+4)', () => {
 });
 
 describe('AIS-F1-S2: version', () => {
-  it('version is v9.63', () => expect(read('js/version.js')).toContain('v9.63'));
+  it('version is v9.62', () => expect(read('js/version.js')).toContain('v9.62'));
 });

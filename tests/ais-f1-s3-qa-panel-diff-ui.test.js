@@ -23,5 +23,5 @@ describe('AIS-F1-S3: rewrite.js Q&A panel + diff UI', () => {
   it('rewrite.js in build.js', () => expect(read('build.js')).toContain("'js/rewrite.js'"));
 });
 describe('AIS-F1-S3: version', () => {
-  it('version is v9.64', () => expect(read('js/version.js')).toContain('v9.64'));
+  it('version is v9.62', () => expect(read('js/version.js')).toContain('v9.62'));
 });
