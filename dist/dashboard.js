@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.94';
+var BJ_VERSION = 'v9.95';
 // Populate version display elements after DOM is ready
 (function() {
   var el = document.getElementById('nav-version');
@@ -10847,6 +10847,17 @@ async function openJobModal(jobId, e) {
   // Build proper URL
   const jobUrl = job.url && job.url.startsWith('http') ? job.url : job.url ? 'https://boards.greenhouse.io' + job.url : '#';
 
+  // CRON-COST-OPT T3: On-demand enrichment if jd_skills is null
+  if (job.jd_skills === null && job.content) {
+    try {
+      fetch(SUPABASE_URL + '/functions/v1/enrich-job-ondemand', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_KEY },
+        body: JSON.stringify({ trigger: 'job_view', greenhouse_id: jobId }),
+      }).catch(() => {}); // fire-and-forget
+    } catch (_) { /* non-fatal */ }
+  }
+
   // Populate header
   titleEl.textContent = job.title || 'Untitled';
   const metaParts = [job.company_name, formatLocation(job.location, job.loc_display)].filter(Boolean);
@@ -14698,6 +14709,14 @@ async function commitSaveFilter() {
           if (pills.length > 0 && typeof window.triggerLocationEnrichment === 'function') {
             window.triggerLocationEnrichment(pills, r.data.id, !!fd.includeRemote);
           }
+          // CRON-COST-OPT T1: Trigger on-demand JD enrichment for matching unenriched jobs
+          try {
+            fetch(SUPABASE_URL + '/functions/v1/enrich-job-ondemand', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_KEY },
+              body: JSON.stringify({ trigger: 'filter_save', user_id: currentUser.id, filter_id: r.data.id }),
+            }).catch(function() {}); // fire-and-forget
+          } catch (_e) { /* non-fatal */ }
         }
       }).catch(function(e) { if (typeof reportError === 'function') reportError('location:filter-persist', e); });
     })(filterData, existingIdx);

@@ -137,6 +137,23 @@ async function enrichJob(
       .eq('greenhouse_id', job.greenhouse_id)
 
     if (error) throw error
+
+    // CRON-COST-OPT: Persist discovered skills to job_skills_dictionary.
+    // Skills survive even when the job expires/archives. Upsert = no duplicates.
+    if (skills.length > 0) {
+      try {
+        const skillRows = skills.map((s: string) => ({
+          skill: s.toLowerCase().trim(),
+          category: 'auto_extracted',
+          aliases: [],
+          is_ambiguous: false,
+          min_context_words: 0,
+        }));
+        await supabase.from('job_skills_dictionary')
+          .upsert(skillRows, { onConflict: 'skill', ignoreDuplicates: true });
+      } catch (_) { /* non-fatal — dictionary population is best-effort */ }
+    }
+
     return { ok: true, id: job.greenhouse_id, skills: skills.length }
 
   } catch (e) {

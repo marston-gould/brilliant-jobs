@@ -2714,6 +2714,17 @@ async function openJobModal(jobId, e) {
   // Build proper URL
   const jobUrl = job.url && job.url.startsWith('http') ? job.url : job.url ? 'https://boards.greenhouse.io' + job.url : '#';
 
+  // CRON-COST-OPT T3: On-demand enrichment if jd_skills is null
+  if (job.jd_skills === null && job.content) {
+    try {
+      fetch(SUPABASE_URL + '/functions/v1/enrich-job-ondemand', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_KEY },
+        body: JSON.stringify({ trigger: 'job_view', greenhouse_id: jobId }),
+      }).catch(() => {}); // fire-and-forget
+    } catch (_) { /* non-fatal */ }
+  }
+
   // Populate header
   titleEl.textContent = job.title || 'Untitled';
   const metaParts = [job.company_name, formatLocation(job.location, job.loc_display)].filter(Boolean);

@@ -799,6 +799,14 @@ async function commitSaveFilter() {
           if (pills.length > 0 && typeof window.triggerLocationEnrichment === 'function') {
             window.triggerLocationEnrichment(pills, r.data.id, !!fd.includeRemote);
           }
+          // CRON-COST-OPT T1: Trigger on-demand JD enrichment for matching unenriched jobs
+          try {
+            fetch(SUPABASE_URL + '/functions/v1/enrich-job-ondemand', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_KEY },
+              body: JSON.stringify({ trigger: 'filter_save', user_id: currentUser.id, filter_id: r.data.id }),
+            }).catch(function() {}); // fire-and-forget
+          } catch (_e) { /* non-fatal */ }
         }
       }).catch(function(e) { if (typeof reportError === 'function') reportError('location:filter-persist', e); });
     })(filterData, existingIdx);

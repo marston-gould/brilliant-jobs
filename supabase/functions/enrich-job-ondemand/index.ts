@@ -40,16 +40,85 @@ function stripHtml(html: string): string {
     .replace(/\s+/g, ' ').trim()
 }
 
+// Helper: enrich a single job and persist skills to dictionary
+async function enrichSingleJob(
+  supabase: ReturnType<typeof createClient>,
+  apiKey: string,
+  job: { greenhouse_id: string; title: string; content: string | null },
+): Promise<{ ok: boolean }> {
+  if (!job.content) return { ok: false }
+  const plainText = stripHtml(job.content).substring(0, MAX_CONTENT_CHARS)
+  if (plainText.length < 50) {
+    await supabase.from('ats_jobs').update({ jd_skills: [], jd_requirements: [] }).eq('greenhouse_id', job.greenhouse_id)
+    return { ok: false }
+  }
+
+  const _br = await withAnthropicBreaker(supabase, 'enrich-job-ondemand', async () => {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: MODEL, max_tokens: 400, temperature: 0,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: `Title: ${job.title}\n\n${plainText}` }],
+      }),
+    })
+    if (!r.ok) { if (r.status === 402) throw new Error('402 credits exhausted'); throw new Error(`Anthropic ${r.status}`); }
+    return r.json()
+  }, { model: MODEL })
+  if (_br.circuitOpen || !_br.result) return { ok: false }
+
+  const parsed = (() => {
+    try {
+      const text = (_br.result as Record<string, unknown>).content?.[0]?.text || '{}'
+      return JSON.parse(text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim())
+    } catch { return {} }
+  })()
+
+  const skills = Array.isArray(parsed.skills) ? parsed.skills.filter((s: unknown) => typeof s === 'string').map((s: string) => s.toLowerCase()).slice(0, 15) : []
+  const requirements = Array.isArray(parsed.requirements) ? parsed.requirements.filter((r: unknown) => typeof r === 'string').slice(0, 8) : []
+  const validEdu = ['high_school', 'associates', 'bachelors', 'masters', 'phd', 'professional']
+  const validSen = ['intern', 'entry', 'junior', 'mid', 'senior', 'lead', 'principal', 'director', 'vp', 'executive']
+  const rawAiScore = typeof parsed.ai_content_score === 'number' ? parsed.ai_content_score : null
+  const aiScore = rawAiScore !== null ? Math.max(0, Math.min(1, rawAiScore)) : null
+
+  await supabase.from('ats_jobs').update({
+    jd_skills: skills, jd_requirements: requirements,
+    jd_education: validEdu.includes(parsed.education) ? parsed.education : null,
+    jd_seniority: validSen.includes(parsed.seniority) ? parsed.seniority : null,
+    jd_years_min: Number.isInteger(parsed.years_min) && parsed.years_min >= 0 ? parsed.years_min : null,
+    jd_years_max: Number.isInteger(parsed.years_max) && parsed.years_max >= 0 ? parsed.years_max : null,
+    ai_content_score: aiScore,
+    ai_label: aiScore !== null ? (aiScore < 0.3 ? 'human' : aiScore > 0.7 ? 'ai_generated' : 'mixed') : null,
+  }).eq('greenhouse_id', job.greenhouse_id)
+
+  // Persist skills to dictionary (best-effort)
+  if (skills.length > 0) {
+    try {
+      await supabase.from('job_skills_dictionary')
+        .upsert(skills.map((s: string) => ({ skill: s, category: 'auto_extracted', aliases: [], is_ambiguous: false, min_context_words: 0 })),
+          { onConflict: 'skill', ignoreDuplicates: true })
+    } catch (_) { /* non-fatal */ }
+  }
+
+  return { ok: true }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const { greenhouse_id } = await req.json()
-    if (!greenhouse_id) {
+    const body = await req.json()
+    const { greenhouse_id, trigger, user_id, filter_id } = body
+
+    // Validate trigger type
+    const validTriggers = ['job_view', 'filter_save', 'onboarding']
+    const triggerType = trigger || (greenhouse_id ? 'job_view' : null)
+    if (!triggerType || !validTriggers.includes(triggerType)) {
       return new Response(
-        JSON.stringify({ error: 'greenhouse_id required' }),
+        JSON.stringify({ error: 'trigger required: job_view | filter_save | onboarding' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -60,6 +129,98 @@ serve(async (req) => {
     )
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY') ?? ''
     if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set')
+
+    // ── T1/T2: Batch enrichment for filter_save / onboarding ─────────
+    if (triggerType === 'filter_save' || triggerType === 'onboarding') {
+      if (!user_id) {
+        return new Response(
+          JSON.stringify({ error: 'user_id required for filter_save/onboarding triggers' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Daily per-user cap: max 100 enrichments/day
+      const { count: todayCount } = await supabase.from('ai_usage_log')
+        .select('*', { count: 'exact', head: true })
+        .eq('caller_ef', 'enrich-job-ondemand')
+        .eq('user_id', user_id)
+        .gte('created_at', new Date(new Date().setHours(0,0,0,0)).toISOString())
+      if ((todayCount || 0) >= 100) {
+        return new Response(
+          JSON.stringify({ ok: false, error: 'daily_enrichment_cap', enriched: 0 }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Get user's filter to find matching unenriched jobs
+      let filterKeywords: string[] = []
+      if (filter_id) {
+        const { data: filter } = await supabase.from('user_filters')
+          .select('filter_data').eq('id', filter_id).single()
+        const fd = filter?.filter_data as Record<string, unknown> | undefined
+        const pills = (fd?.whatPills || fd?.pills || []) as Array<{ values?: string[] }>
+        filterKeywords = pills.flatMap(p => p.values || [])
+      }
+      if (filterKeywords.length === 0 && triggerType === 'onboarding') {
+        // For onboarding, use first filter's keywords
+        const { data: filters } = await supabase.from('user_filters')
+          .select('filter_data').eq('user_id', user_id).order('sort_order').limit(1)
+        if (filters?.[0]) {
+          const fd = filters[0].filter_data as Record<string, unknown>
+          const pills = (fd?.whatPills || fd?.pills || []) as Array<{ values?: string[] }>
+          filterKeywords = pills.flatMap(p => p.values || [])
+        }
+      }
+
+      if (filterKeywords.length === 0) {
+        return new Response(
+          JSON.stringify({ ok: true, enriched: 0, reason: 'no_keywords' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Find unenriched jobs matching keywords (max 25)
+      const MAX_BATCH = 25
+      const titlePattern = filterKeywords.map(k => `%${k}%`).join(',')
+      let query = supabase.from('ats_jobs')
+        .select('greenhouse_id, title, content')
+        .eq('status', 'open')
+        .is('jd_skills', null)
+        .limit(MAX_BATCH)
+      // Match any keyword in title
+      const orClauses = filterKeywords.map(k => `title.ilike.%${k}%`).join(',')
+      query = query.or(orClauses)
+
+      const { data: jobs } = await query
+      if (!jobs || jobs.length === 0) {
+        return new Response(
+          JSON.stringify({ ok: true, enriched: 0, reason: 'all_enriched' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Enrich each job (sequentially to avoid rate limits)
+      let enriched = 0
+      for (const job of jobs) {
+        try {
+          const result = await enrichSingleJob(supabase, apiKey, job)
+          if (result.ok) enriched++
+        } catch (_) { /* continue on individual failure */ }
+      }
+
+      return new Response(
+        JSON.stringify({ ok: true, trigger: triggerType, enriched, total: jobs.length }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // ── T3: Single job enrichment (job_view) ─────────────────────────
+    if (!greenhouse_id) {
+      return new Response(
+        JSON.stringify({ error: 'greenhouse_id required for job_view trigger' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     const { data: job, error: fetchError } = await supabase
       .from('ats_jobs')
@@ -172,6 +333,15 @@ serve(async (req) => {
       .eq('greenhouse_id', greenhouse_id)
 
     if (updateError) throw updateError
+
+    // Persist skills to dictionary (best-effort)
+    if (skills.length > 0) {
+      try {
+        await supabase.from('job_skills_dictionary')
+          .upsert(skills.map((s: string) => ({ skill: s, category: 'auto_extracted', aliases: [], is_ambiguous: false, min_context_words: 0 })),
+            { onConflict: 'skill', ignoreDuplicates: true })
+      } catch (_) { /* non-fatal */ }
+    }
 
     return new Response(
       JSON.stringify({
