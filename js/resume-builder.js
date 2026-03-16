@@ -951,3 +951,113 @@
   });
 
 })();
+
+// ── AIS-F7-S1/S2: AI Resume Wizard (from scratch) ────────────────────────
+// Appended to existing resume-builder.js (upload parser module)
+// Wizard → build-resume EF → template preview → DOCX download
+
+(function () {
+  'use strict';
+  var _rbWizStep = 1, _rbWizData = {}, _rbWizGenerated = null, _rbWizTemplate = 'clean';
+
+  window.openResumeBuilder = function () {
+    _rbWizStep = 1; _rbWizData = {}; _rbWizGenerated = null;
+    var panel = document.getElementById('rb-wizard-panel');
+    if (panel) { panel.style.display = ''; document.body.style.overflow = 'hidden'; }
+    _rbWizRenderStep();
+    if (typeof capturePostHog === 'function') capturePostHog('resume_built_from_scratch', { source: 'wizard_open' });
+  };
+
+  window.closeResumeBuilder = function () {
+    var panel = document.getElementById('rb-wizard-panel');
+    if (panel) panel.style.display = 'none';
+    document.body.style.overflow = '';
+  };
+
+  function _rbWizRenderStep() {
+    var body = document.getElementById('rb-wizard-body');
+    if (!body) return;
+    var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){ return String(s||''); };
+    var c = '';
+    if (_rbWizStep === 1) {
+      c = '<div class="rb-field"><label class="rb-label">Target Role *</label><input id="rbw-role" class="rb-input" value="' + esc(_rbWizData.target_role||'') + '" placeholder="Senior Software Engineer"></div>' +
+          '<div class="rb-field"><label class="rb-label">Industry</label><input id="rbw-industry" class="rb-input" value="' + esc(_rbWizData.target_industry||'') + '" placeholder="FinTech, Healthcare…"></div>' +
+          '<div class="rb-field"><label class="rb-label">Years of Experience</label><select id="rbw-years" class="rb-input"><option>0-2</option><option' + (_rbWizData.years_experience==='3-5'?' selected':'') + '>3-5</option><option' + (_rbWizData.years_experience==='6-10'?' selected':'') + '>6-10</option><option' + (_rbWizData.years_experience==='10+'?' selected':'') + '>10+</option></select></div>';
+    } else if (_rbWizStep === 2) {
+      c = '<div class="rb-field"><label class="rb-label">Key Accomplishments</label><textarea id="rbw-acc" class="rb-input" rows="5" placeholder="• Led team of 8, shipped product to 50K users&#10;• Reduced costs by $200K through automation">' + esc(_rbWizData.accomplishments||'') + '</textarea></div>';
+    } else if (_rbWizStep === 3) {
+      c = '<div class="rb-field"><label class="rb-label">Top Skills (comma-separated)</label><input id="rbw-skills" class="rb-input" value="' + esc(Array.isArray(_rbWizData.skills)?_rbWizData.skills.join(', '):(_rbWizData.skills||'')) + '" placeholder="Python, AWS, React, Leadership…"></div>' +
+          '<div class="rb-field"><label class="rb-label">Education</label><input id="rbw-edu" class="rb-input" value="' + esc(_rbWizData.education||'') + '" placeholder="B.S. Computer Science, MIT 2019"></div>';
+    } else if (_rbWizStep === 4) {
+      var templates = ['clean','modern','executive','minimal','technical'];
+      c = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Choose template</div>' +
+          templates.map(function(t) {
+            return '<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1.5px solid ' + (_rbWizTemplate===t?'var(--accent)':'var(--border)') + ';border-radius:6px;margin-bottom:6px;cursor:pointer;">' +
+              '<input type="radio" name="rbwt" value="' + t + '"' + (_rbWizTemplate===t?' checked':'') + ' onchange="(function(){_rbWizTemplate=\''+t+'\';})()">' +
+              '<span style="text-transform:capitalize;font-size:13px;">' + t + '</span></label>';
+          }).join('');
+    }
+    body.innerHTML = '<div id="rbw-step-content">' + c + '</div>';
+  }
+
+  window._rbWizNext = async function () {
+    var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){ return String(s||''); };
+    if (_rbWizStep === 1) {
+      var r = document.getElementById('rbw-role')?.value?.trim();
+      if (!r) { if (typeof showToast === 'function') showToast('Target role required.', {type:'error'}); return; }
+      _rbWizData.target_role = r;
+      _rbWizData.target_industry = document.getElementById('rbw-industry')?.value?.trim()||'';
+      _rbWizData.years_experience = document.getElementById('rbw-years')?.value||'3-5';
+    } else if (_rbWizStep === 2) {
+      _rbWizData.accomplishments = document.getElementById('rbw-acc')?.value?.trim()||'';
+    } else if (_rbWizStep === 3) {
+      var sk = document.getElementById('rbw-skills')?.value?.trim()||'';
+      _rbWizData.skills = sk ? sk.split(',').map(function(s){return s.trim();}).filter(Boolean) : [];
+      _rbWizData.education = document.getElementById('rbw-edu')?.value?.trim()||'';
+    }
+    if (_rbWizStep < 4) { _rbWizStep++; _rbWizRenderStep(); return; }
+    _rbWizData.template = _rbWizTemplate;
+    await _rbWizGenerate();
+  };
+
+  window._rbWizBack = function () {
+    if (_rbWizStep > 1) { _rbWizStep--; _rbWizRenderStep(); }
+  };
+
+  async function _rbWizGenerate() {
+    var body = document.getElementById('rb-wizard-body');
+    if (body) body.innerHTML = '<div style="text-align:center;padding:40px;"><div style="font-size:22px;">✨</div><div style="font-size:13px;font-weight:600;margin-top:8px;">Building your resume…</div><div style="font-size:11px;color:var(--text-muted);margin-top:4px;">~15 seconds</div></div>';
+    try {
+      var session = await sb.auth.getSession();
+      var token = session?.data?.session?.access_token;
+      var res = await fetch(SUPABASE_URL + '/functions/v1/build-resume', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+        body: JSON.stringify(_rbWizData),
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Generation failed');
+      _rbWizGenerated = data;
+      if (typeof capturePostHog === 'function') capturePostHog('resume_built_from_scratch', { source: _rbWizData.template||'manual', template: _rbWizTemplate, credits_charged: 5 });
+      if (body) body.innerHTML = '<div style="text-align:center;padding:20px;color:var(--green);font-weight:600;">✓ Resume built! ' + (data.sections?.experience?.length||0) + ' experience entries generated.</div>' +
+        '<div style="display:flex;gap:8px;margin-top:12px;justify-content:center;">' +
+        '<button class="btn btn-primary btn-sm" onclick="window._rbWizDownload()">⬇ Download</button>' +
+        '<button class="btn btn-sm" onclick="window.closeResumeBuilder()">Close</button></div>';
+    } catch (e) {
+      reportError('resume-wizard:generate', e);
+      if (typeof showToast === 'function') showToast('Generation failed: ' + e.message, {type:'error'});
+      _rbWizStep = 4; _rbWizRenderStep();
+    }
+  }
+
+  window._rbWizDownload = function () {
+    if (!_rbWizGenerated) return;
+    var text = _rbWizGenerated.full_text || '';
+    var blob = new Blob([text], { type: 'text/plain' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = (_rbWizData.target_role||'resume').replace(/[^a-zA-Z0-9]/g,'-') + '-ai.txt';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 3000);
+  };
+})();

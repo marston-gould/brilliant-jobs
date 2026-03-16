@@ -1809,3 +1809,196 @@ window._bjFileStore = bjFileStore;
     }
   });
 })();
+
+// ── AIS-F12-S1/S2: Resume A/B Testing UI ─────────────────────────────────
+// Test creation, results dashboard, chi-squared significance, auto-winner declaration
+
+(function () {
+  'use strict';
+
+  var _abActiveTestId = null;
+
+  // ── Load and render A/B test dashboard on Resumes page ─────────────────
+  window.loadAbTestDashboard = async function () {
+    var container = document.getElementById('ab-test-container');
+    if (!container || !currentUser) return;
+
+    try {
+      var { data: tests, error } = await sb.from('resume_ab_tests')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) { reportError('loadAbTestDashboard', error); return; }
+
+      if (!tests || !tests.length) {
+        container.innerHTML = '<div class="u-empty-state"><div style="font-size:13px;color:var(--text-muted);">No A/B tests yet. Create one to compare your resume variants.</div>' +
+          '<button class="btn btn-sm btn-primary" onclick="window.openCreateAbTest()" style="margin-top:10px;">+ Create A/B Test</button></div>';
+        return;
+      }
+
+      var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){return String(s||'');};
+      container.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
+        '<div style="font-size:13px;font-weight:700;">Resume A/B Tests</div>' +
+        '<button class="btn btn-sm" onclick="window.openCreateAbTest()">+ New Test</button></div>' +
+        tests.map(function(test) {
+          var statusColor = test.status === 'active' ? 'var(--green)' : test.status === 'completed' ? 'var(--accent)' : 'var(--text-muted)';
+          return '<div class="card ab-test-card" style="margin-bottom:10px;padding:12px 16px;" data-test-id="' + test.id + '">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
+              '<div style="font-size:13px;font-weight:600;">' + esc(test.test_name) + '</div>' +
+              '<div style="font-size:10px;font-weight:700;color:' + statusColor + ';text-transform:uppercase;">' + esc(test.status) + (test.winner_id ? ' · Winner Declared' : '') + '</div>' +
+            '</div>' +
+            '<div id="ab-metrics-' + test.id + '" style="font-size:11px;color:var(--text-muted);">Loading metrics…</div>' +
+            '<div style="display:flex;gap:6px;margin-top:8px;">' +
+              '<button class="btn btn-sm" onclick="window.loadAbMetrics(\'' + test.id + '\')" style="font-size:10px;">Refresh</button>' +
+              (test.status === 'active' ? '<button class="btn btn-sm" onclick="window.pauseAbTest(\'' + test.id + '\')" style="font-size:10px;">Pause</button>' : '') +
+            '</div>' +
+          '</div>';
+        }).join('');
+
+      // Load metrics for all active tests
+      tests.filter(function(t) { return t.status === 'active'; }).forEach(function(t) {
+        window.loadAbMetrics(t.id);
+      });
+    } catch (e) { reportError('loadAbTestDashboard', e); }
+  };
+
+  // ── Load per-test metrics via EF ────────────────────────────────────────
+  window.loadAbMetrics = async function (testId) {
+    var el = document.getElementById('ab-metrics-' + testId);
+    if (!el) return;
+    try {
+      var session = await sb.auth.getSession();
+      var token = session?.data?.session?.access_token;
+      var res = await fetch(SUPABASE_URL + '/functions/v1/resume-ab-assign', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+        body: JSON.stringify({ action: 'get_results', test_id: testId }),
+      });
+      var data = await res.json();
+      if (!res.ok || !data.metrics) { el.textContent = 'No data yet.'; return; }
+
+      var m = data.metrics;
+      var aRate = (m.a.response_rate * 100).toFixed(1);
+      var bRate = (m.b.response_rate * 100).toFixed(1);
+      var sig = m.statistically_significant;
+      var minReached = m.min_sample_reached;
+
+      // Simple bar chart
+      var barWidth = 120;
+      var aBar = Math.round((m.a.response_rate) * barWidth);
+      var bBar = Math.round((m.b.response_rate) * barWidth);
+      var aColor = m.a.response_rate >= m.b.response_rate ? 'var(--green)' : 'var(--accent)';
+      var bColor = m.b.response_rate > m.a.response_rate ? 'var(--green)' : 'var(--accent)';
+
+      el.innerHTML =
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+          '<div>' +
+            '<div style="font-size:10px;font-weight:600;margin-bottom:3px;">Variant A</div>' +
+            '<div style="height:6px;background:var(--border);border-radius:3px;margin-bottom:3px;overflow:hidden;"><div style="height:100%;width:' + Math.min(aBar,barWidth) + 'px;background:' + aColor + ';border-radius:3px;"></div></div>' +
+            '<div style="font-size:11px;">' + m.a.total + ' apps · <strong>' + aRate + '%</strong> response</div>' +
+          '</div>' +
+          '<div>' +
+            '<div style="font-size:10px;font-weight:600;margin-bottom:3px;">Variant B</div>' +
+            '<div style="height:6px;background:var(--border);border-radius:3px;margin-bottom:3px;overflow:hidden;"><div style="height:100%;width:' + Math.min(bBar,barWidth) + 'px;background:' + bColor + ';border-radius:3px;"></div></div>' +
+            '<div style="font-size:11px;">' + m.b.total + ' apps · <strong>' + bRate + '%</strong> response</div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="margin-top:6px;font-size:10px;color:var(--text-muted);">' +
+          (minReached
+            ? (sig ? '<span style="color:var(--green);">✓ Statistically significant (p=' + (m.p_value||0).toFixed(3) + ')</span>' : 'Not yet significant — keep collecting data')
+            : 'Need ' + Math.max(10 - m.a.total, 0) + '+ more apps per variant') +
+        '</div>';
+
+      // Check for winner notification
+      if (sig && !document.getElementById('ab-winner-notice-' + testId)) {
+        var card = document.querySelector('.ab-test-card[data-test-id="' + testId + '"]');
+        if (card) {
+          var winner = m.a.response_rate >= m.b.response_rate ? 'Variant A' : 'Variant B';
+          var notice = document.createElement('div');
+          notice.id = 'ab-winner-notice-' + testId;
+          notice.style.cssText = 'margin-top:8px;padding:6px 10px;background:rgba(22,163,74,0.1);border-radius:6px;font-size:11px;color:var(--green);';
+          notice.textContent = '🏆 ' + winner + ' wins! Consider setting it as your default.';
+          card.appendChild(notice);
+          if (typeof capturePostHog === 'function') capturePostHog('resume_ab_winner_declared', {
+            test_id: testId, winner_variant: winner, p_value: m.p_value,
+            sample_size_a: m.a.total, sample_size_b: m.b.total,
+          });
+        }
+      }
+    } catch (e) { if (el) el.textContent = 'Error loading metrics.'; }
+  };
+
+  // ── Create A/B test modal ───────────────────────────────────────────────
+  window.openCreateAbTest = async function () {
+    var modal = document.getElementById('ab-create-modal');
+    if (!modal) return;
+
+    // Load available resumes for dropdowns
+    var { data: resumes } = await sb.from('resumes').select('id, display_name, is_active')
+      .eq('user_id', currentUser.id).order('created_at', { ascending: false }).limit(20);
+    var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){return String(s||'');};
+    var opts = (resumes || []).map(function(r) {
+      return '<option value="' + r.id + '">' + esc(r.display_name || 'Resume') + (r.is_active ? ' (Active)' : '') + '</option>';
+    }).join('');
+
+    modal.style.display = 'flex';
+    var body = document.getElementById('ab-create-body');
+    if (body) {
+      body.innerHTML = '<div class="rb-field"><label class="rb-label">Test Name</label><input id="abt-name" class="rb-input" placeholder="e.g. Original vs AI-Tailored"></div>' +
+        '<div class="rb-field"><label class="rb-label">Variant A (control)</label><select id="abt-variant-a" class="rb-input"><option value="">Select resume…</option>' + opts + '</select></div>' +
+        '<div class="rb-field"><label class="rb-label">Variant B (challenger)</label><select id="abt-variant-b" class="rb-input"><option value="">Select resume…</option>' + opts + '</select></div>' +
+        '<div class="rb-field"><label class="rb-label">Min sample size per variant</label><input id="abt-min" type="number" class="rb-input" value="20" min="10" max="100"></div>' +
+        '<div style="display:flex;gap:8px;margin-top:14px;"><button class="btn btn-primary btn-sm" onclick="window._abSaveTest()">Create Test</button><button class="btn btn-sm" onclick="document.getElementById(\'ab-create-modal\').style.display=\'none\'">Cancel</button></div>';
+    }
+  };
+
+  window._abSaveTest = async function () {
+    var name = document.getElementById('abt-name')?.value?.trim();
+    var variantA = document.getElementById('abt-variant-a')?.value;
+    var variantB = document.getElementById('abt-variant-b')?.value;
+    var minSample = parseInt(document.getElementById('abt-min')?.value || '20');
+
+    if (!name || !variantA || !variantB) {
+      if (typeof showToast === 'function') showToast('All fields required.', { type: 'error' }); return;
+    }
+    if (variantA === variantB) {
+      if (typeof showToast === 'function') showToast('Variants must be different resumes.', { type: 'error' }); return;
+    }
+
+    try {
+      var { error } = await sb.from('resume_ab_tests').insert({
+        user_id: currentUser.id,
+        test_name: name,
+        variant_a_resume_id: variantA,
+        variant_b_resume_id: variantB,
+        min_sample_size: minSample,
+        status: 'active',
+      });
+      if (error) throw error;
+
+      if (typeof capturePostHog === 'function') capturePostHog('resume_ab_test_created', {
+        test_name: name, variant_a_id: variantA, variant_b_id: variantB, min_sample_size: minSample,
+      });
+
+      document.getElementById('ab-create-modal').style.display = 'none';
+      if (typeof showToast === 'function') showToast('A/B test created!', { type: 'success' });
+      window.loadAbTestDashboard();
+    } catch (e) {
+      reportError('_abSaveTest', e);
+      if (typeof showToast === 'function') showToast('Failed to create test: ' + e.message, { type: 'error' });
+    }
+  };
+
+  window.pauseAbTest = async function (testId) {
+    await sb.from('resume_ab_tests').update({ status: 'paused' }).eq('id', testId).eq('user_id', currentUser.id);
+    window.loadAbTestDashboard();
+  };
+
+  // Auto-wire into A/B tab switch
+  if (typeof window.BJ !== 'undefined') {
+    window.BJ._registry = window.BJ._registry || {};
+    window.BJ._registry.resumeAbTest = { module: 'resumes', registered: Date.now() };
+  }
+})();

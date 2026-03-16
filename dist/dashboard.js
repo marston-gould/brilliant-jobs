@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.67';
+var BJ_VERSION = 'v9.68';
 
 
 // === js/globals.ts ===
@@ -21041,6 +21041,199 @@ window._bjFileStore = bjFileStore;
   });
 })();
 
+// ── AIS-F12-S1/S2: Resume A/B Testing UI ─────────────────────────────────
+// Test creation, results dashboard, chi-squared significance, auto-winner declaration
+
+(function () {
+  'use strict';
+
+  var _abActiveTestId = null;
+
+  // ── Load and render A/B test dashboard on Resumes page ─────────────────
+  window.loadAbTestDashboard = async function () {
+    var container = document.getElementById('ab-test-container');
+    if (!container || !currentUser) return;
+
+    try {
+      var { data: tests, error } = await sb.from('resume_ab_tests')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) { reportError('loadAbTestDashboard', error); return; }
+
+      if (!tests || !tests.length) {
+        container.innerHTML = '<div class="u-empty-state"><div style="font-size:13px;color:var(--text-muted);">No A/B tests yet. Create one to compare your resume variants.</div>' +
+          '<button class="btn btn-sm btn-primary" onclick="window.openCreateAbTest()" style="margin-top:10px;">+ Create A/B Test</button></div>';
+        return;
+      }
+
+      var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){return String(s||'');};
+      container.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
+        '<div style="font-size:13px;font-weight:700;">Resume A/B Tests</div>' +
+        '<button class="btn btn-sm" onclick="window.openCreateAbTest()">+ New Test</button></div>' +
+        tests.map(function(test) {
+          var statusColor = test.status === 'active' ? 'var(--green)' : test.status === 'completed' ? 'var(--accent)' : 'var(--text-muted)';
+          return '<div class="card ab-test-card" style="margin-bottom:10px;padding:12px 16px;" data-test-id="' + test.id + '">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
+              '<div style="font-size:13px;font-weight:600;">' + esc(test.test_name) + '</div>' +
+              '<div style="font-size:10px;font-weight:700;color:' + statusColor + ';text-transform:uppercase;">' + esc(test.status) + (test.winner_id ? ' · Winner Declared' : '') + '</div>' +
+            '</div>' +
+            '<div id="ab-metrics-' + test.id + '" style="font-size:11px;color:var(--text-muted);">Loading metrics…</div>' +
+            '<div style="display:flex;gap:6px;margin-top:8px;">' +
+              '<button class="btn btn-sm" onclick="window.loadAbMetrics(\'' + test.id + '\')" style="font-size:10px;">Refresh</button>' +
+              (test.status === 'active' ? '<button class="btn btn-sm" onclick="window.pauseAbTest(\'' + test.id + '\')" style="font-size:10px;">Pause</button>' : '') +
+            '</div>' +
+          '</div>';
+        }).join('');
+
+      // Load metrics for all active tests
+      tests.filter(function(t) { return t.status === 'active'; }).forEach(function(t) {
+        window.loadAbMetrics(t.id);
+      });
+    } catch (e) { reportError('loadAbTestDashboard', e); }
+  };
+
+  // ── Load per-test metrics via EF ────────────────────────────────────────
+  window.loadAbMetrics = async function (testId) {
+    var el = document.getElementById('ab-metrics-' + testId);
+    if (!el) return;
+    try {
+      var session = await sb.auth.getSession();
+      var token = session?.data?.session?.access_token;
+      var res = await fetch(SUPABASE_URL + '/functions/v1/resume-ab-assign', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+        body: JSON.stringify({ action: 'get_results', test_id: testId }),
+      });
+      var data = await res.json();
+      if (!res.ok || !data.metrics) { el.textContent = 'No data yet.'; return; }
+
+      var m = data.metrics;
+      var aRate = (m.a.response_rate * 100).toFixed(1);
+      var bRate = (m.b.response_rate * 100).toFixed(1);
+      var sig = m.statistically_significant;
+      var minReached = m.min_sample_reached;
+
+      // Simple bar chart
+      var barWidth = 120;
+      var aBar = Math.round((m.a.response_rate) * barWidth);
+      var bBar = Math.round((m.b.response_rate) * barWidth);
+      var aColor = m.a.response_rate >= m.b.response_rate ? 'var(--green)' : 'var(--accent)';
+      var bColor = m.b.response_rate > m.a.response_rate ? 'var(--green)' : 'var(--accent)';
+
+      el.innerHTML =
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+          '<div>' +
+            '<div style="font-size:10px;font-weight:600;margin-bottom:3px;">Variant A</div>' +
+            '<div style="height:6px;background:var(--border);border-radius:3px;margin-bottom:3px;overflow:hidden;"><div style="height:100%;width:' + Math.min(aBar,barWidth) + 'px;background:' + aColor + ';border-radius:3px;"></div></div>' +
+            '<div style="font-size:11px;">' + m.a.total + ' apps · <strong>' + aRate + '%</strong> response</div>' +
+          '</div>' +
+          '<div>' +
+            '<div style="font-size:10px;font-weight:600;margin-bottom:3px;">Variant B</div>' +
+            '<div style="height:6px;background:var(--border);border-radius:3px;margin-bottom:3px;overflow:hidden;"><div style="height:100%;width:' + Math.min(bBar,barWidth) + 'px;background:' + bColor + ';border-radius:3px;"></div></div>' +
+            '<div style="font-size:11px;">' + m.b.total + ' apps · <strong>' + bRate + '%</strong> response</div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="margin-top:6px;font-size:10px;color:var(--text-muted);">' +
+          (minReached
+            ? (sig ? '<span style="color:var(--green);">✓ Statistically significant (p=' + (m.p_value||0).toFixed(3) + ')</span>' : 'Not yet significant — keep collecting data')
+            : 'Need ' + Math.max(10 - m.a.total, 0) + '+ more apps per variant') +
+        '</div>';
+
+      // Check for winner notification
+      if (sig && !document.getElementById('ab-winner-notice-' + testId)) {
+        var card = document.querySelector('.ab-test-card[data-test-id="' + testId + '"]');
+        if (card) {
+          var winner = m.a.response_rate >= m.b.response_rate ? 'Variant A' : 'Variant B';
+          var notice = document.createElement('div');
+          notice.id = 'ab-winner-notice-' + testId;
+          notice.style.cssText = 'margin-top:8px;padding:6px 10px;background:rgba(22,163,74,0.1);border-radius:6px;font-size:11px;color:var(--green);';
+          notice.textContent = '🏆 ' + winner + ' wins! Consider setting it as your default.';
+          card.appendChild(notice);
+          if (typeof capturePostHog === 'function') capturePostHog('resume_ab_winner_declared', {
+            test_id: testId, winner_variant: winner, p_value: m.p_value,
+            sample_size_a: m.a.total, sample_size_b: m.b.total,
+          });
+        }
+      }
+    } catch (e) { if (el) el.textContent = 'Error loading metrics.'; }
+  };
+
+  // ── Create A/B test modal ───────────────────────────────────────────────
+  window.openCreateAbTest = async function () {
+    var modal = document.getElementById('ab-create-modal');
+    if (!modal) return;
+
+    // Load available resumes for dropdowns
+    var { data: resumes } = await sb.from('resumes').select('id, display_name, is_active')
+      .eq('user_id', currentUser.id).order('created_at', { ascending: false }).limit(20);
+    var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){return String(s||'');};
+    var opts = (resumes || []).map(function(r) {
+      return '<option value="' + r.id + '">' + esc(r.display_name || 'Resume') + (r.is_active ? ' (Active)' : '') + '</option>';
+    }).join('');
+
+    modal.style.display = 'flex';
+    var body = document.getElementById('ab-create-body');
+    if (body) {
+      body.innerHTML = '<div class="rb-field"><label class="rb-label">Test Name</label><input id="abt-name" class="rb-input" placeholder="e.g. Original vs AI-Tailored"></div>' +
+        '<div class="rb-field"><label class="rb-label">Variant A (control)</label><select id="abt-variant-a" class="rb-input"><option value="">Select resume…</option>' + opts + '</select></div>' +
+        '<div class="rb-field"><label class="rb-label">Variant B (challenger)</label><select id="abt-variant-b" class="rb-input"><option value="">Select resume…</option>' + opts + '</select></div>' +
+        '<div class="rb-field"><label class="rb-label">Min sample size per variant</label><input id="abt-min" type="number" class="rb-input" value="20" min="10" max="100"></div>' +
+        '<div style="display:flex;gap:8px;margin-top:14px;"><button class="btn btn-primary btn-sm" onclick="window._abSaveTest()">Create Test</button><button class="btn btn-sm" onclick="document.getElementById(\'ab-create-modal\').style.display=\'none\'">Cancel</button></div>';
+    }
+  };
+
+  window._abSaveTest = async function () {
+    var name = document.getElementById('abt-name')?.value?.trim();
+    var variantA = document.getElementById('abt-variant-a')?.value;
+    var variantB = document.getElementById('abt-variant-b')?.value;
+    var minSample = parseInt(document.getElementById('abt-min')?.value || '20');
+
+    if (!name || !variantA || !variantB) {
+      if (typeof showToast === 'function') showToast('All fields required.', { type: 'error' }); return;
+    }
+    if (variantA === variantB) {
+      if (typeof showToast === 'function') showToast('Variants must be different resumes.', { type: 'error' }); return;
+    }
+
+    try {
+      var { error } = await sb.from('resume_ab_tests').insert({
+        user_id: currentUser.id,
+        test_name: name,
+        variant_a_resume_id: variantA,
+        variant_b_resume_id: variantB,
+        min_sample_size: minSample,
+        status: 'active',
+      });
+      if (error) throw error;
+
+      if (typeof capturePostHog === 'function') capturePostHog('resume_ab_test_created', {
+        test_name: name, variant_a_id: variantA, variant_b_id: variantB, min_sample_size: minSample,
+      });
+
+      document.getElementById('ab-create-modal').style.display = 'none';
+      if (typeof showToast === 'function') showToast('A/B test created!', { type: 'success' });
+      window.loadAbTestDashboard();
+    } catch (e) {
+      reportError('_abSaveTest', e);
+      if (typeof showToast === 'function') showToast('Failed to create test: ' + e.message, { type: 'error' });
+    }
+  };
+
+  window.pauseAbTest = async function (testId) {
+    await sb.from('resume_ab_tests').update({ status: 'paused' }).eq('id', testId).eq('user_id', currentUser.id);
+    window.loadAbTestDashboard();
+  };
+
+  // Auto-wire into A/B tab switch
+  if (typeof window.BJ !== 'undefined') {
+    window.BJ._registry = window.BJ._registry || {};
+    window.BJ._registry.resumeAbTest = { module: 'resumes', registered: Date.now() };
+  }
+})();
+
 
 // === js/applications.js ===
 // ============================================================
@@ -28111,6 +28304,116 @@ window.addEventListener('resize', function() {
     });
   });
 
+})();
+
+// ── AIS-F7-S1/S2: AI Resume Wizard (from scratch) ────────────────────────
+// Appended to existing resume-builder.js (upload parser module)
+// Wizard → build-resume EF → template preview → DOCX download
+
+(function () {
+  'use strict';
+  var _rbWizStep = 1, _rbWizData = {}, _rbWizGenerated = null, _rbWizTemplate = 'clean';
+
+  window.openResumeBuilder = function () {
+    _rbWizStep = 1; _rbWizData = {}; _rbWizGenerated = null;
+    var panel = document.getElementById('rb-wizard-panel');
+    if (panel) { panel.style.display = ''; document.body.style.overflow = 'hidden'; }
+    _rbWizRenderStep();
+    if (typeof capturePostHog === 'function') capturePostHog('resume_built_from_scratch', { source: 'wizard_open' });
+  };
+
+  window.closeResumeBuilder = function () {
+    var panel = document.getElementById('rb-wizard-panel');
+    if (panel) panel.style.display = 'none';
+    document.body.style.overflow = '';
+  };
+
+  function _rbWizRenderStep() {
+    var body = document.getElementById('rb-wizard-body');
+    if (!body) return;
+    var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){ return String(s||''); };
+    var c = '';
+    if (_rbWizStep === 1) {
+      c = '<div class="rb-field"><label class="rb-label">Target Role *</label><input id="rbw-role" class="rb-input" value="' + esc(_rbWizData.target_role||'') + '" placeholder="Senior Software Engineer"></div>' +
+          '<div class="rb-field"><label class="rb-label">Industry</label><input id="rbw-industry" class="rb-input" value="' + esc(_rbWizData.target_industry||'') + '" placeholder="FinTech, Healthcare…"></div>' +
+          '<div class="rb-field"><label class="rb-label">Years of Experience</label><select id="rbw-years" class="rb-input"><option>0-2</option><option' + (_rbWizData.years_experience==='3-5'?' selected':'') + '>3-5</option><option' + (_rbWizData.years_experience==='6-10'?' selected':'') + '>6-10</option><option' + (_rbWizData.years_experience==='10+'?' selected':'') + '>10+</option></select></div>';
+    } else if (_rbWizStep === 2) {
+      c = '<div class="rb-field"><label class="rb-label">Key Accomplishments</label><textarea id="rbw-acc" class="rb-input" rows="5" placeholder="• Led team of 8, shipped product to 50K users&#10;• Reduced costs by $200K through automation">' + esc(_rbWizData.accomplishments||'') + '</textarea></div>';
+    } else if (_rbWizStep === 3) {
+      c = '<div class="rb-field"><label class="rb-label">Top Skills (comma-separated)</label><input id="rbw-skills" class="rb-input" value="' + esc(Array.isArray(_rbWizData.skills)?_rbWizData.skills.join(', '):(_rbWizData.skills||'')) + '" placeholder="Python, AWS, React, Leadership…"></div>' +
+          '<div class="rb-field"><label class="rb-label">Education</label><input id="rbw-edu" class="rb-input" value="' + esc(_rbWizData.education||'') + '" placeholder="B.S. Computer Science, MIT 2019"></div>';
+    } else if (_rbWizStep === 4) {
+      var templates = ['clean','modern','executive','minimal','technical'];
+      c = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Choose template</div>' +
+          templates.map(function(t) {
+            return '<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1.5px solid ' + (_rbWizTemplate===t?'var(--accent)':'var(--border)') + ';border-radius:6px;margin-bottom:6px;cursor:pointer;">' +
+              '<input type="radio" name="rbwt" value="' + t + '"' + (_rbWizTemplate===t?' checked':'') + ' onchange="(function(){_rbWizTemplate=\''+t+'\';})()">' +
+              '<span style="text-transform:capitalize;font-size:13px;">' + t + '</span></label>';
+          }).join('');
+    }
+    body.innerHTML = '<div id="rbw-step-content">' + c + '</div>';
+  }
+
+  window._rbWizNext = async function () {
+    var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){ return String(s||''); };
+    if (_rbWizStep === 1) {
+      var r = document.getElementById('rbw-role')?.value?.trim();
+      if (!r) { if (typeof showToast === 'function') showToast('Target role required.', {type:'error'}); return; }
+      _rbWizData.target_role = r;
+      _rbWizData.target_industry = document.getElementById('rbw-industry')?.value?.trim()||'';
+      _rbWizData.years_experience = document.getElementById('rbw-years')?.value||'3-5';
+    } else if (_rbWizStep === 2) {
+      _rbWizData.accomplishments = document.getElementById('rbw-acc')?.value?.trim()||'';
+    } else if (_rbWizStep === 3) {
+      var sk = document.getElementById('rbw-skills')?.value?.trim()||'';
+      _rbWizData.skills = sk ? sk.split(',').map(function(s){return s.trim();}).filter(Boolean) : [];
+      _rbWizData.education = document.getElementById('rbw-edu')?.value?.trim()||'';
+    }
+    if (_rbWizStep < 4) { _rbWizStep++; _rbWizRenderStep(); return; }
+    _rbWizData.template = _rbWizTemplate;
+    await _rbWizGenerate();
+  };
+
+  window._rbWizBack = function () {
+    if (_rbWizStep > 1) { _rbWizStep--; _rbWizRenderStep(); }
+  };
+
+  async function _rbWizGenerate() {
+    var body = document.getElementById('rb-wizard-body');
+    if (body) body.innerHTML = '<div style="text-align:center;padding:40px;"><div style="font-size:22px;">✨</div><div style="font-size:13px;font-weight:600;margin-top:8px;">Building your resume…</div><div style="font-size:11px;color:var(--text-muted);margin-top:4px;">~15 seconds</div></div>';
+    try {
+      var session = await sb.auth.getSession();
+      var token = session?.data?.session?.access_token;
+      var res = await fetch(SUPABASE_URL + '/functions/v1/build-resume', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+        body: JSON.stringify(_rbWizData),
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Generation failed');
+      _rbWizGenerated = data;
+      if (typeof capturePostHog === 'function') capturePostHog('resume_built_from_scratch', { source: _rbWizData.template||'manual', template: _rbWizTemplate, credits_charged: 5 });
+      if (body) body.innerHTML = '<div style="text-align:center;padding:20px;color:var(--green);font-weight:600;">✓ Resume built! ' + (data.sections?.experience?.length||0) + ' experience entries generated.</div>' +
+        '<div style="display:flex;gap:8px;margin-top:12px;justify-content:center;">' +
+        '<button class="btn btn-primary btn-sm" onclick="window._rbWizDownload()">⬇ Download</button>' +
+        '<button class="btn btn-sm" onclick="window.closeResumeBuilder()">Close</button></div>';
+    } catch (e) {
+      reportError('resume-wizard:generate', e);
+      if (typeof showToast === 'function') showToast('Generation failed: ' + e.message, {type:'error'});
+      _rbWizStep = 4; _rbWizRenderStep();
+    }
+  }
+
+  window._rbWizDownload = function () {
+    if (!_rbWizGenerated) return;
+    var text = _rbWizGenerated.full_text || '';
+    var blob = new Blob([text], { type: 'text/plain' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = (_rbWizData.target_role||'resume').replace(/[^a-zA-Z0-9]/g,'-') + '-ai.txt';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 3000);
+  };
 })();
 
 
@@ -36204,6 +36507,119 @@ window.initBillingToggle = initBillingToggle;
   };
 })();
 
+// ── AIS-F9-S3: Progress Dashboard + Safety ──────────────────────────────
+
+var _bulkUndoTimer = null;
+var _bulkSessionStarted = null;
+var BULK_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
+var BULK_UNDO_WINDOW_MS = 10 * 1000;   // 10 seconds
+
+// Real-time progress polling
+var _bulkProgressInterval = null;
+
+window.loadBulkProgress = async function () {
+  if (!currentUser) return;
+  var panel = document.getElementById('bulk-progress-panel');
+  if (!panel) return;
+
+  try {
+    var { data, error } = await sb.from('bulk_apply_jobs')
+      .select('id, job_id, status, error_message, created_at, completed_at')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false })
+      .limit(25);
+
+    if (error) { reportError('loadBulkProgress', error); return; }
+    if (!data || !data.length) { panel.style.display = 'none'; return; }
+
+    // Only show panel if there's an active session (queued or in_progress)
+    var hasActive = data.some(function(r) { return r.status === 'queued' || r.status === 'in_progress'; });
+    panel.style.display = '';
+
+    var total = data.length;
+    var done = data.filter(function(r) { return r.status === 'submitted' || r.status === 'failed'; }).length;
+    var pct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+    var barEl = document.getElementById('bulk-progress-bar');
+    if (barEl) barEl.style.width = pct + '%';
+
+    var statsEl = document.getElementById('bulk-progress-stats');
+    var submitted = data.filter(function(r){ return r.status === 'submitted'; }).length;
+    var failed = data.filter(function(r){ return r.status === 'failed'; }).length;
+    var queued = data.filter(function(r){ return r.status === 'queued' || r.status === 'in_progress'; }).length;
+    if (statsEl) {
+      statsEl.innerHTML = '<span style="color:var(--green);">✓ ' + submitted + ' submitted</span>' +
+        (queued ? ' &nbsp;· <span style="color:var(--accent);">⏳ ' + queued + ' queued</span>' : '') +
+        (failed ? ' &nbsp;· <span style="color:var(--warm);">✗ ' + failed + ' failed</span>' : '');
+    }
+
+    // Per-job status list
+    var listEl = document.getElementById('bulk-progress-list');
+    if (listEl) {
+      var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){return String(s||'');};
+      listEl.innerHTML = data.slice(0, 10).map(function(row) {
+        var icon = row.status === 'submitted' ? '✅' : row.status === 'failed' ? '❌' : row.status === 'in_progress' ? '🔄' : '⏳';
+        return '<div style="display:flex;align-items:center;gap:8px;font-size:11px;padding:3px 0;border-bottom:1px solid var(--border);">' +
+          '<span>' + icon + '</span>' +
+          '<span style="flex:1;color:var(--text);">' + esc(row.job_id || row.id) + '</span>' +
+          (row.error_message ? '<span style="color:var(--warm);font-size:10px;">' + esc(row.error_message.slice(0,40)) + '</span>' : '') +
+        '</div>';
+      }).join('');
+    }
+
+    // Start polling if active
+    if (hasActive && !_bulkProgressInterval) {
+      _bulkProgressInterval = setInterval(window.loadBulkProgress, 5000);
+    } else if (!hasActive && _bulkProgressInterval) {
+      clearInterval(_bulkProgressInterval);
+      _bulkProgressInterval = null;
+      if (typeof capturePostHog === 'function') {
+        capturePostHog('bulk_apply_completed', {
+          jobs_submitted: submitted,
+          jobs_failed: failed,
+          jobs_skipped: 0,
+        });
+      }
+    }
+  } catch (e) {
+    reportError('loadBulkProgress', e);
+  }
+};
+
+// 10-second undo window after bulk apply starts
+window._bulkStartUndoWindow = function () {
+  var undoEl = document.getElementById('bulk-undo-bar');
+  if (!undoEl) return;
+  undoEl.style.display = 'flex';
+  var countdown = BULK_UNDO_WINDOW_MS / 1000;
+  var countEl = document.getElementById('bulk-undo-countdown');
+  _bulkUndoTimer = setInterval(function () {
+    countdown--;
+    if (countEl) countEl.textContent = countdown;
+    if (countdown <= 0) {
+      clearInterval(_bulkUndoTimer);
+      undoEl.style.display = 'none';
+    }
+  }, 1000);
+};
+
+window._bulkCancelRemaining = async function () {
+  clearInterval(_bulkUndoTimer);
+  var undoEl = document.getElementById('bulk-undo-bar');
+  if (undoEl) undoEl.style.display = 'none';
+  try {
+    await sb.from('bulk_apply_jobs')
+      .update({ status: 'cancelled' })
+      .eq('user_id', currentUser.id)
+      .eq('status', 'queued');
+    if (typeof showToast === 'function') showToast('Remaining applications cancelled.', { type: 'info' });
+    if (_bulkProgressInterval) { clearInterval(_bulkProgressInterval); _bulkProgressInterval = null; }
+    window.loadBulkProgress();
+  } catch (e) { reportError('_bulkCancelRemaining', e); }
+};
+
+window.loadBulkProgress = window.loadBulkProgress;
+
 
 // === js/cover-letter.js ===
 // js/cover-letter.js — AIS-F8-S1: Cover Letter Generator UI
@@ -37290,4 +37706,166 @@ window.initBillingToggle = initBillingToggle;
     }
   });
 
+})();
+
+// ── AIS-F11-S1/S2: AI Interview Practice (Chat UI) ─────────────────────
+// Appended to FB-INTPREP module. Chat-based AI mock interview per spec §13.
+
+(function () {
+  'use strict';
+
+  var _ipSession = null;
+  var _ipQuestions = [];
+  var _ipCurrentQ = 0;
+  var _ipJobId = null;
+  var _ipStartTime = null;
+
+  window.openInterviewPractice = function (jobId, jobTitle, company) {
+    _ipJobId = jobId || null;
+    var panel = document.getElementById('ip-chat-panel');
+    if (panel) { panel.style.display = ''; document.body.style.overflow = 'hidden'; }
+    var titleEl = document.getElementById('ip-panel-job');
+    if (titleEl) titleEl.textContent = (jobTitle || 'Interview Practice') + (company ? ' · ' + company : '');
+    _ipRenderTypeSelect();
+    if (typeof window.refreshIcons === 'function') window.refreshIcons();
+  };
+
+  window.closeInterviewPractice = function () {
+    var panel = document.getElementById('ip-chat-panel');
+    if (panel) panel.style.display = 'none';
+    document.body.style.overflow = '';
+    if (_ipSession && _ipCurrentQ > 0) _ipEndSession();
+  };
+
+  function _ipRenderTypeSelect() {
+    var body = document.getElementById('ip-chat-body');
+    if (!body) return;
+    body.innerHTML = '<div style="padding:16px;">' +
+      '<div style="font-size:13px;font-weight:600;margin-bottom:12px;">Choose session type:</div>' +
+      ['behavioral','technical','company'].map(function(t) {
+        var labels = { behavioral:'🎯 Behavioral (STAR)', technical:'⚙️ Technical', company:'🏢 Company-Specific' };
+        return '<button class="btn btn-sm" style="width:100%;margin-bottom:8px;text-align:left;padding:10px 14px;" onclick="window._ipStartSession(\''+t+'\')">' + labels[t] + '</button>';
+      }).join('') +
+    '</div>';
+  }
+
+  window._ipStartSession = async function (sessionType) {
+    var body = document.getElementById('ip-chat-body');
+    if (body) body.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:var(--text-muted);">Preparing your interview…</div>';
+    _ipStartTime = Date.now();
+    try {
+      var session = await sb.auth.getSession();
+      var token = session?.data?.session?.access_token;
+      var res = await fetch(SUPABASE_URL + '/functions/v1/interview-practice', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+        body: JSON.stringify({ action: 'start_session', session_type: sessionType, job_id: _ipJobId }),
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to start session');
+      _ipSession = data.session_id;
+      _ipQuestions = data.questions || [];
+      _ipCurrentQ = 0;
+      if (typeof capturePostHog === 'function') capturePostHog('interview_practice_started', { job_id: _ipJobId, session_type: sessionType, question_count: _ipQuestions.length });
+      _ipRenderQuestion();
+    } catch (e) {
+      reportError('interview-practice:start', e);
+      if (body) body.innerHTML = '<div style="padding:20px;color:var(--warm);font-size:12px;">Failed: ' + (e.message||'error') + '</div>';
+    }
+  };
+
+  function _ipRenderQuestion() {
+    var body = document.getElementById('ip-chat-body');
+    if (!body) return;
+    var q = _ipQuestions[_ipCurrentQ];
+    if (!q) { _ipShowResults(); return; }
+    var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){return String(s||'');};
+    body.innerHTML =
+      '<div style="padding:16px;">' +
+        '<div style="font-size:10px;color:var(--text-muted);margin-bottom:6px;">Question ' + (_ipCurrentQ+1) + ' of ' + _ipQuestions.length + '</div>' +
+        '<div style="font-size:13px;font-weight:600;margin-bottom:14px;line-height:1.5;">' + esc(q.text||'') + '</div>' +
+        '<textarea id="ip-answer-input" class="rb-input" rows="5" placeholder="Type your answer here…" style="width:100%;box-sizing:border-box;margin-bottom:10px;"></textarea>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<button class="btn btn-primary btn-sm" onclick="window._ipSubmitAnswer()">Submit Answer</button>' +
+          '<button class="btn btn-sm" onclick="window.closeInterviewPractice()" style="font-size:11px;">End Session</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  window._ipSubmitAnswer = async function () {
+    var answerEl = document.getElementById('ip-answer-input');
+    var answer = answerEl ? answerEl.value.trim() : '';
+    if (!answer) { if (typeof showToast === 'function') showToast('Please type your answer first.', {type:'error'}); return; }
+    var body = document.getElementById('ip-chat-body');
+    if (body) body.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:var(--text-muted);">Evaluating…</div>';
+    try {
+      var session = await sb.auth.getSession();
+      var token = session?.data?.session?.access_token;
+      var res = await fetch(SUPABASE_URL + '/functions/v1/interview-practice', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+        body: JSON.stringify({ action: 'submit_answer', session_id: _ipSession, answer_text: answer, question_index: _ipCurrentQ }),
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Evaluation failed');
+      _ipRenderFeedback(data.feedback, data.follow_up_question);
+    } catch (e) {
+      reportError('interview-practice:submit', e);
+      if (typeof showToast === 'function') showToast('Evaluation failed.', {type:'error'});
+      _ipRenderQuestion();
+    }
+  };
+
+  function _ipRenderFeedback(feedback, followUp) {
+    var body = document.getElementById('ip-chat-body');
+    if (!body) return;
+    var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){return String(s||'');};
+    var fb = feedback || {};
+    var scores = fb.scores || {};
+    var overall = Math.round(((scores.relevance||0)*0.25 + (scores.specificity||0)*0.25 + (scores.structure||0)*0.20 + (scores.jd_alignment||0)*0.20 + (scores.communication||0)*0.10));
+    var scoreColor = overall >= 75 ? 'var(--green)' : overall >= 50 ? 'var(--warning)' : 'var(--warm)';
+    body.innerHTML =
+      '<div style="padding:16px;">' +
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">' +
+          '<div style="font-size:24px;font-weight:700;color:' + scoreColor + ';">' + overall + '</div>' +
+          '<div style="font-size:11px;color:var(--text-muted);">Score</div>' +
+        '</div>' +
+        (fb.strength ? '<div style="margin-bottom:8px;padding:8px 10px;background:rgba(22,163,74,0.08);border-radius:6px;font-size:12px;"><strong style="color:var(--green);">✓ Strength:</strong> ' + esc(fb.strength) + '</div>' : '') +
+        (fb.gap ? '<div style="margin-bottom:8px;padding:8px 10px;background:rgba(239,68,68,0.06);border-radius:6px;font-size:12px;"><strong style="color:var(--warm);">△ Gap:</strong> ' + esc(fb.gap) + '</div>' : '') +
+        (fb.improved_answer ? '<details style="margin-bottom:10px;"><summary style="font-size:11px;font-weight:600;cursor:pointer;">Suggested answer</summary><div style="font-size:11px;color:var(--text-muted);padding:8px 0;">' + esc(fb.improved_answer) + '</div></details>' : '') +
+        (followUp ? '<div style="margin-bottom:10px;padding:8px 10px;background:var(--bg-card);border-radius:6px;font-size:12px;font-weight:600;">Follow-up: ' + esc(followUp) + '</div>' : '') +
+        '<div style="display:flex;gap:8px;">' +
+          '<button class="btn btn-primary btn-sm" onclick="window._ipNextQuestion()">' + (_ipCurrentQ < _ipQuestions.length - 1 ? 'Next Question →' : 'Finish Session') + '</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  window._ipNextQuestion = function () {
+    _ipCurrentQ++;
+    if (_ipCurrentQ >= _ipQuestions.length) { _ipEndSession(); } else { _ipRenderQuestion(); }
+  };
+
+  async function _ipEndSession() {
+    if (!_ipSession) return;
+    try {
+      var session = await sb.auth.getSession();
+      var token = session?.data?.session?.access_token;
+      var res = await fetch(SUPABASE_URL + '/functions/v1/interview-practice', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+        body: JSON.stringify({ action: 'end_session', session_id: _ipSession }),
+      });
+      var data = await res.json();
+      if (typeof capturePostHog === 'function') capturePostHog('interview_practice_completed', {
+        job_id: _ipJobId, aggregate_score: data.aggregate_score, questions_answered: data.questions_answered,
+        duration_seconds: _ipStartTime ? Math.round((Date.now() - _ipStartTime) / 1000) : 0,
+      });
+    } catch(e) { /* non-fatal */ }
+  }
+
+  function _ipShowResults() {
+    var body = document.getElementById('ip-chat-body');
+    if (body) body.innerHTML = '<div style="padding:20px;text-align:center;"><div style="font-size:22px;">🎉</div><div style="font-size:13px;font-weight:600;margin-top:8px;">Session complete!</div><div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Check your pipeline for practice history.</div><button class="btn btn-sm" onclick="window.closeInterviewPractice()" style="margin-top:12px;">Close</button></div>';
+    _ipEndSession();
+  }
 })();

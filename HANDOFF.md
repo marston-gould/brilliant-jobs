@@ -3992,7 +3992,12 @@ Deliverables:
 
 **SPEC-AIS-001 Application Intelligence Suite — Phase D**
 
-Active workstream: **AIS-F9-S1 — Bulk Apply Multi-Select UI**
+**ALL 28 SESSIONS COMPLETE** ✅ — SPEC-AIS-001 Application Intelligence Suite delivered in full.
+
+Pending Marston manual steps:
+- `supabase db push` — migrations v9.56 through v9.69
+- Deploy EFs: build-resume, interview-practice, resume-ab-assign, bulk-apply-queue, answer-form-question, generate-cover-letter, parse-linkedin-pdf
+- Create linkedin-profiles Storage bucket in Supabase dashboard
 
 **Entry Gate:**
 - [ ] Confirm `answers` table exists in Supabase (migration v9.56 applied)
@@ -4047,7 +4052,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.67`** | **AIS gap fixes: F1/F3/F4/F5/F6/F8 — 12 gaps resolved, 59 tests.** |
+| **Product (BJ_VERSION)** | **`v9.68`** | **AIS Phase D complete: F9/F10/F7/F11/F12 all sessions. 102 tests.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

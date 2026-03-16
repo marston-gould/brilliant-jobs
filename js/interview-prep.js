@@ -797,3 +797,165 @@
   });
 
 })();
+
+// ── AIS-F11-S1/S2: AI Interview Practice (Chat UI) ─────────────────────
+// Appended to FB-INTPREP module. Chat-based AI mock interview per spec §13.
+
+(function () {
+  'use strict';
+
+  var _ipSession = null;
+  var _ipQuestions = [];
+  var _ipCurrentQ = 0;
+  var _ipJobId = null;
+  var _ipStartTime = null;
+
+  window.openInterviewPractice = function (jobId, jobTitle, company) {
+    _ipJobId = jobId || null;
+    var panel = document.getElementById('ip-chat-panel');
+    if (panel) { panel.style.display = ''; document.body.style.overflow = 'hidden'; }
+    var titleEl = document.getElementById('ip-panel-job');
+    if (titleEl) titleEl.textContent = (jobTitle || 'Interview Practice') + (company ? ' · ' + company : '');
+    _ipRenderTypeSelect();
+    if (typeof window.refreshIcons === 'function') window.refreshIcons();
+  };
+
+  window.closeInterviewPractice = function () {
+    var panel = document.getElementById('ip-chat-panel');
+    if (panel) panel.style.display = 'none';
+    document.body.style.overflow = '';
+    if (_ipSession && _ipCurrentQ > 0) _ipEndSession();
+  };
+
+  function _ipRenderTypeSelect() {
+    var body = document.getElementById('ip-chat-body');
+    if (!body) return;
+    body.innerHTML = '<div style="padding:16px;">' +
+      '<div style="font-size:13px;font-weight:600;margin-bottom:12px;">Choose session type:</div>' +
+      ['behavioral','technical','company'].map(function(t) {
+        var labels = { behavioral:'🎯 Behavioral (STAR)', technical:'⚙️ Technical', company:'🏢 Company-Specific' };
+        return '<button class="btn btn-sm" style="width:100%;margin-bottom:8px;text-align:left;padding:10px 14px;" onclick="window._ipStartSession(\''+t+'\')">' + labels[t] + '</button>';
+      }).join('') +
+    '</div>';
+  }
+
+  window._ipStartSession = async function (sessionType) {
+    var body = document.getElementById('ip-chat-body');
+    if (body) body.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:var(--text-muted);">Preparing your interview…</div>';
+    _ipStartTime = Date.now();
+    try {
+      var session = await sb.auth.getSession();
+      var token = session?.data?.session?.access_token;
+      var res = await fetch(SUPABASE_URL + '/functions/v1/interview-practice', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+        body: JSON.stringify({ action: 'start_session', session_type: sessionType, job_id: _ipJobId }),
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to start session');
+      _ipSession = data.session_id;
+      _ipQuestions = data.questions || [];
+      _ipCurrentQ = 0;
+      if (typeof capturePostHog === 'function') capturePostHog('interview_practice_started', { job_id: _ipJobId, session_type: sessionType, question_count: _ipQuestions.length });
+      _ipRenderQuestion();
+    } catch (e) {
+      reportError('interview-practice:start', e);
+      if (body) body.innerHTML = '<div style="padding:20px;color:var(--warm);font-size:12px;">Failed: ' + (e.message||'error') + '</div>';
+    }
+  };
+
+  function _ipRenderQuestion() {
+    var body = document.getElementById('ip-chat-body');
+    if (!body) return;
+    var q = _ipQuestions[_ipCurrentQ];
+    if (!q) { _ipShowResults(); return; }
+    var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){return String(s||'');};
+    body.innerHTML =
+      '<div style="padding:16px;">' +
+        '<div style="font-size:10px;color:var(--text-muted);margin-bottom:6px;">Question ' + (_ipCurrentQ+1) + ' of ' + _ipQuestions.length + '</div>' +
+        '<div style="font-size:13px;font-weight:600;margin-bottom:14px;line-height:1.5;">' + esc(q.text||'') + '</div>' +
+        '<textarea id="ip-answer-input" class="rb-input" rows="5" placeholder="Type your answer here…" style="width:100%;box-sizing:border-box;margin-bottom:10px;"></textarea>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<button class="btn btn-primary btn-sm" onclick="window._ipSubmitAnswer()">Submit Answer</button>' +
+          '<button class="btn btn-sm" onclick="window.closeInterviewPractice()" style="font-size:11px;">End Session</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  window._ipSubmitAnswer = async function () {
+    var answerEl = document.getElementById('ip-answer-input');
+    var answer = answerEl ? answerEl.value.trim() : '';
+    if (!answer) { if (typeof showToast === 'function') showToast('Please type your answer first.', {type:'error'}); return; }
+    var body = document.getElementById('ip-chat-body');
+    if (body) body.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:var(--text-muted);">Evaluating…</div>';
+    try {
+      var session = await sb.auth.getSession();
+      var token = session?.data?.session?.access_token;
+      var res = await fetch(SUPABASE_URL + '/functions/v1/interview-practice', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+        body: JSON.stringify({ action: 'submit_answer', session_id: _ipSession, answer_text: answer, question_index: _ipCurrentQ }),
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Evaluation failed');
+      _ipRenderFeedback(data.feedback, data.follow_up_question);
+    } catch (e) {
+      reportError('interview-practice:submit', e);
+      if (typeof showToast === 'function') showToast('Evaluation failed.', {type:'error'});
+      _ipRenderQuestion();
+    }
+  };
+
+  function _ipRenderFeedback(feedback, followUp) {
+    var body = document.getElementById('ip-chat-body');
+    if (!body) return;
+    var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){return String(s||'');};
+    var fb = feedback || {};
+    var scores = fb.scores || {};
+    var overall = Math.round(((scores.relevance||0)*0.25 + (scores.specificity||0)*0.25 + (scores.structure||0)*0.20 + (scores.jd_alignment||0)*0.20 + (scores.communication||0)*0.10));
+    var scoreColor = overall >= 75 ? 'var(--green)' : overall >= 50 ? 'var(--warning)' : 'var(--warm)';
+    body.innerHTML =
+      '<div style="padding:16px;">' +
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">' +
+          '<div style="font-size:24px;font-weight:700;color:' + scoreColor + ';">' + overall + '</div>' +
+          '<div style="font-size:11px;color:var(--text-muted);">Score</div>' +
+        '</div>' +
+        (fb.strength ? '<div style="margin-bottom:8px;padding:8px 10px;background:rgba(22,163,74,0.08);border-radius:6px;font-size:12px;"><strong style="color:var(--green);">✓ Strength:</strong> ' + esc(fb.strength) + '</div>' : '') +
+        (fb.gap ? '<div style="margin-bottom:8px;padding:8px 10px;background:rgba(239,68,68,0.06);border-radius:6px;font-size:12px;"><strong style="color:var(--warm);">△ Gap:</strong> ' + esc(fb.gap) + '</div>' : '') +
+        (fb.improved_answer ? '<details style="margin-bottom:10px;"><summary style="font-size:11px;font-weight:600;cursor:pointer;">Suggested answer</summary><div style="font-size:11px;color:var(--text-muted);padding:8px 0;">' + esc(fb.improved_answer) + '</div></details>' : '') +
+        (followUp ? '<div style="margin-bottom:10px;padding:8px 10px;background:var(--bg-card);border-radius:6px;font-size:12px;font-weight:600;">Follow-up: ' + esc(followUp) + '</div>' : '') +
+        '<div style="display:flex;gap:8px;">' +
+          '<button class="btn btn-primary btn-sm" onclick="window._ipNextQuestion()">' + (_ipCurrentQ < _ipQuestions.length - 1 ? 'Next Question →' : 'Finish Session') + '</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  window._ipNextQuestion = function () {
+    _ipCurrentQ++;
+    if (_ipCurrentQ >= _ipQuestions.length) { _ipEndSession(); } else { _ipRenderQuestion(); }
+  };
+
+  async function _ipEndSession() {
+    if (!_ipSession) return;
+    try {
+      var session = await sb.auth.getSession();
+      var token = session?.data?.session?.access_token;
+      var res = await fetch(SUPABASE_URL + '/functions/v1/interview-practice', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+        body: JSON.stringify({ action: 'end_session', session_id: _ipSession }),
+      });
+      var data = await res.json();
+      if (typeof capturePostHog === 'function') capturePostHog('interview_practice_completed', {
+        job_id: _ipJobId, aggregate_score: data.aggregate_score, questions_answered: data.questions_answered,
+        duration_seconds: _ipStartTime ? Math.round((Date.now() - _ipStartTime) / 1000) : 0,
+      });
+    } catch(e) { /* non-fatal */ }
+  }
+
+  function _ipShowResults() {
+    var body = document.getElementById('ip-chat-body');
+    if (body) body.innerHTML = '<div style="padding:20px;text-align:center;"><div style="font-size:22px;">🎉</div><div style="font-size:13px;font-weight:600;margin-top:8px;">Session complete!</div><div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Check your pipeline for practice history.</div><button class="btn btn-sm" onclick="window.closeInterviewPractice()" style="margin-top:12px;">Close</button></div>';
+    _ipEndSession();
+  }
+})();

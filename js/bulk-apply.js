@@ -211,3 +211,116 @@
     }
   };
 })();
+
+// ── AIS-F9-S3: Progress Dashboard + Safety ──────────────────────────────
+
+var _bulkUndoTimer = null;
+var _bulkSessionStarted = null;
+var BULK_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
+var BULK_UNDO_WINDOW_MS = 10 * 1000;   // 10 seconds
+
+// Real-time progress polling
+var _bulkProgressInterval = null;
+
+window.loadBulkProgress = async function () {
+  if (!currentUser) return;
+  var panel = document.getElementById('bulk-progress-panel');
+  if (!panel) return;
+
+  try {
+    var { data, error } = await sb.from('bulk_apply_jobs')
+      .select('id, job_id, status, error_message, created_at, completed_at')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false })
+      .limit(25);
+
+    if (error) { reportError('loadBulkProgress', error); return; }
+    if (!data || !data.length) { panel.style.display = 'none'; return; }
+
+    // Only show panel if there's an active session (queued or in_progress)
+    var hasActive = data.some(function(r) { return r.status === 'queued' || r.status === 'in_progress'; });
+    panel.style.display = '';
+
+    var total = data.length;
+    var done = data.filter(function(r) { return r.status === 'submitted' || r.status === 'failed'; }).length;
+    var pct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+    var barEl = document.getElementById('bulk-progress-bar');
+    if (barEl) barEl.style.width = pct + '%';
+
+    var statsEl = document.getElementById('bulk-progress-stats');
+    var submitted = data.filter(function(r){ return r.status === 'submitted'; }).length;
+    var failed = data.filter(function(r){ return r.status === 'failed'; }).length;
+    var queued = data.filter(function(r){ return r.status === 'queued' || r.status === 'in_progress'; }).length;
+    if (statsEl) {
+      statsEl.innerHTML = '<span style="color:var(--green);">✓ ' + submitted + ' submitted</span>' +
+        (queued ? ' &nbsp;· <span style="color:var(--accent);">⏳ ' + queued + ' queued</span>' : '') +
+        (failed ? ' &nbsp;· <span style="color:var(--warm);">✗ ' + failed + ' failed</span>' : '');
+    }
+
+    // Per-job status list
+    var listEl = document.getElementById('bulk-progress-list');
+    if (listEl) {
+      var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){return String(s||'');};
+      listEl.innerHTML = data.slice(0, 10).map(function(row) {
+        var icon = row.status === 'submitted' ? '✅' : row.status === 'failed' ? '❌' : row.status === 'in_progress' ? '🔄' : '⏳';
+        return '<div style="display:flex;align-items:center;gap:8px;font-size:11px;padding:3px 0;border-bottom:1px solid var(--border);">' +
+          '<span>' + icon + '</span>' +
+          '<span style="flex:1;color:var(--text);">' + esc(row.job_id || row.id) + '</span>' +
+          (row.error_message ? '<span style="color:var(--warm);font-size:10px;">' + esc(row.error_message.slice(0,40)) + '</span>' : '') +
+        '</div>';
+      }).join('');
+    }
+
+    // Start polling if active
+    if (hasActive && !_bulkProgressInterval) {
+      _bulkProgressInterval = setInterval(window.loadBulkProgress, 5000);
+    } else if (!hasActive && _bulkProgressInterval) {
+      clearInterval(_bulkProgressInterval);
+      _bulkProgressInterval = null;
+      if (typeof capturePostHog === 'function') {
+        capturePostHog('bulk_apply_completed', {
+          jobs_submitted: submitted,
+          jobs_failed: failed,
+          jobs_skipped: 0,
+        });
+      }
+    }
+  } catch (e) {
+    reportError('loadBulkProgress', e);
+  }
+};
+
+// 10-second undo window after bulk apply starts
+window._bulkStartUndoWindow = function () {
+  var undoEl = document.getElementById('bulk-undo-bar');
+  if (!undoEl) return;
+  undoEl.style.display = 'flex';
+  var countdown = BULK_UNDO_WINDOW_MS / 1000;
+  var countEl = document.getElementById('bulk-undo-countdown');
+  _bulkUndoTimer = setInterval(function () {
+    countdown--;
+    if (countEl) countEl.textContent = countdown;
+    if (countdown <= 0) {
+      clearInterval(_bulkUndoTimer);
+      undoEl.style.display = 'none';
+    }
+  }, 1000);
+};
+
+window._bulkCancelRemaining = async function () {
+  clearInterval(_bulkUndoTimer);
+  var undoEl = document.getElementById('bulk-undo-bar');
+  if (undoEl) undoEl.style.display = 'none';
+  try {
+    await sb.from('bulk_apply_jobs')
+      .update({ status: 'cancelled' })
+      .eq('user_id', currentUser.id)
+      .eq('status', 'queued');
+    if (typeof showToast === 'function') showToast('Remaining applications cancelled.', { type: 'info' });
+    if (_bulkProgressInterval) { clearInterval(_bulkProgressInterval); _bulkProgressInterval = null; }
+    window.loadBulkProgress();
+  } catch (e) { reportError('_bulkCancelRemaining', e); }
+};
+
+window.loadBulkProgress = window.loadBulkProgress;
