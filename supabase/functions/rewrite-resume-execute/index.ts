@@ -406,6 +406,23 @@ Rewrite again, fixing all truthfulness issues. Return ONLY JSON.`;
       completed_at: new Date().toISOString(),
     }).eq('id', session_id);
 
+    // AIS-F1-S2: Persist to resume_rewrites table (canonical output store)
+    await sb.from('resume_rewrites').insert({
+      user_id: user.id,
+      resume_id: session.resume_id || null,
+      job_id: session.job_id || null,
+      session_id: session_id,
+      original_text: session.resume_text || '',
+      rewritten_text: rewriteData.full_text || rewriteData.sections?.map((s: Record<string,unknown>) => s.rewritten || '').join('\n\n') || '',
+      diff_json: rewriteData.sections || null,
+      original_score: session.original_score || null,
+      new_score: newScore || null,
+      credits_charged: creditsToDebit,
+      status: 'complete',
+    }).then(({ error }) => {
+      if (error) console.warn('[execute] resume_rewrites insert error (non-fatal):', error.message);
+    });
+
 
     // ─── Notify: resume rewrite ready (v6.07) ───
     // Fire-and-forget POST to interview-sequence for resume_rewrite_ready notification
