@@ -256,6 +256,9 @@ const ROUTE_REGISTRY: Record<string, string> = {
   "get-user-balance":            "get-user-balance",            // SPEC-COHORT-001-S2: 3-bucket credit balance (#130)
   "replenish-credits":           "replenish-credits",           // SPEC-COHORT-001-S2: Billing period credit replenishment (#131)
   "award-grant":                 "award-grant",                 // SPEC-COHORT-001-S3: Issue award credit grant (#132)
+  "admin-user-manager":          "admin-user-manager",          // SPEC-ADMIN-002-S1: User List + Detail + mutations (#133)
+  "admin-cohort-manager":        "admin-cohort-manager",        // SPEC-ADMIN-002-S1: Cohort CRUD (#134)
+  "admin-credit-action":         "admin-credit-action",         // SPEC-ADMIN-002-S1: Admin credit grant/deduct (#135)
 
   // ═══════════════════════════════════════════════════════════════════════════
   // TOTAL: 129 routes (128 prev + 1 FB-INTPREP-001-S3). Direct paths deprecated.

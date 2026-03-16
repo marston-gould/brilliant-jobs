@@ -3840,6 +3840,13 @@ None.
 
 ## Last Completed Session
 
+**SPEC-ADMIN-002-S1** — Admin Control Panel: Foundation ✅
+- v9.80→v9.81 — DB: admin_audit_log (immutable audit trail, RLS admin-read SELECT / service_role ALL, 4 indexes), prompt_templates (name/feature/role/template/model/tokens/temperature/version/is_active), filter_config (key/label/type CHECK/options/weight/is_active/sort_order), cohort_tiers.is_archived (soft-delete). EFs: admin-user-manager (#133) list+search+filter+paginate+detail(profile/sub/balance/ledger)+update_profile+reassign_cohort; admin-cohort-manager (#134) list+create+update(price-change warning)+archive(blocks on active members); admin-credit-action (#135) grant/deduct with reason, balance floor guard, audit log, admin_credit_action_failed PostHog. JS: admin-user-manager.js (User List + detail drawer 3 tabs: Profile/Cohort/Credits, credit form hitting admin-credit-action), admin-cohort-manager-full.js (Cohort List + Editor modal all fields + price warning). admin.js cohort-manager subpage registered. 93/93 tests passing. All EFs deployed.
+
+---
+
+## Last Completed Session
+
 **SPEC-COHORT-001-REM** — Spec Gap Remediation ✅
 - v9.79→v9.80 — Closed all 15 gaps identified in post-delivery spec audit.
 - **P0 (2 fixed):** GAP-1: fn_debit_credits rewritten with correct rolled→base→award debit order (oldest award expiry first, FOR UPDATE lock). GAP-2: cohort_id column name difference is intentional (cohort_tier_id avoids collision with promo cohorts.id) — documented.
@@ -4095,7 +4102,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.80`** | **SPEC-COHORT-001-REM: 15 spec gaps closed. Debit order, proration, billing anniversary, first-upload-free, operational caps, signup trigger, monitoring. 63 tests.** |
+| **Product (BJ_VERSION)** | **`v9.81`** | **SPEC-ADMIN-002-S1: admin_audit_log, prompt_templates, filter_config tables. 3 admin EFs (#133-135). User Manager + Cohort Manager JS + panels. 93 tests.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

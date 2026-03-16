@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.80';
+var BJ_VERSION = 'v9.81';
 
 
 // === js/globals.ts ===
@@ -1412,7 +1412,8 @@ var ADMIN_SUBPAGE_MAP = {
   // ── Audience ──
   'cohorts':        { section: 'audience',    label: 'Cohorts',        init: function(){ loadCohortTab(); } },
   'entitlements':   { section: 'audience',    label: 'Entitlements',   init: function(){ loadEntitlementsTab(); } },
-  'users':          { section: 'audience',    label: 'Users',          init: function(){ loadUsersTab(); } },
+  'users':          { section: 'audience',    label: 'User Manager',   init: function(){ loadUsersTab(); } },
+  'cohort-manager': { section: 'audience',    label: 'Cohort Manager', init: function(){ loadCohortManagerTab(); } },
   'feedback':       { section: 'audience',    label: 'Feedback',       init: function(){ loadFeedbackTab(); } },
   'cohort-pricing': { section: 'audience',    label: 'Cohort Pricing', init: function(){ loadCohortPricingPanel(); } },
   // ── Business ──
