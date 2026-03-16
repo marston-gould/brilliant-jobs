@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v9.99 -->
+<!-- Brilliant Jobs Dashboard v10.00 -->
 <html lang="en">
 <head>
   <!-- CS-P1-009: Theme flash prevention — must be first script -->
@@ -19,21 +19,21 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="/js/vendor/supabase.min.js" defer></script>
-  <script src="/js/pipeline-migration.js?v=v9.99" defer></script>
-  <script src="/js/notification-center.js?v=v9.99" defer></script>
+  <script src="/js/pipeline-migration.js?v=v10.00" defer></script>
+  <script src="/js/notification-center.js?v=v10.00" defer></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" integrity="sha384-nFoSjZIoH3CCp8W639jJyQkuPHinJ2NHe7on1xvlUA7SuGfJAfvMldrsoAVm6ECz" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" integrity="sha384-eEu5CTj3qGvu9PdJuS+YlkNi7d2XxQROAFYOr59zgObtlcux1ae1Il3u7jvdCSWu" crossorigin="anonymous"></script>
   <!-- CS-014: CX-09 — ECharts lazy-loaded by stats.js when Stats tab opens -->
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js" integrity="sha384-TcLTgu6flPhnZ5dfHnHimsxNFjYWN0povfGgnOvgPJKbZe6IbuoC2ociiatSHl9E" crossorigin="anonymous"></script>
   <!-- CS-016 FIX-10: Code-split chunks — shell (globals+routing) + feed (job list) loaded eagerly; all other chunks lazy-loaded on tab switch -->
-  <script src="dist/dashboard-shell.min.js?v=v9.99" defer></script>
-  <script src="dist/dashboard-feed.min.js?v=v9.99" defer></script>
+  <script src="dist/dashboard-shell.min.js?v=v10.00" defer></script>
+  <script src="dist/dashboard-feed.min.js?v=v10.00" defer></script>
   <!-- CS-P1-002: dashboard inline scripts externalized (pdfjs, preload, feedback, insights, a11y) -->
-  <script src="js/dashboard-inline.js?v=v9.99" defer></script>
+  <script src="js/dashboard-inline.js?v=v10.00" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=v9.99">
+  <link rel="stylesheet" href="styles.css?v=v10.00">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -108,11 +108,11 @@
     </style>
   <!-- CSS extracted to styles.css in v3.28 -->
   <!-- A13: PostHog analytics — CS-P1-002: externalized for CSP compliance -->
-  <script src="js/posthog-dashboard.js?v=v9.99" defer></script>
-  <script src="js/posthog-perf.js?v=v9.99" defer></script>
-  <script src="js/feature-flags.js?v=v9.99" defer></script>
-  <script src="js/structured-logger.js?v=v9.99" defer></script>
-  <script src="js/theme.js?v=v9.99" defer></script>
+  <script src="js/posthog-dashboard.js?v=v10.00" defer></script>
+  <script src="js/posthog-perf.js?v=v10.00" defer></script>
+  <script src="js/feature-flags.js?v=v10.00" defer></script>
+  <script src="js/structured-logger.js?v=v10.00" defer></script>
+  <script src="js/theme.js?v=v10.00" defer></script>
 </head>
 <body>
 
@@ -1118,58 +1118,8 @@
           </div>
 
 
-          <!-- Trust Level filter (Phase 4) -->
-          <div style="display:flex;align-items:center;gap:8px;margin:4px 12px 0;">
-            <div class="trust-filter-wrap" style="position:relative;flex-shrink:0;">
-              <button id="trust-filter-btn" class="btn btn-sm" style="padding:2px 10px;font-size:10px;color:var(--text-faint);border:1px solid var(--border);background:transparent;cursor:pointer;border-radius:4px;display:flex;align-items:center;gap:4px;white-space:nowrap;flex-shrink:0;">
-                <i data-lucide="shield-check" class="icon-sm icon-stroke"></i> Trust Level <span id="trust-filter-count" style="display:none;background:var(--accent);color:#fff;font-size:9px;padding:0 5px;border-radius:8px;font-weight:700;"></span>
-              </button>
-              <div id="trust-filter-dropdown" style="display:none;position:absolute;top:100%;left:0;z-index:60;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.2);padding:8px;min-width:180px;margin-top:4px;">
-                <div style="font-size:10px;font-weight:700;color:var(--text-dim);padding:2px 6px 6px;border-bottom:1px solid var(--border);margin-bottom:4px;">Show jobs with trust level:</div>
-                <label class="trust-filter-opt u-btn-action" data-label="safe">
-                  <input type="checkbox" class="trust-cb" value="safe" checked> <i data-lucide="shield-check" class="icon-xs icon-stroke"></i> <span style="color:var(--green);">Verified</span>
-                </label>
-                <label class="trust-filter-opt u-btn-action" data-label="caution">
-                  <input type="checkbox" class="trust-cb" value="caution" checked> <i data-lucide="triangle-alert" class="icon-xs icon-stroke"></i> <span style="color:var(--warm);">Caution</span>
-                </label>
-                <label class="trust-filter-opt u-btn-action" data-label="suspicious">
-                  <input type="checkbox" class="trust-cb" value="suspicious" checked> <i data-lucide="flag" class="icon-xs icon-stroke"></i> <span style="color:var(--red);">Suspicious</span>
-                </label>
-                <label class="trust-filter-opt u-btn-action" data-label="unknown">
-                  <input type="checkbox" class="trust-cb" value="unknown" checked> <span class="u-text-faint">Unscored</span>
-                </label>
-                <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px;display:flex;gap:6px;">
-                  <button class="btn btn-sm u-flex-pill" onclick="setAllTrustFilters(true)">All</button>
-                  <button class="btn btn-sm u-flex-pill" onclick="setAllTrustFilters(false)">None</button>
-                </div>
-              </div>
-            </div>
-            <!-- AI Content filter (Phase 72 Session 3.3) -->
-            <div class="ai-filter-wrap u-pos-rel">
-              <button id="ai-filter-btn" class="btn btn-sm" style="padding:2px 10px;font-size:10px;color:var(--text-faint);border:1px solid var(--border);background:transparent;cursor:pointer;border-radius:4px;display:flex;align-items:center;gap:4px;">
-                <i data-lucide="scan-text" class="icon-sm icon-stroke"></i> AI Content <span id="ai-filter-count" style="display:none;background:var(--accent);color:#fff;font-size:9px;padding:0 5px;border-radius:8px;font-weight:700;"></span>
-              </button>
-              <div id="ai-filter-dropdown" style="display:none;position:absolute;top:100%;left:0;z-index:60;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.2);padding:8px;min-width:190px;margin-top:4px;">
-                <div style="font-size:10px;font-weight:700;color:var(--text-dim);padding:2px 6px 6px;border-bottom:1px solid var(--border);margin-bottom:4px;">Show jobs by AI content level:</div>
-                <label class="ai-filter-opt u-btn-action" data-label="human">
-                  <input type="checkbox" class="ai-filter-cb" value="human" checked> <span style="color:var(--green);font-weight:500;">Human-Written</span>
-                </label>
-                <label class="ai-filter-opt u-btn-action" data-label="mixed">
-                  <input type="checkbox" class="ai-filter-cb" value="mixed" checked> <span style="color:var(--warm);font-weight:500;">Mixed Content</span>
-                </label>
-                <label class="ai-filter-opt u-btn-action" data-label="ai_generated">
-                  <input type="checkbox" class="ai-filter-cb" value="ai_generated" checked> <span style="color:var(--red);font-weight:500;">AI-Generated</span>
-                </label>
-                <label class="ai-filter-opt u-btn-action" data-label="unscored">
-                  <input type="checkbox" class="ai-filter-cb" value="unscored" checked> <span class="u-text-faint">Unscored</span>
-                </label>
-                <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px;display:flex;gap:6px;">
-                  <button class="btn btn-sm u-flex-pill" onclick="setAllAiFilters(true)">All</button>
-                  <button class="btn btn-sm u-flex-pill" onclick="setAllAiFilters(false)">None</button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <!-- FB-FEED-CARDS-001: Trust Level and AI Content toggles removed from toolbar.
+               Signal data now shows as inline badges on each card (Verified, AI, Ghost). -->
 
           <div style="display:flex;align-items:center;gap:8px;margin:8px 12px;flex-wrap:wrap;">
             <div id="sort-pills" style="display:flex;gap:4px;flex-wrap:wrap;"></div>

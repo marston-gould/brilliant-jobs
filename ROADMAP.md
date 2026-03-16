@@ -3755,4 +3755,4 @@ Phase S is complete when ALL of the following are true:
 | ID | Item | Status | Notes |
 |----|------|--------|-------|
 | FB-FEED-CARDS-001-S1 | Card-based feed layout. 3-action model (Dismiss/Pipeline/Apply). Inline signal badges (Verified/AI/Ghost). Preview JD toggle with 3-line snippet. Removed Bulk Apply, Save All, checkboxes, Optimize Resume from feed. Sort bar buttons. Card skeleton loader. 4 PostHog events. | ✅ | v9.99 |
-| FB-FEED-CARDS-001-S2 | Pipeline page: Optimize Resume per-job action in Saved stage. Bulk Apply toolbar in Pipeline. Sort indicator refresh. Trust/AI toggle removal cleanup. | 🔲 | |
+| FB-FEED-CARDS-001-S2 | Pipeline: Optimize Resume per-job in Saved stage. Bulk Apply toolbar (checkboxes, select-all, progress indicator, PostHog). Sort indicator refresh on new .sort-btn elements. Trust Level + AI Content toggles removed from feed toolbar (replaced by inline signal badges). unsaveFromPipeline confirmed no tuning signal. All 6 PostHog events wired. | ✅ | v10.00 |

@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.99';
+var BJ_VERSION = 'v10.00';
 // Populate version display elements after DOM is ready
 (function() {
   var el = document.getElementById('nav-version');
@@ -7547,21 +7547,25 @@ function renderSortPills() {
     const inUse = jobSortStack.some(s => s.field === opt.dataset.field);
     opt.classList.toggle('disabled', inUse);
 
-  // QA-010: Update table header sort indicators
+  // QA-010: Update sort indicators on table headers and sort bar buttons
   const dbToSort = { title: 'title', company_name: 'company', location: 'location', first_seen_at: 'days', level: 'level', match: 'match', salary_max: 'salary', ghost_rate: 'ghost' };
-  $$('.job-table th[data-sort]').forEach(th => {
-    th.classList.remove('sorted');
-    var arrow = th.querySelector('.sort-arrow');
+  $$('.job-table th[data-sort], .sort-btn[data-sort]').forEach(el => {
+    el.classList.remove('sorted');
+    el.style.borderColor = '';
+    el.style.color = '';
+    var arrow = el.querySelector('.sort-arrow');
     if (arrow) arrow.textContent = '↕';
   });
   if (jobSortStack.length > 0) {
     var primarySort = jobSortStack[0];
     var sortAttr = dbToSort[primarySort.field];
     if (sortAttr) {
-      var activeTh = document.querySelector('.job-table th[data-sort="' + sortAttr + '"]');
-      if (activeTh) {
-        activeTh.classList.add('sorted');
-        var arrow = activeTh.querySelector('.sort-arrow');
+      var activeEl = document.querySelector('.sort-btn[data-sort="' + sortAttr + '"], .job-table th[data-sort="' + sortAttr + '"]');
+      if (activeEl) {
+        activeEl.classList.add('sorted');
+        activeEl.style.borderColor = 'var(--accent)';
+        activeEl.style.color = 'var(--text)';
+        var arrow = activeEl.querySelector('.sort-arrow');
         if (arrow) arrow.textContent = primarySort.asc ? '↑' : '↓';
       }
     }
@@ -17247,7 +17251,18 @@ async function renderPipeline() {
       continue;
     }
 
-    let html = '<table class="pl-table"><thead><tr>';
+    // FB-FEED-CARDS-001: Bulk Apply toolbar for Saved stage
+    let bulkToolbar = '';
+    if (stage === 'saved' && jobs.length > 0) {
+      bulkToolbar = '<div id="pl-bulk-toolbar" style="display:none;background:var(--accent);color:#fff;padding:6px 14px;border-radius:8px;margin-bottom:8px;align-items:center;gap:10px;font-size:12px;">' +
+        '<span id="pl-bulk-count">0 selected</span><div style="flex:1;"></div>' +
+        '<button id="pl-bulk-apply-btn" style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);color:#fff;padding:4px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">⚡ Bulk Apply</button>' +
+        '<button id="pl-bulk-clear" style="background:none;border:none;color:rgba(255,255,255,0.7);font-size:16px;cursor:pointer;">×</button>' +
+        '</div>';
+    }
+
+    let html = bulkToolbar + '<table class="pl-table"><thead><tr>';
+    if (stage === 'saved') html += '<th style="width:24px;padding:0 2px;"><input type="checkbox" id="pl-bulk-select-all" style="cursor:pointer;accent-color:var(--accent);" title="Select all"></th>';
     html += '<th></th><th>Title</th><th>Company</th><th>Level</th><th>Discovered</th><th>Days In Stage</th>';
     html += '<th>Filter</th><th>Resume</th><th>Match</th><th></th><th>Move</th><th></th>';
     html += '</tr></thead><tbody>';
@@ -17349,6 +17364,7 @@ async function renderPipeline() {
       ).join('');
 
       html += '<tr data-jobid="' + item.id + '">';
+      if (stage === 'saved') html += '<td style="width:24px;padding:0 2px;"><input type="checkbox" class="pl-bulk-cb" data-jobid="' + item.id + '" style="cursor:pointer;accent-color:var(--accent);"></td>';
       html += '<td style="width:16px;text-align:center;padding:4px 2px;">' + staleDot + '</td>';
       html += '<td class="pl-title" onclick="openJobModal(\'' + item.id + '\')" title="' + title.replace(/"/g, '&quot;') + '">' + (title.length > 35 ? title.slice(0,35) + '…' : title) + '</td>';
       html += '<td class="pl-company" title="' + company.replace(/"/g, '&quot;') + '">' + (company.length > 20 ? company.slice(0,20) + '…' : company) + '</td>';
@@ -17400,7 +17416,10 @@ async function renderPipeline() {
           '<button onclick="event.stopPropagation();if(window.openInterviewPractice)window.openInterviewPractice(\'' + item.id + '\')" style="display:inline-block;font-size:10px;font-weight:600;padding:4px 10px;border-radius:6px;background:var(--purple,#7c3aed);color:#fff;border:none;cursor:pointer;white-space:nowrap;margin-right:4px;" title="AI Interview Practice (AIS-F11)">🎯 Practice</button>' +
           '<button onclick="event.stopPropagation();if(window._ipStartMock)window._ipStartMock(\'' + item.id + '\',\'' + (m._dbId || '') + '\')" style="display:inline-block;font-size:10px;font-weight:600;padding:4px 10px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;white-space:nowrap;">Prep →</button></td>';
       } else if (applyUrl && stage === 'saved') {
-        html += '<td><a href="' + applyUrl + '" target="_blank" rel="noopener" style="display:inline-block;text-decoration:none;font-size:10px;font-weight:600;padding:4px 10px;border-radius:6px;background:var(--accent);color:#fff;white-space:nowrap;" onclick="event.stopPropagation();movePipelineStage(\'' + item.id + '\',\'applied\')">Apply →</a></td>';
+        html += '<td style="white-space:nowrap;">';
+        html += '<button onclick="event.stopPropagation();if(typeof posthog!==\'undefined\')posthog.capture(\'pipeline_optimize_resume\',{job_id:\'' + item.id + '\',company:\'' + (company||'').replace(/'/g,'') + '\'});if(typeof rbOpenOptimizeForJob===\'function\')rbOpenOptimizeForJob(\'' + item.id + '\')" style="display:inline-block;font-size:10px;font-weight:600;padding:4px 10px;border-radius:6px;background:var(--bg-card);color:var(--text-dim);border:1px solid var(--border);cursor:pointer;white-space:nowrap;margin-right:4px;" title="Optimize your resume for this job">Optimize</button>';
+        html += '<a href="' + applyUrl + '" target="_blank" rel="noopener" style="display:inline-block;text-decoration:none;font-size:10px;font-weight:600;padding:4px 10px;border-radius:6px;background:var(--accent);color:#fff;white-space:nowrap;" onclick="event.stopPropagation();movePipelineStage(\'' + item.id + '\',\'applied\')">Apply →</a>';
+        html += '</td>';
       } else if (applyUrl) {
         html += '<td><a href="' + applyUrl + '" target="_blank" rel="noopener" style="font-size:10px;color:var(--accent);text-decoration:none;" onclick="event.stopPropagation()">View →</a></td>';
       } else {
@@ -17486,6 +17505,89 @@ async function renderPipeline() {
 
     html += '</tbody></table>';
     body.innerHTML = html;
+
+    // FB-FEED-CARDS-001: Wire Bulk Apply handlers for Saved stage
+    if (stage === 'saved') {
+      var _bulkSelected = new Set();
+      var toolbar = document.getElementById('pl-bulk-toolbar');
+      var countBadge = document.getElementById('pl-bulk-count');
+      var selectAll = document.getElementById('pl-bulk-select-all');
+
+      function _updateBulkUI() {
+        if (!toolbar) return;
+        if (_bulkSelected.size > 0) {
+          toolbar.style.display = 'flex';
+          if (countBadge) countBadge.textContent = _bulkSelected.size + ' selected';
+        } else {
+          toolbar.style.display = 'none';
+        }
+      }
+
+      body.querySelectorAll('.pl-bulk-cb').forEach(function(cb) {
+        cb.addEventListener('change', function() {
+          if (this.checked) _bulkSelected.add(this.dataset.jobid);
+          else _bulkSelected.delete(this.dataset.jobid);
+          _updateBulkUI();
+        });
+      });
+
+      if (selectAll) {
+        selectAll.addEventListener('change', function() {
+          body.querySelectorAll('.pl-bulk-cb').forEach(function(cb) {
+            cb.checked = selectAll.checked;
+            if (selectAll.checked) _bulkSelected.add(cb.dataset.jobid);
+            else _bulkSelected.delete(cb.dataset.jobid);
+          });
+          _updateBulkUI();
+        });
+      }
+
+      var bulkApplyBtn = document.getElementById('pl-bulk-apply-btn');
+      if (bulkApplyBtn) {
+        bulkApplyBtn.addEventListener('click', async function() {
+          if (_bulkSelected.size === 0) return;
+          var ids = Array.from(_bulkSelected);
+          bulkApplyBtn.textContent = 'Applying 0/' + ids.length + '…';
+          bulkApplyBtn.disabled = true;
+          var completed = 0;
+          for (var i = 0; i < ids.length; i++) {
+            var jobId = ids[i];
+            try {
+              var m = _pipelineCache[jobId];
+              var applyUrl = m && m.jobUrl ? m.jobUrl : '';
+              if (!applyUrl) {
+                var jd = window._feedJobMap && window._feedJobMap[jobId];
+                if (jd) applyUrl = jd.apply_url || jd.url || '';
+              }
+              if (typeof proceedToApply === 'function' && applyUrl) {
+                await proceedToApply(jobId, applyUrl);
+              } else if (applyUrl) {
+                window.open(applyUrl.startsWith('http') ? applyUrl : 'https://boards.greenhouse.io' + applyUrl, '_blank');
+              }
+              movePipelineStage(jobId, 'applied');
+              completed++;
+            } catch (_e) { /* continue on failure */ }
+            bulkApplyBtn.textContent = 'Applying ' + (i + 1) + '/' + ids.length + '…';
+          }
+          bulkApplyBtn.textContent = '✓ ' + completed + ' applied';
+          bulkApplyBtn.disabled = false;
+          // PostHog
+          if (typeof posthog !== 'undefined') posthog.capture('pipeline_bulk_apply', { count: completed, filter_id: '', application_mode: safeReadLS('bj_application_mode', 'manual') });
+          // Re-render after short delay
+          setTimeout(function() { renderPipeline(); }, 1500);
+        });
+      }
+
+      var bulkClear = document.getElementById('pl-bulk-clear');
+      if (bulkClear) {
+        bulkClear.addEventListener('click', function() {
+          _bulkSelected.clear();
+          body.querySelectorAll('.pl-bulk-cb').forEach(function(cb) { cb.checked = false; });
+          if (selectAll) selectAll.checked = false;
+          _updateBulkUI();
+        });
+      }
+    }
   }
 
   // Update stats

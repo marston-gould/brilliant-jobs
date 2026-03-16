@@ -74,21 +74,25 @@ function renderSortPills() {
     const inUse = jobSortStack.some(s => s.field === opt.dataset.field);
     opt.classList.toggle('disabled', inUse);
 
-  // QA-010: Update table header sort indicators
+  // QA-010: Update sort indicators on table headers and sort bar buttons
   const dbToSort = { title: 'title', company_name: 'company', location: 'location', first_seen_at: 'days', level: 'level', match: 'match', salary_max: 'salary', ghost_rate: 'ghost' };
-  $$('.job-table th[data-sort]').forEach(th => {
-    th.classList.remove('sorted');
-    var arrow = th.querySelector('.sort-arrow');
+  $$('.job-table th[data-sort], .sort-btn[data-sort]').forEach(el => {
+    el.classList.remove('sorted');
+    el.style.borderColor = '';
+    el.style.color = '';
+    var arrow = el.querySelector('.sort-arrow');
     if (arrow) arrow.textContent = '↕';
   });
   if (jobSortStack.length > 0) {
     var primarySort = jobSortStack[0];
     var sortAttr = dbToSort[primarySort.field];
     if (sortAttr) {
-      var activeTh = document.querySelector('.job-table th[data-sort="' + sortAttr + '"]');
-      if (activeTh) {
-        activeTh.classList.add('sorted');
-        var arrow = activeTh.querySelector('.sort-arrow');
+      var activeEl = document.querySelector('.sort-btn[data-sort="' + sortAttr + '"], .job-table th[data-sort="' + sortAttr + '"]');
+      if (activeEl) {
+        activeEl.classList.add('sorted');
+        activeEl.style.borderColor = 'var(--accent)';
+        activeEl.style.color = 'var(--text)';
+        var arrow = activeEl.querySelector('.sort-arrow');
         if (arrow) arrow.textContent = primarySort.asc ? '↑' : '↓';
       }
     }
