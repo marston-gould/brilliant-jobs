@@ -1502,14 +1502,15 @@ async function searchJobs(page = 0) {
     if (typeof posthog !== 'undefined') {
       posthog.capture('feed_search_error', {
         error_message: e.message || String(e),
-        filters_active_count: filtersToRun ? filtersToRun.length : 0
+        filters_active_count: 0
       });
     }
 
     if (typeof toastError === 'function') toastError('Job search failed. Please try again.');
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--red);padding:32px 12px;">
+    var _errContainer = $('#job-cards-container');
+    if (_errContainer) _errContainer.innerHTML = `<div style="text-align:center;color:var(--red);padding:32px 12px;">
       <div style="font-size:13px;">Search failed: ${escapeHtml(e.message)}</div>
-    </td></tr>`;
+    </div>`;
   }
 }
 
@@ -2605,17 +2606,22 @@ function renderJobRows(jobs, total, page, filtersToRun) {
 
     // Signal badges (inline, only when data exists)
     let signalBadges = '';
-    // Verified employer
-    if (job.trust_level && job.trust_level !== 'unknown' && job.trust_level !== 'low') {
-      signalBadges += `<span style="display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:500;padding:1px 7px;border-radius:100px;background:var(--bg-success,#dcfce7);color:var(--green,#16a34a);margin-left:4px;"><i data-lucide="shield-check" style="width:10px;height:10px;"></i>Verified</span>`;
+    // Verified employer — check trust via existing cache
+    if (typeof _fraudScoreCache !== 'undefined' && _fraudScoreCache[job.greenhouse_id]) {
+      var _trustInfo = _fraudScoreCache[job.greenhouse_id];
+      if (_trustInfo.label === 'safe' || _trustInfo.label === 'verified') {
+        signalBadges += `<span style="display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:500;padding:1px 7px;border-radius:100px;background:var(--bg-success,#dcfce7);color:var(--green,#16a34a);margin-left:4px;"><i data-lucide="shield-check" style="width:10px;height:10px;"></i>Verified</span>`;
+      }
     }
-    // AI content
-    const aiScore = _aiContentScoreCache ? _aiContentScoreCache[job.greenhouse_id] : null;
-    if (aiScore && aiScore > 0.7) {
-      signalBadges += `<span style="display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:500;padding:1px 7px;border-radius:100px;background:var(--bg-warning,#fef9c3);color:var(--warm,#ca8a04);margin-left:4px;"><i data-lucide="scan-text" style="width:10px;height:10px;"></i>AI</span>`;
+    // AI content — check via existing _aiJdScoreCache
+    if (typeof _aiJdScoreCache !== 'undefined' && _aiJdScoreCache[job.greenhouse_id]) {
+      var _aiInfo = _aiJdScoreCache[job.greenhouse_id];
+      if (_aiInfo.label === 'ai_generated' || (_aiInfo.score && _aiInfo.score > 0.7)) {
+        signalBadges += `<span style="display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:500;padding:1px 7px;border-radius:100px;background:var(--bg-warning,#fef9c3);color:var(--warm,#ca8a04);margin-left:4px;"><i data-lucide="scan-text" style="width:10px;height:10px;"></i>AI</span>`;
+      }
     }
-    // Ghost reports
-    const ghostCount = _ghostReportCache ? _ghostReportCache[job.greenhouse_id] : 0;
+    // Ghost reports — check job.ghost_report_count if available
+    const ghostCount = job.ghost_report_count || 0;
     if (ghostCount > 0) {
       signalBadges += `<span style="display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:500;padding:1px 7px;border-radius:100px;background:var(--bg-danger,#fee2e2);color:var(--red,#dc2626);margin-left:4px;"><i data-lucide="x-circle" style="width:10px;height:10px;"></i>${ghostCount} ghost</span>`;
     }
