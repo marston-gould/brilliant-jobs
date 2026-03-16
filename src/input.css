@@ -434,6 +434,7 @@
     .page-header {
       padding: 28px 40px 20px; border-block-end: 1px solid var(--border);
       background: var(--bg-white);
+      position: sticky; top: 0; z-index: 10;
     }
     .page-header h2 { font-size: clamp(18px, 1.8vw + 0.5rem, 22px); font-weight: 700; margin-block-end: 2px; }
     .page-header p { font-size: 13px; color: var(--text-dim); }
