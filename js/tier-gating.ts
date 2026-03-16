@@ -14,7 +14,9 @@ var TIER_GATES: Record<TierFeature, TierGateConfig> = {
   job_log:            { free: false, starter: 10, pro: Infinity },
   ai_scoring:         { free: false, starter: false, pro: true },
   // AIS-F3-S1: Auto-apply daily submit limit (Free=0 blocked, Starter=5/day, Pro=unlimited)
-  auto_apply_daily:   { free: 0, starter: 5, pro: Infinity }
+  auto_apply_daily:   { free: 0, starter: 5, pro: Infinity },
+  // SPEC-LPG-001: AI Writing Tools daily limit
+  ai_writing_daily:   { free: 3, starter: 10, pro: Infinity }
 };
 
 function getUserTier(): TierName {

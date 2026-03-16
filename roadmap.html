@@ -11,7 +11,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v9.69"></script>
+  <script src="/js/version.js?v=v9.71"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2328,6 +2328,10 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'AIS-F11-S2 Interview Practice — Chat UI + Feedback + History', d: 'Chat UI on Pipeline page (contextual per job). Questions one at a time. Per-answer feedback (strength, gap, suggested improvement, STAR check). Aggregate scorecard at end. Session history + improvement tracking. Pipeline Interview stage auto-prompt CTA. Tier gate: Free=1, Pro=unlimited. PostHog: interview_practice_started, interview_practice_completed. Pod 3: 6d.', p: 0, e: '1 session' },
 { s: 'done', b: 'post-launch', n: 'AIS-F12-S1 Resume A/B Testing — Engine + Tables', d: 'resume_ab_tests table (user_id, test_name, filter_id, variant_a/b_resume_id, status, winner_id, min_sample_size). resume_ab_results table (test_id, job_id, variant, resume_id, applied_at, response_received, response_at, outcome, days_to_response). Round-robin assignment logic in auto-apply + bulk-apply flows. Pipeline stage outcome tracking. Tier gate: Free=none, Pro/PAYL=1 active test. Pod 2: 4d.', p: 0, e: '1 session' },
 { s: 'done', b: 'post-launch', n: 'AIS-F12-S2 Resume A/B Testing — Results Dashboard + Auto-Winner', d: 'Test creation UI on Resumes page. Per-variant metrics (applications, responses, response rate %, avg days, interview rate) with confidence intervals. Chi-squared / Fisher exact (p<0.05). Min 10/variant before metrics, min 20 before significance. Auto-winner declaration + notify + set as default. Manual override (pause/end/swap). PostHog: resume_ab_test_created, resume_ab_variant_assigned, resume_ab_winner_declared. Pod 3: 5d.', p: 0, e: '1 session' },
+// SPEC-LPG-001: LinkedIn Profile & Generator Suite
+{ s: 'done', b: 'post-launch', n: 'SPEC-LPG-001 F1+F2: AI Bullet Generator + Summary Generator', d: 'SPEC-LPG-001 Session 1. resume-rewrite-bullet EF extended with generate + summary actions. AI Writing Tools collapsible panel on Resumes tab. F1: role title + company + context + target job → 3-5 ATS bullets. F2: resume + LinkedIn + tone + target job → 2-3 professional summaries. Set as Summary writes to parsed_json.summary. Tier gate: Free 3/day, Starter 10/day, Pro unlimited. PostHog: bullet_generator_used, bullet_copied, summary_generator_used, summary_copied, summary_set. Credit: 1/gen.', p: 100, e: '1 session' },
+{ s: 'todo', b: 'post-launch', n: 'SPEC-LPG-001 F3: LinkedIn Profile Optimizer', d: 'SPEC-LPG-001 Session 2. Section-by-section scorecard (1-100). optimize-linkedin-profile EF. linkedin_optimizations table. Headline/Summary/Experience/Skills/Education. Weighted scoring. Actionable recommendations. 7-day cache. Credit: 2/analysis.', p: 0, e: '1 session' },
+{ s: 'todo', b: 'post-launch', n: 'SPEC-LPG-001 F4: LinkedIn Summary Generator + Polish', d: 'SPEC-LPG-001 Session 3. Generate optimized LinkedIn About section (3-5 paragraphs, max 2600 chars). 2 tone variants. Auto-suggest when optimizer summary score < 70. Credit: 1/gen.', p: 0, e: '1 session' },
 { s: 'todo', b: 'post-launch', n: 'LP-IMAGES Landing Page Screenshots', d: 'Replace placeholder hero-dashboard-preview.webp and all benefit section image_url entries with real WebP screenshots once product is stable. Hero: job feed with salary data + match score badge. Benefit sections: 4 screenshots per section spec (sourcing, resume scoring, automated apply, pipeline). All images: WebP, lazy-loaded, inside browser-frame chrome.', p: 0, e: '1 session' },
 ];
 

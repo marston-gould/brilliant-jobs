@@ -3717,3 +3717,11 @@ Phase S is complete when ALL of the following are true:
 | AIS-F11-S2 | Interview Practice — Chat UI + Feedback + History — Chat UI on Pipeline page (contextual per job). Per-answer feedback. Aggregate scorecard. Session history + improvement tracking. Pipeline 'Interview' stage CTA. Tier gate: Free=1, Pro=unlimited. PostHog: interview_practice_started, interview_practice_completed. | ✅ | v9.68 — chat UI: type select, answer submit, feedback/follow-up, PostHog events. |
 | AIS-F12-S1 | Resume A/B Testing — Engine + Tables — resume_ab_tests + resume_ab_results tables. Round-robin assignment logic hooked into apply flows. Pipeline stage outcome tracking. Tier gate: Free=none, Pro/PAYL=1 active test. | ✅ | v9.68 — resume_ab_tests+results migrations, resume-ab-assign EF, chi-squared. |
 | AIS-F12-S2 | Resume A/B Testing — Results Dashboard + Auto-Winner — Test creation UI. Per-variant metrics with confidence intervals. Chi-squared / Fisher's exact significance testing (p<0.05). Auto-winner declaration. Manual override. PostHog: resume_ab_test_created, resume_ab_variant_assigned, resume_ab_winner_declared. | ✅ | v9.68 — A/B test dashboard, metrics cards, bar chart, winner declaration, PostHog. |
+
+## SPEC-LPG-001: LinkedIn Profile & Generator Suite
+
+| ID | Item | Status | Notes |
+|----|------|--------|-------|
+| LPG-S1 | AI Bullet Point Generator (F1) + AI Summary Generator (F2) — resume-rewrite-bullet EF extended with generate + summary actions. AI Writing Tools collapsible panel on Resumes tab. Bullet generator: role title + company + context + target job → 3-5 ATS bullets. Summary generator: resume + LinkedIn + tone + target job → 2-3 professional summaries. Set as Summary writes to parsed_json.summary. Tier gate: Free 3/day, Starter 10/day, Pro unlimited. PostHog: bullet_generator_used, bullet_copied, summary_generator_used, summary_copied, summary_set. 57 tests. | ✅ | v9.71 |
+| LPG-S2 | LinkedIn Profile Optimizer (F3) — Section-by-section scorecard (1-100). optimize-linkedin-profile EF. linkedin_optimizations table. 7-day cache. Credit: 2/analysis. | 🔲 | |
+| LPG-S3 | LinkedIn Summary Generator (F4) + Integration Polish — LinkedIn About section (3-5 paragraphs, max 2600 chars). Auto-suggest when optimizer summary score < 70. Credit: 1/gen. | 🔲 | |

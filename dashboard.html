@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v9.69 -->
+<!-- Brilliant Jobs Dashboard v9.71 -->
 <html lang="en">
 <head>
   <!-- CS-P1-009: Theme flash prevention — must be first script -->
@@ -19,21 +19,21 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="/js/vendor/supabase.min.js" defer></script>
-  <script src="/js/pipeline-migration.js?v=v9.69" defer></script>
-  <script src="/js/notification-center.js?v=v9.69" defer></script>
+  <script src="/js/pipeline-migration.js?v=v9.71" defer></script>
+  <script src="/js/notification-center.js?v=v9.71" defer></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" integrity="sha384-nFoSjZIoH3CCp8W639jJyQkuPHinJ2NHe7on1xvlUA7SuGfJAfvMldrsoAVm6ECz" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" integrity="sha384-eEu5CTj3qGvu9PdJuS+YlkNi7d2XxQROAFYOr59zgObtlcux1ae1Il3u7jvdCSWu" crossorigin="anonymous"></script>
   <!-- CS-014: CX-09 — ECharts lazy-loaded by stats.js when Stats tab opens -->
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js" integrity="sha384-TcLTgu6flPhnZ5dfHnHimsxNFjYWN0povfGgnOvgPJKbZe6IbuoC2ociiatSHl9E" crossorigin="anonymous"></script>
   <!-- CS-016 FIX-10: Code-split chunks — shell (globals+routing) + feed (job list) loaded eagerly; all other chunks lazy-loaded on tab switch -->
-  <script src="dist/dashboard-shell.min.js?v=v9.69" defer></script>
-  <script src="dist/dashboard-feed.min.js?v=v9.69" defer></script>
+  <script src="dist/dashboard-shell.min.js?v=v9.71" defer></script>
+  <script src="dist/dashboard-feed.min.js?v=v9.71" defer></script>
   <!-- CS-P1-002: dashboard inline scripts externalized (pdfjs, preload, feedback, insights, a11y) -->
-  <script src="js/dashboard-inline.js?v=v9.69" defer></script>
+  <script src="js/dashboard-inline.js?v=v9.71" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=v9.69">
+  <link rel="stylesheet" href="styles.css?v=v9.71">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -108,11 +108,11 @@
     </style>
   <!-- CSS extracted to styles.css in v3.28 -->
   <!-- A13: PostHog analytics — CS-P1-002: externalized for CSP compliance -->
-  <script src="js/posthog-dashboard.js?v=v9.69" defer></script>
-  <script src="js/posthog-perf.js?v=v9.69" defer></script>
-  <script src="js/feature-flags.js?v=v9.69" defer></script>
-  <script src="js/structured-logger.js?v=v9.69" defer></script>
-  <script src="js/theme.js?v=v9.69" defer></script>
+  <script src="js/posthog-dashboard.js?v=v9.71" defer></script>
+  <script src="js/posthog-perf.js?v=v9.71" defer></script>
+  <script src="js/feature-flags.js?v=v9.71" defer></script>
+  <script src="js/structured-logger.js?v=v9.71" defer></script>
+  <script src="js/theme.js?v=v9.71" defer></script>
 </head>
 <body>
 
@@ -1449,6 +1449,74 @@
               <h4>Drop resumes here or click to upload</h4>
               <p>PDF, DOC, or DOCX — up to 5MB each</p>
           </div>
+
+          <!-- AI Writing Tools (SPEC-LPG-001 F1+F2) -->
+          <details id="ai-writing-tools" style="margin-bottom:20px;">
+            <summary class="card" style="padding:14px 18px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;">
+              <i data-lucide="sparkles" class="icon-md" style="color:var(--accent);"></i>
+              <span style="font-weight:700;font-size:13px;">AI Writing Tools</span>
+              <span style="font-size:10px;color:var(--text-faint);margin-left:auto;">Bullet Generator &middot; Summary Generator</span>
+              <i data-lucide="chevron-down" class="icon-sm" style="color:var(--text-dim);transition:transform 0.2s;"></i>
+            </summary>
+            <div class="card" style="padding:20px;margin-top:-1px;border-top:1px solid var(--border);">
+
+              <!-- F1: AI Bullet Point Generator -->
+              <div style="margin-bottom:24px;">
+                <div style="font-weight:700;font-size:12px;margin-bottom:10px;">Generate Bullet Points</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+                  <div>
+                    <label style="font-size:10px;color:var(--text-dim);display:block;margin-bottom:2px;">Role Title <span style="color:var(--warm);">*</span></label>
+                    <input type="text" id="bg-role-title" class="input" placeholder="e.g. Senior Product Manager" style="font-size:12px;">
+                  </div>
+                  <div>
+                    <label style="font-size:10px;color:var(--text-dim);display:block;margin-bottom:2px;">Company (optional)</label>
+                    <input type="text" id="bg-company" class="input" placeholder="e.g. Google" style="font-size:12px;">
+                  </div>
+                </div>
+                <div style="margin-bottom:8px;">
+                  <label style="font-size:10px;color:var(--text-dim);display:block;margin-bottom:2px;">Context / Achievements (optional)</label>
+                  <textarea id="bg-context" class="input" placeholder="e.g. managed $3M/mo paid budget, grew team from 4 to 12" rows="2" style="font-size:12px;resize:vertical;"></textarea>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <select id="bg-target-job" class="input" style="font-size:11px;flex:1;max-width:260px;">
+                    <option value="">No target job (general)</option>
+                  </select>
+                  <button class="btn btn-sm btn-primary" id="bg-generate-btn" onclick="window._bjGenerateBullets()">Generate Bullets</button>
+                </div>
+                <div id="bg-results" style="margin-top:12px;"></div>
+              </div>
+
+              <hr style="border:none;border-top:1px solid var(--border);margin:0 0 20px;">
+
+              <!-- F2: AI Summary Generator -->
+              <div>
+                <div style="font-weight:700;font-size:12px;margin-bottom:10px;">Generate Professional Summary</div>
+                <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+                  <div style="flex:1;min-width:160px;">
+                    <label style="font-size:10px;color:var(--text-dim);display:block;margin-bottom:2px;">Resume</label>
+                    <select id="sg-resume-select" class="input" style="font-size:11px;"></select>
+                  </div>
+                  <div style="min-width:120px;">
+                    <label style="font-size:10px;color:var(--text-dim);display:block;margin-bottom:2px;">Tone</label>
+                    <select id="sg-tone" class="input" style="font-size:11px;">
+                      <option value="professional">Professional</option>
+                      <option value="executive">Executive</option>
+                      <option value="technical">Technical</option>
+                    </select>
+                  </div>
+                  <div style="min-width:160px;">
+                    <label style="font-size:10px;color:var(--text-dim);display:block;margin-bottom:2px;">Target Job (optional)</label>
+                    <select id="sg-target-job" class="input" style="font-size:11px;">
+                      <option value="">No target job</option>
+                    </select>
+                  </div>
+                  <button class="btn btn-sm btn-primary" id="sg-generate-btn" onclick="window._bjGenerateSummary()">Generate Summary</button>
+                </div>
+                <div id="sg-results" style="margin-top:12px;"></div>
+              </div>
+
+            </div>
+          </details>
 
           <!-- Resume Cards Grid -->
           <div class="resume-grid" id="resume-grid">
