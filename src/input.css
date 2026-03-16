@@ -2697,7 +2697,17 @@
       .ai-interview-preview { flex-direction: column; }
     }
 
-    /* mobile nav — v4.78d */
+    /* ════════════════════════════════════════════════════════════
+       MOBILE RESPONSIVE — v9.78
+       3 tiers: 768px (tablet), 640px (phone), 480px (small phone)
+       ════════════════════════════════════════════════════════════ */
+
+    /* Mobile header + bottom nav + overlay: hidden by default */
+    .mobile-header { display: none; }
+    .mobile-bottom-nav { display: none; }
+    .mobile-nav-overlay { display: none; }
+
+    /* ── TIER 1: Tablet (641–768px) — icon-only sidebar ── */
     @media (max-width: 768px) {
       .nav { width: 60px; overflow: hidden; }
       .nav-brand-text, .nav-item span, .nav-badge, .nav-user-info, .nav-section-label { display: none; }
@@ -2724,6 +2734,208 @@
       .page-body { padding: 20px; }
       .page-header { padding: 20px; }
       .stat-grid { grid-template-columns: repeat(2, 1fr); }
+      /* Feed content */
+      .sort-bar { font-size: 11px; }
+      .feed-intel { grid-template-columns: 1fr; }
+    }
+
+    /* ── TIER 2: Phone (≤640px) — hamburger drawer + bottom nav ── */
+    @media (max-width: 640px) {
+      /* Hide sidebar entirely — drawer mode */
+      .nav {
+        width: 280px;
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+        z-index: 1010;
+      }
+      .nav.nav-open {
+        transform: translateX(0);
+      }
+      /* Restore text labels inside the drawer */
+      .nav-brand-text, .nav-item span, .nav-badge, .nav-user-info, .nav-section-label { display: revert; }
+      .nav-item { justify-content: flex-start; padding: 10px 16px; }
+      .nav-brand { padding: 18px 20px; justify-content: flex-start; }
+      .nav-menu { padding: 8px 6px; }
+      .nav-footer { padding: 10px 12px; }
+      .nav-user { justify-content: flex-start; padding: 6px 0; }
+      .nav-avatar { width: 32px; height: 32px; font-size: 12px; }
+      .btn-logout { padding: 6px 12px; font-size: 11px; }
+      .credit-balance { padding: 6px 10px; margin: 4px 0; justify-content: flex-start; }
+      .credit-balance-label { display: inline !important; }
+
+      /* Overlay backdrop */
+      .mobile-nav-overlay {
+        display: block;
+        position: fixed; inset: 0; z-index: 1005;
+        background: rgba(0,0,0,0.45);
+        backdrop-filter: blur(2px);
+        opacity: 0; pointer-events: none;
+        transition: opacity 0.25s ease;
+      }
+      .mobile-nav-overlay.active {
+        opacity: 1; pointer-events: auto;
+      }
+
+      /* Mobile top header */
+      .mobile-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        z-index: 1000;
+        height: 52px;
+        padding: 0 16px;
+        background: var(--nav-bg);
+        border-block-end: 1px solid rgba(255,255,255,0.08);
+      }
+      .mobile-hamburger {
+        background: none; border: none; color: #fff; cursor: pointer;
+        width: 36px; height: 36px; padding: 6px;
+        display: flex; align-items: center; justify-content: center;
+        border-radius: 8px; flex-shrink: 0;
+      }
+      .mobile-hamburger:active { background: rgba(255,255,255,0.1); }
+      .mobile-hamburger svg { width: 22px; height: 22px; }
+      .mobile-brand {
+        font-size: 15px; font-weight: 700; color: #fff;
+        display: flex; align-items: center; gap: 8px;
+        flex: 1; min-width: 0;
+      }
+      .mobile-mark {
+        width: 26px; height: 26px; background: #fff; border-radius: 6px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 12px; font-weight: 800; color: var(--nav-bg); flex-shrink: 0;
+      }
+      .mobile-credits {
+        background: rgba(255,255,255,0.1); border-radius: 6px;
+        padding: 4px 10px; cursor: pointer; flex-shrink: 0;
+      }
+      .mobile-credits-count {
+        font-size: 12px; font-weight: 700; color: #22c55e;
+        font-family: var(--mono);
+      }
+
+      /* Mobile bottom navigation */
+      .mobile-bottom-nav {
+        display: flex;
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        z-index: 999;
+        height: 56px;
+        background: var(--bg-card);
+        border-block-start: 1px solid var(--border);
+        padding: 0; margin: 0;
+        box-shadow: 0 -2px 12px rgba(0,0,0,0.06);
+      }
+      .mbn-item {
+        flex: 1;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 2px;
+        background: none; border: none; cursor: pointer;
+        color: var(--text-faint); font-family: var(--sans);
+        padding: 4px 0;
+        transition: color 0.15s;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .mbn-item svg {
+        width: 20px; height: 20px; flex-shrink: 0;
+      }
+      .mbn-item span {
+        font-size: 10px; font-weight: 600; line-height: 1;
+      }
+      .mbn-item.active {
+        color: var(--accent);
+      }
+      .mbn-item:active {
+        color: var(--accent); opacity: 0.7;
+      }
+
+      /* Main content adjustments */
+      .main {
+        margin-inline-start: 0;
+        padding-top: 52px;
+        padding-bottom: 60px;
+        height: 100vh;
+        overflow-y: auto;
+      }
+      .page-body { padding: 14px; }
+      .page-header { padding: 14px 14px 12px; }
+      .page-header h2 { font-size: 17px; }
+
+      /* Cards */
+      .card { padding: 16px; margin-block-end: 12px; border-radius: 10px; }
+
+      /* Stat grid */
+      .stat-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+      .stat-card { padding: 12px; }
+      .stat-val { font-size: 20px; }
+      .stat-label { font-size: 10px; }
+
+      /* Sort bar */
+      .sort-bar {
+        overflow-x: auto; -webkit-overflow-scrolling: touch;
+        flex-wrap: nowrap; gap: 6px; padding: 6px 10px;
+      }
+      .sort-pills { flex-wrap: nowrap; gap: 4px; }
+
+      /* Feed hero blocks */
+      .feed-hero, .gs-hero, .setup-hero, .tuning-hero, .resume-hero,
+      .app-hero, .ghost-hero, .referral-hero {
+        padding: 16px 14px; margin-bottom: 10px;
+      }
+
+      /* Hero stats */
+      .hero-stats { flex-wrap: wrap; gap: 4px; }
+      .hero-stat { padding: 4px 8px; }
+      .hero-stat-val { font-size: 14px; }
+      .hero-stat-label { font-size: 9px; }
+
+      /* Filter browser */
+      .filter-pills { flex-wrap: wrap; gap: 4px; }
+      .filter-pill { font-size: 11px; padding: 4px 8px; }
+
+      /* Tab bars */
+      .tab-bar, .sub-tab-bar {
+        overflow-x: auto; -webkit-overflow-scrolling: touch;
+        flex-wrap: nowrap; gap: 0; padding: 0 4px;
+        scrollbar-width: none;
+      }
+      .tab-bar::-webkit-scrollbar, .sub-tab-bar::-webkit-scrollbar { display: none; }
+      .tab-btn, .sub-tab-btn { white-space: nowrap; flex-shrink: 0; padding: 8px 12px; font-size: 12px; }
+
+      /* Tables in cards */
+      .card table { font-size: 11px; }
+      .card th, .card td { padding: 6px 8px; }
+
+      /* Modals */
+      .modal, .sg-modal { width: 95vw; max-width: none; margin: 16px auto; border-radius: 12px; }
+
+      /* Slide panels */
+      .rw-panel, .apply-panel { width: 100vw; }
+
+      /* Feedback button — move above bottom nav */
+      .feedback-btn { bottom: 68px; right: 12px; }
+
+      /* Help panel — full width on mobile */
+      #page-help-panel { width: calc(100vw - 24px) !important; right: 12px !important; bottom: 68px !important; }
+
+      /* Trial banner */
+      #trial-banner { margin-inline-start: 0 !important; }
+    }
+
+    /* ── TIER 3: Small phone (≤420px) ── */
+    @media (max-width: 420px) {
+      .page-body { padding: 10px; }
+      .page-header { padding: 12px 10px; }
+      .card { padding: 12px; }
+      .stat-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+      .stat-card { padding: 10px; }
+      .stat-val { font-size: 18px; }
+      .mobile-brand { font-size: 14px; }
+      .hero-stats { gap: 3px; }
+      .hero-stat { padding: 3px 6px; font-size: 10px; }
+      .sort-bar { padding: 4px 8px; }
     }
 
 
