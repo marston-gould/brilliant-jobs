@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.95';
+var BJ_VERSION = 'v9.96';
 // Populate version display elements after DOM is ready
 (function() {
   var el = document.getElementById('nav-version');
@@ -3764,6 +3764,16 @@ function updateOnboardingStep(step) {
   if (step > current) {
     localStorage.setItem('bj_onboarding_step', String(step));
     applyProgressiveNav(step);
+    // CRON-COST-OPT T2: Trigger enrichment when user reaches step 2+ (has filter + resume)
+    if (step >= 2 && current < 2 && typeof currentUser !== 'undefined' && currentUser) {
+      try {
+        fetch(SUPABASE_URL + '/functions/v1/enrich-job-ondemand', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_KEY },
+          body: JSON.stringify({ trigger: 'onboarding', user_id: currentUser.id }),
+        }).catch(function() {}); // fire-and-forget
+      } catch (_) { /* non-fatal */ }
+    }
   }
 }
 
