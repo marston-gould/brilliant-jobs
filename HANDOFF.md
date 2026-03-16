@@ -3994,10 +3994,12 @@ Deliverables:
 
 **ALL 28 SESSIONS COMPLETE** ✅ — SPEC-AIS-001 Application Intelligence Suite delivered in full.
 
-Pending Marston manual steps:
-- `supabase db push` — migrations v9.56 through v9.69
-- Deploy EFs: build-resume, interview-practice, resume-ab-assign, bulk-apply-queue, answer-form-question, generate-cover-letter, parse-linkedin-pdf
-- Create linkedin-profiles Storage bucket in Supabase dashboard
+DEPLOYED:
+- All 11 AIS tables created via Management API ✅
+- All 3 credit RPCs (deduct_credits, add_credits, get_credit_balance) live ✅
+- All 9 EFs deployed (parse-linkedin-pdf, answer-form-question, generate-cover-letter, rewrite-resume-analyze, rewrite-resume-execute, bulk-apply-queue, build-resume, interview-practice, resume-ab-assign) ✅
+- Storage buckets verified: linkedin-profiles, rewrites, resumes ✅
+- No manual steps remaining.
 
 **Entry Gate:**
 - [ ] Confirm `answers` table exists in Supabase (migration v9.56 applied)
@@ -4052,7 +4054,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.68`** | **AIS Phase D complete: F9/F10/F7/F11/F12 all sessions. 102 tests.** |
+| **Product (BJ_VERSION)** | **`v9.68`** | **SPEC-AIS-001 COMPLETE + DEPLOYED. All 28 sessions, 11 tables, 9 EFs, 3 buckets live.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
