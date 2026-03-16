@@ -173,7 +173,10 @@ function incrementAutoApplyDailyCount(): void {
     rec.date = today;
     rec.count = (rec.count || 0) + 1;
     localStorage.setItem(_AUTO_APPLY_STORAGE_KEY, JSON.stringify(rec));
-  } catch (e) { /* non-fatal */ }
+  } catch (e) {
+    // AUDIT-D2-009: was silent — localStorage failure means daily limit undercounted
+    if (typeof reportError === 'function') reportError('tier-gating:increment', e as Error);
+  }
 }
 
 function checkAutoApplyTierGate(): { allowed: boolean; tier: string; limit: number; remaining: number; requiresTier: string | null } {

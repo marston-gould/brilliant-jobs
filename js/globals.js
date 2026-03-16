@@ -832,6 +832,12 @@ var _NETWORK_TOAST_THROTTLE_MS = 1e4;
 function initGlobalErrorHandlers() {
   window.addEventListener("error", function(event) {
     console.error("[BJ] Uncaught error:", event.message, "at", event.filename + ":" + event.lineno);
+    reportError("uncaught_error", new Error(event.message || "Unknown error"), {
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno,
+      handler: "window.onerror"
+    });
   });
   window.addEventListener("unhandledrejection", function(event) {
     var reason = event.reason;
@@ -857,6 +863,9 @@ function initGlobalErrorHandlers() {
       return;
     }
     console.error("[BJ] Unhandled promise rejection:", msg);
+    reportError("unhandled_rejection", reason instanceof Error ? reason : new Error(msg), {
+      handler: "unhandledrejection"
+    });
   });
 }
 var _errorBatch = [];

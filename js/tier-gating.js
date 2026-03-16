@@ -143,6 +143,7 @@ function incrementAutoApplyDailyCount() {
     rec.count = (rec.count || 0) + 1;
     localStorage.setItem(_AUTO_APPLY_STORAGE_KEY, JSON.stringify(rec));
   } catch (e) {
+    if (typeof reportError === "function") reportError("tier-gating:increment", e);
   }
 }
 function checkAutoApplyTierGate() {

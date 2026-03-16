@@ -111,7 +111,7 @@ async function _flushDashboardActivity() {
         'Authorization': 'Bearer ' + token
       },
       body: JSON.stringify({ action: 'batch', items: batch })
-    }).catch(function() {}); // fire-and-forget
+    }).catch(function(e) { if (typeof reportError === 'function') reportError('activity-log:flush', e); }); // AUDIT-D2-004: was fire-and-forget
   } catch (e) {
     if (typeof reportError === 'function') reportError('af006_flush', e);
   }

@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.69';
+var BJ_VERSION = 'v9.70';
 
 
 // === js/globals.ts ===
@@ -1113,6 +1113,13 @@ var _NETWORK_TOAST_THROTTLE_MS = 10000; // 10s between network error toasts
 function initGlobalErrorHandlers(): void {
   window.addEventListener('error', function(event) {
     console.error('[BJ] Uncaught error:', event.message, 'at', event.filename + ':' + event.lineno);
+    // AUDIT-D2-002: route uncaught errors to reportError (previously console-only)
+    reportError('uncaught_error', new Error(event.message || 'Unknown error'), {
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno,
+      handler: 'window.onerror'
+    });
   });
 
   window.addEventListener('unhandledrejection', function(event) {
@@ -1141,7 +1148,11 @@ function initGlobalErrorHandlers(): void {
       console.warn('[BJ] Network error while online (reported + user notified):', msg);
       return;
     }
+    // AUDIT-D2-003: non-network rejections were console-only — now route to reportError
     console.error('[BJ] Unhandled promise rejection:', msg);
+    reportError('unhandled_rejection', reason instanceof Error ? reason : new Error(msg), {
+      handler: 'unhandledrejection'
+    });
   });
 }
 
@@ -1783,7 +1794,10 @@ function incrementAutoApplyDailyCount(): void {
     rec.date = today;
     rec.count = (rec.count || 0) + 1;
     localStorage.setItem(_AUTO_APPLY_STORAGE_KEY, JSON.stringify(rec));
-  } catch (e) { /* non-fatal */ }
+  } catch (e) {
+    // AUDIT-D2-009: was silent — localStorage failure means daily limit undercounted
+    if (typeof reportError === 'function') reportError('tier-gating:increment', e as Error);
+  }
 }
 
 function checkAutoApplyTierGate(): { allowed: boolean; tier: string; limit: number; remaining: number; requiresTier: string | null } {
@@ -30509,7 +30523,7 @@ async function _flushDashboardActivity() {
         'Authorization': 'Bearer ' + token
       },
       body: JSON.stringify({ action: 'batch', items: batch })
-    }).catch(function() {}); // fire-and-forget
+    }).catch(function(e) { if (typeof reportError === 'function') reportError('activity-log:flush', e); }); // AUDIT-D2-004: was fire-and-forget
   } catch (e) {
     if (typeof reportError === 'function') reportError('af006_flush', e);
   }
@@ -36793,7 +36807,7 @@ window.loadBulkProgress = window.loadBulkProgress;
           var resumes = raw ? JSON.parse(raw) : [];
           var active = resumes.find(function (r) { return r.is_active || r.isActive; }) || resumes[0];
           if (active) resumeText = active.extractedText || active.text || '';
-        } catch (_) {}
+        } catch (e) { if (typeof reportError === 'function') reportError('cover-letter:resume-fetch', e); }
       }
 
       // Get JD from pipeline entry if jobId present
@@ -36804,7 +36818,7 @@ window.loadBulkProgress = window.loadBulkProgress;
           if (jdRes.data) {
             jd = (jdRes.data.description || '').replace(/<[^>]+>/g, ' ').slice(0, 4000);
           }
-        } catch (_) {}
+        } catch (e) { if (typeof reportError === 'function') reportError('cover-letter:jd-fetch', e); }
       }
 
       var resp = await fetch('https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/generate-cover-letter', {
@@ -36865,7 +36879,7 @@ window.loadBulkProgress = window.loadBulkProgress;
         .limit(10);
       _clHistory = res.data || [];
       _clRenderHistory();
-    } catch (_) {}
+    } catch (e) { if (typeof reportError === 'function') reportError('cover-letter:history', e); }
   }
 
   function _clRenderHistory() {

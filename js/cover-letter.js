@@ -94,7 +94,7 @@
           var resumes = raw ? JSON.parse(raw) : [];
           var active = resumes.find(function (r) { return r.is_active || r.isActive; }) || resumes[0];
           if (active) resumeText = active.extractedText || active.text || '';
-        } catch (_) {}
+        } catch (e) { if (typeof reportError === 'function') reportError('cover-letter:resume-fetch', e); }
       }
 
       // Get JD from pipeline entry if jobId present
@@ -105,7 +105,7 @@
           if (jdRes.data) {
             jd = (jdRes.data.description || '').replace(/<[^>]+>/g, ' ').slice(0, 4000);
           }
-        } catch (_) {}
+        } catch (e) { if (typeof reportError === 'function') reportError('cover-letter:jd-fetch', e); }
       }
 
       var resp = await fetch('https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/generate-cover-letter', {
@@ -166,7 +166,7 @@
         .limit(10);
       _clHistory = res.data || [];
       _clRenderHistory();
-    } catch (_) {}
+    } catch (e) { if (typeof reportError === 'function') reportError('cover-letter:history', e); }
   }
 
   function _clRenderHistory() {

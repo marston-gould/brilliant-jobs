@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.69';
+var BJ_VERSION = 'v9.70';
 
 
 // === js/globals.ts ===
@@ -1113,6 +1113,13 @@ var _NETWORK_TOAST_THROTTLE_MS = 10000; // 10s between network error toasts
 function initGlobalErrorHandlers(): void {
   window.addEventListener('error', function(event) {
     console.error('[BJ] Uncaught error:', event.message, 'at', event.filename + ':' + event.lineno);
+    // AUDIT-D2-002: route uncaught errors to reportError (previously console-only)
+    reportError('uncaught_error', new Error(event.message || 'Unknown error'), {
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno,
+      handler: 'window.onerror'
+    });
   });
 
   window.addEventListener('unhandledrejection', function(event) {
@@ -1141,7 +1148,11 @@ function initGlobalErrorHandlers(): void {
       console.warn('[BJ] Network error while online (reported + user notified):', msg);
       return;
     }
+    // AUDIT-D2-003: non-network rejections were console-only — now route to reportError
     console.error('[BJ] Unhandled promise rejection:', msg);
+    reportError('unhandled_rejection', reason instanceof Error ? reason : new Error(msg), {
+      handler: 'unhandledrejection'
+    });
   });
 }
 

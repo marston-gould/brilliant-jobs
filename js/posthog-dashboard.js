@@ -15,3 +15,15 @@ posthog.init('phc_RqMlQQfq0G0DOikTlgyRO43USYm1h4Jd1aBneeIR6ww', {
 });
 // CS-003: Start exception autocapture for error tracking (DO-001)
 if (posthog.startExceptionAutocapture) posthog.startExceptionAutocapture();
+
+// AUDIT-D2-001: Define capturePostHog — called in 7 places across 5 modules but was never defined.
+// All calls (cover_letter_generated, linkedin_pdf_uploaded, bulk_apply_*, resume_rewrite_*,
+// auto_apply_consumer_triggered) were silently no-oping. This wrapper is safe to call before
+// PostHog is fully initialised — PostHog stubs capture() during async load.
+window.capturePostHog = function(event, props) {
+  if (typeof posthog !== 'undefined' && typeof posthog.capture === 'function') {
+    posthog.capture(event, props || {});
+  } else if (typeof reportError === 'function') {
+    reportError('capturePostHog:posthog-unavailable', new Error('PostHog not ready when capturing: ' + event));
+  }
+};
