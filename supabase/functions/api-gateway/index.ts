@@ -259,6 +259,9 @@ const ROUTE_REGISTRY: Record<string, string> = {
   "admin-user-manager":          "admin-user-manager",          // SPEC-ADMIN-002-S1: User List + Detail + mutations (#133)
   "admin-cohort-manager":        "admin-cohort-manager",        // SPEC-ADMIN-002-S1: Cohort CRUD (#134)
   "admin-credit-action":         "admin-credit-action",         // SPEC-ADMIN-002-S1: Admin credit grant/deduct (#135)
+  "admin-billing-manager":       "admin-billing-manager",       // SPEC-ADMIN-002-S2: Billing Manager (#136)
+  "admin-filter-prompt":         "admin-filter-prompt",         // SPEC-ADMIN-002-S2: Filter & Prompt Manager (#137)
+  "admin-audit-log":             "admin-audit-log",             // SPEC-ADMIN-002-S2: Audit Log Viewer (#138)
 
   // ═══════════════════════════════════════════════════════════════════════════
   // TOTAL: 129 routes (128 prev + 1 FB-INTPREP-001-S3). Direct paths deprecated.

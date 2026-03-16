@@ -3840,6 +3840,13 @@ None.
 
 ## Last Completed Session
 
+**SPEC-ADMIN-002-S2** — Admin Control Panel: Billing, Filter/Prompt, Audit Log ✅
+- v9.81→v9.82 — admin-billing-manager EF (#136): list_subscriptions (status/cohort filter, pagination, profile join), global_ledger (user_id/event_type filter), cancel_subscription (Stripe DELETE, cancel_immediately or at period end, audit log, PostHog), apply_discount (Stripe coupon create+apply, audit log). admin-filter-prompt EF (#137): list/upsert/soft-delete filters with audit; list/get/save prompts (version increment, deactivate old version, {{variable}} extraction + required variable validation returning 400 with missing list, audit log), restore_prompt_version. admin-audit-log EF (#138): read-only, admin JWT required, filter by actor/action_filter/target_type/search/date_from/date_to, paginated, profiles join for actor email. JS: admin-billing.js (Subscriptions tab: list+cancel+period-end vs immediate confirmation; Global Ledger tab: debounced user filter + event_type filter), admin-filter-prompt.js (Filters tab: list+editor modal; Prompts tab: list+editor with live {{var}} detection, missing var error surfaced to admin), admin-audit-log-viewer.js (search+filters, expandable before/after JSON diff per row, pagination). admin.html 3 panels + 3 script tags. admin.js 3 subpages. COHORT GAP-14 closed: rewrite.js 402 handler now reads cost/shortfall from response. 87/87 tests passing. All EFs deployed.
+
+---
+
+## Last Completed Session
+
 **SPEC-ADMIN-002-S1** — Admin Control Panel: Foundation ✅
 - v9.80→v9.81 — DB: admin_audit_log (immutable audit trail, RLS admin-read SELECT / service_role ALL, 4 indexes), prompt_templates (name/feature/role/template/model/tokens/temperature/version/is_active), filter_config (key/label/type CHECK/options/weight/is_active/sort_order), cohort_tiers.is_archived (soft-delete). EFs: admin-user-manager (#133) list+search+filter+paginate+detail(profile/sub/balance/ledger)+update_profile+reassign_cohort; admin-cohort-manager (#134) list+create+update(price-change warning)+archive(blocks on active members); admin-credit-action (#135) grant/deduct with reason, balance floor guard, audit log, admin_credit_action_failed PostHog. JS: admin-user-manager.js (User List + detail drawer 3 tabs: Profile/Cohort/Credits, credit form hitting admin-credit-action), admin-cohort-manager-full.js (Cohort List + Editor modal all fields + price warning). admin.js cohort-manager subpage registered. 93/93 tests passing. All EFs deployed.
 
@@ -4102,7 +4109,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.81`** | **SPEC-ADMIN-002-S1: admin_audit_log, prompt_templates, filter_config tables. 3 admin EFs (#133-135). User Manager + Cohort Manager JS + panels. 93 tests.** |
+| **Product (BJ_VERSION)** | **`v9.82`** | **SPEC-ADMIN-002-S2: Billing Manager, Filter+Prompt Manager, Audit Log. EFs #136-138. COHORT GAP-14 fixed. 87 tests. SPEC-ADMIN-002 COMPLETE.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

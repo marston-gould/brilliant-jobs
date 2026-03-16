@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.81';
+var BJ_VERSION = 'v9.82';
 
 
 // === js/globals.ts ===
@@ -1415,6 +1415,12 @@ var ADMIN_SUBPAGE_MAP = {
   'users':          { section: 'audience',    label: 'User Manager',   init: function(){ loadUsersTab(); } },
   'cohort-manager': { section: 'audience',    label: 'Cohort Manager', init: function(){ loadCohortManagerTab(); } },
   'feedback':       { section: 'audience',    label: 'Feedback',       init: function(){ loadFeedbackTab(); } },
+  // ── Billing Manager (SPEC-ADMIN-002-S2) ──
+  'billing-manager':{ section: 'business',    label: 'Billing Manager',init: function(){ loadBillingManagerTab(); } },
+  // ── Filter & Prompt Manager (SPEC-ADMIN-002-S2) ──
+  'filter-prompt':  { section: 'growth',      label: 'Filters & Prompts',init: function(){ loadFilterPromptTab(); } },
+  // ── Audit Log (SPEC-ADMIN-002-S2) ──
+  'audit-log':      { section: 'compliance',  label: 'Audit Log',      init: function(){ loadAuditLogTab(); } },
   'cohort-pricing': { section: 'audience',    label: 'Cohort Pricing', init: function(){ loadCohortPricingPanel(); } },
   // ── Business ──
   'revenue':        { section: 'business',    label: 'Revenue',        init: function(){ loadRevenueTab(); } },

@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.81';
+var BJ_VERSION = 'v9.82';
 
 
 // === js/globals.ts ===
@@ -26745,8 +26745,14 @@ async function _rwStartAnalysis() {
 
     if (!res.ok || !data.success) {
       var errMsg = data.error || 'Analysis failed';
-      if (data.error === 'insufficient_credits') {
-        errMsg = 'Insufficient credits (3 required, you have ' + (data.balance || 0) + ')';
+      if (data.error === 'INSUFFICIENT_CREDITS' || data.error === 'insufficient_credits') {
+        // SPEC-COHORT-001 GAP-14: Show specific cost and shortfall from 402 response
+        var cost = data.cost || 0;
+        var bal = data.balance?.total ?? data.balance ?? 0;
+        var shortfall = data.shortfall || (cost - bal);
+        errMsg = 'Not enough credits — this action costs ' + cost + ' credits, you have ' + bal + '.' +
+          (shortfall > 0 ? ' You need ' + shortfall + ' more.' : '') +
+          (data.upgrade_cta ? ' Upgrade for more credits.' : '');
       } else if (data.error === 'resume_text_not_found') {
         errMsg = 'Resume text not synced yet. Open your resume on the Resumes page, then try again.';
       } else if (data.error === 'jd_too_brief') {
