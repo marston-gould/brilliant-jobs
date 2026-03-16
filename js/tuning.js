@@ -588,11 +588,11 @@ let industryDropdownIdx = -1;
 
 async function loadIndustryCache() {
   if (industryCache) return industryCache;
-  // Use cachedQuery (v3.84) — pre-warmed on app init, 1h TTL
   try {
-    industryCache = await cachedQuery('ref:industries', function() {
+    var result = await cachedQuery('ref:industries', function() {
       return sb.from('ref_industries').select('name, category').order('name');
-    }, { ttl: 3600000 }) || [];
+    }, { ttl: 3600000 });
+    industryCache = (result && result.data) || [];
   } catch (e) {
     reportError('tuning', e);
     console.warn('[BJ] Failed to load industries:', e);
