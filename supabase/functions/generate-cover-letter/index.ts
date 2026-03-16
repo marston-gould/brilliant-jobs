@@ -62,11 +62,16 @@ async function generateCoverLetter(params: {
 
   const { resumeText, jobDescription, jobTitle, companyName, userName, tone, emphasis } = params;
 
-  const toneInstruction = tone === 'formal'
-    ? 'Use a formal, professional tone throughout.'
-    : tone === 'conversational'
-      ? 'Use a warm, conversational tone while remaining professional.'
-      : 'Use a confident, professional tone that balances warmth and competence.';
+  const toneInstruction =
+    tone === 'professional' || tone === 'formal'
+      ? 'Use a polished, professional tone. Confident, clear, and results-focused.'
+      : tone === 'conversational'
+        ? 'Use a warm, conversational tone while remaining professional. Sound like a person, not a template.'
+        : tone === 'enthusiastic'
+          ? 'Use an enthusiastic, energetic tone that conveys genuine excitement about the role and company.'
+          : tone === 'executive'
+            ? 'Use an executive-level tone. Strategic, concise, focused on leadership impact and vision.'
+            : 'Use a confident, professional tone that balances warmth and competence.';
 
   const emphasisBlock = emphasis && emphasis.length > 0
     ? `\nPay special attention to highlighting: ${emphasis.join(', ')}.`
@@ -173,7 +178,7 @@ serve(async (req: Request) => {
 
     // Parse body
     const body = await req.json();
-    const { resumeText, jobDescription, jobTitle, companyName, tone, emphasis } = body;
+    const { resumeText, jobDescription, jobTitle, companyName, tone, emphasis, jobId, resumeId } = body;
 
     if (!resumeText || !jobDescription) {
       return new Response(JSON.stringify({ error: 'Missing resumeText or jobDescription' }), {
@@ -193,6 +198,23 @@ serve(async (req: Request) => {
       ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
       : 'the candidate';
 
+    // AIS-F8-S1: Determine version (increment if job already has a letter with this tone)
+    const normalizedTone = ['professional','conversational','enthusiastic','executive'].includes(tone)
+      ? tone : 'professional';
+    let version = 1;
+    if (jobId) {
+      const { data: existing } = await supabase
+        .from('cover_letters')
+        .select('version')
+        .eq('user_id', user.id)
+        .eq('job_id', jobId)
+        .eq('tone', normalizedTone)
+        .order('version', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (existing) version = (existing.version || 0) + 1;
+    }
+
     // Generate (BP-001: circuit breaker)
     const startMs = Date.now();
     const _br = await withAnthropicBreaker(supabase, 'generate-cover-letter', () =>
@@ -202,7 +224,7 @@ serve(async (req: Request) => {
         jobTitle: jobTitle || 'the role',
         companyName: companyName || 'the company',
         userName,
-        tone,
+        tone: normalizedTone,
         emphasis,
       })
     );
@@ -214,6 +236,22 @@ serve(async (req: Request) => {
     }
     const result = _br.result;
     const elapsedMs = Date.now() - startMs;
+    const wordCount = result.letter.trim().split(/\s+/).length;
+
+    // AIS-F8-S1: Persist to cover_letters table
+    let coverId: string | null = null;
+    const { data: coverRow, error: coverErr } = await supabase.from('cover_letters').insert({
+      user_id: user.id,
+      job_id: jobId || null,
+      resume_id: resumeId || null,
+      tone: normalizedTone,
+      content: result.letter,
+      version,
+      credits_charged: 2,
+      word_count: wordCount,
+    }).select('id').single();
+    if (coverErr) console.warn('[generate-cover-letter] Persist error:', coverErr.message);
+    else coverId = coverRow?.id || null;
 
     // Log to cover_letter_generations table (non-blocking)
     supabase.from('cover_letter_generations').insert({
@@ -224,11 +262,15 @@ serve(async (req: Request) => {
       input_tokens: result.inputTokens,
       output_tokens: result.outputTokens,
       elapsed_ms: elapsedMs,
-      tone: tone || 'default',
+      tone: normalizedTone,
     }).then(() => {}).catch(() => {});
 
     return new Response(JSON.stringify({
       letter: result.letter,
+      cover_letter_id: coverId,
+      version,
+      tone: normalizedTone,
+      word_count: wordCount,
       model: result.model,
       tokens: { input: result.inputTokens, output: result.outputTokens },
       elapsedMs,

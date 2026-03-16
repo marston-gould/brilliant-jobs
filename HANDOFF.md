@@ -52,6 +52,10 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**AIS-F8-S1** — Cover Letter Generator: UI + Table ✅
+- v9.59→v9.60 — cover_letters migration (tone CHECK 4 values, version, credits_charged, word_count), 4 tones in EF (professional/conversational/enthusiastic/executive), persist+version tracking, slide-out panel, DOCX export via OOXML/JSZip, cover_letter_generated PostHog, 47 tests.
+
+
 **AIS-F2-S2** — LinkedIn Import: Upload UI + Auto-Population ✅
 - v9.58 → v9.59 — linkedin-import.js, Get Started page upload card, drag-and-drop, profile preview, auto-populate fields, skill→filter suggestions (_inferSeniority), PostHog linkedin_pdf_uploaded, 45 tests.
 
