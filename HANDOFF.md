@@ -4035,7 +4035,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority â€
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.66`** | **AIS-F5-S1 through AIS-F6-S2: App Modes verified. 22 tests.** |
+| **Product (BJ_VERSION)** | **`v9.66`** | **AIS Phase C (F5-S1..S4, F6-S1..S2): Application Modes + Review. 23 tests.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
