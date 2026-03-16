@@ -2491,7 +2491,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           if (tabId) {
             const reviewShown = await _fetchAiAnswersForReview(tabId, p);
             if (!reviewShown) {
-              // Fallback: proceed with fill if regen fails
               chrome.tabs.sendMessage(tabId, {
                 type: 'bj:toolbar:applyStatus',
                 payload: { status: 'filling', action: 'submit_anyway' },
@@ -2499,6 +2498,43 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             }
           }
           sendResponse({ status: 'regenerating' });
+          return;
+        }
+
+        // AIS-F6 item 28: swap_resume — signal overlay to open resume picker
+        if (action === 'swap_resume') {
+          if (tabId) {
+            chrome.tabs.sendMessage(tabId, {
+              type: 'bj:toolbar:applyStatus',
+              payload: { status: 'swap_resume', message: 'Swap resume version in the extension popup, then apply again.' },
+            });
+          }
+          sendResponse({ status: 'swap_resume' });
+          return;
+        }
+
+        // AIS-F6 item 28: regen_cover_letter — regenerate via generate-cover-letter EF
+        if (action === 'regen_cover_letter') {
+          if (tabId && p.jobUrl) {
+            const authToken = await _getAuthToken();
+            if (authToken) {
+              const sbCl = createSupabaseClient(authToken);
+              const user = await sbCl.auth.getUser();
+              if (user.data.user && p.jobUrl) {
+                // Fire-and-forget cover letter regen
+                fetch(`${SUPABASE_URL}/functions/v1/generate-cover-letter`, {
+                  method: 'POST',
+                  headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ jobTitle: p.jobTitle || '', companyName: p.company || '', jobId: p.jobUrl }),
+                }).catch((e) => captureEvent('extension_catch_error', { context: 'regen_cover_letter', error: e.message }));
+              }
+            }
+            chrome.tabs.sendMessage(tabId, {
+              type: 'bj:toolbar:applyStatus',
+              payload: { status: 'info', message: 'Cover letter regenerating — re-open the review panel in a moment.' },
+            });
+          }
+          sendResponse({ status: 'regen_cover_letter' });
           return;
         }
 

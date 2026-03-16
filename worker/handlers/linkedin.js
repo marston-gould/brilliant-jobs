@@ -12,6 +12,26 @@
 //   - Connection awareness: surface connections at company before applying
 
 import { fillEeoQuestions } from '../utils/eeoc-filler.js';
+// AIS-F10 item 52: LinkedIn-specific Q&A via answer-form-question EF
+async function fetchLinkedInAnswers(questions, profile, jobTitle, company, authToken) {
+  if (!authToken || !questions.length) return {};
+  try {
+    const res = await fetch(process.env.SUPABASE_URL + '/functions/v1/answer-form-question', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        questions: questions.slice(0, 5),
+        profile,
+        job_title: jobTitle || '',
+        company_name: company || '',
+      }),
+    });
+    const d = await res.json();
+    if (!res.ok || !d.answers) return {};
+    // Build map: field_label -> answer
+    return Object.fromEntries((d.answers || []).map((a) => [a.id, a.answer]));
+  } catch { return {}; }
+}
 
 const LI_DAILY_LIMIT = 15;
 const MIN_STEP_DELAY_MS = 2500;
@@ -154,6 +174,35 @@ async function fillEasyApplyPage(page, profile, liProfile, log) {
     await fileInput.setInputFiles(opts.resumePath);
     await jitter(1000, 2000);
     log('Resume uploaded to LinkedIn EasyApply');
+  }
+
+  // AIS-F10 item 52: Detect LinkedIn-specific screening questions and AI-fill them
+  if (opts?.authToken) {
+    try {
+      const screeningInputs = await page.$$('input[id*="question"], textarea[id*="question"], select[id*="question"]');
+      const liQuestions = [];
+      for (const el of screeningInputs.slice(0, 5)) {
+        const id = await el.evaluate((e) => e.id || e.name || '');
+        const label = await el.evaluate((e) => {
+          const lbl = document.querySelector(`label[for="${e.id}"]`);
+          return lbl ? lbl.textContent?.trim() : e.placeholder || '';
+        });
+        if (label && id) liQuestions.push({ id, label, field_type: await el.evaluate((e) => e.tagName === 'TEXTAREA' ? 'textarea' : e.tagName === 'SELECT' ? 'select' : 'text') });
+      }
+      if (liQuestions.length) {
+        const answers = await fetchLinkedInAnswers(liQuestions, profile, opts.jobTitle, opts.companyName, opts.authToken);
+        for (const [fieldId, answer] of Object.entries(answers)) {
+          if (answer) {
+            const sel = `[id="${fieldId}"], [name="${fieldId}"]`;
+            if (await page.$(sel)) {
+              await humanTypeLinkedIn(page, sel, answer);
+              await jitter(300, 700);
+              log('LinkedIn Q&A filled: ' + fieldId);
+            }
+          }
+        }
+      }
+    } catch { /* non-fatal */ }
   }
 
   // EEOC questions

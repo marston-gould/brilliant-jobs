@@ -47,6 +47,10 @@
   };
 
   // ── Select / deselect all visible ────────────────────────────────────────
+  // Item 44: 'Select All Matching' — alias exposed for dashboard button
+  window._bulkSelectAllVisible = function() { window._bulkSelectAll(true); };
+  window._bulkDeselectAll = function() { window._bulkSelectAll(false); };
+
   window._bulkSelectAll = function (checked) {
     var cbs = document.querySelectorAll('.bulk-job-cb');
     cbs.forEach(function (cb) {

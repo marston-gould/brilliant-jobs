@@ -414,6 +414,17 @@
         });
       }
 
+      // AIS-F11 item 61: Also open the AI Interview Practice chat panel
+      // (complement to the existing question-bank simulation)
+      if (typeof window.openInterviewPractice === 'function') {
+        // Get job title + company from pipeline data
+        var jobMeta = window._plMetaCache && window._plMetaCache[jobId];
+        var jobTitle = jobMeta ? jobMeta.title || '' : '';
+        var company = jobMeta ? jobMeta.company || '' : '';
+        window.openInterviewPractice(jobId, jobTitle, company);
+        return; // AI chat panel takes over; no need for legacy sim overlay
+      }
+
       var sb = window.bjSupabase || (window.supabase && window.supabase.createClient
         ? window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY) : null);
       if (!sb) return;
@@ -820,6 +831,37 @@
     if (typeof window.refreshIcons === 'function') window.refreshIcons();
   };
 
+  // AIS-F11 item 60: Load past interview sessions for history display
+  window.loadInterviewHistory = async function() {
+    var listEl = document.getElementById('ip-history-list');
+    if (!listEl || !currentUser) return;
+    try {
+      var { data, error } = await sb.from('interview_sessions')
+        .select('id, session_type, aggregate_score, status, created_at, job_id')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      if (error || !data || !data.length) {
+        listEl.innerHTML = '<div style="font-size:12px;color:var(--text-muted);">No practice sessions yet. Start one from the Pipeline!</div>';
+        return;
+      }
+      var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){return String(s||'');};
+      listEl.innerHTML = data.map(function(sess) {
+        var scoreColor = (sess.aggregate_score||0) >= 75 ? 'var(--green)' : (sess.aggregate_score||0) >= 50 ? 'var(--warning)' : 'var(--warm)';
+        var date = new Date(sess.created_at).toLocaleDateString();
+        return '<div class="card" style="padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;gap:10px;">' +
+          '<div style="flex:1;">' +
+            '<div style="font-size:12px;font-weight:600;text-transform:capitalize;">' + esc(sess.session_type||'behavioral') + ' Interview</div>' +
+            '<div style="font-size:11px;color:var(--text-muted);">' + date + ' · ' + esc(sess.status||'') + '</div>' +
+          '</div>' +
+          (sess.aggregate_score ? '<div style="font-size:16px;font-weight:700;color:'+scoreColor+';">' + sess.aggregate_score + '%</div>' : '<div style="font-size:11px;color:var(--text-muted);">—</div>') +
+        '</div>';
+      }).join('');
+      var panel = document.getElementById('ip-history-panel');
+      if (panel) panel.style.display = '';
+    } catch(e) { /* non-fatal */ }
+  };
+
   window.closeInterviewPractice = function () {
     var panel = document.getElementById('ip-chat-panel');
     if (panel) panel.style.display = 'none';
@@ -959,3 +1001,45 @@
     _ipEndSession();
   }
 })();
+
+// ── AIS-F11-S2: Session history for ip-history-panel (item 60) ──────────
+window.loadInterviewHistory = async function() {
+  var panel = document.getElementById('ip-history-panel');
+  var listEl = document.getElementById('ip-history-list');
+  if (!listEl || !currentUser) return;
+
+  try {
+    var { data, error } = await sb.from('interview_sessions')
+      .select('id, session_type, aggregate_score, status, job_id, created_at, completed_at')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (error || !data || !data.length) {
+      listEl.innerHTML = '<div style="font-size:12px;color:var(--text-muted);">No AI practice sessions yet.</div>';
+      return;
+    }
+
+    var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){return String(s||'');};
+    listEl.innerHTML = data.map(function(s) {
+      var sc = s.aggregate_score;
+      var scColor = sc >= 75 ? 'var(--green)' : sc >= 50 ? 'var(--warning)' : sc ? 'var(--warm)' : 'var(--text-muted)';
+      var when = s.created_at ? new Date(s.created_at).toLocaleDateString() : '';
+      var typeLabel = { behavioral: '🎯 Behavioral', technical: '⚙️ Technical', company: '🏢 Company' }[s.session_type] || s.session_type;
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;">' +
+        '<span style="flex:1;">' + esc(typeLabel) + (s.job_id ? ' · ' + esc(s.job_id.slice(0,20)) : '') + '</span>' +
+        (sc ? '<span style="font-weight:700;color:' + scColor + ';">' + sc + '</span>' : '') +
+        '<span style="color:var(--text-muted);font-size:10px;">' + esc(when) + '</span>' +
+        '<span style="font-size:10px;color:' + (s.status==='complete'?'var(--green)':'var(--text-muted)') + ';">' + esc(s.status) + '</span>' +
+      '</div>';
+    }).join('');
+    if (panel) panel.style.display = '';
+  } catch(e) { reportError('loadInterviewHistory', e); }
+};
+
+// Show history when My Sessions tab is shown
+window._ipShowHistoryPanel = function() {
+  var panel = document.getElementById('ip-history-panel');
+  if (panel) panel.style.display = '';
+  if (typeof window.loadInterviewHistory === 'function') window.loadInterviewHistory();
+};

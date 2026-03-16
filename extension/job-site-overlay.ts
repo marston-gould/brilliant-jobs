@@ -2514,6 +2514,8 @@
         '<div style="padding:12px 18px 16px;border-top:1px solid rgba(255,255,255,0.1);display:flex;gap:8px;position:sticky;bottom:0;background:#1a1d2e;">' +
           '<button onclick="window._bjAnswerReviewAccept()" style="flex:1;background:#6366f1;color:#fff;border:none;padding:10px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Accept &amp; Submit</button>' +
           '<button onclick="window._bjAnswerReviewRegenerate()" style="background:rgba(255,255,255,0.1);color:#fff;border:none;padding:10px 14px;border-radius:8px;font-size:13px;cursor:pointer;" title="Regenerate answers">↺</button>' +
+          '<button onclick="window._bjAnswerReviewSwapResume()" style="background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.6);border:none;padding:10px 14px;border-radius:8px;font-size:11px;cursor:pointer;" title="Swap resume version">📄</button>' +
+          '<button onclick="window._bjAnswerReviewRegenCoverLetter()" style="background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.6);border:none;padding:10px 14px;border-radius:8px;font-size:11px;cursor:pointer;" title="Regenerate cover letter">✉</button>' +
           '<button onclick="window._bjAnswerReviewSaveLater()" style="background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.6);border:none;padding:10px 14px;border-radius:8px;font-size:13px;cursor:pointer;" title="Save to Review Queue">💾</button>' +
           '<button onclick="window._bjAnswerReviewSkip()" style="background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.6);border:none;padding:10px 14px;border-radius:8px;font-size:13px;cursor:pointer;">Skip</button>' +
         '</div>' +
@@ -2585,6 +2587,37 @@
       mode: _answerReviewPayload.mode || 'score-gated',
     });
     hideAnswerReviewPanel();
+  };
+
+  // AIS-F6 item 28: Swap resume version — notify background to use a different resume
+  window._bjAnswerReviewSwapResume = function() {
+    if (!_answerReviewPayload) return;
+    sendMsg('bj:toolbar:answerReviewConfirm', {
+      action: 'swap_resume',
+      answers: [],
+      feedback: [],
+      jobTitle: _answerReviewPayload.jobTitle || '',
+      company: _answerReviewPayload.company || '',
+      mode: _answerReviewPayload.mode || 'score-gated',
+    });
+    hideAnswerReviewPanel();
+    showToast('Opening resume selector — choose a version then re-apply.');
+  };
+
+  // AIS-F6 item 28: Regenerate cover letter from review panel
+  window._bjAnswerReviewRegenCoverLetter = function() {
+    if (!_answerReviewPayload) return;
+    sendMsg('bj:toolbar:answerReviewConfirm', {
+      action: 'regen_cover_letter',
+      answers: [],
+      feedback: [],
+      jobTitle: _answerReviewPayload.jobTitle || '',
+      company: _answerReviewPayload.company || '',
+      jobUrl: _answerReviewPayload.jobUrl || '',
+      mode: _answerReviewPayload.mode || 'score-gated',
+    });
+    hideAnswerReviewPanel();
+    showToast('Cover letter regeneration queued — re-open the application to review the new version.');
   };
 
   window._bjAnswerReviewRegenerate = function() {

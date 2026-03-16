@@ -46,9 +46,42 @@ serve(async (req) => {
 
     const jobMap = new Map((jobs || []).map((j: Record<string,string>) => [j.greenhouse_id, j]));
 
-    // Insert queue rows
+    // AIS-F9-S3 item 49: Score gate integration — fetch user's mode + threshold
+    const { data: applySettings } = await sb.from('profiles')
+      .select('user_data')
+      .eq('id', user.id)
+      .single()
+      .catch(() => ({ data: null }));
+    const userSettings = (applySettings?.user_data as Record<string, Record<string, unknown>>)?.apply_settings || {};
+    const applicationMode = (userSettings.applicationMode as string) || 'manual';
+    const scoreThreshold = (userSettings.scoreThreshold as number) || 75;
+    const useScoreGate = applicationMode === 'score-gated' || applicationMode === 'auto-score-gate';
+
+    // Fetch match scores for jobs if score gate is active
+    const scoreMap = new Map<string, number>();
+    if (useScoreGate && body.resume_id) {
+      // Bulk score check via score-resume EF for each job
+      for (const jid of jobIds.slice(0, 10)) { // Cap to 10 to avoid timeout
+        try {
+          const job = jobMap.get(jid);
+          if (!job) continue;
+          const scoreRes = await fetch(`${SB_URL}/functions/v1/score-resume`, {
+            method: 'POST',
+            headers: { 'Authorization': auth, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jobId: jid, resumeId: body.resume_id }),
+          });
+          const scoreData = await scoreRes.json();
+          if (scoreData.score) scoreMap.set(jid, scoreData.score);
+        } catch { /* non-fatal */ }
+      }
+    }
+
+    // Insert queue rows — flag below-threshold for review
     const rows = jobIds.map(jid => {
       const j = jobMap.get(jid) || {};
+      const score = scoreMap.get(jid);
+      // If score gate active and score is below threshold, flag for review
+      const isBelowThreshold = useScoreGate && score !== undefined && score < scoreThreshold;
       return {
         user_id: user.id,
         job_id: jid,
@@ -56,7 +89,8 @@ serve(async (req) => {
         company_name: (j as Record<string,string>).company_name || '',
         job_url: (j as Record<string,string>).url || '',
         resume_id: body.resume_id || null,
-        status: 'queued',
+        status: isBelowThreshold ? 'review_required' : 'queued',
+        match_score: score || null,
       };
     });
 

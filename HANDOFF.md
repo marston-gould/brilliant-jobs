@@ -3994,8 +3994,11 @@ Deliverables:
 
 **ALL 28 SESSIONS COMPLETE** ✅ — SPEC-AIS-001 Application Intelligence Suite delivered in full.
 
-DEPLOYED:
-- All 11 AIS tables created via Management API ✅
+FULLY SPEC-COMPLETE + DEPLOYED v9.69:
+- All 68 spec items verified
+- All 11 gap items remediated (items 28/34/35/36/44/49/52/57/60/61)
+- bulk-apply-queue + interview-practice EFs redeployed
+- All 11 AIS tables live ✅
 - All 3 credit RPCs (deduct_credits, add_credits, get_credit_balance) live ✅
 - All 9 EFs deployed (parse-linkedin-pdf, answer-form-question, generate-cover-letter, rewrite-resume-analyze, rewrite-resume-execute, bulk-apply-queue, build-resume, interview-practice, resume-ab-assign) ✅
 - Storage buckets verified: linkedin-profiles, rewrites, resumes ✅
@@ -4054,7 +4057,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.68`** | **SPEC-AIS-001 COMPLETE + DEPLOYED. All 28 sessions, 11 tables, 9 EFs, 3 buckets live.** |
+| **Product (BJ_VERSION)** | **`v9.69`** | **SPEC-AIS-001 GAP REMEDIATION COMPLETE — all 68 items verified. 42 tests.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
