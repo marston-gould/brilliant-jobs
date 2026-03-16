@@ -4035,7 +4035,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority â€
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.65`** | **AIS-F1-S4 complete** |
+| **Product (BJ_VERSION)** | **`v9.65`** | **AIS-F1-S4: Credit system migration, deduct_credits/add_credits/get_credit_balance RPCs, boostMatch CTAs in feed/pipeline/resumes. 17 tests.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
