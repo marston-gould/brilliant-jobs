@@ -52,6 +52,14 @@ jobs:
 
       - run: npm ci
 
+      - name: Gate 0 — No merge conflict markers
+        run: |
+          if grep -rl "^<<<<<<<" --include="*.html" --include="*.js" --include="*.ts" --include="*.css" --include="*.md" . 2>/dev/null | grep -v node_modules | grep -v ".git"; then
+            echo "Unresolved merge conflict markers found in committed files"
+            exit 1
+          fi
+          echo "No merge conflict markers"
+
       - name: Run ESLint
         run: npx eslint . --max-warnings 600
         # BI-07-FIX: 541 warnings (no-unused-vars + no-redeclare). Ceiling 600 = ratchet.
