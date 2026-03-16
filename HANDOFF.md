@@ -52,7 +52,22 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**AIS-F4-S1 (Gap Fixes)** — Answer History + Personal Context + Credits ✅
+
+**AIS-F2-S1** — LinkedIn Import: EF + Storage ✅
+- Completed: 2026-03-15
+- Product version bumped: `v9.57` → `v9.58`
+- **AIS-F4-S2 also closed:** All spec items delivered in AIS-F4-S1 gap fixes. Marked ✅.
+- **`upload` action in `parse-linkedin-pdf` EF:** Standalone (no enrollment_id). JWT-authed. Accepts pdf_base64. 10MB limit (413). SHA-256 hash. Dedup cross-account (409). parse failure (422). Fraud signals: low_connections, no_experience, low_confidence. Storage upload to linkedin-profiles bucket. Upserts to linkedin_profiles on conflict user_id. Returns success/profile/fraud_signals/pdf_hash/storage_path.
+- **`linkedin_profiles` migration** (v9.57): Full schema, UNIQUE user_id index, pdf_hash index, RLS, storage policies, updated_at trigger.
+- **Tests:** 55 validation tests (all passing)
+- **Pending (Marston):** `supabase db push` (v9.56 answers + v9.57 linkedin_profiles); deploy parse-linkedin-pdf + answer-form-question EFs
+
+**AIS-F4-S2** — Answer History + Personal Context ✅
+- Completed: 2026-03-15
+- Product version: `v9.57` (delivered as part of AIS-F4-S1 gap fix — no additional version bump)
+- Scope fully covered by commit e8713f35: answers table, persistAnswers, loadAnswerCache, deductCredits, fetchLinkedInProfile.
+
+**Previous: AIS-F4-S1 (Gap Fixes)** — Answer History + Personal Context + Credits ✅
 - Completed: 2026-03-15
 - Product version bumped: `v9.56` → `v9.57`
 - **Gap fix:** Initial AIS-F4-S1 was missing spec items 19/20/credit model. All now complete.
