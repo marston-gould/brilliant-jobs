@@ -1397,6 +1397,16 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
   // Get resume
   var resume = _getActiveResume();
 
+  // AIS-F8-S2: Fetch latest cover letter for this job (auto-attach)
+  var coverLetterId = null;
+  var coverLetterContent = null;
+  if (jobId && currentUser) {
+    try {
+      var clRes = await sb.from('cover_letters').select('id,content').eq('user_id', currentUser.id).eq('job_id', jobId).order('version', { ascending: false }).limit(1).maybeSingle();
+      if (clRes.data) { coverLetterId = clRes.data.id; coverLetterContent = clRes.data.content; }
+    } catch(_e) { /* non-fatal */ }
+  }
+
   // Create pending_applications row
   var pendingRow = {
     user_id: currentUser.id,
@@ -1411,6 +1421,7 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
     job_url: jobUrl || '',
     expires_at: expiresAt.toISOString(),
     idempotency_key: crypto.randomUUID(),
+    ...(coverLetterId ? { cover_letter_id: coverLetterId } : {}),
   };
 
   var savedApp = await savePendingApplication(pendingRow);

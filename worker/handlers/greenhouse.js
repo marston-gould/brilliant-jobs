@@ -220,6 +220,15 @@ async function answerCommonQuestions(page, profile, log, opts = {}) {
 
   // AF-005: EEOC/OFCCP auto-fill via shared eeoc-filler utility
   await fillEeoQuestions(page, profile, log, opts?.capturePostHog);
+
+  // AIS-F8-S2: Fill cover letter field if present and cover letter provided
+  if (opts?.coverLetter) {
+    const clSelectors = ['textarea[name*="cover"]', 'textarea[id*="cover"]', 'textarea[placeholder*="cover"]', 'textarea[aria-label*="cover"]'];
+    for (const sel of clSelectors) {
+      const el = await page.$(sel);
+      if (el) { await humanType(page, sel, opts.coverLetter); log('Cover letter filled', { selector: sel }); break; }
+    }
+  }
 }
 
 /**

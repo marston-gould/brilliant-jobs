@@ -74,6 +74,11 @@ export async function fillGeneric(page, jobUrl, profile, resumePath, opts = {}) 
       }
     }
 
+    // AIS-F8-S2: Cover letter auto-attach — fill cover letter field if present
+    if (opts?.coverLetter) {
+      await heuristicFill(page, ['cover.?letter', 'why.*interested', 'motivation.*letter', 'letter.*interest'], opts.coverLetter, log);
+    }
+
     // Submit
     await humanScroll(page, 400);
     const submitBtn = await page.$('button[type="submit"], input[type="submit"], button:has-text("Submit"), button:has-text("Apply")');
