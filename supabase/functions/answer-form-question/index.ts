@@ -14,6 +14,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { withAnthropicBreaker } from "../_shared/anthropic.ts";
+import { creditGate, creditRefund } from '../_shared/creditGate.ts';
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -445,6 +446,10 @@ serve(async (req) => {
     }
 
     const userId = user.id;
+
+    // SPEC-COHORT-001-S2: Credit gate
+    const credit_answer = await creditGate(sb, userId, 'answer-form-question');
+    if (!credit_answer.allowed) return credit_answer.response!;
 
     // ── Parse body ──
     const body: AnswerRequest = await req.json();

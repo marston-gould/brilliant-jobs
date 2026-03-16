@@ -253,6 +253,8 @@ const ROUTE_REGISTRY: Record<string, string> = {
   "extension-version":          "extension-version",          // EXT-BUILD-001-S2: Extension version check (#127)
   "interview-generate-questions":"interview-generate-questions",// FB-INTPREP-001-S1: Question bank batch generation (#128)
   "interview-simulate":          "interview-simulate",          // FB-INTPREP-001-S3: AI mock interview simulation (#129)
+  "get-user-balance":            "get-user-balance",            // SPEC-COHORT-001-S2: 3-bucket credit balance (#130)
+  "replenish-credits":           "replenish-credits",           // SPEC-COHORT-001-S2: Billing period credit replenishment (#131)
 
   // ═══════════════════════════════════════════════════════════════════════════
   // TOTAL: 129 routes (128 prev + 1 FB-INTPREP-001-S3). Direct paths deprecated.

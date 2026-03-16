@@ -64,10 +64,10 @@ CREATE INDEX IF NOT EXISTS idx_profiles_cohort_tier ON profiles (cohort_tier_id)
   WHERE cohort_tier_id IS NOT NULL;
 
 
--- ─── 3. credit_ledger table ─────────────────────────────────
+-- ─── 3. bj_credit_ledger table ─────────────────────────────────
 -- Richer than existing credit_transactions. Three-bucket model.
 -- Existing credit_transactions preserved for backward compat.
-CREATE TABLE IF NOT EXISTS credit_ledger (
+CREATE TABLE IF NOT EXISTS bj_credit_ledger (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id       uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   bucket        text NOT NULL CHECK (bucket IN ('base','rolled','award')),
@@ -92,28 +92,28 @@ CREATE TABLE IF NOT EXISTS credit_ledger (
   created_at    timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_credit_ledger_user_created
-  ON credit_ledger (user_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_credit_ledger_user_period
-  ON credit_ledger (user_id, period_start)
+CREATE INDEX IF NOT EXISTS idx_bj_credit_ledger_user_created
+  ON bj_credit_ledger (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_bj_credit_ledger_user_period
+  ON bj_credit_ledger (user_id, period_start)
   WHERE period_start IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_credit_ledger_awards_expiry
-  ON credit_ledger (user_id, expires_at)
+CREATE INDEX IF NOT EXISTS idx_bj_credit_ledger_awards_expiry
+  ON bj_credit_ledger (user_id, expires_at)
   WHERE bucket = 'award' AND voided = false AND amount > 0;
-CREATE INDEX IF NOT EXISTS idx_credit_ledger_feature
-  ON credit_ledger (user_id, feature, created_at)
+CREATE INDEX IF NOT EXISTS idx_bj_credit_ledger_feature
+  ON bj_credit_ledger (user_id, feature, created_at)
   WHERE feature IS NOT NULL;
 
-ALTER TABLE credit_ledger ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS credit_ledger_user_read ON credit_ledger;
-CREATE POLICY credit_ledger_user_read ON credit_ledger
+ALTER TABLE bj_credit_ledger ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS bj_credit_ledger_user_read ON bj_credit_ledger;
+CREATE POLICY bj_credit_ledger_user_read ON bj_credit_ledger
   FOR SELECT USING (auth.uid() = user_id);
-DROP POLICY IF EXISTS credit_ledger_service_all ON credit_ledger;
-CREATE POLICY credit_ledger_service_all ON credit_ledger
+DROP POLICY IF EXISTS bj_credit_ledger_service_all ON bj_credit_ledger;
+CREATE POLICY bj_credit_ledger_service_all ON bj_credit_ledger
   FOR ALL TO service_role USING (true) WITH CHECK (true);
 
-GRANT SELECT ON credit_ledger TO authenticated;
-GRANT ALL ON credit_ledger TO service_role;
+GRANT SELECT ON bj_credit_ledger TO authenticated;
+GRANT ALL ON bj_credit_ledger TO service_role;
 
 
 -- ─── 4. feature_costs table ─────────────────────────────────
@@ -222,21 +222,21 @@ BEGIN
   v_period_start := date_trunc('month', now());
 
   SELECT COALESCE(SUM(amount), 0) INTO v_rolled
-    FROM credit_ledger
+    FROM bj_credit_ledger
     WHERE user_id   = p_user_id
       AND bucket     = 'rolled'
       AND period_start >= v_period_start
       AND voided     = false;
 
   SELECT COALESCE(SUM(amount), 0) INTO v_base
-    FROM credit_ledger
+    FROM bj_credit_ledger
     WHERE user_id   = p_user_id
       AND bucket     = 'base'
       AND period_start >= v_period_start
       AND voided     = false;
 
   SELECT COALESCE(SUM(amount), 0) INTO v_awards
-    FROM credit_ledger
+    FROM bj_credit_ledger
     WHERE user_id   = p_user_id
       AND bucket     = 'award'
       AND (expires_at IS NULL OR expires_at > now())
@@ -277,7 +277,7 @@ BEGIN
 
   -- Write debit entry (bucket='base' as canonical debit bucket;
   -- actual bucket ordering is handled in EF middleware for now)
-  INSERT INTO credit_ledger
+  INSERT INTO bj_credit_ledger
     (user_id, bucket, event_type, amount, feature)
   VALUES
     (p_user_id, 'base', 'feature_debit', -p_amount, p_feature);
@@ -296,7 +296,7 @@ CREATE OR REPLACE FUNCTION fn_grant_base_credits(
   p_period_start timestamptz DEFAULT date_trunc('month', now())
 ) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
-  INSERT INTO credit_ledger
+  INSERT INTO bj_credit_ledger
     (user_id, bucket, event_type, amount, period_start)
   VALUES
     (p_user_id, 'base', 'cohort_grant', p_amount, p_period_start);
@@ -316,7 +316,7 @@ CREATE OR REPLACE FUNCTION fn_grant_award_credits(
   p_notes      text DEFAULT NULL
 ) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
-  INSERT INTO credit_ledger
+  INSERT INTO bj_credit_ledger
     (user_id, bucket, event_type, amount, source_ref, expires_at, notes)
   VALUES
     (p_user_id, 'award', 'award_grant', p_amount, p_source_ref, p_expires_at, p_notes);
@@ -341,13 +341,13 @@ BEGIN
     JOIN cohort_tiers ct ON ct.id = p.cohort_tier_id
     WHERE ct.credits_monthly > 0
       AND NOT EXISTS (
-        SELECT 1 FROM credit_ledger cl
+        SELECT 1 FROM bj_credit_ledger cl
         WHERE cl.user_id = p.id
           AND cl.event_type = 'cohort_grant'
           AND cl.period_start >= v_period
       )
   LOOP
-    INSERT INTO credit_ledger
+    INSERT INTO bj_credit_ledger
       (user_id, bucket, event_type, amount, period_start)
     VALUES
       (r.user_id, 'base', 'cohort_grant', r.credits_monthly, v_period);
@@ -359,11 +359,11 @@ $$;
 -- ─── COMMENTS ────────────────────────────────────────────────
 COMMENT ON TABLE cohort_tiers IS
   'SPEC-COHORT-001: Billing/feature tiers. Distinct from cohorts table (promo date-range cohorts).';
-COMMENT ON TABLE credit_ledger IS
+COMMENT ON TABLE bj_credit_ledger IS
   'SPEC-COHORT-001: Append-only credit event log. Three buckets: base/rolled/award. Balance = live query.';
 COMMENT ON TABLE feature_costs IS
   'SPEC-COHORT-001: Per-EF credit costs and passive daily caps. Admin-editable without code deploy.';
-COMMENT ON COLUMN credit_ledger.bucket IS
+COMMENT ON COLUMN bj_credit_ledger.bucket IS
   'base=cohort allotment, rolled=carried forward, award=bonus/referral/promo';
 COMMENT ON COLUMN cohort_tiers.rollover_cap IS
   '0=no rollover, -1=full rollover, N=cap at N credits per cycle';

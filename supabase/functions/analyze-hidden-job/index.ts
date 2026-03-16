@@ -5,6 +5,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { withAnthropicBreaker } from "../_shared/anthropic.ts";
+import { passiveCap } from "../_shared/creditGate.ts";
 
 const SB_URL = Deno.env.get('SUPABASE_URL')!;
 const SB_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -80,6 +81,12 @@ serve(async (req) => {
         { status: 401, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
     }
 
+    // SPEC-COHORT-001-S2: Passive daily cap (DB-backed, replaces in-memory limit)
+    const cap = await passiveCap(sb, user.id, 'analyze-hidden-job');
+    if (!cap.allowed) {
+      return new Response(JSON.stringify({ error: 'Daily cap reached', daily_cap: cap.dailyCap }),
+        { status: 429, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
+    }
     if (!checkDailyLimit(user.id)) {
       return new Response(JSON.stringify({ error: 'Daily AI limit reached (20/day)' }),
         { status: 429, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });

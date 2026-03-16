@@ -9,6 +9,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { checkFeatureAccess, buildDeniedResponse, buildSampleHeaders } from '../_shared/checkFeatureAccess.ts';
 import { withAnthropicBreaker } from '../_shared/anthropic.ts';
+import { creditGate, creditRefund } from '../_shared/creditGate.ts';
 
 const SB_URL = Deno.env.get('SUPABASE_URL')!;
 const SB_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -617,6 +618,10 @@ serve(async (req) => {
     }
     const sampleHeaders = access.isSample ? buildSampleHeaders() : {};
 
+    // ─── SPEC-COHORT-001-S2: Credit gate ────────────────────────────────
+    const credit = await creditGate(sb, user.id, 'score-resume');
+    if (!credit.allowed) return credit.response!;
+
     // Rate limit (database-backed persistent check)
     try {
       const { data: allowed } = await sb.rpc('check_ef_rate_limit', {
@@ -941,6 +946,10 @@ Assess. Return ONLY JSON.`;
 
   } catch (err) {
     console.error('[score-resume] Unexpected error:', err);
+    // SPEC-COHORT-001-S2: Refund credits on unexpected error
+    try {
+      if (typeof userId !== 'undefined') await creditRefund(sb, userId, 'score-resume', 3);
+    } catch (_) {}
     return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
   }
 });

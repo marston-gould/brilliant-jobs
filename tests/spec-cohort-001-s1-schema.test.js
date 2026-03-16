@@ -5,7 +5,7 @@
  * Tests cover:
  *   1. cohort_tiers table structure
  *   2. profiles additions
- *   3. credit_ledger table structure
+ *   3. bj_credit_ledger table structure
  *   4. feature_costs table structure
  *   5. Seeded cohort_tiers data
  *   6. Seeded feature_costs data
@@ -95,10 +95,10 @@ describe('2. profiles table additions', () => {
   });
 });
 
-// ─── 3. credit_ledger table ─────────────────────────────────
-describe('3. credit_ledger table', () => {
-  it('creates credit_ledger table', () => {
-    expect(migrationSql).toMatch(/CREATE TABLE IF NOT EXISTS credit_ledger/);
+// ─── 3. bj_credit_ledger table ─────────────────────────────────
+describe('3. bj_credit_ledger table', () => {
+  it('creates bj_credit_ledger table', () => {
+    expect(migrationSql).toMatch(/CREATE TABLE IF NOT EXISTS bj_credit_ledger/);
   });
   it('has user_id FK to auth.users with CASCADE', () => {
     expect(migrationSql).toMatch(/user_id\s+uuid\s+NOT NULL\s+REFERENCES\s+auth\.users.*ON DELETE CASCADE/);
@@ -135,16 +135,16 @@ describe('3. credit_ledger table', () => {
     expect(migrationSql).toContain('notes');
   });
   it('creates composite index on user_id + created_at', () => {
-    expect(migrationSql).toContain('idx_credit_ledger_user_created');
+    expect(migrationSql).toContain('idx_bj_credit_ledger_user_created');
   });
   it('creates period index for balance queries', () => {
-    expect(migrationSql).toContain('idx_credit_ledger_user_period');
+    expect(migrationSql).toContain('idx_bj_credit_ledger_user_period');
   });
   it('creates awards expiry index', () => {
-    expect(migrationSql).toContain('idx_credit_ledger_awards_expiry');
+    expect(migrationSql).toContain('idx_bj_credit_ledger_awards_expiry');
   });
   it('creates feature index for passive cap checks', () => {
-    expect(migrationSql).toContain('idx_credit_ledger_feature');
+    expect(migrationSql).toContain('idx_bj_credit_ledger_feature');
   });
 });
 
@@ -251,16 +251,16 @@ describe('7. RLS policies', () => {
   it('enables RLS on cohort_tiers', () => {
     expect(migrationSql).toMatch(/ALTER TABLE cohort_tiers ENABLE ROW LEVEL SECURITY/);
   });
-  it('enables RLS on credit_ledger', () => {
-    expect(migrationSql).toMatch(/ALTER TABLE credit_ledger ENABLE ROW LEVEL SECURITY/);
+  it('enables RLS on bj_credit_ledger', () => {
+    expect(migrationSql).toMatch(/ALTER TABLE bj_credit_ledger ENABLE ROW LEVEL SECURITY/);
   });
   it('enables RLS on feature_costs', () => {
     expect(migrationSql).toMatch(/ALTER TABLE feature_costs ENABLE ROW LEVEL SECURITY/);
   });
-  it('credit_ledger user read policy scoped to auth.uid()', () => {
+  it('bj_credit_ledger user read policy scoped to auth.uid()', () => {
     expect(migrationSql).toMatch(/USING\s*\(auth\.uid\(\)\s*=\s*user_id\)/);
   });
-  it('credit_ledger service_role full access', () => {
+  it('bj_credit_ledger service_role full access', () => {
     expect(migrationSql).toMatch(/TO service_role\s+USING\s*\(true\)/);
   });
   it('cohort_tiers admin policy uses role check', () => {
@@ -336,18 +336,18 @@ describe('9. Indexes', () => {
     'idx_cohort_tiers_slug',
     'idx_cohort_tiers_order',
     'idx_profiles_cohort_tier',
-    'idx_credit_ledger_user_created',
-    'idx_credit_ledger_user_period',
-    'idx_credit_ledger_awards_expiry',
-    'idx_credit_ledger_feature',
+    'idx_bj_credit_ledger_user_created',
+    'idx_bj_credit_ledger_user_period',
+    'idx_bj_credit_ledger_awards_expiry',
+    'idx_bj_credit_ledger_feature',
   ];
   for (const idx of expectedIndexes) {
     it(`creates index ${idx}`, () => {
       expect(migrationSql).toContain(idx);
     });
   }
-  it('credit_ledger awards expiry index is partial (bucket=award, voided=false)', () => {
-    const idxSection = migrationSql.slice(migrationSql.indexOf('idx_credit_ledger_awards_expiry'));
+  it('bj_credit_ledger awards expiry index is partial (bucket=award, voided=false)', () => {
+    const idxSection = migrationSql.slice(migrationSql.indexOf('idx_bj_credit_ledger_awards_expiry'));
     expect(idxSection).toContain("bucket = 'award'");
     expect(idxSection).toContain('voided = false');
   });

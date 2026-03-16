@@ -9,6 +9,7 @@ import { API_VERSION } from '../_shared/api-version.ts';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { checkFeatureAccess, buildDeniedResponse, buildSampleHeaders } from '../_shared/checkFeatureAccess.ts';
 import { withAnthropicBreaker } from '../_shared/anthropic.ts';
+import { creditGate, creditRefund } from '../_shared/creditGate.ts';
 
 const SB_URL = Deno.env.get('SUPABASE_URL')!;
 const SB_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -190,6 +191,9 @@ serve(async (req: Request) => {
     const access = await checkFeatureAccess(sb, user.id, 'chat');
     if (!access.allowed) return buildDeniedResponse(access);
     const sampleHeaders = access.isSample ? buildSampleHeaders() : {};
+n    // SPEC-COHORT-001-S2: Credit gate
+    const credit = await creditGate(sb, user.id, 'chat-job-search');
+    if (!credit.allowed) return credit.response!;
 
     // ─── Rate limit check ───
     const now = new Date();

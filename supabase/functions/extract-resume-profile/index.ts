@@ -6,6 +6,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { withAnthropicBreaker } from "../_shared/anthropic.ts";
+import { creditGate, creditRefund } from '../_shared/creditGate.ts';
 
 const SB_URL = Deno.env.get('SUPABASE_URL')!;
 const SB_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -29,7 +30,10 @@ serve(async (req) => {
     const { data: { user }, error: authErr } = await createClient(SB_URL, 
       Deno.env.get('SUPABASE_ANON_KEY')!
     ).auth.getUser(token);
-    if (authErr || !user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: CORS_HEADERS });
+    if (authErr || !user) return new Response
+    // SPEC-COHORT-001-S2: Credit gate
+    const credit_extract_resume_profile = await creditGate(sb, user.id, 'extract-resume-profile');
+    if (!credit_extract_resume_profile.allowed) return credit_extract_resume_profile.response!;(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: CORS_HEADERS });
 
     const { resume_text } = await req.json();
     if (!resume_text || resume_text.length < 50) {

@@ -11,7 +11,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v9.77"></script>
+  <script src="/js/version.js?v=v9.78"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2340,7 +2340,7 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'FB-ATS-001-S4: ATS-005 LinkedIn Keyword Alignment Nudge', d: 'linkedin-alignment.js module. Compares resume keywords (readinessCache + jobMatchScores) against linkedin_profiles (skills_array, experience_json, headline). Min 3-gap threshold. Once-per-day cap. Section suggestions (Skills/Summary/Experience). Fixed-position nudge card. PostHog: nudge_shown, dismissed, cta_clicked. 40 tests. v9.76.', p: 100, e: '1 session' },
 // SPEC-COHORT-001: Cohort & Credit System
 { s: 'done', b: 'post-launch', n: 'SPEC-COHORT-001-S1: Schema + Seed', d: 'cohort_tiers table (Free/Starter/Pro/Beta), credit_ledger (3-bucket: base/rolled/award, 9 event_types, bucket debit order), feature_costs (11 EFs: 8 active-debit + 3 passive with daily caps). profiles: cohort_tier_id FK, rollover_cap_override. 4 RPCs: fn_get_user_credit_balance, fn_debit_credits (FOR UPDATE, raises insufficient_credits), fn_grant_base_credits, fn_grant_award_credits. Backfill plan→cohort_tier_id. Bootstrap initial credit grants for all users. RLS on all new tables. 104 tests. v9.77.', p: 100, e: '1 session' },
-{ s: 'todo', b: 'post-launch', n: 'SPEC-COHORT-001-S2: EF Layer', d: 'get-user-balance EF (3-bucket breakdown). Debit middleware (auth→cost read→balance check→debit→execute→refund_restore on error). replenish-credits EF (rollover_cap=0/N/-1 all three modes). award-expiry cron. Wire debit middleware into all 8 active-debit EFs. Passive daily cap logic in auto-apply-trigger, analyze-hidden-job, score-ai-content.', p: 0, e: '1 session' },
+{ s: 'done', b: 'post-launch', n: 'SPEC-COHORT-001-S2: EF Layer', d: '_shared/creditGate.ts: creditGate (auth→cost→debit→execute, 402 on insufficient), creditRefund (refund_restore on EF error), passiveCap (daily DB-backed cap for passive EFs), 5-min feature cost cache. get-user-balance EF (#130): JWT auth, fn_get_user_credit_balance RPC, returns rolled/base/awards/total/reset_date/cohort_slug. replenish-credits EF (#131): all 3 rollover modes (cap=0 expire/cap=N min/cap=-1 full), respects rollover_cap_override. fn_expire_awards pg_cron (02:00 UTC). creditGate wired into 8 active-debit EFs. passiveCap wired into auto-apply-trigger + analyze-hidden-job. 91 tests. v9.78.', p: 100, e: '1 session' },
 { s: 'todo', b: 'post-launch', n: 'SPEC-COHORT-001-S3: Stripe + UI', d: 'customer.subscription.updated webhook → cohort reassign + prorate credit entry. award-grant EF for referral/promo/milestone. Balance breakdown UI on subscription panel (3 buckets, reset date, low-balance warning at 20%). CI gates + full test coverage.', p: 0, e: '1 session' },
 ];
 

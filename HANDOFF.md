@@ -3840,6 +3840,14 @@ None.
 
 ## Last Completed Session
 
+**SPEC-COHORT-001-S2** — Cohort & Credit System: EF Layer ✅
+- v9.77→v9.78 — _shared/creditGate.ts: creditGate (reads feature_costs, calls fn_debit_credits RPC, returns 402 INSUFFICIENT_CREDITS with balance/cost/shortfall/upgrade_cta on fail, 5-min cost cache), creditRefund (writes refund_restore entry on EF error, PostHog on refund failure), passiveCap (DB-backed daily cap count, reads daily_cap from feature_costs, debits 1 credit if under cap). get-user-balance EF (route #130): JWT auth, fn_get_user_credit_balance RPC, returns {rolled, base, awards, total, reset_date, cohort_slug, credits_monthly}. replenish-credits EF (route #131): service-role + admin JWT auth, all 3 rollover modes (rollover_cap=0 → rollover_expire full balance; rollover_cap=N → expire surplus + rollover_grant min(unused,N); rollover_cap=-1 → rollover_grant full), respects profiles.rollover_cap_override, PostHog credit_replenishment_failed on per-user error. fn_expire_awards (pg_cron 02:00 UTC): NOT EXISTS guard against double-expiry, links expire entry to grant via source_ref. creditGate wired into 8 active-debit EFs: score-resume, rewrite-resume-analyze, rewrite-resume-execute, analyze-application-gap, chat-job-search, answer-form-question, extract-resume-profile, rewrite-resume-extension. passiveCap wired into auto-apply-trigger (breaks per-job loop on cap) + analyze-hidden-job. api-gateway redeployed with routes #130 + #131. 91 tests all passing.
+- **All deployed to prod** — 12 EFs deployed, fn_expire_awards + cron live, no pending manual steps.
+
+---
+
+## Last Completed Session
+
 **SPEC-COHORT-001-S1** — Cohort & Credit System: Schema + Seed ✅
 - v9.76→v9.77 — cohort_tiers table (Free/Starter/Pro/Beta with rollover_cap: 0/50/-1/200). credit_ledger table (3-bucket: base/rolled/award; 9 event_types; indexes on user+period, awards expiry, feature). feature_costs table (11 EFs seeded: 8 active-debit, 3 passive with daily_cap). profiles additions: cohort_tier_id FK, cohort_tier_assigned_at, rollover_cap_override. 4 RPCs: fn_get_user_credit_balance (3-bucket jsonb), fn_debit_credits (FOR UPDATE + insufficient_credits raise), fn_grant_base_credits, fn_grant_award_credits. Backfill plan→cohort_tier_id. Bootstrap initial credit grants. RLS + GRANTS on all new tables. 104 tests (all passing).
 - **Pending manual step (Marston):** `supabase db push` (migration v9.76-spec-cohort-001-s1.sql)
@@ -4026,32 +4034,28 @@ Deliverables:
 
 ## Next Session
 
-**SPEC-COHORT-001-S2** — Cohort & Credit System: EF Layer
+**SPEC-COHORT-001-S3** — Cohort & Credit System: Stripe + Balance UI
 
 **Entry Gate:**
-- [x] SPEC-COHORT-001-S1 complete (migration v9.76-spec-cohort-001-s1.sql applied to prod via `supabase db push`)
-- [x] cohort_tiers, credit_ledger, feature_costs tables live in prod
-- [x] fn_get_user_credit_balance, fn_debit_credits RPCs deployed
+- [x] SPEC-COHORT-001-S2 complete (creditGate, get-user-balance, replenish-credits all deployed)
+- [x] All 8 active-debit EFs wired with creditGate
+- [x] fn_expire_awards pg_cron live
 
 **Fix Items:**
-1. `get-user-balance` EF — JWT auth, calls fn_get_user_credit_balance, returns {rolled, base, awards, total, reset_date}. Gateway route.
-2. Debit middleware (`supabase/functions/_shared/creditGate.ts`) — auth → read feature_costs → balance check → fn_debit_credits → execute → refund_restore on error. Returns 402 INSUFFICIENT_CREDITS with {balance, cost, shortfall} when balance low.
-3. Wire creditGate into all 8 active-debit EFs: score-resume, rewrite-resume-analyze, rewrite-resume-execute, analyze-application-gap, chat-job-search, answer-form-question, extract-resume-profile, rewrite-resume-extension.
-4. Passive daily cap logic — for auto-apply-trigger, analyze-hidden-job, score-ai-content: COUNT debits for user+feature today, skip silently if >= daily_cap, debit 1 credit and execute if under cap.
-5. `replenish-credits` EF — reads profiles.cohort_tier_id → cohort_tiers.credits_monthly + rollover_cap (with rollover_cap_override check) → writes rollover_expire/rollover_grant/cohort_grant ledger entries. Called by billing webhook and directly testable via admin action.
-6. Award-expiry pg_cron — daily job: finds credit_ledger WHERE bucket='award' AND expires_at <= NOW() AND voided=false AND amount > 0, writes award_expire offsetting entries.
-7. Tests: 80+ validation tests covering debit gate, refund-restore, passive cap, replenishment all 3 rollover modes, award expiry.
-8. Three-file close.
+1. `customer.subscription.updated` Stripe webhook → call replenish-credits EF for the user + update cohort_tier_id if plan changed
+2. `award-grant` EF (route #132): JWT auth, inserts award_grant ledger entry; called by referral reward, promo code redemption, admin manual grant
+3. Balance breakdown UI on dashboard Subscription panel: 3 rows (Rolled/Monthly/Bonus), total line, reset date, amber warning at 20% of monthly allotment, upgrade CTA when 0 credits
+4. Low-balance PostHog event `credits_low` when balance drops below 20% threshold (fired inside creditGate after debit)
+5. Admin credit management: Credit History tab on User Detail (S2 already built fn_get_user_credit_balance — wire to UI), Grant/Deduct buttons calling fn_grant_award_credits / fn_debit_credits
+6. Tests: 80+ covering webhook cohort reassign, award-grant EF, balance UI rendering, low-balance event
+7. Three-file close
 
 **Exit Gate:**
-- [ ] get-user-balance EF returns correct 3-bucket breakdown
-- [ ] score-resume EF returns 402 when user has 0 credits
-- [ ] score-resume EF debits 3 credits on success
-- [ ] Failed EF execution triggers refund_restore entry
-- [ ] auto-apply-trigger respects daily_cap=50
-- [ ] replenish-credits handles rollover_cap=0, N, -1 correctly
+- [ ] Stripe webhook correctly updates cohort_tier_id on subscription change
+- [ ] award-grant EF issues award_grant ledger entry visible in get-user-balance
+- [ ] Balance UI shows correct 3-bucket breakdown
+- [ ] Low-balance warning appears at ≤20% of monthly allotment
 - [ ] All tests passing
-
 **Other backlog:**
 - SPEC-COHORT-001-S3: Stripe integration + balance UI
 - CASA-001: Google CASA assessment + gmail.readonly upgrade
@@ -4085,7 +4089,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.77`** | **SPEC-COHORT-001-S1: cohort_tiers, credit_ledger, feature_costs schema. 104 tests. Conflict markers in ROADMAP/HANDOFF resolved.** |
+| **Product (BJ_VERSION)** | **`v9.78`** | **SPEC-COHORT-001-S2: creditGate middleware, get-user-balance + replenish-credits EFs, 8 active-debit EFs wired, award expiry cron. 91 tests.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

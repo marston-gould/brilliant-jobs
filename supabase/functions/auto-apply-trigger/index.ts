@@ -326,6 +326,12 @@ Deno.serve(async (req) => {
 
         for (const job of newMatches) {
           try {
+            // SPEC-COHORT-001-S2: Passive cap check
+            const cap = await passiveCap(sb, user.user_id, 'auto-apply-trigger');
+            if (!cap.allowed) {
+              logger.warn('auto-apply daily cap reached', { userId: user.user_id, cap: cap.dailyCap });
+              break;
+            }
             // BP-001: Circuit breaker
             const _br = await withAnthropicBreaker(sb, 'auto-apply-trigger', () =>
               quickScore(
