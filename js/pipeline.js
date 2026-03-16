@@ -1458,7 +1458,12 @@ async function renderPipeline() {
           '<button onclick="event.stopPropagation();if(window._ipStartMock)window._ipStartMock(\'' + item.id + '\',\'' + (m._dbId || '') + '\')" style="display:inline-block;font-size:10px;font-weight:600;padding:4px 10px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;white-space:nowrap;">Prep →</button></td>';
       } else if (applyUrl && stage === 'saved') {
         html += '<td style="white-space:nowrap;">';
-        html += '<button onclick="event.stopPropagation();if(typeof posthog!==\'undefined\')posthog.capture(\'pipeline_optimize_resume\',{job_id:\'' + item.id + '\',company:\'' + (company||'').replace(/'/g,'') + '\'});if(typeof rbOpenOptimizeForJob===\'function\')rbOpenOptimizeForJob(\'' + item.id + '\')" style="display:inline-block;font-size:10px;font-weight:600;padding:4px 10px;border-radius:6px;background:var(--bg-card);color:var(--text-dim);border:1px solid var(--border);cursor:pointer;white-space:nowrap;margin-right:4px;" title="Optimize your resume for this job">Optimize</button>';
+        // FB-FEED-CARDS-001 §6.3: Optimize Resume requires resume assignment
+        if (resumeName) {
+          html += '<button onclick="event.stopPropagation();if(typeof posthog!==\'undefined\')posthog.capture(\'pipeline_optimize_resume\',{job_id:\'' + item.id + '\',company:\'' + (company||'').replace(/'/g,'') + '\'});if(typeof rbOpenOptimizeForJob===\'function\')rbOpenOptimizeForJob(\'' + item.id + '\')" style="display:inline-block;font-size:10px;font-weight:600;padding:4px 10px;border-radius:6px;background:var(--bg-card);color:var(--text-dim);border:1px solid var(--border);cursor:pointer;white-space:nowrap;margin-right:4px;" title="Optimize your resume for this job">Optimize</button>';
+        } else {
+          html += '<button style="display:inline-block;font-size:10px;font-weight:600;padding:4px 10px;border-radius:6px;background:var(--bg-card);color:var(--text-faint);border:1px solid var(--border);cursor:help;white-space:nowrap;margin-right:4px;opacity:0.5;" title="Assign a resume to this filter on the Applications page." onclick="event.stopPropagation();">Optimize</button>';
+        }
         html += '<a href="' + applyUrl + '" target="_blank" rel="noopener" style="display:inline-block;text-decoration:none;font-size:10px;font-weight:600;padding:4px 10px;border-radius:6px;background:var(--accent);color:#fff;white-space:nowrap;" onclick="event.stopPropagation();movePipelineStage(\'' + item.id + '\',\'applied\')">Apply →</a>';
         html += '</td>';
       } else if (applyUrl) {
