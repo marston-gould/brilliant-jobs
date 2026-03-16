@@ -572,7 +572,6 @@ $('#cb-collection-name').addEventListener('input', () => {
 
 async function loadCompanyBrowser() {
   const list = $('#cb-list');
-  list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-faint);">Loading companies…</div>';
 
   // QA-FIX: Show US-Only indicator when tuning is active
   var usOnlyBanner = $('#cb-us-only-banner');
@@ -586,62 +585,175 @@ async function loadCompanyBrowser() {
   var tuning = safeReadLS('bj_tuning', {});
   usOnlyBanner.style.display = tuning.usOnly ? '' : 'none';
 
-  try {
-    // Load companies with active jobs — paginate to get all (PostgREST caps single requests)
-    // (ats_companies has 65K+ rows but only ~5-10K have open jobs)
-    let cacheResult = await cachedQuery('ref:companies:active', async function() {
-      // Load all companies with jobs — fetch by letter to avoid PostgREST 1000-row cap
-      let allRows = [];
-      const letters = '#ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-      for (const letter of letters) {
-        let page = 0;
-        while (true) {
-          let q = sb.from('ats_companies')
-            .select('slug, name, job_count, source')
-            .gt('job_count', 0)
-            .order('name');
-          if (letter === '#') {
-            q = q.or('name.ilike.0%,name.ilike.1%,name.ilike.2%,name.ilike.3%,name.ilike.4%,name.ilike.5%,name.ilike.6%,name.ilike.7%,name.ilike.8%,name.ilike.9%');
-          } else {
-            q = q.ilike('name', letter + '%');
-          }
-          q = q.range(page * 1000, (page + 1) * 1000 - 1);
-          const { data, error } = await q;
-          if (error) { console.warn('[CB] Letter', letter, 'page', page, 'error:', error.message); break; }
-          allRows = allRows.concat(data || []);
-          if (!data || data.length < 1000) break;
-          page++;
-        }
-      }
-      console.log('[CB] Loaded', allRows.length, 'companies across', letters.length, 'letter queries');
-      return { data: allRows };
-    }, { ttl: 600000 });
-    let allData = (cacheResult && cacheResult.data) || [];
-
-    // Load ghost stats for companies that have data
-    let ghostStats = {};
+  // Ghost stats cache (loaded once)
+  if (!window._cbGhostStats) {
+    window._cbGhostStats = {};
     try {
       const gs = await safeQuery(() => sb.from('company_ghost_stats').select('company_slug, ghost_rate, avg_response_days, total_applications'), { label: 'browsers:company_ghost_stats', fallback: [] });
-      (gs || []).forEach(g => { ghostStats[g.company_slug] = g; });
+      (gs || []).forEach(g => { window._cbGhostStats[g.company_slug] = g; });
     } catch(e) { reportError('browsers:ghost stats optional', e); }
+  }
 
-    cbAllCompanies = allData.map(c => ({
+  // Letter-based lazy loading state
+  window._cbLetterCache = window._cbLetterCache || {}; // { A: [...], B: [...], ... }
+  window._cbActiveFirst = null;
+  window._cbActiveSecond = null;
+
+  // Show alpha nav + prompt
+  _cbRenderNav1();
+  $('#cb-alpha-nav-2').innerHTML = '';
+  list.innerHTML = '<div style="text-align:center;padding:48px 12px;color:var(--text-faint);"><div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Select a letter above to browse companies</div><div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">Pick a letter, then narrow by second letter. Or use the search box.</div></div>';
+
+  // Search overrides letter nav — query on demand
+  var cbSearchEl = $('#cb-search');
+  if (cbSearchEl && !cbSearchEl._cbWired) {
+    cbSearchEl._cbWired = true;
+    let _searchTimer = null;
+    cbSearchEl.addEventListener('input', function() {
+      clearTimeout(_searchTimer);
+      var val = (cbSearchEl.value || '').trim();
+      if (val.length < 2) {
+        // Reset to letter nav state
+        if (window._cbActiveFirst) _cbLoadLetter(window._cbActiveFirst);
+        else list.innerHTML = '<div style="text-align:center;padding:48px;color:var(--text-faint);">Select a letter above to browse companies</div>';
+        return;
+      }
+      _searchTimer = setTimeout(async function() {
+        list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-faint);">Searching…</div>';
+        try {
+          var { data, error } = await sb.from('ats_companies')
+            .select('slug, name, job_count, source')
+            .gt('job_count', 0)
+            .ilike('name', '%' + val + '%')
+            .order('name')
+            .limit(500);
+          if (error) throw error;
+          cbAllCompanies = _cbMapData(data || []);
+          renderCompanyBrowserList();
+        } catch(e) { list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">Search failed</div>'; }
+      }, 300);
+    });
+  }
+
+  updateCbSelectedCount();
+}
+
+function _cbMapData(rows) {
+  var gs = window._cbGhostStats || {};
+  return rows.map(function(c) {
+    return {
       slug: c.slug,
       name: c.name || c.slug,
       jobs: c.job_count || 0,
       source: c.source || 'greenhouse',
-      ghostRate: ghostStats[c.slug]?.ghost_rate || null,
-      avgResponseDays: ghostStats[c.slug]?.avg_response_days || null,
-      ghostApps: ghostStats[c.slug]?.total_applications || 0
-    })).sort((a, b) => a.name.localeCompare(b.name));
+      ghostRate: gs[c.slug]?.ghost_rate || null,
+      avgResponseDays: gs[c.slug]?.avg_response_days || null,
+      ghostApps: gs[c.slug]?.total_applications || 0
+    };
+  }).sort(function(a, b) { return a.name.localeCompare(b.name); });
+}
 
-    console.log('[CB] Mapped', cbAllCompanies.length, 'companies. First 3:', cbAllCompanies.slice(0,3).map(c => c.name));
+async function _cbLoadLetter(letter) {
+  var list = $('#cb-list');
+  window._cbActiveFirst = letter;
+  window._cbActiveSecond = null;
+
+  // Check cache
+  if (window._cbLetterCache[letter]) {
+    cbAllCompanies = window._cbLetterCache[letter];
     renderCompanyBrowserList();
-    updateCbSelectedCount();
+    return;
+  }
 
-  } catch (e) {
+  list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-faint);">Loading ' + letter + ' companies…</div>';
+
+  try {
+    var allRows = [];
+    var page = 0;
+    while (true) {
+      var q = sb.from('ats_companies')
+        .select('slug, name, job_count, source')
+        .gt('job_count', 0)
+        .order('name');
+      if (letter === '#') {
+        q = q.or('name.ilike.0%,name.ilike.1%,name.ilike.2%,name.ilike.3%,name.ilike.4%,name.ilike.5%,name.ilike.6%,name.ilike.7%,name.ilike.8%,name.ilike.9%');
+      } else {
+        q = q.ilike('name', letter + '%');
+      }
+      q = q.range(page * 1000, (page + 1) * 1000 - 1);
+      var resp = await q;
+      if (resp.error) { console.warn('[CB] Letter', letter, 'page', page, 'error:', resp.error.message); break; }
+      allRows = allRows.concat(resp.data || []);
+      if (!resp.data || resp.data.length < 1000) break;
+      page++;
+    }
+
+    var mapped = _cbMapData(allRows);
+    window._cbLetterCache[letter] = mapped;
+    cbAllCompanies = mapped;
+    console.log('[CB] Loaded', mapped.length, 'companies for letter', letter);
+    renderCompanyBrowserList();
+  } catch(e) {
+    reportError('browsers:loadLetter', e);
     list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">Failed to load companies</div>';
   }
+}
+
+function _cbRenderNav1() {
+  var allLetters = '#ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  var nav1 = $('#cb-alpha-nav-1');
+  nav1.innerHTML = allLetters.map(function(l) {
+    var isActive = window._cbActiveFirst === l;
+    var cls = isActive ? 'active' : '';
+    return '<span class="cb-alpha-link ' + cls + '" data-letter="' + l + '">' + l + '</span>';
+  }).join('');
+
+  nav1.querySelectorAll('.cb-alpha-link').forEach(function(link) {
+    link.addEventListener('click', function() {
+      var letter = link.dataset.letter;
+      window._cbActiveFirst = letter;
+      window._cbActiveSecond = null;
+      _cbRenderNav1();
+      if (letter === '#') {
+        $('#cb-alpha-nav-2').innerHTML = '';
+      } else {
+        _cbRenderNav2(letter);
+      }
+      _cbLoadLetter(letter);
+    });
+  });
+}
+
+function _cbRenderNav2(firstLetter) {
+  var secondLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  var nav2 = $('#cb-alpha-nav-2');
+  nav2.innerHTML = '<span class="cb-alpha-link ' + (!window._cbActiveSecond ? 'active' : '') + '" data-prefix="ALL" style="font-weight:700;">All</span>' +
+    secondLetters.map(function(s) {
+      var prefix = firstLetter + s;
+      var isActive = window._cbActiveSecond === s;
+      return '<span class="cb-alpha-link ' + (isActive ? 'active' : '') + '" data-prefix="' + prefix + '">' + s + '</span>';
+    }).join('');
+
+  nav2.querySelectorAll('.cb-alpha-link').forEach(function(link) {
+    link.addEventListener('click', function() {
+      var prefix = link.dataset.prefix;
+      if (prefix === 'ALL') {
+        window._cbActiveSecond = null;
+      } else {
+        window._cbActiveSecond = prefix.charAt(1);
+      }
+      _cbRenderNav2(firstLetter);
+      // Filter the already-loaded letter data
+      if (window._cbActiveSecond) {
+        var full = window._cbLetterCache[firstLetter] || [];
+        var twoChar = firstLetter + window._cbActiveSecond;
+        cbAllCompanies = full.filter(function(c) { return c.name.toUpperCase().startsWith(twoChar); });
+      } else {
+        cbAllCompanies = window._cbLetterCache[firstLetter] || [];
+      }
+      renderCompanyBrowserList();
+    });
+  });
 }
 
 function renderCompanyBrowserList() {
@@ -670,89 +782,16 @@ function renderCompanyBrowserList() {
 
   // Group by first letter
   const groups = {};
-  const twoLetterSet = new Set(); // track all two-letter prefixes that exist
   filtered.forEach(c => {
     const letter = (c.name[0] || '#').toUpperCase();
     const key = /[A-Z]/.test(letter) ? letter : '#';
     if (!groups[key]) groups[key] = [];
     groups[key].push(c);
-    // Track two-letter prefix
-    if (c.name.length >= 2) {
-      const prefix = c.name.slice(0, 2).toUpperCase();
-      if (/^[A-Z]{2}$/.test(prefix)) twoLetterSet.add(prefix);
-    }
   });
 
-  const letters = Object.keys(groups).sort();
+  const letters = Object.keys(groups).sort((a, b) => a === '#' ? 1 : b === '#' ? -1 : a.localeCompare(b));
 
-  // Two-tier alpha nav
-  let cbActiveFirstLetter = null;
-
-  function renderAlphaNav1() {
-    const allLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
-    $('#cb-alpha-nav-1').innerHTML = allLetters.map(l => {
-      const exists = groups[l];
-      const isActive = cbActiveFirstLetter === l;
-      const cls = isActive ? 'active' : !exists ? 'dim' : '';
-      return `<span class="cb-alpha-link ${cls}" data-letter="${l}">${l}</span>`;
-    }).join('');
-
-    $('#cb-alpha-nav-1').querySelectorAll('.cb-alpha-link:not(.dim)').forEach(link => {
-      link.addEventListener('click', () => {
-        const letter = link.dataset.letter;
-        if (cbActiveFirstLetter === letter) {
-          // Deselect — clear second row and scroll to letter
-          cbActiveFirstLetter = null;
-          renderAlphaNav1();
-          $('#cb-alpha-nav-2').innerHTML = '';
-          const el = document.getElementById('cb-letter-' + letter);
-          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        } else {
-          cbActiveFirstLetter = letter;
-          renderAlphaNav1();
-          // UX: No second-row drill-down for # (number-prefixed companies)
-          if (letter === '#') {
-            $('#cb-alpha-nav-2').innerHTML = '';
-          } else {
-            renderAlphaNav2(letter);
-          }
-          // Also scroll to that letter group
-          const el = document.getElementById('cb-letter-' + letter);
-          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      });
-    });
-  }
-
-  function renderAlphaNav2(firstLetter) {
-    const secondLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-    $('#cb-alpha-nav-2').innerHTML = secondLetters.map(s => {
-      const prefix = firstLetter + s;
-      const exists = twoLetterSet.has(prefix);
-      const cls = !exists ? 'dim' : '';
-      return `<span class="cb-alpha-link ${cls}" data-prefix="${prefix}">${s}</span>`;
-    }).join('');
-
-    $('#cb-alpha-nav-2').querySelectorAll('.cb-alpha-link:not(.dim)').forEach(link => {
-      link.addEventListener('click', () => {
-        const prefix = link.dataset.prefix;
-        // Find first company with this prefix and scroll to it
-        const target = filtered.find(c => c.name.toUpperCase().startsWith(prefix));
-        if (target) {
-          const row = list.querySelector(`[data-slug="${target.slug}"]`);
-          if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          // Brief highlight
-          if (row) {
-            row.style.background = 'rgba(61,126,255,0.12)';
-            setTimeout(() => { row.style.background = ''; }, 1200);
-          }
-        }
-      });
-    });
-  }
-
-  renderAlphaNav1();
-  $('#cb-alpha-nav-2').innerHTML = ''; // clear second row on fresh render
+  // Alpha nav is now handled by _cbRenderNav1/_cbRenderNav2 in loadCompanyBrowser
 
   if (filtered.length === 0) {
     list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-faint);">No companies match your search</div>';
