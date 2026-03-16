@@ -948,6 +948,25 @@ if (typeof window !== "undefined") {
     if (document.hidden && _udPendingKeys.size > 0 && typeof _flushUserData === "function") _flushUserData();
   });
 }
+async function fetchWithTimeout(url, options = {}, timeoutMs = 3e4) {
+  var controller = new AbortController();
+  var timeoutId = setTimeout(function() {
+    controller.abort();
+  }, timeoutMs);
+  try {
+    var response = await fetch(url, Object.assign({}, options, { signal: controller.signal }));
+    return response;
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") {
+      reportError("fetch-timeout", new Error("Request timed out after " + timeoutMs + "ms: " + url));
+      throw new Error("Request timed out \u2014 please try again.");
+    }
+    throw e;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+window.fetchWithTimeout = fetchWithTimeout;
 async function safeQuery(queryFn, opts) {
   var label = opts && opts.label || "query";
   var fallback = opts && opts.fallback;

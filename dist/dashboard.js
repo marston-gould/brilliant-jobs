@@ -1254,6 +1254,28 @@ if (typeof window !== 'undefined') {
   });
 }
 
+// ── AUDIT-D3-002: fetchWithTimeout — timeout-guarded fetch for direct API calls ──
+// Wraps fetch() with AbortController. All direct fetch() calls to /api/* or EF URLs
+// MUST use this instead of raw fetch() to prevent indefinite hangs on slow/stalled servers.
+// Usage: const resp = await fetchWithTimeout('/api/resume-parse', { method: 'POST', ... });
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 30000): Promise<Response> {
+  var controller = new AbortController();
+  var timeoutId = setTimeout(function() { controller.abort(); }, timeoutMs);
+  try {
+    var response = await fetch(url, Object.assign({}, options, { signal: controller.signal }));
+    return response;
+  } catch (e: unknown) {
+    if (e instanceof Error && e.name === 'AbortError') {
+      reportError('fetch-timeout', new Error('Request timed out after ' + timeoutMs + 'ms: ' + url));
+      throw new Error('Request timed out — please try again.');
+    }
+    throw e;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+(window as Window & typeof globalThis & Record<string, unknown>).fetchWithTimeout = fetchWithTimeout;
+
 async function safeQuery(queryFn: () => Promise<unknown>, opts?: SafeQueryOptions): Promise<unknown> {
   var label = (opts && opts.label) || 'query';
   var fallback = opts && opts.fallback;
@@ -3258,7 +3280,7 @@ window.connectGmail = async function() {
   try {
     const { data: { session } } = await sb.auth.getSession();
     if (!session) { showToast('Please log in first.', { type: 'error' }); return; }
-    const res = await fetch('/api/auth/gmail/callback?action=connect', {
+    const res = await (typeof fetchWithTimeout === 'function' ? fetchWithTimeout : fetch)('/api/auth/gmail/callback?action=connect', {
       headers: { 'Authorization': 'Bearer ' + session.access_token }
     });
     const json = await res.json();
@@ -3277,7 +3299,7 @@ window.disconnectGmail = async function() {
   try {
     const { data: { session } } = await sb.auth.getSession();
     if (!session) return;
-    const res = await fetch('/api/auth/gmail/disconnect', {
+    const res = await (typeof fetchWithTimeout === 'function' ? fetchWithTimeout : fetch)('/api/auth/gmail/disconnect', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + session.access_token }
     });
@@ -4004,7 +4026,7 @@ window._enrichmentBadgeHtml = function(sf) {
 // Dashboard version check — shows banner if server has newer version
 (async function checkDashboardVersion() {
   try {
-    var resp = await fetch('/js/version.js?_t=' + Date.now(), { cache: 'no-store' });
+    var resp = await (typeof fetchWithTimeout === 'function' ? fetchWithTimeout : fetch)('/js/version.js?_t=' + Date.now(), { cache: 'no-store' });
     if (!resp.ok) return;
     var text = await resp.text();
     var match = text.match(/BJ_VERSION\s*=\s*['"]([^'"]+)['"]/);
@@ -13879,7 +13901,7 @@ async function getRefCityRadius() {
   }
   // Fetch static JSON
   try {
-    var res = await fetch('/data/ref_city_radius.json');
+    var res = await (typeof fetchWithTimeout === 'function' ? fetchWithTimeout : fetch)('/data/ref_city_radius.json');
     if (res.ok) {
       _refCityCache = await res.json();
       localStorage.setItem('bj_ref_city_radius', JSON.stringify({ data: _refCityCache, ts: Date.now() }));
@@ -27810,7 +27832,7 @@ window.addEventListener('resize', function() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
-      const resp = await fetch('/api/resume-parse', {
+      const resp = await (typeof fetchWithTimeout === 'function' ? fetchWithTimeout : fetch)('/api/resume-parse', {
         method: 'POST',
         headers: { Authorization: `Bearer ${session.access_token}` },
         body: formData,
@@ -28216,7 +28238,7 @@ window.addEventListener('resize', function() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
-      const resp = await fetch('/api/resume-generate', {
+      const resp = await (typeof fetchWithTimeout === 'function' ? fetchWithTimeout : fetch)('/api/resume-generate', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -28330,7 +28352,7 @@ window.addEventListener('resize', function() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
-      const resp = await fetch('/api/resume-optimize', {
+      const resp = await (typeof fetchWithTimeout === 'function' ? fetchWithTimeout : fetch)('/api/resume-optimize', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -28525,7 +28547,7 @@ window.addEventListener('resize', function() {
       const bulletsToRewrite = bullets.slice(0, 3);
       const results = await Promise.allSettled(
         bulletsToRewrite.map(bullet =>
-          fetch('/api/resume-rewrite-bullet', {
+          (typeof fetchWithTimeout === 'function' ? fetchWithTimeout : fetch)('/api/resume-rewrite-bullet', {
             method: 'POST',
             headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ resume_id: _state.resumeId, bullet, target_keywords: targetKeywords, job_context: jobContext }),

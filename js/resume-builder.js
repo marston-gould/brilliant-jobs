@@ -139,7 +139,7 @@
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
-      const resp = await fetch('/api/resume-parse', {
+      const resp = await (typeof fetchWithTimeout === 'function' ? fetchWithTimeout : fetch)('/api/resume-parse', {
         method: 'POST',
         headers: { Authorization: `Bearer ${session.access_token}` },
         body: formData,
@@ -545,7 +545,7 @@
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
-      const resp = await fetch('/api/resume-generate', {
+      const resp = await (typeof fetchWithTimeout === 'function' ? fetchWithTimeout : fetch)('/api/resume-generate', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -659,7 +659,7 @@
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
-      const resp = await fetch('/api/resume-optimize', {
+      const resp = await (typeof fetchWithTimeout === 'function' ? fetchWithTimeout : fetch)('/api/resume-optimize', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -854,7 +854,7 @@
       const bulletsToRewrite = bullets.slice(0, 3);
       const results = await Promise.allSettled(
         bulletsToRewrite.map(bullet =>
-          fetch('/api/resume-rewrite-bullet', {
+          (typeof fetchWithTimeout === 'function' ? fetchWithTimeout : fetch)('/api/resume-rewrite-bullet', {
             method: 'POST',
             headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ resume_id: _state.resumeId, bullet, target_keywords: targetKeywords, job_context: jobContext }),
