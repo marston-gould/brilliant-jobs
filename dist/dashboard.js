@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.92';
+var BJ_VERSION = 'v9.93';
 // Populate version display elements after DOM is ready
 (function() {
   var el = document.getElementById('nav-version');
@@ -14844,7 +14844,15 @@ $('#sf-delete-selected').addEventListener('click', () => {
   if (checked.length === 0) return;
   if (!confirm(`Delete ${checked.length} saved filter${checked.length > 1 ? 's' : ''}?`)) return;
   // Delete in reverse order to preserve indices
-  checked.sort((a, b) => b - a).forEach(idx => savedFilters.splice(idx, 1));
+  var deletedIds = [];
+  checked.sort((a, b) => b - a).forEach(idx => {
+    var removed = savedFilters.splice(idx, 1);
+    if (removed[0] && removed[0]._id) deletedIds.push(removed[0]._id);
+  });
+  // Delete from cloud user_filters table
+  if (deletedIds.length > 0 && typeof sb !== 'undefined' && currentUser?.id) {
+    deletedIds.forEach(id => sb.from('user_filters').delete().eq('id', id).then(() => {}));
+  }
   saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
   invalidateCache(); // A14: clear query caches when filters change
   $('#sf-select-all').checked = false;
@@ -15124,7 +15132,11 @@ function renderSavedFilters() {
   list.querySelectorAll('.sf-del').forEach(el => {
     el.addEventListener('click', e => {
       e.stopPropagation();
-      savedFilters.splice(parseInt(el.dataset.delidx), 1);
+      const deleted = savedFilters.splice(parseInt(el.dataset.delidx), 1);
+      // Delete from cloud user_filters table if it has a DB _id
+      if (deleted[0] && deleted[0]._id && typeof sb !== 'undefined' && currentUser?.id) {
+        sb.from('user_filters').delete().eq('id', deleted[0]._id).then(() => {});
+      }
       saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
       invalidateCache(); // A14: clear query caches when filters change
       renderSavedFilters();
