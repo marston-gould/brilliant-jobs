@@ -12,7 +12,9 @@ var TIER_GATES: Record<TierFeature, TierGateConfig> = {
   level_fit:          { free: false, starter: true, pro: true },
   pipeline_stats:     { free: false, starter: 'basic', pro: 'full' },
   job_log:            { free: false, starter: 10, pro: Infinity },
-  ai_scoring:         { free: false, starter: false, pro: true }
+  ai_scoring:         { free: false, starter: false, pro: true },
+  // AIS-F3-S1: Auto-apply daily submit limit (Free=0 blocked, Starter=5/day, Pro=unlimited)
+  auto_apply_daily:   { free: 0, starter: 5, pro: Infinity }
 };
 
 function getUserTier(): TierName {
@@ -130,6 +132,67 @@ window.canAccessFeature = canAccess;
 window.getUserTier = getUserTier;
 window.isPaylUser = isPaylUser;
 window.requiredTierFor = requiredTier;
+
+// AIS-F3-S1: Auto-apply daily limit helpers
+// ──────────────────────────────────────────
+const _AUTO_APPLY_STORAGE_KEY = 'bj_auto_apply_daily';
+
+function _getAutoApplyDailyRecord(): { date: string; count: number } {
+  try {
+    const raw = localStorage.getItem(_AUTO_APPLY_STORAGE_KEY);
+    if (!raw) return { date: '', count: 0 };
+    const rec = JSON.parse(raw) as { date: string; count: number };
+    const today = new Date().toISOString().slice(0, 10);
+    if (rec.date !== today) return { date: today, count: 0 };
+    return rec;
+  } catch (e) {
+    return { date: new Date().toISOString().slice(0, 10), count: 0 };
+  }
+}
+
+function getAutoApplyDailyLimit(): number {
+  const tier = getUserTier() as 'free' | 'starter' | 'pro';
+  const gate = (TIER_GATES as Record<string, Record<string, number>>).auto_apply_daily;
+  const val = gate[tier];
+  if (val === undefined) return 0;
+  return val;
+}
+
+function getAutoApplyDailyRemaining(): number {
+  const limit = getAutoApplyDailyLimit();
+  if (limit === 0) return 0;
+  if (limit === Infinity) return Infinity;
+  const rec = _getAutoApplyDailyRecord();
+  return Math.max(0, limit - rec.count);
+}
+
+function incrementAutoApplyDailyCount(): void {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const rec = _getAutoApplyDailyRecord();
+    rec.date = today;
+    rec.count = (rec.count || 0) + 1;
+    localStorage.setItem(_AUTO_APPLY_STORAGE_KEY, JSON.stringify(rec));
+  } catch (e) { /* non-fatal */ }
+}
+
+function checkAutoApplyTierGate(): { allowed: boolean; tier: string; limit: number; remaining: number; requiresTier: string | null } {
+  const tier = getUserTier();
+  const limit = getAutoApplyDailyLimit();
+  if (limit === 0) {
+    return { allowed: false, tier, limit: 0, remaining: 0, requiresTier: 'starter' };
+  }
+  const remaining = getAutoApplyDailyRemaining();
+  if (remaining === 0) {
+    return { allowed: false, tier, limit, remaining: 0, requiresTier: tier === 'starter' ? 'pro' : 'starter' };
+  }
+  return { allowed: true, tier, limit, remaining, requiresTier: null };
+}
+
+window.getAutoApplyDailyLimit = getAutoApplyDailyLimit;
+window.getAutoApplyDailyRemaining = getAutoApplyDailyRemaining;
+window.incrementAutoApplyDailyCount = incrementAutoApplyDailyCount;
+window.checkAutoApplyTierGate = checkAutoApplyTierGate;
 
 // CS-P1-004 FE-005: Register tier-gating exports with BJ namespace
 (function(): void {

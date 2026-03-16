@@ -249,9 +249,19 @@ async function processApplication(app) {
     const page = await context.newPage();
     page.setDefaultTimeout(15000);
 
+    // ── AIS-F8-S2: Fetch cover letter if attached to this application ──
+    let coverLetterContent = null;
+    if (app.cover_letter_id) {
+      try {
+        const { data: clRow } = await sb.from('cover_letters').select('content').eq('id', app.cover_letter_id).maybeSingle();
+        if (clRow) coverLetterContent = clRow.content;
+      } catch(_e) { /* non-fatal */ }
+    }
+
     // ── Route to handler ──
     const result = await routeSubmission(page, app.job_url, profile, resumeLocalPath, {
       logger, sb, userId: app.user_id, jobId: app.job_id,
+      coverLetter: coverLetterContent,
     });
 
     const durationMs = Date.now() - startTime;

@@ -1,17 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.54';
-(function(): void {
-  function populateVersion(): void {
-    document.querySelectorAll('.bj-version, [id$="-version"]').forEach(function(el: Element): void {
-      el.textContent = BJ_VERSION;
-    });
-  }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', populateVersion);
-  } else {
-    populateVersion();
-  }
-})();
+var BJ_VERSION = 'v9.69';
 
 
 // === js/globals.ts ===
@@ -1634,7 +1622,9 @@ var TIER_GATES: Record<TierFeature, TierGateConfig> = {
   level_fit:          { free: false, starter: true, pro: true },
   pipeline_stats:     { free: false, starter: 'basic', pro: 'full' },
   job_log:            { free: false, starter: 10, pro: Infinity },
-  ai_scoring:         { free: false, starter: false, pro: true }
+  ai_scoring:         { free: false, starter: false, pro: true },
+  // AIS-F3-S1: Auto-apply daily submit limit (Free=0 blocked, Starter=5/day, Pro=unlimited)
+  auto_apply_daily:   { free: 0, starter: 5, pro: Infinity }
 };
 
 function getUserTier(): TierName {
@@ -1752,6 +1742,67 @@ window.canAccessFeature = canAccess;
 window.getUserTier = getUserTier;
 window.isPaylUser = isPaylUser;
 window.requiredTierFor = requiredTier;
+
+// AIS-F3-S1: Auto-apply daily limit helpers
+// ──────────────────────────────────────────
+const _AUTO_APPLY_STORAGE_KEY = 'bj_auto_apply_daily';
+
+function _getAutoApplyDailyRecord(): { date: string; count: number } {
+  try {
+    const raw = localStorage.getItem(_AUTO_APPLY_STORAGE_KEY);
+    if (!raw) return { date: '', count: 0 };
+    const rec = JSON.parse(raw) as { date: string; count: number };
+    const today = new Date().toISOString().slice(0, 10);
+    if (rec.date !== today) return { date: today, count: 0 };
+    return rec;
+  } catch (e) {
+    return { date: new Date().toISOString().slice(0, 10), count: 0 };
+  }
+}
+
+function getAutoApplyDailyLimit(): number {
+  const tier = getUserTier() as 'free' | 'starter' | 'pro';
+  const gate = (TIER_GATES as Record<string, Record<string, number>>).auto_apply_daily;
+  const val = gate[tier];
+  if (val === undefined) return 0;
+  return val;
+}
+
+function getAutoApplyDailyRemaining(): number {
+  const limit = getAutoApplyDailyLimit();
+  if (limit === 0) return 0;
+  if (limit === Infinity) return Infinity;
+  const rec = _getAutoApplyDailyRecord();
+  return Math.max(0, limit - rec.count);
+}
+
+function incrementAutoApplyDailyCount(): void {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const rec = _getAutoApplyDailyRecord();
+    rec.date = today;
+    rec.count = (rec.count || 0) + 1;
+    localStorage.setItem(_AUTO_APPLY_STORAGE_KEY, JSON.stringify(rec));
+  } catch (e) { /* non-fatal */ }
+}
+
+function checkAutoApplyTierGate(): { allowed: boolean; tier: string; limit: number; remaining: number; requiresTier: string | null } {
+  const tier = getUserTier();
+  const limit = getAutoApplyDailyLimit();
+  if (limit === 0) {
+    return { allowed: false, tier, limit: 0, remaining: 0, requiresTier: 'starter' };
+  }
+  const remaining = getAutoApplyDailyRemaining();
+  if (remaining === 0) {
+    return { allowed: false, tier, limit, remaining: 0, requiresTier: tier === 'starter' ? 'pro' : 'starter' };
+  }
+  return { allowed: true, tier, limit, remaining, requiresTier: null };
+}
+
+window.getAutoApplyDailyLimit = getAutoApplyDailyLimit;
+window.getAutoApplyDailyRemaining = getAutoApplyDailyRemaining;
+window.incrementAutoApplyDailyCount = incrementAutoApplyDailyCount;
+window.checkAutoApplyTierGate = checkAutoApplyTierGate;
 
 // CS-P1-004 FE-005: Register tier-gating exports with BJ namespace
 (function(): void {
@@ -2630,6 +2681,7 @@ $$('.nav-item').forEach(item => {
       if (_tab === 'stats' && typeof initStatsPage === 'function') { if (window.bjTabGuard) bjTabGuard('stats', initStatsPage); else initStatsPage(); }
       // FB-INTPREP-001-S2: Interview Prep page init
       if (_tab === 'interview-prep' && typeof initInterviewPrep === 'function') { if (window.bjTabGuard) bjTabGuard('interview-prep', initInterviewPrep); else initInterviewPrep(); }
+      if (_tab === 'brilliant' && typeof initLinkedInImport === 'function') { initLinkedInImport(); }
       // Canny feedback removed v9.44
       // FB-GHOST-BADGE-001: Ghost Monitor page removed — redirect to Applications
       if (_tab === 'ghost') {
@@ -2736,6 +2788,7 @@ if (lastTab && $(`#page-${lastTab}`)) {
     if (lastTab === 'stats' && typeof initStatsPage === 'function') { if (window.bjTabGuard) bjTabGuard('stats', initStatsPage); else initStatsPage(); }
     // FB-INTPREP-001-S2: Interview Prep restore
     if (lastTab === 'interview-prep' && typeof initInterviewPrep === 'function') { if (window.bjTabGuard) bjTabGuard('interview-prep', initInterviewPrep); else initInterviewPrep(); }
+    if (lastTab === 'brilliant' && typeof initLinkedInImport === 'function') { initLinkedInImport(); }
     // Canny feedback removed v9.44
     // REFERRAL-CONSOL: referrals page removed — redirect to subscription
     if (lastTab === 'referrals') {
@@ -3307,17 +3360,20 @@ initGmailStatus();
 window.switchAppTab = function(panel) {
   // FB-APPS-001: Migrate legacy values to new 2-tab model
   if (panel === 'board' || panel === 'queue' || panel === 'history') panel = 'pipeline';
-  if (panel !== 'pipeline' && panel !== 'settings') panel = 'pipeline';
+  if (panel !== 'pipeline' && panel !== 'settings' && panel !== 'review-queue') panel = 'pipeline';
 
   // Toggle top-level tab buttons
   var tabPipeline = document.getElementById('app-top-tab-pipeline');
   var tabSettings = document.getElementById('app-top-tab-settings');
+  var tabReviewQueue = document.getElementById('app-top-tab-review-queue');
   if (tabPipeline) tabPipeline.classList.toggle('active', panel === 'pipeline');
   if (tabSettings) tabSettings.classList.toggle('active', panel === 'settings');
+  if (tabReviewQueue) tabReviewQueue.classList.toggle('active', panel === 'review-queue');
 
   // Toggle tab content panels
   var panelPipeline = document.getElementById('app-tab-pipeline');
   var panelSettings = document.getElementById('app-tab-settings');
+  var panelReviewQueue = document.getElementById('app-tab-review-queue');
   if (panelPipeline) {
     if (panel === 'pipeline') panelPipeline.classList.remove('u-hidden');
     else panelPipeline.classList.add('u-hidden');
@@ -3325,6 +3381,10 @@ window.switchAppTab = function(panel) {
   if (panelSettings) {
     if (panel === 'settings') panelSettings.classList.remove('u-hidden');
     else panelSettings.classList.add('u-hidden');
+  }
+  if (panelReviewQueue) {
+    if (panel === 'review-queue') { panelReviewQueue.classList.remove('u-hidden'); if (typeof loadReviewQueue === 'function') loadReviewQueue(); }
+    else panelReviewQueue.classList.add('u-hidden');
   }
 
   // Show/hide settings summary banner (only visible on Pipeline tab)
@@ -7031,6 +7091,7 @@ function renderJobRows(jobs, total, page, filtersToRun) {
     const aiJdBadge = aiJdBadgeHtml(job.greenhouse_id);
 
     html += `<tr class="job-data-row" data-jobid="${escapeHtml(job.greenhouse_id)}" data-level-rank="${levelInfo ? levelInfo.rank : 999}">
+      <td class="jt-sel" style="width:28px;padding:0 4px;"><input type="checkbox" class="bulk-job-cb" data-jobid="${escapeHtml(job.greenhouse_id)}" onchange="window._bulkToggleJob && window._bulkToggleJob('${escapeHtml(job.greenhouse_id)}', this.checked)" style="cursor:pointer;accent-color:var(--accent);"></td>
       <td class="jt-title"><span class="sf-del" onclick="hideJob('${escapeHtml(job.greenhouse_id)}', this)" title="Hide this job">✕</span>${filterBadges}<span class="job-title-link" data-jobid="${escapeHtml(job.greenhouse_id)}" title="${escapeHtml(job.title||'')}">${truncate(job.title, 55)}</span>${newBadge}${fraudBadge}${aiJdBadge}</td>
       <td class="jt-level">${levelCell}</td>
       <td class="jt-company">${truncate(cleanCompanyName(job.company_name), 30)}</td>
@@ -7042,7 +7103,7 @@ function renderJobRows(jobs, total, page, filtersToRun) {
         ${saveBtn}${applyBtn}<button class="job-action-btn" onclick="if(typeof rbOpenOptimizeForJob==='function')rbOpenOptimizeForJob('${job.greenhouse_id}')" title="Optimize your resume for this job" style="font-size:11px;padding:4px 8px;">Optimize Resume</button>
       </div></td>
     </tr>
-    <tr class="job-snippet-row"><td colspan="8">${trustBannerHtml(job.greenhouse_id)}${aiContentBannerHtml(job.greenhouse_id)}<span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td></tr>`;
+    <tr class="job-snippet-row"><td colspan="9">${trustBannerHtml(job.greenhouse_id)}${aiContentBannerHtml(job.greenhouse_id)}<span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td></tr>`;
   }
 
   // UX-006: Proper pagination controls (replaces inline Load More)
@@ -17148,7 +17209,9 @@ async function renderPipeline() {
           var _rColor = m._interviewReadinessScore >= 75 ? 'var(--green,#22c55e)' : m._interviewReadinessScore >= 50 ? 'var(--accent)' : 'var(--warm)';
           _readinessBadge = '<span style="font-size:10px;font-weight:700;color:' + _rColor + ';margin-right:6px;" title="Interview readiness score">' + m._interviewReadinessScore + '</span>';
         }
-        html += '<td style="white-space:nowrap;">' + _readinessBadge + '<button onclick="event.stopPropagation();if(window._ipStartMock)window._ipStartMock(\'' + item.id + '\',\'' + (m._dbId || '') + '\')" style="display:inline-block;font-size:10px;font-weight:600;padding:4px 10px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;white-space:nowrap;">Prep →</button></td>';
+        html += '<td style="white-space:nowrap;">' + _readinessBadge +
+          '<button onclick="event.stopPropagation();if(window.openInterviewPractice)window.openInterviewPractice(\'' + item.id + '\')" style="display:inline-block;font-size:10px;font-weight:600;padding:4px 10px;border-radius:6px;background:var(--purple,#7c3aed);color:#fff;border:none;cursor:pointer;white-space:nowrap;margin-right:4px;" title="AI Interview Practice (AIS-F11)">🎯 Practice</button>' +
+          '<button onclick="event.stopPropagation();if(window._ipStartMock)window._ipStartMock(\'' + item.id + '\',\'' + (m._dbId || '') + '\')" style="display:inline-block;font-size:10px;font-weight:600;padding:4px 10px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;white-space:nowrap;">Prep →</button></td>';
       } else if (applyUrl && stage === 'saved') {
         html += '<td><a href="' + applyUrl + '" target="_blank" rel="noopener" style="display:inline-block;text-decoration:none;font-size:10px;font-weight:600;padding:4px 10px;border-radius:6px;background:var(--accent);color:#fff;white-space:nowrap;" onclick="event.stopPropagation();movePipelineStage(\'' + item.id + '\',\'applied\')">Apply →</a></td>';
       } else if (applyUrl) {
@@ -20978,6 +21041,199 @@ window._bjFileStore = bjFileStore;
       window.BJ._registry[name] = { module: 'resumes', registered: Date.now() };
     }
   });
+})();
+
+// ── AIS-F12-S1/S2: Resume A/B Testing UI ─────────────────────────────────
+// Test creation, results dashboard, chi-squared significance, auto-winner declaration
+
+(function () {
+  'use strict';
+
+  var _abActiveTestId = null;
+
+  // ── Load and render A/B test dashboard on Resumes page ─────────────────
+  window.loadAbTestDashboard = async function () {
+    var container = document.getElementById('ab-test-container');
+    if (!container || !currentUser) return;
+
+    try {
+      var { data: tests, error } = await sb.from('resume_ab_tests')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) { reportError('loadAbTestDashboard', error); return; }
+
+      if (!tests || !tests.length) {
+        container.innerHTML = '<div class="u-empty-state"><div style="font-size:13px;color:var(--text-muted);">No A/B tests yet. Create one to compare your resume variants.</div>' +
+          '<button class="btn btn-sm btn-primary" onclick="window.openCreateAbTest()" style="margin-top:10px;">+ Create A/B Test</button></div>';
+        return;
+      }
+
+      var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){return String(s||'');};
+      container.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
+        '<div style="font-size:13px;font-weight:700;">Resume A/B Tests</div>' +
+        '<button class="btn btn-sm" onclick="window.openCreateAbTest()">+ New Test</button></div>' +
+        tests.map(function(test) {
+          var statusColor = test.status === 'active' ? 'var(--green)' : test.status === 'completed' ? 'var(--accent)' : 'var(--text-muted)';
+          return '<div class="card ab-test-card" style="margin-bottom:10px;padding:12px 16px;" data-test-id="' + test.id + '">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
+              '<div style="font-size:13px;font-weight:600;">' + esc(test.test_name) + '</div>' +
+              '<div style="font-size:10px;font-weight:700;color:' + statusColor + ';text-transform:uppercase;">' + esc(test.status) + (test.winner_id ? ' · Winner Declared' : '') + '</div>' +
+            '</div>' +
+            '<div id="ab-metrics-' + test.id + '" style="font-size:11px;color:var(--text-muted);">Loading metrics…</div>' +
+            '<div style="display:flex;gap:6px;margin-top:8px;">' +
+              '<button class="btn btn-sm" onclick="window.loadAbMetrics(\'' + test.id + '\')" style="font-size:10px;">Refresh</button>' +
+              (test.status === 'active' ? '<button class="btn btn-sm" onclick="window.pauseAbTest(\'' + test.id + '\')" style="font-size:10px;">Pause</button>' : '') +
+            '</div>' +
+          '</div>';
+        }).join('');
+
+      // Load metrics for all active tests
+      tests.filter(function(t) { return t.status === 'active'; }).forEach(function(t) {
+        window.loadAbMetrics(t.id);
+      });
+    } catch (e) { reportError('loadAbTestDashboard', e); }
+  };
+
+  // ── Load per-test metrics via EF ────────────────────────────────────────
+  window.loadAbMetrics = async function (testId) {
+    var el = document.getElementById('ab-metrics-' + testId);
+    if (!el) return;
+    try {
+      var session = await sb.auth.getSession();
+      var token = session?.data?.session?.access_token;
+      var res = await fetch(SUPABASE_URL + '/functions/v1/resume-ab-assign', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+        body: JSON.stringify({ action: 'get_results', test_id: testId }),
+      });
+      var data = await res.json();
+      if (!res.ok || !data.metrics) { el.textContent = 'No data yet.'; return; }
+
+      var m = data.metrics;
+      var aRate = (m.a.response_rate * 100).toFixed(1);
+      var bRate = (m.b.response_rate * 100).toFixed(1);
+      var sig = m.statistically_significant;
+      var minReached = m.min_sample_reached;
+
+      // Simple bar chart
+      var barWidth = 120;
+      var aBar = Math.round((m.a.response_rate) * barWidth);
+      var bBar = Math.round((m.b.response_rate) * barWidth);
+      var aColor = m.a.response_rate >= m.b.response_rate ? 'var(--green)' : 'var(--accent)';
+      var bColor = m.b.response_rate > m.a.response_rate ? 'var(--green)' : 'var(--accent)';
+
+      el.innerHTML =
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+          '<div>' +
+            '<div style="font-size:10px;font-weight:600;margin-bottom:3px;">Variant A</div>' +
+            '<div style="height:6px;background:var(--border);border-radius:3px;margin-bottom:3px;overflow:hidden;"><div style="height:100%;width:' + Math.min(aBar,barWidth) + 'px;background:' + aColor + ';border-radius:3px;"></div></div>' +
+            '<div style="font-size:11px;">' + m.a.total + ' apps · <strong>' + aRate + '%</strong> response</div>' +
+          '</div>' +
+          '<div>' +
+            '<div style="font-size:10px;font-weight:600;margin-bottom:3px;">Variant B</div>' +
+            '<div style="height:6px;background:var(--border);border-radius:3px;margin-bottom:3px;overflow:hidden;"><div style="height:100%;width:' + Math.min(bBar,barWidth) + 'px;background:' + bColor + ';border-radius:3px;"></div></div>' +
+            '<div style="font-size:11px;">' + m.b.total + ' apps · <strong>' + bRate + '%</strong> response</div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="margin-top:6px;font-size:10px;color:var(--text-muted);">' +
+          (minReached
+            ? (sig ? '<span style="color:var(--green);">✓ Statistically significant (p=' + (m.p_value||0).toFixed(3) + ')</span>' : 'Not yet significant — keep collecting data')
+            : 'Need ' + Math.max(10 - m.a.total, 0) + '+ more apps per variant') +
+        '</div>';
+
+      // Check for winner notification
+      if (sig && !document.getElementById('ab-winner-notice-' + testId)) {
+        var card = document.querySelector('.ab-test-card[data-test-id="' + testId + '"]');
+        if (card) {
+          var winner = m.a.response_rate >= m.b.response_rate ? 'Variant A' : 'Variant B';
+          var notice = document.createElement('div');
+          notice.id = 'ab-winner-notice-' + testId;
+          notice.style.cssText = 'margin-top:8px;padding:6px 10px;background:rgba(22,163,74,0.1);border-radius:6px;font-size:11px;color:var(--green);';
+          notice.textContent = '🏆 ' + winner + ' wins! Consider setting it as your default.';
+          card.appendChild(notice);
+          if (typeof capturePostHog === 'function') capturePostHog('resume_ab_winner_declared', {
+            test_id: testId, winner_variant: winner, p_value: m.p_value,
+            sample_size_a: m.a.total, sample_size_b: m.b.total,
+          });
+        }
+      }
+    } catch (e) { if (el) el.textContent = 'Error loading metrics.'; }
+  };
+
+  // ── Create A/B test modal ───────────────────────────────────────────────
+  window.openCreateAbTest = async function () {
+    var modal = document.getElementById('ab-create-modal');
+    if (!modal) return;
+
+    // Load available resumes for dropdowns
+    var { data: resumes } = await sb.from('resumes').select('id, display_name, is_active')
+      .eq('user_id', currentUser.id).order('created_at', { ascending: false }).limit(20);
+    var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){return String(s||'');};
+    var opts = (resumes || []).map(function(r) {
+      return '<option value="' + r.id + '">' + esc(r.display_name || 'Resume') + (r.is_active ? ' (Active)' : '') + '</option>';
+    }).join('');
+
+    modal.style.display = 'flex';
+    var body = document.getElementById('ab-create-body');
+    if (body) {
+      body.innerHTML = '<div class="rb-field"><label class="rb-label">Test Name</label><input id="abt-name" class="rb-input" placeholder="e.g. Original vs AI-Tailored"></div>' +
+        '<div class="rb-field"><label class="rb-label">Variant A (control)</label><select id="abt-variant-a" class="rb-input"><option value="">Select resume…</option>' + opts + '</select></div>' +
+        '<div class="rb-field"><label class="rb-label">Variant B (challenger)</label><select id="abt-variant-b" class="rb-input"><option value="">Select resume…</option>' + opts + '</select></div>' +
+        '<div class="rb-field"><label class="rb-label">Min sample size per variant</label><input id="abt-min" type="number" class="rb-input" value="20" min="10" max="100"></div>' +
+        '<div style="display:flex;gap:8px;margin-top:14px;"><button class="btn btn-primary btn-sm" onclick="window._abSaveTest()">Create Test</button><button class="btn btn-sm" onclick="document.getElementById(\'ab-create-modal\').style.display=\'none\'">Cancel</button></div>';
+    }
+  };
+
+  window._abSaveTest = async function () {
+    var name = document.getElementById('abt-name')?.value?.trim();
+    var variantA = document.getElementById('abt-variant-a')?.value;
+    var variantB = document.getElementById('abt-variant-b')?.value;
+    var minSample = parseInt(document.getElementById('abt-min')?.value || '20');
+
+    if (!name || !variantA || !variantB) {
+      if (typeof showToast === 'function') showToast('All fields required.', { type: 'error' }); return;
+    }
+    if (variantA === variantB) {
+      if (typeof showToast === 'function') showToast('Variants must be different resumes.', { type: 'error' }); return;
+    }
+
+    try {
+      var { error } = await sb.from('resume_ab_tests').insert({
+        user_id: currentUser.id,
+        test_name: name,
+        variant_a_resume_id: variantA,
+        variant_b_resume_id: variantB,
+        min_sample_size: minSample,
+        status: 'active',
+      });
+      if (error) throw error;
+
+      if (typeof capturePostHog === 'function') capturePostHog('resume_ab_test_created', {
+        test_name: name, variant_a_id: variantA, variant_b_id: variantB, min_sample_size: minSample,
+      });
+
+      document.getElementById('ab-create-modal').style.display = 'none';
+      if (typeof showToast === 'function') showToast('A/B test created!', { type: 'success' });
+      window.loadAbTestDashboard();
+    } catch (e) {
+      reportError('_abSaveTest', e);
+      if (typeof showToast === 'function') showToast('Failed to create test: ' + e.message, { type: 'error' });
+    }
+  };
+
+  window.pauseAbTest = async function (testId) {
+    await sb.from('resume_ab_tests').update({ status: 'paused' }).eq('id', testId).eq('user_id', currentUser.id);
+    window.loadAbTestDashboard();
+  };
+
+  // Auto-wire into A/B tab switch
+  if (typeof window.BJ !== 'undefined') {
+    window.BJ._registry = window.BJ._registry || {};
+    window.BJ._registry.resumeAbTest = { module: 'resumes', registered: Date.now() };
+  }
 })();
 
 
@@ -25604,6 +25860,14 @@ function openRewritePanel(jobId, jobTitle, company, resumeId, matchScore) {
   document.addEventListener('keydown', panel._escHandler);
 
   // Start analysis
+  if (typeof capturePostHog === 'function') {
+    capturePostHog('resume_rewrite_started', {
+      job_id: jobId,
+      resume_id: resumeId,
+      original_score: matchScore || null,
+      mode: 'manual',
+    });
+  }
   _rwStartAnalysis();
 }
 
@@ -25739,6 +26003,12 @@ function _rwSkipQuestion(qId) {
     if (input) { input.value = ''; input.disabled = true; }
   }
   _rwState.userAnswers[qId] = null;
+  // PostHog: resume_rewrite_qa_skipped
+  if (typeof capturePostHog === 'function') {
+    var qIdx = (_rwState.questions || []).findIndex(function(q){ return q.id === qId; });
+    var qType = (_rwState.questions && _rwState.questions[qIdx]) ? (_rwState.questions[qIdx].type || 'unknown') : 'unknown';
+    capturePostHog('resume_rewrite_qa_skipped', { question_index: qIdx, question_type: qType });
+  }
 }
 
 // ════════════════════════════════════════════════════════════
@@ -25861,6 +26131,17 @@ async function _rwAcceptAll() {
     setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
 
     showToast('Resume rewrite downloaded! File saved to your account.', { type: 'success', duration: 5000 });
+
+    // PostHog: resume_rewrite_completed
+    if (typeof capturePostHog === 'function') {
+      capturePostHog('resume_rewrite_completed', {
+        job_id: _rwState.jobId,
+        resume_id: _rwState.resumeId,
+        original_score: _rwState.originalScore || null,
+        new_score: _rwState.newScore || null,
+        credits_charged: 3,
+      });
+    }
     closeRewritePanel();
 
   } catch (e) {
@@ -28025,6 +28306,185 @@ window.addEventListener('resize', function() {
     });
   });
 
+})();
+
+// ── AIS-F7-S1/S2: AI Resume Wizard (from scratch) ────────────────────────
+// Appended to existing resume-builder.js (upload parser module)
+// Wizard → build-resume EF → template preview → DOCX download
+
+(function () {
+  'use strict';
+  var _rbWizStep = 1, _rbWizData = {}, _rbWizGenerated = null, _rbWizTemplate = 'clean';
+
+  window.openResumeBuilder = function () {
+    _rbWizStep = 1; _rbWizData = {}; _rbWizGenerated = null;
+    var panel = document.getElementById('rb-wizard-panel');
+    if (panel) { panel.style.display = ''; document.body.style.overflow = 'hidden'; }
+    _rbWizRenderStep();
+    if (typeof capturePostHog === 'function') capturePostHog('resume_built_from_scratch', { source: 'wizard_open' });
+  };
+
+  window.closeResumeBuilder = function () {
+    var panel = document.getElementById('rb-wizard-panel');
+    if (panel) panel.style.display = 'none';
+    document.body.style.overflow = '';
+  };
+
+  function _rbWizRenderStep() {
+    var body = document.getElementById('rb-wizard-body');
+    if (!body) return;
+    var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){ return String(s||''); };
+    var c = '';
+    if (_rbWizStep === 1) {
+      c = '<div class="rb-field"><label class="rb-label">Target Role *</label><input id="rbw-role" class="rb-input" value="' + esc(_rbWizData.target_role||'') + '" placeholder="Senior Software Engineer"></div>' +
+          '<div class="rb-field"><label class="rb-label">Industry</label><input id="rbw-industry" class="rb-input" value="' + esc(_rbWizData.target_industry||'') + '" placeholder="FinTech, Healthcare…"></div>' +
+          '<div class="rb-field"><label class="rb-label">Years of Experience</label><select id="rbw-years" class="rb-input"><option>0-2</option><option' + (_rbWizData.years_experience==='3-5'?' selected':'') + '>3-5</option><option' + (_rbWizData.years_experience==='6-10'?' selected':'') + '>6-10</option><option' + (_rbWizData.years_experience==='10+'?' selected':'') + '>10+</option></select></div>';
+    } else if (_rbWizStep === 2) {
+      c = '<div class="rb-field"><label class="rb-label">Key Accomplishments</label><textarea id="rbw-acc" class="rb-input" rows="5" placeholder="• Led team of 8, shipped product to 50K users&#10;• Reduced costs by $200K through automation">' + esc(_rbWizData.accomplishments||'') + '</textarea></div>';
+    } else if (_rbWizStep === 3) {
+      c = '<div class="rb-field"><label class="rb-label">Top Skills (comma-separated)</label><input id="rbw-skills" class="rb-input" value="' + esc(Array.isArray(_rbWizData.skills)?_rbWizData.skills.join(', '):(_rbWizData.skills||'')) + '" placeholder="Python, AWS, React, Leadership…"></div>' +
+          '<div class="rb-field"><label class="rb-label">Education</label><input id="rbw-edu" class="rb-input" value="' + esc(_rbWizData.education||'') + '" placeholder="B.S. Computer Science, MIT 2019"></div>';
+    } else if (_rbWizStep === 4) {
+      var templates = ['clean','modern','executive','minimal','technical'];
+      c = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Choose template</div>' +
+          templates.map(function(t) {
+            return '<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1.5px solid ' + (_rbWizTemplate===t?'var(--accent)':'var(--border)') + ';border-radius:6px;margin-bottom:6px;cursor:pointer;">' +
+              '<input type="radio" name="rbwt" value="' + t + '"' + (_rbWizTemplate===t?' checked':'') + ' onchange="(function(){_rbWizTemplate=\''+t+'\';})()">' +
+              '<span style="text-transform:capitalize;font-size:13px;">' + t + '</span></label>';
+          }).join('');
+    }
+    body.innerHTML = '<div id="rbw-step-content">' + c + '</div>';
+  }
+
+  window._rbWizNext = async function () {
+    var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){ return String(s||''); };
+    if (_rbWizStep === 1) {
+      var r = document.getElementById('rbw-role')?.value?.trim();
+      if (!r) { if (typeof showToast === 'function') showToast('Target role required.', {type:'error'}); return; }
+      _rbWizData.target_role = r;
+      _rbWizData.target_industry = document.getElementById('rbw-industry')?.value?.trim()||'';
+      _rbWizData.years_experience = document.getElementById('rbw-years')?.value||'3-5';
+    } else if (_rbWizStep === 2) {
+      _rbWizData.accomplishments = document.getElementById('rbw-acc')?.value?.trim()||'';
+    } else if (_rbWizStep === 3) {
+      var sk = document.getElementById('rbw-skills')?.value?.trim()||'';
+      _rbWizData.skills = sk ? sk.split(',').map(function(s){return s.trim();}).filter(Boolean) : [];
+      _rbWizData.education = document.getElementById('rbw-edu')?.value?.trim()||'';
+    }
+    if (_rbWizStep < 4) { _rbWizStep++; _rbWizRenderStep(); return; }
+    _rbWizData.template = _rbWizTemplate;
+    await _rbWizGenerate();
+  };
+
+  window._rbWizBack = function () {
+    if (_rbWizStep > 1) { _rbWizStep--; _rbWizRenderStep(); }
+  };
+
+  async function _rbWizGenerate() {
+    var body = document.getElementById('rb-wizard-body');
+    if (body) body.innerHTML = '<div style="text-align:center;padding:40px;"><div style="font-size:22px;">✨</div><div style="font-size:13px;font-weight:600;margin-top:8px;">Building your resume…</div><div style="font-size:11px;color:var(--text-muted);margin-top:4px;">~15 seconds</div></div>';
+    try {
+      var session = await sb.auth.getSession();
+      var token = session?.data?.session?.access_token;
+      var res = await fetch(SUPABASE_URL + '/functions/v1/build-resume', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+        body: JSON.stringify(_rbWizData),
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Generation failed');
+      _rbWizGenerated = data;
+      if (typeof capturePostHog === 'function') capturePostHog('resume_built_from_scratch', { source: _rbWizData.template||'manual', template: _rbWizTemplate, credits_charged: 5 });
+      // Item 34: Get score preview
+      var scoreVal = await window._rbWizGetScorePreview(data.full_text, _rbWizData.target_role || '');
+      var scoreHtml = scoreVal ? '<div style="margin:8px 0;font-size:12px;">Match score preview: <strong style="color:' + (scoreVal>=75?'var(--green)':scoreVal>=50?'var(--warning)':'var(--warm)') + ';">' + scoreVal + '%</strong></div>' : '';
+
+      // Item 35: Section editor — inline contenteditable
+      var s = data.sections || {};
+      var esc = typeof escapeHtml === 'function' ? escapeHtml : function(x){return String(x||'');};
+      var sumHtml = s.summary ? '<div style="margin-bottom:10px;"><div style="font-size:10px;font-weight:700;color:var(--text-muted);margin-bottom:3px;">SUMMARY</div>' +
+        '<div contenteditable="true" id="rbw-edit-summary" style="font-size:11px;line-height:1.5;border:1px dashed var(--border);border-radius:4px;padding:4px;outline:none;">' + esc(s.summary) + '</div></div>' : '';
+      var expHtml2 = (s.experience||[]).slice(0,2).map(function(e, ei){
+        return '<div style="margin-bottom:6px;font-size:11px;">' +
+          '<div contenteditable="true" id="rbw-edit-exp-' + ei + '" style="font-weight:600;border-bottom:1px dashed var(--border);outline:none;">' + esc(e.title||'') + ' @ ' + esc(e.company||'') + '</div>' +
+          '<div style="color:var(--text-muted);font-size:10px;">' + esc(e.dates||'') + '</div>' +
+        '</div>';
+      }).join('');
+
+      if (body) body.innerHTML =
+        '<div style="color:var(--green);font-weight:600;margin-bottom:6px;">✓ Resume built!</div>' +
+        scoreHtml +
+        '<div style="background:var(--bg-card);border-radius:8px;padding:10px;max-height:200px;overflow-y:auto;margin-bottom:10px;font-size:11px;">' +
+          sumHtml + expHtml2 +
+        '</div>' +
+        '<div style="display:flex;gap:6px;">' +
+          '<button class="btn btn-primary btn-sm" onclick="window._rbWizDownload()">⬇ DOCX</button>' +
+          '<button class="btn btn-sm" onclick="window._rbWizDownloadPdf()">⬇ PDF</button>' +
+          '<button class="btn btn-sm" onclick="window.closeResumeBuilder()">Close</button>' +
+        '</div>';
+    } catch (e) {
+      reportError('resume-wizard:generate', e);
+      if (typeof showToast === 'function') showToast('Generation failed: ' + e.message, {type:'error'});
+      _rbWizStep = 4; _rbWizRenderStep();
+    }
+  }
+
+  // Item 34: Score preview — call score-resume EF on generated text
+  window._rbWizGetScorePreview = async function(fullText, targetRole) {
+    if (!fullText || !targetRole) return null;
+    try {
+      var session = await sb.auth.getSession();
+      var token = session?.data?.session?.access_token;
+      // Use a fake JD from target role for rough scoring
+      var jd = 'Seeking a ' + targetRole + ' with relevant skills and experience.';
+      var res = await fetch(SUPABASE_URL + '/functions/v1/score-resume', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+        body: JSON.stringify({ resumeText: fullText.slice(0, 2000), jobDescription: jd }),
+      });
+      var d = await res.json();
+      return d.score || d.match_score || null;
+    } catch(e) { return null; }
+  };
+
+  // Item 36: PDF export via printable popup window
+  window._rbWizDownloadPdf = function() {
+    if (!_rbWizGenerated) return;
+    var s = _rbWizGenerated.sections || {};
+    var esc = function(t){ return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+    var expH = (s.experience||[]).map(function(e){
+      return '<div style="margin-bottom:10px;"><strong>' + esc(e.title||'') + '</strong> — ' + esc(e.company||'') +
+        '<br><small>' + esc(e.dates||'') + '</small><ul>' +
+        (e.bullets||[]).map(function(b){return '<li>'+esc(b)+'</li>';}).join('') + '</ul></div>';
+    }).join('');
+    var skillsH = (s.skills||[]).map(function(sk){
+      return '<p><strong>'+esc(sk.category||'')+':</strong> '+(sk.items||[]).map(esc).join(', ')+'</p>';
+    }).join('');
+    var w = window.open('', '_blank', 'width=800,height=700');
+    if (!w) { if (typeof showToast === 'function') showToast('Allow popups to download PDF.', {type:'info'}); return; }
+    w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Resume</title>' +
+      '<style>body{font-family:Arial,sans-serif;max-width:700px;margin:32px auto;font-size:12px;line-height:1.5;color:#111}' +
+      'h1{font-size:18px;margin:0 0 4px}h2{font-size:13px;border-bottom:1px solid #ddd;padding-bottom:3px;margin:14px 0 6px}' +
+      'ul{margin:4px 0;padding-left:16px}li{margin-bottom:2px}p{margin:4px 0}@media print{body{margin:16px}}</style></head><body>' +
+      '<h1>' + esc((_rbWizData&&_rbWizData.target_role)||'Resume') + '</h1>' +
+      (s.summary ? '<h2>Summary</h2><p>'+esc(s.summary)+'</p>' : '') +
+      (expH ? '<h2>Experience</h2>'+expH : '') +
+      (skillsH ? '<h2>Skills</h2>'+skillsH : '') +
+      '<script>window.onload=function(){window.print();setTimeout(function(){window.close();},2000);};<\/script>' +
+      '</body></html>');
+    w.document.close();
+  };
+
+  window._rbWizDownload = function () {
+    if (!_rbWizGenerated) return;
+    var text = _rbWizGenerated.full_text || '';
+    var blob = new Blob([text], { type: 'text/plain' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = (_rbWizData.target_role||'resume').replace(/[^a-zA-Z0-9]/g,'-') + '-ai.txt';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 3000);
+  };
 })();
 
 
@@ -30887,6 +31347,57 @@ async function callSubmitApplication(pendingApp, resumeFileId, resumeFilename) {
   }
 }
 
+// AIS-F3-S1: Fill Status Panel — surface auto-apply progress/errors to Applications page
+// ═══════════════════════════════════════════════════════════════════════════════════════
+function _updateFillStatusPanel(opts) {
+  // opts: { status: 'submitting'|'queued'|'success'|'error', jobTitle, companyName, error, action }
+  try {
+    var panel = document.getElementById('ais-fill-status-panel');
+    if (!panel) return;
+
+    var statusConfig = {
+      submitting: { color: 'var(--accent)', icon: 'loader-2', label: 'Submitting…' },
+      queued:     { color: 'var(--accent)', icon: 'clock',    label: 'Queued for worker' },
+      success:    { color: 'var(--green)',  icon: 'circle-check', label: 'Submitted!' },
+      error:      { color: 'var(--warm)',   icon: 'circle-x',     label: 'Failed' },
+    };
+    var cfg = statusConfig[opts.status] || statusConfig.submitting;
+    var jobLabel = opts.jobTitle ? (opts.jobTitle + (opts.companyName ? ' @ ' + opts.companyName : '')) : (opts.companyName || 'Job');
+
+    var actionHtml = '';
+    if (opts.status === 'error' && opts.action) {
+      actionHtml = '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">' + escapeHtml(opts.action) + ' <a href="#" onclick="switchPage(\'applications\');return false;" style="color:var(--accent);">View Pending</a></div>';
+    }
+    if (opts.status === 'success') {
+      actionHtml = '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;"><a href="#" onclick="switchPage(\'applications\');return false;" style="color:var(--accent);">View in Pipeline →</a></div>';
+    }
+    var errorHtml = (opts.status === 'error' && opts.error) ? '<div style="font-size:11px;color:var(--warm);margin-top:2px;">' + escapeHtml(opts.error) + '</div>' : '';
+
+    panel.style.display = 'block';
+    panel.innerHTML =
+      '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;background:var(--bg-card);border-radius:8px;border-left:3px solid ' + cfg.color + ';">' +
+        '<i data-lucide="' + cfg.icon + '" style="width:16px;height:16px;flex-shrink:0;stroke:' + cfg.color + ';margin-top:2px;' + (opts.status === 'submitting' || opts.status === 'queued' ? 'animation:spin 1s linear infinite;' : '') + '"></i>' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-size:12px;font-weight:600;color:var(--text);">' + cfg.label + ': ' + escapeHtml(jobLabel) + '</div>' +
+          errorHtml + actionHtml +
+        '</div>' +
+        '<button onclick="document.getElementById(\'ais-fill-status-panel\').style.display=\'none\';" style="background:none;border:none;cursor:pointer;padding:0;color:var(--text-muted);font-size:16px;line-height:1;">×</button>' +
+      '</div>';
+
+    if (typeof window.refreshIcons === 'function') window.refreshIcons();
+
+    // Auto-clear success after 8 seconds
+    if (opts.status === 'success') {
+      setTimeout(function() {
+        var p = document.getElementById('ais-fill-status-panel');
+        if (p) p.style.display = 'none';
+      }, 8000);
+    }
+  } catch(e) {
+    reportError('apply-workflow:_updateFillStatusPanel', e);
+  }
+}
+
 function _guessAtsSource(url) {
   if (!url) return 'greenhouse';
   if (url.indexOf('greenhouse') >= 0) return 'greenhouse';
@@ -31229,6 +31740,25 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
 
   var mode = getApplyModeForJob(jobId);
 
+  // ── AIS-F3-S1: Tier gate — block auto modes for Free users or exhausted Starter ──
+  var _isAutoMode = mode !== APPLY_MODES.MANUAL && mode !== APPLY_MODES.SCORE_GATED;
+  if (_isAutoMode && typeof checkAutoApplyTierGate === 'function') {
+    var _gateResult = checkAutoApplyTierGate();
+    if (!_gateResult.allowed) {
+      var _gateMsg = _gateResult.limit === 0
+        ? 'Auto-apply requires a Starter or Pro plan.'
+        : 'You\'ve reached your ' + _gateResult.limit + ' auto-apply limit for today. Upgrade to Pro for unlimited.';
+      if (typeof showToast === 'function') showToast(_gateMsg, { type: 'warning', duration: 6000 });
+      if (typeof window.showTierGate === 'function') {
+        var _gateEl = document.getElementById('app-tab-pipeline') || document.getElementById('page-applications');
+        if (_gateEl) window.showTierGate(_gateEl, _gateResult.requiresTier, _gateMsg);
+      }
+      if (typeof capturePostHog === 'function') capturePostHog('auto_apply_tier_blocked', { mode: mode, tier: _gateResult.tier, limit: _gateResult.limit });
+      _applySubmitting = false;
+      return;
+    }
+  }
+
   // ── Mode 1: Manual — just open URL, update pipeline ──
   if (mode === APPLY_MODES.MANUAL) {
     if (jobUrl) window.open(jobUrl, '_blank');
@@ -31265,6 +31795,16 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
   // Get resume
   var resume = _getActiveResume();
 
+  // AIS-F8-S2: Fetch latest cover letter for this job (auto-attach)
+  var coverLetterId = null;
+  var coverLetterContent = null;
+  if (jobId && currentUser) {
+    try {
+      var clRes = await sb.from('cover_letters').select('id,content').eq('user_id', currentUser.id).eq('job_id', jobId).order('version', { ascending: false }).limit(1).maybeSingle();
+      if (clRes.data) { coverLetterId = clRes.data.id; coverLetterContent = clRes.data.content; }
+    } catch(_e) { /* non-fatal */ }
+  }
+
   // Create pending_applications row
   var pendingRow = {
     user_id: currentUser.id,
@@ -31279,6 +31819,7 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
     job_url: jobUrl || '',
     expires_at: expiresAt.toISOString(),
     idempotency_key: crypto.randomUUID(),
+    ...(coverLetterId ? { cover_letter_id: coverLetterId } : {}),
   };
 
   var savedApp = await savePendingApplication(pendingRow);
@@ -31287,6 +31828,19 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
     _applySubmitting = false;
     return;
   }
+
+  // AIS-F3-S1: Emit PostHog event for auto-apply consumer trigger
+  if (_isAutoMode && typeof capturePostHog === 'function') {
+    capturePostHog('auto_apply_consumer_triggered', {
+      job_id: jobId,
+      mode: mode,
+      tier: (typeof getUserTier === 'function') ? getUserTier() : 'unknown',
+      platform: _guessAtsSource(jobUrl) || 'unknown',
+    });
+  }
+
+  // AIS-F3-S1: Update fill status panel
+  _updateFillStatusPanel({ status: 'submitting', jobTitle: jobTitle, companyName: companyName, mode: mode });
 
   // Create pipeline entry immediately so job appears on Board
   // upsert won't duplicate — keyed on user_id + job_id + ats_source
@@ -31309,6 +31863,8 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
     var result = await callSubmitApplication(savedApp, resume.id, resume.filename);
 
     if (result.ok) {
+      if (_isAutoMode && typeof incrementAutoApplyDailyCount === 'function') incrementAutoApplyDailyCount();
+      _updateFillStatusPanel({ status: 'success', jobTitle: jobTitle, companyName: companyName });
       _updatePipelineApplied(jobId);
       if (typeof showToast === 'function') showToast('Applied to ' + (companyName || 'this job') + '!', { type: 'success' });
       _fireApplyNotification('apply_auto_submitted', {
@@ -31319,14 +31875,19 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
         company_name: companyName,
       });
     } else if (result.error === 'rejected') {
+      _updateFillStatusPanel({ status: 'error', jobTitle: jobTitle, companyName: companyName, error: 'Application rejected', action: 'Apply manually from the job card.' });
       if (typeof showToast === 'function') showToast('Application rejected: ' + (result.detail || 'Unknown reason') + '. You can retry.', { type: 'error', duration: 6000 });
     } else if (result.error === 'timeout') {
+      _updateFillStatusPanel({ status: 'error', jobTitle: jobTitle, companyName: companyName, error: 'ATS timed out', action: 'Retry from Pending Applications.' });
       if (typeof showToast === 'function') showToast('ATS timed out. Your application was saved — you can retry.', { type: 'error', duration: 6000 });
     } else {
+      _updateFillStatusPanel({ status: 'error', jobTitle: jobTitle, companyName: companyName, error: result.error || 'Submission failed', action: 'Retry from Pending Applications.' });
       if (typeof showToast === 'function') showToast('Submission failed: ' + (result.error || 'Unknown error') + '. Retry from Pending Applications.', { type: 'error', duration: 6000 });
     }
   } else {
     // All other ATS: route through headless worker (AS-1/2/3)
+    if (_isAutoMode && typeof incrementAutoApplyDailyCount === 'function') incrementAutoApplyDailyCount();
+    _updateFillStatusPanel({ status: 'queued', jobTitle: jobTitle, companyName: companyName });
     if (typeof showToast === 'function') showToast('Application queued — worker will submit to ' + (companyName || 'ATS') + '.', { duration: 5000 });
     await _routeToWorker(savedApp);
   }
@@ -32263,6 +32824,7 @@ window._activePollers = _activePollers;
 // AF-002: Setup gate exports
 window.isSetupComplete = isSetupComplete;
 window.showSetupGateModal = showSetupGateModal;
+window._updateFillStatusPanel = _updateFillStatusPanel;
 window.hideSetupGateModal = hideSetupGateModal;
 window.navigateToSetup = navigateToSetup;
 window.checkAndSetSetupComplete = checkAndSetSetupComplete;
@@ -32471,6 +33033,73 @@ window.buildGhostBadge = buildGhostBadge;
 window.showGhostBadgeTooltip = showGhostBadgeTooltip;
 window.confirmGhostReport = confirmGhostReport;
 window.submitGhostReport = submitGhostReport;
+
+// ── AIS-F6 gap: Review Queue — load pending_applications with status='review_queue' ──
+async function loadReviewQueue() {
+  var listEl = document.getElementById('review-queue-items');
+  var loadingEl = document.getElementById('review-queue-loading');
+  var emptyEl = document.getElementById('review-queue-empty');
+  var badgeEl = document.getElementById('review-queue-badge');
+  if (!listEl) return;
+
+  try {
+    var { data, error } = await sb.from('pending_applications')
+      .select('id, job_title, company_name, job_url, created_at')
+      .eq('user_id', currentUser.id)
+      .eq('status', 'review_queue')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (loadingEl) loadingEl.style.display = 'none';
+
+    if (error) { reportError('loadReviewQueue', error); return; }
+
+    if (!data || !data.length) {
+      if (emptyEl) emptyEl.style.display = '';
+      listEl.innerHTML = '';
+      if (badgeEl) badgeEl.style.display = 'none';
+      return;
+    }
+
+    if (badgeEl) { badgeEl.style.display = ''; badgeEl.textContent = data.length; }
+    if (emptyEl) emptyEl.style.display = 'none';
+
+    var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){ return String(s||''); };
+    listEl.innerHTML = data.map(function(app) {
+      var daysAgo = Math.floor((Date.now() - new Date(app.created_at).getTime()) / 86400000);
+      var when = daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : daysAgo + 'd ago';
+      return '<div class="card" style="margin-bottom:8px;padding:12px 16px;display:flex;align-items:center;gap:12px;">' +
+        '<div style="flex:1;">' +
+          '<div style="font-size:13px;font-weight:600;">' + esc(app.job_title || 'Unknown Role') + '</div>' +
+          '<div style="font-size:11px;color:var(--text-muted);">' + esc(app.company_name || '') + ' · ' + when + '</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:6px;">' +
+          '<a href="' + esc(app.job_url || '#') + '" target="_blank" class="btn btn-sm btn-primary" style="font-size:11px;">Apply Now</a>' +
+          '<button class="btn btn-sm" onclick="dismissReviewQueueItem(\'' + app.id + '\', this)" style="font-size:11px;">Dismiss</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  } catch(e) {
+    reportError('loadReviewQueue', e);
+    if (loadingEl) loadingEl.style.display = 'none';
+  }
+}
+
+async function dismissReviewQueueItem(appId, btn) {
+  try {
+    btn.disabled = true;
+    await sb.from('pending_applications').update({ status: 'dismissed' }).eq('id', appId).eq('user_id', currentUser.id);
+    var card = btn.closest('.card');
+    if (card) card.remove();
+    var remaining = document.querySelectorAll('#review-queue-items .card').length;
+    var badgeEl = document.getElementById('review-queue-badge');
+    if (badgeEl) { if (remaining === 0) { badgeEl.style.display = 'none'; } else { badgeEl.textContent = remaining; } }
+    if (remaining === 0) { var emptyEl = document.getElementById('review-queue-empty'); if (emptyEl) emptyEl.style.display = ''; }
+  } catch(e) { reportError('dismissReviewQueueItem', e); btn.disabled = false; }
+}
+
+window.loadReviewQueue = loadReviewQueue;
+window.dismissReviewQueueItem = dismissReviewQueueItem;
 
 
 // === js/referrals.js ===
@@ -35480,6 +36109,879 @@ window.initBillingToggle = initBillingToggle;
 })();
 
 
+// === js/linkedin-import.js ===
+// js/linkedin-import.js — AIS-F2-S2: LinkedIn Import UI + Auto-Population
+// =========================================================================
+// Handles drag-and-drop PDF upload, parse-linkedin-pdf EF call,
+// parsed profile preview, auto-population of applicant profile fields,
+// filter keyword suggestions from skills, seniority inference.
+
+(function () {
+  'use strict';
+
+  var _liParsedProfile = null;
+  var _liStoragePath = null;
+  var _liPdfHash = null;
+
+  // ── Seniority inference from experience entries ──────────────────────────
+  function _inferSeniority(experienceJson) {
+    if (!experienceJson || !experienceJson.length) return null;
+    var seniorTitles = /director|vp|vice president|head of|principal|staff|distinguished/i;
+    var midTitles = /senior|lead|manager|architect/i;
+    for (var i = 0; i < Math.min(experienceJson.length, 3); i++) {
+      var title = experienceJson[i].title || '';
+      if (seniorTitles.test(title)) return 'director';
+      if (midTitles.test(title)) return 'senior';
+    }
+    return null;
+  }
+
+  // ── Status display ───────────────────────────────────────────────────────
+  function _liSetStatus(msg, type) {
+    var el = document.getElementById('li-import-status');
+    if (!el) return;
+    var color = type === 'error' ? 'var(--warm)' : type === 'success' ? 'var(--green)' : 'var(--accent)';
+    el.style.display = 'block';
+    el.innerHTML = '<div style="font-size:12px;color:' + color + ';padding:8px 12px;background:var(--bg-card);border-radius:6px;">' + escapeHtml(msg) + '</div>';
+  }
+
+  function _liClearStatus() {
+    var el = document.getElementById('li-import-status');
+    if (el) { el.style.display = 'none'; el.innerHTML = ''; }
+  }
+
+  // ── File handling ────────────────────────────────────────────────────────
+  window._liHandleDrop = function (evt) {
+    evt.preventDefault();
+    var zone = document.getElementById('li-import-upload-zone');
+    if (zone) zone.style.borderColor = 'var(--border)';
+    var file = evt.dataTransfer && evt.dataTransfer.files && evt.dataTransfer.files[0];
+    if (file) window._liHandleFile(file);
+  };
+
+  window._liHandleFile = function (file) {
+    if (!file) return;
+    if (file.type !== 'application/pdf') {
+      _liSetStatus('Please upload a PDF file (LinkedIn PDF export).', 'error');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      _liSetStatus('File exceeds 10MB limit.', 'error');
+      return;
+    }
+    _liSetStatus('Parsing LinkedIn profile…', 'info');
+    document.getElementById('li-import-upload-zone').style.display = 'none';
+
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      var base64 = e.target.result.split(',')[1];
+      _liCallEF(base64, file.name);
+    };
+    reader.onerror = function () {
+      document.getElementById('li-import-upload-zone').style.display = 'block';
+      _liSetStatus('Failed to read file.', 'error');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // ── EF call ──────────────────────────────────────────────────────────────
+  async function _liCallEF(base64, filename) {
+    try {
+      var token = typeof _getAuthToken === 'function' ? await _getAuthToken() : (window._bjSupabaseSession && window._bjSupabaseSession.access_token);
+      if (!token) {
+        _liSetStatus('Please log in to import your LinkedIn profile.', 'error');
+        document.getElementById('li-import-upload-zone').style.display = 'block';
+        return;
+      }
+
+      var resp = await fetch('https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/parse-linkedin-pdf', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'upload', pdf_base64: base64, filename: filename }),
+      });
+
+      var data = await resp.json();
+
+      if (!resp.ok) {
+        var msg = data.error || 'Upload failed';
+        if (resp.status === 409) msg = 'This PDF has already been used by another account.';
+        if (resp.status === 422) msg = 'Could not parse PDF. Please use a LinkedIn PDF export.';
+        if (resp.status === 413) msg = 'File exceeds 10MB limit.';
+        _liSetStatus(msg, 'error');
+        document.getElementById('li-import-upload-zone').style.display = 'block';
+        return;
+      }
+
+      _liParsedProfile = data.profile;
+      _liStoragePath = data.storage_path;
+      _liPdfHash = data.pdf_hash;
+
+      // PostHog
+      if (typeof capturePostHog === 'function') {
+        capturePostHog('linkedin_pdf_uploaded', {
+          parse_success: true,
+          fields_extracted_count: Object.values(data.profile || {}).filter(Boolean).length,
+          skills_count: (data.profile.skills_array || []).length,
+          has_experience: !!(data.profile.experience_json && data.profile.experience_json.length),
+          fraud_signals: (data.fraud_signals || []).join(',') || 'none',
+        });
+      }
+
+      _liShowPreview(data.profile, data.fraud_signals || []);
+    } catch (e) {
+      reportError('linkedin-import:_liCallEF', e);
+      _liSetStatus('Upload failed. Please try again.', 'error');
+      document.getElementById('li-import-upload-zone').style.display = 'block';
+    }
+  }
+
+  // ── Preview rendering ────────────────────────────────────────────────────
+  function _liShowPreview(profile, fraudSignals) {
+    _liClearStatus();
+    var preview = document.getElementById('li-import-preview');
+    if (!preview) return;
+
+    var esc = typeof escapeHtml === 'function' ? escapeHtml : function (s) { return String(s || ''); };
+
+    document.getElementById('li-preview-name').textContent = profile.display_name || '';
+    document.getElementById('li-preview-headline').textContent = profile.headline || '';
+    document.getElementById('li-preview-location').textContent = profile.location || '';
+
+    // Skills pills
+    var skillsEl = document.getElementById('li-preview-skills');
+    skillsEl.innerHTML = (profile.skills_array || []).slice(0, 12).map(function (s) {
+      return '<span style="font-size:10px;padding:2px 8px;background:var(--accent-dim);color:var(--accent);border-radius:20px;">' + esc(s) + '</span>';
+    }).join('');
+
+    // Experience summary
+    var exp = profile.experience_json || [];
+    var expEl = document.getElementById('li-preview-exp');
+    if (exp.length) {
+      expEl.textContent = exp.slice(0, 2).map(function (e) {
+        return (e.title || '') + (e.company ? ' @ ' + e.company : '');
+      }).filter(Boolean).join(' · ');
+    }
+
+    // Fraud warnings
+    var fraudEl = document.getElementById('li-fraud-warning');
+    if (fraudSignals.length) {
+      fraudEl.style.display = 'block';
+      var msgs = { low_connections: 'Low connection count — profile may need review', no_experience: 'No experience entries found', low_confidence: 'Low parse confidence' };
+      fraudEl.textContent = '⚠ ' + fraudSignals.map(function (s) { return msgs[s] || s; }).join('; ');
+    } else {
+      fraudEl.style.display = 'none';
+    }
+
+    preview.style.display = 'block';
+    if (typeof window.refreshIcons === 'function') window.refreshIcons();
+  }
+
+  // ── Save profile ─────────────────────────────────────────────────────────
+  window._liSaveProfile = async function () {
+    if (!_liParsedProfile || !currentUser) return;
+    try {
+      var p = _liParsedProfile;
+
+      // Auto-populate applicant profile fields (non-destructive — only fill empty fields)
+      var nameField = document.getElementById('ap-first-name');
+      var lastField = document.getElementById('ap-last-name');
+      var locationField = document.getElementById('ap-location');
+      var linkedinField = document.getElementById('ap-linkedin');
+
+      if (p.display_name) {
+        var parts = (p.display_name || '').trim().split(' ');
+        if (nameField && !nameField.value) nameField.value = parts[0] || '';
+        if (lastField && !lastField.value) lastField.value = parts.slice(1).join(' ') || '';
+      }
+      if (locationField && !locationField.value && p.location) locationField.value = p.location;
+
+      // Suggest filter keywords from skills
+      var skills = (p.skills_array || []).slice(0, 5);
+      if (skills.length && typeof window.addWhatPill === 'function') {
+        skills.forEach(function (skill) { window.addWhatPill(skill, { source: 'linkedin' }); });
+        if (typeof showToast === 'function') showToast('Added ' + skills.length + ' skills as filter keywords from your LinkedIn profile.');
+      }
+
+      // Infer seniority level
+      var inferredLevel = _inferSeniority(p.experience_json);
+      if (inferredLevel) {
+        var levelSelect = document.getElementById('ap-level');
+        if (levelSelect && !levelSelect.value) levelSelect.value = inferredLevel;
+      }
+
+      // Save applicant profile to Supabase if save function is available
+      if (typeof saveApplicantProfile === 'function') await saveApplicantProfile();
+
+      // Update UI
+      document.getElementById('li-import-preview').style.display = 'none';
+      var badge = document.getElementById('li-import-done-badge');
+      if (badge) badge.style.display = 'flex';
+      if (typeof showToast === 'function') showToast('LinkedIn profile imported!', { type: 'success' });
+
+    } catch (e) {
+      reportError('linkedin-import:_liSaveProfile', e);
+      if (typeof showToast === 'function') showToast('Failed to save profile.', { type: 'error' });
+    }
+  };
+
+  window._liCancelPreview = function () {
+    _liParsedProfile = null;
+    _liStoragePath = null;
+    _liPdfHash = null;
+    var preview = document.getElementById('li-import-preview');
+    if (preview) preview.style.display = 'none';
+    var zone = document.getElementById('li-import-upload-zone');
+    if (zone) zone.style.display = 'block';
+    _liClearStatus();
+    var input = document.getElementById('li-import-file-input');
+    if (input) input.value = '';
+  };
+
+  // ── Init: check for existing profile ─────────────────────────────────────
+  async function initLinkedInImport() {
+    if (!currentUser) return;
+    try {
+      var { data } = await sb.from('linkedin_profiles').select('display_name,parsed_at').eq('user_id', currentUser.id).maybeSingle();
+      if (data) {
+        var badge = document.getElementById('li-import-done-badge');
+        if (badge) badge.style.display = 'flex';
+        var zone = document.getElementById('li-import-upload-zone');
+        if (zone) {
+          zone.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:12px;">Profile already imported: <strong>' + escapeHtml(data.display_name || '') + '</strong><br><span style="font-size:10px;">Re-upload to refresh</span></div>';
+        }
+      }
+    } catch (e) { /* non-fatal */ }
+  }
+
+  window.initLinkedInImport = initLinkedInImport;
+
+  // Auto-init on get-started page show
+  if (typeof window.BJ !== 'undefined') {
+    window.BJ.initLinkedInImport = initLinkedInImport;
+    window.BJ._registry.initLinkedInImport = { module: 'linkedin-import', registered: Date.now() };
+  }
+})();
+
+
+// === js/bulk-apply.js ===
+// js/bulk-apply.js — AIS-F9-S1: Bulk Apply Multi-Select UI
+// ============================================================
+// Manages checkbox selection on the Jobs Feed, bulk action bar,
+// selection count badge, and estimated credit cost display.
+// Bulk apply action queues selected jobs via the bulk-apply-queue EF (AIS-F9-S2).
+
+(function () {
+  'use strict';
+
+  var _selectedJobIds = new Set();
+
+  var CREDITS_PER_APPLICATION = 3; // same as resume tailoring baseline
+
+  // ── Update action bar ────────────────────────────────────────────────────
+  function _updateBar() {
+    var bar = document.getElementById('bulk-action-bar');
+    var badge = document.getElementById('bulk-count-badge');
+    var cost = document.getElementById('bulk-credit-cost');
+    if (!bar) return;
+
+    var count = _selectedJobIds.size;
+    if (count === 0) {
+      bar.style.display = 'none';
+      return;
+    }
+    bar.style.display = 'flex';
+    if (badge) badge.textContent = count + ' selected';
+    if (cost) cost.textContent = '~' + (count * CREDITS_PER_APPLICATION) + ' credits estimated';
+
+    // Sync select-all checkbox state
+    var selectAll = document.getElementById('bulk-select-all');
+    if (selectAll) {
+      var all = document.querySelectorAll('.bulk-job-cb');
+      selectAll.indeterminate = count > 0 && count < all.length;
+      selectAll.checked = count > 0 && count === all.length;
+    }
+  }
+
+  // ── Toggle individual job ────────────────────────────────────────────────
+  window._bulkToggleJob = function (jobId, checked) {
+    if (checked) {
+      _selectedJobIds.add(jobId);
+    } else {
+      _selectedJobIds.delete(jobId);
+    }
+    _updateBar();
+  };
+
+  // ── Select / deselect all visible ────────────────────────────────────────
+  // Item 44: 'Select All Matching' — alias exposed for dashboard button
+  window._bulkSelectAllVisible = function() { window._bulkSelectAll(true); };
+  window._bulkDeselectAll = function() { window._bulkSelectAll(false); };
+
+  window._bulkSelectAll = function (checked) {
+    var cbs = document.querySelectorAll('.bulk-job-cb');
+    cbs.forEach(function (cb) {
+      cb.checked = checked;
+      var jid = cb.dataset.jobid;
+      if (jid) {
+        if (checked) _selectedJobIds.add(jid);
+        else _selectedJobIds.delete(jid);
+      }
+    });
+    _updateBar();
+  };
+
+  // ── Clear selection ──────────────────────────────────────────────────────
+  window._bulkClearSelection = function () {
+    _selectedJobIds.clear();
+    document.querySelectorAll('.bulk-job-cb').forEach(function (cb) { cb.checked = false; });
+    var selectAll = document.getElementById('bulk-select-all');
+    if (selectAll) { selectAll.checked = false; selectAll.indeterminate = false; }
+    _updateBar();
+  };
+
+  // ── Get selected IDs (used by F9-S2 queue EF) ───────────────────────────
+  window._bulkGetSelected = function () {
+    return Array.from(_selectedJobIds);
+  };
+
+  // ── Bulk Apply: queue all selected jobs ──────────────────────────────────
+  window._bulkApplySelected = async function () {
+    var ids = Array.from(_selectedJobIds);
+    if (!ids.length) return;
+
+    var tierOk = typeof checkAutoApplyTierGate === 'function' ? checkAutoApplyTierGate() : true;
+    if (!tierOk) return;
+
+    if (!confirm('Apply to ' + ids.length + ' job' + (ids.length > 1 ? 's' : '') + ' automatically? (~' + (ids.length * CREDITS_PER_APPLICATION) + ' credits)')) return;
+
+    if (typeof capturePostHog === 'function') capturePostHog('bulk_apply_initiated', { job_count: ids.length });
+
+    // AIS-F9-S2 queue EF call — trigger if available
+    if (typeof window._bulkApplyQueue === 'function') {
+      await window._bulkApplyQueue(ids);
+    } else {
+      // Graceful fallback: apply individually via existing flow
+      for (var i = 0; i < Math.min(ids.length, 3); i++) {
+        if (typeof proceedToApply === 'function') {
+          var row = document.querySelector('tr.job-data-row[data-jobid="' + ids[i] + '"]');
+          var title = row ? (row.querySelector('.job-title-link') || {}).textContent : '';
+          await proceedToApply(ids[i], title, '', window.location.href, null, null, 'bulk');
+        }
+      }
+      if (ids.length > 3 && typeof showToast === 'function') {
+        showToast('Queued first 3 jobs. Install the extension for full bulk apply.', { type: 'info' });
+      }
+    }
+    window._bulkClearSelection();
+  };
+
+  // ── Bulk Save: pipeline-save all selected ────────────────────────────────
+  window._bulkSaveSelected = async function () {
+    var ids = Array.from(_selectedJobIds);
+    if (!ids.length) return;
+    var saved = 0;
+    for (var i = 0; i < ids.length; i++) {
+      if (typeof saveJobToPipeline === 'function') {
+        try { await saveJobToPipeline(ids[i]); saved++; } catch (_e) {}
+      }
+    }
+    if (typeof showToast === 'function') showToast(saved + ' job' + (saved > 1 ? 's' : '') + ' saved to pipeline.');
+    if (typeof capturePostHog === 'function') capturePostHog('bulk_save', { job_count: saved });
+    window._bulkClearSelection();
+  };
+
+  // ── Reset checkboxes on feed re-render ───────────────────────────────────
+  // Called by job-feed.js after rendering new page
+  window._bulkResetOnRender = function () {
+    _selectedJobIds.clear();
+    _updateBar();
+  };
+
+  // AIS-F9-S3: Bulk Apply Progress Dashboard
+  var _bulkProgressTimer = null;
+
+  window._bulkProgressClose = function () {
+    var panel = document.getElementById('bulk-progress-panel');
+    if (panel) panel.style.display = 'none';
+    if (_bulkProgressTimer) { clearInterval(_bulkProgressTimer); _bulkProgressTimer = null; }
+  };
+
+  window._bulkPollProgress = function (queueIds) {
+    var panel = document.getElementById('bulk-progress-panel');
+    if (panel) panel.style.display = 'block';
+
+    var pollCount = 0;
+    var MAX_POLLS = 120; // ~10 min at 5s intervals
+
+    async function poll() {
+      if (pollCount++ > MAX_POLLS) { clearInterval(_bulkProgressTimer); return; }
+      try {
+        var { data: rows } = await sb.from('bulk_apply_jobs').select('job_id,job_title,company_name,status').in('id', queueIds);
+        if (!rows || !rows.length) return;
+
+        var total = rows.length;
+        var done = rows.filter(function(r) { return r.status === 'submitted' || r.status === 'failed' || r.status === 'skipped'; }).length;
+        var pct = Math.round((done / total) * 100);
+
+        var bar = document.getElementById('bulk-progress-bar');
+        var txt = document.getElementById('bulk-progress-text');
+        var list = document.getElementById('bulk-job-status-list');
+        if (bar) bar.style.width = pct + '%';
+        if (txt) txt.textContent = done + ' / ' + total + ' jobs processed';
+        if (list) {
+          list.innerHTML = rows.map(function(r) {
+            var icon = r.status === 'submitted' ? '✅' : r.status === 'failed' ? '❌' : r.status === 'skipped' ? '⏭' : r.status === 'processing' ? '⏳' : '⏸';
+            return '<div style="display:flex;align-items:center;gap:6px;padding:3px 0;">' + icon + ' <span style="color:var(--text);">' + escapeHtml(r.job_title || r.job_id) + '</span><span style="color:var(--text-muted);margin-left:auto;">' + (r.company_name || '') + '</span></div>';
+          }).join('');
+        }
+
+        if (done === total) {
+          clearInterval(_bulkProgressTimer);
+          if (txt) txt.textContent = 'All done! ' + rows.filter(function(r){return r.status==='submitted';}).length + ' submitted.';
+          if (typeof capturePostHog === 'function') capturePostHog('bulk_apply_complete', { submitted: rows.filter(function(r){return r.status==='submitted';}).length, failed: rows.filter(function(r){return r.status==='failed';}).length });
+        }
+      } catch (e) { /* non-fatal */ }
+    }
+
+    poll();
+    _bulkProgressTimer = setInterval(poll, 5000);
+  };
+
+  // AIS-F9-S3: Safety daily limit check
+  window._bulkCheckDailyLimit = async function (requestedCount) {
+    try {
+      var today = new Date().toISOString().split('T')[0];
+      var { data } = await sb.from('bulk_apply_jobs').select('id', { count: 'exact', head: true }).eq('user_id', currentUser.id).gte('created_at', today + 'T00:00:00Z').in('status', ['submitted', 'processing', 'queued']);
+      var usedToday = data ? data.length : 0;
+      return (usedToday + requestedCount) <= 25;
+    } catch (_e) { return true; }
+  };
+
+  window.initBulkApply = function () { /* no-op — auto-inits on load */ };
+
+  // AIS-F9-S2: Queue bulk apply via EF
+  window._bulkApplyQueue = async function (ids) {
+    try {
+      var token = typeof _getAuthToken === 'function' ? await _getAuthToken() : (window._bjSupabaseSession && window._bjSupabaseSession.access_token);
+      if (!token) { if (typeof showToast === 'function') showToast('Please log in to use bulk apply.', { type: 'error' }); return; }
+
+      var resume = typeof _getActiveResume === 'function' ? _getActiveResume() : null;
+      var resp = await fetch('https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/bulk-apply-queue', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job_ids: ids, resume_id: resume ? resume.id : null }),
+      });
+      var data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Queue failed');
+      if (typeof showToast === 'function') showToast('Queued ' + data.queued + ' jobs for bulk apply!', { type: 'success' });
+      if (typeof capturePostHog === 'function') capturePostHog('bulk_apply_queued', { job_count: data.queued });
+    } catch (e) {
+      reportError('bulk-apply:_bulkApplyQueue', e);
+      if (typeof showToast === 'function') showToast('Bulk apply failed. Please try again.', { type: 'error' });
+    }
+  };
+})();
+
+// ── AIS-F9-S3: Progress Dashboard + Safety ──────────────────────────────
+
+var _bulkUndoTimer = null;
+var _bulkSessionStarted = null;
+var BULK_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
+var BULK_UNDO_WINDOW_MS = 10 * 1000;   // 10 seconds
+
+// Real-time progress polling
+var _bulkProgressInterval = null;
+
+window.loadBulkProgress = async function () {
+  if (!currentUser) return;
+  var panel = document.getElementById('bulk-progress-panel');
+  if (!panel) return;
+
+  try {
+    var { data, error } = await sb.from('bulk_apply_jobs')
+      .select('id, job_id, status, error_message, created_at, completed_at')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false })
+      .limit(25);
+
+    if (error) { reportError('loadBulkProgress', error); return; }
+    if (!data || !data.length) { panel.style.display = 'none'; return; }
+
+    // Only show panel if there's an active session (queued or in_progress)
+    var hasActive = data.some(function(r) { return r.status === 'queued' || r.status === 'in_progress'; });
+    panel.style.display = '';
+
+    var total = data.length;
+    var done = data.filter(function(r) { return r.status === 'submitted' || r.status === 'failed'; }).length;
+    var pct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+    var barEl = document.getElementById('bulk-progress-bar');
+    if (barEl) barEl.style.width = pct + '%';
+
+    var statsEl = document.getElementById('bulk-progress-stats');
+    var submitted = data.filter(function(r){ return r.status === 'submitted'; }).length;
+    var failed = data.filter(function(r){ return r.status === 'failed'; }).length;
+    var queued = data.filter(function(r){ return r.status === 'queued' || r.status === 'in_progress'; }).length;
+    if (statsEl) {
+      statsEl.innerHTML = '<span style="color:var(--green);">✓ ' + submitted + ' submitted</span>' +
+        (queued ? ' &nbsp;· <span style="color:var(--accent);">⏳ ' + queued + ' queued</span>' : '') +
+        (failed ? ' &nbsp;· <span style="color:var(--warm);">✗ ' + failed + ' failed</span>' : '');
+    }
+
+    // Per-job status list
+    var listEl = document.getElementById('bulk-progress-list');
+    if (listEl) {
+      var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){return String(s||'');};
+      listEl.innerHTML = data.slice(0, 10).map(function(row) {
+        var icon = row.status === 'submitted' ? '✅' : row.status === 'failed' ? '❌' : row.status === 'in_progress' ? '🔄' : '⏳';
+        return '<div style="display:flex;align-items:center;gap:8px;font-size:11px;padding:3px 0;border-bottom:1px solid var(--border);">' +
+          '<span>' + icon + '</span>' +
+          '<span style="flex:1;color:var(--text);">' + esc(row.job_id || row.id) + '</span>' +
+          (row.error_message ? '<span style="color:var(--warm);font-size:10px;">' + esc(row.error_message.slice(0,40)) + '</span>' : '') +
+        '</div>';
+      }).join('');
+    }
+
+    // Start polling if active
+    if (hasActive && !_bulkProgressInterval) {
+      _bulkProgressInterval = setInterval(window.loadBulkProgress, 5000);
+    } else if (!hasActive && _bulkProgressInterval) {
+      clearInterval(_bulkProgressInterval);
+      _bulkProgressInterval = null;
+      if (typeof capturePostHog === 'function') {
+        capturePostHog('bulk_apply_completed', {
+          jobs_submitted: submitted,
+          jobs_failed: failed,
+          jobs_skipped: 0,
+        });
+      }
+    }
+  } catch (e) {
+    reportError('loadBulkProgress', e);
+  }
+};
+
+// 10-second undo window after bulk apply starts
+window._bulkStartUndoWindow = function () {
+  var undoEl = document.getElementById('bulk-undo-bar');
+  if (!undoEl) return;
+  undoEl.style.display = 'flex';
+  var countdown = BULK_UNDO_WINDOW_MS / 1000;
+  var countEl = document.getElementById('bulk-undo-countdown');
+  _bulkUndoTimer = setInterval(function () {
+    countdown--;
+    if (countEl) countEl.textContent = countdown;
+    if (countdown <= 0) {
+      clearInterval(_bulkUndoTimer);
+      undoEl.style.display = 'none';
+    }
+  }, 1000);
+};
+
+window._bulkCancelRemaining = async function () {
+  clearInterval(_bulkUndoTimer);
+  var undoEl = document.getElementById('bulk-undo-bar');
+  if (undoEl) undoEl.style.display = 'none';
+  try {
+    await sb.from('bulk_apply_jobs')
+      .update({ status: 'cancelled' })
+      .eq('user_id', currentUser.id)
+      .eq('status', 'queued');
+    if (typeof showToast === 'function') showToast('Remaining applications cancelled.', { type: 'info' });
+    if (_bulkProgressInterval) { clearInterval(_bulkProgressInterval); _bulkProgressInterval = null; }
+    window.loadBulkProgress();
+  } catch (e) { reportError('_bulkCancelRemaining', e); }
+};
+
+window.loadBulkProgress = window.loadBulkProgress;
+
+
+// === js/cover-letter.js ===
+// js/cover-letter.js — AIS-F8-S1: Cover Letter Generator UI
+// ===========================================================
+
+(function () {
+  'use strict';
+
+  var _clJobId = null;
+  var _clJobTitle = null;
+  var _clCompany = null;
+  var _clTone = 'professional';
+  var _clCoverId = null;
+  var _clVersion = 1;
+  var _clHistory = [];
+
+  // ── Open panel ────────────────────────────────────────────────────────────
+  window.openCoverLetterPanel = function (jobId, jobTitle, company) {
+    _clJobId = jobId || null;
+    _clJobTitle = jobTitle || '';
+    _clCompany = company || '';
+    _clTone = 'professional';
+    _clCoverId = null;
+    _clVersion = 1;
+    _clHistory = [];
+
+    var titleEl = document.getElementById('cl-panel-title');
+    var subtitleEl = document.getElementById('cl-panel-subtitle');
+    if (titleEl) titleEl.textContent = 'Cover Letter';
+    if (subtitleEl) subtitleEl.textContent = (_clJobTitle ? _clJobTitle : '') + (_clCompany ? ' @ ' + _clCompany : '');
+
+    var panel = document.getElementById('cl-panel');
+    var backdrop = document.getElementById('cl-backdrop');
+    if (panel) { panel.style.display = 'flex'; panel.classList.remove('u-hidden'); }
+    if (backdrop) backdrop.style.display = 'block';
+
+    // Reset tone buttons
+    document.querySelectorAll('.cl-tone-btn').forEach(function (btn) {
+      var active = btn.getAttribute('data-tone') === _clTone;
+      btn.style.background = active ? 'var(--accent)' : 'transparent';
+      btn.style.color = active ? '#fff' : 'var(--text)';
+      btn.style.borderColor = active ? 'var(--accent)' : 'var(--border)';
+    });
+
+    // Load existing or generate new
+    _clLoadHistory().then(function () {
+      if (_clHistory.length) {
+        _clShowVersion(_clHistory[0]);
+      } else {
+        _clGenerate();
+      }
+    });
+
+    if (typeof window.refreshIcons === 'function') window.refreshIcons();
+  };
+
+  window._clClose = function () {
+    var panel = document.getElementById('cl-panel');
+    var backdrop = document.getElementById('cl-backdrop');
+    if (panel) { panel.style.display = 'none'; panel.classList.add('u-hidden'); }
+    if (backdrop) backdrop.style.display = 'none';
+  };
+
+  window._clSetTone = function (tone) {
+    _clTone = tone;
+    document.querySelectorAll('.cl-tone-btn').forEach(function (btn) {
+      var active = btn.getAttribute('data-tone') === tone;
+      btn.style.background = active ? 'var(--accent)' : 'transparent';
+      btn.style.color = active ? '#fff' : 'var(--text)';
+      btn.style.borderColor = active ? 'var(--accent)' : 'var(--border)';
+    });
+    _clGenerate();
+  };
+
+  // ── Generate ──────────────────────────────────────────────────────────────
+  window._clGenerate = async function () {
+    var gen = document.getElementById('cl-generating');
+    var content = document.getElementById('cl-content');
+    var meta = document.getElementById('cl-meta');
+    if (gen) gen.style.display = 'block';
+    if (content) { content.style.display = 'none'; content.value = ''; }
+    if (meta) meta.style.display = 'none';
+
+    try {
+      var token = typeof _getAuthToken === 'function' ? await _getAuthToken() : (window._bjSupabaseSession && window._bjSupabaseSession.access_token);
+
+      // Get resume text
+      var resumeText = '';
+      if (typeof _getActiveResume === 'function') {
+        var res = _getActiveResume();
+        if (res && res.text) resumeText = res.text;
+      }
+      if (!resumeText) {
+        try {
+          var raw = localStorage.getItem('bj_resumes');
+          var resumes = raw ? JSON.parse(raw) : [];
+          var active = resumes.find(function (r) { return r.is_active || r.isActive; }) || resumes[0];
+          if (active) resumeText = active.extractedText || active.text || '';
+        } catch (_) {}
+      }
+
+      // Get JD from pipeline entry if jobId present
+      var jd = '';
+      if (_clJobId && typeof sb !== 'undefined') {
+        try {
+          var jdRes = await sb.from('ats_jobs').select('description,title').eq('id', _clJobId).maybeSingle();
+          if (jdRes.data) {
+            jd = (jdRes.data.description || '').replace(/<[^>]+>/g, ' ').slice(0, 4000);
+          }
+        } catch (_) {}
+      }
+
+      var resp = await fetch('https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/generate-cover-letter', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resumeText: resumeText || 'No resume text available.',
+          jobDescription: jd || _clJobTitle || 'General application',
+          jobTitle: _clJobTitle,
+          companyName: _clCompany,
+          tone: _clTone,
+          jobId: _clJobId,
+        }),
+      });
+
+      var data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Generation failed');
+
+      _clCoverId = data.cover_letter_id;
+      _clVersion = data.version || 1;
+
+      if (gen) gen.style.display = 'none';
+      if (content) { content.style.display = 'block'; content.value = data.letter || ''; }
+      if (meta) {
+        meta.style.display = 'block';
+        meta.textContent = 'v' + _clVersion + ' · ' + _clTone + ' · ' + (data.word_count || '') + ' words · 2 credits';
+      }
+
+      // PostHog
+      if (typeof capturePostHog === 'function') {
+        capturePostHog('cover_letter_generated', {
+          job_id: _clJobId || '',
+          tone: _clTone,
+          version: _clVersion,
+          credits_charged: 2,
+        });
+      }
+
+      await _clLoadHistory();
+
+    } catch (e) {
+      reportError('cover-letter:_clGenerate', e);
+      if (gen) gen.style.display = 'none';
+      if (content) { content.style.display = 'block'; content.value = ''; }
+      if (typeof showToast === 'function') showToast('Cover letter generation failed. Please try again.', { type: 'error' });
+    }
+  };
+
+  // ── History ───────────────────────────────────────────────────────────────
+  async function _clLoadHistory() {
+    if (!_clJobId || typeof sb === 'undefined' || !currentUser) return;
+    try {
+      var res = await sb.from('cover_letters')
+        .select('id,tone,version,created_at,word_count')
+        .eq('user_id', currentUser.id)
+        .eq('job_id', _clJobId)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      _clHistory = res.data || [];
+      _clRenderHistory();
+    } catch (_) {}
+  }
+
+  function _clRenderHistory() {
+    var histEl = document.getElementById('cl-history');
+    var listEl = document.getElementById('cl-history-list');
+    if (!listEl) return;
+    if (!_clHistory.length) { if (histEl) histEl.style.display = 'none'; return; }
+    if (histEl) histEl.style.display = 'block';
+    listEl.innerHTML = _clHistory.map(function (h) {
+      var date = new Date(h.created_at).toLocaleDateString();
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg);border-radius:6px;cursor:pointer;" onclick="window._clLoadVersion(\'' + h.id + '\')">' +
+        '<span style="font-size:11px;color:var(--text);">v' + h.version + ' · ' + h.tone + ' · ' + date + '</span>' +
+        '<span style="font-size:10px;color:var(--text-muted);">' + (h.word_count || '') + ' words</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  window._clLoadVersion = async function (id) {
+    if (typeof sb === 'undefined') return;
+    try {
+      var res = await sb.from('cover_letters').select('content,tone,version,word_count').eq('id', id).single();
+      if (res.data) _clShowVersion(res.data);
+    } catch (e) { reportError('cover-letter:_clLoadVersion', e); }
+  };
+
+  function _clShowVersion(row) {
+    var content = document.getElementById('cl-content');
+    var meta = document.getElementById('cl-meta');
+    var gen = document.getElementById('cl-generating');
+    if (gen) gen.style.display = 'none';
+    if (content) { content.style.display = 'block'; content.value = row.content || ''; }
+    if (meta) {
+      meta.style.display = 'block';
+      meta.textContent = 'v' + (row.version || 1) + ' · ' + (row.tone || '') + ' · ' + (row.word_count || '') + ' words';
+    }
+    _clTone = row.tone || 'professional';
+    _clVersion = row.version || 1;
+    document.querySelectorAll('.cl-tone-btn').forEach(function (btn) {
+      var active = btn.getAttribute('data-tone') === _clTone;
+      btn.style.background = active ? 'var(--accent)' : 'transparent';
+      btn.style.color = active ? '#fff' : 'var(--text)';
+      btn.style.borderColor = active ? 'var(--accent)' : 'var(--border)';
+    });
+  }
+
+  // ── Actions ───────────────────────────────────────────────────────────────
+  window._clCopyToClipboard = function () {
+    var content = document.getElementById('cl-content');
+    if (!content || !content.value) return;
+    navigator.clipboard.writeText(content.value).then(function () {
+      if (typeof showToast === 'function') showToast('Cover letter copied!', { type: 'success' });
+    }).catch(function () {
+      content.select();
+      document.execCommand('copy');
+      if (typeof showToast === 'function') showToast('Cover letter copied!');
+    });
+  };
+
+  // AIS-F8-S1: DOCX export — generates simple DOCX blob
+  window._clExportDocx = function () {
+    var content = document.getElementById('cl-content');
+    if (!content || !content.value) return;
+    var text = content.value;
+    var filename = (_clCompany ? _clCompany.replace(/[^a-zA-Z0-9]/g, '-') : 'cover-letter') + '-v' + _clVersion + '.docx';
+
+    // Simple DOCX generation using minimal OOXML
+    var paragraphs = text.split('\n').map(function (line) {
+      return '<w:p><w:r><w:t xml:space="preserve">' + line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</w:t></w:r></w:p>';
+    }).join('');
+
+    var docXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+      '<w:body>' + paragraphs + '</w:body></w:document>';
+
+    var relsXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>';
+
+    var contentTypes = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+      '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
+      '</Types>';
+
+    // Use JSZip if available, else fall back to plain text download
+    if (typeof JSZip !== 'undefined') {
+      var zip = new JSZip();
+      zip.file('[Content_Types].xml', contentTypes);
+      zip.file('_rels/.rels', relsXml);
+      zip.file('word/document.xml', docXml);
+      zip.generateAsync({ type: 'blob' }).then(function (blob) {
+        _clDownload(blob, filename, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      }).catch(function (e) { reportError('cover-letter:_clExportDocx', e); });
+    } else {
+      // Fallback: plain text download
+      var blob = new Blob([text], { type: 'text/plain' });
+      _clDownload(blob, filename.replace('.docx', '.txt'), 'text/plain');
+      if (typeof showToast === 'function') showToast('Downloaded as .txt (DOCX library not loaded).');
+    }
+  };
+
+  function _clDownload(blob, name, type) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = name; a.click();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+  }
+
+  // Export
+  window.BJ = window.BJ || {};
+  window.BJ.openCoverLetterPanel = window.openCoverLetterPanel;
+  window.BJ._registry = window.BJ._registry || {};
+  window.BJ._registry.openCoverLetterPanel = { module: 'cover-letter', registered: Date.now() };
+})();
+
+
 // === js/interview-prep.js ===
 // FB-INTPREP-001-S2: Interview Prep — Question Bank UI
 // Spec: FB-INTPREP-001_InterviewPrep.docx §3.4, §5.2, §5.3, §10 Phase 2
@@ -35897,6 +37399,17 @@ window.initBillingToggle = initBillingToggle;
         });
       }
 
+      // AIS-F11 item 61: Also open the AI Interview Practice chat panel
+      // (complement to the existing question-bank simulation)
+      if (typeof window.openInterviewPractice === 'function') {
+        // Get job title + company from pipeline data
+        var jobMeta = window._plMetaCache && window._plMetaCache[jobId];
+        var jobTitle = jobMeta ? jobMeta.title || '' : '';
+        var company = jobMeta ? jobMeta.company || '' : '';
+        window.openInterviewPractice(jobId, jobTitle, company);
+        return; // AI chat panel takes over; no need for legacy sim overlay
+      }
+
       var sb = window.bjSupabase || (window.supabase && window.supabase.createClient
         ? window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY) : null);
       if (!sb) return;
@@ -36280,3 +37793,238 @@ window.initBillingToggle = initBillingToggle;
   });
 
 })();
+
+// ── AIS-F11-S1/S2: AI Interview Practice (Chat UI) ─────────────────────
+// Appended to FB-INTPREP module. Chat-based AI mock interview per spec §13.
+
+(function () {
+  'use strict';
+
+  var _ipSession = null;
+  var _ipQuestions = [];
+  var _ipCurrentQ = 0;
+  var _ipJobId = null;
+  var _ipStartTime = null;
+
+  window.openInterviewPractice = function (jobId, jobTitle, company) {
+    _ipJobId = jobId || null;
+    var panel = document.getElementById('ip-chat-panel');
+    if (panel) { panel.style.display = ''; document.body.style.overflow = 'hidden'; }
+    var titleEl = document.getElementById('ip-panel-job');
+    if (titleEl) titleEl.textContent = (jobTitle || 'Interview Practice') + (company ? ' · ' + company : '');
+    _ipRenderTypeSelect();
+    if (typeof window.refreshIcons === 'function') window.refreshIcons();
+  };
+
+  // AIS-F11 item 60: Load past interview sessions for history display
+  window.loadInterviewHistory = async function() {
+    var listEl = document.getElementById('ip-history-list');
+    if (!listEl || !currentUser) return;
+    try {
+      var { data, error } = await sb.from('interview_sessions')
+        .select('id, session_type, aggregate_score, status, created_at, job_id')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      if (error || !data || !data.length) {
+        listEl.innerHTML = '<div style="font-size:12px;color:var(--text-muted);">No practice sessions yet. Start one from the Pipeline!</div>';
+        return;
+      }
+      var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){return String(s||'');};
+      listEl.innerHTML = data.map(function(sess) {
+        var scoreColor = (sess.aggregate_score||0) >= 75 ? 'var(--green)' : (sess.aggregate_score||0) >= 50 ? 'var(--warning)' : 'var(--warm)';
+        var date = new Date(sess.created_at).toLocaleDateString();
+        return '<div class="card" style="padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;gap:10px;">' +
+          '<div style="flex:1;">' +
+            '<div style="font-size:12px;font-weight:600;text-transform:capitalize;">' + esc(sess.session_type||'behavioral') + ' Interview</div>' +
+            '<div style="font-size:11px;color:var(--text-muted);">' + date + ' · ' + esc(sess.status||'') + '</div>' +
+          '</div>' +
+          (sess.aggregate_score ? '<div style="font-size:16px;font-weight:700;color:'+scoreColor+';">' + sess.aggregate_score + '%</div>' : '<div style="font-size:11px;color:var(--text-muted);">—</div>') +
+        '</div>';
+      }).join('');
+      var panel = document.getElementById('ip-history-panel');
+      if (panel) panel.style.display = '';
+    } catch(e) { /* non-fatal */ }
+  };
+
+  window.closeInterviewPractice = function () {
+    var panel = document.getElementById('ip-chat-panel');
+    if (panel) panel.style.display = 'none';
+    document.body.style.overflow = '';
+    if (_ipSession && _ipCurrentQ > 0) _ipEndSession();
+  };
+
+  function _ipRenderTypeSelect() {
+    var body = document.getElementById('ip-chat-body');
+    if (!body) return;
+    body.innerHTML = '<div style="padding:16px;">' +
+      '<div style="font-size:13px;font-weight:600;margin-bottom:12px;">Choose session type:</div>' +
+      ['behavioral','technical','company'].map(function(t) {
+        var labels = { behavioral:'🎯 Behavioral (STAR)', technical:'⚙️ Technical', company:'🏢 Company-Specific' };
+        return '<button class="btn btn-sm" style="width:100%;margin-bottom:8px;text-align:left;padding:10px 14px;" onclick="window._ipStartSession(\''+t+'\')">' + labels[t] + '</button>';
+      }).join('') +
+    '</div>';
+  }
+
+  window._ipStartSession = async function (sessionType) {
+    var body = document.getElementById('ip-chat-body');
+    if (body) body.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:var(--text-muted);">Preparing your interview…</div>';
+    _ipStartTime = Date.now();
+    try {
+      var session = await sb.auth.getSession();
+      var token = session?.data?.session?.access_token;
+      var res = await fetch(SUPABASE_URL + '/functions/v1/interview-practice', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+        body: JSON.stringify({ action: 'start_session', session_type: sessionType, job_id: _ipJobId }),
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to start session');
+      _ipSession = data.session_id;
+      _ipQuestions = data.questions || [];
+      _ipCurrentQ = 0;
+      if (typeof capturePostHog === 'function') capturePostHog('interview_practice_started', { job_id: _ipJobId, session_type: sessionType, question_count: _ipQuestions.length });
+      _ipRenderQuestion();
+    } catch (e) {
+      reportError('interview-practice:start', e);
+      if (body) body.innerHTML = '<div style="padding:20px;color:var(--warm);font-size:12px;">Failed: ' + (e.message||'error') + '</div>';
+    }
+  };
+
+  function _ipRenderQuestion() {
+    var body = document.getElementById('ip-chat-body');
+    if (!body) return;
+    var q = _ipQuestions[_ipCurrentQ];
+    if (!q) { _ipShowResults(); return; }
+    var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){return String(s||'');};
+    body.innerHTML =
+      '<div style="padding:16px;">' +
+        '<div style="font-size:10px;color:var(--text-muted);margin-bottom:6px;">Question ' + (_ipCurrentQ+1) + ' of ' + _ipQuestions.length + '</div>' +
+        '<div style="font-size:13px;font-weight:600;margin-bottom:14px;line-height:1.5;">' + esc(q.text||'') + '</div>' +
+        '<textarea id="ip-answer-input" class="rb-input" rows="5" placeholder="Type your answer here…" style="width:100%;box-sizing:border-box;margin-bottom:10px;"></textarea>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<button class="btn btn-primary btn-sm" onclick="window._ipSubmitAnswer()">Submit Answer</button>' +
+          '<button class="btn btn-sm" onclick="window.closeInterviewPractice()" style="font-size:11px;">End Session</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  window._ipSubmitAnswer = async function () {
+    var answerEl = document.getElementById('ip-answer-input');
+    var answer = answerEl ? answerEl.value.trim() : '';
+    if (!answer) { if (typeof showToast === 'function') showToast('Please type your answer first.', {type:'error'}); return; }
+    var body = document.getElementById('ip-chat-body');
+    if (body) body.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:var(--text-muted);">Evaluating…</div>';
+    try {
+      var session = await sb.auth.getSession();
+      var token = session?.data?.session?.access_token;
+      var res = await fetch(SUPABASE_URL + '/functions/v1/interview-practice', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+        body: JSON.stringify({ action: 'submit_answer', session_id: _ipSession, answer_text: answer, question_index: _ipCurrentQ }),
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Evaluation failed');
+      _ipRenderFeedback(data.feedback, data.follow_up_question);
+    } catch (e) {
+      reportError('interview-practice:submit', e);
+      if (typeof showToast === 'function') showToast('Evaluation failed.', {type:'error'});
+      _ipRenderQuestion();
+    }
+  };
+
+  function _ipRenderFeedback(feedback, followUp) {
+    var body = document.getElementById('ip-chat-body');
+    if (!body) return;
+    var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){return String(s||'');};
+    var fb = feedback || {};
+    var scores = fb.scores || {};
+    var overall = Math.round(((scores.relevance||0)*0.25 + (scores.specificity||0)*0.25 + (scores.structure||0)*0.20 + (scores.jd_alignment||0)*0.20 + (scores.communication||0)*0.10));
+    var scoreColor = overall >= 75 ? 'var(--green)' : overall >= 50 ? 'var(--warning)' : 'var(--warm)';
+    body.innerHTML =
+      '<div style="padding:16px;">' +
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">' +
+          '<div style="font-size:24px;font-weight:700;color:' + scoreColor + ';">' + overall + '</div>' +
+          '<div style="font-size:11px;color:var(--text-muted);">Score</div>' +
+        '</div>' +
+        (fb.strength ? '<div style="margin-bottom:8px;padding:8px 10px;background:rgba(22,163,74,0.08);border-radius:6px;font-size:12px;"><strong style="color:var(--green);">✓ Strength:</strong> ' + esc(fb.strength) + '</div>' : '') +
+        (fb.gap ? '<div style="margin-bottom:8px;padding:8px 10px;background:rgba(239,68,68,0.06);border-radius:6px;font-size:12px;"><strong style="color:var(--warm);">△ Gap:</strong> ' + esc(fb.gap) + '</div>' : '') +
+        (fb.improved_answer ? '<details style="margin-bottom:10px;"><summary style="font-size:11px;font-weight:600;cursor:pointer;">Suggested answer</summary><div style="font-size:11px;color:var(--text-muted);padding:8px 0;">' + esc(fb.improved_answer) + '</div></details>' : '') +
+        (followUp ? '<div style="margin-bottom:10px;padding:8px 10px;background:var(--bg-card);border-radius:6px;font-size:12px;font-weight:600;">Follow-up: ' + esc(followUp) + '</div>' : '') +
+        '<div style="display:flex;gap:8px;">' +
+          '<button class="btn btn-primary btn-sm" onclick="window._ipNextQuestion()">' + (_ipCurrentQ < _ipQuestions.length - 1 ? 'Next Question →' : 'Finish Session') + '</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  window._ipNextQuestion = function () {
+    _ipCurrentQ++;
+    if (_ipCurrentQ >= _ipQuestions.length) { _ipEndSession(); } else { _ipRenderQuestion(); }
+  };
+
+  async function _ipEndSession() {
+    if (!_ipSession) return;
+    try {
+      var session = await sb.auth.getSession();
+      var token = session?.data?.session?.access_token;
+      var res = await fetch(SUPABASE_URL + '/functions/v1/interview-practice', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+        body: JSON.stringify({ action: 'end_session', session_id: _ipSession }),
+      });
+      var data = await res.json();
+      if (typeof capturePostHog === 'function') capturePostHog('interview_practice_completed', {
+        job_id: _ipJobId, aggregate_score: data.aggregate_score, questions_answered: data.questions_answered,
+        duration_seconds: _ipStartTime ? Math.round((Date.now() - _ipStartTime) / 1000) : 0,
+      });
+    } catch(e) { /* non-fatal */ }
+  }
+
+  function _ipShowResults() {
+    var body = document.getElementById('ip-chat-body');
+    if (body) body.innerHTML = '<div style="padding:20px;text-align:center;"><div style="font-size:22px;">🎉</div><div style="font-size:13px;font-weight:600;margin-top:8px;">Session complete!</div><div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Check your pipeline for practice history.</div><button class="btn btn-sm" onclick="window.closeInterviewPractice()" style="margin-top:12px;">Close</button></div>';
+    _ipEndSession();
+  }
+})();
+
+// ── AIS-F11-S2: Session history for ip-history-panel (item 60) ──────────
+window.loadInterviewHistory = async function() {
+  var panel = document.getElementById('ip-history-panel');
+  var listEl = document.getElementById('ip-history-list');
+  if (!listEl || !currentUser) return;
+
+  try {
+    var { data, error } = await sb.from('interview_sessions')
+      .select('id, session_type, aggregate_score, status, job_id, created_at, completed_at')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (error || !data || !data.length) {
+      listEl.innerHTML = '<div style="font-size:12px;color:var(--text-muted);">No AI practice sessions yet.</div>';
+      return;
+    }
+
+    var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){return String(s||'');};
+    listEl.innerHTML = data.map(function(s) {
+      var sc = s.aggregate_score;
+      var scColor = sc >= 75 ? 'var(--green)' : sc >= 50 ? 'var(--warning)' : sc ? 'var(--warm)' : 'var(--text-muted)';
+      var when = s.created_at ? new Date(s.created_at).toLocaleDateString() : '';
+      var typeLabel = { behavioral: '🎯 Behavioral', technical: '⚙️ Technical', company: '🏢 Company' }[s.session_type] || s.session_type;
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;">' +
+        '<span style="flex:1;">' + esc(typeLabel) + (s.job_id ? ' · ' + esc(s.job_id.slice(0,20)) : '') + '</span>' +
+        (sc ? '<span style="font-weight:700;color:' + scColor + ';">' + sc + '</span>' : '') +
+        '<span style="color:var(--text-muted);font-size:10px;">' + esc(when) + '</span>' +
+        '<span style="font-size:10px;color:' + (s.status==='complete'?'var(--green)':'var(--text-muted)') + ';">' + esc(s.status) + '</span>' +
+      '</div>';
+    }).join('');
+    if (panel) panel.style.display = '';
+  } catch(e) { reportError('loadInterviewHistory', e); }
+};
+
+// Show history when My Sessions tab is shown
+window._ipShowHistoryPanel = function() {
+  var panel = document.getElementById('ip-history-panel');
+  if (panel) panel.style.display = '';
+  if (typeof window.loadInterviewHistory === 'function') window.loadInterviewHistory();
+};

@@ -6,6 +6,7 @@ import { fillGreenhouse } from './handlers/greenhouse.js';
 import { fillLever } from './handlers/lever.js';
 import { fillWorkable } from './handlers/workable.js';
 import { fillAshby } from './handlers/ashby.js';
+import { fillLinkedIn } from './handlers/linkedin.js'; // AIS-F10-S1
 import { fillGeneric } from './handlers/generic.js';
 
 /**
@@ -20,7 +21,7 @@ const ATS_PATTERNS = [
   { name: 'recruitee',   pattern: /\.recruitee\.com/i,                 handler: null }, // API-only, no browser needed
   { name: 'workday',     pattern: /\.myworkdayjobs\.com/i,             handler: null }, // Phase 2: complex auth
   { name: 'indeed',      pattern: /indeed\.com/i,                      handler: null }, // Phase 2: anti-bot
-  { name: 'linkedin',    pattern: /linkedin\.com/i,                    handler: null }, // Phase 2: auth required
+  { name: 'linkedin',    pattern: /linkedin\.com/i,                    handler: fillLinkedIn }, // AIS-F10-S1
   { name: 'taleo',       pattern: /taleo\.(net|com)/i,                 handler: null }, // Phase 2: Oracle legacy
   { name: 'icims',       pattern: /icims\.com/i,                       handler: null }, // Phase 2
   { name: 'smartrecruiters', pattern: /smartrecruiters\.com/i,          handler: null }, // Phase 2

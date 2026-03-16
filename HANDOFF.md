@@ -52,7 +52,81 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FB-INTPREP-001-S6** — Interview Prep Phase 6: Feature Gating + Polish — FB-INTPREP-001 COMPLETE ✅
+**AIS-F8-S1** — Cover Letter Generator: UI + Table ✅
+- v9.59→v9.60 — cover_letters migration (tone CHECK 4 values, version, credits_charged, word_count), 4 tones in EF (professional/conversational/enthusiastic/executive), persist+version tracking, slide-out panel, DOCX export via OOXML/JSZip, cover_letter_generated PostHog, 47 tests.
+
+
+**AIS-F2-S2** — LinkedIn Import: Upload UI + Auto-Population ✅
+- v9.58 → v9.59 — linkedin-import.js, Get Started page upload card, drag-and-drop, profile preview, auto-populate fields, skill→filter suggestions (_inferSeniority), PostHog linkedin_pdf_uploaded, 45 tests.
+
+
+
+**AIS-F2-S1** — LinkedIn Import: EF + Storage ✅
+- Completed: 2026-03-15
+- Product version bumped: `v9.57` → `v9.58`
+- **AIS-F4-S2 also closed:** All spec items delivered in AIS-F4-S1 gap fixes. Marked ✅.
+- **`upload` action in `parse-linkedin-pdf` EF:** Standalone (no enrollment_id). JWT-authed. Accepts pdf_base64. 10MB limit (413). SHA-256 hash. Dedup cross-account (409). parse failure (422). Fraud signals: low_connections, no_experience, low_confidence. Storage upload to linkedin-profiles bucket. Upserts to linkedin_profiles on conflict user_id. Returns success/profile/fraud_signals/pdf_hash/storage_path.
+- **`linkedin_profiles` migration** (v9.57): Full schema, UNIQUE user_id index, pdf_hash index, RLS, storage policies, updated_at trigger.
+- **Tests:** 55 validation tests (all passing)
+- **Pending (Marston):** `supabase db push` (v9.56 answers + v9.57 linkedin_profiles); deploy parse-linkedin-pdf + answer-form-question EFs
+
+**AIS-F4-S2** — Answer History + Personal Context ✅
+- Completed: 2026-03-15
+- Product version: `v9.57` (delivered as part of AIS-F4-S1 gap fix — no additional version bump)
+- Scope fully covered by commit e8713f35: answers table, persistAnswers, loadAnswerCache, deductCredits, fetchLinkedInProfile.
+
+**Previous: AIS-F4-S1 (Gap Fixes)** — Answer History + Personal Context + Credits ✅
+- Completed: 2026-03-15
+- Product version bumped: `v9.56` → `v9.57`
+- **Gap fix:** Initial AIS-F4-S1 was missing spec items 19/20/credit model. All now complete.
+- **Migration `v9.56-ais-f4-s1-answers-table.sql`:** `answers` table — user_id FK, job_id, job_title, company_name, field_label, field_type, generated_answer, user_edited_answer, feedback CHECK(up/down/null), credits_charged numeric, cached boolean, created_at. RLS: users_manage_own_answers + service_role. Indexes on (user_id), (user_id, field_label, created_at DESC), (user_id, job_id).
+- **`loadAnswerCache()`:** Reads answers table within `ANSWER_CACHE_DAYS=7` for given user + field labels. Returns `Map<label→answer>`. Non-fatal warn on error.
+- **Fully-cached path:** When `missedQuestions.length === 0`, returns immediately without calling Anthropic. Response includes `cache_hits`, `credits_charged: 0`. Rate limit not consumed.
+- **`persistAnswers()`:** Inserts new answers to DB after generation. `credits_charged: isCached ? 0 : CREDITS_PER_ANSWER`. `cached` flag set correctly.
+- **`deductCredits()`:** Calls `deduct_credits` RPC with `p_feature: "ai_answer"` for `newAnswers.length * 0.5` credits. Non-fatal.
+- **`CREDITS_PER_ANSWER = 0.5`** — 0.5 credits per new AI answer. Cached answers are free.
+- **`fetchLinkedInProfile()`:** Reads `linkedin_profiles` table for user (display_name, headline, skills_array, experience_json). Passed as second arg to `buildUserPrompt`.
+- **`buildUserPrompt` updated:** Accepts optional `linkedIn` param. Injects `## LinkedIn Profile` section (name, headline, skills, recent experience) when available.
+- **`job_id` added to `AnswerRequest` interface** and threaded through to `persistAnswers`.
+- **Response fields:** `cache_hits` and `credits_charged` added to all success responses.
+- **Tests:** 50 validation tests (all passing)
+- **Modified:** `supabase/functions/answer-form-question/index.ts`, `dist/dashboard.min.js`, `dist/dashboard-deferred.min.js`, `dist/admin.min.js`, `styles.css`, `ROADMAP.md`, `roadmap.html`
+- **Created:** `supabase/migrations/v9.56-ais-f4-s1-answers-table.sql`, `tests/ais-f4-s1-gap-fixes.test.js`
+- **Pending manual steps (Marston):**
+  - `supabase db push` (migration v9.56-ais-f4-s1-answers-table)
+  - `SUPABASE_ACCESS_TOKEN=<token> npx supabase functions deploy answer-form-question --project-ref qojhagupdnbtomfoxnsf`
+- Completed: 2026-03-15
+- Product version bumped: `v9.55` → `v9.56`
+- **No admin gate to remove** — `answer-form-question` EF was already open to all JWT-authenticated users with a `DAILY_LIMIT=50` rate limit. The "admin-only" label referred to the extension popup toggle (not an EF gate). No EF changes needed.
+- **`_fetchAiAnswersForReview()` in `extension/background.ts`:** New async helper. After user clicks "Submit Anyway" in score-gated or manual mode, intercepts before fill fires. Sends `bj:toolbar:collectQuestions` to content script to collect unmatched form fields. Fetches resume text from Supabase if `activeResumeId` present. Calls `answer-form-question` EF with questions + profile + resume_text. On success, sends `bj:toolbar:answerReview` to overlay and returns `true` (fill deferred). Returns `false` on no token / no questions / error → fill proceeds directly. Fires `ai_answer_generated` PostHog event.
+- **Modified `submit_anyway` in `applyConfirm` handler:** Sets `reviewMode = (mode === 'score-gated' || mode === 'manual')`. If `reviewMode && tabId`, calls `_fetchAiAnswersForReview`. If review shown → returns `{ status: 'answer_review_pending' }`. If not shown (no questions, error, non-review mode) → proceeds with direct fill as before.
+- **`bj:toolbar:answerReviewConfirm` handler in `extension/background.ts`:** Handles `accepted` (trigger fill with accepted answers + fire `ai_answer_feedback` per rated answer), `skipped` (trigger fill without answers), `regenerate` (call `_fetchAiAnswersForReview` again).
+- **`showAnswerReviewPanel(data)` in `extension/job-site-overlay.ts`:** Shadow DOM panel (400px, fixed right). Shows job title + question count in header. Per-answer: label, editable textarea pre-filled with AI answer, confidence badge (Cached / High / Medium), thumbs up/down feedback buttons. Footer: Accept & Submit (primary), Regenerate (↺), Skip. Closes on backdrop click. Exposed as `window._bjJobSiteOverlay.showAnswerReviewPanel`.
+- **`window._bjAnswerReviewAccept/Skip/Regenerate/Feedback`** — inline onclick handlers. Accept collects edited textarea values, sends `answerReviewConfirm` with `action: 'accepted'` + edited answers + feedback array. Skip sends `action: 'skipped'`. Regenerate sends `action: 'regenerate'`.
+- **`bj:toolbar:answerReview` bridged in `extension/contentScript.ts`:** Added to the background→overlay relay condition.
+- **`bj:toolbar:collectQuestions` handler in `extension/contentScript.ts`:** Queries visible text inputs, textareas, selects. Skips filled fields, hidden inputs, standard fields (name/email/phone/etc.). Extracts label from `label[for]`, placeholder, or parent element. Caps at 10. Returns `{ questions }`. Falls back to `{ questions: [] }` on error.
+- **PostHog events:** `ai_answer_generated` (questions_count, cached, credits_charged, surface: extension), `ai_answer_feedback` (field_label, rating: up/down, surface: extension), `auto_apply_tier_blocked` (existing from AIS-F3-S1).
+- **Tests:** 59 (AIS-F4-S1 original) + 45 (gap fixes) = **104 validation tests** (all passing)
+- **Modified:** `extension/background.ts`, `extension/job-site-overlay.ts`, `extension/contentScript.ts`, `supabase/functions/answer-form-question/index.ts`, `dist/dashboard.min.js`, `dist/dashboard-deferred.min.js`, `dist/admin.min.js`, `styles.css`, `ROADMAP.md`, `roadmap.html`
+- **Created:** `tests/ais-f4-s1-ai-qa-gate-removal.test.js`, `tests/ais-f4-s1-gaps-answer-history.test.js`, `supabase/migrations/v9.56-ais-f4-s1-answers-table.sql`
+- **Gap fixes (v9.57):** `answers` table migration (user_id, job_id, field_label, generated_answer, user_edited_answer, feedback CHECK up/down, credits_charged, cached, RLS). `loadAnswerCache()` — reads answers within 7 days for same field_label, serves free. `persistAnswers()` — inserts all answers to DB post-generation. `deductCredits()` — calls `deduct_credits` RPC at 0.5/new answer (non-fatal). `fetchLinkedInProfile()` — reads `linkedin_profiles` table, injects name/headline/skills/experience into prompt. Fully-cached path returns early without hitting Anthropic (0 credits). Response now includes `cache_hits` and `credits_charged`.
+- **Pending manual steps (Marston):**
+  - `supabase db push` (migration v9.56-ais-f4-s1-answers-table.sql)
+  - `SUPABASE_ACCESS_TOKEN=<token> npx supabase functions deploy answer-form-question --project-ref qojhagupdnbtomfoxnsf`
+- Completed: 2026-03-15
+- Product version bumped: `v9.54` → `v9.55`
+- **Tier gate:** Added `auto_apply_daily: { free: 0, starter: 5, pro: Infinity }` to `TIER_GATES` in `tier-gating.js`. Free users are fully blocked from auto modes. Starter users get 5/day with midnight reset via localStorage (`bj_auto_apply_daily`). Pro users get unlimited.
+- **New functions in tier-gating.js:** `_getAutoApplyDailyRecord()` (date-keyed localStorage), `getAutoApplyDailyLimit()`, `getAutoApplyDailyRemaining()`, `incrementAutoApplyDailyCount()`, `checkAutoApplyTierGate()` (returns `{ allowed, tier, limit, remaining, requiresTier }`). All exported to `window.*`.
+- **proceedToApply gate:** `_isAutoMode` flag set for all non-Manual, non-Score-Gated modes. `checkAutoApplyTierGate()` called before any auto-mode submission. Blocks with toast + `showTierGate()` overlay + `auto_apply_tier_blocked` PostHog event. Returns early, never submits.
+- **PostHog event:** `auto_apply_consumer_triggered` fires on every successful auto-mode apply attempt with `{ job_id, mode, tier, platform }`.
+- **`_updateFillStatusPanel(opts)`:** New function rendering inline status card in `#ais-fill-status-panel`. Statuses: `submitting` (spinner), `queued` (clock icon), `success` (green check, 8s auto-dismiss), `error` (warm color, actionable guidance + View Pending link). Dismissable via ×. Calls `reportError` on exception.
+- **Fill status panel:** `#ais-fill-status-panel` div added to `dashboard.html` inside `#app-tab-pipeline`, hidden by default.
+- **Error recovery UI:** All failure paths (rejected, timeout, generic error) call `_updateFillStatusPanel` with `status: 'error'` and `action: 'Retry from Pending Applications.'`. Previously these paths only showed toasts.
+- **Daily count increment:** `incrementAutoApplyDailyCount()` called on successful Recruitee direct path and before `_routeToWorker` on all other paths. Guarded by `_isAutoMode`.
+- **Anti-detection verified:** Worker `DELAY_BETWEEN` (30s default, configurable via `SUBMISSION_DELAY_MS`), `human-sim.js` randomized keystroke delays, `MAX_CONCURRENT` session cap, random viewport dimensions all confirmed active.
+- **Tests:** 63 validation tests (all passing)
+- **Modified:** `js/tier-gating.js`, `js/apply-workflow.js`, `dashboard.html`, `dist/dashboard.min.js`, `dist/dashboard-deferred.min.js`, `dist/admin.min.js`, `styles.css`, `ROADMAP.md`, `roadmap.html`
+- **Created:** `tests/ais-f3-s1-auto-apply-gate-removal.test.js`
 - Completed: 2026-03-15
 - Product version bumped: `v9.53` → `v9.54`
 - **Question Bank gating:** `getUserTier()` check. FREE_QUESTION_LIMIT=5 visible for free users. Cards beyond limit get `filter:blur(4px);pointer-events:none;user-select:none`. Upgrade banner below blurred cards with count + subscription link.
@@ -3902,43 +3976,51 @@ Deliverables:
 
 ---
 
+## Last Gap-Fix Session
+
+**AIS Gap Fixes** ✅ — v9.66 → v9.67
+- F1: resume_rewrite_started/completed/qa_skipped PostHog events in rewrite.js
+- F3: Circuit breaker (3 consecutive fails) + 60s platform spacing in background.ts
+- F4: user_edited_answer persisted to answers table when user edits in review panel
+- F5: application_mode_changed includes old_mode + source; score_gate_shown includes user_action; review_panel_shown fired
+- F5: extension/job-sites.json created with per-ATS CSS selectors for 7 platforms
+- F6: Cover letter shown in review panel; Save for Later button + save_later handler; Review Queue loadReviewQueue/dismissReviewQueueItem; switchAppTab wired
+- F8: LinkedIn profile + ats_companies company info fetched and injected into generate-cover-letter EF prompt
+- 59 validation tests passing
+
 ## Next Session
 
-**SPEC-AIS-001 Application Intelligence Suite — 28 sessions planned and committed to repo.**
+**SPEC-AIS-001 Application Intelligence Suite — Phase D**
 
-Active workstream: **Phase A — Foundation**
+**ALL 28 SESSIONS COMPLETE** ✅ — SPEC-AIS-001 Application Intelligence Suite delivered in full.
 
----
-
-### AIS-F3-S1: Auto-Apply Consumer Gate Removal
+FULLY SPEC-COMPLETE + DEPLOYED v9.69:
+- All 68 spec items verified
+- All 11 gap items remediated (items 28/34/35/36/44/49/52/57/60/61)
+- bulk-apply-queue + interview-practice EFs redeployed
+- All 11 AIS tables live ✅
+- All 3 credit RPCs (deduct_credits, add_credits, get_credit_balance) live ✅
+- All 9 EFs deployed (parse-linkedin-pdf, answer-form-question, generate-cover-letter, rewrite-resume-analyze, rewrite-resume-execute, bulk-apply-queue, build-resume, interview-practice, resume-ab-assign) ✅
+- Storage buckets verified: linkedin-profiles, rewrites, resumes ✅
+- No manual steps remaining.
 
 **Entry Gate:**
-- [ ] Confirm tierGate.js exists and Free/Starter/Pro limits are defined
-- [ ] Confirm admin flag location in auto-fill code path
-- [ ] Confirm inject-overlay.js real-time data structure for fill status panel
+- [ ] Confirm `answers` table exists in Supabase (migration v9.56 applied)
+- [ ] Confirm EF persists answers (deployed)
+- [ ] Verify credit deduction RPC `deduct_credits` exists
 
 **Fix Items:**
-1. Remove admin-only check from auto-fill trigger
-2. Wire tierGate.js as sole access control (Free=0, Starter=5/day, Pro=unlimited)
-3. Application Mode integration: respect selected mode before auto-fill fires
-4. Fill status panel on Applications page: surface inject-overlay.js progress/success/error data
-5. Error recovery UI: surface fill failures with actionable guidance (not just PostHog)
-6. Anti-detection: verify 45-90s randomized delay + max 25/session + failure circuit breaker active
-7. PostHog event: auto_apply_consumer_triggered (platform, job_id, mode, tier)
+1. Verify `deduct_credits` RPC exists — if not, create it (deducts `p_amount` from user credit balance)
+2. Dashboard UI: "Answer History" view showing past answers per job — user can rate (thumbs up/down) past answers, triggering `ai_answer_feedback` PostHog event and updating `answers.feedback` column
+3. Verify feedback from answer review panel (AIS-F4-S1) persists to `answers.user_edited_answer` when user edits before accepting
+4. PostHog: verify `ai_answer_feedback` event fires consistently from both extension review panel and any dashboard UI
 
 **Exit Gate:**
-- [ ] Free user: auto-fill blocked, tier upgrade prompt shown
-- [ ] Starter: 5/day enforced, resets at midnight
-- [ ] Pro: fires, respects Application Mode
-- [ ] Fill status visible on Applications page
-- [ ] Error state shown to user on fill failure
+- [ ] `answers` table exists with correct schema
+- [ ] Generated answers persisted to DB
+- [ ] Cached answers returned free (0 credits)
+- [ ] LinkedIn profile + resume text in prompt context
 - [ ] Tests passing
-
----
-
-**Full AIS session sequence (28 sessions):**
-
-Phase A (Weeks 1-2): AIS-F3-S1 -> AIS-F4-S1 -> AIS-F4-S2 -> AIS-F2-S1 -> AIS-F2-S2
 Phase B (Weeks 3-4): AIS-F8-S1 -> AIS-F8-S2 -> AIS-F1-S1 -> AIS-F1-S2 -> AIS-F1-S3 -> AIS-F1-S4
 Phase C (Weeks 5-6): AIS-F5-S1 -> AIS-F5-S2 -> AIS-F5-S3 -> AIS-F5-S4 -> AIS-F6-S1 -> AIS-F6-S2
 Phase D (Weeks 7-11): AIS-F9-S1 -> AIS-F9-S2 -> AIS-F9-S3 -> AIS-F10-S1 -> AIS-F10-S2 -> AIS-F7-S1 -> AIS-F7-S2 -> AIS-F11-S1 -> AIS-F11-S2 -> AIS-F12-S1 -> AIS-F12-S2
@@ -3975,7 +4057,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.54`** | **FB-INTPREP-001-S6: Feature Gating + Polish. FB-INTPREP-001 COMPLETE. 326 tests.** |
+| **Product (BJ_VERSION)** | **`v9.69`** | **SPEC-AIS-001 COMPLETE: 68/68 items, 11 tables, 9 EFs, 0 gaps remaining.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

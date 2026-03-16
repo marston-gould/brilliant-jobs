@@ -2041,15 +2041,18 @@
       if (rewriteBtn) rewriteBtn.addEventListener('click', function () {
         hideScoreGatePopup();
         showRewriteProgressPopup(data);
+        sendMsg('POSTHOG_CAPTURE', { event: 'score_gate_shown', properties: { score: data.score || 0, threshold: data.threshold || 75, user_action: 'rewrite', platform: currentSite ? currentSite.platform : 'unknown' } });
         _sendConfirm('rewrite', data);
       });
       if (submitBtn) submitBtn.addEventListener('click', function () {
         hideScoreGatePopup();
         showToast('Submitting with current resume...');
+        sendMsg('POSTHOG_CAPTURE', { event: 'score_gate_shown', properties: { score: data.score || 0, threshold: data.threshold || 75, user_action: 'apply', platform: currentSite ? currentSite.platform : 'unknown' } });
         _sendConfirm('submit_anyway', data);
       });
       if (cancelBtn) cancelBtn.addEventListener('click', function () {
         hideScoreGatePopup();
+        sendMsg('POSTHOG_CAPTURE', { event: 'score_gate_shown', properties: { score: data.score || 0, threshold: data.threshold || 75, user_action: 'cancel', platform: currentSite ? currentSite.platform : 'unknown' } });
         _sendConfirm('cancel', data);
       });
     }
@@ -2177,6 +2180,12 @@
         '</div>';
       shadow.appendChild(toast);
       setTimeout(function() { var t = shadow.getElementById('bj-upgrade-toast'); if (t) t.remove(); }, 10000);
+    }
+
+    // AIS-F4-S1: Answer review — show AI answers for pre-submit review
+    if (evt.data.type === 'bj:toolbar:answerReview') {
+      var ar = evt.data.payload || {};
+      showAnswerReviewPanel(ar);
     }
   });
 
@@ -2442,6 +2451,205 @@
     if (existing) existing.remove();
   }
 
+  // ── AIS-F4-S1: Answer Review Panel ──────────────────────────────────────
+  // Shows AI-generated answers for pre-submit review in score-gated / manual modes.
+  // User can edit each answer, rate quality (thumbs up/down), then Accept All or Skip.
+
+  var _answerReviewPayload = null;
+  var _answerFeedback = [];
+
+  function showAnswerReviewPanel(data) {
+    var shadow = getShadowRoot();
+    var existing = shadow.querySelector('#bj-answer-review-overlay');
+    if (existing) existing.remove();
+    if (!data.answers || !data.answers.length) return;
+
+    _answerReviewPayload = data;
+    _answerFeedback = [];
+
+    // PostHog: review_panel_shown (spec §8.1 item 27)
+    sendMsg('POSTHOG_CAPTURE', {
+      event: 'review_panel_shown',
+      properties: {
+        job_id: data.jobTitle || '',
+        resume_version: 1,
+        has_cover_letter: !!(data.coverLetter),
+        questions_count: (data.answers || []).length,
+        mode: data.mode || '',
+      },
+    });
+
+    var answersHtml = data.answers.map(function(a, i) {
+      var esc = function(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+      return '<div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.08);" id="bj-ar-item-' + i + '">' +
+        '<div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.6);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em;">' + esc(a.label || ('Question ' + (i+1))) + '</div>' +
+        '<textarea id="bj-ar-answer-' + i + '" data-idx="' + i + '" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:#fff;font-size:12px;padding:8px 10px;resize:vertical;min-height:64px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;line-height:1.5;">' + esc(a.answer || '') + '</textarea>' +
+        '<div style="display:flex;gap:6px;margin-top:6px;align-items:center;">' +
+          '<span style="font-size:11px;color:rgba(255,255,255,0.4);flex:1;">' + (a.confidence === 'cached' ? '⚡ Cached' : a.confidence === 'high' ? '✓ High confidence' : '~ Medium confidence') + '</span>' +
+          '<button onclick="window._bjAnswerReviewFeedback(' + i + ','up')" id="bj-ar-up-' + i + '" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.6);padding:3px 10px;border-radius:4px;font-size:12px;cursor:pointer;" title="Good answer">👍</button>' +
+          '<button onclick="window._bjAnswerReviewFeedback(' + i + ','down')" id="bj-ar-down-' + i + '" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.6);padding:3px 10px;border-radius:4px;font-size:12px;cursor:pointer;" title="Poor answer">👎</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    var overlay = document.createElement('div');
+    overlay.id = 'bj-answer-review-overlay';
+    overlay.setAttribute('style',
+      'position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,0.65);display:flex;align-items:flex-start;justify-content:flex-end;padding:16px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;'
+    );
+    overlay.innerHTML =
+      '<div style="background:#1a1d2e;border-radius:12px;width:400px;max-height:80vh;overflow-y:auto;color:#fff;box-shadow:0 8px 40px rgba(0,0,0,0.5);display:flex;flex-direction:column;">' +
+        '<div style="padding:16px 18px 12px;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#1a1d2e;z-index:1;">' +
+          '<div>' +
+            '<div style="font-size:14px;font-weight:700;">Review AI Answers</div>' +
+            '<div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:2px;">' + (data.jobTitle ? _escText(data.jobTitle) + ' · ' : '') + (data.answers.length) + ' question' + (data.answers.length !== 1 ? 's' : '') + '</div>' +
+          '</div>' +
+          '<button onclick="window._bjAnswerReviewSkip()" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:20px;cursor:pointer;padding:0 4px;line-height:1;" title="Skip review">×</button>' +
+        '</div>' +
+        '<div style="padding:16px 18px;" id="bj-ar-answers-body">' + answersHtml + '</div>' +
+        (data.coverLetter ? '<div style="padding:0 18px 14px;">' +
+          '<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">Cover Letter</div>' +
+          '<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:10px;font-size:11px;color:rgba(255,255,255,0.7);max-height:120px;overflow-y:auto;white-space:pre-wrap;">' + (data.coverLetter.slice(0,300) + (data.coverLetter.length > 300 ? '…' : '')) + '</div>' +
+        '</div>' : '') +
+        '<div style="padding:12px 18px 16px;border-top:1px solid rgba(255,255,255,0.1);display:flex;gap:8px;position:sticky;bottom:0;background:#1a1d2e;">' +
+          '<button onclick="window._bjAnswerReviewAccept()" style="flex:1;background:#6366f1;color:#fff;border:none;padding:10px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Accept &amp; Submit</button>' +
+          '<button onclick="window._bjAnswerReviewRegenerate()" style="background:rgba(255,255,255,0.1);color:#fff;border:none;padding:10px 14px;border-radius:8px;font-size:13px;cursor:pointer;" title="Regenerate answers">↺</button>' +
+          '<button onclick="window._bjAnswerReviewSwapResume()" style="background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.6);border:none;padding:10px 14px;border-radius:8px;font-size:11px;cursor:pointer;" title="Swap resume version">📄</button>' +
+          '<button onclick="window._bjAnswerReviewRegenCoverLetter()" style="background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.6);border:none;padding:10px 14px;border-radius:8px;font-size:11px;cursor:pointer;" title="Regenerate cover letter">✉</button>' +
+          '<button onclick="window._bjAnswerReviewSaveLater()" style="background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.6);border:none;padding:10px 14px;border-radius:8px;font-size:13px;cursor:pointer;" title="Save to Review Queue">💾</button>' +
+          '<button onclick="window._bjAnswerReviewSkip()" style="background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.6);border:none;padding:10px 14px;border-radius:8px;font-size:13px;cursor:pointer;">Skip</button>' +
+        '</div>' +
+      '</div>';
+
+    // Close on backdrop click
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) window._bjAnswerReviewSkip();
+    });
+
+    shadow.appendChild(overlay);
+  }
+
+  function hideAnswerReviewPanel() {
+    var shadow = getShadowRoot();
+    var existing = shadow.querySelector('#bj-answer-review-overlay');
+    if (existing) existing.remove();
+    _answerReviewPayload = null;
+    _answerFeedback = [];
+  }
+
+  // Exposed to inline onclick handlers via window
+  window._bjAnswerReviewFeedback = function(idx, rating) {
+    // Toggle feedback — remove existing for this idx then add new
+    _answerFeedback = _answerFeedback.filter(function(f) { return f.idx !== idx; });
+    _answerFeedback.push({ idx: idx, rating: rating });
+    // Visual feedback
+    var shadow = getShadowRoot();
+    var upBtn = shadow.getElementById('bj-ar-up-' + idx);
+    var downBtn = shadow.getElementById('bj-ar-down-' + idx);
+    if (upBtn) upBtn.style.background = rating === 'up' ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.08)';
+    if (downBtn) downBtn.style.background = rating === 'down' ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.08)';
+  };
+
+  window._bjAnswerReviewAccept = function() {
+    if (!_answerReviewPayload) return;
+    var shadow = getShadowRoot();
+    // Collect edited answers
+    var acceptedAnswers = (_answerReviewPayload.answers || []).map(function(a, i) {
+      var ta = shadow.getElementById('bj-ar-answer-' + i);
+      return Object.assign({}, a, { answer: ta ? ta.value : a.answer });
+    });
+    // Build feedback array with field labels
+    var feedbackWithLabels = _answerFeedback.map(function(f) {
+      var ans = (_answerReviewPayload.answers || [])[f.idx];
+      return { field_label: ans ? (ans.label || '') : '', rating: f.rating };
+    });
+    sendMsg('bj:toolbar:answerReviewConfirm', {
+      action: 'accepted',
+      answers: acceptedAnswers,
+      feedback: feedbackWithLabels,
+      jobTitle: _answerReviewPayload.jobTitle || '',
+      company: _answerReviewPayload.company || '',
+      jobUrl: _answerReviewPayload.jobUrl || '',
+      platform: currentSite ? currentSite.platform : '',
+      mode: _answerReviewPayload.mode || 'score-gated',
+    });
+    hideAnswerReviewPanel();
+  };
+
+  window._bjAnswerReviewSkip = function() {
+    if (!_answerReviewPayload) return;
+    sendMsg('bj:toolbar:answerReviewConfirm', {
+      action: 'skipped',
+      answers: [],
+      feedback: [],
+      jobTitle: _answerReviewPayload.jobTitle || '',
+      company: _answerReviewPayload.company || '',
+      mode: _answerReviewPayload.mode || 'score-gated',
+    });
+    hideAnswerReviewPanel();
+  };
+
+  // AIS-F6 item 28: Swap resume version — notify background to use a different resume
+  window._bjAnswerReviewSwapResume = function() {
+    if (!_answerReviewPayload) return;
+    sendMsg('bj:toolbar:answerReviewConfirm', {
+      action: 'swap_resume',
+      answers: [],
+      feedback: [],
+      jobTitle: _answerReviewPayload.jobTitle || '',
+      company: _answerReviewPayload.company || '',
+      mode: _answerReviewPayload.mode || 'score-gated',
+    });
+    hideAnswerReviewPanel();
+    showToast('Opening resume selector — choose a version then re-apply.');
+  };
+
+  // AIS-F6 item 28: Regenerate cover letter from review panel
+  window._bjAnswerReviewRegenCoverLetter = function() {
+    if (!_answerReviewPayload) return;
+    sendMsg('bj:toolbar:answerReviewConfirm', {
+      action: 'regen_cover_letter',
+      answers: [],
+      feedback: [],
+      jobTitle: _answerReviewPayload.jobTitle || '',
+      company: _answerReviewPayload.company || '',
+      jobUrl: _answerReviewPayload.jobUrl || '',
+      mode: _answerReviewPayload.mode || 'score-gated',
+    });
+    hideAnswerReviewPanel();
+    showToast('Cover letter regeneration queued — re-open the application to review the new version.');
+  };
+
+  window._bjAnswerReviewRegenerate = function() {
+    if (!_answerReviewPayload) return;
+    sendMsg('bj:toolbar:answerReviewConfirm', {
+      action: 'regenerate',
+      answers: [],
+      feedback: [],
+      jobTitle: _answerReviewPayload.jobTitle || '',
+      company: _answerReviewPayload.company || '',
+      mode: _answerReviewPayload.mode || 'score-gated',
+    });
+    hideAnswerReviewPanel();
+  };
+
+  // AIS-F6 gap: Save for Later — sends to Review Queue on dashboard
+  window._bjAnswerReviewSaveLater = function() {
+    if (!_answerReviewPayload) return;
+    sendMsg('bj:toolbar:answerReviewConfirm', {
+      action: 'save_later',
+      answers: [],
+      feedback: [],
+      jobTitle: _answerReviewPayload.jobTitle || '',
+      company: _answerReviewPayload.company || '',
+      jobUrl: _answerReviewPayload.jobUrl || '',
+      mode: _answerReviewPayload.mode || 'score-gated',
+    });
+    hideAnswerReviewPanel();
+    // Show confirmation toast (injected into shadow DOM)
+    showToast('Saved to Review Queue — finish later from your dashboard.');
+  };
+
   function _sendRewriteDecision(decision, data) {
     sendMsg('bj:toolbar:rewriteDecision', {
       decision: decision,
@@ -2554,6 +2762,8 @@
     showAutoApplyToast: showAutoApplyToast,
     showLimitReachedToast: showLimitReachedToast,
     showSetupRequiredOverlay: showSetupRequiredOverlay,
+    showAnswerReviewPanel: showAnswerReviewPanel,
+    hideAnswerReviewPanel: hideAnswerReviewPanel,
   };
 
 })();

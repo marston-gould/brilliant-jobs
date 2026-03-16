@@ -1,5 +1,9 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v9.54 -->
+<<<<<<< HEAD
+<!-- Brilliant Jobs Dashboard v9.69 -->
+=======
+<!-- Brilliant Jobs Dashboard v9.56 -->
+>>>>>>> b298dc3103325f62f4b7a8a26a1dc32a74d36f14
 <html lang="en">
 <head>
   <!-- CS-P1-009: Theme flash prevention — must be first script -->
@@ -19,21 +23,36 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="/js/vendor/supabase.min.js" defer></script>
-  <script src="/js/pipeline-migration.js?v=v9.54" defer></script>
-  <script src="/js/notification-center.js?v=v9.54" defer></script>
+<<<<<<< HEAD
+  <script src="/js/pipeline-migration.js?v=v9.69" defer></script>
+  <script src="/js/notification-center.js?v=v9.69" defer></script>
+=======
+  <script src="/js/pipeline-migration.js?v=v9.69" defer></script>
+  <script src="/js/notification-center.js?v=v9.69" defer></script>
+>>>>>>> b298dc3103325f62f4b7a8a26a1dc32a74d36f14
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" integrity="sha384-nFoSjZIoH3CCp8W639jJyQkuPHinJ2NHe7on1xvlUA7SuGfJAfvMldrsoAVm6ECz" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" integrity="sha384-eEu5CTj3qGvu9PdJuS+YlkNi7d2XxQROAFYOr59zgObtlcux1ae1Il3u7jvdCSWu" crossorigin="anonymous"></script>
   <!-- CS-014: CX-09 — ECharts lazy-loaded by stats.js when Stats tab opens -->
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js" integrity="sha384-TcLTgu6flPhnZ5dfHnHimsxNFjYWN0povfGgnOvgPJKbZe6IbuoC2ociiatSHl9E" crossorigin="anonymous"></script>
   <!-- CS-016 FIX-10: Code-split chunks — shell (globals+routing) + feed (job list) loaded eagerly; all other chunks lazy-loaded on tab switch -->
-  <script src="dist/dashboard-shell.min.js?v=v9.54" defer></script>
-  <script src="dist/dashboard-feed.min.js?v=v9.54" defer></script>
+<<<<<<< HEAD
+  <script src="dist/dashboard-shell.min.js?v=v9.69" defer></script>
+  <script src="dist/dashboard-feed.min.js?v=v9.69" defer></script>
   <!-- CS-P1-002: dashboard inline scripts externalized (pdfjs, preload, feedback, insights, a11y) -->
-  <script src="js/dashboard-inline.js?v=v9.54" defer></script>
+  <script src="js/dashboard-inline.js?v=v9.69" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=v9.54">
+  <link rel="stylesheet" href="styles.css?v=v9.69">
+=======
+  <script src="dist/dashboard-shell.min.js?v=v9.69" defer></script>
+  <script src="dist/dashboard-feed.min.js?v=v9.69" defer></script>
+  <!-- CS-P1-002: dashboard inline scripts externalized (pdfjs, preload, feedback, insights, a11y) -->
+  <script src="js/dashboard-inline.js?v=v9.69" defer></script>
+  <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="styles.css?v=v9.69">
+>>>>>>> b298dc3103325f62f4b7a8a26a1dc32a74d36f14
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -108,11 +127,19 @@
     </style>
   <!-- CSS extracted to styles.css in v3.28 -->
   <!-- A13: PostHog analytics — CS-P1-002: externalized for CSP compliance -->
-  <script src="js/posthog-dashboard.js?v=v9.54" defer></script>
-  <script src="js/posthog-perf.js?v=v9.54" defer></script>
-  <script src="js/feature-flags.js?v=v9.54" defer></script>
-  <script src="js/structured-logger.js?v=v9.54" defer></script>
-  <script src="js/theme.js?v=v9.54" defer></script>
+<<<<<<< HEAD
+  <script src="js/posthog-dashboard.js?v=v9.69" defer></script>
+  <script src="js/posthog-perf.js?v=v9.69" defer></script>
+  <script src="js/feature-flags.js?v=v9.69" defer></script>
+  <script src="js/structured-logger.js?v=v9.69" defer></script>
+  <script src="js/theme.js?v=v9.69" defer></script>
+=======
+  <script src="js/posthog-dashboard.js?v=v9.69" defer></script>
+  <script src="js/posthog-perf.js?v=v9.69" defer></script>
+  <script src="js/feature-flags.js?v=v9.69" defer></script>
+  <script src="js/structured-logger.js?v=v9.69" defer></script>
+  <script src="js/theme.js?v=v9.69" defer></script>
+>>>>>>> b298dc3103325f62f4b7a8a26a1dc32a74d36f14
 </head>
 <body>
 
@@ -663,6 +690,52 @@
             </div>
           </div>
 
+          <!-- AIS-F2-S2: LinkedIn Import — Optional onboarding step -->
+          <div class="gs-step" id="gs-linkedin-import-step">
+            <div class="gs-step-header">
+              <div class="gs-step-icon" style="background:hsla(210,85%,56%,0.10);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="#0A66C2"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+              </div>
+              <div class="u-flex-1">
+                <div class="gs-step-num">Optional</div>
+                <div class="gs-step-title">Import LinkedIn Profile</div>
+              </div>
+              <div id="li-import-done-badge" style="display:none;">
+                <div class="phone-verified-badge"><i data-lucide="check" class="icon-sm" style="stroke-width:2.5;fill:none;stroke:currentColor;"></i> Imported</div>
+              </div>
+            </div>
+            <div class="gs-step-body" style="margin-bottom:12px;">
+              Upload your LinkedIn PDF export to auto-fill your profile, get personalized filter suggestions, and give AI form answering better context. One upload, no re-entry.
+            </div>
+
+            <!-- Upload zone -->
+            <div id="li-import-upload-zone" style="border:2px dashed var(--border);border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:border-color 0.2s;" onclick="document.getElementById('li-import-file-input').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="window._liHandleDrop(event)">
+              <i data-lucide="upload-cloud" class="icon-xl icon-stroke" style="stroke:var(--text-muted);margin-bottom:8px;display:block;margin-left:auto;margin-right:auto;"></i>
+              <div style="font-size:13px;font-weight:600;color:var(--text);">Drop your LinkedIn PDF here</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">or click to browse &mdash; max 10MB</div>
+              <div style="font-size:10px;color:var(--text-muted);margin-top:8px;">Export from LinkedIn: Me → Settings &amp; Privacy → Data Privacy → Get a copy of your data → Profile</div>
+              <input type="file" id="li-import-file-input" accept=".pdf" style="display:none;" onchange="window._liHandleFile(this.files[0])">
+            </div>
+
+            <!-- Progress / result -->
+            <div id="li-import-status" style="display:none;margin-top:12px;"></div>
+
+            <!-- Parsed preview (shown after upload) -->
+            <div id="li-import-preview" style="display:none;margin-top:14px;background:var(--bg-card);border-radius:10px;padding:16px;">
+              <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text);">Parsed Profile Preview</div>
+              <div id="li-preview-name" style="font-size:15px;font-weight:700;"></div>
+              <div id="li-preview-headline" style="font-size:12px;color:var(--text-muted);margin-top:2px;"></div>
+              <div id="li-preview-location" style="font-size:12px;color:var(--text-muted);"></div>
+              <div id="li-preview-skills" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:4px;"></div>
+              <div id="li-preview-exp" style="margin-top:10px;font-size:11px;color:var(--text-dim);"></div>
+              <div id="li-fraud-warning" style="display:none;margin-top:10px;padding:8px 12px;background:rgba(239,68,68,0.1);border-radius:6px;font-size:11px;color:var(--warm);"></div>
+              <div style="display:flex;gap:8px;margin-top:14px;">
+                <button class="btn btn-primary btn-sm" onclick="window._liSaveProfile()">Save Profile</button>
+                <button class="btn btn-sm" onclick="window._liCancelPreview()" style="background:var(--bg);border:1px solid var(--border);">Cancel</button>
+              </div>
+            </div>
+          </div>
+
           <!-- Step 3: Build Filters -->
           <div class="gs-step">
             <div class="gs-step-header">
@@ -1144,11 +1217,22 @@
           <!-- FB-PAYL-S2: Referral progress widget (shown to PAYL users) -->
           <div id="payl-referral-widget" class="u-hidden card" style="padding:12px;margin-bottom:12px;"></div>
 
+          <!-- AIS-F9-S1: Bulk Apply action bar -->
+          <div id="bulk-action-bar" style="display:none;position:sticky;top:0;z-index:50;background:var(--accent);color:#fff;padding:8px 16px;border-radius:8px;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
+            <span id="bulk-count-badge" style="font-size:12px;font-weight:700;">0 selected</span>
+            <span id="bulk-credit-cost" style="font-size:11px;opacity:0.85;"></span>
+            <div style="flex:1;"></div>
+            <button onclick="window._bulkApplySelected && window._bulkApplySelected()" style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);color:#fff;padding:5px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">⚡ Bulk Apply</button>
+            <button onclick="window._bulkSaveSelected && window._bulkSaveSelected()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:5px 14px;border-radius:6px;font-size:12px;cursor:pointer;">📌 Save All</button>
+            <button onclick="window._bulkClearSelection && window._bulkClearSelection()" style="background:none;border:none;color:rgba(255,255,255,0.7);font-size:18px;cursor:pointer;line-height:1;padding:0 4px;" title="Clear selection">×</button>
+          </div>
+
           <!-- Job results table -->
           <div class="u-overflow-x">
             <table class="job-table" id="job-table">
               <thead>
                 <tr>
+                  <th style="width:28px;padding:0 4px;"><input type="checkbox" id="bulk-select-all" title="Select all visible jobs" style="cursor:pointer;accent-color:var(--accent);" onchange="window._bulkHeaderToggle && window._bulkHeaderToggle(this.checked)" id="bulk-select-all-header"></th>
                   <th data-sort="title" style="width:24%;">Title <span class="sort-arrow">↕</span></th>
                   <th data-sort="level" style="width:7%;">Level <span class="sort-arrow">↕</span></th>
                   <th data-sort="company" style="width:13%;">Company <span class="sort-arrow">↕</span></th>
@@ -1840,6 +1924,9 @@
             <button class="btn btn-sm app-top-tab active u-btn-pill" id="app-top-tab-pipeline" onclick="switchAppTab('pipeline')">
               Pipeline
             </button>
+            <button class="btn btn-sm app-top-tab u-btn-pill" id="app-top-tab-review-queue" onclick="switchAppTab('review-queue')">
+              Review Queue <span id="review-queue-badge" style="display:none;background:var(--accent);color:#fff;font-size:9px;padding:1px 5px;border-radius:10px;margin-left:4px;"></span>
+            </button>
             <button class="btn btn-sm app-top-tab u-btn-pill" id="app-top-tab-settings" onclick="switchAppTab('settings')">
               Settings
             </button>
@@ -1850,6 +1937,22 @@
 
 <!-- FB-PI-001 §7.1 Green: Auto-move notification cards -->
           <div id="pi-automove-cards" style="display:none;margin-bottom:8px;"></div>
+
+<!-- AIS-F3-S1: Auto-apply fill status panel — shows submission progress/errors inline -->
+          <div id="ais-fill-status-panel" style="display:none;margin-bottom:12px;"></div>
+
+          <!-- AIS-F9-S3: Bulk Apply Progress Panel -->
+          <div id="bulk-progress-panel" style="display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:12px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <div style="font-size:12px;font-weight:700;">Bulk Apply in Progress</div>
+              <button onclick="window._bulkProgressClose && window._bulkProgressClose()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:16px;line-height:1;">×</button>
+            </div>
+            <div id="bulk-progress-bar-wrap" style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:8px;">
+              <div id="bulk-progress-bar" style="height:100%;width:0%;background:var(--accent);transition:width 0.4s;border-radius:3px;"></div>
+            </div>
+            <div id="bulk-progress-text" style="font-size:11px;color:var(--text-muted);">Starting…</div>
+            <div id="bulk-job-status-list" style="margin-top:10px;max-height:160px;overflow-y:auto;font-size:11px;"></div>
+          </div>
 
 <!-- FB-PI-001 §7.1 Amber: Low-confidence signal cards -->
           <div id="pi-low-confidence-cards" style="display:none;margin-bottom:16px;"></div>
@@ -2039,6 +2142,26 @@
             </div>
 
           </div><!-- /app-tab-pipeline -->
+
+          <!-- AIS-F6-S2: REVIEW QUEUE TAB -->
+          <div id="app-tab-review-queue" class="u-hidden">
+            <div style="padding:16px 0 8px;display:flex;align-items:center;justify-content:space-between;">
+              <div>
+                <div style="font-size:14px;font-weight:700;">Review Queue</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Applications parked for review before submitting</div>
+              </div>
+              <button class="btn btn-sm" onclick="loadReviewQueue()" style="font-size:11px;">Refresh</button>
+            </div>
+            <div id="review-queue-list" style="margin-top:8px;">
+              <div class="u-empty-state" id="review-queue-empty" style="display:none;">
+                <i data-lucide="inbox" class="icon-xl" style="stroke:var(--text-muted);margin-bottom:8px;display:block;margin-left:auto;margin-right:auto;"></i>
+                <div style="font-size:13px;color:var(--text-muted);">No applications in review queue</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Jobs saved for later will appear here</div>
+              </div>
+              <div id="review-queue-loading" style="text-align:center;padding:24px;color:var(--text-muted);font-size:12px;">Loading…</div>
+              <div id="review-queue-items"></div>
+            </div>
+          </div><!-- /app-tab-review-queue -->
 
           <!-- ===================== SETTINGS TAB ===================== -->
           <div id="app-tab-settings" class="u-hidden">
@@ -2325,6 +2448,44 @@
 
           </div><!-- /app-tab-settings -->
 
+          <!-- AIS-F8-S1: Cover Letter Slide-out Panel -->
+          <div id="cl-panel" style="display:none;position:fixed;top:0;right:0;width:480px;max-width:100vw;height:100vh;background:var(--bg-card);border-left:1px solid var(--border);z-index:500;overflow-y:auto;box-shadow:-8px 0 32px rgba(0,0,0,0.2);display:flex;flex-direction:column;" class="u-hidden">
+            <div style="padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg-card);z-index:1;">
+              <div>
+                <div style="font-size:15px;font-weight:700;" id="cl-panel-title">Cover Letter</div>
+                <div style="font-size:11px;color:var(--text-muted);" id="cl-panel-subtitle"></div>
+              </div>
+              <button onclick="window._clClose()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:20px;padding:0 4px;">×</button>
+            </div>
+            <div style="padding:16px 20px;border-bottom:1px solid var(--border);">
+              <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em;">Tone</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button class="cl-tone-btn" data-tone="professional" onclick="window._clSetTone('professional')" style="padding:5px 12px;border-radius:20px;font-size:12px;cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:#fff;">Professional</button>
+                <button class="cl-tone-btn" data-tone="conversational" onclick="window._clSetTone('conversational')" style="padding:5px 12px;border-radius:20px;font-size:12px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text);">Conversational</button>
+                <button class="cl-tone-btn" data-tone="enthusiastic" onclick="window._clSetTone('enthusiastic')" style="padding:5px 12px;border-radius:20px;font-size:12px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text);">Enthusiastic</button>
+                <button class="cl-tone-btn" data-tone="executive" onclick="window._clSetTone('executive')" style="padding:5px 12px;border-radius:20px;font-size:12px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text);">Executive</button>
+              </div>
+            </div>
+            <div id="cl-panel-body" style="flex:1;padding:16px 20px;overflow-y:auto;">
+              <div id="cl-generating" style="display:none;text-align:center;padding:40px 0;color:var(--text-muted);">
+                <i data-lucide="loader-2" class="icon-xl icon-stroke" style="animation:spin 1s linear infinite;margin-bottom:12px;display:block;margin-left:auto;margin-right:auto;"></i>
+                <div style="font-size:13px;">Generating cover letter…</div>
+              </div>
+              <textarea id="cl-content" style="width:100%;min-height:400px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;font-size:13px;line-height:1.7;color:var(--text);resize:vertical;font-family:inherit;box-sizing:border-box;" placeholder="Cover letter will appear here…"></textarea>
+              <div id="cl-meta" style="display:none;font-size:10px;color:var(--text-muted);margin-top:6px;"></div>
+            </div>
+            <div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;position:sticky;bottom:0;background:var(--bg-card);">
+              <button onclick="window._clGenerate()" style="flex:1;background:var(--accent);color:#fff;border:none;padding:10px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">↺ Regenerate</button>
+              <button onclick="window._clCopyToClipboard()" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:8px;font-size:13px;cursor:pointer;" title="Copy">Copy</button>
+              <button onclick="window._clExportDocx()" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:8px;font-size:13px;cursor:pointer;" title="Download DOCX">DOCX</button>
+            </div>
+            <!-- Version history -->
+            <div id="cl-history" style="display:none;padding:0 20px 16px;">
+              <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em;">Version History</div>
+              <div id="cl-history-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+            </div>
+          </div>
+          <div id="cl-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:499;" onclick="window._clClose()"></div>
 
         </div>
       </div>
@@ -3632,6 +3793,24 @@
             <div style="text-align:center;padding:30px;color:var(--text-dim);">Loading sessions...</div>
           </div>
         </div>
+      </div>
+
+      <!-- AIS-F11-S2: AI Interview Practice chat panel (item 57) -->
+      <div id="ip-chat-panel" style="display:none;position:fixed;top:0;right:0;width:480px;max-width:100vw;height:100vh;background:var(--bg-card);border-left:1px solid var(--border);z-index:600;overflow-y:auto;box-shadow:-8px 0 32px rgba(0,0,0,0.2);display:flex;flex-direction:column;">
+        <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+          <div>
+            <div style="font-size:14px;font-weight:700;">AI Interview Practice</div>
+            <div id="ip-panel-job" style="font-size:11px;color:var(--text-muted);margin-top:2px;"></div>
+          </div>
+          <button onclick="window.closeInterviewPractice && window.closeInterviewPractice()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">×</button>
+        </div>
+        <div id="ip-chat-body" style="flex:1;overflow-y:auto;"></div>
+      </div>
+
+      <!-- AIS-F11-S2: Session history panel (item 60) -->
+      <div id="ip-history-panel" style="display:none;margin-top:16px;">
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px;">Past Practice Sessions</div>
+        <div id="ip-history-list"><div style="font-size:12px;color:var(--text-muted);">No sessions yet.</div></div>
       </div>
 
       <!-- FB-INTPREP-001-S4: Simulation chat modal overlay -->

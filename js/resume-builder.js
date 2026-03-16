@@ -951,3 +951,182 @@
   });
 
 })();
+
+// ── AIS-F7-S1/S2: AI Resume Wizard (from scratch) ────────────────────────
+// Appended to existing resume-builder.js (upload parser module)
+// Wizard → build-resume EF → template preview → DOCX download
+
+(function () {
+  'use strict';
+  var _rbWizStep = 1, _rbWizData = {}, _rbWizGenerated = null, _rbWizTemplate = 'clean';
+
+  window.openResumeBuilder = function () {
+    _rbWizStep = 1; _rbWizData = {}; _rbWizGenerated = null;
+    var panel = document.getElementById('rb-wizard-panel');
+    if (panel) { panel.style.display = ''; document.body.style.overflow = 'hidden'; }
+    _rbWizRenderStep();
+    if (typeof capturePostHog === 'function') capturePostHog('resume_built_from_scratch', { source: 'wizard_open' });
+  };
+
+  window.closeResumeBuilder = function () {
+    var panel = document.getElementById('rb-wizard-panel');
+    if (panel) panel.style.display = 'none';
+    document.body.style.overflow = '';
+  };
+
+  function _rbWizRenderStep() {
+    var body = document.getElementById('rb-wizard-body');
+    if (!body) return;
+    var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){ return String(s||''); };
+    var c = '';
+    if (_rbWizStep === 1) {
+      c = '<div class="rb-field"><label class="rb-label">Target Role *</label><input id="rbw-role" class="rb-input" value="' + esc(_rbWizData.target_role||'') + '" placeholder="Senior Software Engineer"></div>' +
+          '<div class="rb-field"><label class="rb-label">Industry</label><input id="rbw-industry" class="rb-input" value="' + esc(_rbWizData.target_industry||'') + '" placeholder="FinTech, Healthcare…"></div>' +
+          '<div class="rb-field"><label class="rb-label">Years of Experience</label><select id="rbw-years" class="rb-input"><option>0-2</option><option' + (_rbWizData.years_experience==='3-5'?' selected':'') + '>3-5</option><option' + (_rbWizData.years_experience==='6-10'?' selected':'') + '>6-10</option><option' + (_rbWizData.years_experience==='10+'?' selected':'') + '>10+</option></select></div>';
+    } else if (_rbWizStep === 2) {
+      c = '<div class="rb-field"><label class="rb-label">Key Accomplishments</label><textarea id="rbw-acc" class="rb-input" rows="5" placeholder="• Led team of 8, shipped product to 50K users&#10;• Reduced costs by $200K through automation">' + esc(_rbWizData.accomplishments||'') + '</textarea></div>';
+    } else if (_rbWizStep === 3) {
+      c = '<div class="rb-field"><label class="rb-label">Top Skills (comma-separated)</label><input id="rbw-skills" class="rb-input" value="' + esc(Array.isArray(_rbWizData.skills)?_rbWizData.skills.join(', '):(_rbWizData.skills||'')) + '" placeholder="Python, AWS, React, Leadership…"></div>' +
+          '<div class="rb-field"><label class="rb-label">Education</label><input id="rbw-edu" class="rb-input" value="' + esc(_rbWizData.education||'') + '" placeholder="B.S. Computer Science, MIT 2019"></div>';
+    } else if (_rbWizStep === 4) {
+      var templates = ['clean','modern','executive','minimal','technical'];
+      c = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Choose template</div>' +
+          templates.map(function(t) {
+            return '<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1.5px solid ' + (_rbWizTemplate===t?'var(--accent)':'var(--border)') + ';border-radius:6px;margin-bottom:6px;cursor:pointer;">' +
+              '<input type="radio" name="rbwt" value="' + t + '"' + (_rbWizTemplate===t?' checked':'') + ' onchange="(function(){_rbWizTemplate=\''+t+'\';})()">' +
+              '<span style="text-transform:capitalize;font-size:13px;">' + t + '</span></label>';
+          }).join('');
+    }
+    body.innerHTML = '<div id="rbw-step-content">' + c + '</div>';
+  }
+
+  window._rbWizNext = async function () {
+    var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){ return String(s||''); };
+    if (_rbWizStep === 1) {
+      var r = document.getElementById('rbw-role')?.value?.trim();
+      if (!r) { if (typeof showToast === 'function') showToast('Target role required.', {type:'error'}); return; }
+      _rbWizData.target_role = r;
+      _rbWizData.target_industry = document.getElementById('rbw-industry')?.value?.trim()||'';
+      _rbWizData.years_experience = document.getElementById('rbw-years')?.value||'3-5';
+    } else if (_rbWizStep === 2) {
+      _rbWizData.accomplishments = document.getElementById('rbw-acc')?.value?.trim()||'';
+    } else if (_rbWizStep === 3) {
+      var sk = document.getElementById('rbw-skills')?.value?.trim()||'';
+      _rbWizData.skills = sk ? sk.split(',').map(function(s){return s.trim();}).filter(Boolean) : [];
+      _rbWizData.education = document.getElementById('rbw-edu')?.value?.trim()||'';
+    }
+    if (_rbWizStep < 4) { _rbWizStep++; _rbWizRenderStep(); return; }
+    _rbWizData.template = _rbWizTemplate;
+    await _rbWizGenerate();
+  };
+
+  window._rbWizBack = function () {
+    if (_rbWizStep > 1) { _rbWizStep--; _rbWizRenderStep(); }
+  };
+
+  async function _rbWizGenerate() {
+    var body = document.getElementById('rb-wizard-body');
+    if (body) body.innerHTML = '<div style="text-align:center;padding:40px;"><div style="font-size:22px;">✨</div><div style="font-size:13px;font-weight:600;margin-top:8px;">Building your resume…</div><div style="font-size:11px;color:var(--text-muted);margin-top:4px;">~15 seconds</div></div>';
+    try {
+      var session = await sb.auth.getSession();
+      var token = session?.data?.session?.access_token;
+      var res = await fetch(SUPABASE_URL + '/functions/v1/build-resume', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+        body: JSON.stringify(_rbWizData),
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Generation failed');
+      _rbWizGenerated = data;
+      if (typeof capturePostHog === 'function') capturePostHog('resume_built_from_scratch', { source: _rbWizData.template||'manual', template: _rbWizTemplate, credits_charged: 5 });
+      // Item 34: Get score preview
+      var scoreVal = await window._rbWizGetScorePreview(data.full_text, _rbWizData.target_role || '');
+      var scoreHtml = scoreVal ? '<div style="margin:8px 0;font-size:12px;">Match score preview: <strong style="color:' + (scoreVal>=75?'var(--green)':scoreVal>=50?'var(--warning)':'var(--warm)') + ';">' + scoreVal + '%</strong></div>' : '';
+
+      // Item 35: Section editor — inline contenteditable
+      var s = data.sections || {};
+      var esc = typeof escapeHtml === 'function' ? escapeHtml : function(x){return String(x||'');};
+      var sumHtml = s.summary ? '<div style="margin-bottom:10px;"><div style="font-size:10px;font-weight:700;color:var(--text-muted);margin-bottom:3px;">SUMMARY</div>' +
+        '<div contenteditable="true" id="rbw-edit-summary" style="font-size:11px;line-height:1.5;border:1px dashed var(--border);border-radius:4px;padding:4px;outline:none;">' + esc(s.summary) + '</div></div>' : '';
+      var expHtml2 = (s.experience||[]).slice(0,2).map(function(e, ei){
+        return '<div style="margin-bottom:6px;font-size:11px;">' +
+          '<div contenteditable="true" id="rbw-edit-exp-' + ei + '" style="font-weight:600;border-bottom:1px dashed var(--border);outline:none;">' + esc(e.title||'') + ' @ ' + esc(e.company||'') + '</div>' +
+          '<div style="color:var(--text-muted);font-size:10px;">' + esc(e.dates||'') + '</div>' +
+        '</div>';
+      }).join('');
+
+      if (body) body.innerHTML =
+        '<div style="color:var(--green);font-weight:600;margin-bottom:6px;">✓ Resume built!</div>' +
+        scoreHtml +
+        '<div style="background:var(--bg-card);border-radius:8px;padding:10px;max-height:200px;overflow-y:auto;margin-bottom:10px;font-size:11px;">' +
+          sumHtml + expHtml2 +
+        '</div>' +
+        '<div style="display:flex;gap:6px;">' +
+          '<button class="btn btn-primary btn-sm" onclick="window._rbWizDownload()">⬇ DOCX</button>' +
+          '<button class="btn btn-sm" onclick="window._rbWizDownloadPdf()">⬇ PDF</button>' +
+          '<button class="btn btn-sm" onclick="window.closeResumeBuilder()">Close</button>' +
+        '</div>';
+    } catch (e) {
+      reportError('resume-wizard:generate', e);
+      if (typeof showToast === 'function') showToast('Generation failed: ' + e.message, {type:'error'});
+      _rbWizStep = 4; _rbWizRenderStep();
+    }
+  }
+
+  // Item 34: Score preview — call score-resume EF on generated text
+  window._rbWizGetScorePreview = async function(fullText, targetRole) {
+    if (!fullText || !targetRole) return null;
+    try {
+      var session = await sb.auth.getSession();
+      var token = session?.data?.session?.access_token;
+      // Use a fake JD from target role for rough scoring
+      var jd = 'Seeking a ' + targetRole + ' with relevant skills and experience.';
+      var res = await fetch(SUPABASE_URL + '/functions/v1/score-resume', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+        body: JSON.stringify({ resumeText: fullText.slice(0, 2000), jobDescription: jd }),
+      });
+      var d = await res.json();
+      return d.score || d.match_score || null;
+    } catch(e) { return null; }
+  };
+
+  // Item 36: PDF export via printable popup window
+  window._rbWizDownloadPdf = function() {
+    if (!_rbWizGenerated) return;
+    var s = _rbWizGenerated.sections || {};
+    var esc = function(t){ return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+    var expH = (s.experience||[]).map(function(e){
+      return '<div style="margin-bottom:10px;"><strong>' + esc(e.title||'') + '</strong> — ' + esc(e.company||'') +
+        '<br><small>' + esc(e.dates||'') + '</small><ul>' +
+        (e.bullets||[]).map(function(b){return '<li>'+esc(b)+'</li>';}).join('') + '</ul></div>';
+    }).join('');
+    var skillsH = (s.skills||[]).map(function(sk){
+      return '<p><strong>'+esc(sk.category||'')+':</strong> '+(sk.items||[]).map(esc).join(', ')+'</p>';
+    }).join('');
+    var w = window.open('', '_blank', 'width=800,height=700');
+    if (!w) { if (typeof showToast === 'function') showToast('Allow popups to download PDF.', {type:'info'}); return; }
+    w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Resume</title>' +
+      '<style>body{font-family:Arial,sans-serif;max-width:700px;margin:32px auto;font-size:12px;line-height:1.5;color:#111}' +
+      'h1{font-size:18px;margin:0 0 4px}h2{font-size:13px;border-bottom:1px solid #ddd;padding-bottom:3px;margin:14px 0 6px}' +
+      'ul{margin:4px 0;padding-left:16px}li{margin-bottom:2px}p{margin:4px 0}@media print{body{margin:16px}}</style></head><body>' +
+      '<h1>' + esc((_rbWizData&&_rbWizData.target_role)||'Resume') + '</h1>' +
+      (s.summary ? '<h2>Summary</h2><p>'+esc(s.summary)+'</p>' : '') +
+      (expH ? '<h2>Experience</h2>'+expH : '') +
+      (skillsH ? '<h2>Skills</h2>'+skillsH : '') +
+      '<script>window.onload=function(){window.print();setTimeout(function(){window.close();},2000);};<\/script>' +
+      '</body></html>');
+    w.document.close();
+  };
+
+  window._rbWizDownload = function () {
+    if (!_rbWizGenerated) return;
+    var text = _rbWizGenerated.full_text || '';
+    var blob = new Blob([text], { type: 'text/plain' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = (_rbWizData.target_role||'resume').replace(/[^a-zA-Z0-9]/g,'-') + '-ai.txt';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 3000);
+  };
+})();

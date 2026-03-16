@@ -168,6 +168,12 @@ async function answerLeverQuestions(page, profile, log, opts = {}) {
 
   // AF-005: run shared EEOC filler as a post-pass over the full page
   await fillEeoQuestions(page, profile, log, opts?.capturePostHog);
+
+  // AIS-F8-S2: Cover letter auto-attach
+  if (opts?.coverLetter) {
+    const clEl = await page.$('textarea[name*="cover"], textarea[id*="cover"], textarea[placeholder*="cover"]');
+    if (clEl) { const sel = await clEl.evaluate(e => e.id ? '#'+e.id : 'textarea'); await humanType(page, sel, opts.coverLetter); log('Cover letter filled (lever)'); }
+  }
 }
 
 async function detectLeverOutcome(page, log, sb, userId, jobId) {

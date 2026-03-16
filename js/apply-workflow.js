@@ -949,6 +949,57 @@ async function callSubmitApplication(pendingApp, resumeFileId, resumeFilename) {
   }
 }
 
+// AIS-F3-S1: Fill Status Panel — surface auto-apply progress/errors to Applications page
+// ═══════════════════════════════════════════════════════════════════════════════════════
+function _updateFillStatusPanel(opts) {
+  // opts: { status: 'submitting'|'queued'|'success'|'error', jobTitle, companyName, error, action }
+  try {
+    var panel = document.getElementById('ais-fill-status-panel');
+    if (!panel) return;
+
+    var statusConfig = {
+      submitting: { color: 'var(--accent)', icon: 'loader-2', label: 'Submitting…' },
+      queued:     { color: 'var(--accent)', icon: 'clock',    label: 'Queued for worker' },
+      success:    { color: 'var(--green)',  icon: 'circle-check', label: 'Submitted!' },
+      error:      { color: 'var(--warm)',   icon: 'circle-x',     label: 'Failed' },
+    };
+    var cfg = statusConfig[opts.status] || statusConfig.submitting;
+    var jobLabel = opts.jobTitle ? (opts.jobTitle + (opts.companyName ? ' @ ' + opts.companyName : '')) : (opts.companyName || 'Job');
+
+    var actionHtml = '';
+    if (opts.status === 'error' && opts.action) {
+      actionHtml = '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">' + escapeHtml(opts.action) + ' <a href="#" onclick="switchPage(\'applications\');return false;" style="color:var(--accent);">View Pending</a></div>';
+    }
+    if (opts.status === 'success') {
+      actionHtml = '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;"><a href="#" onclick="switchPage(\'applications\');return false;" style="color:var(--accent);">View in Pipeline →</a></div>';
+    }
+    var errorHtml = (opts.status === 'error' && opts.error) ? '<div style="font-size:11px;color:var(--warm);margin-top:2px;">' + escapeHtml(opts.error) + '</div>' : '';
+
+    panel.style.display = 'block';
+    panel.innerHTML =
+      '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;background:var(--bg-card);border-radius:8px;border-left:3px solid ' + cfg.color + ';">' +
+        '<i data-lucide="' + cfg.icon + '" style="width:16px;height:16px;flex-shrink:0;stroke:' + cfg.color + ';margin-top:2px;' + (opts.status === 'submitting' || opts.status === 'queued' ? 'animation:spin 1s linear infinite;' : '') + '"></i>' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-size:12px;font-weight:600;color:var(--text);">' + cfg.label + ': ' + escapeHtml(jobLabel) + '</div>' +
+          errorHtml + actionHtml +
+        '</div>' +
+        '<button onclick="document.getElementById(\'ais-fill-status-panel\').style.display=\'none\';" style="background:none;border:none;cursor:pointer;padding:0;color:var(--text-muted);font-size:16px;line-height:1;">×</button>' +
+      '</div>';
+
+    if (typeof window.refreshIcons === 'function') window.refreshIcons();
+
+    // Auto-clear success after 8 seconds
+    if (opts.status === 'success') {
+      setTimeout(function() {
+        var p = document.getElementById('ais-fill-status-panel');
+        if (p) p.style.display = 'none';
+      }, 8000);
+    }
+  } catch(e) {
+    reportError('apply-workflow:_updateFillStatusPanel', e);
+  }
+}
+
 function _guessAtsSource(url) {
   if (!url) return 'greenhouse';
   if (url.indexOf('greenhouse') >= 0) return 'greenhouse';
@@ -1291,6 +1342,25 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
 
   var mode = getApplyModeForJob(jobId);
 
+  // ── AIS-F3-S1: Tier gate — block auto modes for Free users or exhausted Starter ──
+  var _isAutoMode = mode !== APPLY_MODES.MANUAL && mode !== APPLY_MODES.SCORE_GATED;
+  if (_isAutoMode && typeof checkAutoApplyTierGate === 'function') {
+    var _gateResult = checkAutoApplyTierGate();
+    if (!_gateResult.allowed) {
+      var _gateMsg = _gateResult.limit === 0
+        ? 'Auto-apply requires a Starter or Pro plan.'
+        : 'You\'ve reached your ' + _gateResult.limit + ' auto-apply limit for today. Upgrade to Pro for unlimited.';
+      if (typeof showToast === 'function') showToast(_gateMsg, { type: 'warning', duration: 6000 });
+      if (typeof window.showTierGate === 'function') {
+        var _gateEl = document.getElementById('app-tab-pipeline') || document.getElementById('page-applications');
+        if (_gateEl) window.showTierGate(_gateEl, _gateResult.requiresTier, _gateMsg);
+      }
+      if (typeof capturePostHog === 'function') capturePostHog('auto_apply_tier_blocked', { mode: mode, tier: _gateResult.tier, limit: _gateResult.limit });
+      _applySubmitting = false;
+      return;
+    }
+  }
+
   // ── Mode 1: Manual — just open URL, update pipeline ──
   if (mode === APPLY_MODES.MANUAL) {
     if (jobUrl) window.open(jobUrl, '_blank');
@@ -1327,6 +1397,16 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
   // Get resume
   var resume = _getActiveResume();
 
+  // AIS-F8-S2: Fetch latest cover letter for this job (auto-attach)
+  var coverLetterId = null;
+  var coverLetterContent = null;
+  if (jobId && currentUser) {
+    try {
+      var clRes = await sb.from('cover_letters').select('id,content').eq('user_id', currentUser.id).eq('job_id', jobId).order('version', { ascending: false }).limit(1).maybeSingle();
+      if (clRes.data) { coverLetterId = clRes.data.id; coverLetterContent = clRes.data.content; }
+    } catch(_e) { /* non-fatal */ }
+  }
+
   // Create pending_applications row
   var pendingRow = {
     user_id: currentUser.id,
@@ -1341,6 +1421,7 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
     job_url: jobUrl || '',
     expires_at: expiresAt.toISOString(),
     idempotency_key: crypto.randomUUID(),
+    ...(coverLetterId ? { cover_letter_id: coverLetterId } : {}),
   };
 
   var savedApp = await savePendingApplication(pendingRow);
@@ -1349,6 +1430,19 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
     _applySubmitting = false;
     return;
   }
+
+  // AIS-F3-S1: Emit PostHog event for auto-apply consumer trigger
+  if (_isAutoMode && typeof capturePostHog === 'function') {
+    capturePostHog('auto_apply_consumer_triggered', {
+      job_id: jobId,
+      mode: mode,
+      tier: (typeof getUserTier === 'function') ? getUserTier() : 'unknown',
+      platform: _guessAtsSource(jobUrl) || 'unknown',
+    });
+  }
+
+  // AIS-F3-S1: Update fill status panel
+  _updateFillStatusPanel({ status: 'submitting', jobTitle: jobTitle, companyName: companyName, mode: mode });
 
   // Create pipeline entry immediately so job appears on Board
   // upsert won't duplicate — keyed on user_id + job_id + ats_source
@@ -1371,6 +1465,8 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
     var result = await callSubmitApplication(savedApp, resume.id, resume.filename);
 
     if (result.ok) {
+      if (_isAutoMode && typeof incrementAutoApplyDailyCount === 'function') incrementAutoApplyDailyCount();
+      _updateFillStatusPanel({ status: 'success', jobTitle: jobTitle, companyName: companyName });
       _updatePipelineApplied(jobId);
       if (typeof showToast === 'function') showToast('Applied to ' + (companyName || 'this job') + '!', { type: 'success' });
       _fireApplyNotification('apply_auto_submitted', {
@@ -1381,14 +1477,19 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
         company_name: companyName,
       });
     } else if (result.error === 'rejected') {
+      _updateFillStatusPanel({ status: 'error', jobTitle: jobTitle, companyName: companyName, error: 'Application rejected', action: 'Apply manually from the job card.' });
       if (typeof showToast === 'function') showToast('Application rejected: ' + (result.detail || 'Unknown reason') + '. You can retry.', { type: 'error', duration: 6000 });
     } else if (result.error === 'timeout') {
+      _updateFillStatusPanel({ status: 'error', jobTitle: jobTitle, companyName: companyName, error: 'ATS timed out', action: 'Retry from Pending Applications.' });
       if (typeof showToast === 'function') showToast('ATS timed out. Your application was saved — you can retry.', { type: 'error', duration: 6000 });
     } else {
+      _updateFillStatusPanel({ status: 'error', jobTitle: jobTitle, companyName: companyName, error: result.error || 'Submission failed', action: 'Retry from Pending Applications.' });
       if (typeof showToast === 'function') showToast('Submission failed: ' + (result.error || 'Unknown error') + '. Retry from Pending Applications.', { type: 'error', duration: 6000 });
     }
   } else {
     // All other ATS: route through headless worker (AS-1/2/3)
+    if (_isAutoMode && typeof incrementAutoApplyDailyCount === 'function') incrementAutoApplyDailyCount();
+    _updateFillStatusPanel({ status: 'queued', jobTitle: jobTitle, companyName: companyName });
     if (typeof showToast === 'function') showToast('Application queued — worker will submit to ' + (companyName || 'ATS') + '.', { duration: 5000 });
     await _routeToWorker(savedApp);
   }
@@ -2325,6 +2426,7 @@ window._activePollers = _activePollers;
 // AF-002: Setup gate exports
 window.isSetupComplete = isSetupComplete;
 window.showSetupGateModal = showSetupGateModal;
+window._updateFillStatusPanel = _updateFillStatusPanel;
 window.hideSetupGateModal = hideSetupGateModal;
 window.navigateToSetup = navigateToSetup;
 window.checkAndSetSetupComplete = checkAndSetSetupComplete;
@@ -2533,3 +2635,70 @@ window.buildGhostBadge = buildGhostBadge;
 window.showGhostBadgeTooltip = showGhostBadgeTooltip;
 window.confirmGhostReport = confirmGhostReport;
 window.submitGhostReport = submitGhostReport;
+
+// ── AIS-F6 gap: Review Queue — load pending_applications with status='review_queue' ──
+async function loadReviewQueue() {
+  var listEl = document.getElementById('review-queue-items');
+  var loadingEl = document.getElementById('review-queue-loading');
+  var emptyEl = document.getElementById('review-queue-empty');
+  var badgeEl = document.getElementById('review-queue-badge');
+  if (!listEl) return;
+
+  try {
+    var { data, error } = await sb.from('pending_applications')
+      .select('id, job_title, company_name, job_url, created_at')
+      .eq('user_id', currentUser.id)
+      .eq('status', 'review_queue')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (loadingEl) loadingEl.style.display = 'none';
+
+    if (error) { reportError('loadReviewQueue', error); return; }
+
+    if (!data || !data.length) {
+      if (emptyEl) emptyEl.style.display = '';
+      listEl.innerHTML = '';
+      if (badgeEl) badgeEl.style.display = 'none';
+      return;
+    }
+
+    if (badgeEl) { badgeEl.style.display = ''; badgeEl.textContent = data.length; }
+    if (emptyEl) emptyEl.style.display = 'none';
+
+    var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){ return String(s||''); };
+    listEl.innerHTML = data.map(function(app) {
+      var daysAgo = Math.floor((Date.now() - new Date(app.created_at).getTime()) / 86400000);
+      var when = daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : daysAgo + 'd ago';
+      return '<div class="card" style="margin-bottom:8px;padding:12px 16px;display:flex;align-items:center;gap:12px;">' +
+        '<div style="flex:1;">' +
+          '<div style="font-size:13px;font-weight:600;">' + esc(app.job_title || 'Unknown Role') + '</div>' +
+          '<div style="font-size:11px;color:var(--text-muted);">' + esc(app.company_name || '') + ' · ' + when + '</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:6px;">' +
+          '<a href="' + esc(app.job_url || '#') + '" target="_blank" class="btn btn-sm btn-primary" style="font-size:11px;">Apply Now</a>' +
+          '<button class="btn btn-sm" onclick="dismissReviewQueueItem(\'' + app.id + '\', this)" style="font-size:11px;">Dismiss</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  } catch(e) {
+    reportError('loadReviewQueue', e);
+    if (loadingEl) loadingEl.style.display = 'none';
+  }
+}
+
+async function dismissReviewQueueItem(appId, btn) {
+  try {
+    btn.disabled = true;
+    await sb.from('pending_applications').update({ status: 'dismissed' }).eq('id', appId).eq('user_id', currentUser.id);
+    var card = btn.closest('.card');
+    if (card) card.remove();
+    var remaining = document.querySelectorAll('#review-queue-items .card').length;
+    var badgeEl = document.getElementById('review-queue-badge');
+    if (badgeEl) { if (remaining === 0) { badgeEl.style.display = 'none'; } else { badgeEl.textContent = remaining; } }
+    if (remaining === 0) { var emptyEl = document.getElementById('review-queue-empty'); if (emptyEl) emptyEl.style.display = ''; }
+  } catch(e) { reportError('dismissReviewQueueItem', e); btn.disabled = false; }
+}
+
+window.loadReviewQueue = loadReviewQueue;
+window.dismissReviewQueueItem = dismissReviewQueueItem;

@@ -665,6 +665,57 @@
       return true;
     }
 
+    // AIS-F4-S1: Collect unmatched form questions for AI answer review
+    if (msg.type === 'bj:toolbar:collectQuestions') {
+      try {
+        // Collect visible text inputs and textareas that look like custom questions
+        const questions: Array<{id: string; label: string; field_type: string; options?: string[]}> = [];
+        const form = document.querySelector('form') || document.body;
+        const inputs = form.querySelectorAll('input[type="text"], input[type="email"]:not([autocomplete]), textarea, select');
+        const labelledIds = new Set<string>();
+
+        inputs.forEach((el: Element, idx: number) => {
+          const input = el as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+          // Skip if already filled or hidden
+          if ((input as HTMLInputElement).value && (input as HTMLInputElement).value.trim()) return;
+          if (input.type === 'hidden') return;
+
+          // Try to find associated label
+          const id = input.id || input.name || ('bj-q-' + idx);
+          let label = '';
+          if (input.id) {
+            const lbl = document.querySelector('label[for="' + input.id + '"]');
+            if (lbl) label = (lbl.textContent || '').trim();
+          }
+          if (!label && input.placeholder) label = input.placeholder;
+          if (!label) {
+            const parent = input.closest('[class*="field"], [class*="question"], [class*="form-group"], li, p');
+            if (parent) {
+              const textNode = parent.querySelector('label, span, p, legend');
+              if (textNode) label = (textNode.textContent || '').trim();
+            }
+          }
+          // Skip standard fields (name, email, phone, etc.)
+          const standardPat = /^(first|last|full)\s*name|email|phone|linkedin|location|city|state|zip|url|website|salary|resume|cover\s*letter/i;
+          if (!label || standardPat.test(label) || labelledIds.has(label)) return;
+          labelledIds.add(label);
+
+          const fieldType = input.tagName === 'TEXTAREA' ? 'textarea' :
+                            input.tagName === 'SELECT' ? 'select' : 'text';
+          const options = fieldType === 'select'
+            ? Array.from((input as HTMLSelectElement).options).map(o => o.text).filter(Boolean)
+            : undefined;
+
+          questions.push({ id, label, field_type: fieldType, ...(options ? { options } : {}) });
+        });
+
+        sendResponse({ questions: questions.slice(0, 10) }); // Cap at 10
+      } catch (e) {
+        sendResponse({ questions: [] });
+      }
+      return true;
+    }
+
     if (msg.type === 'ats:fill') {
       // Delegate to the appropriate handler
       // The handler module is loaded dynamically
@@ -680,13 +731,13 @@
       return true;
     }
 
-    // ── EXT-AS-4/5/6 + AF-002: Bridge messages from background → overlay ──
+    // ── EXT-AS-4/5/6 + AF-002 + AIS-F4-S1: Bridge messages from background → overlay ──
     // The overlay runs as a <script> tag (web_accessible_resource) so cannot
     // directly receive chrome.runtime.onMessage. We relay via window.postMessage.
     if (msg.type === 'bj:toolbar:scoreGate' || msg.type === 'bj:toolbar:applyStatus' ||
         msg.type === 'bj:toolbar:rewriteProgress' || msg.type === 'bj:toolbar:rewriteResult' ||
         msg.type === 'bj:toolbar:autoApplyStatus' || msg.type === 'bj:toolbar:limitReached' ||
-        msg.type === 'bj:toolbar:setupRequired') {
+        msg.type === 'bj:toolbar:setupRequired' || msg.type === 'bj:toolbar:answerReview') {
       try {
         window.postMessage({
           source: 'bj-extension',

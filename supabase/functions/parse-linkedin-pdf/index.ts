@@ -384,6 +384,130 @@ serve(async (req: Request) => {
       );
     }
 
+    // ── AIS-F2-S1: Action: upload ─────────────────────────────────────
+    // Standalone LinkedIn PDF upload + parse + save to linkedin_profiles.
+    // No enrollment_id required — decoupled from PAYL.
+    // Body: { action: "upload", pdf_base64, filename? }
+    if (action === "upload") {
+      // Auth required
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader) {
+        return new Response(JSON.stringify({ error: "Authorization required" }), {
+          status: 401, headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+        });
+      }
+      const { data: { user }, error: authErr } = await sb.auth.getUser(
+        authHeader.replace("Bearer ", "")
+      );
+      if (authErr || !user) {
+        return new Response(JSON.stringify({ error: "Invalid token" }), {
+          status: 401, headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+        });
+      }
+      const userId = user.id;
+
+      const body = await req.json();
+      const pdfBase64: string = body.pdf_base64;
+      const filename: string = body.filename || "linkedin-profile.pdf";
+
+      if (!pdfBase64) {
+        return new Response(JSON.stringify({ error: "pdf_base64 required" }), {
+          status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+        });
+      }
+
+      // Decode PDF
+      const pdfBytes = Uint8Array.from(atob(pdfBase64), (c) => c.charCodeAt(0));
+      if (pdfBytes.length > 10 * 1024 * 1024) {
+        return new Response(JSON.stringify({ error: "PDF exceeds 10MB limit" }), {
+          status: 413, headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+        });
+      }
+
+      // Compute SHA-256 hash for dedup
+      const hashBuf = await crypto.subtle.digest("SHA-256", pdfBytes);
+      const hash = Array.from(new Uint8Array(hashBuf))
+        .map((b) => b.toString(16).padStart(2, "0")).join("");
+
+      // Dedup: check if this exact PDF was already uploaded by ANY user
+      const { data: dupRow } = await sb
+        .from("linkedin_profiles")
+        .select("user_id")
+        .eq("pdf_hash", hash)
+        .neq("user_id", userId)
+        .maybeSingle();
+      if (dupRow) {
+        return new Response(JSON.stringify({
+          error: "This PDF has already been used by another account",
+          duplicate: true,
+        }), { status: 409, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      }
+
+      // Extract text from PDF
+      const pdfText = extractTextFromPDF(pdfBytes);
+      if (!pdfText || pdfText.length < 100) {
+        return new Response(JSON.stringify({
+          error: "Could not extract text from PDF. Please ensure this is a LinkedIn PDF export.",
+          parse_failure: true,
+        }), { status: 422, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+      }
+
+      // Parse profile
+      const parsed = parseLinkedInText(pdfText);
+
+      // Fraud signals
+      const fraud_signals: string[] = [];
+      if (parsed.li_connections !== null && parsed.li_connections < 50) {
+        fraud_signals.push("low_connections");
+      }
+      if (!parsed.experience_json?.length) fraud_signals.push("no_experience");
+      if (parsed.parse_confidence < 0.3) fraud_signals.push("low_confidence");
+
+      // Upload PDF to Supabase Storage
+      const storagePath = `${userId}/${hash.slice(0, 16)}-${filename}`;
+      const { error: uploadError } = await sb.storage
+        .from("linkedin-profiles")
+        .upload(storagePath, pdfBytes, {
+          contentType: "application/pdf",
+          upsert: true,
+        });
+      if (uploadError) {
+        console.warn("[parse-linkedin-pdf] Storage upload error:", uploadError.message);
+      }
+
+      // Upsert into linkedin_profiles
+      const { error: upsertError } = await sb
+        .from("linkedin_profiles")
+        .upsert({
+          user_id: userId,
+          display_name: parsed.display_name,
+          headline: parsed.headline,
+          location: parsed.location,
+          experience_json: parsed.experience_json,
+          skills_array: parsed.skills_array,
+          education_json: parsed.education_json,
+          li_connections: parsed.li_connections,
+          pdf_hash: hash,
+          raw_pdf_url: storagePath,
+          parsed_at: new Date().toISOString(),
+        }, { onConflict: "user_id" });
+
+      if (upsertError) {
+        console.error("[parse-linkedin-pdf] Upsert error:", upsertError.message);
+        return new Response(JSON.stringify({ error: "Failed to save profile" }), {
+          status: 500, headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        profile: parsed,
+        fraud_signals,
+        pdf_hash: hash,
+        storage_path: storagePath,
+      }), { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+    }
+
     return new Response(
       JSON.stringify({ error: `Unknown action: ${action}` }),
       { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }

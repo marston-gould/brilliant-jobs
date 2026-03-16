@@ -1637,6 +1637,123 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return scoreResult;
   }
 
+  // ── AIS-F4-S1: _fetchAiAnswersForReview — Fetch AI answers for pre-submit review panel ──
+  // Called when user clicks "Submit Anyway" in score-gated mode, and for manual mode.
+  // Fetches the form's custom questions via content script, calls answer-form-question EF,
+  // then sends bj:toolbar:answerReview to the overlay for user review before fill fires.
+  async function _fetchAiAnswersForReview(
+    tabId: number,
+    payload: Record<string, unknown>
+  ): Promise<boolean> {
+    try {
+      // Get auth token
+      const authData = await chrome.storage.local.get(['authToken', 'applicantProfile', 'applySettings']);
+      const authToken = authData.authToken as string | undefined;
+      if (!authToken) return false; // No token — skip review, proceed directly
+
+      const profile = authData.applicantProfile || {};
+      const activeResumeId = authData.applySettings?.activeResumeId;
+
+      // Request unmatched questions from content script
+      const questionsResult = await new Promise<Record<string, unknown>>((resolve) => {
+        const timeout = setTimeout(() => resolve({ questions: [] }), 3000);
+        chrome.tabs.sendMessage(tabId, { type: 'bj:toolbar:collectQuestions' }, (resp) => {
+          clearTimeout(timeout);
+          resolve(resp || { questions: [] });
+        });
+      });
+
+      const questions = (questionsResult.questions as unknown[]) || [];
+      if (!questions.length) return false; // No custom questions — skip review
+
+      // Fetch resume text if we have a resume ID
+      let resumeText = '';
+      if (activeResumeId) {
+        try {
+          const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+          const resumeResp = await fetch(
+            `${SB_URL}/rest/v1/resume_archive?id=eq.${activeResumeId}&select=extracted_text`,
+            { headers: { 'Authorization': `Bearer ${authToken}`, 'apikey': authToken } }
+          );
+          if (resumeResp.ok) {
+            const rows = await resumeResp.json();
+            resumeText = rows?.[0]?.extracted_text || '';
+          }
+        } catch (_) { /* non-fatal */ }
+      }
+
+      // Call answer-form-question EF
+      const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+      const efResp = await fetch(`${SB_URL}/functions/v1/answer-form-question`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          questions,
+          profile,
+          resume_text: resumeText,
+          job_title: payload.jobTitle || '',
+          company_name: payload.company || '',
+        }),
+      });
+
+      if (!efResp.ok) return false;
+
+      const efData = await efResp.json();
+      const answers = efData.answers || [];
+      if (!answers.length) return false;
+
+      // PostHog: ai_answer_generated
+      captureEvent('ai_answer_generated', {
+        job_id: payload.jobId || '',
+        questions_count: questions.length,
+        cached: efData.cache_hits || 0,
+        credits_charged: efData.credits_charged || 0,
+        surface: 'extension',
+      });
+
+      // AIS-F6 gap: fetch cover letter for this job to show in review panel
+      let coverLetterForReview: string | null = null;
+      if (authToken && payload.jobId) {
+        try {
+          const sbCl = createSupabaseClient(authToken);
+          const userForCl = await sbCl.auth.getUser();
+          if (userForCl.data.user) {
+            const { data: clRow } = await sbCl.from('cover_letters')
+              .select('content')
+              .eq('user_id', userForCl.data.user.id)
+              .eq('job_id', payload.jobId)
+              .order('version', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            if (clRow) coverLetterForReview = clRow.content;
+          }
+        } catch { /* non-fatal */ }
+      }
+
+      // Send answer review panel to overlay
+      chrome.tabs.sendMessage(tabId, {
+        type: 'bj:toolbar:answerReview',
+        payload: {
+          answers,
+          jobTitle: payload.jobTitle || '',
+          company: payload.company || '',
+          jobUrl: payload.jobUrl || '',
+          originalAction: payload.action || 'submit_anyway',
+          mode: payload.mode || 'score-gated',
+          coverLetter: coverLetterForReview,
+        },
+      });
+
+      return true; // Review panel shown — don't proceed with fill yet
+    } catch (e) {
+      captureEvent('extension_catch_error', { context: '_fetchAiAnswersForReview', error: (e as Error).message });
+      return false; // On error, skip review and let fill proceed
+    }
+  }
+
   // ── EXT-AS-5: _rewriteResumeForJob — Quick AI rewrite via extension rewrite EF ──
   async function _rewriteResumeForJob(
     tabId: number,
@@ -1765,6 +1882,64 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     const newCount = (counter.date === today) ? counter.count + 1 : 1;
     await chrome.storage.local.set({ dailyApplyCount: { date: today, count: newCount } });
     return newCount;
+  }
+
+  // AIS-F3 gap: Circuit breaker — pause after 3 consecutive failures on same platform (spec §5.2)
+  const _platformFailStreaks: Record<string, number> = {};
+  const _platformLastApply: Record<string, number> = {};
+  const PLATFORM_SPACING_MS = 60_000; // 60s minimum between apps on same platform
+  const CIRCUIT_BREAKER_THRESHOLD = 3;
+
+  function _recordPlatformResult(platform: string, success: boolean): void {
+    if (!platform) return;
+    if (success) {
+      _platformFailStreaks[platform] = 0;
+    } else {
+      _platformFailStreaks[platform] = (_platformFailStreaks[platform] || 0) + 1;
+    }
+  }
+
+  async function _checkPlatformCircuitBreaker(platform: string, tabId: number): Promise<boolean> {
+    if (!platform) return true; // unknown platform — allow
+    const streak = _platformFailStreaks[platform] || 0;
+    if (streak >= CIRCUIT_BREAKER_THRESHOLD) {
+      captureEvent('auto_apply_circuit_breaker_tripped', { platform, consecutive_failures: streak });
+      try {
+        chrome.tabs.sendMessage(tabId, {
+          type: 'bj:toolbar:applyStatus',
+          payload: {
+            status: 'error',
+            error: `circuit_breaker_open`,
+            message: `${streak} consecutive failures on ${platform} — paused. Check extension settings.`,
+          },
+        });
+      } catch { /* non-fatal */ }
+      return false; // blocked
+    }
+    return true; // allowed
+  }
+
+  async function _checkPlatformSpacing(platform: string, tabId: number): Promise<boolean> {
+    if (!platform) return true;
+    const lastApply = _platformLastApply[platform] || 0;
+    const elapsed = Date.now() - lastApply;
+    if (lastApply && elapsed < PLATFORM_SPACING_MS) {
+      const waitSec = Math.ceil((PLATFORM_SPACING_MS - elapsed) / 1000);
+      captureEvent('auto_apply_platform_spacing_enforced', { platform, wait_seconds: waitSec });
+      try {
+        chrome.tabs.sendMessage(tabId, {
+          type: 'bj:toolbar:applyStatus',
+          payload: {
+            status: 'error',
+            error: 'platform_spacing',
+            message: `Please wait ${waitSec}s before the next ${platform} application.`,
+          },
+        });
+      } catch { /* non-fatal */ }
+      return false;
+    }
+    _platformLastApply[platform] = Date.now();
+    return true;
   }
 
   // ── EXT-AS-9: Log submission attempt to submission_attempts table ──
@@ -1959,6 +2134,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             return;
           }
 
+          // AIS-F3 gap: Circuit breaker + platform spacing (spec §5.2)
+          const platformForCheck = payload?.platform || payload?.atsSource || '';
+          if (!(await _checkPlatformCircuitBreaker(platformForCheck, tabId))) {
+            sendResponse({ status: 'circuit_breaker_open', platform: platformForCheck });
+            return;
+          }
+          if (!(await _checkPlatformSpacing(platformForCheck, tabId))) {
+            sendResponse({ status: 'platform_spacing_enforced', platform: platformForCheck });
+            return;
+          }
+
           // Send auto-apply status to overlay
           chrome.tabs.sendMessage(tabId, {
             type: 'bj:toolbar:autoApplyStatus',
@@ -1972,6 +2158,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           });
 
           const newCount = await _incrementDailyApplyCount();
+          _recordPlatformResult(p.platform || '', true); // AIS-F3 gap: reset failure streak on success
           captureEvent('auto_apply_submitted', {
             platform: p.platform,
             mode,
@@ -2200,9 +2387,19 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
 
         if (action === 'submit_anyway') {
-          // User wants to submit with current (below-threshold) resume
-          // Send ats:fill to the content script tab to proceed with native apply
+          // AIS-F4-S1: Try to fetch AI answers for pre-submit review (score-gated + manual modes)
           const tabId = sender?.tab?.id;
+          const reviewMode = p.mode === 'score-gated' || p.mode === 'manual';
+          if (tabId && reviewMode) {
+            const reviewShown = await _fetchAiAnswersForReview(tabId, p);
+            if (reviewShown) {
+              // Review panel is now showing — fill will be triggered by answerReviewConfirm
+              sendResponse({ status: 'answer_review_pending' });
+              return;
+            }
+          }
+
+          // No review (no questions, error, or non-review mode) — proceed with fill directly
           if (tabId) {
             chrome.tabs.sendMessage(tabId, {
               type: 'bj:toolbar:applyStatus',
@@ -2275,6 +2472,149 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       } catch (e) {
         console.warn('[BJ] applyConfirm error:', (e as Error).message);
         captureEvent('extension_catch_error', { context: 'applyConfirm', error: (e as Error).message });
+        sendResponse({ status: 'error', error: (e as Error).message });
+      }
+    })();
+    return true;
+  }
+
+  // ── AIS-F4-S1: bj:toolbar:answerReviewConfirm — User accepted/skipped answer review ──
+  if (msg.type === 'bj:toolbar:answerReviewConfirm') {
+    (async () => {
+      try {
+        const p = msg.payload || {};
+        const tabId = sender?.tab?.id;
+        const action = p.action as string; // 'accepted' | 'skipped' | 'regenerate'
+
+        if (action === 'regenerate') {
+          // Re-fetch answers and show review again
+          if (tabId) {
+            const reviewShown = await _fetchAiAnswersForReview(tabId, p);
+            if (!reviewShown) {
+              chrome.tabs.sendMessage(tabId, {
+                type: 'bj:toolbar:applyStatus',
+                payload: { status: 'filling', action: 'submit_anyway' },
+              });
+            }
+          }
+          sendResponse({ status: 'regenerating' });
+          return;
+        }
+
+        // AIS-F6 item 28: swap_resume — signal overlay to open resume picker
+        if (action === 'swap_resume') {
+          if (tabId) {
+            chrome.tabs.sendMessage(tabId, {
+              type: 'bj:toolbar:applyStatus',
+              payload: { status: 'swap_resume', message: 'Swap resume version in the extension popup, then apply again.' },
+            });
+          }
+          sendResponse({ status: 'swap_resume' });
+          return;
+        }
+
+        // AIS-F6 item 28: regen_cover_letter — regenerate via generate-cover-letter EF
+        if (action === 'regen_cover_letter') {
+          if (tabId && p.jobUrl) {
+            const authToken = await _getAuthToken();
+            if (authToken) {
+              const sbCl = createSupabaseClient(authToken);
+              const user = await sbCl.auth.getUser();
+              if (user.data.user && p.jobUrl) {
+                // Fire-and-forget cover letter regen
+                fetch(`${SUPABASE_URL}/functions/v1/generate-cover-letter`, {
+                  method: 'POST',
+                  headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ jobTitle: p.jobTitle || '', companyName: p.company || '', jobId: p.jobUrl }),
+                }).catch((e) => captureEvent('extension_catch_error', { context: 'regen_cover_letter', error: e.message }));
+              }
+            }
+            chrome.tabs.sendMessage(tabId, {
+              type: 'bj:toolbar:applyStatus',
+              payload: { status: 'info', message: 'Cover letter regenerating — re-open the review panel in a moment.' },
+            });
+          }
+          sendResponse({ status: 'regen_cover_letter' });
+          return;
+        }
+
+        // 'save_later' — add to Review Queue in pending_applications with status 'review_queue'
+        if (action === 'save_later') {
+          const authToken = await _getAuthToken();
+          if (authToken) {
+            const sb = createSupabaseClient(authToken);
+            const user = await sb.auth.getUser();
+            if (user.data.user) {
+              await sb.from('pending_applications').upsert({
+                user_id: user.data.user.id,
+                job_url: p.jobUrl || '',
+                job_title: p.jobTitle || '',
+                company_name: p.company || '',
+                status: 'review_queue',
+                idempotency_key: `review_${p.jobUrl || Date.now()}`,
+              }, { onConflict: 'idempotency_key' })
+              .then(({ error }) => { if (error) console.warn('[bg] review queue upsert:', error.message); });
+            }
+          }
+          captureEvent('review_panel_shown', { user_action: 'save_later', job_title: p.jobTitle || '' });
+          sendResponse({ status: 'saved_to_review_queue' });
+          return;
+        }
+
+        // 'accepted' or 'skipped' — proceed with fill
+        if (tabId) {
+          chrome.tabs.sendMessage(tabId, {
+            type: 'bj:toolbar:applyStatus',
+            payload: {
+              status: 'filling',
+              action: 'submit_anyway',
+              // Pass accepted answers so content script can pre-fill them
+              acceptedAnswers: action === 'accepted' ? (p.answers || []) : [],
+            },
+          });
+        }
+
+        // PostHog: ai_answer_feedback if user rated answers
+        if (p.feedback && Array.isArray(p.feedback)) {
+          for (const fb of p.feedback as Array<{field_label: string; rating: string}>) {
+            captureEvent('ai_answer_feedback', {
+              job_id: p.jobTitle || p.jobUrl || '',
+              field_label: fb.field_label,
+              rating: fb.rating, // 'up' or 'down'
+              surface: 'extension',
+            });
+          }
+        }
+
+        // AIS-F4-S1 gap: persist user_edited_answer if user modified any answers
+        if (action === 'accepted' && p.answers && Array.isArray(p.answers)) {
+          const authToken = await _getAuthToken();
+          if (authToken) {
+            const sb = createSupabaseClient(authToken);
+            for (const ans of p.answers as Array<{id: string; answer: string; label?: string; original_answer?: string}>) {
+              const wasEdited = ans.original_answer && ans.answer !== ans.original_answer;
+              if (wasEdited && ans.label) {
+                await sb.from('answers')
+                  .update({ user_edited_answer: ans.answer })
+                  .eq('user_id', (await sb.auth.getUser()).data.user?.id || '')
+                  .eq('field_label', ans.label)
+                  .order('created_at', { ascending: false })
+                  .limit(1)
+                  .then(({ error }) => {
+                    if (error) console.warn('[bg] user_edited_answer update error:', error.message);
+                  });
+              }
+            }
+          }
+        }
+
+        _logSubmissionAttempt({
+          jobUrl: p.jobUrl || '', jobTitle: p.jobTitle, companyName: p.company,
+          atsSource: p.platform, method: 'extension_score_gate', status: 'submitted',
+        });
+        sendResponse({ status: 'submitting' });
+      } catch (e) {
+        captureEvent('extension_catch_error', { context: 'answerReviewConfirm', error: (e as Error).message });
         sendResponse({ status: 'error', error: (e as Error).message });
       }
     })();

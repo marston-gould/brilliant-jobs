@@ -29,6 +29,117 @@ const CORS_HEADERS = {
 
 const DAILY_LIMIT = 50;
 
+// AIS-F4-S1: Credit model — 0.5 credits per new answer, cached = free
+const CREDITS_PER_ANSWER = 0.5;
+const ANSWER_CACHE_DAYS = 7; // Answers within 7 days on same field_label are cached
+
+// ═══════════════════════════════════════════════════════════
+// AIS-F4-S1: DB ANSWER CACHE
+// ═══════════════════════════════════════════════════════════
+
+/** Look up cached answers for a user from the answers table (within ANSWER_CACHE_DAYS). */
+async function loadAnswerCache(
+  sb: ReturnType<typeof createClient>,
+  userId: string,
+  fieldLabels: string[]
+): Promise<Map<string, string>> {
+  const cache = new Map<string, string>();
+  if (!fieldLabels.length) return cache;
+
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - ANSWER_CACHE_DAYS);
+
+  const { data, error } = await sb
+    .from("answers")
+    .select("field_label, generated_answer")
+    .eq("user_id", userId)
+    .in("field_label", fieldLabels)
+    .gte("created_at", cutoff.toISOString())
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.warn("[answer-form-question] Cache load error:", error.message);
+    return cache;
+  }
+
+  for (const row of data || []) {
+    if (!cache.has(row.field_label)) {
+      cache.set(row.field_label, row.generated_answer);
+    }
+  }
+  return cache;
+}
+
+/** Persist generated answers to the answers table. */
+async function persistAnswers(
+  sb: ReturnType<typeof createClient>,
+  userId: string,
+  answers: Array<{ id: string; answer: string; confidence: string }>,
+  questions: Array<{ id: string; label: string; field_type: string }>,
+  jobId: string | undefined,
+  jobTitle: string | undefined,
+  companyName: string | undefined,
+  cachedLabels: Set<string>
+): Promise<void> {
+  const rows = answers.map((a) => {
+    const q = questions.find((q) => q.id === a.id);
+    const label = q?.label || a.id;
+    const isCached = cachedLabels.has(label);
+    return {
+      user_id: userId,
+      job_id: jobId || null,
+      job_title: jobTitle || null,
+      company_name: companyName || null,
+      field_label: label,
+      field_type: q?.field_type || "text",
+      generated_answer: a.answer,
+      credits_charged: isCached ? 0 : CREDITS_PER_ANSWER,
+      cached: isCached,
+    };
+  });
+
+  const { error } = await sb.from("answers").insert(rows);
+  if (error) {
+    console.warn("[answer-form-question] Persist error:", error.message);
+  }
+}
+
+/** Deduct credits for new (non-cached) answers. Fire-and-forget, non-fatal. */
+async function deductCredits(
+  sb: ReturnType<typeof createClient>,
+  userId: string,
+  newAnswerCount: number
+): Promise<void> {
+  if (newAnswerCount <= 0) return;
+  const creditsToDeduct = newAnswerCount * CREDITS_PER_ANSWER;
+  // Deduct from user_credits table (decrement balance, floor at 0)
+  const { error } = await sb.rpc("deduct_credits", {
+    p_user_id: userId,
+    p_amount: creditsToDeduct,
+    p_feature: "ai_answer",
+  });
+  if (error) {
+    console.warn("[answer-form-question] Credit deduction error:", error.message);
+  }
+}
+
+/** Fetch parsed LinkedIn profile for richer answer context. */
+async function fetchLinkedInProfile(
+  sb: ReturnType<typeof createClient>,
+  userId: string
+): Promise<Record<string, unknown> | null> {
+  const { data, error } = await sb
+    .from("linkedin_profiles")
+    .select("display_name, headline, experience_json, skills_array, education_json")
+    .eq("user_id", userId)
+    .order("parsed_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return data;
+}
+
 // ═══════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════
@@ -37,6 +148,7 @@ interface AnswerRequest {
   questions: QuestionInput[];
   profile: ProfileContext;
   resume_text?: string;
+  job_id?: string;
   job_title?: string;
   company_name?: string;
 }
@@ -183,7 +295,7 @@ Rules:
 Respond ONLY with valid JSON array. No markdown, no code fences, no explanation outside the JSON.`;
 }
 
-function buildUserPrompt(req: AnswerRequest): string {
+function buildUserPrompt(req: AnswerRequest, linkedIn?: Record<string, unknown> | null): string {
   const parts: string[] = [];
 
   parts.push("## Applicant Profile");
@@ -205,6 +317,27 @@ function buildUserPrompt(req: AnswerRequest): string {
     // Truncate resume to ~2000 chars to control token usage
     const truncated = req.resume_text.slice(0, 2000);
     parts.push(`\n## Resume Summary\n${truncated}`);
+  }
+
+  // AIS-F4-S1: LinkedIn profile for richer personal context
+  if (linkedIn) {
+    parts.push(`\n## LinkedIn Profile`);
+    if (linkedIn.display_name) parts.push(`Name: ${linkedIn.display_name}`);
+    if (linkedIn.headline) parts.push(`Headline: ${linkedIn.headline}`);
+    if (Array.isArray(linkedIn.skills_array) && linkedIn.skills_array.length) {
+      parts.push(`Skills: ${(linkedIn.skills_array as string[]).slice(0, 20).join(", ")}`);
+    }
+    if (linkedIn.experience_json) {
+      try {
+        const exp = typeof linkedIn.experience_json === "string"
+          ? JSON.parse(linkedIn.experience_json)
+          : linkedIn.experience_json;
+        if (Array.isArray(exp) && exp.length) {
+          parts.push(`Recent Experience: ${exp.slice(0, 3).map((e: Record<string, unknown>) =>
+            `${e.title || ""} at ${e.company || ""}`).join("; ")}`);
+        }
+      } catch { /* non-fatal */ }
+    }
   }
 
   if (req.job_title || req.company_name) {
@@ -326,8 +459,41 @@ serve(async (req) => {
     // Cap at 10 questions per call
     const questions = body.questions.slice(0, 10);
 
-    // ── Rate limit ──
-    const { allowed, remaining } = await checkAndIncrementUsage(sb, userId, questions.length);
+    // AIS-F4-S1: Check DB answer cache (answers within 7 days on same field_label are free)
+    const fieldLabels = questions.map((q) => q.label);
+    const answerCache = await loadAnswerCache(sb, userId, fieldLabels);
+    const cachedLabels = new Set(answerCache.keys());
+
+    // Serve cached answers immediately
+    const cachedAnswers: Array<{ id: string; answer: string; confidence: string }> = [];
+    const missedQuestions = questions.filter((q) => {
+      const cached = answerCache.get(q.label);
+      if (cached) {
+        cachedAnswers.push({ id: q.id, answer: cached, confidence: "cached" });
+        return false;
+      }
+      return true;
+    });
+
+    // If all questions are cached, return immediately without hitting Anthropic
+    if (missedQuestions.length === 0) {
+      console.log(`[answer-form-question] All ${questions.length} answers served from DB cache`);
+      return new Response(
+        JSON.stringify({
+          answers: cachedAnswers,
+          limit: DAILY_LIMIT,
+          cache_hits: cachedAnswers.length,
+          credits_charged: 0,
+        }),
+        { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
+      );
+    }
+
+    // AIS-F4-S1: Fetch LinkedIn profile for richer context
+    const linkedInProfile = await fetchLinkedInProfile(sb, userId);
+
+    // ── Rate limit (only for non-cached questions) ──
+    const { allowed, remaining } = await checkAndIncrementUsage(sb, userId, missedQuestions.length);
     if (!allowed) {
       return new Response(
         JSON.stringify({
@@ -339,11 +505,11 @@ serve(async (req) => {
       );
     }
 
-    // ── Call Haiku ──
+    // ── Call Haiku for missed questions only ──
     const systemPrompt = buildSystemPrompt();
-    const userPrompt = buildUserPrompt({ ...body, questions });
+    const userPrompt = buildUserPrompt({ ...body, questions: missedQuestions }, linkedInProfile);
 
-    console.log(`[answer-form-question] Answering ${questions.length} questions for user ${userId}`);
+    console.log(`[answer-form-question] Answering ${missedQuestions.length} questions (${cachedAnswers.length} from cache) for user ${userId}`);
 
     // BP-001: Circuit breaker
     const _br = await withAnthropicBreaker(sb, 'answer-form-question', async () => {
@@ -367,19 +533,30 @@ serve(async (req) => {
     }
 
     // ── Parse response ──
-    const questionIds = questions.map((q) => q.id);
-    const answers = parseAIResponse(aiResult.text, questionIds);
+    const questionIds = missedQuestions.map((q) => q.id);
+    const newAnswers = parseAIResponse(aiResult.text, questionIds);
 
     // ── Log usage ──
-    await logUsage(sb, userId, questions.length, "form_question_answer");
+    await logUsage(sb, userId, missedQuestions.length, "form_question_answer");
 
-    console.log(`[answer-form-question] Success: ${answers.length} answers, ${remaining - questions.length} remaining today`);
+    // AIS-F4-S1: Persist new answers to DB (fire-and-forget, non-fatal)
+    await persistAnswers(sb, userId, newAnswers, missedQuestions, body.job_id, body.job_title, body.company_name, cachedLabels);
+
+    // AIS-F4-S1: Deduct credits for new answers only (0.5/answer, cached=free)
+    await deductCredits(sb, userId, newAnswers.length);
+
+    const allAnswers = [...cachedAnswers, ...newAnswers];
+    const creditsCharged = newAnswers.length * CREDITS_PER_ANSWER;
+
+    console.log(`[answer-form-question] Success: ${newAnswers.length} new + ${cachedAnswers.length} cached, ${remaining - missedQuestions.length} remaining today, ${creditsCharged} credits charged`);
 
     return new Response(
       JSON.stringify({
-        answers,
-        remaining: remaining - questions.length,
+        answers: allAnswers,
+        remaining: remaining - missedQuestions.length,
         limit: DAILY_LIMIT,
+        cache_hits: cachedAnswers.length,
+        credits_charged: creditsCharged,
       }),
       { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
     );

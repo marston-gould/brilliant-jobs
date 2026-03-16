@@ -58,24 +58,41 @@ async function generateCoverLetter(params: {
   userName: string;
   tone?: string;
   emphasis?: string[];
+  linkedInContext?: Record<string, unknown> | null;
+  companyContext?: Record<string, unknown> | null;
 }): Promise<{ letter: string; model: string; inputTokens: number; outputTokens: number }> {
 
-  const { resumeText, jobDescription, jobTitle, companyName, userName, tone, emphasis } = params;
+  const { resumeText, jobDescription, jobTitle, companyName, userName, tone, emphasis, linkedInContext, companyContext } = params;
 
-  const toneInstruction = tone === 'formal'
-    ? 'Use a formal, professional tone throughout.'
-    : tone === 'conversational'
-      ? 'Use a warm, conversational tone while remaining professional.'
-      : 'Use a confident, professional tone that balances warmth and competence.';
+  const toneInstruction =
+    tone === 'professional' || tone === 'formal'
+      ? 'Use a polished, professional tone. Confident, clear, and results-focused.'
+      : tone === 'conversational'
+        ? 'Use a warm, conversational tone while remaining professional. Sound like a person, not a template.'
+        : tone === 'enthusiastic'
+          ? 'Use an enthusiastic, energetic tone that conveys genuine excitement about the role and company.'
+          : tone === 'executive'
+            ? 'Use an executive-level tone. Strategic, concise, focused on leadership impact and vision.'
+            : 'Use a confident, professional tone that balances warmth and competence.';
 
   const emphasisBlock = emphasis && emphasis.length > 0
     ? `\nPay special attention to highlighting: ${emphasis.join(', ')}.`
+    : '';
+
+  // AIS-F8 gap: build LinkedIn + company context blocks for richer letters
+  const linkedInBlock = linkedInContext
+    ? `\nCANDIDATE LINKEDIN PROFILE:\nHeadline: ${linkedInContext.headline || ''}\nTop Skills: ${Array.isArray(linkedInContext.skills_array) ? (linkedInContext.skills_array as string[]).slice(0, 10).join(', ') : ''}\n`
+    : '';
+
+  const companyBlock = companyContext
+    ? `\nCOMPANY DETAILS:\n${companyContext.mission ? 'Mission: ' + companyContext.mission + '\n' : ''}${companyContext.description ? 'About: ' + String(companyContext.description).slice(0, 300) + '\n' : ''}${companyContext.industry ? 'Industry: ' + companyContext.industry + '\n' : ''}`
     : '';
 
   const systemPrompt = `You are a professional cover letter writer. Write concise, compelling cover letters that:
 - Open with a specific hook showing genuine interest in the company/role
 - Connect the candidate's experience directly to the job requirements
 - Use concrete examples and metrics from the resume where possible
+- Reference specific company details (mission, product, culture) when provided
 - Close with clear enthusiasm and a forward-looking statement
 - Stay under 350 words (3-4 short paragraphs)
 - Never use generic filler phrases like "I am writing to express my interest"
@@ -88,15 +105,14 @@ Output ONLY the cover letter text. No greeting line (Dear Hiring Manager), no si
 
 RESUME:
 ${truncateToTokens(stripHtml(resumeText), 2000)}
-
+${linkedInBlock}
 JOB TITLE: ${jobTitle}
 COMPANY: ${companyName}
-
+${companyBlock}
 JOB DESCRIPTION:
 ${truncateToTokens(stripHtml(jobDescription), 2000)}
 
 Write a cover letter for this candidate applying to this specific role.`;
-
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -173,7 +189,7 @@ serve(async (req: Request) => {
 
     // Parse body
     const body = await req.json();
-    const { resumeText, jobDescription, jobTitle, companyName, tone, emphasis } = body;
+    const { resumeText, jobDescription, jobTitle, companyName, tone, emphasis, jobId, resumeId } = body;
 
     if (!resumeText || !jobDescription) {
       return new Response(JSON.stringify({ error: 'Missing resumeText or jobDescription' }), {
@@ -193,6 +209,50 @@ serve(async (req: Request) => {
       ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
       : 'the candidate';
 
+    // AIS-F8 gap: Fetch LinkedIn profile for richer personal context (spec §10.1 item 39)
+    let linkedInContext: Record<string, unknown> | null = null;
+    try {
+      const { data: liRow } = await supabase
+        .from('linkedin_profiles')
+        .select('display_name, headline, skills_array, experience_json')
+        .eq('user_id', user.id)
+        .order('parsed_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (liRow) linkedInContext = liRow;
+    } catch { /* non-fatal */ }
+
+    // AIS-F8 gap: Fetch company info from ats_companies for specific details (spec §10.1 item 39)
+    let companyContext: Record<string, unknown> | null = null;
+    if (companyName) {
+      try {
+        const { data: compRow } = await supabase
+          .from('ats_companies')
+          .select('description, mission, size_range, industry, glassdoor_rating')
+          .ilike('name', companyName.slice(0, 30) + '%')
+          .limit(1)
+          .maybeSingle();
+        if (compRow) companyContext = compRow;
+      } catch { /* non-fatal */ }
+    }
+
+    // AIS-F8-S1: Determine version (increment if job already has a letter with this tone)
+    const normalizedTone = ['professional','conversational','enthusiastic','executive'].includes(tone)
+      ? tone : 'professional';
+    let version = 1;
+    if (jobId) {
+      const { data: existing } = await supabase
+        .from('cover_letters')
+        .select('version')
+        .eq('user_id', user.id)
+        .eq('job_id', jobId)
+        .eq('tone', normalizedTone)
+        .order('version', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (existing) version = (existing.version || 0) + 1;
+    }
+
     // Generate (BP-001: circuit breaker)
     const startMs = Date.now();
     const _br = await withAnthropicBreaker(supabase, 'generate-cover-letter', () =>
@@ -202,8 +262,10 @@ serve(async (req: Request) => {
         jobTitle: jobTitle || 'the role',
         companyName: companyName || 'the company',
         userName,
-        tone,
+        tone: normalizedTone,
         emphasis,
+        linkedInContext,
+        companyContext,
       })
     );
     if (_br.circuitOpen) {
@@ -214,6 +276,22 @@ serve(async (req: Request) => {
     }
     const result = _br.result;
     const elapsedMs = Date.now() - startMs;
+    const wordCount = result.letter.trim().split(/\s+/).length;
+
+    // AIS-F8-S1: Persist to cover_letters table
+    let coverId: string | null = null;
+    const { data: coverRow, error: coverErr } = await supabase.from('cover_letters').insert({
+      user_id: user.id,
+      job_id: jobId || null,
+      resume_id: resumeId || null,
+      tone: normalizedTone,
+      content: result.letter,
+      version,
+      credits_charged: 2,
+      word_count: wordCount,
+    }).select('id').single();
+    if (coverErr) console.warn('[generate-cover-letter] Persist error:', coverErr.message);
+    else coverId = coverRow?.id || null;
 
     // Log to cover_letter_generations table (non-blocking)
     supabase.from('cover_letter_generations').insert({
@@ -224,11 +302,15 @@ serve(async (req: Request) => {
       input_tokens: result.inputTokens,
       output_tokens: result.outputTokens,
       elapsed_ms: elapsedMs,
-      tone: tone || 'default',
+      tone: normalizedTone,
     }).then(() => {}).catch(() => {});
 
     return new Response(JSON.stringify({
       letter: result.letter,
+      cover_letter_id: coverId,
+      version,
+      tone: normalizedTone,
+      word_count: wordCount,
       model: result.model,
       tokens: { input: result.inputTokens, output: result.outputTokens },
       elapsedMs,
