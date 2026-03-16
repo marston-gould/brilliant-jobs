@@ -3749,3 +3749,10 @@ Phase S is complete when ALL of the following are true:
 | ID | Item | Status | Notes |
 |----|------|--------|-------|
 | HOTFIX-MERGE-001 | (v9.85) Conflict markers removed from 9 HTML files + duplicate scripts. (v9.86) AI Interview panel stuck open, layout reorder, saved search resurrection fix. (v9.87) Pagination count, cover letter panel, bulk action bar display bugs. (v9.88) Reverted count:exact (caused timeouts). (v9.89) US-Only filter 400 fix — removed parentheses from .or() values. (v9.90) US-Only % → * wildcards in .or() logic tree. (v9.91) Filter resurrection root cause: _bj_ud_cache not updated when local wins. (v9.92) Version display fix (.ts not .js). (v9.93) Filter resurrection final fix: delete handler now removes from user_filters table. (v9.94) CRON-COST-OPT: killed 5 credit-burning crons, reduced 2 pipeline crons, 402 circuit breaker (1hr cooldown), $5/day spend cap, classify-pipeline-signal Sonnet→Haiku, all 29 EFs redeployed with enhanced withAnthropicBreaker (usage logging + cap + 402). | ✅ | v9.94 |
+
+## FB-FEED-CARDS-001: Jobs Feed Card Redesign + Pipeline Action Consolidation
+
+| ID | Item | Status | Notes |
+|----|------|--------|-------|
+| FB-FEED-CARDS-001-S1 | Card-based feed layout. 3-action model (Dismiss/Pipeline/Apply). Inline signal badges (Verified/AI/Ghost). Preview JD toggle with 3-line snippet. Removed Bulk Apply, Save All, checkboxes, Optimize Resume from feed. Sort bar buttons. Card skeleton loader. 4 PostHog events. | ✅ | v9.99 |
+| FB-FEED-CARDS-001-S2 | Pipeline page: Optimize Resume per-job action in Saved stage. Bulk Apply toolbar in Pipeline. Sort indicator refresh. Trust/AI toggle removal cleanup. | 🔲 | |

@@ -52,7 +52,13 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**HOTFIX-MERGE-001 + CRON-COST-OPT** — Emergency Stabilization + Anthropic Cost Architecture ✅
+**FB-FEED-CARDS-001-S1** — Jobs Feed Card Redesign: Core Card Layout ✅
+- v9.98→v9.99 — Replaced table-based job feed with card-based layout per spec.
+- dashboard.html: Removed `<table>`, Bulk Apply bar, Save All, checkboxes, Trust/AI toggles. New `#job-cards-container` + compact sort bar with `.sort-btn` buttons + Preview JD toggle.
+- js/job-feed.js: `renderJobRows()` now emits card HTML. CSS Grid (28px dismiss | 1fr title+meta | auto actions). 3-action model: Dismiss ✕ (slide-left animation, red hover, `bj_dismissed_jobs` localStorage), Pipeline (secondary, 1.5s "Saved ✓" confirmation), Apply → (primary blue, routes through `proceedToApply`). Signal badges inline on title row (Verified/AI/Ghost, only when data). Preview JD: 3-line clamped snippet full-width with match % badge. Card skeleton loader. All 4 feed PostHog events (feed_card_dismiss, feed_card_pipeline, feed_card_apply, feed_preview_jd_toggle).
+- js/keywords.js: Preview toggle re-renders feed instead of CSS class toggle. Snippet loader finds `.jc-snippet` elements.
+- js/sort-bar.js: Sort click handler finds `.sort-btn[data-sort]` in addition to old `th[data-sort]`.
+- **FB-FEED-CARDS-001 remaining:** Sort indicator refresh for new buttons. Pipeline page: Optimize Resume per-job + Bulk Apply in Saved stage toolbar. Remove Trust Level / AI Content toggle buttons from toolbar (if still present elsewhere).
 - v9.85→v9.94 across 10 production deploys
 - **Stabilization (v9.85-v9.93):** Conflict marker cleanup (9 files), 4 duplicate display:none/flex bugs (IP panel, CL panel, bulk bar, confirm overlay), layout reorder, saved search resurrection (3 separate root causes: syncHealthCheck treating [] as missing, _bj_ud_cache not updated when local wins, delete handler not removing from user_filters table), US-Only filter 400 errors (parentheses + % wildcards breaking PostgREST .or() parser — switched to * wildcards), pagination count (reverted count:exact which caused timeouts, added smart reconciliation), version display in nav sidebar.
 - **CRON-COST-OPT (v9.94):** Killed 5 credit-burning crons (#128 batch-resume-scorer-submit, #129 batch-resume-scorer-poll, #49 enrich-jd-ai-batch, #39 silent-enrich, #96 score-new-jobs). Reduced #142 classify-pipeline-signals */15→*/30, #143 process-pipeline-signals 4x/hr→2x/hr. anthropicFetch() enhanced: 402 handler (immediate circuit breaker, 1-hour cooldown), $5/day configurable spend cap via app_settings table. withAnthropicBreaker() enhanced: ai_usage_log tracking, 402 handling, daily spend cap. classify-pipeline-signal switched Sonnet→Haiku (~90% cost cut). 3 unwrapped EFs (admin-filter-prompt, interview-generate-questions, interview-simulate) wrapped. All 29 Anthropic-calling EFs redeployed.

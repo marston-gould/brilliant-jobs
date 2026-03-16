@@ -892,40 +892,35 @@ function getCheckedSavedPromptFilters() {
 // Main search: OR across all checked saved filters
 async function searchJobs(page = 0) {
   currentJobPage = page;
-  // UX-006: Scroll to top of job table on page change
+  // UX-006: Scroll to top on page change
   if (page > 0) {
-    var jobTable = $('#job-table');
-    if (jobTable) jobTable.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    var cardContainer = $('#job-cards-container');
+    if (cardContainer) cardContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
-  const tbody = $('#job-table-body');
+  const container = $('#job-cards-container');
   const checked = getCheckedSavedFilters();
   const checkedPrompts = getCheckedSavedPromptFilters(); // Session 5: prompt-derived filters
   const hasBuilderPills = allPills() > 0;
 
   // If nothing is driving the search, show prompt but with global stats
   if (checked.length === 0 && checkedPrompts.length === 0 && !hasBuilderPills) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
-      <div style="margin-bottom:12px;color:var(--text-faint);"><i data-lucide="briefcase" class="icon-xl icon-stroke-lg" style="opacity:0.25;"></i></div>
+    if (container) container.innerHTML = `<div style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+      <div style="margin-bottom:12px;"><i data-lucide="briefcase" class="icon-xl icon-stroke-lg" style="opacity:0.25;"></i></div>
       <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Select saved searches or add filters to search jobs</div>
       <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">Check one or more saved searches above, or use the filter builder.</div>
-    </td></tr>`;
+    </div>`;
+    if (typeof window.refreshIcons === 'function') window.refreshIcons();
     await updateJobStatsFromFilters(null);
     $('#filter-count').textContent = '';
     return;
   }
 
-  // Show skeleton loading
-  tbody.innerHTML = Array.from({length: 8}, () => `<tr class="skel-row">
-    <td><div class="skel-line" style="width:24px;height:14px;"></div></td>
-    <td><div class="skel-line" style="width:70%;"></div></td>
-    <td><div class="skel-line" style="width:60%;"></div></td>
-    <td><div class="skel-line" style="width:50%;"></div></td>
-    <td><div class="skel-line" style="width:40px;"></div></td>
-    <td><div class="skel-line" style="width:55%;"></div></td>
-    <td><div class="skel-line" style="width:50%;"></div></td>
-    <td><div class="skel-line" style="width:30px;"></div></td>
-    <td><div class="skel-line" style="width:45%;"></div></td>
-  </tr>`).join('');
+  // Show skeleton loading (card-shaped)
+  if (container) container.innerHTML = Array.from({length: 6}, () => `<div style="border:0.5px solid var(--border);border-radius:12px;background:var(--bg-card);padding:14px 16px;display:grid;grid-template-columns:28px 1fr 160px;gap:0 10px;align-items:center;">
+    <div><div class="skel-line" style="width:20px;height:20px;border-radius:6px;"></div></div>
+    <div><div class="skel-line" style="width:60%;height:14px;margin-bottom:6px;"></div><div class="skel-line" style="width:40%;height:10px;"></div></div>
+    <div style="display:flex;gap:6px;"><div class="skel-line" style="width:70px;height:28px;border-radius:6px;"></div><div class="skel-line" style="width:70px;height:28px;border-radius:6px;"></div></div>
+  </div>`).join('');
 
   try {
     // FA-001: Evaluate content search flag once per search (async, before query building)
@@ -2551,13 +2546,14 @@ function closeFraudInterstitial(proceed) {
 }
 
 function renderJobRows(jobs, total, page, filtersToRun) {
-  const tbody = $('#job-table-body');
+  // FB-FEED-CARDS-001: Card-based feed replaces table rows
+  const container = $('#job-cards-container');
+  if (!container) return;
   const now = new Date();
 
-  // Collect active negative location terms for display
+  // Collect active negative location terms
   const activeNegLocs = [];
   const tuning = safeReadLS('bj_tuning', {});
-  // From whereNotPills in active filters
   if (filtersToRun) {
     for (const sf of filtersToRun) {
       for (const pill of (sf.whereNotPills || [])) {
@@ -2566,139 +2562,211 @@ function renderJobRows(jobs, total, page, filtersToRun) {
           if (t && !activeNegLocs.includes(t)) activeNegLocs.push(t);
         }
       }
-      // Also check whatNotPills for terms that look like locations
-      // by testing if any current job's location contains the term
-      for (const pill of (sf.whatNotPills || [])) {
-        for (const v of (pill.values || [])) {
-          const t = v.trim().replace(/^nor\s+/i, '').replace(/\s+/g, ' ');
-          if (t && !activeNegLocs.includes(t)) {
-            const looksLikeLocation = jobs.some(j =>
-              j.location && j.location.toLowerCase().includes(t.toLowerCase())
-            );
-            if (looksLikeLocation) activeNegLocs.push(t);
-          }
-        }
-      }
     }
   }
-  // From tuning exclusions
   for (const pill of (tuning.locationExcludes || [])) {
     for (const v of (pill.values || [])) {
       if (!activeNegLocs.includes(v)) activeNegLocs.push(v);
     }
   }
-  if (activeNegLocs.length > 0) console.log('[BJ] Active neg locs:', activeNegLocs);
 
-  // Get last feed view timestamp for NEW badge
+  // Last feed view for NEW badge
   const lastFeedView = localStorage.getItem('bj_last_feed_view');
   const lastViewDate = lastFeedView ? new Date(lastFeedView) : null;
 
-  // Populate global job map so toggleSaveJob can look up title/company
+  // Dismissed jobs
+  const dismissed = safeReadLS('bj_dismissed_jobs', []);
+
+  // Global job map
   window._feedJobMap = {};
   for (const j of jobs) { window._feedJobMap[j.greenhouse_id] = j; }
 
+  const showPreview = $('#preview-toggle')?.checked;
   let html = '';
   let newCount = 0;
+
   for (const job of jobs) {
+    // Skip dismissed
+    if (dismissed.includes(job.greenhouse_id)) continue;
+
     const jobDate = job.first_seen_at || job.updated_at;
-    const daysAgo = jobDate ? Math.floor((now - new Date(jobDate)) / 86400000) : '—';
-    const daysStr = typeof daysAgo === 'number' ? (daysAgo === 0 ? 'today' : daysAgo + 'd') : '—';
-    // QA-FIX: Only today (0d) and 1d are green — 3d is not "new"
-    const daysClass = typeof daysAgo === 'number' && daysAgo <= 1 ? 'color:var(--green);' : '';
+    const daysAgo = jobDate ? Math.floor((now - new Date(jobDate)) / 86400000) : null;
+    const daysStr = daysAgo !== null ? (daysAgo === 0 ? 'today' : daysAgo === 1 ? '1d' : daysAgo + 'd') : '';
+    const daysColor = daysAgo !== null && daysAgo <= 1 ? 'color:var(--green);font-weight:600;' : 'color:var(--text-faint);';
 
-    const isSaved = savedJobIds.includes(job.greenhouse_id);
     const isApplied = appliedJobIds.includes(job.greenhouse_id);
+    const isSaved = savedJobIds.includes(job.greenhouse_id);
 
-    // Action buttons
-    let saveBtn = '';
-    let applyBtn = '';
+    // Level badge
+    const levelInfo = getJobLevel(job.title, window._activeLevelHierarchy);
+    const levelBadge = levelInfo
+      ? `<span style="display:inline-block;font-size:11px;font-weight:500;padding:1px 7px;border-radius:100px;background:${levelInfo.color}20;color:${levelInfo.color};margin-left:6px;">${levelInfo.label}</span>`
+      : '';
 
-    if (isApplied) {
-      saveBtn = '';
-      applyBtn = `<span class="job-action-btn applied-btn">Applied ✓</span>`;
-    } else {
-      saveBtn = isSaved
-        ? `<button class="job-action-btn saved-btn" onclick="toggleSaveJob('${job.greenhouse_id}', this)">Pipeline ✓</button>`
-        : `<button class="job-action-btn" onclick="toggleSaveJob('${job.greenhouse_id}', this)">Pipeline</button>`;
-      const jobUrl = job.apply_url || (job.url && job.url.startsWith('http') ? job.url : job.url ? 'https://boards.greenhouse.io' + job.url : '#');
-      applyBtn = applyButton(['greenhouse'], { greenhouse: jobUrl }, job.greenhouse_id);
+    // Signal badges (inline, only when data exists)
+    let signalBadges = '';
+    // Verified employer
+    if (job.trust_level && job.trust_level !== 'unknown' && job.trust_level !== 'low') {
+      signalBadges += `<span style="display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:500;padding:1px 7px;border-radius:100px;background:var(--bg-success,#dcfce7);color:var(--green,#16a34a);margin-left:4px;"><i data-lucide="shield-check" style="width:10px;height:10px;"></i>Verified</span>`;
+    }
+    // AI content
+    const aiScore = _aiContentScoreCache ? _aiContentScoreCache[job.greenhouse_id] : null;
+    if (aiScore && aiScore > 0.7) {
+      signalBadges += `<span style="display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:500;padding:1px 7px;border-radius:100px;background:var(--bg-warning,#fef9c3);color:var(--warm,#ca8a04);margin-left:4px;"><i data-lucide="scan-text" style="width:10px;height:10px;"></i>AI</span>`;
+    }
+    // Ghost reports
+    const ghostCount = _ghostReportCache ? _ghostReportCache[job.greenhouse_id] : 0;
+    if (ghostCount > 0) {
+      signalBadges += `<span style="display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:500;padding:1px 7px;border-radius:100px;background:var(--bg-danger,#fee2e2);color:var(--red,#dc2626);margin-left:4px;"><i data-lucide="x-circle" style="width:10px;height:10px;"></i>${ghostCount} ghost</span>`;
     }
 
-    // Filter number badges
-    const allBadges = (job._filterNums || []).filter(f => f.num);
-    const maxBadges = 3;
-    let filterBadges = allBadges.slice(0, maxBadges)
-      .map(f => `<span class="job-filter-badge" style="background:${f.color};">${f.num}</span>`)
-      .join('');
-    if (allBadges.length > maxBadges) {
-      filterBadges += `<span class="job-filter-badge" style="background:var(--text-faint);font-size:9px;">+${allBadges.length - maxBadges}</span>`;
-    }
-
-      const levelInfo = getJobLevel(job.title, window._activeLevelHierarchy);
-      const levelCell = levelInfo
-        ? `<span class="level-badge" style="background:${levelInfo.color}20;color:${levelInfo.color};">${levelInfo.label}</span>`
-        : '—';
-
-    // NEW badge — job first seen after last feed view
+    // NEW badge
     const isNew = lastViewDate && job.first_seen_at && new Date(job.first_seen_at) > lastViewDate;
     if (isNew) newCount++;
-    const newBadge = isNew ? '<span class="jt-new-badge">NEW</span>' : '';
+    const newBadge = isNew ? '<span style="display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:var(--accent);color:#fff;margin-left:6px;vertical-align:middle;">NEW</span>' : '';
 
-    // Fraud detection badge (v6.31)
-    const fraudBadge = fraudBadgeHtml(job.greenhouse_id);
-    if (fraudBadge && typeof posthog !== 'undefined' && !job._fraudBadgeTracked) {
-      var _fbi = _fraudScoreCache[job.greenhouse_id];
-      posthog.capture('fraud_badge_viewed', { fraud_label: _fbi ? _fbi.label : 'unknown', job_id: job.greenhouse_id });
-      job._fraudBadgeTracked = true;
+    // Meta row parts
+    const metaParts = [];
+    if (job.company_name) metaParts.push(`<span style="font-weight:500;color:var(--text-dim);">${escapeHtml(truncate(cleanCompanyName(job.company_name), 30))}</span>`);
+    const loc = formatLocation(job.location, job.loc_display, activeNegLocs);
+    if (loc) metaParts.push(`<span style="color:var(--text-faint);">${escapeHtml(truncate(loc, 35))}</span>`);
+    const sal = formatSalaryCell(job);
+    if (sal && sal !== '—') metaParts.push(`<span style="color:var(--text-faint);">${sal}</span>`);
+    if (daysStr) metaParts.push(`<span style="${daysColor}">${daysStr}</span>`);
+
+    // Action buttons (exactly 3: Dismiss is left column, Pipeline + Apply right)
+    let pipelineBtn, applyBtn;
+    if (isApplied) {
+      pipelineBtn = '';
+      applyBtn = `<span style="font-size:12px;padding:5px 12px;border-radius:6px;background:var(--bg-success,#dcfce7);color:var(--green);font-weight:500;">Applied ✓</span>`;
+    } else {
+      pipelineBtn = isSaved
+        ? `<button class="jc-pipeline-btn jc-saved" data-jobid="${escapeHtml(job.greenhouse_id)}" style="font-size:12px;padding:5px 12px;border:1px solid var(--green);border-radius:6px;background:transparent;color:var(--green);font-weight:500;cursor:pointer;">Pipeline ✓</button>`
+        : `<button class="jc-pipeline-btn" data-jobid="${escapeHtml(job.greenhouse_id)}" style="font-size:12px;padding:5px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text-dim);font-weight:500;cursor:pointer;">Pipeline</button>`;
+      const jobUrl = job.apply_url || (job.url && job.url.startsWith('http') ? job.url : job.url ? 'https://boards.greenhouse.io' + job.url : '#');
+      applyBtn = `<button class="jc-apply-btn" data-jobid="${escapeHtml(job.greenhouse_id)}" data-url="${escapeHtml(jobUrl)}" style="font-size:12px;padding:5px 14px;border:none;border-radius:6px;background:var(--accent);color:#fff;font-weight:600;cursor:pointer;">Apply →</button>`;
     }
 
-    // AI JD detection badge (v6.41 — Session 3.1)
-    const aiJdBadge = aiJdBadgeHtml(job.greenhouse_id);
+    // Preview JD snippet
+    let snippetHtml = '';
+    if (showPreview) {
+      const matchScore = jobMatchScores[job.greenhouse_id];
+      const matchBadgeHtml = matchScore ? `<span style="display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;background:var(--accent);color:#fff;margin-bottom:4px;">${matchScore}% match</span>` : '';
+      snippetHtml = `<div style="border-top:0.5px solid var(--border);padding:8px 0 0 48px;margin-top:8px;">
+        ${matchBadgeHtml}
+        <div class="jc-snippet" data-preview-id="${escapeHtml(job.greenhouse_id)}" style="font-size:12px;color:var(--text-faint);line-height:1.6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;"></div>
+      </div>`;
+    }
 
-    html += `<tr class="job-data-row" data-jobid="${escapeHtml(job.greenhouse_id)}" data-level-rank="${levelInfo ? levelInfo.rank : 999}">
-      <td class="jt-sel" style="width:28px;padding:0 4px;"><input type="checkbox" class="bulk-job-cb" data-jobid="${escapeHtml(job.greenhouse_id)}" onchange="window._bulkToggleJob && window._bulkToggleJob('${escapeHtml(job.greenhouse_id)}', this.checked)" style="cursor:pointer;accent-color:var(--accent);"></td>
-      <td class="jt-title"><span class="sf-del" onclick="hideJob('${escapeHtml(job.greenhouse_id)}', this)" title="Hide this job">✕</span>${filterBadges}<span class="job-title-link" data-jobid="${escapeHtml(job.greenhouse_id)}" title="${escapeHtml(job.title||'')}">${truncate(job.title, 55)}</span>${newBadge}${fraudBadge}${aiJdBadge}</td>
-      <td class="jt-level">${levelCell}</td>
-      <td class="jt-company">${truncate(cleanCompanyName(job.company_name), 30)}</td>
-      <td class="jt-loc" title="${escapeHtml(job.location||'')}">${truncate(formatLocation(job.location, job.loc_display, activeNegLocs), 35)}</td>
-      <td class="jt-salary">${formatSalaryCell(job)}</td>
-      <td class="jt-days" style="${daysClass}">${daysStr}</td>
-      <td class="jt-match"${job._aiScoringExcluded ? ' style="opacity:0.3;" title="Match score excluded per your AI content preferences"' : ''}>${typeof matchBadgeWithBoost==='function'?matchBadgeWithBoost(jobMatchScores[job.greenhouse_id],job.greenhouse_id,job.title,job.company_name):matchBadge(jobMatchScores[job.greenhouse_id], job.greenhouse_id)}</td>
-      <td class="jt-actions"><div style="white-space:nowrap;display:flex;gap:4px;align-items:center;">
-        ${saveBtn}${applyBtn}<button class="job-action-btn" onclick="if(typeof rbOpenOptimizeForJob==='function')rbOpenOptimizeForJob('${job.greenhouse_id}')" title="Optimize your resume for this job" style="font-size:11px;padding:4px 8px;">Optimize Resume</button>
-      </div></td>
-    </tr>
-    <tr class="job-snippet-row"><td colspan="9">${trustBannerHtml(job.greenhouse_id)}${aiContentBannerHtml(job.greenhouse_id)}<span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td></tr>`;
+    // Card HTML
+    html += `<div class="job-card" data-jobid="${escapeHtml(job.greenhouse_id)}" style="border:0.5px solid var(--border);border-radius:12px;background:var(--bg-card);padding:14px 16px 14px 12px;display:grid;grid-template-columns:28px 1fr auto;gap:0 10px;align-items:start;transition:opacity 0.2s,transform 0.2s;">
+      <div style="grid-row:1/3;display:flex;align-items:center;justify-content:center;">
+        <button class="jc-dismiss" data-jobid="${escapeHtml(job.greenhouse_id)}" title="Dismiss this job" style="width:24px;height:24px;border:none;background:transparent;color:var(--text-faint);cursor:pointer;border-radius:6px;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;transition:background 0.15s,color 0.15s;">✕</button>
+      </div>
+      <div>
+        <div style="display:flex;align-items:center;flex-wrap:wrap;">
+          <span class="job-title-link" data-jobid="${escapeHtml(job.greenhouse_id)}" style="font-size:15px;font-weight:500;color:var(--text);cursor:pointer;">${escapeHtml(truncate(job.title, 65))}</span>
+          ${levelBadge}${newBadge}${signalBadges}
+        </div>
+        <div style="font-size:12px;margin-top:3px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+          ${metaParts.join('<span style="color:var(--border);">·</span>')}
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;grid-row:1/3;">
+        ${pipelineBtn}${applyBtn}
+      </div>
+      ${snippetHtml ? `<div style="grid-column:1/-1;">${snippetHtml}</div>` : ''}
+    </div>`;
   }
 
-  // UX-006: Proper pagination controls (replaces inline Load More)
+  // Pagination
   renderPagination(jobs.length, total, page);
 
-  tbody.innerHTML = html;
-  // POD3-LUCIDE: Re-initialize Lucide icons in dynamically injected job cards
+  container.innerHTML = html || '<div style="text-align:center;padding:48px 0;color:var(--text-faint);">No jobs match your filters</div>';
+
+  // Re-initialize Lucide icons
   if (typeof window.refreshIcons === 'function') window.refreshIcons();
 
-  // Update last feed view timestamp (so NEW badges refresh next visit)
+  // Wire card event handlers
+  container.querySelectorAll('.jc-dismiss').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var jobId = this.dataset.jobid;
+      var card = this.closest('.job-card');
+      // Animate out
+      if (card) { card.style.transform = 'translateX(-40px)'; card.style.opacity = '0'; }
+      setTimeout(function() { if (card) card.remove(); }, 200);
+      // Persist dismissal
+      var d = safeReadLS('bj_dismissed_jobs', []);
+      if (!d.includes(jobId)) { d.push(jobId); localStorage.setItem('bj_dismissed_jobs', JSON.stringify(d)); }
+      // Send negative tuning signal
+      if (typeof hideJob === 'function') hideJob(jobId);
+      // PostHog
+      var j = window._feedJobMap && window._feedJobMap[jobId];
+      if (typeof posthog !== 'undefined') posthog.capture('feed_card_dismiss', { job_id: jobId, company: j ? j.company_name : '', filter_id: '' });
+    });
+  });
+
+  container.querySelectorAll('.jc-dismiss').forEach(function(btn) {
+    btn.addEventListener('mouseenter', function() { this.style.background = 'var(--bg-danger,#fee2e2)'; this.style.color = 'var(--red,#dc2626)'; });
+    btn.addEventListener('mouseleave', function() { this.style.background = 'transparent'; this.style.color = 'var(--text-faint)'; });
+  });
+
+  container.querySelectorAll('.jc-pipeline-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var jobId = this.dataset.jobid;
+      if (typeof toggleSaveJob === 'function') toggleSaveJob(jobId, this);
+      // Brief confirmation state
+      var el = this;
+      el.textContent = 'Saved ✓'; el.style.borderColor = 'var(--green)'; el.style.color = 'var(--green)';
+      setTimeout(function() { if (!el.classList.contains('jc-saved')) { el.textContent = 'Pipeline'; el.style.borderColor = 'var(--border)'; el.style.color = 'var(--text-dim)'; } }, 1500);
+      // PostHog
+      var j = window._feedJobMap && window._feedJobMap[jobId];
+      if (typeof posthog !== 'undefined') posthog.capture('feed_card_pipeline', { job_id: jobId, company: j ? j.company_name : '', filter_id: '' });
+    });
+  });
+
+  container.querySelectorAll('.jc-apply-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var jobId = this.dataset.jobid;
+      var url = this.dataset.url;
+      // Record in pipeline as Applied
+      if (typeof toggleSaveJob === 'function' && !savedJobIds.includes(jobId)) {
+        toggleSaveJob(jobId);
+      }
+      if (!appliedJobIds.includes(jobId)) appliedJobIds.push(jobId);
+      // Open apply flow per Application Mode
+      if (typeof proceedToApply === 'function') {
+        proceedToApply(jobId, url);
+      } else if (url && url !== '#') {
+        window.open(url, '_blank');
+      }
+      // PostHog
+      var j = window._feedJobMap && window._feedJobMap[jobId];
+      if (typeof posthog !== 'undefined') posthog.capture('feed_card_apply', { job_id: jobId, company: j ? j.company_name : '', filter_id: '', application_mode: safeReadLS('bj_application_mode', 'manual') });
+    });
+  });
+
+  // Update last feed view timestamp
   localStorage.setItem('bj_last_feed_view', new Date().toISOString());
 
-  // Show new jobs count in filter stats area if any
+  // Show new count
   if (newCount > 0) {
     const countEl = $('#filter-count');
     if (countEl) {
       const existing = countEl.textContent;
-      countEl.innerHTML = `${existing} <span style="color:var(--accent);font-weight:600;margin-left:6px;"><i data-lucide="sparkles" class="icon-xs icon-stroke"></i> ${newCount} new since last visit</span>`;
-      if (typeof window.refreshIcons === 'function') window.refreshIcons();
+      countEl.innerHTML = `${existing} <span style="color:var(--accent);font-weight:600;margin-left:6px;">${newCount} new</span>`;
     }
   }
 
-  // Background salary enrichment — fetch specs for jobs without salary
+  // Background salary enrichment
   backgroundEnrichSalary();
-
-  // Refresh keyword panel if it's open
   refreshKeywordsIfOpen();
 
   // Load preview snippets if toggle is on
-  if ($('#preview-toggle')?.checked) {
+  if (showPreview) {
     loadPreviewSnippets();
   }
 }

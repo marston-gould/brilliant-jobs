@@ -2522,7 +2522,7 @@ document.addEventListener('click', e => {
   }
 });
 
-// Global preview toggle — shows one-line description snippets under each title
+// Global preview toggle — shows/hides JD snippets on cards
 function initPreviewToggle() {
   const toggle = $('#preview-toggle');
   if (!toggle) return;
@@ -2530,19 +2530,15 @@ function initPreviewToggle() {
   // Restore saved preference
   if (localStorage.getItem('bj_show_previews') === '1') {
     toggle.checked = true;
-    $('#job-table')?.classList.add('show-previews');
-    loadPreviewSnippets(); // fetch snippets immediately on restore
   }
 
   toggle.addEventListener('change', () => {
-    const table = $('#job-table');
-    if (toggle.checked) {
-      table.classList.add('show-previews');
-      localStorage.setItem('bj_show_previews', '1');
-      loadPreviewSnippets();
-    } else {
-      table.classList.remove('show-previews');
-      localStorage.setItem('bj_show_previews', '0');
+    localStorage.setItem('bj_show_previews', toggle.checked ? '1' : '0');
+    // PostHog
+    if (typeof posthog !== 'undefined') posthog.capture('feed_preview_jd_toggle', { enabled: toggle.checked });
+    // Re-render feed with/without snippets
+    if (typeof searchJobs === 'function') {
+      searchJobs(typeof _currentFeedPage !== 'undefined' ? _currentFeedPage : 0);
     }
   });
 }
@@ -2570,7 +2566,7 @@ function extractSnippet(html, maxLen) {
 
 // Load preview snippets for all visible jobs
 async function loadPreviewSnippets() {
-  const snippetEls = document.querySelectorAll('.job-snippet-text[data-preview-id]');
+  const snippetEls = document.querySelectorAll('.job-snippet-text[data-preview-id], .jc-snippet[data-preview-id]');
   if (!snippetEls.length) return;
 
   for (const el of snippetEls) {

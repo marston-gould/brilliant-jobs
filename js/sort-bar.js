@@ -244,8 +244,8 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// Also allow clicking table headers as a quick single-sort shortcut
-$$('.job-table th[data-sort]').forEach(th => {
+// Also allow clicking table headers or sort bar buttons as a quick single-sort shortcut
+$$('.job-table th[data-sort], .sort-btn[data-sort]').forEach(th => {
   th.style.cursor = 'pointer';
   th.addEventListener('click', () => {
     const field = th.dataset.sort;
