@@ -13214,21 +13214,30 @@ async function loadCompanyBrowser() {
     // Load companies with active jobs — paginate to get all (PostgREST caps single requests)
     // (ats_companies has 65K+ rows but only ~5-10K have open jobs)
     let cacheResult = await cachedQuery('ref:companies:active', async function() {
+      // Load all companies with jobs — fetch by letter to avoid PostgREST 1000-row cap
       let allRows = [];
-      let page = 0;
-      const pageSize = 1000;
-      while (true) {
-        const { data, error } = await sb.from('ats_companies')
-          .select('slug, name, job_count, source')
-          .gt('job_count', 0)
-          .order('name')
-          .range(page * pageSize, (page + 1) * pageSize - 1);
-        if (error) { console.warn('[CB] Page', page, 'error:', error.message); throw error; }
-        allRows = allRows.concat(data || []);
-        if (!data || data.length < pageSize) break;
-        page++;
+      const letters = '#ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+      for (const letter of letters) {
+        let page = 0;
+        while (true) {
+          let q = sb.from('ats_companies')
+            .select('slug, name, job_count, source')
+            .gt('job_count', 0)
+            .order('name');
+          if (letter === '#') {
+            q = q.or('name.ilike.0%,name.ilike.1%,name.ilike.2%,name.ilike.3%,name.ilike.4%,name.ilike.5%,name.ilike.6%,name.ilike.7%,name.ilike.8%,name.ilike.9%');
+          } else {
+            q = q.ilike('name', letter + '%');
+          }
+          q = q.range(page * 1000, (page + 1) * 1000 - 1);
+          const { data, error } = await q;
+          if (error) { console.warn('[CB] Letter', letter, 'page', page, 'error:', error.message); break; }
+          allRows = allRows.concat(data || []);
+          if (!data || data.length < 1000) break;
+          page++;
+        }
       }
-      console.log('[CB] Loaded', allRows.length, 'companies in', page + 1, 'pages');
+      console.log('[CB] Loaded', allRows.length, 'companies across', letters.length, 'letter queries');
       return { data: allRows };
     }, { ttl: 600000 });
     let allData = (cacheResult && cacheResult.data) || [];
