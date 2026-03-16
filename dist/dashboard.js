@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.86';
+var BJ_VERSION = 'v9.87';
 
 
 // === js/globals.ts ===
@@ -705,7 +705,7 @@ var savedJobIds = safeReadLS('bj_saved_jobs', []);
 var appliedJobIds = safeReadLS('bj_applied_jobs', []);
 var searchTimeout = null;
 var currentJobPage = 0;
-var JOBS_PER_PAGE = 50;
+var JOBS_PER_PAGE = 25;
 // FA-004: MAX_FEED_ROWS cap removed — real server-side pagination via range()
 var _feedLoadMoreOffset = 0; // tracks how many rows loaded so far for Load More
 var _feedTotalCount = 0; // total matching rows (from count: 'exact')
@@ -5536,7 +5536,7 @@ async function searchJobs(page = 0) {
       const _sortKey = jobSortStack.map(s => s.field + (s.asc ? 'A' : 'D')).join(',');
       const feedCacheKey = 'feed:' + _filterCacheKey('single', filtersToRun[0]) + ':s' + _sortKey + ':p' + page;
       const feedResult = await cachedQuery(feedCacheKey, async function() {
-        let query = sb.from('ats_jobs').select('*', { count: 'planned' });
+        let query = sb.from('ats_jobs').select('*', { count: 'exact' });
         query = buildFilterQuery(filtersToRun[0], query, filtersToRun[0]._locationIds);
         if (hiddenIds.length > 0) {
           query = query.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
@@ -5651,7 +5651,7 @@ async function searchJobs(page = 0) {
       // FA-004: raised per-filter limit. FA-005 server-side UNION is preferred.
       const perFilter = Math.min(Math.ceil(2000 / filtersToRun.length), 500);
       const promises = filtersToRun.map(sf => {
-        let q = sb.from('ats_jobs').select('*', { count: 'planned' });
+        let q = sb.from('ats_jobs').select('*', { count: 'exact' });
         q = buildFilterQuery(sf, q, sf._locationIds);
         if (hiddenIds.length > 0) {
           q = q.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
@@ -7199,8 +7199,14 @@ function renderPagination(pageJobCount, total, currentPage) {
     return;
   }
 
-  // Summary: "Showing 1–50 of 1,325 jobs"
-  let html = `<div class="fp-summary">Showing ${from.toLocaleString()}–${to.toLocaleString()} of ${total.toLocaleString()} job${total !== 1 ? 's' : ''}</div>`;
+  // Summary: context-aware display
+  let html = '';
+  if (totalPages <= 1) {
+    // Single page — just show total, no range needed
+    html = `<div class="fp-summary">${total.toLocaleString()} job${total !== 1 ? 's' : ''} found</div>`;
+  } else {
+    html = `<div class="fp-summary">Showing ${from.toLocaleString()}–${to.toLocaleString()} of ${total.toLocaleString()} jobs</div>`;
+  }
 
   // Only show page controls if there are multiple pages
   if (totalPages > 1) {
