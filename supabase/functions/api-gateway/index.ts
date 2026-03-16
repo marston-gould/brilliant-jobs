@@ -93,7 +93,7 @@ const ROUTE_REGISTRY: Record<string, string> = {
   "rewrite-resume-analyze":   "rewrite-resume-analyze",   // SA-005
   "rewrite-resume-execute":   "rewrite-resume-execute",   // SA-005
   "rewrite-resume-extension": "rewrite-resume-extension", // EXT-AS-5
-  "generate-cover-letter":    "generate-cover-letter",    // SA-005
+  "bulk-apply-queue":         "bulk-apply-queue",         // AIS-F9-S2: bulk apply queue EF
   "resume-parse":             "resume-parse",             // RESUME-BUILDER-001-S1
   "resume-generate":          "resume-generate",          // RESUME-BUILDER-001-S2 (stub)
   "resume-optimize":          "resume-optimize",          // RESUME-BUILDER-001-S3 (stub)

@@ -2647,6 +2647,7 @@ function renderJobRows(jobs, total, page, filtersToRun) {
     const aiJdBadge = aiJdBadgeHtml(job.greenhouse_id);
 
     html += `<tr class="job-data-row" data-jobid="${escapeHtml(job.greenhouse_id)}" data-level-rank="${levelInfo ? levelInfo.rank : 999}">
+      <td class="jt-sel" style="width:28px;padding:0 4px;"><input type="checkbox" class="bulk-job-cb" data-jobid="${escapeHtml(job.greenhouse_id)}" onchange="window._bulkToggleJob && window._bulkToggleJob('${escapeHtml(job.greenhouse_id)}', this.checked)" style="cursor:pointer;accent-color:var(--accent);"></td>
       <td class="jt-title"><span class="sf-del" onclick="hideJob('${escapeHtml(job.greenhouse_id)}', this)" title="Hide this job">✕</span>${filterBadges}<span class="job-title-link" data-jobid="${escapeHtml(job.greenhouse_id)}" title="${escapeHtml(job.title||'')}">${truncate(job.title, 55)}</span>${newBadge}${fraudBadge}${aiJdBadge}</td>
       <td class="jt-level">${levelCell}</td>
       <td class="jt-company">${truncate(cleanCompanyName(job.company_name), 30)}</td>
@@ -2658,7 +2659,7 @@ function renderJobRows(jobs, total, page, filtersToRun) {
         ${saveBtn}${applyBtn}<button class="job-action-btn" onclick="if(typeof rbOpenOptimizeForJob==='function')rbOpenOptimizeForJob('${job.greenhouse_id}')" title="Optimize your resume for this job" style="font-size:11px;padding:4px 8px;">Optimize Resume</button>
       </div></td>
     </tr>
-    <tr class="job-snippet-row"><td colspan="8">${trustBannerHtml(job.greenhouse_id)}${aiContentBannerHtml(job.greenhouse_id)}<span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td></tr>`;
+    <tr class="job-snippet-row"><td colspan="9">${trustBannerHtml(job.greenhouse_id)}${aiContentBannerHtml(job.greenhouse_id)}<span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td></tr>`;
   }
 
   // UX-006: Proper pagination controls (replaces inline Load More)

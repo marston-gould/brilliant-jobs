@@ -1217,11 +1217,22 @@
           <!-- FB-PAYL-S2: Referral progress widget (shown to PAYL users) -->
           <div id="payl-referral-widget" class="u-hidden card" style="padding:12px;margin-bottom:12px;"></div>
 
+          <!-- AIS-F9-S1: Bulk Apply action bar -->
+          <div id="bulk-action-bar" style="display:none;position:sticky;top:0;z-index:50;background:var(--accent);color:#fff;padding:8px 16px;border-radius:8px;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
+            <span id="bulk-count-badge" style="font-size:12px;font-weight:700;">0 selected</span>
+            <span id="bulk-credit-cost" style="font-size:11px;opacity:0.85;"></span>
+            <div style="flex:1;"></div>
+            <button onclick="window._bulkApplySelected && window._bulkApplySelected()" style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);color:#fff;padding:5px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">⚡ Bulk Apply</button>
+            <button onclick="window._bulkSaveSelected && window._bulkSaveSelected()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:5px 14px;border-radius:6px;font-size:12px;cursor:pointer;">📌 Save All</button>
+            <button onclick="window._bulkClearSelection && window._bulkClearSelection()" style="background:none;border:none;color:rgba(255,255,255,0.7);font-size:18px;cursor:pointer;line-height:1;padding:0 4px;" title="Clear selection">×</button>
+          </div>
+
           <!-- Job results table -->
           <div class="u-overflow-x">
             <table class="job-table" id="job-table">
               <thead>
                 <tr>
+                  <th style="width:28px;padding:0 4px;"><input type="checkbox" id="bulk-select-all" title="Select all visible jobs" style="cursor:pointer;accent-color:var(--accent);" onchange="window._bulkSelectAll && window._bulkSelectAll(this.checked)"></th>
                   <th data-sort="title" style="width:24%;">Title <span class="sort-arrow">↕</span></th>
                   <th data-sort="level" style="width:7%;">Level <span class="sort-arrow">↕</span></th>
                   <th data-sort="company" style="width:13%;">Company <span class="sort-arrow">↕</span></th>
@@ -1929,6 +1940,19 @@
 
 <!-- AIS-F3-S1: Auto-apply fill status panel — shows submission progress/errors inline -->
           <div id="ais-fill-status-panel" style="display:none;margin-bottom:12px;"></div>
+
+          <!-- AIS-F9-S3: Bulk Apply Progress Panel -->
+          <div id="bulk-progress-panel" style="display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:12px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <div style="font-size:12px;font-weight:700;">Bulk Apply in Progress</div>
+              <button onclick="window._bulkProgressClose && window._bulkProgressClose()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:16px;line-height:1;">×</button>
+            </div>
+            <div id="bulk-progress-bar-wrap" style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:8px;">
+              <div id="bulk-progress-bar" style="height:100%;width:0%;background:var(--accent);transition:width 0.4s;border-radius:3px;"></div>
+            </div>
+            <div id="bulk-progress-text" style="font-size:11px;color:var(--text-muted);">Starting…</div>
+            <div id="bulk-job-status-list" style="margin-top:10px;max-height:160px;overflow-y:auto;font-size:11px;"></div>
+          </div>
 
 <!-- FB-PI-001 §7.1 Amber: Low-confidence signal cards -->
           <div id="pi-low-confidence-cards" style="display:none;margin-bottom:16px;"></div>

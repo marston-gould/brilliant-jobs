@@ -67,6 +67,7 @@ const chunks = {
     'js/upgrade.js',         // FB-TRIAL-001-S6: billing toggle for upgrade page
     'js/extension-download.js', // EXT-BUILD-001-S2: fingerprinted extension download + channel map
     'js/linkedin-import.js',    // AIS-F2-S2: LinkedIn PDF import UI + auto-population
+    'js/bulk-apply.js',         // AIS-F9-S1: Bulk apply multi-select UI
     'js/cover-letter.js',       // AIS-F8-S1: Cover letter generator UI
     'js/interview-prep.js',     // FB-INTPREP-001-S2: Interview Prep question bank UI
   ],
