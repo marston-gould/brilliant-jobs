@@ -19,7 +19,15 @@ primary_region = "iad"
   force_https = true
   auto_stop_machines = "stop"
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1  # AUDIT-D3-006: keep 1 machine warm — cold start delays apply submissions
+
+[[http_service.checks]]
+  # AUDIT-D3-006: poll /health so Fly detects hung/deadlocked worker, not just crashes
+  grace_period = "10s"
+  interval = "15s"
+  restart_limit = 3
+  timeout = "5s"
+  path = "/health"
 
 [[vm]]
   cpu_kind = "shared"

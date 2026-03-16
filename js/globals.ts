@@ -1249,6 +1249,28 @@ if (typeof window !== 'undefined') {
   });
 }
 
+// ── AUDIT-D3-002: fetchWithTimeout — timeout-guarded fetch for direct API calls ──
+// Wraps fetch() with AbortController. All direct fetch() calls to /api/* or EF URLs
+// MUST use this instead of raw fetch() to prevent indefinite hangs on slow/stalled servers.
+// Usage: const resp = await fetchWithTimeout('/api/resume-parse', { method: 'POST', ... });
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 30000): Promise<Response> {
+  var controller = new AbortController();
+  var timeoutId = setTimeout(function() { controller.abort(); }, timeoutMs);
+  try {
+    var response = await fetch(url, Object.assign({}, options, { signal: controller.signal }));
+    return response;
+  } catch (e: unknown) {
+    if (e instanceof Error && e.name === 'AbortError') {
+      reportError('fetch-timeout', new Error('Request timed out after ' + timeoutMs + 'ms: ' + url));
+      throw new Error('Request timed out — please try again.');
+    }
+    throw e;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+(window as Window & typeof globalThis & Record<string, unknown>).fetchWithTimeout = fetchWithTimeout;
+
 async function safeQuery(queryFn: () => Promise<unknown>, opts?: SafeQueryOptions): Promise<unknown> {
   var label = (opts && opts.label) || 'query';
   var fallback = opts && opts.fallback;

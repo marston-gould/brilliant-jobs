@@ -1064,7 +1064,7 @@ window.connectGmail = async function() {
   try {
     const { data: { session } } = await sb.auth.getSession();
     if (!session) { showToast('Please log in first.', { type: 'error' }); return; }
-    const res = await fetch('/api/auth/gmail/callback?action=connect', {
+    const res = await (typeof fetchWithTimeout === 'function' ? fetchWithTimeout : fetch)('/api/auth/gmail/callback?action=connect', {
       headers: { 'Authorization': 'Bearer ' + session.access_token }
     });
     const json = await res.json();
@@ -1083,7 +1083,7 @@ window.disconnectGmail = async function() {
   try {
     const { data: { session } } = await sb.auth.getSession();
     if (!session) return;
-    const res = await fetch('/api/auth/gmail/disconnect', {
+    const res = await (typeof fetchWithTimeout === 'function' ? fetchWithTimeout : fetch)('/api/auth/gmail/disconnect', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + session.access_token }
     });
@@ -1810,7 +1810,7 @@ window._enrichmentBadgeHtml = function(sf) {
 // Dashboard version check — shows banner if server has newer version
 (async function checkDashboardVersion() {
   try {
-    var resp = await fetch('/js/version.js?_t=' + Date.now(), { cache: 'no-store' });
+    var resp = await (typeof fetchWithTimeout === 'function' ? fetchWithTimeout : fetch)('/js/version.js?_t=' + Date.now(), { cache: 'no-store' });
     if (!resp.ok) return;
     var text = await resp.text();
     var match = text.match(/BJ_VERSION\s*=\s*['"]([^'"]+)['"]/);

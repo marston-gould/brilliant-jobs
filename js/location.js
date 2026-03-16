@@ -44,7 +44,7 @@ async function getRefCityRadius() {
   }
   // Fetch static JSON
   try {
-    var res = await fetch('/data/ref_city_radius.json');
+    var res = await (typeof fetchWithTimeout === 'function' ? fetchWithTimeout : fetch)('/data/ref_city_radius.json');
     if (res.ok) {
       _refCityCache = await res.json();
       localStorage.setItem('bj_ref_city_radius', JSON.stringify({ data: _refCityCache, ts: Date.now() }));
