@@ -1,11 +1,7 @@
 {
   "shell": {
     "file": "dashboard-shell.min.js",
-<<<<<<< HEAD
-    "hash": "ec1766a2",
-=======
-    "hash": "a9667214",
->>>>>>> dce9f48100791b9fd15cf8c0031445597fb37110
+    "hash": "99be2186",
     "size": 115017
   },
   "feed": {
@@ -30,32 +26,18 @@
   },
   "deferred": {
     "file": "dashboard-deferred.min.js",
-<<<<<<< HEAD
-    "hash": "8cb24b08",
-    "size": 582499
+    "hash": "8fb12b6a",
+    "size": 605153
   },
   "full": {
     "file": "dashboard.min.js",
-    "hash": "b9521f1f",
-    "size": 1197198
-=======
-    "hash": "414df25e",
-    "size": 601680
-  },
-  "full": {
-    "file": "dashboard.min.js",
-    "hash": "a1d98712",
-    "size": 1216737
->>>>>>> dce9f48100791b9fd15cf8c0031445597fb37110
+    "hash": "3f1a7bb3",
+    "size": 1220210
   },
   "styles": {
     "file": "styles.css",
     "hash": "564c5982",
     "size": 128113
   },
-<<<<<<< HEAD
-  "_buildHash": "26e75be3"
-=======
-  "_buildHash": "9c99ed60"
->>>>>>> dce9f48100791b9fd15cf8c0031445597fb37110
+  "_buildHash": "b0c73871"
 }

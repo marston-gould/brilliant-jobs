@@ -52,14 +52,6 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-<<<<<<< HEAD
-**SPEC-LPG-001-S3** — LinkedIn Summary Generator (F4) + Integration Polish ✅ — SPEC-LPG-001 COMPLETE
-- v9.72→v9.73 — linkedin_summary action added to optimize-linkedin-profile EF: 3-5 paragraph About section (max 2600 chars), 3 tones (professional/conversational/executive), target_roles support, resume_archive enrichment. LinkedIn tab UI: tone selector, target role input, 2 editable variant cards, Copy to Clipboard, char count indicator. Auto-suggest when Profile Optimizer summary score < 70 ("Your summary scored {score}. Generate a stronger one below."). Credit: 1/gen. PostHog: linkedin_summary_generated, linkedin_summary_copied. 46 tests. EF deployed.
-- **SPEC-LPG-001 COMPLETE: 3 sessions, 4 features (F1 Bullet Gen + F2 Summary Gen + F3 Profile Optimizer + F4 LinkedIn Summary Gen), 166 total tests (57+63+46).**
-
-**Previous: SPEC-LPG-001-S2** — LinkedIn Profile Optimizer (F3) ✅
-- v9.71→v9.72 — optimize-linkedin-profile EF, linkedin_optimizations table, LinkedIn nav tab + page shell, score gauge SVG, 5 section cards, top 3 actions, 7-day cache, 2 credits/analysis. 63 tests.
-=======
 **FB-ATS-001-S4** — ATS Pass Rate Improvement: LinkedIn Keyword Alignment Nudge (ATS-005) + Full Spec Gap Remediation ✅
 - v9.75→v9.76 — ATS-005: linkedin-alignment.js module (added to deferred build chunk). checkLinkedInAlignment() reads linkedin_profiles (skills_array, experience_json, headline) and compares against resume keywords from readinessCache + jobMatchScores. Minimum 3-gap threshold. Once-per-day cap via localStorage bj_linkedin_alignment_last. Heuristic section suggestions: tools→Skills, soft skills→Summary, default→Experience. Fixed-position nudge card (400px, bottom-right) with per-keyword chips + section badges + Update LinkedIn CTA + dismiss + role-type suppress. 30s auto-dismiss. PostHog: linkedin_alignment_nudge_shown, dismissed, cta_clicked. Wired into apply-workflow.js at two points: worker_submission_complete success path + proceedToApply completion.
 - **Full spec gap remediation (21 gaps identified, 20 fixed):**
@@ -85,7 +77,6 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 **Previous: SPEC-LPG-001-S2** — LinkedIn Profile Optimizer (F3) ✅
 - v9.71→v9.72 — optimize-linkedin-profile EF (analyze action, Haiku, 5-section weighted scoring, 7-day cache, 2 credits). linkedin_optimizations table (9 cols, RLS, indexes) applied to prod. LinkedIn nav item + page shell in dashboard.html (score gauge SVG, 5 section cards, top 3 actions banner, re-analyze button, no-profile CTA, loading skeleton). js/linkedin.js client module (_bjAnalyzeLinkedIn, initLinkedInTab). app.js wired (page titles/sections + tab handlers). build.js deferred chunk. Gateway route deployed. PostHog: linkedin_optimizer_viewed, linkedin_optimizer_analyzed. 63 tests.
->>>>>>> dce9f48100791b9fd15cf8c0031445597fb37110
 
 **Previous: SPEC-LPG-001-S1** — AI Bullet Point Generator (F1) + AI Summary Generator (F2) ✅
 - v9.70→v9.71 — resume-rewrite-bullet EF extended (159→318 lines): `generate` action (role_title + company + context + target_keywords → 3-5 ATS bullets), `summary` action (resume_id + tone + target_job_id → 2-3 professional summaries). LinkedIn + resume_archive profile enrichment for summary. 3 tone variants (professional/executive/technical). AI Writing Tools collapsible panel on Resumes tab (dashboard.html). Client JS: _bjGenerateBullets, _bjGenerateSummary, _bjCopyBullet, _bjCopySummary, _bjSetAsSummary. Set as Summary writes to parsed_json.summary. Target job dropdowns populated from user_pipeline. Resume dropdown populated from active resumes. Tier gate: ai_writing_daily (Free:3/day, Starter:10/day, Pro:unlimited) with localStorage tracking. PostHog: bullet_generator_used, bullet_copied, summary_generator_used, summary_copied, summary_set. 57 tests.
@@ -3847,6 +3838,13 @@ None.
 
 ---
 
+## Last Completed Session
+
+**SPEC-COHORT-001-S1** — Cohort & Credit System: Schema + Seed ✅
+- v9.76→v9.77 — cohort_tiers table (Free/Starter/Pro/Beta with rollover_cap: 0/50/-1/200). credit_ledger table (3-bucket: base/rolled/award; 9 event_types; indexes on user+period, awards expiry, feature). feature_costs table (11 EFs seeded: 8 active-debit, 3 passive with daily_cap). profiles additions: cohort_tier_id FK, cohort_tier_assigned_at, rollover_cap_override. 4 RPCs: fn_get_user_credit_balance (3-bucket jsonb), fn_debit_credits (FOR UPDATE + insufficient_credits raise), fn_grant_base_credits, fn_grant_award_credits. Backfill plan→cohort_tier_id. Bootstrap initial credit grants. RLS + GRANTS on all new tables. 104 tests (all passing).
+- **Pending manual step (Marston):** `supabase db push` (migration v9.76-spec-cohort-001-s1.sql)
+- **No EF deploys needed for S1** — all new code is Postgres functions.
+
 ## Last Multi-Session Bug Fix Run (v9.03 → v9.06, 2026-03-14)
 
 **Deployed fixes across v9.03–v9.06:**
@@ -4028,34 +4026,34 @@ Deliverables:
 
 ## Next Session
 
-<<<<<<< HEAD
-No specific session queued. SPEC-LPG-001 is feature-complete (3 sessions, 4 features, 166 tests).
-=======
-**FB-ATS-001-S4** — ATS Pass Rate Improvement: LinkedIn Keyword Alignment Nudge (ATS-005)
+**SPEC-COHORT-001-S2** — Cohort & Credit System: EF Layer
 
 **Entry Gate:**
-- [x] FB-ATS-001-S3 complete (docx export + cover letter auto-gen deployed)
-- [x] LinkedIn PDF parsing operational (PAYL gate / AIS-F2-S1)
-- [x] Notification center functional
+- [x] SPEC-COHORT-001-S1 complete (migration v9.76-spec-cohort-001-s1.sql applied to prod via `supabase db push`)
+- [x] cohort_tiers, credit_ledger, feature_costs tables live in prod
+- [x] fn_get_user_credit_balance, fn_debit_credits RPCs deployed
 
 **Fix Items:**
-1. ATS-005: LinkedIn Keyword Alignment Nudge — post-apply coaching feature. After successful application submission, compare resume keywords against stored LinkedIn profile data (skills_array, experience_json from linkedin_profiles table). Surface keyword gaps with specific suggestions for where to add them on LinkedIn (headline, summary, experience, skills section). Dashboard notification card. Once-per-day cap. Minimum 3-keyword gap threshold. "Update LinkedIn" CTA. Dismiss/suppress options.
-2. linkedin-alignment.js: New client module for comparison logic
-3. notification-center.js: New notification type
-4. apply-workflow.js: Trigger after successful submission
-5. Tests: 40+ validation tests
-6. Three-file close
+1. `get-user-balance` EF — JWT auth, calls fn_get_user_credit_balance, returns {rolled, base, awards, total, reset_date}. Gateway route.
+2. Debit middleware (`supabase/functions/_shared/creditGate.ts`) — auth → read feature_costs → balance check → fn_debit_credits → execute → refund_restore on error. Returns 402 INSUFFICIENT_CREDITS with {balance, cost, shortfall} when balance low.
+3. Wire creditGate into all 8 active-debit EFs: score-resume, rewrite-resume-analyze, rewrite-resume-execute, analyze-application-gap, chat-job-search, answer-form-question, extract-resume-profile, rewrite-resume-extension.
+4. Passive daily cap logic — for auto-apply-trigger, analyze-hidden-job, score-ai-content: COUNT debits for user+feature today, skip silently if >= daily_cap, debit 1 credit and execute if under cap.
+5. `replenish-credits` EF — reads profiles.cohort_tier_id → cohort_tiers.credits_monthly + rollover_cap (with rollover_cap_override check) → writes rollover_expire/rollover_grant/cohort_grant ledger entries. Called by billing webhook and directly testable via admin action.
+6. Award-expiry pg_cron — daily job: finds credit_ledger WHERE bucket='award' AND expires_at <= NOW() AND voided=false AND amount > 0, writes award_expire offsetting entries.
+7. Tests: 80+ validation tests covering debit gate, refund-restore, passive cap, replenishment all 3 rollover modes, award expiry.
+8. Three-file close.
 
 **Exit Gate:**
-- [ ] LinkedIn alignment nudge appears after apply with 4+ keyword gaps
-- [ ] Suggestions indicate where to add each keyword on LinkedIn
-- [ ] No duplicate nudge same day
-- [ ] Dismiss works
-- [ ] Tests passing
->>>>>>> dce9f48100791b9fd15cf8c0031445597fb37110
+- [ ] get-user-balance EF returns correct 3-bucket breakdown
+- [ ] score-resume EF returns 402 when user has 0 credits
+- [ ] score-resume EF debits 3 credits on success
+- [ ] Failed EF execution triggers refund_restore entry
+- [ ] auto-apply-trigger respects daily_cap=50
+- [ ] replenish-credits handles rollover_cap=0, N, -1 correctly
+- [ ] All tests passing
 
 **Other backlog:**
-- SPEC-LPG-001-S3: LinkedIn Summary Generator (F4) + Integration Polish
+- SPEC-COHORT-001-S3: Stripe integration + balance UI
 - CASA-001: Google CASA assessment + gmail.readonly upgrade
 
 
@@ -4087,11 +4085,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-<<<<<<< HEAD
-| **Product (BJ_VERSION)** | **`v9.73`** | **SPEC-LPG-001 COMPLETE: 4 features, 3 sessions, 166 tests.** |
-=======
-| **Product (BJ_VERSION)** | **`v9.76`** | **FB-ATS-001-S4: ATS-005 LinkedIn Alignment + full spec gap remediation. 198 total tests. FB-ATS-001 COMPLETE.** |
->>>>>>> dce9f48100791b9fd15cf8c0031445597fb37110
+| **Product (BJ_VERSION)** | **`v9.77`** | **SPEC-COHORT-001-S1: cohort_tiers, credit_ledger, feature_costs schema. 104 tests. Conflict markers in ROADMAP/HANDOFF resolved.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

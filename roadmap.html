@@ -11,7 +11,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v9.73"></script>
+  <script src="/js/version.js?v=v9.77"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2333,6 +2333,10 @@ const features = [
 { s: 'done', b: 'post-launch', n: 'SPEC-LPG-001 F3: LinkedIn Profile Optimizer', d: 'SPEC-LPG-001 Session 2. optimize-linkedin-profile EF. linkedin_optimizations table. Section-by-section scorecard (1-100). Headline/Summary/Experience/Skills/Education. Weighted scoring. Actionable recommendations. 7-day cache. LinkedIn tab in dashboard nav. Score gauge SVG. Credit: 2/analysis. 63 tests.', p: 100, e: '1 session' },
 { s: 'done', b: 'post-launch', n: 'SPEC-LPG-001 F4: LinkedIn Summary Generator + Polish', d: 'SPEC-LPG-001 Session 3. linkedin_summary action in optimize-linkedin-profile EF. 3-5 paragraph About section (max 2600 chars). 2 variants. 3 tones (professional/conversational/executive). Target roles. Resume enrichment. Auto-suggest when summary score < 70. Copy to Clipboard + char count. PostHog: linkedin_summary_generated, linkedin_summary_copied. Credit: 1/gen. SPEC-LPG-001 COMPLETE.', p: 100, e: '1 session' },
 { s: 'todo', b: 'post-launch', n: 'LP-IMAGES Landing Page Screenshots', d: 'Replace placeholder hero-dashboard-preview.webp and all benefit section image_url entries with real WebP screenshots once product is stable. Hero: job feed with salary data + match score badge. Benefit sections: 4 screenshots per section spec (sourcing, resume scoring, automated apply, pipeline). All images: WebP, lazy-loaded, inside browser-frame chrome.', p: 0, e: '1 session' },
+// SPEC-COHORT-001: Cohort & Credit System
+{ s: 'done', b: 'post-launch', n: 'SPEC-COHORT-001-S1: Schema + Seed', d: 'cohort_tiers table (Free/Starter/Pro/Beta), credit_ledger (3-bucket: base/rolled/award, 9 event_types, bucket debit order), feature_costs (11 EFs: 8 active-debit + 3 passive with daily caps). profiles: cohort_tier_id FK, rollover_cap_override. 4 RPCs: fn_get_user_credit_balance, fn_debit_credits (FOR UPDATE, raises insufficient_credits), fn_grant_base_credits, fn_grant_award_credits. Backfill plan→cohort_tier_id. Bootstrap initial credit grants for all users. RLS on all new tables. 104 tests. v9.77.', p: 100, e: '1 session' },
+{ s: 'todo', b: 'post-launch', n: 'SPEC-COHORT-001-S2: EF Layer', d: 'get-user-balance EF (3-bucket breakdown). Debit middleware (auth→cost read→balance check→debit→execute→refund_restore on error). replenish-credits EF (rollover_cap=0/N/-1 all three modes). award-expiry cron. Wire debit middleware into all 8 active-debit EFs. Passive daily cap logic in auto-apply-trigger, analyze-hidden-job, score-ai-content.', p: 0, e: '1 session' },
+{ s: 'todo', b: 'post-launch', n: 'SPEC-COHORT-001-S3: Stripe + UI', d: 'customer.subscription.updated webhook → cohort reassign + prorate credit entry. award-grant EF for referral/promo/milestone. Balance breakdown UI on subscription panel (3 buckets, reset date, low-balance warning at 20%). CI gates + full test coverage.', p: 0, e: '1 session' },
 ];
 
 
