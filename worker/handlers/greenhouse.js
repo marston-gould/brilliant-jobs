@@ -222,11 +222,21 @@ async function answerCommonQuestions(page, profile, log, opts = {}) {
   await fillEeoQuestions(page, profile, log, opts?.capturePostHog);
 
   // AIS-F8-S2: Fill cover letter field if present and cover letter provided
-  if (opts?.coverLetter) {
-    const clSelectors = ['textarea[name*="cover"]', 'textarea[id*="cover"]', 'textarea[placeholder*="cover"]', 'textarea[aria-label*="cover"]'];
-    for (const sel of clSelectors) {
-      const el = await page.$(sel);
-      if (el) { await humanType(page, sel, opts.coverLetter); log('Cover letter filled', { selector: sel }); break; }
+  const clSelectors = ['textarea[name*="cover"]', 'textarea[id*="cover"]', 'textarea[placeholder*="cover"]', 'textarea[aria-label*="cover"]'];
+  let clFieldFound = false;
+  for (const sel of clSelectors) {
+    const el = await page.$(sel);
+    if (el) { clFieldFound = true; break; }
+  }
+  if (clFieldFound) {
+    if (opts?.capturePostHog) opts.capturePostHog('cover_letter_field_detected', { ats_type: 'greenhouse', field_type: 'text' });
+    if (opts?.coverLetter) {
+      for (const sel of clSelectors) {
+        const el = await page.$(sel);
+        if (el) { await humanType(page, sel, opts.coverLetter); log('Cover letter filled', { selector: sel }); if (opts?.capturePostHog) opts.capturePostHog('cover_letter_attached', { ats_type: 'greenhouse', method: 'headless' }); break; }
+      }
+    } else {
+      if (opts?.capturePostHog) opts.capturePostHog('cover_letter_field_skipped', { ats_type: 'greenhouse', reason: 'no_letter_available' });
     }
   }
 }

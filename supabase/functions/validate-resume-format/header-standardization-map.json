@@ -1,0 +1,10 @@
+{
+  "Contact Information": ["about me", "personal details", "get in touch", "reach me", "personal info", "contact details", "contact me"],
+  "Professional Summary": ["summary", "profile", "about", "executive summary", "objective", "career objective", "professional profile", "overview", "career summary"],
+  "Work Experience": ["experience", "employment history", "career history", "where i've worked", "professional background", "roles", "employment", "work history", "professional experience", "relevant experience"],
+  "Skills": ["technical skills", "core competencies", "my toolbox", "expertise", "proficiencies", "what i do", "key skills", "competencies", "areas of expertise", "tools & technologies", "technical proficiencies"],
+  "Education": ["academic background", "the journey", "schooling", "qualifications", "training", "academic history", "academic credentials"],
+  "Certifications": ["licenses", "professional development", "credentials", "certificates", "accreditations", "licenses & certifications"],
+  "Projects": ["key projects", "portfolio", "selected work", "featured projects", "notable projects", "project highlights"],
+  "Awards": ["honors", "recognition", "achievements", "accomplishments", "honors & awards"]
+}

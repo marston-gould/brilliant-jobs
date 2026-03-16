@@ -268,6 +268,8 @@ async function _rwStartRewrite(feedback) {
     _rwState.sections = data.sections || [];
     _rwState.quality = data.quality || {};
     _rwState.newScore = data.new_score;
+    _rwState.acronymPairsAdded = data.acronym_pairs_added || [];
+    _rwState.headersStandardized = data.headers_standardized || [];
     _rwState.creditsUsed += data.credits_used || 0;
     _rwState.status = 'completed';
 
@@ -356,7 +358,24 @@ async function _rwAcceptAll() {
         original_score: _rwState.originalScore || null,
         new_score: _rwState.newScore || null,
         credits_charged: 3,
+        acronym_pairs_added: (_rwState.acronymPairsAdded || []).length,
+        headers_standardized: (_rwState.headersStandardized || []).length,
       });
+      // ATS-006: Specific acronym event
+      if ((_rwState.acronymPairsAdded || []).length > 0) {
+        capturePostHog('rewrite_acronym_pairs_added', {
+          resume_id: _rwState.resumeId,
+          count: _rwState.acronymPairsAdded.length,
+          pairs: _rwState.acronymPairsAdded,
+        });
+      }
+      // ATS-007: Specific header standardization event
+      if ((_rwState.headersStandardized || []).length > 0) {
+        capturePostHog('resume_headers_standardized', {
+          resume_id: _rwState.resumeId,
+          count: _rwState.headersStandardized.length,
+        });
+      }
     }
     closeRewritePanel();
 

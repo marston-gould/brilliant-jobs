@@ -2333,6 +2333,15 @@ function renderReadinessResults(scores) {
       html += '<span onclick="document.getElementById(\'' + detailId + '\').style.display=document.getElementById(\'' + detailId + '\').style.display===\'none\'?\'\':\'none\';this.textContent=document.getElementById(\'' + detailId + '\').style.display===\'none\'?\'Show keywords \u25b8\':\'Hide keywords \u25be\'" style="font-size:10px;color:var(--accent);cursor:pointer;margin-left:auto;font-weight:500;">Show keywords \u25b8</span>';
       html += '</div>';
 
+      // ATS-003: Match rate progress bar
+      if (fs.total > 0) {
+        var matchPct = Math.round((fs.matched / fs.total) * 100);
+        var barColor = matchPct >= 75 ? 'var(--green)' : matchPct >= 50 ? 'var(--warm)' : 'var(--red)';
+        html += '<div class="sg-match-rate" style="margin-bottom:8px;">';
+        html += '<div class="sg-match-rate-track"><div class="sg-match-rate-fill" style="width:' + matchPct + '%;background:' + barColor + ';"></div></div>';
+        html += '</div>';
+      }
+
       // Inline missing preview (top 5 missing, always visible)
       if (fs.topMissing.length > 0) {
         html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">';

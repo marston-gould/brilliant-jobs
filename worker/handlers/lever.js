@@ -170,9 +170,17 @@ async function answerLeverQuestions(page, profile, log, opts = {}) {
   await fillEeoQuestions(page, profile, log, opts?.capturePostHog);
 
   // AIS-F8-S2: Cover letter auto-attach
-  if (opts?.coverLetter) {
-    const clEl = await page.$('textarea[name*="cover"], textarea[id*="cover"], textarea[placeholder*="cover"]');
-    if (clEl) { const sel = await clEl.evaluate(e => e.id ? '#'+e.id : 'textarea'); await humanType(page, sel, opts.coverLetter); log('Cover letter filled (lever)'); }
+  const clEl = await page.$('textarea[name*="cover"], textarea[id*="cover"], textarea[placeholder*="cover"]');
+  if (clEl) {
+    if (opts?.capturePostHog) opts.capturePostHog('cover_letter_field_detected', { ats_type: 'lever', field_type: 'text' });
+    if (opts?.coverLetter) {
+      const sel = await clEl.evaluate(e => e.id ? '#'+e.id : 'textarea');
+      await humanType(page, sel, opts.coverLetter);
+      log('Cover letter filled (lever)');
+      if (opts?.capturePostHog) opts.capturePostHog('cover_letter_attached', { ats_type: 'lever', method: 'headless' });
+    } else {
+      if (opts?.capturePostHog) opts.capturePostHog('cover_letter_field_skipped', { ats_type: 'lever', reason: 'no_letter_available' });
+    }
   }
 }
 

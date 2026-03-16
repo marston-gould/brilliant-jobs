@@ -333,6 +333,10 @@ function _pollApplicationStatus(appId) {
             platform: 'dashboard',
           });
         }
+        // ATS-005: Check LinkedIn keyword alignment after successful submission
+        if (typeof checkLinkedInAlignment === 'function') {
+          checkLinkedInAlignment(localApp ? localApp.job_id : null, localApp ? localApp.job_title : '', localApp ? localApp.company_name : '');
+        }
         // Refresh list after a brief delay
         setTimeout(function() { loadPendingApplications().then(renderPendingApplications); }, 2000);
       } else if (data.status === 'failed') {
@@ -1073,6 +1077,10 @@ async function _fireApplyNotification(type, opts) {
 // ═══════════════════════════════════════════════════════════
 
 function showScoreGateModal(jobId, jobTitle, companyName, jobUrl, scoreResult) {
+  // Store context for ATS-003 keyword add handler
+  window._lastScoreGateJobId = jobId;
+  window._lastScoreGateJobTitle = jobTitle;
+  window._lastScoreGateCompany = companyName;
   // Remove any existing modal
   var existing = document.getElementById('score-gate-modal');
   if (existing) existing.remove();
@@ -1093,24 +1101,81 @@ function showScoreGateModal(jobId, jobTitle, companyName, jobUrl, scoreResult) {
   var scoreLabel = hasScore ? (score >= 75 ? 'Strong' : score >= 50 ? 'Partial' : 'Weak') : 'Unscored';
 
   var breakdownHtml = '';
-  if (scoreResult && scoreResult.recommendations) {
-    var missing = scoreResult.recommendations.missing_skills || [];
-    var strong = scoreResult.recommendations.strong_matches || [];
+  if (scoreResult) {
     breakdownHtml = '<div class="sg-breakdown">';
     if (scoreResult.analysis_summary) {
       breakdownHtml += '<div class="sg-summary">' + escapeHtml(scoreResult.analysis_summary) + '</div>';
     }
-    if (strong.length > 0) {
-      breakdownHtml += '<div class="sg-strong"><span class="sg-strong-label">✓ Matches:</span> ' +
-        strong.slice(0, 5).map(function(s) { return '<span class="sg-strong-chip">' + escapeHtml(s) + '</span>'; }).join(' ') +
-        '</div>';
+
+    // ATS-003: Keyword match rate bar
+    var keyMatches = scoreResult.key_matches || (scoreResult.recommendations ? scoreResult.recommendations.strong_matches : null) || [];
+    var keyGaps = scoreResult.key_gaps || (scoreResult.recommendations ? scoreResult.recommendations.missing_skills : null) || [];
+    var totalKeywords = keyMatches.length + keyGaps.length;
+    if (totalKeywords > 0) {
+      var matchPct = Math.round((keyMatches.length / totalKeywords) * 100);
+      var barColor = matchPct >= 75 ? 'var(--green)' : matchPct >= 50 ? 'var(--warm)' : 'var(--red)';
+      breakdownHtml += '<div class="sg-match-rate">';
+      breakdownHtml += '<div class="sg-match-rate-label">' + keyMatches.length + ' of ' + totalKeywords + ' keywords matched (' + matchPct + '%)</div>';
+      breakdownHtml += '<div class="sg-match-rate-track"><div class="sg-match-rate-fill" style="width:' + matchPct + '%;background:' + barColor + ';"></div></div>';
+      breakdownHtml += '</div>';
     }
-    if (missing.length > 0) {
-      breakdownHtml += '<div class="sg-missing"><span class="sg-missing-label">Missing:</span> ' + 
-        missing.map(function(s) { return '<span class="sg-missing-chip">' + escapeHtml(s) + '</span>'; }).join(' ') + 
-        '</div>';
+
+    // ATS-003: Categorized keyword checklist
+    var coreReqs = scoreResult.core_requirements || [];
+    if (coreReqs.length > 0) {
+      // Group by category
+      var categories = {};
+      for (var ci = 0; ci < coreReqs.length; ci++) {
+        var cr = coreReqs[ci];
+        var cat = cr.category || 'other';
+        if (!categories[cat]) categories[cat] = [];
+        categories[cat].push(cr);
+      }
+      var catLabels = { technical: 'Technical Skills', soft: 'Soft Skills', tool: 'Tools & Platforms', domain: 'Domain Knowledge', certification: 'Certifications', other: 'Other Requirements' };
+      var catKeys = Object.keys(categories);
+      for (var cci = 0; cci < catKeys.length; cci++) {
+        var catKey = catKeys[cci];
+        var items = categories[catKey];
+        var catMatched = items.filter(function(i) { return i.resume_evidence === 'strong' || i.resume_evidence === 'partial'; }).length;
+        breakdownHtml += '<div class="sg-cat-group">';
+        breakdownHtml += '<div class="sg-cat-header">' + escapeHtml(catLabels[catKey] || catKey) + ' <span class="sg-cat-count">' + catMatched + '/' + items.length + '</span></div>';
+        breakdownHtml += '<div class="sg-cat-items">';
+        for (var ii = 0; ii < items.length; ii++) {
+          var item = items[ii];
+          var isMatch = item.resume_evidence === 'strong';
+          var isPartial = item.resume_evidence === 'partial';
+          var chipClass = isMatch ? 'sg-strong-chip' : isPartial ? 'sg-partial-chip' : 'sg-missing-chip';
+          var chipIcon = isMatch ? '\u2713' : isPartial ? '\u2248' : '\u2717';
+          var addBtn = (!isMatch && !isPartial) ? ' <button class="sg-add-keyword-btn" onclick="event.stopPropagation();_sgAddKeyword(\'' + escapeHtml(item.skill).replace(/'/g, "\\'") + '\',\'' + escapeHtml(catKey) + '\')" title="Trigger targeted rewrite for this keyword">+</button>' : '';
+          breakdownHtml += '<span class="' + chipClass + '">' + chipIcon + ' ' + escapeHtml(item.skill) + addBtn + '</span>';
+        }
+        breakdownHtml += '</div></div>';
+      }
+    } else {
+      // Fallback to flat key_matches / key_gaps display
+      if (keyMatches.length > 0) {
+        breakdownHtml += '<div class="sg-strong"><span class="sg-strong-label">\u2713 Matches:</span> ' +
+          keyMatches.slice(0, 5).map(function(s) { return '<span class="sg-strong-chip">' + escapeHtml(s) + '</span>'; }).join(' ') +
+          '</div>';
+      }
+      if (keyGaps.length > 0) {
+        breakdownHtml += '<div class="sg-missing"><span class="sg-missing-label">Missing:</span> ' + 
+          keyGaps.map(function(s) { return '<span class="sg-missing-chip">' + escapeHtml(s) + ' <button class="sg-add-keyword-btn" onclick="event.stopPropagation();_sgAddKeyword(\'' + escapeHtml(s).replace(/'/g, "\\'") + '\',\'general\')" title="Trigger targeted rewrite for this keyword">+</button></span>'; }).join(' ') + 
+          '</div>';
+      }
     }
     breakdownHtml += '</div>';
+
+    // ATS-003: PostHog keyword breakdown viewed
+    if (totalKeywords > 0 && typeof capturePostHog === 'function') {
+      capturePostHog('keyword_breakdown_viewed', {
+        job_id: jobId,
+        match_rate: matchPct,
+        matched_count: keyMatches.length,
+        missing_count: keyGaps.length,
+        has_categories: coreReqs.length > 0,
+      });
+    }
   }
 
   var modal = document.createElement('div');
@@ -1132,6 +1197,7 @@ function showScoreGateModal(jobId, jobTitle, companyName, jobUrl, scoreResult) {
             '<div class="sg-score-val">' + scoreDisplay + '</div>' +
             '<div class="sg-score-label">' + scoreLabel + '</div>' +
           '</div>' +
+          (function() { var r = _getActiveResume(); return (r && typeof buildFormatBadge === 'function') ? buildFormatBadge(r) : ''; })() +
           '<div class="sg-threshold-info">' +
             (hasScore 
               ? 'Your resume scores <strong>' + score + '</strong> against this job. Your threshold is <strong>' + threshold + '</strong>.'
@@ -1175,6 +1241,21 @@ function closeScoreGateModal() {
     modal.remove();
   }
 }
+
+// ATS-003: Add keyword to resume via targeted rewrite
+window._sgAddKeyword = function(keyword, category) {
+  if (typeof capturePostHog === 'function') {
+    capturePostHog('keyword_add_clicked', { keyword: keyword, category: category });
+  }
+  // Close score gate modal and trigger rewrite with the keyword context
+  closeScoreGateModal();
+  // If triggerRewrite is available, use it — the rewrite prompt will pick up the keyword
+  if (typeof triggerRewrite === 'function' && typeof _lastScoreGateJobId !== 'undefined') {
+    triggerRewrite(_lastScoreGateJobId, _lastScoreGateJobTitle || '', _lastScoreGateCompany || '');
+  } else if (typeof showToast === 'function') {
+    showToast('Navigate to Resumes tab and use AI Rewrite to add "' + keyword + '" to your resume.', { type: 'info', duration: 6000 });
+  }
+};
 
 // ═══════════════════════════════════════════════════════════
 // D5: scoreAndRecheck — Call score-resume EF (1 credit)
@@ -1407,6 +1488,44 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
     } catch(_e) { /* non-fatal */ }
   }
 
+  // ATS-004: Auto-generate cover letter if none exists and we're in an auto mode
+  if (!coverLetterId && _isAutoMode && jobId && currentUser) {
+    try {
+      var clSession = await sb.auth.getSession();
+      var clToken = clSession && clSession.data && clSession.data.session ? clSession.data.session.access_token : null;
+      if (clToken) {
+        var clResp = await fetch(SUPABASE_URL + '/functions/v1/api-gateway/generate-cover-letter', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + clToken, 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+          body: JSON.stringify({
+            job_title: jobTitle || '',
+            company_name: companyName || '',
+            job_description: scoreResult && scoreResult.analysis_summary ? scoreResult.analysis_summary : '',
+            resume_id: resume.archiveId || resume.id || null,
+            tone: 'professional',
+          }),
+        });
+        if (clResp.ok) {
+          var clData = await clResp.json();
+          if (clData.id) { coverLetterId = clData.id; coverLetterContent = clData.content || ''; }
+          if (typeof capturePostHog === 'function') {
+            capturePostHog('cover_letter_auto_generated', {
+              job_id: jobId,
+              company: companyName,
+              mode: mode,
+              word_count: clData.word_count || 0,
+            });
+          }
+          console.log('[apply] ATS-004: Auto-generated cover letter for', companyName, jobTitle);
+        }
+      }
+    } catch (clErr) {
+      // Non-fatal — apply proceeds without cover letter
+      reportError('apply:cover-letter-auto', clErr);
+      console.warn('[apply] ATS-004: Cover letter auto-generation failed (non-fatal):', clErr.message);
+    }
+  }
+
   // Create pending_applications row
   var pendingRow = {
     user_id: currentUser.id,
@@ -1498,6 +1617,11 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
   await loadPendingApplications();
   renderPendingApplications();
   _applySubmitting = false;
+
+  // ATS-005: Check LinkedIn keyword alignment after any successful submission
+  if (typeof checkLinkedInAlignment === 'function') {
+    checkLinkedInAlignment(jobId, jobTitle, companyName);
+  }
 }
 
 function _updatePipelineApplied(jobId) {

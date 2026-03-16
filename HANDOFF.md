@@ -52,12 +52,40 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+<<<<<<< HEAD
 **SPEC-LPG-001-S3** — LinkedIn Summary Generator (F4) + Integration Polish ✅ — SPEC-LPG-001 COMPLETE
 - v9.72→v9.73 — linkedin_summary action added to optimize-linkedin-profile EF: 3-5 paragraph About section (max 2600 chars), 3 tones (professional/conversational/executive), target_roles support, resume_archive enrichment. LinkedIn tab UI: tone selector, target role input, 2 editable variant cards, Copy to Clipboard, char count indicator. Auto-suggest when Profile Optimizer summary score < 70 ("Your summary scored {score}. Generate a stronger one below."). Credit: 1/gen. PostHog: linkedin_summary_generated, linkedin_summary_copied. 46 tests. EF deployed.
 - **SPEC-LPG-001 COMPLETE: 3 sessions, 4 features (F1 Bullet Gen + F2 Summary Gen + F3 Profile Optimizer + F4 LinkedIn Summary Gen), 166 total tests (57+63+46).**
 
 **Previous: SPEC-LPG-001-S2** — LinkedIn Profile Optimizer (F3) ✅
 - v9.71→v9.72 — optimize-linkedin-profile EF, linkedin_optimizations table, LinkedIn nav tab + page shell, score gauge SVG, 5 section cards, top 3 actions, 7-day cache, 2 credits/analysis. 63 tests.
+=======
+**FB-ATS-001-S4** — ATS Pass Rate Improvement: LinkedIn Keyword Alignment Nudge (ATS-005) + Full Spec Gap Remediation ✅
+- v9.75→v9.76 — ATS-005: linkedin-alignment.js module (added to deferred build chunk). checkLinkedInAlignment() reads linkedin_profiles (skills_array, experience_json, headline) and compares against resume keywords from readinessCache + jobMatchScores. Minimum 3-gap threshold. Once-per-day cap via localStorage bj_linkedin_alignment_last. Heuristic section suggestions: tools→Skills, soft skills→Summary, default→Experience. Fixed-position nudge card (400px, bottom-right) with per-keyword chips + section badges + Update LinkedIn CTA + dismiss + role-type suppress. 30s auto-dismiss. PostHog: linkedin_alignment_nudge_shown, dismissed, cta_clicked. Wired into apply-workflow.js at two points: worker_submission_complete success path + proceedToApply completion.
+- **Full spec gap remediation (21 gaps identified, 20 fixed):**
+  - ATS-006: Created acronym-dictionary.json (100+ acronym→expansion pairs). Added post-rewrite validation logging in execute EF.
+  - ATS-007: Created header-standardization-map.json. Added resume_nonstandard_headers_detected PostHog event in resumes.js format check.
+  - ATS-003: Added "+" Add to Resume button per missing keyword in score gate modal (categorized + flat views). _sgAddKeyword handler triggers rewrite + fires keyword_add_clicked PostHog. Extension score gate popup gains keyword match rate bar + keyword chips. Extension rewrite review gains keywords_integrated + acronym_pairs_added before/after display.
+  - ATS-001: Added resume_format_issue_detected per-issue PostHog event. Added resume_format_ats_ready PostHog event. Added format badge to score gate modal via buildFormatBadge().
+  - ATS-002: Added resume_docx_generated log to export-resume-docx EF. Added .docx download button to extension rewrite review popup.
+  - ATS-004: Added cover_letter_field_detected, cover_letter_attached, cover_letter_field_skipped PostHog events to greenhouse, lever, generic worker handlers. Added generateCoverLetterForResume() manual mode function with mail icon on resume cards.
+  - ATS-006/007: Added rewrite_acronym_pairs_added + resume_headers_standardized specific PostHog events in rewrite.js.
+  - **1 known limitation:** ATS-001 embedded images/icons detection requires PDF binary analysis — we only have extracted text. Documented as future enhancement when PDF binary parsing is added.
+- 198 tests across 4 sessions (45 + 61 + 52 + 40), all passing.
+- **FB-ATS-001 COMPLETE** — all 7 fix plans shipped.
+
+**Previous: FB-ATS-001-S3** — ATS-002 .docx Export + ATS-004 Cover Letter Auto-Generation ✅
+- v9.74→v9.75 — ATS-002: New export-resume-docx EF. Pure OOXML builder (no libraries) — single-column, Arial font, US Letter, 1-inch margins. Parses raw resume text into sections by detecting header-like lines (uppercase/title case), bullet points, and paragraphs. Builds valid .docx ZIP, uploads to Supabase Storage resumes/docx-exports/, returns signed URL (1hr expiry). Gateway route added. Client: downloadResumeDocx() async function, file-text icon button on resume cards, toast feedback, PostHog resume_download_format with format:'docx'. ATS-004: Auto-generate cover letter in proceedToApply() when _isAutoMode && !coverLetterId. Calls existing generate-cover-letter EF (AIS-F8-S1) with job_title, company_name, resume_id, tone:'professional'. Stores coverLetterId on success for pending_applications attachment. All 15+ ATS handlers already fill cover letter fields (AIS-F8-S2). Non-fatal try/catch with reportError. PostHog cover_letter_auto_generated with job_id, company, mode, word_count. 52 tests.
+
+**Previous: FB-ATS-001-S2** — ATS-003 Keyword Match Rate Breakdown + ATS-001 Format Health Check ✅
+- v9.73→v9.74 — ATS-003: Score gate modal enhanced with keyword match rate progress bar ("8 of 12 keywords matched (67%)") color-coded green/warm/red. Categorized core_requirements checklist grouped by technical/soft/tool/domain/certification with per-category match counts. Partial evidence shown with ≈ icon. Fallback to flat key_matches/key_gaps when no categories. Match rate bar also added to readiness results per-filter breakdown in keywords.js. PostHog keyword_breakdown_viewed event. CSS: sg-match-rate, sg-cat-group, sg-partial-chip classes. ATS-001: New validate-resume-format EF with 7 detection checks (scanned_pdf, multi_column, tables_detected, non_standard_fonts, header_footer_contact, encoding_issues, non_standard_headers). ATS-safe font list (23 fonts). Section header standardization map integrated from ATS-007. Format score: 100 - 30*blocking - 10*warnings, clamped 0-100. is_ats_ready when 0 blocking + ≤1 warning. Gateway route added. Client: validateResumeFormat() called after text extraction. formatCheck stored on resume object. buildFormatBadge() renders ATS-Ready (green shield-check) / Format Issues (red triangle-alert) / Warnings (amber info) on resume cards. showFormatIssues() popup with per-issue severity badges. PostHog resume_format_check_run. 61 tests.
+
+**Previous: FB-ATS-001-S1** — ATS-006 Acronym Dual Inclusion + ATS-007 Section Header Standardization ✅
+- v9.72→v9.73 — Prompt engineering updates to rewrite-resume-execute + rewrite-resume-extension EFs. REWRITER_SYSTEM gains Rule 7 (ACRONYM RULE: include both full term and acronym on first use for all technical terms, skip universally known abbreviations AI/IT/HR/CEO/CTO/CFO/VP/MBA/PhD) and Rule 8 (SECTION HEADERS: replace non-standard headers with ATS-standard equivalents — Work Experience, Skills, Education, Professional Summary, Certifications, Projects, Awards). QUALITY_CHECKER_SYSTEM gains checks 6 (ACRONYM COMPLIANCE) and 7 (HEADER STANDARDIZATION). Extension REWRITE_SYSTEM gains Rules 9 + 10 (same content). Output format extended: acronym_pairs_added[] and headers_standardized[] in both EFs. Response objects include new arrays with || [] defaults. Notification payload includes acronymPairsAdded + headersStandardized counts. rewrite.js: _rwState stores new fields from EF response. resume_rewrite_completed PostHog event extended with acronym_pairs_added + headers_standardized counts. 45 tests.
+
+**Previous: SPEC-LPG-001-S2** — LinkedIn Profile Optimizer (F3) ✅
+- v9.71→v9.72 — optimize-linkedin-profile EF (analyze action, Haiku, 5-section weighted scoring, 7-day cache, 2 credits). linkedin_optimizations table (9 cols, RLS, indexes) applied to prod. LinkedIn nav item + page shell in dashboard.html (score gauge SVG, 5 section cards, top 3 actions banner, re-analyze button, no-profile CTA, loading skeleton). js/linkedin.js client module (_bjAnalyzeLinkedIn, initLinkedInTab). app.js wired (page titles/sections + tab handlers). build.js deferred chunk. Gateway route deployed. PostHog: linkedin_optimizer_viewed, linkedin_optimizer_analyzed. 63 tests.
+>>>>>>> dce9f48100791b9fd15cf8c0031445597fb37110
 
 **Previous: SPEC-LPG-001-S1** — AI Bullet Point Generator (F1) + AI Summary Generator (F2) ✅
 - v9.70→v9.71 — resume-rewrite-bullet EF extended (159→318 lines): `generate` action (role_title + company + context + target_keywords → 3-5 ATS bullets), `summary` action (resume_id + tone + target_job_id → 2-3 professional summaries). LinkedIn + resume_archive profile enrichment for summary. 3 tone variants (professional/executive/technical). AI Writing Tools collapsible panel on Resumes tab (dashboard.html). Client JS: _bjGenerateBullets, _bjGenerateSummary, _bjCopyBullet, _bjCopySummary, _bjSetAsSummary. Set as Summary writes to parsed_json.summary. Target job dropdowns populated from user_pipeline. Resume dropdown populated from active resumes. Tier gate: ai_writing_daily (Free:3/day, Starter:10/day, Pro:unlimited) with localStorage tracking. PostHog: bullet_generator_used, bullet_copied, summary_generator_used, summary_copied, summary_set. 57 tests.
@@ -4000,9 +4028,34 @@ Deliverables:
 
 ## Next Session
 
+<<<<<<< HEAD
 No specific session queued. SPEC-LPG-001 is feature-complete (3 sessions, 4 features, 166 tests).
+=======
+**FB-ATS-001-S4** — ATS Pass Rate Improvement: LinkedIn Keyword Alignment Nudge (ATS-005)
+
+**Entry Gate:**
+- [x] FB-ATS-001-S3 complete (docx export + cover letter auto-gen deployed)
+- [x] LinkedIn PDF parsing operational (PAYL gate / AIS-F2-S1)
+- [x] Notification center functional
+
+**Fix Items:**
+1. ATS-005: LinkedIn Keyword Alignment Nudge — post-apply coaching feature. After successful application submission, compare resume keywords against stored LinkedIn profile data (skills_array, experience_json from linkedin_profiles table). Surface keyword gaps with specific suggestions for where to add them on LinkedIn (headline, summary, experience, skills section). Dashboard notification card. Once-per-day cap. Minimum 3-keyword gap threshold. "Update LinkedIn" CTA. Dismiss/suppress options.
+2. linkedin-alignment.js: New client module for comparison logic
+3. notification-center.js: New notification type
+4. apply-workflow.js: Trigger after successful submission
+5. Tests: 40+ validation tests
+6. Three-file close
+
+**Exit Gate:**
+- [ ] LinkedIn alignment nudge appears after apply with 4+ keyword gaps
+- [ ] Suggestions indicate where to add each keyword on LinkedIn
+- [ ] No duplicate nudge same day
+- [ ] Dismiss works
+- [ ] Tests passing
+>>>>>>> dce9f48100791b9fd15cf8c0031445597fb37110
 
 **Other backlog:**
+- SPEC-LPG-001-S3: LinkedIn Summary Generator (F4) + Integration Polish
 - CASA-001: Google CASA assessment + gmail.readonly upgrade
 
 
@@ -4034,7 +4087,11 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
+<<<<<<< HEAD
 | **Product (BJ_VERSION)** | **`v9.73`** | **SPEC-LPG-001 COMPLETE: 4 features, 3 sessions, 166 tests.** |
+=======
+| **Product (BJ_VERSION)** | **`v9.76`** | **FB-ATS-001-S4: ATS-005 LinkedIn Alignment + full spec gap remediation. 198 total tests. FB-ATS-001 COMPLETE.** |
+>>>>>>> dce9f48100791b9fd15cf8c0031445597fb37110
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
