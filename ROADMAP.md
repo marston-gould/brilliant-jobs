@@ -106,17 +106,17 @@
 |---|------|------|--------|--------|-------|
 | D1 | Stats Page Redesign | 2d | 1h | ✅ | Theme tokens extracted (_T object), 15+ hardcoded colors/fonts → STATS_THEME. Loading state via CSS class. Inline styles removed from HTML. |
 | D2 | ATS Board Health (Admin Panel) | 2d | 1h | ✅ | Migration 004: last_http_status + last_refresh_at on ats_companies. Admin RPCs (get_board_health, get_board_health_by_platform). Admin page with 5 stat cards, delta badges, period toggle, platform table. |
-| D3 | Landing Page Phase 1 | 4d | 1h | 🚫 BLOCKED | Interactive preview (replaces static demo), hero ghost CTA, walkthrough carousel (6 slides), 8 PostHog events. **⛔ Blocked on:** D7 screenshot assets from CPO. Cannot complete walkthrough carousel without 5 images. |
+| D3 | Landing Page Phase 1 | 4d | 1h | ✅ SUPERSEDED | Walkthrough carousel superseded by LP-RESTRUCTURE (S1–S4, v9.41–v9.47). Dynamic benefit section renderer + hero screenshot replaced carousel entirely. Screenshots no longer needed. |
 | D4 | Cohort Phase B — Session Analytics | 2d | 30min | ✅ | Migration 005: user_sessions table + RLS. create_session/session_heartbeat RPCs. PostHog bridge (bj_session_id, bj_cohort_id, bj_plan_id super properties). sessionStorage-scoped, 5-min heartbeat. Client-side wiring complete in v3.40. |
 | D5 | Edge Function: refresh-jobs v12 | 0.5d | 10min | ✅ | Records last_http_status + last_refresh_at on every board fetch. Timeout → status 0. Deployed. |
 | D6 | Edge Function: preview-jobs | 0.5d | 5min | ✅ | New function for landing page preview. Deployed via Supabase CLI. |
-| D7 | Walkthrough screenshots (5x) | 0.5d | — | 🚫 BLOCKED | CPO: feed.webp, match.webp, stats.webp, pipeline.webp, notifications.webp → /img/walkthrough/. **⛔ Blocked on:** CPO deliverable — no ETA. Blocks D3 landing page completion. |
+| D7 | Walkthrough screenshots (5x) | 0.5d | — | ✅ SUPERSEDED | Walkthrough carousel removed in LP-RESTRUCTURE (S1, v9.41). Dynamic benefit sections + admin-managed content replaced static screenshots. No longer needed. |
 | D8 | Admin panel fixes | 0.5d | 30min | ✅ | RPC auth fix (service_role + auth.uid), query optimization (304K rows → indexed single-pass), platform RPC fixed. 3 indexes added (status, first_seen, closed_at). Admin panel now shows live data. |
 | D9 | Version unification | 0.25d | 10min | ✅ | Single BJ_VERSION constant in app.js drives console + nav. No more hardcoded version in HTML. v2.91. |
 | D10 | Data pages: CTAs + Data Lab link + level fix | 0.5d | 20min | ✅ | Signup CTA on all 6 data pages + hub. Eyebrow "Data Lab" now links to /data-lab. Salary level order fixed: Manager before Lead. |
 | D11 | Data pages: live data + security | 4d | 2h | ✅ | Planning + initial wiring. Actual deployment completed in F5–F7 (v3.39). |
 
-**Phase D status:** 10/11 complete. 🚫 D3 blocked on screenshots (CPO). 🚫 D7 blocked on screenshots (CPO).
+**Phase D status:** 11/11 complete. D3/D7 superseded by LP-RESTRUCTURE (dynamic benefit sections replaced walkthrough carousel).
 
 ---
 
@@ -973,7 +973,7 @@
 | **A** Pre-Launch Critical | 13/13 | — | ✅ Complete |
 | **B** Post-Launch Foundation | 12/12 | — | ✅ Complete |
 | **C** Scale Readiness | 10/10 | — | ✅ Complete |
-| **D** Product Features | 10/11 | v3.30–v3.40 | ⚠️ D3/D7 🚫 blocked on CPO screenshots |
+| **D** Product Features | 11/11 | v3.30–v3.40 | ✅ Complete (D3/D7 superseded by LP-RESTRUCTURE) |
 | **E** Feb 21 Feature Sprint | 46/46 | v2.68–v3.48 | ✅ Complete |
 | **F** Feb 22 Sprint | 15/15 | v3.30–v3.40 | ✅ Complete |
 | **G** AI Resume Pipeline | 36/36 | v3.49–v3.55 | ✅ Complete |
@@ -1019,14 +1019,14 @@
 | **56** SEO Count Accuracy | 4/4 | v5.66 | ✅ Complete |
 | **57** Industry Detail Pages | 1/1 | v5.90 | ✅ Complete |
 | | | | |
-| **Total** | **~870 done** | **v2.68–v5.90** | **7 in progress, 113 todo, ~15 🚫 blocked** |
+| **Total** | **~877 done** | **v2.68–v9.82** | **7 in progress, 106 todo, ~8 🚫 blocked** |
 
 ### 🚫 Blocked Items Quick Reference (Updated 2026-03-01)
 
 | Item | Blocked On | Owner | Category | Notes |
 |------|-----------|-------|----------|-------|
-| D3 — Landing Page interactive preview | D7 screenshots from CPO | CPO | **CEO/CPO Action** | |
-| D7 — Walkthrough screenshots (5x) | CPO deliverable | CPO | **CEO/CPO Action** | |
+| ~~D3 — Landing Page interactive preview~~ | ~~D7 screenshots from CPO~~ | — | ~~Resolved~~ | ✅ SUPERSEDED by LP-RESTRUCTURE (dynamic benefit sections replaced walkthrough carousel) |
+| ~~D7 — Walkthrough screenshots (5x)~~ | ~~CPO deliverable~~ | — | ~~Resolved~~ | ✅ SUPERSEDED by LP-RESTRUCTURE (carousel removed, admin-managed content sections) |
 | Stripe Billing Portal configuration | Configure in Stripe Dashboard | CEO | **CEO/CPO Action** | EF exists, portal needs config |
 | Vonage inbound webhook URL | Set in Vonage Dashboard | CEO | **CEO/CPO Action** | Required for production SMS |
 | Toll-free verification (I11) | Submit via Vonage Dashboard | CEO | **CEO/CPO Action** | Non-blocking for testing |
@@ -1051,8 +1051,8 @@
 | ~~`survey_social_proof` anon access~~ | M | — | ✅ Done — M-R6 (v4.29) |
 | `nps-pulse` Edge Function not deployed | M | **High** | Needs deploy: `supabase functions deploy nps-pulse --no-verify-jwt` |
 | 🚫 Stripe Billing Portal for self-service | H | **High** | ⛔ CEO action — configure Customer Portal in Stripe Dashboard |
-| 🚫 D3 — Landing Page interactive preview | D | Medium | ⛔ Blocked on D7 screenshots from CPO |
-| 🚫 D7 — Walkthrough screenshots (5x) | D | Medium | ⛔ Blocked on CPO deliverable |
+| ~~🚫 D3 — Landing Page interactive preview~~ | D | — | ✅ SUPERSEDED by LP-RESTRUCTURE |
+| ~~🚫 D7 — Walkthrough screenshots (5x)~~ | D | — | ✅ SUPERSEDED by LP-RESTRUCTURE |
 | 🚫 Vonage inbound webhook URL | I | **High** | ⛔ CEO action — set on Vonage Dashboard → Numbers → 18108923590 |
 | 🚫 Toll-free verification | I | Low | ⛔ CEO action — submit via Vonage dashboard |
 | 🚫 Vendor payout consolidation | H | Low | ⛔ Post-launch ops |
@@ -1635,11 +1635,11 @@ All 16 spec items verified against live infrastructure:
 | FQ10 | User feed signals table | v4.90 | ✅ | `feed_signals` table: user_id, greenhouse_id, signal_type, filter_name. RLS: users read/write own. `log_feed_signal` RPC (fire-and-forget). `get_feed_signal_stats` RPC. Signals: click, hide, save, apply. |
 | FQ11 | Filter health score | v4.89 | ✅ | `get_filter_health` RPC: total matches, salary %, skills %, remote count, top skills, top departments. Weighted composite (salary 40%, skills 30%, content 30%). 💡 button on each saved filter → popover. |
 | FQ12 | Smart skill suggestions | v4.89 | ✅ | Health popover shows top skills from matching jobs not in filter. Click → adds skill pill instantly with toast. `bjShowImproveSuggestions` / `bjApplyImproveSuggestions`. |
-| FQ13 | Resume mismatch warnings | TBD | 📋 PLANNED | Cross-reference resume skills vs top jd_skills. Alert if 70%+ JDs require missing skill. |
-| FQ14 | AI enrichment pilot (5K jobs) | TBD | 📋 PLANNED | `enrich-jd` EF. Claude Haiku: function, technical_level, mgmt_scope, summary, differentiators. 5K-job pilot (~$4). 4-layer evaluation. Go/no-go gate. |
-| FQ15 | Full AI backfill (if pilot passes) | TBD | 📋 PLANNED | Phase 4b: full 350K backfill (~$280). pg_cron pipeline. Pro-gated FUNCTION and TECHNICAL DEPTH filters. "Why This Job?" feed card expansion. |
+| FQ13 | Resume mismatch warnings | TBD | ✅ SUPERSEDED | Superseded by ATS-005 (LinkedIn Keyword Alignment Nudge, v9.76). Compares resume keywords against LinkedIn profile + job match data, surfaces per-keyword gap chips with section suggestions. |
+| FQ14 | AI enrichment pilot (5K jobs) | TBD | ✅ SUPERSEDED | Superseded by EDE-001 (Event-Driven JD Enrichment, v9.07). Cron-driven batch enrichment replaced by user-intent-triggered on-demand enrichment with eligibility gates. |
+| FQ15 | Full AI backfill (if pilot passes) | TBD | ✅ SUPERSEDED | Superseded by EDE-001. Event-driven model eliminates need for full backfill — jobs enriched on demand when users save filters. |
 
-**Phase 40 status:** 13/16 complete. 3 remaining (resume mismatch, AI enrichment pilot, full backfill).
+**Phase 40 status:** 16/16 complete. FQ13 superseded by ATS-005, FQ14/FQ15 superseded by EDE-001.
 
 
 ## Phase 40b: Pod 1 Sprint — Pricing, Global Version, AEO (v4.84) — 2026-02-25
@@ -2586,31 +2586,30 @@ Key deliverables: send-notification v4 with full classification + suppression, a
 
 | # | Card | Status | Estimate | Notes |
 |---|------|--------|----------|-------|
-| 1 | Test enrich-fcd-batch + activate cron | Todo | 1.5h | POST test → verify → activate pg_cron #63. Blocks card 2. |
-| 2 | Ongoing JD AI enrichment cron | Todo | 3h | Perpetual pg_cron every 15 min. Same EF, lower frequency. Monitoring. |
+| 1 | Test enrich-fcd-batch + activate cron | ✅ SUPERSEDED | 1.5h | Superseded by EDE-001 (Event-Driven JD Enrichment, v9.07). Cron-driven batch model replaced by user-intent-triggered on-demand enrichment. |
+| 2 | Ongoing JD AI enrichment cron | ✅ SUPERSEDED | 3h | Superseded by EDE-001. enrich-jd-ai still runs as drain cron (*/10), but primary enrichment is now event-driven via enrich-jd-location EF. |
 | 3 | FUNCTION filter pill (Pro-gated) | Todo | 3h | New pill type from jd_function. Query builder + autocomplete. |
 | 4 | TECHNICAL DEPTH filter pill (Pro-gated) | Todo | 2h | New pill type from jd_seniority/technical depth. |
 | 5 | "Why This Job?" feed card expansion | Todo | 3h | AI match reasons on feed cards (jd_skills, jd_function chips). |
-| 6 | Resume mismatch warnings | Todo | 4h | Cross-ref resume vs top jd_skills. Alert if 70%+ JDs require missing skill. |
+| 6 | Resume mismatch warnings | ✅ SUPERSEDED | 4h | Superseded by ATS-005 (LinkedIn Keyword Alignment Nudge, v9.76) + AIS resume tailoring gap analysis. |
 
 ### Post-Launch (2 sessions)
 
 | # | Card | Status | Estimate | Notes |
 |---|------|--------|----------|-------|
-| 7 | Usage limits per tier (cohort entitlements) | Todo | 2–3d | Cohort schema + check_entitlement() v2 + client gating + usage tracking. |
+| 7 | Usage limits per tier (cohort entitlements) | ✅ SUPERSEDED | 2–3d | Superseded by SPEC-COHORT-001 (3 sessions, 252 tests). cohort_tiers + credit_ledger + creditGate.ts + passiveCap all live. |
 
 ### Deferred
 
 | # | Card | Status | Estimate | Notes |
 |---|------|--------|----------|-------|
-| 8 | Data freshness gating | Todo | 4–5d | Tiered recency (Free=30d lag, Pro=real-time). Depends on Item 7 + Stripe. |
+| 8 | Data freshness gating | ✅ SUPERSEDED | 4–5d | Superseded by FB-TRIAL-001 trial gate system. Features gated by user_state (trialing/active_pro/expired_free) rather than data recency. |
 
 ### Dependency Chain
 
 ```
-Card 1 (test/activate) → Card 2 (cron) → Cards 3,4,5 (filters + feed)
-                                        → Card 6 (resume mismatch, needs jd_skills coverage)
-Card 7 (entitlements, independent) → Card 8 (freshness gating)
+Cards 1,2,6,7,8 — SUPERSEDED (EDE-001, ATS-005, SPEC-COHORT-001, FB-TRIAL-001)
+Cards 3,4,5 — Still open (FUNCTION pill, TECHNICAL DEPTH pill, Why This Job)
 ```
 
 ## Phase 73 — Cron Cost Optimization + Athena ATS Discovery Pipeline (v6.51-v6.54)
