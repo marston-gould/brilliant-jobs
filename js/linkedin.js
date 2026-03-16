@@ -171,9 +171,98 @@
     }
   };
 
+  // --- F4: LinkedIn Summary Generator ---
+  window._bjGenerateLinkedInSummary = async function () {
+    var tone = (document.getElementById('li-sum-tone') || {}).value || 'professional';
+    var targetRole = (document.getElementById('li-sum-target-role') || {}).value || '';
+    var btn = document.getElementById('li-sum-generate-btn');
+    var resultsEl = document.getElementById('li-sum-results');
+
+    if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+    if (resultsEl) resultsEl.innerHTML = '<div class="skeleton" style="height:120px;border-radius:8px;margin-bottom:8px;"></div>'.repeat(2);
+
+    try {
+      var token = (typeof sb !== 'undefined' && sb.auth) ? (await sb.auth.getSession()).data?.session?.access_token : null;
+      if (!token) throw new Error('Not authenticated');
+
+      var gwUrl = (typeof SUPABASE_URL !== 'undefined' ? SUPABASE_URL : '') + '/functions/v1/api-gateway/optimize-linkedin-profile';
+      var targetRoles = targetRole.trim() ? [targetRole.trim()] : [];
+      var resp = await fetch(gwUrl, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'linkedin_summary', tone: tone, target_roles: targetRoles }),
+      });
+
+      var data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Generation failed');
+
+      var summaries = data.summaries || [];
+      var charCounts = data.char_counts || summaries.map(function (s) { return s.length; });
+
+      if (typeof capturePostHog === 'function') capturePostHog('linkedin_summary_generated', {
+        tone: tone, char_count: charCounts[0] || 0, has_target_role: targetRoles.length > 0,
+      });
+
+      if (resultsEl) {
+        resultsEl.innerHTML = summaries.map(function (s, i) {
+          var esc = (typeof escHtml === 'function') ? escHtml(s) : s.replace(/</g, '&lt;');
+          var charCount = charCounts[i] || s.length;
+          var overLimit = charCount > 2600;
+          return '<div class="card" style="padding:14px 18px;margin-bottom:8px;">' +
+            '<div style="font-size:12px;line-height:1.7;margin-bottom:10px;white-space:pre-wrap;">' + esc + '</div>' +
+            '<div style="display:flex;align-items:center;gap:8px;">' +
+            '<button class="btn btn-sm btn-secondary" onclick="window._bjCopyLinkedInSummary(' + i + ')">Copy to Clipboard</button>' +
+            '<span style="font-size:10px;color:' + (overLimit ? 'var(--warm)' : 'var(--text-faint)') + ';">' +
+            charCount + ' / 2,600 chars' + (overLimit ? ' (over limit)' : '') + '</span>' +
+            '</div></div>';
+        }).join('');
+        window._bjLastLinkedInSummaries = summaries;
+      }
+    } catch (e) {
+      reportError('_bjGenerateLinkedInSummary', e);
+      if (resultsEl) resultsEl.innerHTML = '<div style="color:var(--warm);font-size:12px;padding:8px;">Error: ' +
+        ((typeof escHtml === 'function') ? escHtml(e.message) : e.message) + '</div>';
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Generate (1 credit)'; }
+    }
+  };
+
+  window._bjCopyLinkedInSummary = function (idx) {
+    var summaries = window._bjLastLinkedInSummaries || [];
+    if (!summaries[idx]) return;
+    try {
+      navigator.clipboard.writeText(summaries[idx]);
+      if (typeof showToast === 'function') showToast('LinkedIn summary copied!', { type: 'success' });
+      if (typeof capturePostHog === 'function') capturePostHog('linkedin_summary_copied', { index: idx });
+    } catch (e) { reportError('_bjCopyLinkedInSummary', e); }
+  };
+
+  // --- Auto-suggest when summary score < 70 ---
+  var _origRenderResults = _renderLinkedInResults;
+  _renderLinkedInResults = function (data) {
+    _origRenderResults(data);
+
+    var summarySection = document.getElementById('li-summary-section');
+    var autoSuggest = document.getElementById('li-summary-auto-suggest');
+
+    if (summarySection) summarySection.style.display = 'block';
+
+    if (autoSuggest && data.sections && data.sections.summary) {
+      var summaryScore = data.sections.summary.score || 0;
+      if (summaryScore < 70) {
+        autoSuggest.style.display = 'block';
+        autoSuggest.textContent = 'Your summary scored ' + summaryScore + '/100. Generate a stronger one below.';
+      } else {
+        autoSuggest.style.display = 'none';
+      }
+    }
+  };
+
   // BJ namespace
   if (typeof window.BJ !== 'undefined') {
     window.BJ._bjAnalyzeLinkedIn = window._bjAnalyzeLinkedIn;
     window.BJ.initLinkedInTab = window.initLinkedInTab;
+    window.BJ._bjGenerateLinkedInSummary = window._bjGenerateLinkedInSummary;
+    window.BJ._bjCopyLinkedInSummary = window._bjCopyLinkedInSummary;
   }
 })();

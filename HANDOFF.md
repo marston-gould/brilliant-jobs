@@ -52,8 +52,12 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**SPEC-LPG-001-S2** — LinkedIn Profile Optimizer (F3) ✅
-- v9.71→v9.72 — optimize-linkedin-profile EF (analyze action, Haiku, 5-section weighted scoring, 7-day cache, 2 credits). linkedin_optimizations table (9 cols, RLS, indexes) applied to prod. LinkedIn nav item + page shell in dashboard.html (score gauge SVG, 5 section cards, top 3 actions banner, re-analyze button, no-profile CTA, loading skeleton). js/linkedin.js client module (_bjAnalyzeLinkedIn, initLinkedInTab). app.js wired (page titles/sections + tab handlers). build.js deferred chunk. Gateway route deployed. PostHog: linkedin_optimizer_viewed, linkedin_optimizer_analyzed. 63 tests.
+**SPEC-LPG-001-S3** — LinkedIn Summary Generator (F4) + Integration Polish ✅ — SPEC-LPG-001 COMPLETE
+- v9.72→v9.73 — linkedin_summary action added to optimize-linkedin-profile EF: 3-5 paragraph About section (max 2600 chars), 3 tones (professional/conversational/executive), target_roles support, resume_archive enrichment. LinkedIn tab UI: tone selector, target role input, 2 editable variant cards, Copy to Clipboard, char count indicator. Auto-suggest when Profile Optimizer summary score < 70 ("Your summary scored {score}. Generate a stronger one below."). Credit: 1/gen. PostHog: linkedin_summary_generated, linkedin_summary_copied. 46 tests. EF deployed.
+- **SPEC-LPG-001 COMPLETE: 3 sessions, 4 features (F1 Bullet Gen + F2 Summary Gen + F3 Profile Optimizer + F4 LinkedIn Summary Gen), 166 total tests (57+63+46).**
+
+**Previous: SPEC-LPG-001-S2** — LinkedIn Profile Optimizer (F3) ✅
+- v9.71→v9.72 — optimize-linkedin-profile EF, linkedin_optimizations table, LinkedIn nav tab + page shell, score gauge SVG, 5 section cards, top 3 actions, 7-day cache, 2 credits/analysis. 63 tests.
 
 **Previous: SPEC-LPG-001-S1** — AI Bullet Point Generator (F1) + AI Summary Generator (F2) ✅
 - v9.70→v9.71 — resume-rewrite-bullet EF extended (159→318 lines): `generate` action (role_title + company + context + target_keywords → 3-5 ATS bullets), `summary` action (resume_id + tone + target_job_id → 2-3 professional summaries). LinkedIn + resume_archive profile enrichment for summary. 3 tone variants (professional/executive/technical). AI Writing Tools collapsible panel on Resumes tab (dashboard.html). Client JS: _bjGenerateBullets, _bjGenerateSummary, _bjCopyBullet, _bjCopySummary, _bjSetAsSummary. Set as Summary writes to parsed_json.summary. Target job dropdowns populated from user_pipeline. Resume dropdown populated from active resumes. Tier gate: ai_writing_daily (Free:3/day, Starter:10/day, Pro:unlimited) with localStorage tracking. PostHog: bullet_generator_used, bullet_copied, summary_generator_used, summary_copied, summary_set. 57 tests.
@@ -3996,26 +4000,7 @@ Deliverables:
 
 ## Next Session
 
-**SPEC-LPG-001-S3** — LinkedIn Summary Generator (F4) + Integration Polish
-
-**Entry Gate:**
-- [x] SPEC-LPG-001-S2 complete (optimize-linkedin-profile EF + LinkedIn tab)
-
-**Fix Items:**
-1. Add `linkedin_summary` action to optimize-linkedin-profile EF: { tone, target_roles? } → { summaries: string[] } (2 variants, max 2600 chars each)
-2. LinkedIn Summary Generator UI on LinkedIn tab below the scorecard: tone selector, optional target role, 2 editable variant cards, Copy to Clipboard, character count indicator (2600 limit)
-3. Auto-suggest: when Profile Optimizer summary score < 70, show prompt "Your summary scored {score}. Generate a stronger one?"
-4. Credit cost: 1 per generation
-5. PostHog: linkedin_summary_generated, linkedin_summary_copied
-6. Update competitor feature grid: BJ checkmark for Interview Tracker (already built)
-7. Tests: 50+ validation tests
-8. Three-file close
-
-**Exit Gate:**
-- [ ] linkedin_summary action in EF deployed
-- [ ] Summary generator UI renders on LinkedIn tab
-- [ ] Auto-suggest triggers for low summary scores
-- [ ] Tests passing
+No specific session queued. SPEC-LPG-001 is feature-complete (3 sessions, 4 features, 166 tests).
 
 **Other backlog:**
 - CASA-001: Google CASA assessment + gmail.readonly upgrade
@@ -4049,7 +4034,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.72`** | **SPEC-LPG-001-S2: LinkedIn Profile Optimizer. 63 tests.** |
+| **Product (BJ_VERSION)** | **`v9.73`** | **SPEC-LPG-001 COMPLETE: 4 features, 3 sessions, 166 tests.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

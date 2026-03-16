@@ -247,7 +247,146 @@ serve(async (req) => {
       }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    return new Response(JSON.stringify({ error: `Unknown action: ${action}. Valid: analyze.` }), {
+    // --- ACTION: LINKEDIN_SUMMARY (F4 — LinkedIn Summary Generator) ---
+    if (action === 'linkedin_summary') {
+      const { tone = 'professional', target_roles = [] } = body;
+      if (!['professional', 'conversational', 'executive'].includes(tone)) {
+        return new Response(JSON.stringify({ error: 'tone must be professional, conversational, or executive.' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Load LinkedIn profile
+      const { data: profile } = await sb
+        .from('linkedin_profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (!profile) {
+        return new Response(JSON.stringify({ error: 'No LinkedIn profile found. Upload your LinkedIn PDF first.' }), {
+          status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Also pull resume data for richer context
+      const { data: resumes } = await sb
+        .from('resume_archive')
+        .select('extracted_text, parsed_json')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      // Credit check (1 credit)
+      const { data: ent } = await sb
+        .from('entitlements')
+        .select('credits_remaining')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (!ent || (ent.credits_remaining ?? 0) < 1) {
+        return new Response(JSON.stringify({
+          error: 'Insufficient credits. Generation costs 1 credit.',
+          credits_required: 1, credits_remaining: ent?.credits_remaining ?? 0,
+        }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      // Build context
+      const contextParts: string[] = [];
+      if (profile.display_name) contextParts.push(`NAME: ${profile.display_name}`);
+      if (profile.headline) contextParts.push(`CURRENT HEADLINE: ${profile.headline}`);
+      if (profile.experience_json?.length) {
+        const exp = profile.experience_json.slice(0, 5).map((e: Record<string, unknown>) => {
+          const bullets = Array.isArray(e.bullets) ? e.bullets.slice(0, 3).join('; ') : '';
+          return `${e.title || ''} at ${e.company || ''} (${e.duration || ''})${bullets ? ': ' + bullets : ''}`;
+        });
+        contextParts.push(`EXPERIENCE:\n${exp.join('\n')}`);
+      }
+      if (profile.skills_array?.length) contextParts.push(`SKILLS: ${profile.skills_array.slice(0, 20).join(', ')}`);
+      if (profile.education_json?.length) {
+        contextParts.push(`EDUCATION: ${profile.education_json.map((e: Record<string, unknown>) => `${e.degree || ''} — ${e.school || ''}`).join('; ')}`);
+      }
+
+      // Resume enrichment
+      if (resumes?.[0]?.parsed_json?.work_experience) {
+        const resumeAchievements = resumes[0].parsed_json.work_experience.slice(0, 3)
+          .flatMap((w: Record<string, unknown>) => Array.isArray(w.bullets) ? w.bullets.slice(0, 2) : [])
+          .join('; ');
+        if (resumeAchievements) contextParts.push(`KEY ACHIEVEMENTS FROM RESUME: ${resumeAchievements}`);
+      }
+
+      const targetRoleStr = target_roles.length > 0 ? target_roles.slice(0, 3).join(', ') : '';
+
+      const LINKEDIN_SUMMARY_SYSTEM = `Write a LinkedIn About section (3-5 paragraphs, max 2600 chars).
+Structure:
+P1: Hook - what you do + your signature result
+P2: Career narrative - trajectory + domain expertise
+P3: What sets you apart - unique skills/approach
+P4: What you're looking for (if job searching)
+P5: CTA - how to reach you
+
+Rules:
+- First person voice ("I")
+- ${tone === 'conversational' ? 'Warm, approachable, conversational tone' : tone === 'executive' ? 'Authoritative, strategic, executive tone' : 'Professional but personable tone'}
+- Include 8-12 target keywords naturally
+- Lead with outcomes, not responsibilities
+- Avoid: "passionate", "guru", "ninja", "rockstar"
+- MUST be under 2600 characters
+
+Return ONLY a JSON array of 2 summary strings. No preamble, no markdown fences.`;
+
+      const userPrompt = `Generate 2 LinkedIn About section variants.
+
+${contextParts.join('\n\n')}
+${targetRoleStr ? `\nTARGET ROLES: ${targetRoleStr}` : ''}
+TONE: ${tone}
+
+Return ONLY a JSON array of 2 strings (each 3-5 paragraphs, max 2600 chars).`;
+
+      const aiResult = await anthropicFetch(sb, {
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 4096,
+        system: LINKEDIN_SUMMARY_SYSTEM,
+        messages: [{ role: 'user', content: userPrompt }],
+        temperature: 0.7,
+      }, { callerEf: 'optimize-linkedin-profile', userId });
+
+      if (!aiResult.ok) {
+        console.error(JSON.stringify({ level: 'error', ef: 'optimize-linkedin-profile', action: 'linkedin_summary', userId, error: aiResult.error }));
+        return new Response(JSON.stringify({ error: 'Summary generation failed. Please try again.' }), {
+          status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const rawContent = (aiResult.data?.content as Array<{ type: string; text: string }>)?.[0]?.text ?? '';
+      let summaries: string[];
+      try {
+        const cleaned = rawContent.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+        const parsed = JSON.parse(cleaned);
+        if (!Array.isArray(parsed)) throw new Error('Not an array');
+        summaries = parsed.filter((s): s is string => typeof s === 'string' && s.trim().length > 0).slice(0, 2);
+        if (summaries.length < 2) throw new Error('Need 2 variants');
+      } catch {
+        console.error(JSON.stringify({ level: 'error', ef: 'optimize-linkedin-profile', action: 'linkedin_summary', userId, error: 'Parse failed', raw: rawContent.slice(0, 300) }));
+        return new Response(JSON.stringify({ error: 'Failed to parse summaries. Please try again.' }), {
+          status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Deduct 1 credit
+      await sb.from('entitlements')
+        .update({ credits_remaining: ent.credits_remaining - 1 })
+        .eq('user_id', userId);
+
+      return new Response(JSON.stringify({
+        summaries,
+        tone,
+        char_counts: summaries.map(s => s.length),
+        has_target_roles: target_roles.length > 0,
+      }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    return new Response(JSON.stringify({ error: `Unknown action: ${action}. Valid: analyze, linkedin_summary.` }), {
       status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
