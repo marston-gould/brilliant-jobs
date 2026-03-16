@@ -1,15 +1,13 @@
 # Engineering Audit Properties — Addendum
 
-**Properties #17–21** added 2026-03-15
+**Properties #17–24** — last updated 2026-03-15
 
-These five properties extend the original 16 active properties from `Website_Technical_Audit_Properties.docx`
-(i18n excluded — not applicable at current stage). Observability elevated to explicit named property.
-They reflect the maturity of the Brilliant Jobs platform and the operational realities of a
-solo founder running a production system at scale.
+Extends the original 16 active properties from `Website_Technical_Audit_Properties.docx`
+(i18n excluded — not applicable at current stage).
 
 ---
 
-## Audit Areas at a Glance (Full 21)
+## Audit Areas at a Glance (Full 24)
 
 | # | Audit Area | Category | Default Priority |
 |---|-----------|----------|-----------------|
@@ -18,26 +16,28 @@ solo founder running a production system at scale.
 | 03 | Security | Foundation | Critical |
 | 04 | Maintainability | Foundation | Critical |
 | 05 | Error Transparency | Foundation | Critical |
-| 06 | Observability | Operational | High |
-| 07 | Testability | Operational | High |
-| 08 | Deployability / CI/CD | Operational | High |
-| 09 | Developer Experience (DX) | Operational | Medium |
-| 10 | Performance | Quality | High |
-| 11 | Reliability / Resilience | Quality | High |
-| 12 | Cost Efficiency | Quality | Medium |
-| 13 | Compliance & Privacy | Governance | High |
-| 14 | Documentation | Governance | Medium |
-| 15 | Dependency Management | Governance | Medium |
-| 16 | Accessibility (a11y) | Quality | Medium |
-| **17** | **Observability** | **Operational** | **High** |
-| **18** | **Modularity** | **Foundation** | **Critical** |
-| **19** | **Easy Issue Detection** | **Operational** | **High** |
-| **20** | **Straightforward Issue Resolution** | **Operational** | **High** |
-| **21** | **Sturdy** | **Foundation** | **Critical** |
+| 06 | Testability | Operational | High |
+| 07 | Deployability / CI/CD | Operational | High |
+| 08 | Developer Experience (DX) | Operational | Medium |
+| 09 | Performance | Quality | High |
+| 10 | Reliability / Resilience | Quality | High |
+| 11 | Cost Efficiency | Quality | Medium |
+| 12 | Compliance & Privacy | Governance | High |
+| 13 | Documentation | Governance | Medium |
+| 14 | Dependency Management | Governance | Medium |
+| 15 | Accessibility (a11y) | Quality | Medium |
+| **16** | **Observability** | **Operational** | **High** |
+| **17** | **Modularity** | **Foundation** | **Critical** |
+| **18** | **Easy Issue Detection** | **Operational** | **High** |
+| **19** | **Straightforward Issue Resolution** | **Operational** | **High** |
+| **20** | **Sturdy** | **Foundation** | **Critical** |
+| **21** | **Fault Tolerant** | **Quality** | **High** |
+| **22** | **Deterministic** | **Foundation** | **Critical** |
+| **23** | **Highly Available** | **Quality** | **High** |
 
 ---
 
-## 17. Observability
+## 16. Observability
 
 **Category:** Operational | **Priority: High**
 
@@ -79,7 +79,7 @@ PostHog (events, funnels, session replay, dashboards), structured logging (pino)
 
 ---
 
-## 18. Modularity
+## 17. Modularity
 
 **Category:** Foundation | **Priority: Critical**
 
@@ -121,7 +121,7 @@ ESLint import rules (`eslint-plugin-import`, `eslint-plugin-boundaries`), TypeSc
 
 ---
 
-## 19. Easy Issue Detection
+## 18. Easy Issue Detection
 
 **Category:** Operational | **Priority: High**
 
@@ -163,7 +163,7 @@ PostHog (`captureEvent`, `captureException`), structured logging (pino, winston)
 
 ---
 
-## 20. Straightforward Issue Resolution
+## 19. Straightforward Issue Resolution
 
 **Category:** Operational | **Priority: High**
 
@@ -205,7 +205,7 @@ PostHog session replay, structured error context (`captureEvent` with properties
 
 ---
 
-## 21. Sturdy
+## 20. Sturdy
 
 **Category:** Foundation | **Priority: Critical**
 
@@ -245,3 +245,129 @@ Zod / TypeScript strict mode (input validation), Supabase RLS + schema constrain
 **Primary Owners**
 
 **Chief Architect • Engineering Lead • Backend Engineer • DevOps Engineer**
+
+---
+
+## 21. Fault Tolerant
+
+**Category:** Quality | **Priority: High**
+
+> **Core Question:** When a component fails, does the system continue operating — degraded but functional — or does one failure bring everything down?
+
+**Why It Matters**
+
+Fault tolerance is about designing for the inevitability of failure. Not if a dependency goes down, but when. The difference between a fault-tolerant system and a fragile one is not uptime under normal conditions — it's behavior under abnormal ones. A fault-tolerant system isolates failures: a broken enrichment service doesn't break job ingestion; a failed email send doesn't block an apply submission; a crashed worker doesn't corrupt the queue. Faults are expected, contained, and survivable. For a solo founder with no on-call rotation, fault tolerance is what keeps the product running while you sleep.
+
+**What to Audit**
+
+- **Failure isolation** — Are failures contained within the component that failed, or do they cascade? Can a single failing Edge Function, worker crash, or third-party timeout take down unrelated functionality?
+- **Fallback behavior** — When a non-critical service fails (analytics, enrichment, email), is there a defined fallback? Does the system degrade gracefully or error hard?
+- **Retry and backoff discipline** — Are transient failures retried with exponential backoff and jitter? Or do failures propagate immediately to the caller?
+- **Circuit breaker implementation** — Are there circuit breakers on high-volume external calls? When a downstream service is degraded, does the system stop hammering it?
+- **Partial failure handling** — In bulk operations (batch apply, batch scoring), does a single item failure abort the entire batch, or are failures isolated and the rest processed?
+- **Queue durability** — If the worker crashes mid-processing, are jobs lost or re-queued? Is the queue durable across restarts?
+- **Timeout discipline** — Are all external calls (API requests, DB queries, EF invocations) wrapped with timeouts? Or can a single slow call block a thread indefinitely?
+
+**Red Flags**
+
+```
+⚠ One failing Edge Function causes a cascading 500 across unrelated features
+⚠ No fallback when a third-party API is unavailable — full feature blackout
+⚠ Batch jobs that abort entirely on a single item failure
+⚠ External API calls with no timeout — a slow upstream hangs the entire request
+⚠ Queue jobs lost on worker restart — no durability guarantee
+⚠ No circuit breakers on high-volume external calls
+⚠ Retry logic that hammers a failing service without backoff, accelerating the failure
+```
+
+**Common Tools & Technologies**
+
+Exponential backoff utilities, circuit breaker patterns (opossum), Fly.io worker restart policies (`restart = always`), durable queues (pg-based queue, BullMQ), timeout wrappers on all fetch calls, partial-failure patterns in batch EFs, PostHog fault event capture
+
+**Primary Owners**
+
+**Engineering Lead • Backend Engineer • DevOps Engineer • Chief Architect**
+
+---
+
+## 22. Deterministic
+
+**Category:** Foundation | **Priority: Critical**
+
+> **Core Question:** Given the same inputs, does the system always produce the same outputs — and if not, are the sources of non-determinism intentional and controlled?
+
+**Why It Matters**
+
+Non-determinism is the enemy of debuggability. When the same action produces different results in different runs, you can't reason about the system, you can't write reliable tests, and you can't trust your own data. Determinism doesn't mean the system never uses randomness — it means that randomness is explicit, controlled, and accounted for. Uncontrolled non-determinism in job scoring, apply flow routing, or state transitions creates a class of bugs that are nearly impossible to reproduce and fix. At the Brilliant Jobs scale — automated ATS submissions, AI-scored jobs, trial gate logic — determinism is what makes the system trustworthy.
+
+**What to Audit**
+
+- **Scoring and ranking stability** — Do job scores, resume match scores, and rankings produce consistent results for the same inputs? Are AI model calls deterministic (temperature=0 where consistency matters) or do they produce different outputs on each call?
+- **State transition determinism** — Are state machines (application status, trial gate state, subscription state) deterministic? Can the same sequence of events produce different final states depending on timing?
+- **Idempotency of write operations** — Are critical write operations (apply submission, payment processing, status updates) idempotent? Can they be safely retried without producing duplicate effects?
+- **Time dependency** — Are there behaviors that change based on the current time in ways that are not explicit and testable? Expiry logic, trial windows, and scheduled actions should be deterministic given a known time input.
+- **Race condition inventory** — Are there concurrent operations that can produce different outcomes depending on execution order? Concurrent applies, simultaneous tier upgrades, parallel cron runs?
+- **Test reproducibility** — Can tests be run in any order and produce the same results? Or do tests depend on shared state, execution order, or external services?
+- **External data stability** — When the system consumes external data (job feeds, AI responses, enrichment), are the non-deterministic boundaries explicit and handled?
+
+**Red Flags**
+
+```
+⚠ AI scoring calls with temperature > 0 where consistency is required
+⚠ State transitions that produce different results depending on which request arrives first
+⚠ Write operations that aren't idempotent — retrying causes duplicate records or charges
+⚠ Tests that pass in isolation but fail when run in parallel or in different order
+⚠ Cron jobs with no guard against concurrent execution — two runs overlap and corrupt state
+⚠ Ranking results that change between page loads for the same query
+⚠ Apply flow behavior that varies based on unmeasured timing differences
+```
+
+**Common Tools & Technologies**
+
+Idempotency keys on write operations, database-level unique constraints, `temperature: 0` on determinism-critical AI calls, mutex/advisory locks for concurrent cron prevention, deterministic test fixtures (no `Date.now()` in test logic), Vitest with isolated test state
+
+**Primary Owners**
+
+**Chief Architect • Backend Engineer • Engineering Lead • QA Engineer**
+
+---
+
+## 23. Highly Available
+
+**Category:** Quality | **Priority: High**
+
+> **Core Question:** Is the system available to users when they need it — and is availability a designed property, not a lucky outcome?
+
+**Why It Matters**
+
+High availability is the commitment that the system will be reachable and functional for users at the times they need it. It's distinct from Reliability (which covers graceful failure handling) and Fault Tolerance (which covers component-level failure isolation). High availability is about the end-to-end question: can a user open the dashboard, trigger an apply, or check their pipeline right now? For Brilliant Jobs, availability failures during peak job-search hours — weekday mornings — are disproportionately damaging. HA is achieved through redundancy, zero-downtime deployments, health monitoring, and eliminating single points of failure, not through hoping nothing breaks.
+
+**What to Audit**
+
+- **Uptime measurement** — Is uptime actively measured and tracked? Is there an SLO (e.g. 99.5% monthly)? Do you know your actual uptime over the last 30 days?
+- **Single points of failure** — What components, if they went down, would make the product completely unavailable? Are any of those unprotected? Database, gateway, worker, auth provider?
+- **Zero-downtime deployments** — Do deployments cause downtime? Is there a rolling deploy strategy, or does each deploy take the service offline briefly?
+- **Health check and auto-recovery** — Do all services have health check endpoints that are monitored? Are unhealthy instances automatically replaced or restarted without manual intervention?
+- **Database availability** — Is the database on a managed platform with automatic failover? Are connection pool settings tuned to survive traffic spikes without exhaustion?
+- **CDN and static asset availability** — Are static assets served from a CDN with high availability guarantees? Is the availability of static assets decoupled from the availability of the application server?
+- **Dependency availability risk** — Which third-party dependencies (Supabase, Fly.io, Vercel, Anthropic API, Resend) are on the critical path for availability? What's the plan when each one has an outage?
+
+**Red Flags**
+
+```
+⚠ No uptime monitoring — outages discovered by users, not alerts
+⚠ Deployments that take the service offline, even briefly
+⚠ No automatic restart on worker crash — requires manual intervention to restore availability
+⚠ Database connection pool exhaustion under moderate load — availability collapses under traffic
+⚠ Single Fly.io machine for the worker with no redundancy
+⚠ No status page — users have no visibility into known incidents
+⚠ Third-party outage (e.g. Supabase) causes full product blackout with no degraded mode
+```
+
+**Common Tools & Technologies**
+
+Better Uptime / Checkly (uptime monitoring + status page), Fly.io multi-instance deploy + health checks, Vercel zero-downtime deploys, Supabase managed HA + connection pooler (pgBouncer), CDN (Cloudflare) for static assets, PostHog availability event tracking
+
+**Primary Owners**
+
+**DevOps Engineer • Engineering Lead • Backend Engineer • Chief Architect**
