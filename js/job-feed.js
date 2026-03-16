@@ -904,7 +904,7 @@ async function searchJobs(page = 0) {
 
   // If nothing is driving the search, show prompt but with global stats
   if (checked.length === 0 && checkedPrompts.length === 0 && !hasBuilderPills) {
-    if (container) container.innerHTML = `<div style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+    if (container) container.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--text-faint);padding:48px 12px;">
       <div style="margin-bottom:12px;"><i data-lucide="briefcase" class="icon-xl icon-stroke-lg" style="opacity:0.25;"></i></div>
       <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Select saved searches or add filters to search jobs</div>
       <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">Check one or more saved searches above, or use the filter builder.</div>
@@ -915,11 +915,11 @@ async function searchJobs(page = 0) {
     return;
   }
 
-  // Show skeleton loading (card-shaped)
-  if (container) container.innerHTML = Array.from({length: 6}, () => `<div style="border:0.5px solid var(--border);border-radius:12px;background:var(--bg-card);padding:14px 16px;display:grid;grid-template-columns:28px 1fr 160px;gap:0 10px;align-items:center;">
-    <div><div class="skel-line" style="width:20px;height:20px;border-radius:6px;"></div></div>
-    <div><div class="skel-line" style="width:60%;height:14px;margin-bottom:6px;"></div><div class="skel-line" style="width:40%;height:10px;"></div></div>
-    <div style="display:flex;gap:6px;"><div class="skel-line" style="width:70px;height:28px;border-radius:6px;"></div><div class="skel-line" style="width:70px;height:28px;border-radius:6px;"></div></div>
+  // Show skeleton loading (card-shaped, fills two-column grid)
+  if (container) container.innerHTML = Array.from({length: 8}, () => `<div style="border:0.5px solid var(--border);border-radius:12px;background:var(--bg-card);padding:12px;display:grid;grid-template-columns:22px 1fr 140px;gap:0 8px;align-items:center;">
+    <div><div class="skel-line" style="width:18px;height:18px;border-radius:6px;"></div></div>
+    <div><div class="skel-line" style="width:70%;height:13px;margin-bottom:5px;"></div><div class="skel-line" style="width:45%;height:9px;"></div></div>
+    <div style="display:flex;gap:5px;"><div class="skel-line" style="width:65px;height:26px;border-radius:6px;"></div><div class="skel-line" style="width:65px;height:26px;border-radius:6px;"></div></div>
   </div>`).join('');
 
   try {
@@ -2582,6 +2582,10 @@ function renderJobRows(jobs, total, page, filtersToRun) {
   window._feedJobMap = {};
   for (const j of jobs) { window._feedJobMap[j.greenhouse_id] = j; }
 
+  // Helper: decode HTML entities in job data (titles contain &amp; etc from DB)
+  var _decodeEl = document.createElement('span');
+  function _de(s) { if (!s) return ''; _decodeEl.innerHTML = s; return _decodeEl.textContent || s; }
+
   const showPreview = $('#preview-toggle')?.checked;
   let html = '';
   let newCount = 0;
@@ -2633,7 +2637,7 @@ function renderJobRows(jobs, total, page, filtersToRun) {
 
     // Meta row parts
     const metaParts = [];
-    if (job.company_name) metaParts.push(`<span style="font-weight:500;color:var(--text-dim);">${escapeHtml(truncate(cleanCompanyName(job.company_name), 30))}</span>`);
+    if (job.company_name) metaParts.push(`<span style="font-weight:500;color:var(--text-dim);">${escapeHtml(_de(truncate(cleanCompanyName(job.company_name), 30)))}</span>`);
     const loc = formatLocation(job.location, job.loc_display, activeNegLocs);
     if (loc) metaParts.push(`<span style="color:var(--text-faint);">${escapeHtml(truncate(loc, 35))}</span>`);
     const sal = formatSalaryCell(job);
@@ -2664,21 +2668,23 @@ function renderJobRows(jobs, total, page, filtersToRun) {
       </div>`;
     }
 
-    // Card HTML
-    html += `<div class="job-card" data-jobid="${escapeHtml(job.greenhouse_id)}" style="border:0.5px solid var(--border);border-radius:12px;background:var(--bg-card);padding:14px 16px 14px 12px;display:grid;grid-template-columns:28px 1fr auto;gap:0 10px;align-items:start;transition:opacity 0.2s,transform 0.2s;">
-      <div style="grid-row:1/3;display:flex;align-items:center;justify-content:center;">
-        <button class="jc-dismiss" data-jobid="${escapeHtml(job.greenhouse_id)}" title="Dismiss this job" style="width:24px;height:24px;border:none;background:transparent;color:var(--text-faint);cursor:pointer;border-radius:6px;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;transition:background 0.15s,color 0.15s;">✕</button>
+    // Card HTML — §3.2 two-column card grid
+    var _cardTitle = _de(job.title || '');
+
+    html += `<div class="job-card" data-jobid="${escapeHtml(job.greenhouse_id)}" style="border:0.5px solid var(--border);border-radius:12px;background:var(--bg-card);padding:12px 12px 12px 10px;display:grid;grid-template-columns:22px 1fr auto;gap:0 8px;align-items:center;transition:opacity 0.2s,transform 0.2s;">
+      <div style="display:flex;align-items:center;justify-content:center;">
+        <button class="jc-dismiss" data-jobid="${escapeHtml(job.greenhouse_id)}" title="Dismiss this job" style="width:22px;height:22px;border:none;background:transparent;color:var(--text-faint);cursor:pointer;border-radius:6px;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;transition:background 0.15s,color 0.15s;">✕</button>
       </div>
-      <div>
-        <div style="display:flex;align-items:center;flex-wrap:wrap;">
-          <span class="job-title-link" data-jobid="${escapeHtml(job.greenhouse_id)}" style="font-size:15px;font-weight:500;color:var(--text);cursor:pointer;">${escapeHtml(truncate(job.title, 65))}</span>
+      <div style="min-width:0;">
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">
+          <span class="job-title-link" data-jobid="${escapeHtml(job.greenhouse_id)}" style="font-size:14px;font-weight:500;color:var(--text);cursor:pointer;">${escapeHtml(_cardTitle)}</span>
           ${levelBadge}${newBadge}${signalBadges}
         </div>
-        <div style="font-size:12px;margin-top:3px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+        <div style="font-size:11px;margin-top:2px;display:flex;gap:5px;flex-wrap:wrap;align-items:center;color:var(--text-faint);">
           ${metaParts.join('<span style="color:var(--border);">·</span>')}
         </div>
       </div>
-      <div style="display:flex;gap:6px;align-items:center;grid-row:1/3;">
+      <div style="display:flex;gap:5px;align-items:center;flex-shrink:0;">
         ${pipelineBtn}${applyBtn}
       </div>
       ${snippetHtml ? `<div style="grid-column:1/-1;">${snippetHtml}</div>` : ''}
@@ -2688,7 +2694,7 @@ function renderJobRows(jobs, total, page, filtersToRun) {
   // Pagination
   renderPagination(jobs.length, total, page);
 
-  container.innerHTML = html || '<div style="text-align:center;padding:48px 0;color:var(--text-faint);">No jobs match your filters</div>';
+  container.innerHTML = html || '<div style="grid-column:1/-1;text-align:center;padding:48px 0;color:var(--text-faint);">No jobs match your filters</div>';
 
   // Re-initialize Lucide icons
   if (typeof window.refreshIcons === 'function') window.refreshIcons();
