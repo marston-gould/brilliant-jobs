@@ -124,6 +124,7 @@ function fpOpenFilter(filterKey) {
   if (!modal) return;
   if (title) title.textContent = f ? 'Edit Filter: ' + f.key : 'New Filter';
   modal.style.display = 'flex';
+  if (p) setTimeout(function(){ fpLoadVersionHistory(p.name); fpDetectVars(); }, 100);
   var inp = function(lbl, id, val, type) {
     return '<div style="margin-bottom:10px"><label style="font-size:11px;color:var(--text-faint);display:block;margin-bottom:3px">' + lbl + '</label>' +
       '<input type="' + (type||'text') + '" id="fpf-' + id + '" value="' + escapeHtml(String(val??'')) + '" style="width:100%;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;box-sizing:border-box"></div>';
@@ -165,6 +166,10 @@ async function fpSaveFilter() {
     var data = await res.json();
     if (!res.ok) throw new Error(data.error);
     toastSuccess('Filter saved');
+    // §7.1: Warn if weight changed — existing scores NOT retroactively recomputed
+    if (filter.weight !== (_fpState.editingFilter?.weight ?? 1)) {
+      toastWarning('Weight changed. Note: existing job scores are NOT retroactively recomputed. Takes effect on next scoring run.');
+    }
     fpCloseFilter();
     fpLoadFilters();
   } catch(e) { reportError('admin-filter-prompt:save-filter', e); toastWarning('Save failed: ' + e.message); }
@@ -198,6 +203,26 @@ function fpOpenPrompt(promptId) {
     inp('Max tokens', 'max_tokens', p?.max_tokens, 'number'),
     inp('Temperature', 'temperature', p?.temperature, 'number'),
     '</div>',
+    // Version history panel
+    (p ? [
+      '<details style="margin-bottom:16px">',
+      '  <summary style="font-size:12px;color:var(--text-dim);cursor:pointer;user-select:none">Version History</summary>',
+      '  <div id="fp-version-history" style="margin-top:8px;font-size:12px;color:var(--text-faint)">Loading…</div>',
+      '</details>',
+    ] : []).join(''),
+    // Test runner
+    '<details style="margin-bottom:16px">',
+    '  <summary style="font-size:12px;color:var(--text-dim);cursor:pointer;user-select:none">Test Runner — fire prompt with test values</summary>',
+    '  <div style="margin-top:8px">',
+    '    <div id="fp-test-vars-container" style="margin-bottom:8px"><span style="font-size:11px;color:var(--text-faint)">Enter template values then run test.</span></div>',
+    '    <textarea id="fp-test-vars" rows="3" placeholder='{"var1": "value1", "var2": "value2"}' style="width:100%;padding:6px 8px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-family:var(--mono);box-sizing:border-box"></textarea>',
+    '    <button onclick="fpRunTest()" style="padding:6px 14px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;cursor:pointer;margin-top:6px">Run Test</button>',
+    '    <div id="fp-test-result" style="margin-top:8px;font-size:12px;display:none">',
+    '      <div style="font-size:11px;color:var(--text-faint);margin-bottom:4px">Response:</div>',
+    '      <pre id="fp-test-output" style="background:var(--bg-input);padding:8px;border-radius:6px;font-size:11px;overflow-x:auto;white-space:pre-wrap;max-height:200px;overflow-y:auto"></pre>',
+    '    </div>',
+    '  </div>',
+    '</details>',
     '<div style="display:flex;gap:8px;justify-content:flex-end">',
     '<button onclick="fpClosePrompt()" style="padding:7px 14px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);cursor:pointer;font-size:13px">Cancel</button>',
     '<button onclick="fpSavePrompt()" style="padding:7px 14px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">Save (new version)</button>',
@@ -242,6 +267,85 @@ async function fpSavePrompt() {
     fpClosePrompt();
     fpLoadPrompts();
   } catch(e) { reportError('admin-filter-prompt:save-prompt', e); toastWarning('Save failed: ' + e.message); }
+}
+
+async function fpRunTest() {
+  var p = _fpState.editingPrompt;
+  if (!p?.id) { toastWarning('Save the prompt first to test it'); return; }
+  var varsEl = document.getElementById('fp-test-vars');
+  var resultEl = document.getElementById('fp-test-result');
+  var outputEl = document.getElementById('fp-test-output');
+  if (!varsEl) return;
+
+  var testVars = {};
+  try {
+    if (varsEl.value.trim()) testVars = JSON.parse(varsEl.value);
+  } catch(e) { return toastWarning('Invalid JSON in test variables'); }
+
+  if (resultEl) resultEl.style.display = 'none';
+  var btn = document.querySelector('[onclick="fpRunTest()"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Running…'; }
+
+  try {
+    var token = (await sb.auth.getSession()).data.session?.access_token;
+    var res = await fetch('/functions/v1/api-gateway/admin-filter-prompt', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'test_prompt', prompt_id: p.id, test_variables: testVars }),
+    });
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error + (data.unresolved ? ' (unresolved: ' + data.unresolved.join(', ') + ')' : ''));
+
+    var responseText = data.response?.content?.[0]?.text || JSON.stringify(data.response, null, 2);
+    if (outputEl) outputEl.textContent = responseText;
+    if (resultEl) resultEl.style.display = '';
+    toastSuccess('Test completed (' + (data.usage?.output_tokens || '?') + ' tokens)');
+  } catch(e) {
+    reportError('admin-filter-prompt:test', e);
+    if (outputEl) outputEl.textContent = 'Error: ' + e.message;
+    if (resultEl) resultEl.style.display = '';
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Run Test'; }
+  }
+}
+
+async function fpLoadVersionHistory(promptName) {
+  var el = document.getElementById('fp-version-history');
+  if (!el) return;
+  try {
+    var token = (await sb.auth.getSession()).data.session?.access_token;
+    var res = await fetch('/functions/v1/api-gateway/admin-filter-prompt', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'prompt_version_history', prompt_name: promptName }),
+    });
+    var data = await res.json();
+    var versions = data.versions || [];
+    el.innerHTML = '<table class="admin-table" style="width:100%;font-size:11px"><thead><tr><th>v</th><th>Active</th><th>Updated</th><th>By</th><th></th></tr></thead><tbody>' +
+      versions.map(function(v) {
+        return '<tr style="' + (v.is_active ? 'background:rgba(99,102,241,0.05)' : '') + '">' +
+          '<td style="font-family:var(--mono)">' + v.version + '</td>' +
+          '<td>' + (v.is_active ? '✓' : '') + '</td>' +
+          '<td>' + new Date(v.updated_at).toLocaleDateString() + '</td>' +
+          '<td style="font-size:10px">' + escapeHtml((v.profiles?.email||'').split('@')[0]) + '</td>' +
+          '<td>' + (!v.is_active ? '<button onclick="fpRestoreVersion(\'' + v.id + '\')" style="padding:1px 6px;border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer">Restore</button>' : '') + '</td>' +
+          '</tr>';
+      }).join('') + '</tbody></table>';
+  } catch(e) { el.textContent = 'Failed to load history'; }
+}
+
+async function fpRestoreVersion(versionId) {
+  if (!confirm('Restore this version as the active prompt?')) return;
+  try {
+    var token = (await sb.auth.getSession()).data.session?.access_token;
+    var res = await fetch('/functions/v1/api-gateway/admin-filter-prompt', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'restore_prompt_version', prompt_id: versionId }),
+    });
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    toastSuccess('Version restored');
+    fpClosePrompt();
+    fpLoadPrompts();
+  } catch(e) { reportError('admin-filter-prompt:restore', e); toastWarning('Restore failed: ' + e.message); }
 }
 
 (function() {

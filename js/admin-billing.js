@@ -187,6 +187,23 @@ async function bmLoadLedger() {
   }
 }
 
+async function bmExportSubsCSV() {
+  try {
+    var token = (await sb.auth.getSession()).data.session?.access_token;
+    var status = document.getElementById('bm-status-filter')?.value || '';
+    var res = await fetch('/functions/v1/api-gateway/admin-billing-manager', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'export_subscriptions_csv', status_filter: status }),
+    });
+    if (!res.ok) { toastWarning('Export failed'); return; }
+    var blob = await res.blob();
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = 'subscriptions.csv'; a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) { reportError('admin-billing:export-csv', e); toastWarning('Export failed: ' + e.message); }
+}
+
 (function() {
   ['loadBillingManagerTab','bmLoadSubs','bmLoadLedger','bmCancelSub','bmSwitchTab','bmSubPage','bmLedgerPage'].forEach(function(n) {
     if (typeof window[n] === 'function') { window.BJ[n] = window[n]; window.BJ._registry[n] = { module: 'admin-billing', registered: Date.now() }; }

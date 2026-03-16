@@ -60,6 +60,21 @@ serve(async (req) => {
     const { data, count, error } = await q;
     if (error) throw error;
 
+    // CSV export
+    if (body.export_csv) {
+      const rows = (data ?? []).map(e => {
+        const actor = (e.profiles as Record<string, string>)?.email ?? e.actor_id ?? '';
+        const before = e.before ? JSON.stringify(e.before).replace(/"/g, '""') : '';
+        const after  = e.after  ? JSON.stringify(e.after).replace(/"/g, '""')  : '';
+        return `"${e.id}","${new Date(e.created_at).toISOString()}","${actor.replace(/"/g,'""')}","${e.action}","${e.target_type}","${e.target_id ?? ''}","${(e.reason ?? '').replace(/"/g,'""')}","${before}","${after}"`;
+      });
+      const csv = 'id,created_at,actor,action,target_type,target_id,reason,before,after\n' + rows.join('\n');
+      return new Response(csv, {
+        status: 200,
+        headers: { ...CORS, 'Content-Type': 'text/csv', 'Content-Disposition': 'attachment; filename="audit-log.csv"' },
+      });
+    }
+
     return json({ entries: data ?? [], total: count ?? 0, page, per_page });
 
   } catch (err) {

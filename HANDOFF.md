@@ -3840,6 +3840,21 @@ None.
 
 ## Last Completed Session
 
+**SPEC-ADMIN-002-REM** — Admin Control Panel: Spec Gap Remediation ✅
+- v9.82→v9.83 — Closed all 18 items identified in post-delivery spec audit.
+- User List: country filter, signup/active date range filters, subscription status filter, suspend+unsuspend (audit log), export CSV (audit log), impersonate (audit written BEFORE magic link generated, 5-min expiry), all action buttons in row (View/Suspend/Impersonate).
+- User Detail: Applications tab (pending_applications+pipeline read-only), Activity tab (PostHog deep-link), Delete Account danger zone (email re-entry confirmation, reason min 20 chars, audit BEFORE deletion), Cancel Subscription button in Cohort tab (wired to cancel_sub_for_user action).
+- Cohort Editor: Duplicate action (clones all fields, audit log), Stripe Price ID validation button (live API call to Stripe, shows amount+currency), Entitlements sub-form (max_auto_apply, max_saved_jobs, max_pipeline_items, max_recruiter_lookups rendered as labelled number inputs).
+- Billing Manager: Subscriptions CSV export (audit log).
+- Filter Manager: Weight-change warning after save ("not retroactively recomputed").
+- Prompt Manager: Version history panel (all versions in editor, per-row Restore button calls restore_prompt_version), Prompt test runner (JSON test variables, {{variable}} substitution, unresolved var detection, fires Anthropic API, shows response + token usage, audit log).
+- Audit Log: CSV export (all filtered entries).
+- 66/66 tests passing. All 6 admin EFs redeployed.
+
+---
+
+## Last Completed Session
+
 **SPEC-ADMIN-002-S2** — Admin Control Panel: Billing, Filter/Prompt, Audit Log ✅
 - v9.81→v9.82 — admin-billing-manager EF (#136): list_subscriptions (status/cohort filter, pagination, profile join), global_ledger (user_id/event_type filter), cancel_subscription (Stripe DELETE, cancel_immediately or at period end, audit log, PostHog), apply_discount (Stripe coupon create+apply, audit log). admin-filter-prompt EF (#137): list/upsert/soft-delete filters with audit; list/get/save prompts (version increment, deactivate old version, {{variable}} extraction + required variable validation returning 400 with missing list, audit log), restore_prompt_version. admin-audit-log EF (#138): read-only, admin JWT required, filter by actor/action_filter/target_type/search/date_from/date_to, paginated, profiles join for actor email. JS: admin-billing.js (Subscriptions tab: list+cancel+period-end vs immediate confirmation; Global Ledger tab: debounced user filter + event_type filter), admin-filter-prompt.js (Filters tab: list+editor modal; Prompts tab: list+editor with live {{var}} detection, missing var error surfaced to admin), admin-audit-log-viewer.js (search+filters, expandable before/after JSON diff per row, pagination). admin.html 3 panels + 3 script tags. admin.js 3 subpages. COHORT GAP-14 closed: rewrite.js 402 handler now reads cost/shortfall from response. 87/87 tests passing. All EFs deployed.
 
@@ -4109,7 +4124,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.82`** | **SPEC-ADMIN-002-S2: Billing Manager, Filter+Prompt Manager, Audit Log. EFs #136-138. COHORT GAP-14 fixed. 87 tests. SPEC-ADMIN-002 COMPLETE.** |
+| **Product (BJ_VERSION)** | **`v9.83`** | **SPEC-ADMIN-002-REM: 18 spec gaps closed. Impersonate, delete account, suspend, Applications/Activity tabs, duplicate cohort, Stripe validation, entitlements, test runner, CSV exports, version history. 66 tests.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

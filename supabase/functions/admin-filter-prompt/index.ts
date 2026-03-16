@@ -201,6 +201,82 @@ serve(async (req) => {
       return json({ success: true, restored_version: target.version });
     }
 
+    // ── PROMPT VERSION HISTORY ───────────────────────────────────────────────────
+    if (action === 'prompt_version_history') {
+      const { prompt_name } = body;
+      if (!prompt_name) return json({ error: 'prompt_name required' }, 400);
+      const { data, error } = await sb.from('prompt_templates')
+        .select('id, version, is_active, created_at, updated_at, updated_by, template, model, max_tokens, temperature, profiles!updated_by(email)')
+        .eq('name', prompt_name)
+        .order('version', { ascending: false });
+      if (error) throw error;
+      return json({ versions: data ?? [] });
+    }
+
+    // ── PROMPT TEST RUNNER ────────────────────────────────────────────────────────
+    // §7.2: Fire prompt against model with test variable values.
+    // NEVER fires against production user data — all test vars supplied by admin.
+    if (action === 'test_prompt') {
+      const { prompt_id, test_variables } = body;
+      if (!prompt_id) return json({ error: 'prompt_id required' }, 400);
+      if (!test_variables || typeof test_variables !== 'object') return json({ error: 'test_variables object required' }, 400);
+
+      const { data: prompt } = await sb.from('prompt_templates').select('*').eq('id', prompt_id).single();
+      if (!prompt) return json({ error: 'Prompt not found' }, 404);
+
+      // Substitute {{variables}} with test values
+      let rendered = prompt.template;
+      for (const [key, value] of Object.entries(test_variables)) {
+        rendered = rendered.replaceAll(`{{${key}}}`, String(value));
+      }
+
+      // Check for unresolved variables
+      const unresolved = [...rendered.matchAll(/\{\{(\w+)\}\}/g)].map(m => m[1]);
+      if (unresolved.length > 0) {
+        return json({ error: 'Unresolved variables in template', unresolved }, 400);
+      }
+
+      const ANTHROPIC_KEY = Deno.env.get('ANTHROPIC_API_KEY');
+      if (!ANTHROPIC_KEY) return json({ error: 'Anthropic API not configured' }, 500);
+
+      const model = prompt.model ?? 'claude-haiku-4-5-20251001'; // default to cheapest
+      const max_tokens = prompt.max_tokens ?? 500;
+      const temperature = prompt.temperature ?? 0;
+
+      const messages = prompt.role === 'system'
+        ? [{ role: 'user', content: '(Test run — system prompt above)' }]
+        : [{ role: prompt.role as string, content: rendered }];
+
+      const reqBody: Record<string, unknown> = { model, max_tokens, messages };
+      if (prompt.role === 'system') reqBody.system = rendered;
+      if (temperature > 0) reqBody.temperature = temperature;
+
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': ANTHROPIC_KEY,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify(reqBody),
+      });
+      const result = await res.json();
+
+      await writeAudit(sb, {
+        actor_id: admin.profile.id, action: 'prompt.test_run',
+        target_type: 'prompt', target_id: prompt_id,
+        after: { model, variables_used: Object.keys(test_variables), ok: res.ok },
+      });
+
+      return json({
+        success: res.ok,
+        rendered_prompt: rendered,
+        model_used: model,
+        response: result,
+        usage: result.usage ?? null,
+      });
+    }
+
     return json({ error: 'Unknown action' }, 400);
 
   } catch (err) {

@@ -186,6 +186,49 @@ serve(async (req) => {
       return json({ success: true });
     }
 
+    // ── DUPLICATE cohort ─────────────────────────────────────────────────────────
+    if (action === 'duplicate') {
+      const { cohort_id, new_name, new_slug } = body;
+      if (!cohort_id || !new_name || !new_slug) return json({ error: 'cohort_id, new_name, and new_slug required' }, 400);
+
+      const { data: source } = await sb.from('cohort_tiers').select('*').eq('id', cohort_id).single();
+      if (!source) return json({ error: 'Source cohort not found' }, 404);
+
+      const slug = new_slug.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+      const { data, error } = await sb.from('cohort_tiers').insert({
+        ...source,
+        id: undefined, // let DB generate
+        name: new_name, slug,
+        is_archived: false,
+        created_by: admin.profile.id,
+        created_at: undefined, updated_at: undefined,
+      }).select().single();
+      if (error) throw error;
+
+      await writeAudit(sb, {
+        actor_id: admin.profile.id, action: 'cohort.duplicate',
+        target_type: 'cohort', target_id: data!.id,
+        before: { source_id: cohort_id, source_name: source.name },
+        after: { name: new_name, slug },
+      });
+      return json({ success: true, cohort: data });
+    }
+
+    // ── VALIDATE STRIPE PRICE ID ──────────────────────────────────────────────────
+    if (action === 'validate_stripe_price') {
+      const { price_id } = body;
+      if (!price_id) return json({ error: 'price_id required' }, 400);
+      const STRIPE_KEY = Deno.env.get('STRIPE_SECRET_KEY');
+      if (!STRIPE_KEY) return json({ valid: null, error: 'Stripe not configured' });
+
+      const res = await fetch(`https://api.stripe.com/v1/prices/${price_id}`, {
+        headers: { 'Authorization': `Bearer ${STRIPE_KEY}` },
+      });
+      const data = await res.json();
+      if (!res.ok) return json({ valid: false, error: data.error?.message ?? 'Price not found' });
+      return json({ valid: true, price: { id: data.id, currency: data.currency, unit_amount: data.unit_amount, recurring: data.recurring } });
+    }
+
     return json({ error: 'Unknown action' }, 400);
 
   } catch (err) {

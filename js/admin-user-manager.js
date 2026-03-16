@@ -20,6 +20,14 @@ function renderUserManagerShell(panel) {
     '  <input id="um-search" type="text" placeholder="Search email, name, user ID…"',
     '    style="flex:1;min-width:200px;padding:7px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:13px"',
     '    oninput="umSearchDebounced(this.value)">',
+    '  <input id="um-date-from" type="date" title="Joined from" onchange="umLoadList()"',
+    '    style="padding:6px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">',
+    '  <input id="um-date-to" type="date" title="Joined to" onchange="umLoadList()"',
+    '    style="padding:6px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">',
+    '  <input id="um-country-filter" type="text" placeholder="Country…"',
+    '    style="width:90px;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px"',
+    '    oninput="umCountryDebounced(this.value)">',
+    '  <button onclick="umExportCSV()" style="padding:6px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:12px;cursor:pointer">Export CSV</button>',
     '  <select id="um-cohort-filter" onchange="umFilterCohort(this.value)"',
     '    style="padding:7px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:13px">',
     '    <option value="">All Cohorts</option>',
@@ -54,7 +62,9 @@ function renderUserManagerShell(panel) {
     '  <div id="um-drawer-tabs" style="display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px">',
     '    <button class="um-dtab active" data-tab="profile" onclick="umDrawerTab(this,\'profile\')">Profile</button>',
     '    <button class="um-dtab" data-tab="cohort" onclick="umDrawerTab(this,\'cohort\')">Cohort & Billing</button>',
-    '    <button class="um-dtab" data-tab="credits" onclick="umDrawerTab(this,\'credits\')">Credits</button>',
+    '    <button class="um-dtab" data-tab="credits" onclick="umDrawerTab(this,'credits')">Credits</button>',
+    '    <button class="um-dtab" data-tab="applications" onclick="umDrawerTab(this,'applications')">Applications</button>',
+    '    <button class="um-dtab" data-tab="activity" onclick="umDrawerTab(this,'activity')">Activity</button>',
     '  </div>',
     '  <div id="um-drawer-body">Loading…</div>',
     '</div>',
@@ -86,7 +96,13 @@ async function umLoadList() {
     var res = await fetch('/functions/v1/api-gateway/admin-user-manager', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'list', search: _umState.search, cohort_slug: _umState.cohort, page: _umState.page }),
+      body: JSON.stringify({
+          action: 'list', search: _umState.search, cohort_slug: _umState.cohort,
+          page: _umState.page,
+          country: document.getElementById('um-country-filter')?.value.trim() || '',
+          signup_from: document.getElementById('um-date-from')?.value || '',
+          signup_to:   document.getElementById('um-date-to')?.value || '',
+        }),
     });
     var data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Failed to load users');
@@ -130,7 +146,11 @@ async function umLoadList() {
         '  <td style="font-size:12px;color:var(--text-dim)">' + lastActive + '</td>',
         '  <td style="text-align:right;font-family:var(--mono);font-size:13px">' + credits + '</td>',
         '  <td style="font-size:12px;color:' + (subStatus === 'active' ? 'var(--green)' : 'var(--text-dim)') + '">' + subStatus + '</td>',
-        '  <td><button onclick="event.stopPropagation();umOpenDetail(\'' + u.id + '\')" style="padding:3px 10px;border:1px solid var(--border);border-radius:5px;background:var(--bg-card);color:var(--text-dim);font-size:12px;cursor:pointer">View</button></td>',
+        '  <td style="white-space:nowrap">',
+        '    <button onclick="event.stopPropagation();umOpenDetail(\'' + u.id + '\')" style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--bg-card);color:var(--text-dim);font-size:12px;cursor:pointer">View</button> ',
+        '    <button onclick="event.stopPropagation();umSuspend(\'' + u.id + '\')" style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--bg-card);color:var(--text-dim);font-size:12px;cursor:pointer">Suspend</button> ',
+        '    <button onclick="event.stopPropagation();umImpersonate(\'' + u.id + '\')" style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--bg-card);color:var(--text-dim);font-size:12px;cursor:pointer">Impersonate</button>',
+        '  </td>',
         '</tr>',
       ].join('');
     }).join('');
@@ -216,6 +236,12 @@ function umRenderDrawerTab(tab) {
           '</div>';
       }).join(''),
       '<button onclick="umSaveProfile()" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;margin-top:4px">Save Profile</button>',
+      '<hr style="border:none;border-top:1px solid var(--border);margin:16px 0">',
+      '<div style="padding:12px;background:rgba(220,38,38,0.05);border:1px solid rgba(220,38,38,0.2);border-radius:8px">',
+      '  <div style="font-size:12px;font-weight:600;color:var(--red);margin-bottom:8px">Danger Zone</div>',
+      '  <button onclick="umDeleteAccount(\'' + d.profile.id + '\')" style="padding:6px 14px;background:var(--red);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">Delete Account</button>',
+      '  <div style="font-size:11px;color:var(--text-faint);margin-top:6px">Permanently deletes account, resumes, applications and credit ledger. Requires email re-entry.</div>',
+      '</div>',
       '</div>',
     ].join('');
   }
@@ -249,6 +275,41 @@ function umRenderDrawerTab(tab) {
       '  <tr><td>Period End</td><td>' + (sub.current_period_end ? new Date(sub.current_period_end).toLocaleDateString() : '—') + '</td></tr>',
       '</table>',
     ].join('');
+  }
+
+  if (tab === 'applications') {
+    body.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-faint)">Loading applications…</div>';
+    var token2 = (await sb.auth.getSession()).data.session?.access_token;
+    var res2 = await fetch('/functions/v1/api-gateway/admin-user-manager', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + token2, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'detail_applications', user_id: d.profile.id }),
+    });
+    var appData = await res2.json();
+    var apps = appData.applications || []; var pipe = appData.pipeline || [];
+    body.innerHTML = [
+      '<div style="font-size:12px;color:var(--text-faint);margin-bottom:8px">Applications (' + apps.length + ')</div>',
+      '<div style="overflow-x:auto;margin-bottom:16px"><table class="admin-table" style="width:100%;font-size:12px"><thead><tr><th>Job</th><th>Company</th><th>Status</th><th>Date</th></tr></thead><tbody>',
+      apps.length === 0 ? '<tr><td colspan="4" style="text-align:center;color:var(--text-faint);padding:12px">No applications</td></tr>' :
+        apps.map(function(a) {
+          return '<tr><td>' + escapeHtml(a.jobs?.title||'—') + '</td><td>' + escapeHtml(a.jobs?.company_name||'—') + '</td>' +
+            '<td>' + escapeHtml(a.status||'—') + '</td><td>' + new Date(a.created_at).toLocaleDateString() + '</td></tr>';
+        }).join(''),
+      '</tbody></table></div>',
+      '<div style="font-size:12px;color:var(--text-faint);margin-bottom:8px">Pipeline (' + pipe.length + ')</div>',
+      '<div style="overflow-x:auto"><table class="admin-table" style="width:100%;font-size:12px"><thead><tr><th>Job</th><th>Company</th><th>Stage</th><th>Date</th></tr></thead><tbody>',
+      pipe.length === 0 ? '<tr><td colspan="4" style="text-align:center;color:var(--text-faint);padding:12px">No pipeline entries</td></tr>' :
+        pipe.map(function(p) {
+          return '<tr><td>' + escapeHtml(p.jobs?.title||'—') + '</td><td>' + escapeHtml(p.jobs?.company_name||'—') + '</td>' +
+            '<td>' + escapeHtml(p.stage||'—') + '</td><td>' + new Date(p.created_at).toLocaleDateString() + '</td></tr>';
+        }).join(''),
+      '</tbody></table></div>',
+    ].join('');
+    return;
+  }
+
+  if (tab === 'activity') {
+    body.innerHTML = '<div style="padding:16px;font-size:12px;color:var(--text-dim)">PostHog activity feed for this user is available in the PostHog admin panel. Direct integration planned for SPEC-ADMIN-002-S3.<br><br><a href="https://app.posthog.com/persons/' + encodeURIComponent(d.profile.id) + '" target="_blank" style="color:var(--accent)">View in PostHog ↗</a></div>';
+    return;
   }
 
   if (tab === 'credits') {
@@ -365,6 +426,102 @@ async function umCreditAction() {
     reportError('admin-user-manager:credit', e);
     toastWarning('Credit action failed: ' + e.message);
   }
+}
+
+var _umCountryTimer = null;
+function umCountryDebounced(val) {
+  clearTimeout(_umCountryTimer);
+  _umCountryTimer = setTimeout(function(){ _umState.page=1; umLoadList(); }, 350);
+}
+
+async function umExportCSV() {
+  try {
+    var token = (await sb.auth.getSession()).data.session?.access_token;
+    var res = await fetch('/functions/v1/api-gateway/admin-user-manager', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'export_csv', search: _umState.search, cohort_slug: _umState.cohort }),
+    });
+    if (!res.ok) { toastWarning('Export failed'); return; }
+    var blob = await res.blob();
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = 'users.csv'; a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) { reportError('admin-user-manager:export', e); toastWarning('Export failed: ' + e.message); }
+}
+
+async function umSuspend(userId) {
+  var reason = prompt('Reason for suspension (required):');
+  if (!reason || reason.trim().length < 5) return toastWarning('Reason too short');
+  try {
+    var token = (await sb.auth.getSession()).data.session?.access_token;
+    var res = await fetch('/functions/v1/api-gateway/admin-user-manager', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'suspend', user_id: userId, reason }),
+    });
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    toastSuccess('User suspended');
+    umLoadList();
+  } catch(e) { reportError('admin-user-manager:suspend', e); toastWarning('Suspend failed: ' + e.message); }
+}
+
+async function umImpersonate(userId) {
+  if (!confirm('Impersonate this user? This action will be logged. Session will be read-only.')) return;
+  try {
+    var token = (await sb.auth.getSession()).data.session?.access_token;
+    var res = await fetch('/functions/v1/api-gateway/admin-user-manager', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'impersonate', user_id: userId }),
+    });
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    toastSuccess('Impersonation link generated (expires in 5 min)');
+    window.open(data.link, '_blank');
+  } catch(e) { reportError('admin-user-manager:impersonate', e); toastWarning('Impersonate failed: ' + e.message); }
+}
+
+async function umDeleteAccount(userId) {
+  var confirmEmail = prompt('Type the user's email address to confirm account deletion:');
+  if (!confirmEmail) return;
+  var reason = prompt('Reason for deletion (min 20 chars, required):');
+  if (!reason || reason.trim().length < 20) return toastWarning('Reason too short (min 20 chars)');
+  if (!confirm('PERMANENTLY DELETE this account? This cannot be undone.')) return;
+
+  try {
+    var token = (await sb.auth.getSession()).data.session?.access_token;
+    var res = await fetch('/functions/v1/api-gateway/admin-user-manager', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete_account', user_id: userId, confirm_email: confirmEmail, reason }),
+    });
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    toastSuccess('Account deleted');
+    umCloseDetail();
+    umLoadList();
+  } catch(e) { reportError('admin-user-manager:delete', e); toastWarning('Delete failed: ' + e.message); }
+}
+
+async function umCancelSubForUser() {
+  var d = _umState.selectedUser;
+  if (!d?.profile?.id) return;
+  var reason = prompt('Reason for cancellation (required, min 10 chars):');
+  if (!reason || reason.trim().length < 10) return toastWarning('Reason too short');
+  try {
+    var token = (await sb.auth.getSession()).data.session?.access_token;
+    var res = await fetch('/functions/v1/api-gateway/admin-user-manager', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'cancel_sub_for_user', user_id: d.profile.id, cancel_immediately: false, reason }),
+    });
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    toastSuccess('Subscription set to cancel at period end');
+    await umOpenDetail(d.profile.id);
+  } catch(e) { reportError('admin-user-manager:cancel-sub', e); toastWarning('Failed: ' + e.message); }
 }
 
 // BJ namespace

@@ -20,6 +20,7 @@ async function loadAuditLogTab() {
     '  </select>',
     '  <input id="al-date-from" type="date" onchange="alLoad()" style="padding:6px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:12px">',
     '  <input id="al-date-to" type="date" onchange="alLoad()" style="padding:6px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:12px">',
+    '  <button onclick="alExportCSV()" style="padding:6px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:12px;cursor:pointer">Export CSV</button>',
     '  <span id="al-count" style="font-size:12px;color:var(--text-faint);font-family:var(--mono);align-self:center"></span>',
     '</div>',
     '<div style="overflow-x:auto"><table class="admin-table" style="width:100%;font-size:12px">',
@@ -102,6 +103,28 @@ async function alLoad() {
 function alToggleDiff(id) {
   var row = document.getElementById(id);
   if (row) row.style.display = row.style.display === 'none' ? '' : 'none';
+}
+
+async function alExportCSV() {
+  try {
+    var token = (await sb.auth.getSession()).data.session?.access_token;
+    var res = await fetch('/functions/v1/api-gateway/admin-audit-log', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        search: document.getElementById('al-search')?.value || '',
+        target_type: document.getElementById('al-target-type')?.value || '',
+        date_from: document.getElementById('al-date-from')?.value || '',
+        date_to:   document.getElementById('al-date-to')?.value || '',
+        page: 1, per_page: 10000, export_csv: true,
+      }),
+    });
+    if (!res.ok) { toastWarning('Export failed'); return; }
+    var blob = await res.blob();
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = 'audit-log.csv'; a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) { reportError('admin-audit:export', e); toastWarning('Export failed: ' + e.message); }
 }
 
 (function() {

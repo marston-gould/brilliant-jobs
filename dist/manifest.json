@@ -1,7 +1,7 @@
 {
   "shell": {
     "file": "dashboard-shell.min.js",
-    "hash": "3a37044c",
+    "hash": "426659ee",
     "size": 115017
   },
   "feed": {
@@ -31,7 +31,7 @@
   },
   "full": {
     "file": "dashboard.min.js",
-    "hash": "cc2a98ea",
+    "hash": "4267a040",
     "size": 1223747
   },
   "styles": {
@@ -39,5 +39,5 @@
     "hash": "564c5982",
     "size": 128113
   },
-  "_buildHash": "9c1ee4b0"
+  "_buildHash": "40ac7e39"
 }

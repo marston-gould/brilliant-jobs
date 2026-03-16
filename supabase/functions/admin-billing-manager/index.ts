@@ -78,6 +78,39 @@ serve(async (req) => {
       return json({ subscriptions: data ?? [], total: count ?? 0, page, per_page });
     }
 
+    // ── SUBSCRIPTIONS CSV EXPORT ─────────────────────────────────────────────────
+    if (action === 'export_subscriptions_csv') {
+      const { status_filter = '' } = body;
+      let q = sb.from('user_subscriptions').select(`
+        id, user_id, status, tier, stripe_subscription_id,
+        current_period_start, current_period_end, created_at,
+        profiles(email, display_name, cohort_tiers(slug))
+      `).order('created_at', { ascending: false }).limit(10000);
+      if (status_filter) q = q.eq('status', status_filter);
+
+      const { data, error } = await q;
+      if (error) throw error;
+
+      const rows = (data ?? []).map(s => {
+        const email = (s.profiles as Record<string, string>)?.email ?? '';
+        const name  = (s.profiles as Record<string, string>)?.display_name ?? '';
+        const cohort = ((s.profiles as Record<string, unknown>)?.cohort_tiers as Record<string, string>)?.slug ?? '';
+        const start = s.current_period_start ? new Date(s.current_period_start).toISOString().slice(0,10) : '';
+        const end   = s.current_period_end   ? new Date(s.current_period_end).toISOString().slice(0,10)   : '';
+        return `"${s.user_id}","${email.replace(/"/g,'""')}","${name.replace(/"/g,'""')}","${cohort}","${s.status}","${s.tier}","${start}","${end}","${s.stripe_subscription_id ?? ''}"`;
+      });
+      const csv = 'user_id,email,display_name,cohort,status,tier,period_start,period_end,stripe_sub_id\n' + rows.join('\n');
+
+      await writeAudit(sb, {
+        actor_id: admin.profile.id, action: 'billing.subscriptions.export_csv',
+        target_type: 'billing', after: { count: rows.length, status_filter },
+      });
+      return new Response(csv, {
+        status: 200,
+        headers: { ...CORS, 'Content-Type': 'text/csv', 'Content-Disposition': 'attachment; filename="subscriptions.csv"' },
+      });
+    }
+
     // ── GLOBAL CREDIT LEDGER ──────────────────────────────────────────────────
     if (action === 'global_ledger') {
       const { user_id = '', event_type = '', page = 1, per_page = 50 } = body;

@@ -75,6 +75,17 @@ serve(async (req) => {
         const { data: ct } = await sb.from('cohort_tiers').select('id').eq('slug', cohort_slug).single();
         if (ct) q = q.eq('cohort_tier_id', ct.id);
       }
+      if (body.country) q = q.eq('country', body.country);
+      if (body.signup_from) q = q.gte('created_at', body.signup_from);
+      if (body.signup_to) q = q.lte('created_at', body.signup_to);
+      if (body.active_from) q = q.gte('last_seen_at', body.active_from);
+      if (body.active_to) q = q.lte('last_seen_at', body.active_to);
+      if (body.sub_status) {
+        // Filter by subscription status via join
+        const { data: subUserIds } = await sb.from('user_subscriptions')
+          .select('user_id').eq('status', body.sub_status);
+        if (subUserIds) q = q.in('id', subUserIds.map((s: Record<string, string>) => s.user_id));
+      }
       // status filter maps to user_subscriptions.status
       if (sort_by === 'created_at' || sort_by === 'last_seen_at') {
         q = q.order(sort_by, { ascending: sort_dir === 'asc' });
@@ -151,6 +162,142 @@ serve(async (req) => {
       return json({ success: true, profile: after });
     }
 
+    // ── CSV EXPORT ────────────────────────────────────────────────────────────────
+    if (action === 'export_csv') {
+      // Export all matching users (up to 10k) as CSV
+      let q = sb.from('profiles').select(
+        'id, display_name, email, created_at, last_seen_at, cohort_tiers(slug)'
+      );
+      if (body.search) q = q.or(`email.ilike.%${body.search}%,display_name.ilike.%${body.search}%`);
+      if (body.cohort_slug) {
+        const { data: ct } = await sb.from('cohort_tiers').select('id').eq('slug', body.cohort_slug).single();
+        if (ct) q = q.eq('cohort_tier_id', ct.id);
+      }
+      q = q.order('created_at', { ascending: false }).limit(10000);
+      const { data, error } = await q;
+      if (error) throw error;
+
+      const rows = (data ?? []).map(u => {
+        const cohort = (u.cohort_tiers as Record<string, string>)?.slug ?? 'free';
+        const joined = u.created_at ? new Date(u.created_at).toISOString().slice(0,10) : '';
+        const active = u.last_seen_at ? new Date(u.last_seen_at).toISOString().slice(0,10) : '';
+        return `"${(u.id??'').replace(/"/g,'""')}","${(u.email??'').replace(/"/g,'""')}","${(u.display_name??'').replace(/"/g,'""')}","${cohort}","${joined}","${active}"`;
+      });
+      const csv = 'id,email,display_name,cohort,joined,last_active\n' + rows.join('\n');
+
+      await writeAudit(sb, {
+        actor_id: admin.profile.id, action: 'user.list.export_csv',
+        target_type: 'user', after: { count: rows.length },
+      });
+      return new Response(csv, {
+        status: 200,
+        headers: { ...CORS, 'Content-Type': 'text/csv', 'Content-Disposition': 'attachment; filename="users.csv"' },
+      });
+    }
+
+    // ── SUSPEND / UNSUSPEND ───────────────────────────────────────────────────────
+    if (action === 'suspend') {
+      const { user_id, reason } = body;
+      if (!user_id) return json({ error: 'user_id required' }, 400);
+      if (!reason || reason.trim().length < 5) return json({ error: 'reason required' }, 400);
+
+      const { data: before } = await sb.from('profiles').select('role').eq('id', user_id).single();
+      await sb.from('profiles').update({ role: 'suspended' }).eq('id', user_id);
+
+      await writeAudit(sb, {
+        actor_id: admin.profile.id, action: 'user.suspend',
+        target_type: 'user', target_id: user_id,
+        before: { role: before?.role }, after: { role: 'suspended' }, reason: reason.trim(),
+      });
+      return json({ success: true });
+    }
+
+    if (action === 'unsuspend') {
+      const { user_id, reason } = body;
+      if (!user_id) return json({ error: 'user_id required' }, 400);
+      await sb.from('profiles').update({ role: 'user' }).eq('id', user_id);
+      await writeAudit(sb, {
+        actor_id: admin.profile.id, action: 'user.unsuspend',
+        target_type: 'user', target_id: user_id,
+        before: { role: 'suspended' }, after: { role: 'user' }, reason: reason?.trim() ?? '',
+      });
+      return json({ success: true });
+    }
+
+    // ── DELETE ACCOUNT ───────────────────────────────────────────────────────────
+    if (action === 'delete_account') {
+      const { user_id, confirm_email, reason } = body;
+      if (!user_id) return json({ error: 'user_id required' }, 400);
+      if (!reason || reason.trim().length < 20) return json({ error: 'reason required (min 20 chars for account deletion)' }, 400);
+
+      // Verify confirm_email matches
+      const { data: profile } = await sb.from('profiles').select('email').eq('id', user_id).single();
+      if (!profile) return json({ error: 'User not found' }, 404);
+      if (confirm_email?.toLowerCase().trim() !== profile.email?.toLowerCase()) {
+        return json({ error: 'Email confirmation does not match' }, 409);
+      }
+
+      // Write audit BEFORE deletion
+      await writeAudit(sb, {
+        actor_id: admin.profile.id, action: 'user.delete_account',
+        target_type: 'user', target_id: user_id,
+        before: { email: profile.email }, reason: reason.trim(),
+      });
+
+      // Delete via auth admin (cascades to profiles via FK)
+      const { error } = await sb.auth.admin.deleteUser(user_id);
+      if (error) throw error;
+
+      return json({ success: true });
+    }
+
+    // ── IMPERSONATE ───────────────────────────────────────────────────────────────
+    if (action === 'impersonate') {
+      const { user_id } = body;
+      if (!user_id) return json({ error: 'user_id required' }, 400);
+
+      // Write audit immediately — impersonation is always logged regardless of result
+      await writeAudit(sb, {
+        actor_id: admin.profile.id, action: 'user.impersonate',
+        target_type: 'user', target_id: user_id,
+        after: { initiated_by: admin.profile.id, note: 'read-only session' },
+      });
+
+      // Generate a short-lived magic link for the user (expires in 5 min)
+      const { data, error } = await sb.auth.admin.generateLink({
+        type: 'magiclink',
+        email: (await sb.from('profiles').select('email').eq('id', user_id).single()).data?.email ?? '',
+        options: { expiresIn: 300 }, // 5 minutes
+      });
+      if (error) throw error;
+
+      return json({ success: true, link: data.properties?.action_link, expires_in: 300 });
+    }
+
+    // ── USER DETAIL: APPLICATIONS TAB ────────────────────────────────────────────
+    if (action === 'detail_applications') {
+      const { user_id } = body;
+      if (!user_id) return json({ error: 'user_id required' }, 400);
+
+      const [appsRes, pipelineRes] = await Promise.all([
+        sb.from('pending_applications')
+          .select('id, job_id, status, created_at, jobs(title, company_name)')
+          .eq('user_id', user_id)
+          .order('created_at', { ascending: false })
+          .limit(50),
+        sb.from('user_pipeline')
+          .select('id, job_id, stage, created_at, jobs(title, company_name)')
+          .eq('user_id', user_id)
+          .order('created_at', { ascending: false })
+          .limit(50),
+      ]);
+
+      return json({
+        applications: appsRes.data ?? [],
+        pipeline: pipelineRes.data ?? [],
+      });
+    }
+
     // ── REASSIGN COHORT ────────────────────────────────────────────────────────
     if (action === 'reassign_cohort') {
       const { user_id, cohort_slug, reason } = body;
@@ -189,6 +336,32 @@ serve(async (req) => {
       });
 
       return json({ success: true, old_slug: oldSlug, new_slug: cohort_slug });
+    }
+
+    // ── CANCEL SUBSCRIPTION (from User Detail) ──────────────────────────────────
+    if (action === 'cancel_sub_for_user') {
+      const { user_id, cancel_immediately, reason } = body;
+      if (!user_id || !reason || reason.trim().length < 10) return json({ error: 'user_id and reason (min 10 chars) required' }, 400);
+      const { data: sub } = await sb.from('user_subscriptions').select('stripe_subscription_id').eq('user_id', user_id).single();
+      if (!sub?.stripe_subscription_id) return json({ error: 'No active subscription found' }, 404);
+
+      const STRIPE_KEY = Deno.env.get('STRIPE_SECRET_KEY');
+      if (!STRIPE_KEY) return json({ error: 'Stripe not configured' }, 500);
+
+      const stripeRes = await fetch(`https://api.stripe.com/v1/subscriptions/${sub.stripe_subscription_id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${STRIPE_KEY}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: cancel_immediately ? '' : 'cancel_at_period_end=true',
+      });
+      const stripeData = await stripeRes.json();
+      if (!stripeRes.ok) return json({ error: stripeData.error?.message ?? 'Stripe error' }, 502);
+
+      await writeAudit(sb, {
+        actor_id: admin.profile.id, action: 'billing.subscription.cancel',
+        target_type: 'billing', target_id: user_id,
+        after: { cancel_immediately }, reason: reason.trim(),
+      });
+      return json({ success: true, cancel_immediately });
     }
 
     return json({ error: 'Unknown action' }, 400);

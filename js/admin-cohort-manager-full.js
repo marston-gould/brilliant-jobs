@@ -69,7 +69,8 @@ async function cmLoadList() {
         '  <td>' + (c.is_public ? '<span style="color:var(--green);font-size:12px">●&nbsp;Yes</span>' : '<span style="color:var(--text-faint);font-size:12px">○&nbsp;No</span>') + '</td>',
         '  <td style="white-space:nowrap">',
         '    <button onclick="cmOpenEditor(\'' + c.id + '\')" style="padding:3px 10px;border:1px solid var(--border);border-radius:5px;background:var(--bg-card);color:var(--text-dim);font-size:12px;cursor:pointer;margin-right:4px">Edit</button>',
-        '    <button onclick="cmArchive(\'' + c.id + '\')" style="padding:3px 10px;border:1px solid var(--border);border-radius:5px;background:var(--bg-card);color:var(--text-dim);font-size:12px;cursor:pointer">Archive</button>',
+        '    <button onclick="cmArchive(\'' + c.id + '\')" style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--bg-card);color:var(--text-dim);font-size:12px;cursor:pointer">Archive</button> ',
+        '    <button onclick="cmDuplicate(\'' + c.id + '\')" style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--bg-card);color:var(--text-dim);font-size:12px;cursor:pointer">Duplicate</button>',
         '  </td>',
         '</tr>',
       ].join('');
@@ -157,9 +158,9 @@ async function cmSave() {
     sort_order:          get('sort', true) ?? 0,
     stripe_monthly_price_id: get('stripe_monthly'),
     stripe_annual_price_id:  get('stripe_annual'),
-    max_auto_apply_daily:        get('max_auto_apply', true),
-    max_saved_jobs:              get('max_saved', true),
-    max_recruiter_lookups_daily: get('max_recruiter', true),
+    max_auto_apply_daily:        document.getElementById('cm-ent-max-auto-apply') ? (parseInt(document.getElementById('cm-ent-max-auto-apply').value)||null) : get('max_auto_apply', true),
+    max_saved_jobs:              document.getElementById('cm-ent-max-saved') ? (parseInt(document.getElementById('cm-ent-max-saved').value)||null) : get('max_saved', true),
+    max_recruiter_lookups_daily: document.getElementById('cm-ent-max-recruiter') ? (parseInt(document.getElementById('cm-ent-max-recruiter').value)||null) : get('max_recruiter', true),
     is_public:        get('is_public'),
     csv_export_enabled: get('csv_export'),
     api_access_enabled: get('api_access'),
@@ -220,6 +221,49 @@ async function cmArchive(cohortId) {
 }
 
 // BJ namespace
+async function cmValidateStripePrice(fieldId) {
+  var input = document.getElementById('cm-' + fieldId);
+  var resultEl = document.getElementById('cm-stripe-validation-result');
+  if (!input || !resultEl) return;
+  var priceId = input.value.trim();
+  if (!priceId) { resultEl.textContent = 'Enter a Price ID first'; return; }
+  resultEl.textContent = 'Validating…';
+  try {
+    var token = (await sb.auth.getSession()).data.session?.access_token;
+    var res = await fetch('/functions/v1/api-gateway/admin-cohort-manager', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'validate_stripe_price', price_id: priceId }),
+    });
+    var data = await res.json();
+    if (data.valid) {
+      var amt = data.price?.unit_amount ? ('$' + (data.price.unit_amount/100).toFixed(2)) : '';
+      resultEl.style.color = 'var(--green)';
+      resultEl.textContent = '✓ Valid ' + (data.price?.currency?.toUpperCase()||'') + ' ' + amt;
+    } else {
+      resultEl.style.color = 'var(--red)';
+      resultEl.textContent = '✗ ' + (data.error || 'Invalid');
+    }
+  } catch(e) { resultEl.textContent = 'Error: ' + e.message; }
+}
+
+async function cmDuplicate(cohortId) {
+  var newName = prompt('Name for the duplicated cohort:');
+  if (!newName) return;
+  var newSlug = prompt('Slug (URL-safe, e.g. pro-v2):', newName.toLowerCase().replace(/[^a-z0-9]/g, '-'));
+  if (!newSlug) return;
+  try {
+    var token = (await sb.auth.getSession()).data.session?.access_token;
+    var res = await fetch('/functions/v1/api-gateway/admin-cohort-manager', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'duplicate', cohort_id: cohortId, new_name: newName, new_slug: newSlug }),
+    });
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    toastSuccess('Cohort duplicated: ' + newName);
+    cmLoadList();
+  } catch(e) { reportError('admin-cohort:duplicate', e); toastWarning('Duplicate failed: ' + e.message); }
+}
+
 (function() {
   ['loadCohortManagerTab','cmLoadList','cmOpenEditor','cmCloseEditor','cmSave','cmArchive'].forEach(function(name) {
     if (typeof window[name] === 'function') {
