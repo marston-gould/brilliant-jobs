@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v10.05';
+var BJ_VERSION = 'v10.06';
 // Populate version display elements after DOM is ready
 (function() {
   var el = document.getElementById('nav-version');
@@ -25651,8 +25651,8 @@ async function loadBucketBalance() {
   try {
     const token = (await sb.auth.getSession()).data.session?.access_token;
     if (!token) return;
-    const res = await fetch('/functions/v1/api-gateway/get-user-balance', {
-      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+    const res = await fetch(SUPABASE_URL + '/functions/v1/api-gateway/get-user-balance', {
+      headers: { 'Authorization': 'Bearer ' + token, 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' }
     });
     if (!res.ok) return;
     const bal = await res.json();
@@ -37095,7 +37095,7 @@ window.initBillingToggle = initBillingToggle;
         .select('channel_map, build_id')
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (data && !error && data.channel_map) {
         _activeChannelMap = data.channel_map;

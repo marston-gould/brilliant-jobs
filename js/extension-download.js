@@ -45,7 +45,7 @@
         .select('channel_map, build_id')
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (data && !error && data.channel_map) {
         _activeChannelMap = data.channel_map;
