@@ -10,6 +10,7 @@
 // Model: claude-haiku-4-5-20251001 (cost-efficient for batch extraction)
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { withAnthropicBreaker } from '../_shared/anthropic.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -509,28 +510,33 @@ ${requirements}
 
 Remember: respond with ONLY a JSON array, no markdown, no backticks.`;
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 4096,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userPrompt }],
-    }),
-  });
+  const _br = await withAnthropicBreaker(sb, 'interview-generate-questions', async () => {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 4096,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: userPrompt }],
+      }),
+    });
 
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Anthropic API ${response.status}: ${errText.slice(0, 200)}`);
-  }
-
-  const data = await response.json();
-  const text = data.content?.[0]?.text || '';
+    if (!response.ok) {
+      if (response.status === 402) throw new Error('402 credits exhausted');
+      const errText = await response.text();
+      throw new Error(`Anthropic API ${response.status}: ${errText.slice(0, 200)}`);
+    }
+    return await response.json();
+  }, { model: MODEL });
+  if (_br.circuitOpen) throw new Error('Circuit breaker open — AI unavailable');
+  if (_br.error) throw new Error(_br.error);
+  const data = _br.result as Record<string, unknown>;
+  const text = (data?.content as Array<Record<string, string>>)?.[0]?.text || '';
 
   // Parse JSON from response — strip any markdown fences
   const cleaned = text.replace(/```json\s*|```\s*/g, '').trim();

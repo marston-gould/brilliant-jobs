@@ -8,6 +8,7 @@
 // Model: claude-sonnet-4-20250514 (higher quality for realistic conversation)
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { withAnthropicBreaker } from '../_shared/anthropic.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -156,7 +157,7 @@ async function handleStart(
     { role: 'user' as const, content: 'Please begin the interview.' },
   ];
 
-  const claudeResponse = await callClaude(systemPrompt, openingMessages);
+  const claudeResponse = await callClaude(systemPrompt, openingMessages, createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY));
 
   // Create session
   const sessionMessages = [
@@ -259,7 +260,7 @@ async function handleMessage(
   claudeMessages.push({ role: 'user', content: body.message });
 
   // Call Claude
-  const claudeResponse = await callClaude(systemPrompt, claudeMessages);
+  const claudeResponse = await callClaude(systemPrompt, claudeMessages, createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY));
 
   // Update session messages
   const updatedMessages = [
@@ -390,35 +391,48 @@ interface Scorecard {
 
 async function callClaude(
   systemPrompt: string,
-  messages: Array<{ role: 'user' | 'assistant'; content: string }>
+  messages: Array<{ role: 'user' | 'assistant'; content: string }>,
+  sb?: ReturnType<typeof createClient>,
 ): Promise<ClaudeResponse> {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-      'anthropic-beta': 'prompt-caching-2024-07-31',
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
-      system: [{
-        type: 'text',
-        text: systemPrompt,
-        cache_control: { type: 'ephemeral' },
-      }],
-      messages,
-    }),
-  });
+  const doFetch = async () => {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'prompt-caching-2024-07-31',
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: MAX_TOKENS,
+        system: [{
+          type: 'text',
+          text: systemPrompt,
+          cache_control: { type: 'ephemeral' },
+        }],
+        messages,
+      }),
+    });
 
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Anthropic API ${response.status}: ${errText.slice(0, 300)}`);
+    if (!response.ok) {
+      if (response.status === 402) throw new Error('402 credits exhausted');
+      const errText = await response.text();
+      throw new Error(`Anthropic API ${response.status}: ${errText.slice(0, 300)}`);
+    }
+    return await response.json();
+  };
+
+  let data: Record<string, unknown>;
+  if (sb) {
+    const _br = await withAnthropicBreaker(sb, 'interview-simulate', doFetch, { model: MODEL });
+    if (_br.circuitOpen || _br.error) throw new Error(_br.error || 'Circuit breaker open');
+    data = _br.result as Record<string, unknown>;
+  } else {
+    data = await doFetch();
   }
 
-  const data = await response.json();
-  const text = data.content?.[0]?.text || '';
+  const text = (data.content as Array<Record<string, string>>)?.[0]?.text || '';
 
   // Log cache performance
   const usage = data.usage || {};

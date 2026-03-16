@@ -4,6 +4,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { withAnthropicBreaker } from '../_shared/anthropic.ts';
 
 const SB_URL = Deno.env.get('SUPABASE_URL')!;
 const SB_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -251,16 +252,22 @@ serve(async (req) => {
       if (prompt.role === 'system') reqBody.system = rendered;
       if (temperature > 0) reqBody.temperature = temperature;
 
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': ANTHROPIC_KEY,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify(reqBody),
-      });
-      const result = await res.json();
+      const _br = await withAnthropicBreaker(sb, 'admin-filter-prompt', async () => {
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': ANTHROPIC_KEY,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify(reqBody),
+        });
+        const result = await res.json();
+        if (!res.ok && res.status === 402) throw new Error('402 credits exhausted');
+        return { ok: res.ok, result, usage: result.usage };
+      }, { model });
+      if (_br.circuitOpen) return json({ error: 'AI temporarily unavailable (circuit breaker)' }, 503);
+      const result = _br.result?.result ?? _br.result;
 
       await writeAudit(sb, {
         actor_id: admin.profile.id, action: 'prompt.test_run',

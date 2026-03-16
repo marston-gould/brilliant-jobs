@@ -21,7 +21,8 @@ const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 // Spec §5.1: batch 10 per cron invocation
 const BATCH_SIZE = 10;
 // Spec §5.1: max 50 classifications/minute → 10 per 15min cycle is well within limit
-const SONNET_MODEL = "claude-sonnet-4-20250514";
+// CRON-COST-OPT §4.2: Haiku is the ONLY permitted model. Sonnet costs 90% more.
+const HAIKU_MODEL = "claude-haiku-4-5-20251001";
 // Confidence thresholds (spec §3.3)
 const CONFIDENCE_HIGH = 0.85;
 const CONFIDENCE_MEDIUM = 0.50;
@@ -255,7 +256,7 @@ async function classifySignal(
         "anthropic-beta": "prompt-caching-2024-07-31",
       },
       body: JSON.stringify({
-        model: SONNET_MODEL,
+        model: HAIKU_MODEL,
         max_tokens: 400,
         system: [
           {
