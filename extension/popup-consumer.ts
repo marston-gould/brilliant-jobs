@@ -119,7 +119,7 @@ async function _initModeSelector(): Promise<void> {
         chrome.runtime.sendMessage({ type: 'syncApplySettingsToSupabase', settings });
       } catch {}
 
-      try { phCapture('mode_changed', { mode }); } catch {}
+      try { phCapture('application_mode_changed', { mode }); } catch {}
     });
   });
 }
