@@ -52,7 +52,10 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**SPEC-LPG-001-S2** — LinkedIn Profile Optimizer (F3) ✅
+**FB-ATS-001-S1** — ATS Pass Rate Improvement: Acronym Dual Inclusion (ATS-006) + Section Header Standardization (ATS-007) ✅
+- v9.72→v9.73 — Prompt engineering updates to rewrite-resume-execute + rewrite-resume-extension EFs. REWRITER_SYSTEM gains Rule 7 (ACRONYM RULE: include both full term and acronym on first use for all technical terms, skip universally known abbreviations AI/IT/HR/CEO/CTO/CFO/VP/MBA/PhD) and Rule 8 (SECTION HEADERS: replace non-standard headers with ATS-standard equivalents — Work Experience, Skills, Education, Professional Summary, Certifications, Projects, Awards). QUALITY_CHECKER_SYSTEM gains checks 6 (ACRONYM COMPLIANCE) and 7 (HEADER STANDARDIZATION). Extension REWRITE_SYSTEM gains Rules 9 + 10 (same content). Output format extended: acronym_pairs_added[] and headers_standardized[] in both EFs. Response objects include new arrays with || [] defaults. Notification payload includes acronymPairsAdded + headersStandardized counts. rewrite.js: _rwState stores new fields from EF response. resume_rewrite_completed PostHog event extended with acronym_pairs_added + headers_standardized counts. 45 tests.
+
+**Previous: SPEC-LPG-001-S2** — LinkedIn Profile Optimizer (F3) ✅
 - v9.71→v9.72 — optimize-linkedin-profile EF (analyze action, Haiku, 5-section weighted scoring, 7-day cache, 2 credits). linkedin_optimizations table (9 cols, RLS, indexes) applied to prod. LinkedIn nav item + page shell in dashboard.html (score gauge SVG, 5 section cards, top 3 actions banner, re-analyze button, no-profile CTA, loading skeleton). js/linkedin.js client module (_bjAnalyzeLinkedIn, initLinkedInTab). app.js wired (page titles/sections + tab handlers). build.js deferred chunk. Gateway route deployed. PostHog: linkedin_optimizer_viewed, linkedin_optimizer_analyzed. 63 tests.
 
 **Previous: SPEC-LPG-001-S1** — AI Bullet Point Generator (F1) + AI Summary Generator (F2) ✅
@@ -3996,28 +3999,27 @@ Deliverables:
 
 ## Next Session
 
-**SPEC-LPG-001-S3** — LinkedIn Summary Generator (F4) + Integration Polish
+**FB-ATS-001-S2** — ATS Pass Rate Improvement: Keyword Match Rate Breakdown UI (ATS-003) + Resume Format Health Check (ATS-001)
 
 **Entry Gate:**
-- [x] SPEC-LPG-001-S2 complete (optimize-linkedin-profile EF + LinkedIn tab)
+- [x] FB-ATS-001-S1 complete (ATS-006 + ATS-007 prompt changes deployed)
+- [x] score-resume EF returning keywords_found and keywords_missing arrays
+- [x] Resume upload flow functional
 
 **Fix Items:**
-1. Add `linkedin_summary` action to optimize-linkedin-profile EF: { tone, target_roles? } → { summaries: string[] } (2 variants, max 2600 chars each)
-2. LinkedIn Summary Generator UI on LinkedIn tab below the scorecard: tone selector, optional target role, 2 editable variant cards, Copy to Clipboard, character count indicator (2600 limit)
-3. Auto-suggest: when Profile Optimizer summary score < 70, show prompt "Your summary scored {score}. Generate a stronger one?"
-4. Credit cost: 1 per generation
-5. PostHog: linkedin_summary_generated, linkedin_summary_copied
-6. Update competitor feature grid: BJ checkmark for Interview Tracker (already built)
-7. Tests: 50+ validation tests
-8. Three-file close
+1. ATS-003: Keyword Match Rate Breakdown UI — pure frontend consuming existing score-resume response data. Match rate bar ("8 of 12 keywords matched — 67%"). Keyword-by-keyword checklist (green ✓ matched, red ✗ missing). Category grouping (Hard Skills, Soft Skills, Tools, Certifications). "Add to Resume" button per missing keyword triggers targeted rewrite. Dashboard score modal + extension score gate popup + rewrite review.
+2. ATS-001: Resume Format Health Check — new validate-resume-format EF. Detect multi-column layout, tables for layout, embedded images/icons, non-standard fonts, scanned/image-only PDF, headers/footers with key info. ATS-Ready / Format Issues badge on resume cards. Integration with score gate popup. PostHog events.
+3. Tests: 50+ validation tests
+4. Three-file close
 
 **Exit Gate:**
-- [ ] linkedin_summary action in EF deployed
-- [ ] Summary generator UI renders on LinkedIn tab
-- [ ] Auto-suggest triggers for low summary scores
+- [ ] Keyword match rate breakdown visible on score display surfaces
+- [ ] Format health check runs at upload time
+- [ ] ATS-Ready badge on clean resumes, amber card on format issues
 - [ ] Tests passing
 
 **Other backlog:**
+- SPEC-LPG-001-S3: LinkedIn Summary Generator (F4) + Integration Polish
 - CASA-001: Google CASA assessment + gmail.readonly upgrade
 
 
@@ -4049,7 +4051,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.72`** | **SPEC-LPG-001-S2: LinkedIn Profile Optimizer. 63 tests.** |
+| **Product (BJ_VERSION)** | **`v9.73`** | **FB-ATS-001-S1: ATS-006 Acronym Dual Inclusion + ATS-007 Section Header Standardization. 45 tests.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

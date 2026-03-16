@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.72';
+var BJ_VERSION = 'v9.73';
 
 
 // === js/globals.ts ===
@@ -26389,6 +26389,8 @@ async function _rwStartRewrite(feedback) {
     _rwState.sections = data.sections || [];
     _rwState.quality = data.quality || {};
     _rwState.newScore = data.new_score;
+    _rwState.acronymPairsAdded = data.acronym_pairs_added || [];
+    _rwState.headersStandardized = data.headers_standardized || [];
     _rwState.creditsUsed += data.credits_used || 0;
     _rwState.status = 'completed';
 
@@ -26477,6 +26479,8 @@ async function _rwAcceptAll() {
         original_score: _rwState.originalScore || null,
         new_score: _rwState.newScore || null,
         credits_charged: 3,
+        acronym_pairs_added: (_rwState.acronymPairsAdded || []).length,
+        headers_standardized: (_rwState.headersStandardized || []).length,
       });
     }
     closeRewritePanel();

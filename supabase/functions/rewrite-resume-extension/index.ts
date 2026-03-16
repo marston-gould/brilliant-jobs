@@ -79,6 +79,8 @@ RULES:
 6. Keep the same length — don't add sections the original doesn't have.
 7. Use plain, strong verbs. Avoid: "leveraged", "spearheaded", "synergized", "cutting-edge".
 8. PAGE CONSTRAINT: The rewritten resume MUST fit within the specified page limit. If the limit is 1 page, aggressively trim low-relevance content to stay under ~500 words / ~3000 characters. If 2 pages, stay under ~1000 words / ~6000 characters. Prioritize the most relevant experience for the target role.
+9. ACRONYM RULE: For every technical term, tool, methodology, or certification that has a common acronym, include BOTH the full term and the acronym on first use (e.g. "Search Engine Optimization (SEO)", "Application Programming Interface (API)", "Continuous Integration/Continuous Deployment (CI/CD)", "Key Performance Indicators (KPIs)"). After first use, the acronym alone is acceptable. If the JD uses only the acronym, still expand it once. If the JD uses only the full form, still include the acronym once. Skip universally known abbreviations (AI, IT, HR, CEO, CTO, CFO, VP, MBA, PhD).
+10. SECTION HEADERS: Replace any non-standard or creative section headers with ATS-standard equivalents. Use exactly: "Contact Information", "Professional Summary", "Work Experience", "Skills", "Education", "Certifications", "Projects", "Awards". Map variants like "Where I've Worked" → "Work Experience", "My Toolbox" → "Skills", "The Journey" → "Education", "About Me" → "Professional Summary", "Career History" → "Work Experience", "Core Competencies" → "Skills".
 
 OUTPUT FORMAT: Return ONLY valid JSON with these fields:
 {
@@ -88,6 +90,8 @@ OUTPUT FORMAT: Return ONLY valid JSON with these fields:
   ],
   "skills_added": ["skill1", "skill2"],
   "keywords_integrated": ["keyword1", "keyword2"],
+  "acronym_pairs_added": ["Search Engine Optimization (SEO)", "CI/CD"],
+  "headers_standardized": ["Where I Worked → Work Experience"],
   "estimated_score_improvement": 8
 }
 
@@ -233,6 +237,8 @@ Rewrite the resume to address the identified gaps while keeping the candidate's 
         changes: [],
         skills_added: [],
         keywords_integrated: [],
+        acronym_pairs_added: [],
+        headers_standardized: [],
         estimated_score_improvement: 5,
       };
     }
@@ -265,6 +271,8 @@ Rewrite the resume to address the identified gaps while keeping the candidate's 
       changes: parsed.changes || [],
       skills_added: parsed.skills_added || [],
       keywords_integrated: parsed.keywords_integrated || [],
+      acronym_pairs_added: parsed.acronym_pairs_added || [],
+      headers_standardized: parsed.headers_standardized || [],
       estimated_score_improvement: parsed.estimated_score_improvement || 0,
       original_score: current_score || null,
       estimated_new_score: current_score

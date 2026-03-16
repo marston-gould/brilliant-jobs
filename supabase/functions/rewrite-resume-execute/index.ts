@@ -91,6 +91,8 @@ ABSOLUTE RULES:
 4. Do not add excessive keywords. Weave JD-relevant terminology naturally.
 5. Keep the resume's original structure (sections in the same order).
 6. Only rewrite sections that benefit from changes. If a section is already strong for this JD, mark it as unchanged.
+7. ACRONYM RULE: For every technical term, tool, methodology, or certification that has a common acronym, include BOTH the full term and the acronym on first use (e.g. "Search Engine Optimization (SEO)", "Application Programming Interface (API)", "Continuous Integration/Continuous Deployment (CI/CD)", "Key Performance Indicators (KPIs)"). After first use, the acronym alone is acceptable. If the JD uses only the acronym, still expand it once. If the JD uses only the full form, still include the acronym once. Skip universally known abbreviations that never need expansion (AI, IT, HR, CEO, CTO, CFO, VP, MBA, PhD).
+8. SECTION HEADERS: Replace any non-standard or creative section headers with ATS-standard equivalents. Use exactly these headers: "Contact Information", "Professional Summary", "Work Experience", "Skills", "Education", "Certifications", "Projects", "Awards". Map variants like "Where I've Worked" → "Work Experience", "My Toolbox" → "Skills", "The Journey" → "Education", "About Me" → "Professional Summary", "Career History" → "Work Experience", "Core Competencies" → "Skills", "Academic Background" → "Education".
 
 You receive:
 1. Original resume text
@@ -111,6 +113,8 @@ OUTPUT FORMAT — Return ONLY JSON, no markdown:
     }
   ],
   "keywords_added": ["string (JD keywords naturally incorporated)"],
+  "acronym_pairs_added": ["string (e.g. 'Search Engine Optimization (SEO)')"],
+  "headers_standardized": ["string (e.g. 'Where I\\'ve Worked → Work Experience')"],
   "skipped_gaps": ["string (gaps the user skipped — no content fabricated)"]
 }`;
 
@@ -126,6 +130,8 @@ CHECK FOR:
 3. KEYWORD MATCH — Does the rewrite naturally incorporate key terms from the JD?
 4. QUALITY — Is the writing professional, concise, free of AI-speak?
 5. MATCH IMPROVEMENT — Estimate how much the match score improved.
+6. ACRONYM COMPLIANCE — Does the rewrite include both the full term and acronym for technical terms on first use? Flag any technical acronym that appears without its expanded form (or vice versa).
+7. HEADER STANDARDIZATION — Are all section headers ATS-standard (Work Experience, Skills, Education, Professional Summary, Certifications, Projects, Awards)? Flag any non-standard headers that survived the rewrite.
 
 OUTPUT JSON (no markdown, no fences):
 {
@@ -443,6 +449,8 @@ Rewrite again, fixing all truthfulness issues. Return ONLY JSON.`;
           originalScore: session.original_score || undefined,
           newScore: newScore || undefined,
           keywordsAdded: (rewriteData.keywords_added || []).length,
+          acronymPairsAdded: (rewriteData.acronym_pairs_added || []).length,
+          headersStandardized: (rewriteData.headers_standardized || []).length,
           sectionsChanged: (rewriteData.sections || []).length,
           newResumeId: session.resume_id || undefined,
           rewriteJobId: session_id,
@@ -461,6 +469,8 @@ Rewrite again, fixing all truthfulness issues. Return ONLY JSON.`;
       status: 'completed',
       sections: rewriteData.sections || [],
       keywords_added: rewriteData.keywords_added || [],
+      acronym_pairs_added: rewriteData.acronym_pairs_added || [],
+      headers_standardized: rewriteData.headers_standardized || [],
       skipped_gaps: rewriteData.skipped_gaps || [],
       quality: {
         truthfulness_score: qualityCheck.truthfulness_score,

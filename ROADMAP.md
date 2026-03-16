@@ -3725,3 +3725,15 @@ Phase S is complete when ALL of the following are true:
 | LPG-S1 | AI Bullet Point Generator (F1) + AI Summary Generator (F2) — resume-rewrite-bullet EF extended with generate + summary actions. AI Writing Tools collapsible panel on Resumes tab. Bullet generator: role title + company + context + target job → 3-5 ATS bullets. Summary generator: resume + LinkedIn + tone + target job → 2-3 professional summaries. Set as Summary writes to parsed_json.summary. Tier gate: Free 3/day, Starter 10/day, Pro unlimited. PostHog: bullet_generator_used, bullet_copied, summary_generator_used, summary_copied, summary_set. 57 tests. | ✅ | v9.71 |
 | LPG-S3 | LinkedIn Summary Generator (F4) + Integration Polish — LinkedIn About section (3-5 paragraphs, max 2600 chars). Auto-suggest when optimizer summary score < 70. Credit: 1/gen. | 🔲 | |
 | LPG-S2 | LinkedIn Profile Optimizer (F3) — optimize-linkedin-profile EF. linkedin_optimizations table + RLS + indexes. LinkedIn nav tab + page shell. Score gauge SVG, 5 section cards (weighted: Headline 20%, Summary 25%, Experience 30%, Skills 15%, Education 10%), top 3 actions banner, re-analyze button, no-profile CTA. 7-day cache. Credit: 2/analysis. Gateway route #131. PostHog: linkedin_optimizer_viewed, linkedin_optimizer_analyzed. 63 tests. | ✅ | v9.72 |
+
+## FB-ATS-001: ATS Pass Rate Improvement Suite
+
+| ID | Item | Status | Notes |
+|----|------|--------|-------|
+| ATS-006 | Acronym / Long-Form Dual Inclusion — Prompt engineering update to rewrite-resume-execute + rewrite-resume-extension EFs. ACRONYM RULE instruction: include both full term and acronym on first use for all technical terms. Quality checker updated with ACRONYM COMPLIANCE check. Response includes acronym_pairs_added array. PostHog tracking. 45 tests. | ✅ | v9.73 |
+| ATS-007 | Section Header Standardization — Prompt engineering update to both rewrite EFs. SECTION HEADERS instruction: replace non-standard headers (Where I've Worked, My Toolbox, The Journey, etc) with ATS-standard equivalents (Work Experience, Skills, Education). Quality checker updated with HEADER STANDARDIZATION check. Response includes headers_standardized array. 45 tests. | ✅ | v9.73 |
+| ATS-003 | Keyword Match Rate Breakdown UI — Pure frontend: keyword-by-keyword checklist consuming existing score-resume response (keywords_found, keywords_missing). Match rate bar. Category grouping. Quick Fix actions. | 🔲 | |
+| ATS-001 | Resume Format Health Check — New validate-resume-format EF. Detect multi-column, tables, embedded images, non-standard fonts, scanned PDFs, header/footer contact info. ATS-Ready badge. | 🔲 | |
+| ATS-002 | .docx Export Option — New export-resume-docx EF. ATS-optimized single-column template. Format toggle on download button. | 🔲 | |
+| ATS-004 | Cover Letter Generation — New generate-cover-letter EF. Auto-attach during form fill. ATS handler updates for cover letter fields. | 🔲 | |
+| ATS-005 | LinkedIn Keyword Alignment Nudge — Post-apply coaching. Compare resume keywords against stored LinkedIn profile. Notification card with suggestions. | 🔲 | |
