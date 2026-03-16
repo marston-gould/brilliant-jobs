@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.90';
+var BJ_VERSION = 'v9.91';
 
 
 // === js/globals.ts ===
@@ -560,8 +560,16 @@ async function loadUserData(userId: string): Promise<void> {
         // Local has data, cloud doesn't → queue sync up
         needsSync = true;
         _udPendingKeys.add(shortKey);
+      } else if (!localEmpty) {
+        // Both have data → local wins (user's current machine is source of truth)
+        // CRITICAL: Update _bj_ud_cache with local value so that subsequent
+        // flushes (for ANY key) don't resurrect stale cloud data.
+        // Without this, _bj_ud_cache retains cloud's version (e.g. deleted filters)
+        // and _flushUserData reads _bj_ud_cache + patch, sending old data back.
+        var cache = safeReadLS('_bj_ud_cache', {});
+        cache[shortKey] = localParsed;
+        localStorage.setItem('_bj_ud_cache', JSON.stringify(cache));
       }
-      // Both have data → local wins (user's current machine is source of truth)
     }
     if (needsSync) {
       console.log('[sync] Local data needs upload:', [..._udPendingKeys].join(', '));

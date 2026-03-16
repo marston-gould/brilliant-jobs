@@ -386,6 +386,10 @@ async function loadUserData(userId) {
       } else if (cloudEmpty && !localEmpty) {
         needsSync = true;
         _udPendingKeys.add(shortKey);
+      } else if (!localEmpty) {
+        var cache = safeReadLS("_bj_ud_cache", {});
+        cache[shortKey] = localParsed;
+        localStorage.setItem("_bj_ud_cache", JSON.stringify(cache));
       }
     }
     if (needsSync) {
