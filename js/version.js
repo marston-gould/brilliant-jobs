@@ -1,4 +1,4 @@
-var BJ_VERSION = "v10.03";
+var BJ_VERSION = "v10.04";
 (function() {
   var el = document.getElementById("nav-version");
   if (el) el.textContent = BJ_VERSION;

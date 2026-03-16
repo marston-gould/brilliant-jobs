@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v10.03';
+var BJ_VERSION = 'v10.04';
 // Populate version display elements after DOM is ready
 (function() {
   var el = document.getElementById('nav-version');
@@ -719,7 +719,7 @@ var savedJobIds = safeReadLS('bj_saved_jobs', []);
 var appliedJobIds = safeReadLS('bj_applied_jobs', []);
 var searchTimeout = null;
 var currentJobPage = 0;
-var JOBS_PER_PAGE = 25;
+var JOBS_PER_PAGE = 24;
 // FA-004: MAX_FEED_ROWS cap removed — real server-side pagination via range()
 var _feedLoadMoreOffset = 0; // tracks how many rows loaded so far for Load More
 var _feedTotalCount = 0; // total matching rows (from count: 'exact')
