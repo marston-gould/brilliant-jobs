@@ -32,8 +32,8 @@ async function loadBucketBalance() {
   try {
     const token = (await sb.auth.getSession()).data.session?.access_token;
     if (!token) return;
-    const res = await fetch('/functions/v1/api-gateway/get-user-balance', {
-      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+    const res = await fetch(SUPABASE_URL + '/functions/v1/get-user-balance', {
+      headers: { 'Authorization': 'Bearer ' + token, 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' }
     }).catch(() => null);
     if (!res || !res.ok) return;
     const bal = await res.json();
