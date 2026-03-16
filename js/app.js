@@ -1709,14 +1709,12 @@ window.switchResumeView = function(tabId) {
     btn.classList.toggle('active', btn.dataset.rtab === tabId);
   });
   // Lazy init: fire init functions on first tab switch
-  if (tabId === 'builder' && !window._rbTabInited) {
-    window._rbTabInited = true;
+  // Init/refresh on every tab switch
+  if (tabId === 'builder') {
     if (typeof rbInit === 'function') try { rbInit(); } catch(e) {}
   }
-  if (tabId === 'linkedin' && !window._liTabInited) {
-    window._liTabInited = true;
-    if (typeof liInit === 'function') try { liInit(); } catch(e) {}
-    if (typeof loadLinkedInProfile === 'function') try { loadLinkedInProfile(); } catch(e) {}
+  if (tabId === 'linkedin') {
+    if (typeof initLinkedInTab === 'function') try { initLinkedInTab(); } catch(e) {}
   }
   // PostHog
   if (typeof captureEvent === 'function') captureEvent('resumes_tab_switch', { tab: tabId });
