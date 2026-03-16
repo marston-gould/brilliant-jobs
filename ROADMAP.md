@@ -1229,13 +1229,13 @@ Complete survey infrastructure delivered by Pod 1 before Phase M engineering beg
 | P13-12 | Quarterly feature prioritization | — | 🚫 BLOCKED | Drag-and-drop ranking. New rank question type. Quarterly cron. **⛔ Blocked on:** User volume — needs active users to make ranking data meaningful. |
 | P13-13 | Public changelog + feedback board | v3.97 | ✅ | Canny widget in dashboard Feedback page. Feature Requests + Bug Reports boards. Identify SSO. GitHub auto-complete. |
 
-### Sprint 3: Tier 3 — Flagship Content Surveys (ALL 🚫 BLOCKED — needs user volume)
+### Sprint 3: Tier 3 — Flagship Content Surveys
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| P13-14 | Ghost Job Reality Check flagship survey | 🚫 BLOCKED | 10 questions, public access, 1K+ target. /ghost-report results page. **⛔ Blocked on:** Launch + user acquisition — needs traffic to hit 1K response target. |
-| P13-15–17 | Market, employer, referral surveys | 🚫 BLOCKED | Same pattern as ghost survey. **⛔ Blocked on:** P13-14 completion — same dependency on user volume. |
-| P13-18 | Survey → content pipeline | 🚫 BLOCKED | Results aggregation RPC, auto-generated charts, OG meta tags. **⛔ Blocked on:** P13-14/15-17 — needs survey data to aggregate. |
+| P13-14 | Ghost Job Reality Check flagship survey | ❌ WONTDO | Killed — subjective recall-based survey replaced by measured ghost rate data from Gmail/Calendar integration. Real response-time data > self-reported memories. |
+| P13-15–17 | Market, employer, referral surveys | 🚫 BLOCKED | Same user volume dependency. **⛔ Blocked on:** Launch + user acquisition. |
+| P13-18 | Survey → content pipeline | ❌ WONTDO | Killed — primary input (P13-14) eliminated. Ghost rate content will derive from measured pipeline data, not survey responses. |
 
 ### Sprint 4: Tier 4 — User Intelligence System (ALL 🚫 BLOCKED — needs launch + user data)
 
