@@ -17209,7 +17209,9 @@ async function renderPipeline() {
           var _rColor = m._interviewReadinessScore >= 75 ? 'var(--green,#22c55e)' : m._interviewReadinessScore >= 50 ? 'var(--accent)' : 'var(--warm)';
           _readinessBadge = '<span style="font-size:10px;font-weight:700;color:' + _rColor + ';margin-right:6px;" title="Interview readiness score">' + m._interviewReadinessScore + '</span>';
         }
-        html += '<td style="white-space:nowrap;">' + _readinessBadge + '<button onclick="event.stopPropagation();if(window._ipStartMock)window._ipStartMock(\'' + item.id + '\',\'' + (m._dbId || '') + '\')" style="display:inline-block;font-size:10px;font-weight:600;padding:4px 10px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;white-space:nowrap;">Prep →</button></td>';
+        html += '<td style="white-space:nowrap;">' + _readinessBadge +
+          '<button onclick="event.stopPropagation();if(window.openInterviewPractice)window.openInterviewPractice(\'' + item.id + '\')" style="display:inline-block;font-size:10px;font-weight:600;padding:4px 10px;border-radius:6px;background:var(--purple,#7c3aed);color:#fff;border:none;cursor:pointer;white-space:nowrap;margin-right:4px;" title="AI Interview Practice (AIS-F11)">🎯 Practice</button>' +
+          '<button onclick="event.stopPropagation();if(window._ipStartMock)window._ipStartMock(\'' + item.id + '\',\'' + (m._dbId || '') + '\')" style="display:inline-block;font-size:10px;font-weight:600;padding:4px 10px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;white-space:nowrap;">Prep →</button></td>';
       } else if (applyUrl && stage === 'saved') {
         html += '<td><a href="' + applyUrl + '" target="_blank" rel="noopener" style="display:inline-block;text-decoration:none;font-size:10px;font-weight:600;padding:4px 10px;border-radius:6px;background:var(--accent);color:#fff;white-space:nowrap;" onclick="event.stopPropagation();movePipelineStage(\'' + item.id + '\',\'applied\')">Apply →</a></td>';
       } else if (applyUrl) {
@@ -37984,3 +37986,45 @@ window.loadBulkProgress = window.loadBulkProgress;
     _ipEndSession();
   }
 })();
+
+// ── AIS-F11-S2: Session history for ip-history-panel (item 60) ──────────
+window.loadInterviewHistory = async function() {
+  var panel = document.getElementById('ip-history-panel');
+  var listEl = document.getElementById('ip-history-list');
+  if (!listEl || !currentUser) return;
+
+  try {
+    var { data, error } = await sb.from('interview_sessions')
+      .select('id, session_type, aggregate_score, status, job_id, created_at, completed_at')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (error || !data || !data.length) {
+      listEl.innerHTML = '<div style="font-size:12px;color:var(--text-muted);">No AI practice sessions yet.</div>';
+      return;
+    }
+
+    var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){return String(s||'');};
+    listEl.innerHTML = data.map(function(s) {
+      var sc = s.aggregate_score;
+      var scColor = sc >= 75 ? 'var(--green)' : sc >= 50 ? 'var(--warning)' : sc ? 'var(--warm)' : 'var(--text-muted)';
+      var when = s.created_at ? new Date(s.created_at).toLocaleDateString() : '';
+      var typeLabel = { behavioral: '🎯 Behavioral', technical: '⚙️ Technical', company: '🏢 Company' }[s.session_type] || s.session_type;
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;">' +
+        '<span style="flex:1;">' + esc(typeLabel) + (s.job_id ? ' · ' + esc(s.job_id.slice(0,20)) : '') + '</span>' +
+        (sc ? '<span style="font-weight:700;color:' + scColor + ';">' + sc + '</span>' : '') +
+        '<span style="color:var(--text-muted);font-size:10px;">' + esc(when) + '</span>' +
+        '<span style="font-size:10px;color:' + (s.status==='complete'?'var(--green)':'var(--text-muted)') + ';">' + esc(s.status) + '</span>' +
+      '</div>';
+    }).join('');
+    if (panel) panel.style.display = '';
+  } catch(e) { reportError('loadInterviewHistory', e); }
+};
+
+// Show history when My Sessions tab is shown
+window._ipShowHistoryPanel = function() {
+  var panel = document.getElementById('ip-history-panel');
+  if (panel) panel.style.display = '';
+  if (typeof window.loadInterviewHistory === 'function') window.loadInterviewHistory();
+};
