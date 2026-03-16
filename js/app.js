@@ -505,6 +505,7 @@ $$('.nav-item').forEach(item => {
       if (_tab === 'stats' && typeof initStatsPage === 'function') { if (window.bjTabGuard) bjTabGuard('stats', initStatsPage); else initStatsPage(); }
       // FB-INTPREP-001-S2: Interview Prep page init
       if (_tab === 'interview-prep' && typeof initInterviewPrep === 'function') { if (window.bjTabGuard) bjTabGuard('interview-prep', initInterviewPrep); else initInterviewPrep(); }
+      if (_tab === 'brilliant' && typeof initLinkedInImport === 'function') { initLinkedInImport(); }
       // Canny feedback removed v9.44
       // FB-GHOST-BADGE-001: Ghost Monitor page removed — redirect to Applications
       if (_tab === 'ghost') {
@@ -611,6 +612,7 @@ if (lastTab && $(`#page-${lastTab}`)) {
     if (lastTab === 'stats' && typeof initStatsPage === 'function') { if (window.bjTabGuard) bjTabGuard('stats', initStatsPage); else initStatsPage(); }
     // FB-INTPREP-001-S2: Interview Prep restore
     if (lastTab === 'interview-prep' && typeof initInterviewPrep === 'function') { if (window.bjTabGuard) bjTabGuard('interview-prep', initInterviewPrep); else initInterviewPrep(); }
+    if (lastTab === 'brilliant' && typeof initLinkedInImport === 'function') { initLinkedInImport(); }
     // Canny feedback removed v9.44
     // REFERRAL-CONSOL: referrals page removed — redirect to subscription
     if (lastTab === 'referrals') {

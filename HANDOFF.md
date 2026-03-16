@@ -52,6 +52,10 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
+**AIS-F2-S2** — LinkedIn Import: Upload UI + Auto-Population ✅
+- v9.58 → v9.59 — linkedin-import.js, Get Started page upload card, drag-and-drop, profile preview, auto-populate fields, skill→filter suggestions (_inferSeniority), PostHog linkedin_pdf_uploaded, 45 tests.
+
+
 
 **AIS-F2-S1** — LinkedIn Import: EF + Storage ✅
 - Completed: 2026-03-15
@@ -3972,16 +3976,7 @@ Deliverables:
 
 **SPEC-AIS-001 Application Intelligence Suite — Phase A continues**
 
-Active workstream: **AIS-F4-S2 — Answer History + Personal Context**
-
-> ⚠️ NOTE: AIS-F4-S1 gap fixes already delivered all AIS-F4-S2 spec items:
-> answers table ✅, EF DB cache ✅, LinkedIn context ✅, credit model ✅.
-> AIS-F4-S2 session should verify these are fully wired and add any UI surface
-> for answer history browsing if spec requires it.
-
----
-
-### AIS-F4-S2: Answer History + Personal Context
+Active workstream: **AIS-F8-S1 — Cover Letter Generator: UI + Table**
 
 **Entry Gate:**
 - [ ] Confirm `answers` table exists in Supabase (migration v9.56 applied)

@@ -3678,7 +3678,7 @@ Phase S is complete when ALL of the following are true:
 | AIS-F4-S1 | AI Q&A Gate Removal + Answer Review Mode — Remove admin flag from aiAnswerer.js + answer-form-question EF. Pre-submit review panel for Score-Gated/Manual modes (editable, accept/regenerate). Answer quality feedback (thumbs up/down). PostHog: ai_answer_generated, ai_answer_feedback. | ✅ | Pod 2: 1d, Pod 3: 3d |
 | AIS-F4-S2 | Answer History Table + Personal Context — Create answers table. Persist all generated answers. Wire LinkedIn profile + resume text into prompt. Credit: 0.5/answer, cached = free. | ✅ | Pod 2: 1d |
 | AIS-F2-S1 | LinkedIn Import — EF + Storage — parse-linkedin-pdf EF (Claude Haiku, extract structured fields). linkedin_profiles table + linkedin-profiles Storage bucket (private, RLS, 10MB). PDF hash dedup. Fraud signals. | ✅ | Pod 2: 4d |
-| AIS-F2-S2 | LinkedIn Import — Upload UI + Auto-Population — Drag-and-drop upload on Setup page. Parsed profile preview before save. Auto-fill profile fields, suggest filter keywords, infer seniority. PostHog: linkedin_pdf_uploaded. | 🔲 | Pod 3: 3d |
+| AIS-F2-S2 | LinkedIn Import — Upload UI + Auto-Population — Drag-and-drop upload on Setup page. Parsed profile preview before save. Auto-fill profile fields, suggest filter keywords, infer seniority. PostHog: linkedin_pdf_uploaded. | ✅ | Pod 3: 3d |
 
 ### Phase B — Intelligence Engine (Weeks 3–4)
 
