@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v10.17';
+var BJ_VERSION = 'v10.18';
 // Populate version display elements after DOM is ready
 (function() {
   var el = document.getElementById('nav-version');
@@ -39468,11 +39468,25 @@ window._ipShowHistoryPanel = function() {
     } catch (e) {
       reportError('_bjAnalyzeLinkedIn', e);
       if (loading) loading.style.display = 'none';
+      // Show score section with error banner — don't destroy the UI
       var scoreEl = document.getElementById('li-score-section');
-      if (scoreEl) {
+      var noProf = document.getElementById('li-no-profile');
+      // Check if user has linkedin profile data in cache
+      var hasProfile = !!(typeof currentUser !== 'undefined' && currentUser && currentUser.linkedin_headline);
+      if (hasProfile && scoreEl) {
         scoreEl.style.display = 'block';
-        scoreEl.innerHTML = '<div class="card" style="padding:20px;color:var(--warm);font-size:12px;">Error: ' +
-          ((typeof escHtml === 'function') ? escHtml(e.message) : e.message) + '</div>';
+        // Prepend error banner if not already there
+        var errBanner = document.getElementById('li-error-banner');
+        if (!errBanner) {
+          errBanner = document.createElement('div');
+          errBanner.id = 'li-error-banner';
+          scoreEl.insertBefore(errBanner, scoreEl.firstChild);
+        }
+        errBanner.outerHTML = '<div id="li-error-banner" class="card" style="padding:12px 18px;margin-bottom:16px;border-left:3px solid var(--warm);color:var(--warm);font-size:12px;">Analysis unavailable: ' +
+          ((typeof escHtml === 'function') ? escHtml(e.message) : e.message) + '. Your existing scores are shown below.</div>';
+      } else if (noProf) {
+        // No profile — show upload CTA
+        noProf.style.display = 'block';
       }
     }
   };
