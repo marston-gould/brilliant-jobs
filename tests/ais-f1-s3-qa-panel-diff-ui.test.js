@@ -18,7 +18,7 @@ describe('AIS-F1-S3: rewrite.js Q&A panel + diff UI', () => {
   it('diff color coding (green/warm/red)', () => expect(src).toContain('var(--green)') && expect(src).toContain('var(--warm)') && expect(src).toContain('var(--red)'));
   it('score display after rewrite', () => expect(src).toContain('new_score'));
   it('reportError on failures', () => expect(src).toContain('reportError'));
-  it('progress states tracked in _rwState.status', () => expect(src).toContain("status: 'questions'"));
+  it('progress states tracked in _rwState.status', () => expect(src).toContain("_rwState.status = 'questions'"));
   it('rewrite panel in dashboard.html', () => expect(read('dashboard.html')).toContain('id="rewrite-panel"'));
   it('rewrite.js in build.js', () => expect(read('build.js')).toContain("'js/rewrite.js'"));
 });
