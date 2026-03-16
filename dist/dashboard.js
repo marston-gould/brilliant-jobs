@@ -1657,7 +1657,9 @@ var TIER_GATES: Record<TierFeature, TierGateConfig> = {
   job_log:            { free: false, starter: 10, pro: Infinity },
   ai_scoring:         { free: false, starter: false, pro: true },
   // AIS-F3-S1: Auto-apply daily submit limit (Free=0 blocked, Starter=5/day, Pro=unlimited)
-  auto_apply_daily:   { free: 0, starter: 5, pro: Infinity }
+  auto_apply_daily:   { free: 0, starter: 5, pro: Infinity },
+  // SPEC-LPG-001: AI Writing Tools daily limit
+  ai_writing_daily:   { free: 3, starter: 10, pro: Infinity }
 };
 
 function getUserTier(): TierName {
@@ -21269,6 +21271,303 @@ window._bjFileStore = bjFileStore;
   if (typeof window.BJ !== 'undefined') {
     window.BJ._registry = window.BJ._registry || {};
     window.BJ._registry.resumeAbTest = { module: 'resumes', registered: Date.now() };
+  }
+})();
+
+// ============================================================================
+// SPEC-LPG-001 Session 1: AI Writing Tools (F1 Bullet Generator + F2 Summary Generator)
+// ============================================================================
+(function () {
+  'use strict';
+
+  // --- Tier gate for AI writing tools ---
+  var AI_WRITING_DAILY = { free: 3, starter: 10, pro: Infinity };
+
+  function _getAiWritingDailyRecord() {
+    try {
+      var raw = localStorage.getItem('bj_ai_writing_daily');
+      if (!raw) return { date: '', count: 0 };
+      var rec = JSON.parse(raw);
+      var today = new Date().toISOString().slice(0, 10);
+      if (rec.date !== today) return { date: today, count: 0 };
+      return rec;
+    } catch { return { date: '', count: 0 }; }
+  }
+
+  function _incrementAiWritingCount() {
+    var today = new Date().toISOString().slice(0, 10);
+    var rec = _getAiWritingDailyRecord();
+    rec.date = today;
+    rec.count = (rec.count || 0) + 1;
+    try { localStorage.setItem('bj_ai_writing_daily', JSON.stringify(rec)); } catch (e) { reportError('_incrementAiWritingCount', e); }
+  }
+
+  function _checkAiWritingGate() {
+    var tier = (typeof getUserTier === 'function') ? getUserTier() : 'free';
+    var limit = AI_WRITING_DAILY[tier] || AI_WRITING_DAILY.free;
+    var rec = _getAiWritingDailyRecord();
+    return { allowed: rec.count < limit, tier: tier, limit: limit, remaining: Math.max(0, limit - rec.count) };
+  }
+
+  // --- Populate target job dropdowns from user_pipeline ---
+  function _populateTargetJobDropdowns() {
+    var selects = [document.getElementById('bg-target-job'), document.getElementById('sg-target-job')];
+    if (!selects[0] && !selects[1]) return;
+
+    if (typeof sb === 'undefined' || typeof currentUser === 'undefined' || !currentUser) return;
+
+    sb.from('user_pipeline')
+      .select('job_id, job_title, company_name')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false })
+      .limit(50)
+      .then(function (res) {
+        if (!res.data || res.data.length === 0) return;
+        selects.forEach(function (sel) {
+          if (!sel) return;
+          res.data.forEach(function (j) {
+            if (!j.job_id || !j.job_title) return;
+            var opt = document.createElement('option');
+            opt.value = j.job_id;
+            opt.textContent = j.job_title + (j.company_name ? ' — ' + j.company_name : '');
+            sel.appendChild(opt);
+          });
+        });
+      })
+      .catch(function (e) { reportError('_populateTargetJobDropdowns', e); });
+  }
+
+  // --- Populate resume dropdown for summary generator ---
+  function _populateResumeDropdown() {
+    var sel = document.getElementById('sg-resume-select');
+    if (!sel) return;
+    sel.innerHTML = '';
+
+    var activeResumes = (typeof resumes !== 'undefined' && Array.isArray(resumes))
+      ? resumes.filter(function (r) { return !r.archived; })
+      : [];
+
+    if (activeResumes.length === 0) {
+      var opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = 'No resumes — upload one first';
+      sel.appendChild(opt);
+      return;
+    }
+
+    activeResumes.forEach(function (r) {
+      var opt = document.createElement('option');
+      opt.value = r.archiveId || r.id || '';
+      opt.textContent = r.name || 'Untitled';
+      sel.appendChild(opt);
+    });
+  }
+
+  // --- F1: Generate Bullet Points ---
+  window._bjGenerateBullets = async function () {
+    var gate = _checkAiWritingGate();
+    if (!gate.allowed) {
+      if (typeof showToast === 'function') showToast('Daily limit reached (' + gate.limit + '/' + gate.tier + '). Resets tomorrow.', { type: 'warning' });
+      if (typeof capturePostHog === 'function') capturePostHog('ai_writing_gate_hit', { feature: 'bullet_generator', tier: gate.tier, limit: gate.limit });
+      return;
+    }
+
+    var roleTitle = (document.getElementById('bg-role-title') || {}).value || '';
+    var company = (document.getElementById('bg-company') || {}).value || '';
+    var context = (document.getElementById('bg-context') || {}).value || '';
+    var targetJobId = (document.getElementById('bg-target-job') || {}).value || '';
+
+    if (!roleTitle.trim()) {
+      if (typeof showToast === 'function') showToast('Role title is required.', { type: 'warning' });
+      return;
+    }
+
+    var btn = document.getElementById('bg-generate-btn');
+    var resultsEl = document.getElementById('bg-results');
+    if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+    if (resultsEl) resultsEl.innerHTML = '<div style="display:flex;gap:8px;"><div class="skeleton" style="height:48px;flex:1;border-radius:8px;"></div></div>'.repeat(3);
+
+    // Get target keywords from selected job if any
+    var targetKeywords = [];
+    if (targetJobId && typeof sb !== 'undefined') {
+      try {
+        var jobRes = await sb.from('ats_jobs').select('extracted_skills').eq('id', targetJobId).maybeSingle();
+        if (jobRes.data && jobRes.data.extracted_skills) targetKeywords = jobRes.data.extracted_skills.slice(0, 15);
+      } catch (e) { reportError('_bjGenerateBullets:keywords', e); }
+    }
+
+    try {
+      var token = (typeof sb !== 'undefined' && sb.auth) ? (await sb.auth.getSession()).data?.session?.access_token : null;
+      if (!token) throw new Error('Not authenticated');
+
+      var gwUrl = (typeof SUPABASE_URL !== 'undefined' ? SUPABASE_URL : '') + '/functions/v1/api-gateway/resume-rewrite-bullet';
+      var resp = await fetch(gwUrl, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'generate', role_title: roleTitle.trim(), company: company.trim(), context: context.trim(), target_keywords: targetKeywords }),
+      });
+
+      var data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Generation failed');
+
+      var bullets = data.bullets || [];
+      _incrementAiWritingCount();
+
+      if (typeof capturePostHog === 'function') capturePostHog('bullet_generator_used', {
+        role_title: roleTitle.trim(), has_target_job: !!targetJobId, bullets_generated: bullets.length,
+      });
+
+      // Render bullet cards
+      if (resultsEl) {
+        resultsEl.innerHTML = bullets.map(function (b, i) {
+          var esc = (typeof escHtml === 'function') ? escHtml(b) : b.replace(/</g, '&lt;');
+          return '<div class="card" style="padding:12px 16px;margin-bottom:6px;display:flex;align-items:flex-start;gap:10px;">' +
+            '<div style="flex:1;font-size:12px;line-height:1.6;">' + esc + '</div>' +
+            '<div style="display:flex;gap:4px;flex-shrink:0;">' +
+            '<button class="btn btn-sm btn-secondary" onclick="window._bjCopyBullet(' + i + ')" title="Copy">Copy</button>' +
+            '</div></div>';
+        }).join('');
+        // Store for copy
+        window._bjLastBullets = bullets;
+      }
+    } catch (e) {
+      reportError('_bjGenerateBullets', e);
+      if (resultsEl) resultsEl.innerHTML = '<div style="color:var(--warm);font-size:12px;padding:8px;">Error: ' + ((typeof escHtml === 'function') ? escHtml(e.message) : e.message) + '</div>';
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Generate Bullets'; }
+    }
+  };
+
+  window._bjCopyBullet = function (idx) {
+    var bullets = window._bjLastBullets || [];
+    if (!bullets[idx]) return;
+    try {
+      navigator.clipboard.writeText(bullets[idx]);
+      if (typeof showToast === 'function') showToast('Bullet copied!', { type: 'success' });
+      if (typeof capturePostHog === 'function') capturePostHog('bullet_copied', { index: idx });
+    } catch (e) { reportError('_bjCopyBullet', e); }
+  };
+
+  // --- F2: Generate Summary ---
+  window._bjGenerateSummary = async function () {
+    var gate = _checkAiWritingGate();
+    if (!gate.allowed) {
+      if (typeof showToast === 'function') showToast('Daily limit reached (' + gate.limit + '/' + gate.tier + '). Resets tomorrow.', { type: 'warning' });
+      if (typeof capturePostHog === 'function') capturePostHog('ai_writing_gate_hit', { feature: 'summary_generator', tier: gate.tier, limit: gate.limit });
+      return;
+    }
+
+    var resumeId = (document.getElementById('sg-resume-select') || {}).value || '';
+    var tone = (document.getElementById('sg-tone') || {}).value || 'professional';
+    var targetJobId = (document.getElementById('sg-target-job') || {}).value || '';
+
+    var btn = document.getElementById('sg-generate-btn');
+    var resultsEl = document.getElementById('sg-results');
+    if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+    if (resultsEl) resultsEl.innerHTML = '<div style="display:flex;gap:8px;"><div class="skeleton" style="height:64px;flex:1;border-radius:8px;"></div></div>'.repeat(2);
+
+    try {
+      var token = (typeof sb !== 'undefined' && sb.auth) ? (await sb.auth.getSession()).data?.session?.access_token : null;
+      if (!token) throw new Error('Not authenticated');
+
+      var gwUrl = (typeof SUPABASE_URL !== 'undefined' ? SUPABASE_URL : '') + '/functions/v1/api-gateway/resume-rewrite-bullet';
+      var resp = await fetch(gwUrl, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'summary', resume_id: resumeId || undefined, target_job_id: targetJobId || undefined, tone: tone }),
+      });
+
+      var data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Summary generation failed');
+
+      var summaries = data.summaries || [];
+      _incrementAiWritingCount();
+
+      if (typeof capturePostHog === 'function') capturePostHog('summary_generator_used', {
+        has_linkedin: data.has_linkedin, has_target_job: data.has_target_job, tone: tone,
+      });
+
+      // Render summary cards
+      if (resultsEl) {
+        resultsEl.innerHTML = summaries.map(function (s, i) {
+          var esc = (typeof escHtml === 'function') ? escHtml(s) : s.replace(/</g, '&lt;');
+          return '<div class="card" style="padding:14px 18px;margin-bottom:8px;">' +
+            '<div style="font-size:12px;line-height:1.7;margin-bottom:10px;">' + esc + '</div>' +
+            '<div style="display:flex;gap:6px;">' +
+            '<button class="btn btn-sm btn-secondary" onclick="window._bjCopySummary(' + i + ')">Copy</button>' +
+            '<button class="btn btn-sm btn-primary" onclick="window._bjSetAsSummary(' + i + ')">Set as Summary</button>' +
+            '</div></div>';
+        }).join('');
+        window._bjLastSummaries = summaries;
+      }
+    } catch (e) {
+      reportError('_bjGenerateSummary', e);
+      if (resultsEl) resultsEl.innerHTML = '<div style="color:var(--warm);font-size:12px;padding:8px;">Error: ' + ((typeof escHtml === 'function') ? escHtml(e.message) : e.message) + '</div>';
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Generate Summary'; }
+    }
+  };
+
+  window._bjCopySummary = function (idx) {
+    var summaries = window._bjLastSummaries || [];
+    if (!summaries[idx]) return;
+    try {
+      navigator.clipboard.writeText(summaries[idx]);
+      if (typeof showToast === 'function') showToast('Summary copied!', { type: 'success' });
+      if (typeof capturePostHog === 'function') capturePostHog('summary_copied', { index: idx });
+    } catch (e) { reportError('_bjCopySummary', e); }
+  };
+
+  window._bjSetAsSummary = async function (idx) {
+    var summaries = window._bjLastSummaries || [];
+    if (!summaries[idx]) return;
+
+    var resumeId = (document.getElementById('sg-resume-select') || {}).value || '';
+    if (!resumeId) {
+      if (typeof showToast === 'function') showToast('Select a resume first.', { type: 'warning' });
+      return;
+    }
+
+    try {
+      if (typeof sb === 'undefined') throw new Error('No DB client');
+      var { data: archive } = await sb.from('resume_archive').select('parsed_json').eq('id', resumeId).eq('user_id', currentUser.id).maybeSingle();
+      var pj = (archive && archive.parsed_json) ? archive.parsed_json : {};
+      pj.summary = summaries[idx];
+
+      await sb.from('resume_archive').update({ parsed_json: pj }).eq('id', resumeId).eq('user_id', currentUser.id);
+
+      if (typeof showToast === 'function') showToast('Summary set on resume!', { type: 'success' });
+      if (typeof capturePostHog === 'function') capturePostHog('summary_set', { resume_id: resumeId, index: idx });
+    } catch (e) {
+      reportError('_bjSetAsSummary', e);
+      if (typeof showToast === 'function') showToast('Failed to set summary: ' + e.message, { type: 'error' });
+    }
+  };
+
+  // --- Initialize on Resumes tab load ---
+  var _aiWritingInited = false;
+  var _origRenderResumes = window.renderResumes;
+  if (typeof _origRenderResumes === 'function') {
+    window.renderResumes = function () {
+      _origRenderResumes.apply(this, arguments);
+      if (!_aiWritingInited) {
+        _aiWritingInited = true;
+        _populateTargetJobDropdowns();
+        _populateResumeDropdown();
+        if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+      } else {
+        _populateResumeDropdown();
+      }
+    };
+  }
+
+  // BJ namespace exports
+  if (typeof window.BJ !== 'undefined') {
+    window.BJ._bjGenerateBullets = window._bjGenerateBullets;
+    window.BJ._bjGenerateSummary = window._bjGenerateSummary;
+    window.BJ._bjCopyBullet = window._bjCopyBullet;
+    window.BJ._bjCopySummary = window._bjCopySummary;
+    window.BJ._bjSetAsSummary = window._bjSetAsSummary;
   }
 })();
 
