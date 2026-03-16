@@ -149,7 +149,9 @@ async function umLoadList() {
         '  <td style="white-space:nowrap">',
         '    <button onclick="event.stopPropagation();umOpenDetail(\'' + u.id + '\')" style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--bg-card);color:var(--text-dim);font-size:12px;cursor:pointer">View</button> ',
         '    <button onclick="event.stopPropagation();umSuspend(\'' + u.id + '\')" style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--bg-card);color:var(--text-dim);font-size:12px;cursor:pointer">Suspend</button> ',
-        '    <button onclick="event.stopPropagation();umImpersonate(\'' + u.id + '\')" style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--bg-card);color:var(--text-dim);font-size:12px;cursor:pointer">Impersonate</button>',
+        '    <button onclick="event.stopPropagation();umImpersonate(\'' + u.id + '\')" style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--bg-card);color:var(--text-dim);font-size:12px;cursor:pointer">Impersonate</button> ',
+        '    <button onclick="event.stopPropagation();umBlock(\'' + u.id + '\')" style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--bg-card);color:var(--red);font-size:12px;cursor:pointer">Block</button> ',
+        '    <button onclick="event.stopPropagation();umMerge(\'' + u.id + '\')" style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--bg-card);color:var(--text-dim);font-size:12px;cursor:pointer">Merge</button>',
         '  </td>',
         '</tr>',
       ].join('');
@@ -237,6 +239,10 @@ function umRenderDrawerTab(tab) {
       }).join(''),
       '<button onclick="umSaveProfile()" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;margin-top:4px">Save Profile</button>',
       '<hr style="border:none;border-top:1px solid var(--border);margin:16px 0">',
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">',
+      '  <button onclick="umApplyDiscount()" style="padding:6px 14px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;cursor:pointer">Apply Discount</button>',
+      '  <button onclick="umExtendTrial()" style="padding:6px 14px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;cursor:pointer">Extend Trial</button>',
+      '</div>',
       '<div style="padding:12px;background:rgba(220,38,38,0.05);border:1px solid rgba(220,38,38,0.2);border-radius:8px">',
       '  <div style="font-size:12px;font-weight:600;color:var(--red);margin-bottom:8px">Danger Zone</div>',
       '  <button onclick="umDeleteAccount(\'' + d.profile.id + '\')" style="padding:6px 14px;background:var(--red);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">Delete Account</button>',
@@ -506,6 +512,94 @@ async function umDeleteAccount(userId) {
   } catch(e) { reportError('admin-user-manager:delete', e); toastWarning('Delete failed: ' + e.message); }
 }
 
+async function umBlock(userId) {
+  var reason = prompt('Reason for blocking this account (required):');
+  if (!reason || reason.trim().length < 5) return toastWarning('Reason required');
+  try {
+    var token = (await sb.auth.getSession()).data.session?.access_token;
+    var res = await fetch('/functions/v1/api-gateway/admin-user-manager', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'block', user_id: userId, reason }),
+    });
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    toastSuccess('User blocked');
+    umLoadList();
+  } catch(e) { reportError('admin-user-manager:block', e); toastWarning('Block failed: ' + e.message); }
+}
+
+async function umMerge(sourceUserId) {
+  var targetEmail = prompt('Email of the TARGET account to merge INTO (the one to KEEP):');
+  if (!targetEmail) return;
+  var reason = prompt('Reason for merge (min 20 chars — this is irreversible):');
+  if (!reason || reason.trim().length < 20) return toastWarning('Reason too short (min 20 chars)');
+  if (!confirm('PERMANENTLY MERGE accounts? Source account will be deleted. This cannot be undone.')) return;
+
+  // Resolve target email to user_id
+  try {
+    var token = (await sb.auth.getSession()).data.session?.access_token;
+    // Use detail_by_email lookup (search with exact email)
+    var lookupRes = await fetch('/functions/v1/api-gateway/admin-user-manager', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'list', search: targetEmail, per_page: 1 }),
+    });
+    var lookupData = await lookupRes.json();
+    var targetUser = (lookupData.users || []).find(function(u) { return u.email === targetEmail; });
+    if (!targetUser) return toastWarning('Target user not found: ' + targetEmail);
+
+    var res = await fetch('/functions/v1/api-gateway/admin-user-manager', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'merge_accounts', source_user_id: sourceUserId, target_user_id: targetUser.id, reason }),
+    });
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    toastSuccess('Accounts merged. Transferred: ' + Object.keys(data.transferred || {}).join(', '));
+    umCloseDetail();
+    umLoadList();
+  } catch(e) { reportError('admin-user-manager:merge', e); toastWarning('Merge failed: ' + e.message); }
+}
+
+async function umApplyDiscount() {
+  var d = _umState.selectedUser;
+  if (!d?.profile?.id) return;
+  var pct = prompt('Discount percentage (1-100):');
+  if (!pct || isNaN(parseInt(pct))) return toastWarning('Enter a valid percentage');
+  var duration = prompt('Duration: once / repeating / forever', 'once');
+  if (!duration) return;
+  var reason = prompt('Reason for discount (required):');
+  if (!reason || reason.trim().length < 5) return toastWarning('Reason required');
+  try {
+    var token = (await sb.auth.getSession()).data.session?.access_token;
+    var res = await fetch('/functions/v1/api-gateway/admin-user-manager', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'apply_discount_for_user', user_id: d.profile.id, percent_off: parseInt(pct), duration, reason }),
+    });
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    toastSuccess(pct + '% discount applied (' + duration + ')');
+  } catch(e) { reportError('admin-user-manager:discount', e); toastWarning('Discount failed: ' + e.message); }
+}
+
+async function umExtendTrial() {
+  var d = _umState.selectedUser;
+  if (!d?.profile?.id) return;
+  var days = prompt('Extend trial by how many days? (1-365):');
+  if (!days || isNaN(parseInt(days))) return toastWarning('Enter a valid number of days');
+  var reason = prompt('Reason for extension (required):');
+  if (!reason || reason.trim().length < 5) return toastWarning('Reason required');
+  try {
+    var token = (await sb.auth.getSession()).data.session?.access_token;
+    var res = await fetch('/functions/v1/api-gateway/admin-user-manager', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'extend_trial', user_id: d.profile.id, extend_days: parseInt(days), reason }),
+    });
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    toastSuccess('Trial extended by ' + days + ' days. New end: ' + new Date(data.new_trial_end).toLocaleDateString());
+    await umOpenDetail(d.profile.id);
+  } catch(e) { reportError('admin-user-manager:trial', e); toastWarning('Extend trial failed: ' + e.message); }
+}
+
 async function umCancelSubForUser() {
   var d = _umState.selectedUser;
   if (!d?.profile?.id) return;
@@ -528,7 +622,7 @@ async function umCancelSubForUser() {
 (function() {
   ['loadUsersTab','umLoadList','umOpenDetail','umCloseDetail','umPage',
    'umSearchDebounced','umFilterCohort','umDrawerTab','umSaveProfile',
-   'umReassignCohort','umCreditAction'].forEach(function(name) {
+   'umReassignCohort','umCreditAction','umBlock','umMerge','umApplyDiscount','umExtendTrial'].forEach(function(name) {
     if (typeof window[name] === 'function') {
       window.BJ[name] = window[name];
       window.BJ._registry[name] = { module: 'admin-user-manager', registered: Date.now() };

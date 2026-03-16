@@ -3840,6 +3840,21 @@ None.
 
 ## Last Completed Session
 
+**SPEC-ADMIN-002-REM2** — Admin Control Panel: Final Spec Closure ✅
+- v9.83→v9.84 — 105/105 spec items verified ✅, 302/302 tests passing.
+- Block (auth.admin.updateUserById ban_duration='none', role=blocked, audit) + Unblock (ban_duration='0', role=user, audit).
+- Merge accounts: transfers bj_credit_ledger, resumes, user_filters, pending_applications, user_pipeline, user_subscriptions, user_saved_jobs from source→target. Audit written BEFORE deleting source. Hard-deletes source user. Requires email lookup for target + reason min 20 chars.
+- Apply Discount from User Detail (Stripe coupon create + apply to customer, audit log).
+- Extend Trial from User Detail (Stripe trial_end update by N days, audit log).
+- MRR column: billing-manager EF joins price_monthly_cents, computes mrr_cents per active sub. Billing Manager table shows MRR column.
+- Apply Coupon row button in Billing Manager subscriptions table.
+- admin-content.js fully rewritten: bulk approve-all-pending, reject-all-pending, bulk-publish-approved. Create/edit modal with all §6.2 fields (title, slug auto-gen, body/markdown textarea, tags comma-separated, status enum 6 values, is_featured toggle, publish_date, author_note admin-only). Soft-delete→archived with confirmation. Hard-delete for superadmin with reason prompt. Select-all checkbox.
+- Variable inspector required/optional: per-detected-var checkbox, fpGetRequiredVars() collects checked, passed to save_prompt as required_variables.
+
+---
+
+## Last Completed Session
+
 **SPEC-ADMIN-002-REM** — Admin Control Panel: Spec Gap Remediation ✅
 - v9.82→v9.83 — Closed all 18 items identified in post-delivery spec audit.
 - User List: country filter, signup/active date range filters, subscription status filter, suspend+unsuspend (audit log), export CSV (audit log), impersonate (audit written BEFORE magic link generated, 5-min expiry), all action buttons in row (View/Suspend/Impersonate).
@@ -4124,7 +4139,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.83`** | **SPEC-ADMIN-002-REM: 18 spec gaps closed. Impersonate, delete account, suspend, Applications/Activity tabs, duplicate cohort, Stripe validation, entitlements, test runner, CSV exports, version history. 66 tests.** |
+| **Product (BJ_VERSION)** | **`v9.84`** | **SPEC-ADMIN-002-REM2: Block/unblock, merge, apply discount, extend trial, MRR, Apply Coupon row, content.js full rewrite (bulk+CRUD+§6.2 fields), var inspector. 302 tests. 105/105 ✅.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

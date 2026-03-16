@@ -61,7 +61,7 @@ serve(async (req) => {
       let q = sb.from('user_subscriptions').select(`
         id, user_id, status, tier, stripe_subscription_id, stripe_customer_id,
         current_period_start, current_period_end, cancel_at_period_end, created_at,
-        profiles(id, email, display_name, cohort_tier_id, cohort_tiers(slug, name))
+        profiles(id, email, display_name, cohort_tier_id, cohort_tiers(slug, name, price_monthly_cents))
       `, { count: 'exact' });
 
       if (status_filter) q = q.eq('status', status_filter);
@@ -75,7 +75,12 @@ serve(async (req) => {
 
       const { data, count, error } = await q;
       if (error) throw error;
-      return json({ subscriptions: data ?? [], total: count ?? 0, page, per_page });
+      // Compute MRR from cohort prices
+      const enriched = (data ?? []).map(s => {
+        const priceMonthly = (s.profiles?.cohort_tiers as Record<string, number>)?.price_monthly_cents ?? 0;
+        return { ...s, mrr_cents: s.status === 'active' ? priceMonthly : 0 };
+      });
+      return json({ subscriptions: enriched, total: count ?? 0, page, per_page });
     }
 
     // ── SUBSCRIPTIONS CSV EXPORT ─────────────────────────────────────────────────

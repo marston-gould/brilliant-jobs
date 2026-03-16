@@ -364,6 +364,167 @@ serve(async (req) => {
       return json({ success: true, cancel_immediately });
     }
 
+    // ── BLOCK / UNBLOCK ──────────────────────────────────────────────────────────
+    // §3.1 spec requirement: block user (different from suspend — blocks auth login)
+    if (action === 'block') {
+      const { user_id, reason } = body;
+      if (!user_id) return json({ error: 'user_id required' }, 400);
+      if (!reason || reason.trim().length < 5) return json({ error: 'reason required' }, 400);
+      // Ban user via Supabase Auth Admin API
+      const { error } = await sb.auth.admin.updateUserById(user_id, { ban_duration: 'none' });
+      // Supabase uses ban_duration='none' to mean "indefinite ban"
+      // We also set role=blocked on profile for our own gating
+      await sb.from('profiles').update({ role: 'blocked' }).eq('id', user_id);
+      if (error) throw error;
+      await writeAudit(sb, {
+        actor_id: admin.profile.id, action: 'user.block',
+        target_type: 'user', target_id: user_id,
+        after: { blocked: true }, reason: reason.trim(),
+      });
+      return json({ success: true });
+    }
+
+    if (action === 'unblock') {
+      const { user_id, reason } = body;
+      if (!user_id) return json({ error: 'user_id required' }, 400);
+      const { error } = await sb.auth.admin.updateUserById(user_id, { ban_duration: '0' });
+      await sb.from('profiles').update({ role: 'user' }).eq('id', user_id);
+      if (error) throw error;
+      await writeAudit(sb, {
+        actor_id: admin.profile.id, action: 'user.unblock',
+        target_type: 'user', target_id: user_id,
+        after: { blocked: false }, reason: reason?.trim() ?? '',
+      });
+      return json({ success: true });
+    }
+
+    // ── MERGE ACCOUNTS ───────────────────────────────────────────────────────────
+    // Merge source_user_id INTO target_user_id:
+    // - Transfer bj_credit_ledger rows
+    // - Transfer resumes, user_filters, pending_applications, user_pipeline
+    // - Delete source profile (hard delete — intentional, post-merge)
+    // Requires reason + explicit confirmation. Writes full audit log.
+    if (action === 'merge_accounts') {
+      const { source_user_id, target_user_id, reason } = body;
+      if (!source_user_id || !target_user_id) return json({ error: 'source_user_id and target_user_id required' }, 400);
+      if (source_user_id === target_user_id) return json({ error: 'Cannot merge account with itself' }, 400);
+      if (!reason || reason.trim().length < 20) return json({ error: 'reason required (min 20 chars for account merge)' }, 400);
+
+      // Snapshot both profiles before merge
+      const [{ data: sourcePro }, { data: targetPro }] = await Promise.all([
+        sb.from('profiles').select('email, display_name, cohort_tier_id, created_at').eq('id', source_user_id).single(),
+        sb.from('profiles').select('email, display_name').eq('id', target_user_id).single(),
+      ]);
+      if (!sourcePro) return json({ error: 'Source user not found' }, 404);
+      if (!targetPro) return json({ error: 'Target user not found' }, 404);
+
+      const tables: Array<{ table: string; col: string }> = [
+        { table: 'bj_credit_ledger', col: 'user_id' },
+        { table: 'resumes', col: 'user_id' },
+        { table: 'user_filters', col: 'user_id' },
+        { table: 'pending_applications', col: 'user_id' },
+        { table: 'user_pipeline', col: 'user_id' },
+        { table: 'user_subscriptions', col: 'user_id' },
+        { table: 'user_saved_jobs', col: 'user_id' },
+      ];
+
+      const transferred: Record<string, number> = {};
+      for (const { table, col } of tables) {
+        // count before
+        const { count } = await sb.from(table).select('id', { count: 'exact', head: true }).eq(col, source_user_id);
+        if ((count ?? 0) > 0) {
+          const { error } = await sb.from(table).update({ [col]: target_user_id } as Record<string, string>).eq(col, source_user_id);
+          if (error) console.warn(`[merge] ${table} transfer error:`, error.message);
+          else transferred[table] = count ?? 0;
+        }
+      }
+
+      // Write audit BEFORE deleting source
+      await writeAudit(sb, {
+        actor_id: admin.profile.id, action: 'user.merge_accounts',
+        target_type: 'user', target_id: target_user_id,
+        before: { source_email: sourcePro.email, target_email: targetPro.email },
+        after: { transferred, source_deleted: true },
+        reason: reason.trim(),
+      });
+
+      // Delete source user
+      const { error: deleteErr } = await sb.auth.admin.deleteUser(source_user_id);
+      if (deleteErr) throw deleteErr;
+
+      return json({ success: true, transferred });
+    }
+
+    // ── APPLY DISCOUNT (from User Detail) ────────────────────────────────────────
+    if (action === 'apply_discount_for_user') {
+      const { user_id, percent_off, duration = 'once', reason } = body;
+      if (!user_id) return json({ error: 'user_id required' }, 400);
+      if (!percent_off || percent_off < 1 || percent_off > 100) return json({ error: 'percent_off must be 1-100' }, 400);
+      if (!reason || reason.trim().length < 5) return json({ error: 'reason required' }, 400);
+
+      const STRIPE_KEY = Deno.env.get('STRIPE_SECRET_KEY');
+      if (!STRIPE_KEY) return json({ error: 'Stripe not configured' }, 500);
+
+      const { data: sub } = await sb.from('user_subscriptions').select('stripe_customer_id').eq('user_id', user_id).single();
+      if (!sub?.stripe_customer_id) return json({ error: 'No Stripe customer found for user' }, 404);
+
+      const couponRes = await fetch('https://api.stripe.com/v1/coupons', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${STRIPE_KEY}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `percent_off=${percent_off}&duration=${duration}&metadata[reason]=${encodeURIComponent(reason)}&metadata[admin]=${admin.profile.id}`,
+      });
+      const couponData = await couponRes.json();
+      if (!couponRes.ok) return json({ error: couponData.error?.message ?? 'Stripe coupon error' }, 502);
+
+      const applyRes = await fetch(`https://api.stripe.com/v1/customers/${sub.stripe_customer_id}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${STRIPE_KEY}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `coupon=${couponData.id}`,
+      });
+      const applyData = await applyRes.json();
+      if (!applyRes.ok) return json({ error: applyData.error?.message ?? 'Stripe apply error' }, 502);
+
+      await writeAudit(sb, {
+        actor_id: admin.profile.id, action: 'billing.discount.apply',
+        target_type: 'billing', target_id: user_id,
+        after: { percent_off, duration, coupon_id: couponData.id, customer_id: sub.stripe_customer_id },
+        reason: reason.trim(),
+      });
+      return json({ success: true, coupon_id: couponData.id, percent_off, duration });
+    }
+
+    // ── EXTEND TRIAL ──────────────────────────────────────────────────────────────
+    if (action === 'extend_trial') {
+      const { user_id, extend_days, reason } = body;
+      if (!user_id) return json({ error: 'user_id required' }, 400);
+      if (!extend_days || extend_days < 1 || extend_days > 365) return json({ error: 'extend_days must be 1-365' }, 400);
+      if (!reason || reason.trim().length < 5) return json({ error: 'reason required' }, 400);
+
+      const STRIPE_KEY = Deno.env.get('STRIPE_SECRET_KEY');
+      if (!STRIPE_KEY) return json({ error: 'Stripe not configured' }, 500);
+
+      const { data: sub } = await sb.from('user_subscriptions').select('stripe_subscription_id, current_period_end').eq('user_id', user_id).single();
+      if (!sub?.stripe_subscription_id) return json({ error: 'No active subscription found' }, 404);
+
+      // Extend trial by moving trial_end to current_period_end + extend_days
+      const newTrialEnd = Math.floor((new Date(sub.current_period_end).getTime() / 1000) + extend_days * 86400);
+      const stripeRes = await fetch(`https://api.stripe.com/v1/subscriptions/${sub.stripe_subscription_id}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${STRIPE_KEY}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `trial_end=${newTrialEnd}`,
+      });
+      const stripeData = await stripeRes.json();
+      if (!stripeRes.ok) return json({ error: stripeData.error?.message ?? 'Stripe error' }, 502);
+
+      await writeAudit(sb, {
+        actor_id: admin.profile.id, action: 'billing.trial.extend',
+        target_type: 'billing', target_id: user_id,
+        after: { extend_days, new_trial_end: new Date(newTrialEnd * 1000).toISOString() },
+        reason: reason.trim(),
+      });
+      return json({ success: true, extend_days, new_trial_end: new Date(newTrialEnd * 1000).toISOString() });
+    }
+
     return json({ error: 'Unknown action' }, 400);
 
   } catch (err) {

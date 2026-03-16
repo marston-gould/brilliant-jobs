@@ -234,10 +234,33 @@ function fpOpenPrompt(promptId) {
 function fpDetectVars() {
   var ta = document.getElementById('fpp-template');
   var varEl = document.getElementById('fpp-vars');
+  var inspectorEl = document.getElementById('fpp-var-inspector');
   if (!ta || !varEl) return;
   var matches = [...ta.value.matchAll(/\{\{(\w+)\}\}/g)];
   var vars = [...new Set(matches.map(function(m){ return m[1]; }))];
-  varEl.textContent = vars.length ? 'vars: ' + vars.join(', ') : '';
+  varEl.textContent = vars.length ? vars.length + ' variable' + (vars.length > 1 ? 's' : '') + ' detected' : '';
+
+  // Variable inspector: show each var with required/optional toggle
+  if (!inspectorEl) return;
+  if (!vars.length) { inspectorEl.innerHTML = ''; return; }
+  inspectorEl.innerHTML = '<div style="font-size:11px;color:var(--text-faint);margin-bottom:4px">Variable Inspector</div>' +
+    vars.map(function(v) {
+      var reqId = 'fpvar-req-' + v;
+      return '<label style="display:inline-flex;align-items:center;gap:5px;margin-right:12px;margin-bottom:4px;font-size:12px;cursor:pointer">' +
+        '<input type="checkbox" id="' + reqId + '" checked> ' +
+        '<code style="background:var(--bg-input);padding:1px 5px;border-radius:4px">{{' + v + '}}</code>' +
+        '<span style="font-size:10px;color:var(--text-faint)">required</span>' +
+        '</label>';
+    }).join('');
+}
+
+function fpGetRequiredVars() {
+  var boxes = document.querySelectorAll('[id^="fpvar-req-"]');
+  var required = [];
+  boxes.forEach(function(cb) {
+    if (cb.checked) required.push(cb.id.replace('fpvar-req-', ''));
+  });
+  return required;
 }
 
 function fpClosePrompt() {
@@ -253,6 +276,7 @@ async function fpSavePrompt() {
     template: g('template'),
     model: g('model'), max_tokens: parseInt(g('max_tokens')||'0')||null,
     temperature: parseFloat(g('temperature')||'0')||null,
+    required_variables: fpGetRequiredVars(),
   };
   if (!prompt.name || !prompt.feature || !prompt.template) return toastWarning('Name, feature, and template required');
   try {

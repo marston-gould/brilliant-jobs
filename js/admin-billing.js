@@ -22,7 +22,7 @@ async function loadBillingManagerTab() {
     '    <span id="bm-sub-count" style="font-size:12px;color:var(--text-faint);font-family:var(--mono);align-self:center"></span>',
     '  </div>',
     '  <div style="overflow-x:auto"><table class="admin-table" style="width:100%">',
-    '    <thead><tr><th>User</th><th>Cohort</th><th>Status</th><th>Period End</th><th>Stripe Sub ID</th><th></th></tr></thead>',
+    '    <thead><tr><th>User</th><th>Cohort</th><th>Status</th><th>MRR</th><th>Period End</th><th>Stripe Sub ID</th><th></th></tr></thead>',
     '    <tbody id="bm-sub-tbody"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-faint)">Loading…</td></tr></tbody>',
     '  </table></div>',
     '  <div style="display:flex;gap:8px;align-items:center;margin-top:12px">',
@@ -111,14 +111,19 @@ async function bmLoadSubs() {
       var email = s.profiles?.email || '—';
       var cohort = s.profiles?.cohort_tiers?.slug || '—';
       var statusColor = s.status === 'active' ? 'var(--green)' : s.status === 'past_due' ? 'var(--warm)' : 'var(--text-faint)';
+      var mrr = s.mrr_cents ? '$' + (s.mrr_cents / 100).toFixed(0) : '—';
       var periodEnd = s.current_period_end ? new Date(s.current_period_end).toLocaleDateString() : '—';
       return '<tr>' +
         '<td style="font-size:12px">' + escapeHtml(email) + '</td>' +
         '<td><span style="font-family:var(--mono);font-size:11px">' + escapeHtml(cohort) + '</span></td>' +
         '<td style="color:' + statusColor + ';font-size:12px">' + escapeHtml(s.status) + '</td>' +
+        '<td style="font-family:var(--mono);font-size:12px">' + mrr + '</td>' +
         '<td style="font-size:12px">' + periodEnd + (s.cancel_at_period_end ? ' <span style="color:var(--red);font-size:10px">(cancels)</span>' : '') + '</td>' +
         '<td style="font-family:var(--mono);font-size:10px;color:var(--text-faint)">' + escapeHtml((s.stripe_subscription_id||'').slice(0,20)) + '</td>' +
-        '<td><button onclick="bmCancelSub(\'' + s.stripe_subscription_id + '\',\'' + (s.profiles?.id||'') + '\')" style="padding:2px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text-dim);font-size:11px;cursor:pointer">Cancel</button></td>' +
+        '<td style="white-space:nowrap">' +
+        '<button onclick="bmCancelSub(\'' + s.stripe_subscription_id + '\',\'' + (s.profiles?.id||'') + '\')" style="padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text-dim);font-size:11px;cursor:pointer;margin-right:3px">Cancel</button>' +
+        '<button onclick="bmApplyCoupon(\'' + (s.profiles?.id||'') + '\')" style="padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text-dim);font-size:11px;cursor:pointer">Coupon</button>' +
+        '</td>' +
         '</tr>';
     }).join('');
   } catch(e) {
@@ -202,6 +207,25 @@ async function bmExportSubsCSV() {
     a.href = url; a.download = 'subscriptions.csv'; a.click();
     URL.revokeObjectURL(url);
   } catch(e) { reportError('admin-billing:export-csv', e); toastWarning('Export failed: ' + e.message); }
+}
+
+async function bmApplyCoupon(userId) {
+  var pct = prompt('Discount percentage (1-100):');
+  if (!pct || isNaN(parseInt(pct))) return toastWarning('Enter a valid percentage');
+  var duration = prompt('Duration: once / repeating / forever', 'once');
+  if (!duration) return;
+  var reason = prompt('Reason (required):');
+  if (!reason || reason.trim().length < 5) return toastWarning('Reason required');
+  try {
+    var token = (await sb.auth.getSession()).data.session?.access_token;
+    var res = await fetch('/functions/v1/api-gateway/admin-user-manager', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'apply_discount_for_user', user_id: userId, percent_off: parseInt(pct), duration, reason }),
+    });
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    toastSuccess(pct + '% coupon applied');
+  } catch(e) { reportError('admin-billing:coupon', e); toastWarning('Coupon failed: ' + e.message); }
 }
 
 (function() {
