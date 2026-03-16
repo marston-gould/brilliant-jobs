@@ -6,14 +6,14 @@ console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded');
 // CS-P1-007 DS1-6: Page metadata for virtual $pageview events (all 14 pages)
 var _bjPageTitles = {
   brilliant: 'Get Started', setup: 'Setup', jobs: 'Jobs Feed', tuning: 'Search Tuning',
-  resumes: 'Resumes', 'resume-builder': 'Resume Builder', applications: 'My Applications', notifications: 'Notifications',
+  resumes: 'Resumes', 'resume-builder': 'Resume Builder', linkedin: 'LinkedIn', applications: 'My Applications', notifications: 'Notifications',
   stats: 'Stats', 'interview-prep': 'Interview Prep', settings: 'Settings',
   subscription: 'Subscription', feedback: 'Feedback',
   'admin-landing': 'Landing Page'
 };
 var _bjPageSections = {
   brilliant: 'onboarding', setup: 'onboarding', jobs: 'search', tuning: 'search',
-  resumes: 'search', 'resume-builder': 'search', applications: 'tracking', notifications: 'tracking',
+  resumes: 'search', 'resume-builder': 'search', linkedin: 'search', applications: 'tracking', notifications: 'tracking',
   stats: 'intelligence', 'interview-prep': 'intelligence',
   settings: 'account', subscription: 'account', feedback: 'account',
   'admin-landing': 'intelligence'
@@ -505,6 +505,7 @@ $$('.nav-item').forEach(item => {
       if (_tab === 'stats' && typeof initStatsPage === 'function') { if (window.bjTabGuard) bjTabGuard('stats', initStatsPage); else initStatsPage(); }
       // FB-INTPREP-001-S2: Interview Prep page init
       if (_tab === 'interview-prep' && typeof initInterviewPrep === 'function') { if (window.bjTabGuard) bjTabGuard('interview-prep', initInterviewPrep); else initInterviewPrep(); }
+      if (_tab === 'linkedin' && typeof initLinkedInTab === 'function') { initLinkedInTab(); }
       if (_tab === 'brilliant' && typeof initLinkedInImport === 'function') { initLinkedInImport(); }
       // Canny feedback removed v9.44
       // FB-GHOST-BADGE-001: Ghost Monitor page removed — redirect to Applications
@@ -612,6 +613,7 @@ if (lastTab && $(`#page-${lastTab}`)) {
     if (lastTab === 'stats' && typeof initStatsPage === 'function') { if (window.bjTabGuard) bjTabGuard('stats', initStatsPage); else initStatsPage(); }
     // FB-INTPREP-001-S2: Interview Prep restore
     if (lastTab === 'interview-prep' && typeof initInterviewPrep === 'function') { if (window.bjTabGuard) bjTabGuard('interview-prep', initInterviewPrep); else initInterviewPrep(); }
+    if (lastTab === 'linkedin' && typeof initLinkedInTab === 'function') { initLinkedInTab(); }
     if (lastTab === 'brilliant' && typeof initLinkedInImport === 'function') { initLinkedInImport(); }
     // Canny feedback removed v9.44
     // REFERRAL-CONSOL: referrals page removed — redirect to subscription

@@ -70,6 +70,7 @@ const chunks = {
     'js/bulk-apply.js',         // AIS-F9-S1: Bulk apply multi-select UI
     'js/cover-letter.js',       // AIS-F8-S1: Cover letter generator UI
     'js/interview-prep.js',     // FB-INTPREP-001-S2: Interview Prep question bank UI
+    'js/linkedin.js',           // SPEC-LPG-001-S2: LinkedIn Profile Optimizer
   ],
 };
 

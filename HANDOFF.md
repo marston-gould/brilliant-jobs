@@ -52,10 +52,11 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**SPEC-LPG-001-S1** — AI Bullet Point Generator (F1) + AI Summary Generator (F2) ✅
+**SPEC-LPG-001-S2** — LinkedIn Profile Optimizer (F3) ✅
+- v9.71→v9.72 — optimize-linkedin-profile EF (analyze action, Haiku, 5-section weighted scoring, 7-day cache, 2 credits). linkedin_optimizations table (9 cols, RLS, indexes) applied to prod. LinkedIn nav item + page shell in dashboard.html (score gauge SVG, 5 section cards, top 3 actions banner, re-analyze button, no-profile CTA, loading skeleton). js/linkedin.js client module (_bjAnalyzeLinkedIn, initLinkedInTab). app.js wired (page titles/sections + tab handlers). build.js deferred chunk. Gateway route deployed. PostHog: linkedin_optimizer_viewed, linkedin_optimizer_analyzed. 63 tests.
+
+**Previous: SPEC-LPG-001-S1** — AI Bullet Point Generator (F1) + AI Summary Generator (F2) ✅
 - v9.70→v9.71 — resume-rewrite-bullet EF extended (159→318 lines): `generate` action (role_title + company + context + target_keywords → 3-5 ATS bullets), `summary` action (resume_id + tone + target_job_id → 2-3 professional summaries). LinkedIn + resume_archive profile enrichment for summary. 3 tone variants (professional/executive/technical). AI Writing Tools collapsible panel on Resumes tab (dashboard.html). Client JS: _bjGenerateBullets, _bjGenerateSummary, _bjCopyBullet, _bjCopySummary, _bjSetAsSummary. Set as Summary writes to parsed_json.summary. Target job dropdowns populated from user_pipeline. Resume dropdown populated from active resumes. Tier gate: ai_writing_daily (Free:3/day, Starter:10/day, Pro:unlimited) with localStorage tracking. PostHog: bullet_generator_used, bullet_copied, summary_generator_used, summary_copied, summary_set. 57 tests.
-- **Pending manual steps (Marston):**
-  - `SUPABASE_ACCESS_TOKEN=<token> npx supabase functions deploy resume-rewrite-bullet --project-ref qojhagupdnbtomfoxnsf`
 
 **Previous: AIS-F8-S1** — Cover Letter Generator: UI + Table ✅
 - v9.59→v9.60 — cover_letters migration (tone CHECK 4 values, version, credits_charged, word_count), 4 tones in EF (professional/conversational/enthusiastic/executive), persist+version tracking, slide-out panel, DOCX export via OOXML/JSZip, cover_letter_generated PostHog, 47 tests.
@@ -3995,30 +3996,26 @@ Deliverables:
 
 ## Next Session
 
-**SPEC-LPG-001-S2** — LinkedIn Profile Optimizer (F3)
+**SPEC-LPG-001-S3** — LinkedIn Summary Generator (F4) + Integration Polish
 
 **Entry Gate:**
-- [x] AIS-F2 LinkedIn Import complete (parse-linkedin-pdf EF + linkedin_profiles table)
-- [x] SPEC-LPG-001-S1 complete (resume-rewrite-bullet EF with generate + summary actions)
+- [x] SPEC-LPG-001-S2 complete (optimize-linkedin-profile EF + LinkedIn tab)
 
 **Fix Items:**
-1. New Edge Function: `optimize-linkedin-profile` — reads linkedin_profiles for authenticated user, scores 5 sections (Headline 20%, Summary 25%, Experience 30%, Skills 15%, Education 10%), returns overall_score + per-section scores + 2-4 recommendations each + top_3_actions
-2. New table: `linkedin_optimizations` (user_id, linkedin_profile_id, overall_score, sections_json, recommendations_json, top_actions, expires_at 7 days, created_at). RLS: users see own only.
-3. New gateway route for optimize-linkedin-profile
-4. New "LinkedIn" tab in dashboard nav (after Resumes, before Applications)
-5. LinkedIn tab UI: Overall Score gauge (circular, color-coded), 5 section cards, Top 3 Actions banner, Re-Analyze button (shows credit cost, grayed if cache valid), CTA if no LinkedIn PDF uploaded
-6. Credit cost: 2 per analysis. Cached for 7 days unless profile updated.
-7. Tier gate: Free=1 analysis ever, Starter=1/month, Pro=unlimited
-8. PostHog: linkedin_optimizer_viewed, linkedin_optimizer_analyzed, linkedin_recommendation_clicked
-9. Tests: 65+ validation tests
+1. Add `linkedin_summary` action to optimize-linkedin-profile EF: { tone, target_roles? } → { summaries: string[] } (2 variants, max 2600 chars each)
+2. LinkedIn Summary Generator UI on LinkedIn tab below the scorecard: tone selector, optional target role, 2 editable variant cards, Copy to Clipboard, character count indicator (2600 limit)
+3. Auto-suggest: when Profile Optimizer summary score < 70, show prompt "Your summary scored {score}. Generate a stronger one?"
+4. Credit cost: 1 per generation
+5. PostHog: linkedin_summary_generated, linkedin_summary_copied
+6. Update competitor feature grid: BJ checkmark for Interview Tracker (already built)
+7. Tests: 50+ validation tests
+8. Three-file close
 
 **Exit Gate:**
-- [ ] optimize-linkedin-profile EF deployed
-- [ ] linkedin_optimizations table migrated
-- [ ] LinkedIn tab renders with score gauge + section cards
-- [ ] 7-day cache working (re-analyze bypasses cache at 2 credits)
+- [ ] linkedin_summary action in EF deployed
+- [ ] Summary generator UI renders on LinkedIn tab
+- [ ] Auto-suggest triggers for low summary scores
 - [ ] Tests passing
-- [ ] Three-file close
 
 **Other backlog:**
 - CASA-001: Google CASA assessment + gmail.readonly upgrade
@@ -4052,7 +4049,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.71`** | **SPEC-LPG-001-S1: AI Bullet Generator + Summary Generator. 57 tests.** |
+| **Product (BJ_VERSION)** | **`v9.72`** | **SPEC-LPG-001-S2: LinkedIn Profile Optimizer. 63 tests.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
