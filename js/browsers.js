@@ -599,11 +599,12 @@ async function loadCompanyBrowser() {
           .gt('job_count', 0)
           .order('name')
           .range(page * pageSize, (page + 1) * pageSize - 1);
-        if (error) throw error;
+        if (error) { console.warn('[CB] Page', page, 'error:', error.message); throw error; }
         allRows = allRows.concat(data || []);
         if (!data || data.length < pageSize) break;
         page++;
       }
+      console.log('[CB] Loaded', allRows.length, 'companies in', page + 1, 'pages');
       return { data: allRows };
     }, { ttl: 600000 });
     let allData = (cacheResult && cacheResult.data) || [];
@@ -625,6 +626,7 @@ async function loadCompanyBrowser() {
       ghostApps: ghostStats[c.slug]?.total_applications || 0
     })).sort((a, b) => a.name.localeCompare(b.name));
 
+    console.log('[CB] Mapped', cbAllCompanies.length, 'companies. First 3:', cbAllCompanies.slice(0,3).map(c => c.name));
     renderCompanyBrowserList();
     updateCbSelectedCount();
 
