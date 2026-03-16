@@ -33,7 +33,7 @@ async function syncHealthCheck() {
       var raw = localStorage.getItem(lsKey);
       if (raw && raw.startsWith("enc:")) continue;
       var parsed = raw ? JSON.parse(raw) : null;
-      var empty = parsed == null || Array.isArray(parsed) && parsed.length === 0 || typeof parsed === "object" && !Array.isArray(parsed) && Object.keys(parsed).length === 0;
+      var empty = raw === null || typeof parsed === "object" && parsed !== null && !Array.isArray(parsed) && Object.keys(parsed).length === 0;
       if (empty) missing.push(_shortKey);
     } catch {
       missing.push(_shortKey);

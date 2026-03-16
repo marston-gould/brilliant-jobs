@@ -378,7 +378,7 @@ async function loadUserData(userId) {
       }
       const localParsed = localVal ? JSON.parse(localVal) : null;
       const cloudEmpty = cloudVal == null || Array.isArray(cloudVal) && cloudVal.length === 0 || typeof cloudVal === "object" && !Array.isArray(cloudVal) && Object.keys(cloudVal).length === 0;
-      const localEmpty = localParsed == null || Array.isArray(localParsed) && localParsed.length === 0 || typeof localParsed === "object" && !Array.isArray(localParsed) && Object.keys(localParsed).length === 0;
+      const localEmpty = localVal === null;
       if (!cloudEmpty && localEmpty) {
         var cloudJson = JSON.stringify(cloudVal);
         localStorage.setItem(lsKey, cloudJson);

@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.85';
+var BJ_VERSION = 'v9.86';
 
 
 // === js/globals.ts ===
@@ -547,7 +547,9 @@ async function loadUserData(userId: string): Promise<void> {
       }
       const localParsed = localVal ? JSON.parse(localVal) : null;
       const cloudEmpty = cloudVal == null || (Array.isArray(cloudVal) && cloudVal.length === 0) || (typeof cloudVal === 'object' && !Array.isArray(cloudVal) && Object.keys(cloudVal).length === 0);
-      const localEmpty = localParsed == null || (Array.isArray(localParsed) && localParsed.length === 0) || (typeof localParsed === 'object' && !Array.isArray(localParsed) && Object.keys(localParsed).length === 0);
+      // HOTFIX-MERGE-001: localEmpty only when key is truly absent (localVal === null).
+      // An empty array [] is a valid state (user deleted all items) — not "missing".
+      const localEmpty = localVal === null;
 
       if (!cloudEmpty && localEmpty) {
         // Cloud has data, local doesn't → pull from cloud
@@ -1437,9 +1439,12 @@ async function syncHealthCheck(): Promise<void> {
       // Encrypted PII values (enc: prefix) are present — do not treat as missing
       if (raw && raw.startsWith('enc:')) continue;
       var parsed: unknown = raw ? JSON.parse(raw) : null;
-      var empty = parsed == null ||
-        (Array.isArray(parsed) && parsed.length === 0) ||
-        (typeof parsed === 'object' && !Array.isArray(parsed) && Object.keys(parsed as Record<string, unknown>).length === 0);
+      // HOTFIX-MERGE-001: An empty array [] is a valid state (user deleted all items).
+      // Only treat as missing if the key is truly absent from localStorage (raw === null).
+      // Previously, empty arrays were treated as "missing" and restored from cloud,
+      // which undid intentional deletions.
+      var empty = raw === null ||
+        (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed) && Object.keys(parsed as Record<string, unknown>).length === 0);
       if (empty) missing.push(_shortKey);
     } catch { missing.push(_shortKey); }
   }

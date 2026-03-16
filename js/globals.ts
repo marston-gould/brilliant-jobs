@@ -542,7 +542,9 @@ async function loadUserData(userId: string): Promise<void> {
       }
       const localParsed = localVal ? JSON.parse(localVal) : null;
       const cloudEmpty = cloudVal == null || (Array.isArray(cloudVal) && cloudVal.length === 0) || (typeof cloudVal === 'object' && !Array.isArray(cloudVal) && Object.keys(cloudVal).length === 0);
-      const localEmpty = localParsed == null || (Array.isArray(localParsed) && localParsed.length === 0) || (typeof localParsed === 'object' && !Array.isArray(localParsed) && Object.keys(localParsed).length === 0);
+      // HOTFIX-MERGE-001: localEmpty only when key is truly absent (localVal === null).
+      // An empty array [] is a valid state (user deleted all items) — not "missing".
+      const localEmpty = localVal === null;
 
       if (!cloudEmpty && localEmpty) {
         // Cloud has data, local doesn't → pull from cloud

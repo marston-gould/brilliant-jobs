@@ -3840,13 +3840,15 @@ None.
 
 ## Last Completed Session
 
-**HOTFIX-MERGE-001** — Conflict Marker Cleanup ✅
-- v9.84→v9.85 — Removed unresolved git merge conflict markers (=======, >>>>>>>) from 9 HTML files left by botched revert of unauthorized mobile-responsive changes (commits d3f89059/68c5da5f reverted by 0686e90e through d1fc88dd, but revert left conflict markers in committed files).
+**HOTFIX-MERGE-001** — Conflict Marker Cleanup + UX Fixes ✅
+- v9.84→v9.85→v9.86
+- (v9.85) Removed unresolved git merge conflict markers (=======, >>>>>>>) from 9 HTML files left by botched revert of unauthorized mobile-responsive changes (commits d3f89059/68c5da5f reverted by 0686e90e through d1fc88dd, but revert left conflict markers in committed files).
 - Affected files: dashboard.html, index.html, admin.html, compare.html, ghost-report.html, hiring-trends.html, career-level-data.html, data-lab.html, jobs-by-industry.html.
 - Removed duplicate script/link blocks: dashboard.html (shell+feed+inline scripts doubled), index.html (version+cookie-consent+posthog+flags+ab+logger scripts doubled), admin.html (version+posthog+perf+flags+logger+insights+ab+crewai+echarts scripts doubled).
-- Symptoms fixed: garbled conflict marker text visible at top of all pages, double-loaded JS breaking pagination/scrolling/job feed rendering, AI Interview Practice panel appearing empty, Bulk Apply/Save All buttons non-functional.
-- All 15 HTML surfaces re-synced at v9.85 via bump-version.sh + pre-commit-version-check.sh.
-- Bundles rebuilt: node build.js + node build-admin.js + npm run bundle:css.
+- Symptoms fixed: garbled conflict marker text visible at top of all pages, double-loaded JS breaking pagination/scrolling/job feed rendering.
+- (v9.86) Fixed AI Interview Practice panel (`#ip-chat-panel`) stuck open on page load — inline style had `display:none;...display:flex;` (duplicate property, second overrides first). Removed duplicate `display:flex`, keeping `display:none` as default hidden state.
+- (v9.86) Moved "Adjust Global Rules" + "Generate filters from your resume" banners ABOVE the Filter/Chat toggle per Marston request.
+- (v9.86) Fixed saved searches/prompts resurrecting after deletion — `syncHealthCheck()` (js/sync.ts) and `loadUserData()` (js/globals.ts) both treated empty arrays `[]` as "missing data" and restored old values from cloud backup, effectively undoing intentional deletions. Fixed: empty arrays are now treated as valid user state; only truly absent localStorage keys (key not present at all) trigger cloud recovery.
 
 **Previous: SPEC-ADMIN-002-REM2** — Admin Control Panel: Final Spec Closure ✅
 - v9.83→v9.84 — 105/105 spec items verified ✅, 302/302 tests passing.
@@ -4147,7 +4149,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.85`** | **HOTFIX-MERGE-001: Conflict marker cleanup — removed unresolved git merge conflict markers from 9 HTML files + duplicate script blocks from dashboard/index/admin. Fixes garbled text, broken pagination/scrolling, double-loaded JS.** |
+| **Product (BJ_VERSION)** | **`v9.86`** | **HOTFIX-MERGE-001: Conflict markers + AI Interview panel + layout reorder + saved search resurrection fix.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
