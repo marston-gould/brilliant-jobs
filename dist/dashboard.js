@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v10.14';
+var BJ_VERSION = 'v10.15';
 // Populate version display elements after DOM is ready
 (function() {
   var el = document.getElementById('nav-version');
@@ -3916,6 +3916,10 @@ async function processReferralAttribution(user) {
 // showPage / switchPage — navigate to a named page by simulating nav-item click
 // Used in onclick= attributes throughout dashboard.html and resume-archive.js
 window.showPage = function(pageName) {
+  // FB-RESUME-CONSOLIDATION-001: redirect old page names to consolidated Resumes tab
+  if (pageName === 'resume-builder') { window.showPage('resumes'); setTimeout(function(){ switchResumeTab('builder'); }, 50); return; }
+  if (pageName === 'linkedin') { window.showPage('resumes'); setTimeout(function(){ switchResumeTab('linkedin'); }, 50); return; }
+
   var navItem = document.querySelector('.nav-item[data-page="' + pageName + '"]');
   if (navItem) { navItem.click(); return; }
   // Fallback: directly activate page if no nav item (e.g. sub-pages)
@@ -3925,6 +3929,31 @@ window.showPage = function(pageName) {
 };
 window.switchPage = window.showPage;
 window.BJ.switchPage = window.showPage;
+
+// FB-RESUME-CONSOLIDATION-001: Switch between My Resumes / Builder / LinkedIn tabs
+window.switchResumeTab = function(tabId) {
+  // Hide all tab panels
+  document.querySelectorAll('.resume-tab-panel').forEach(function(p) { p.style.display = 'none'; p.classList.remove('active'); });
+  // Show target
+  var panel = document.getElementById('rtab-' + tabId);
+  if (panel) { panel.style.display = ''; panel.classList.add('active'); }
+  // Update tab button active states
+  document.querySelectorAll('#resume-consolidation-tabs .app-view-toggle').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.rtab === tabId);
+  });
+  // Lazy init: fire init functions on first tab switch
+  if (tabId === 'builder' && !window._rbTabInited) {
+    window._rbTabInited = true;
+    if (typeof rbInit === 'function') try { rbInit(); } catch(e) {}
+  }
+  if (tabId === 'linkedin' && !window._liTabInited) {
+    window._liTabInited = true;
+    if (typeof liInit === 'function') try { liInit(); } catch(e) {}
+    if (typeof loadLinkedInProfile === 'function') try { loadLinkedInProfile(); } catch(e) {}
+  }
+  // PostHog
+  if (typeof captureEvent === 'function') captureEvent('resumes_tab_switch', { tab: tabId });
+};
 
 // EDE-001: Trigger location enrichment after filter save with wherePills
 window.triggerLocationEnrichment = async function(wherePills, filterId, includeRemote) {
@@ -6892,7 +6921,7 @@ function fraudBadgeHtml(jobId) {
   if (!info || info.label === 'unknown') return '';
 
   var cfg = {
-    safe: { icon: '<i data-lucide="shield-check" class="icon-xs icon-stroke" style="color:var(--green)"></i>', cls: 'fraud-badge--safe', tip: 'Verified Posting' },
+    // §10: 'safe' removed — silence is trust. No badge for passing jobs.
     caution: { icon: '<i data-lucide="triangle-alert" class="icon-xs icon-stroke" style="color:var(--warm)"></i>', cls: 'fraud-badge--caution', tip: 'Review Carefully' },
     suspicious: { icon: '<i data-lucide="flag" class="icon-xs icon-stroke" style="color:var(--red)"></i>', cls: 'fraud-badge--suspicious', tip: 'Potentially Fake' },
   };
@@ -7122,21 +7151,18 @@ function renderJobRows(jobs, total, page, filtersToRun) {
 
     // Signal badges (inline, only when data exists)
     let signalBadges = '';
-    // Verified employer — check trust via existing cache
+    // §10: Show the exception, not the rule. Safe/verified = no badge (silence is trust).
+    // Only caution + suspicious get badges (rendered by fraudBadgeHtml separately if needed).
     if (typeof _fraudScoreCache !== 'undefined' && _fraudScoreCache[job.greenhouse_id]) {
       var _trustInfo = _fraudScoreCache[job.greenhouse_id];
-      if (_trustInfo.label === 'safe' || _trustInfo.label === 'verified') {
-        signalBadges += `<span style="display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:500;padding:1px 7px;border-radius:100px;background:var(--bg-success,#dcfce7);color:var(--green,#16a34a);margin-left:4px;"><i data-lucide="shield-check" style="width:10px;height:10px;"></i>Verified</span>`;
+      if (_trustInfo.label === 'caution') {
+        signalBadges += `<span style="display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:500;padding:1px 7px;border-radius:100px;background:var(--warm-dim);color:var(--warm);margin-left:4px;"><i data-lucide="alert-triangle" style="width:10px;height:10px;"></i>Caution</span>`;
+      } else if (_trustInfo.label === 'suspicious') {
+        signalBadges += `<span style="display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:500;padding:1px 7px;border-radius:100px;background:var(--red-dim);color:var(--red);margin-left:4px;"><i data-lucide="shield-alert" style="width:10px;height:10px;"></i>Suspicious</span>`;
       }
     }
-    // AI content — check via existing _aiJdScoreCache
-    if (typeof _aiJdScoreCache !== 'undefined' && _aiJdScoreCache[job.greenhouse_id]) {
-      var _aiInfo = _aiJdScoreCache[job.greenhouse_id];
-      if (_aiInfo.label === 'ai_generated' || (_aiInfo.score && _aiInfo.score > 0.7)) {
-        signalBadges += `<span style="display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:500;padding:1px 7px;border-radius:100px;background:var(--bg-warning,#fef9c3);color:var(--warm,#ca8a04);margin-left:4px;"><i data-lucide="scan-text" style="width:10px;height:10px;"></i>AI</span>`;
-      }
-    }
-    // Ghost reports — check job.ghost_report_count if available
+    // §10: AI Written badge REMOVED — AI-authored JDs are industry standard, not an exception.
+    // Ghost reports — exception-only, keep as-is
     const ghostCount = job.ghost_report_count || 0;
     if (ghostCount > 0) {
       signalBadges += `<span style="display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:500;padding:1px 7px;border-radius:100px;background:var(--bg-danger,#fee2e2);color:var(--red,#dc2626);margin-left:4px;"><i data-lucide="x-circle" style="width:10px;height:10px;"></i>${ghostCount} ghost</span>`;

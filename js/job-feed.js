@@ -2380,7 +2380,7 @@ function fraudBadgeHtml(jobId) {
   if (!info || info.label === 'unknown') return '';
 
   var cfg = {
-    safe: { icon: '<i data-lucide="shield-check" class="icon-xs icon-stroke" style="color:var(--green)"></i>', cls: 'fraud-badge--safe', tip: 'Verified Posting' },
+    // §10: 'safe' removed — silence is trust. No badge for passing jobs.
     caution: { icon: '<i data-lucide="triangle-alert" class="icon-xs icon-stroke" style="color:var(--warm)"></i>', cls: 'fraud-badge--caution', tip: 'Review Carefully' },
     suspicious: { icon: '<i data-lucide="flag" class="icon-xs icon-stroke" style="color:var(--red)"></i>', cls: 'fraud-badge--suspicious', tip: 'Potentially Fake' },
   };
@@ -2610,21 +2610,18 @@ function renderJobRows(jobs, total, page, filtersToRun) {
 
     // Signal badges (inline, only when data exists)
     let signalBadges = '';
-    // Verified employer — check trust via existing cache
+    // §10: Show the exception, not the rule. Safe/verified = no badge (silence is trust).
+    // Only caution + suspicious get badges (rendered by fraudBadgeHtml separately if needed).
     if (typeof _fraudScoreCache !== 'undefined' && _fraudScoreCache[job.greenhouse_id]) {
       var _trustInfo = _fraudScoreCache[job.greenhouse_id];
-      if (_trustInfo.label === 'safe' || _trustInfo.label === 'verified') {
-        signalBadges += `<span style="display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:500;padding:1px 7px;border-radius:100px;background:var(--bg-success,#dcfce7);color:var(--green,#16a34a);margin-left:4px;"><i data-lucide="shield-check" style="width:10px;height:10px;"></i>Verified</span>`;
+      if (_trustInfo.label === 'caution') {
+        signalBadges += `<span style="display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:500;padding:1px 7px;border-radius:100px;background:var(--warm-dim);color:var(--warm);margin-left:4px;"><i data-lucide="alert-triangle" style="width:10px;height:10px;"></i>Caution</span>`;
+      } else if (_trustInfo.label === 'suspicious') {
+        signalBadges += `<span style="display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:500;padding:1px 7px;border-radius:100px;background:var(--red-dim);color:var(--red);margin-left:4px;"><i data-lucide="shield-alert" style="width:10px;height:10px;"></i>Suspicious</span>`;
       }
     }
-    // AI content — check via existing _aiJdScoreCache
-    if (typeof _aiJdScoreCache !== 'undefined' && _aiJdScoreCache[job.greenhouse_id]) {
-      var _aiInfo = _aiJdScoreCache[job.greenhouse_id];
-      if (_aiInfo.label === 'ai_generated' || (_aiInfo.score && _aiInfo.score > 0.7)) {
-        signalBadges += `<span style="display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:500;padding:1px 7px;border-radius:100px;background:var(--bg-warning,#fef9c3);color:var(--warm,#ca8a04);margin-left:4px;"><i data-lucide="scan-text" style="width:10px;height:10px;"></i>AI</span>`;
-      }
-    }
-    // Ghost reports — check job.ghost_report_count if available
+    // §10: AI Written badge REMOVED — AI-authored JDs are industry standard, not an exception.
+    // Ghost reports — exception-only, keep as-is
     const ghostCount = job.ghost_report_count || 0;
     if (ghostCount > 0) {
       signalBadges += `<span style="display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:500;padding:1px 7px;border-radius:100px;background:var(--bg-danger,#fee2e2);color:var(--red,#dc2626);margin-left:4px;"><i data-lucide="x-circle" style="width:10px;height:10px;"></i>${ghostCount} ghost</span>`;

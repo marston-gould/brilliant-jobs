@@ -1683,6 +1683,10 @@ async function processReferralAttribution(user) {
 // showPage / switchPage — navigate to a named page by simulating nav-item click
 // Used in onclick= attributes throughout dashboard.html and resume-archive.js
 window.showPage = function(pageName) {
+  // FB-RESUME-CONSOLIDATION-001: redirect old page names to consolidated Resumes tab
+  if (pageName === 'resume-builder') { window.showPage('resumes'); setTimeout(function(){ switchResumeTab('builder'); }, 50); return; }
+  if (pageName === 'linkedin') { window.showPage('resumes'); setTimeout(function(){ switchResumeTab('linkedin'); }, 50); return; }
+
   var navItem = document.querySelector('.nav-item[data-page="' + pageName + '"]');
   if (navItem) { navItem.click(); return; }
   // Fallback: directly activate page if no nav item (e.g. sub-pages)
@@ -1692,6 +1696,31 @@ window.showPage = function(pageName) {
 };
 window.switchPage = window.showPage;
 window.BJ.switchPage = window.showPage;
+
+// FB-RESUME-CONSOLIDATION-001: Switch between My Resumes / Builder / LinkedIn tabs
+window.switchResumeTab = function(tabId) {
+  // Hide all tab panels
+  document.querySelectorAll('.resume-tab-panel').forEach(function(p) { p.style.display = 'none'; p.classList.remove('active'); });
+  // Show target
+  var panel = document.getElementById('rtab-' + tabId);
+  if (panel) { panel.style.display = ''; panel.classList.add('active'); }
+  // Update tab button active states
+  document.querySelectorAll('#resume-consolidation-tabs .app-view-toggle').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.rtab === tabId);
+  });
+  // Lazy init: fire init functions on first tab switch
+  if (tabId === 'builder' && !window._rbTabInited) {
+    window._rbTabInited = true;
+    if (typeof rbInit === 'function') try { rbInit(); } catch(e) {}
+  }
+  if (tabId === 'linkedin' && !window._liTabInited) {
+    window._liTabInited = true;
+    if (typeof liInit === 'function') try { liInit(); } catch(e) {}
+    if (typeof loadLinkedInProfile === 'function') try { loadLinkedInProfile(); } catch(e) {}
+  }
+  // PostHog
+  if (typeof captureEvent === 'function') captureEvent('resumes_tab_switch', { tab: tabId });
+};
 
 // EDE-001: Trigger location enrichment after filter save with wherePills
 window.triggerLocationEnrichment = async function(wherePills, filterId, includeRemote) {
