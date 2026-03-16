@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Admin Console v10.20 -->
+<!-- Brilliant Jobs Admin Console v10.21 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -15,17 +15,17 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Admin Console</title>
   <script src="/js/vendor/supabase.min.js"></script>
-  <script src="/js/version.js?v=v10.20"></script>
+  <script src="/js/version.js?v=v10.21"></script>
   <!-- CS-003: PostHog SDK for admin surface (DO-001) — CS-P1-002: externalized for CSP -->
-  <script src="js/posthog-admin.js?v=v10.20"></script>
-  <script src="js/posthog-perf.js?v=v10.20" defer></script>
-  <script src="js/feature-flags.js?v=v10.20" defer></script>
-  <script src="js/structured-logger.js?v=v10.20" defer></script>
-  <script src="js/admin-posthog-insights.js?v=v10.20" defer></script>
-  <script src="js/admin-ab-tests.js?v=v10.20" defer></script>
-  <script src="js/admin-crewai.js?v=v10.20" defer></script>
+  <script src="js/posthog-admin.js?v=v10.21"></script>
+  <script src="js/posthog-perf.js?v=v10.21" defer></script>
+  <script src="js/feature-flags.js?v=v10.21" defer></script>
+  <script src="js/structured-logger.js?v=v10.21" defer></script>
+  <script src="js/admin-posthog-insights.js?v=v10.21" defer></script>
+  <script src="js/admin-ab-tests.js?v=v10.21" defer></script>
+  <script src="js/admin-crewai.js?v=v10.21" defer></script>
   <script defer src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" integrity="sha384-pPi0zxBAoDu6+JXW/C68UZLvBUUtU+7zonhif43rqj7pxsGyqyqzcian2Rj37Rss" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="styles.css?v=v10.20">
+  <link rel="stylesheet" href="styles.css?v=v10.21">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1168,6 +1168,88 @@
             <div id="admin-page-compliance-dash"><div class="admin-loading">Loading compliance dashboard…</div></div>
           </div>
 
+          <!-- Landing Page Manager (LP-RESTRUCTURE-S3) -->
+          <div class="admin-panel" id="admin-panel-landing-page">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+              <div>
+                <div style="font-size:16px;font-weight:700;color:var(--text);">Landing Page Sections</div>
+                <div style="color:var(--text-dim);font-size:13px;margin-top:2px;">Manage dynamic benefit sections — no deploy needed.</div>
+              </div>
+              <div style="display:flex;gap:10px;align-items:center;">
+                <button class="btn btn-secondary btn-sm" id="al-preview-btn" onclick="window.open('/?preview=true','_blank')">Preview Landing Page ↗</button>
+                <button class="btn btn-primary btn-sm" id="al-add-btn">+ Add Section</button>
+              </div>
+            </div>
+            <div id="al-section-list" style="display:flex;flex-direction:column;gap:12px;">
+              <div style="text-align:center;padding:40px;color:var(--text-faint);">Loading sections…</div>
+            </div>
+            <!-- Add / Edit modal -->
+            <div id="al-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2000;align-items:center;justify-content:center;">
+              <div id="al-modal" style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:28px;width:min(640px,94vw);max-height:88vh;overflow-y:auto;position:relative;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                  <h3 id="al-modal-title" style="margin:0;font-size:16px;">Add Section</h3>
+                  <button onclick="alCloseModal()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--text-dim);padding:4px;">×</button>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:14px;">
+                  <div>
+                    <label class="form-label" style="font-size:12px;font-weight:600;color:var(--text-dim);display:block;margin-bottom:4px;">Subtitle (small label above title)</label>
+                    <input id="al-f-subtitle" type="text" class="form-input" placeholder="e.g. The Sourcing Advantage" maxlength="120">
+                  </div>
+                  <div>
+                    <label class="form-label" style="font-size:12px;font-weight:600;color:var(--text-dim);display:block;margin-bottom:4px;">Title *</label>
+                    <input id="al-f-title" type="text" class="form-input" placeholder="Section headline" maxlength="120">
+                  </div>
+                  <div>
+                    <label class="form-label" style="font-size:12px;font-weight:600;color:var(--text-dim);display:block;margin-bottom:4px;">Body Text (supports **bold** and [link](url))</label>
+                    <textarea id="al-f-body" class="form-input" rows="4" placeholder="Describe the feature clearly…" maxlength="600" style="resize:vertical;font-family:inherit;"></textarea>
+                  </div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div>
+                      <label class="form-label" style="font-size:12px;font-weight:600;color:var(--text-dim);display:block;margin-bottom:4px;">CTA Button Text</label>
+                      <input id="al-f-cta-text" type="text" class="form-input" placeholder="e.g. See Jobs in Your Field" maxlength="60">
+                    </div>
+                    <div>
+                      <label class="form-label" style="font-size:12px;font-weight:600;color:var(--text-dim);display:block;margin-bottom:4px;">CTA URL</label>
+                      <input id="al-f-cta-url" type="text" class="form-input" placeholder="e.g. #lp-preview or /app#jobs" maxlength="200">
+                    </div>
+                  </div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div>
+                      <label class="form-label" style="font-size:12px;font-weight:600;color:var(--text-dim);display:block;margin-bottom:4px;">Orientation</label>
+                      <select id="al-f-orientation" class="form-input">
+                        <option value="auto">Auto (alternating)</option>
+                        <option value="image-right">Image Right</option>
+                        <option value="image-left">Image Left</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="form-label" style="font-size:12px;font-weight:600;color:var(--text-dim);display:block;margin-bottom:4px;">Segment Targeting</label>
+                      <select id="al-f-segment" class="form-input">
+                        <option value="all">All visitors</option>
+                        <option value="new">New visitors only</option>
+                        <option value="returning">Returning only</option>
+                        <option value="lapsed">Lapsed only</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="form-label" style="font-size:12px;font-weight:600;color:var(--text-dim);display:block;margin-bottom:4px;">Screenshot Image</label>
+                    <div id="al-img-current" style="display:none;margin-bottom:8px;">
+                      <img id="al-img-preview" src="" alt="" style="max-height:80px;border-radius:6px;border:1px solid var(--border);">
+                      <span id="al-img-url-display" style="font-size:11px;color:var(--text-faint);display:block;margin-top:4px;word-break:break-all;"></span>
+                    </div>
+                    <input id="al-f-img" type="file" accept="image/webp,image/png,image/jpeg" style="font-size:13px;">
+                    <div style="font-size:11px;color:var(--text-faint);margin-top:4px;">WebP recommended. Max 5MB. Stored in landing-assets/ bucket.</div>
+                  </div>
+                </div>
+                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px;padding-top:16px;border-top:1px solid var(--border);">
+                  <button class="btn btn-secondary" onclick="alCloseModal()">Cancel</button>
+                  <button class="btn btn-primary" id="al-modal-save" onclick="alSaveSection()">Save</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- BI-01: Deploy Tracker -->
           <div class="admin-panel" id="admin-panel-deploy-tracker">
             <div id="admin-page-deploy-tracker"><div class="admin-loading">Loading deployment dashboard…</div></div>
@@ -1210,26 +1292,26 @@
   </div> <!-- end admin-shell -->
 
   <!-- JS: Admin bundle loads globals, admin.js, admin-notifications.js -->
-  <script src="dist/admin.min.js?v=v10.20-g11" defer></script>
+  <script src="dist/admin.min.js?v=v10.21-g11" defer></script>
 
   <!-- CS-P1-002: Cohort handler moved to js/admin-inline.js -->
-  <script src="js/admin-inline.js?v=v10.20"></script>
-  <script src="js/admin-cost-monitor.js?v=v10.20" defer></script>
-  <script src="js/admin-chat-analytics.js?v=v10.20" defer></script>
-  <script src="js/admin-payl.js?v=v10.20" defer></script>
-  <script src="js/admin-cohort-pricing.js?v=v10.20" defer></script>
-  <script src="js/admin-user-manager.js?v=v10.20" defer></script>
-  <script src="js/admin-cohort-manager-full.js?v=v10.20" defer></script>
-  <script src="js/admin-billing.js?v=v10.20" defer></script>
-  <script src="js/admin-filter-prompt.js?v=v10.20" defer></script>
-  <script src="js/admin-audit-log-viewer.js?v=v10.20" defer></script>
-  <script src="js/admin-deploy-tracker.js?v=v10.20" defer></script>
-  <script src="js/admin-build-analytics.js?v=v10.20" defer></script>
-  <script src="js/admin-deploy-visibility.js?v=v10.20" defer></script>
-  <script src="js/admin-deploy-alerting.js?v=v10.20" defer></script>
-  <script src="js/admin-deploy-command-center.js?v=v10.20" defer></script>
-  <script src="js/admin-deploy-reports.js?v=v10.20" defer></script>
-  <script src="js/admin-autosubmit.js?v=v10.20" defer></script>
+  <script src="js/admin-inline.js?v=v10.21"></script>
+  <script src="js/admin-cost-monitor.js?v=v10.21" defer></script>
+  <script src="js/admin-chat-analytics.js?v=v10.21" defer></script>
+  <script src="js/admin-payl.js?v=v10.21" defer></script>
+  <script src="js/admin-cohort-pricing.js?v=v10.21" defer></script>
+  <script src="js/admin-user-manager.js?v=v10.21" defer></script>
+  <script src="js/admin-cohort-manager-full.js?v=v10.21" defer></script>
+  <script src="js/admin-billing.js?v=v10.21" defer></script>
+  <script src="js/admin-filter-prompt.js?v=v10.21" defer></script>
+  <script src="js/admin-audit-log-viewer.js?v=v10.21" defer></script>
+  <script src="js/admin-deploy-tracker.js?v=v10.21" defer></script>
+  <script src="js/admin-build-analytics.js?v=v10.21" defer></script>
+  <script src="js/admin-deploy-visibility.js?v=v10.21" defer></script>
+  <script src="js/admin-deploy-alerting.js?v=v10.21" defer></script>
+  <script src="js/admin-deploy-command-center.js?v=v10.21" defer></script>
+  <script src="js/admin-deploy-reports.js?v=v10.21" defer></script>
+  <script src="js/admin-autosubmit.js?v=v10.21" defer></script>
   <script src="https://unpkg.com/lucide@0.577.0/dist/umd/lucide.min.js"></script>
 </body>
 </html>

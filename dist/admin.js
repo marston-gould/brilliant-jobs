@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v10.20';
+var BJ_VERSION = 'v10.21';
 // Populate version display elements after DOM is ready
 (function() {
   var el = document.getElementById('nav-version');
@@ -1447,7 +1447,9 @@ var ADMIN_SUBPAGE_MAP = {
   // ── Compliance (CS-P1-017) ──
   'pii-map':        { section: 'compliance',   label: 'PII Data Map',   init: function(){ loadPiiMapPanel(); } },
   'user-deletion':  { section: 'compliance',   label: 'User Deletion',  init: function(){ loadUserDeletionPanel(); } },
-  'compliance-dash':{ section: 'compliance',   label: 'Compliance',     init: function(){ loadComplianceDashPanel(); } }
+  'compliance-dash':{ section: 'compliance',   label: 'Compliance',     init: function(){ loadComplianceDashPanel(); } },
+  // ── Landing Page (LP-RESTRUCTURE-S3) ──
+  'landing-page':   { section: 'growth',       label: 'Landing Page',   init: function(){ if (typeof alInit === 'function') alInit(); } }
 };
 
 var ADMIN_SECTIONS = [

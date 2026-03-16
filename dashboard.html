@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v10.20 -->
+<!-- Brilliant Jobs Dashboard v10.21 -->
 <html lang="en">
 <head>
   <!-- CS-P1-009: Theme flash prevention — must be first script -->
@@ -19,21 +19,21 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="/js/vendor/supabase.min.js" defer></script>
-  <script src="/js/pipeline-migration.js?v=v10.20" defer></script>
-  <script src="/js/notification-center.js?v=v10.20" defer></script>
+  <script src="/js/pipeline-migration.js?v=v10.21" defer></script>
+  <script src="/js/notification-center.js?v=v10.21" defer></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" integrity="sha384-nFoSjZIoH3CCp8W639jJyQkuPHinJ2NHe7on1xvlUA7SuGfJAfvMldrsoAVm6ECz" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" integrity="sha384-eEu5CTj3qGvu9PdJuS+YlkNi7d2XxQROAFYOr59zgObtlcux1ae1Il3u7jvdCSWu" crossorigin="anonymous"></script>
   <!-- CS-014: CX-09 — ECharts lazy-loaded by stats.js when Stats tab opens -->
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js" integrity="sha384-TcLTgu6flPhnZ5dfHnHimsxNFjYWN0povfGgnOvgPJKbZe6IbuoC2ociiatSHl9E" crossorigin="anonymous"></script>
   <!-- CS-016 FIX-10: Code-split chunks — shell (globals+routing) + feed (job list) loaded eagerly; all other chunks lazy-loaded on tab switch -->
-  <script src="dist/dashboard-shell.min.js?v=v10.20" defer></script>
-  <script src="dist/dashboard-feed.min.js?v=v10.20" defer></script>
+  <script src="dist/dashboard-shell.min.js?v=v10.21" defer></script>
+  <script src="dist/dashboard-feed.min.js?v=v10.21" defer></script>
   <!-- CS-P1-002: dashboard inline scripts externalized (pdfjs, preload, feedback, insights, a11y) -->
-  <script src="js/dashboard-inline.js?v=v10.20" defer></script>
+  <script src="js/dashboard-inline.js?v=v10.21" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=v10.20">
+  <link rel="stylesheet" href="styles.css?v=v10.21">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -108,11 +108,11 @@
     </style>
   <!-- CSS extracted to styles.css in v3.28 -->
   <!-- A13: PostHog analytics — CS-P1-002: externalized for CSP compliance -->
-  <script src="js/posthog-dashboard.js?v=v10.20" defer></script>
-  <script src="js/posthog-perf.js?v=v10.20" defer></script>
-  <script src="js/feature-flags.js?v=v10.20" defer></script>
-  <script src="js/structured-logger.js?v=v10.20" defer></script>
-  <script src="js/theme.js?v=v10.20" defer></script>
+  <script src="js/posthog-dashboard.js?v=v10.21" defer></script>
+  <script src="js/posthog-perf.js?v=v10.21" defer></script>
+  <script src="js/feature-flags.js?v=v10.21" defer></script>
+  <script src="js/structured-logger.js?v=v10.21" defer></script>
+  <script src="js/theme.js?v=v10.21" defer></script>
 </head>
 <body>
 
@@ -3905,98 +3905,6 @@
 
       <!-- Admin Console moved to /admin (v6.27) -->
 
-      <!-- ============ ADMIN: LANDING PAGE SECTIONS (LP-RESTRUCTURE-S3) ============ -->
-      <div class="page" id="page-admin-landing" style="display:none">
-        <div class="page-header">
-          <div class="u-flex-gap-12-center" style="justify-content:space-between;flex-wrap:wrap;gap:12px;">
-            <div>
-              <h2>Landing Page Sections</h2>
-              <p style="color:var(--text-dim);font-size:14px;margin:4px 0 0;">Manage dynamic benefit sections — no deploy needed.</p>
-            </div>
-            <div style="display:flex;gap:10px;align-items:center;">
-              <button class="btn btn-secondary btn-sm" id="al-preview-btn" onclick="window.open('/?preview=true','_blank')">
-                Preview Landing Page ↗
-              </button>
-              <button class="btn btn-primary btn-sm" id="al-add-btn">
-                + Add Section
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Section list -->
-        <div id="al-section-list" style="margin-top:24px;display:flex;flex-direction:column;gap:12px;">
-          <div style="text-align:center;padding:40px;color:var(--text-faint);">Loading sections…</div>
-        </div>
-
-        <!-- Add / Edit modal -->
-        <div id="al-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2000;align-items:center;justify-content:center;">
-          <div id="al-modal" style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:28px;width:min(640px,94vw);max-height:88vh;overflow-y:auto;position:relative;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-              <h3 id="al-modal-title" style="margin:0;font-size:16px;">Add Section</h3>
-              <button onclick="alCloseModal()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--text-dim);padding:4px;">×</button>
-            </div>
-
-            <div style="display:flex;flex-direction:column;gap:14px;">
-              <div>
-                <label class="form-label" style="font-size:12px;font-weight:600;color:var(--text-dim);display:block;margin-bottom:4px;">Subtitle (small label above title)</label>
-                <input id="al-f-subtitle" type="text" class="form-input" placeholder="e.g. The Sourcing Advantage" maxlength="120">
-              </div>
-              <div>
-                <label class="form-label" style="font-size:12px;font-weight:600;color:var(--text-dim);display:block;margin-bottom:4px;">Title *</label>
-                <input id="al-f-title" type="text" class="form-input" placeholder="Section headline" maxlength="120">
-              </div>
-              <div>
-                <label class="form-label" style="font-size:12px;font-weight:600;color:var(--text-dim);display:block;margin-bottom:4px;">Body Text (supports **bold** and [link](url))</label>
-                <textarea id="al-f-body" class="form-input" rows="4" placeholder="Describe the feature clearly…" maxlength="600" style="resize:vertical;font-family:inherit;"></textarea>
-              </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                <div>
-                  <label class="form-label" style="font-size:12px;font-weight:600;color:var(--text-dim);display:block;margin-bottom:4px;">CTA Button Text</label>
-                  <input id="al-f-cta-text" type="text" class="form-input" placeholder="e.g. See Jobs in Your Field" maxlength="60">
-                </div>
-                <div>
-                  <label class="form-label" style="font-size:12px;font-weight:600;color:var(--text-dim);display:block;margin-bottom:4px;">CTA URL</label>
-                  <input id="al-f-cta-url" type="text" class="form-input" placeholder="e.g. #lp-preview or /app#jobs" maxlength="200">
-                </div>
-              </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                <div>
-                  <label class="form-label" style="font-size:12px;font-weight:600;color:var(--text-dim);display:block;margin-bottom:4px;">Orientation</label>
-                  <select id="al-f-orientation" class="form-input">
-                    <option value="auto">Auto (alternating)</option>
-                    <option value="image-right">Image Right</option>
-                    <option value="image-left">Image Left</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="form-label" style="font-size:12px;font-weight:600;color:var(--text-dim);display:block;margin-bottom:4px;">Segment Targeting</label>
-                  <select id="al-f-segment" class="form-input">
-                    <option value="all">All visitors</option>
-                    <option value="new">New visitors only</option>
-                    <option value="returning">Returning only</option>
-                    <option value="lapsed">Lapsed only</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label class="form-label" style="font-size:12px;font-weight:600;color:var(--text-dim);display:block;margin-bottom:4px;">Screenshot Image</label>
-                <div id="al-img-current" style="display:none;margin-bottom:8px;">
-                  <img id="al-img-preview" src="" alt="" style="max-height:80px;border-radius:6px;border:1px solid var(--border);">
-                  <span id="al-img-url-display" style="font-size:11px;color:var(--text-faint);display:block;margin-top:4px;word-break:break-all;"></span>
-                </div>
-                <input id="al-f-img" type="file" accept="image/webp,image/png,image/jpeg" style="font-size:13px;">
-                <div style="font-size:11px;color:var(--text-faint);margin-top:4px;">WebP recommended. Max 5MB. Stored in landing-assets/ bucket.</div>
-              </div>
-            </div>
-
-            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px;padding-top:16px;border-top:1px solid var(--border);">
-              <button class="btn btn-secondary" onclick="alCloseModal()">Cancel</button>
-              <button class="btn btn-primary" id="al-modal-save" onclick="alSaveSection()">Save</button>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <!-- ============ LOCATION BROWSER ============ -->
       <div class="page" id="page-location-browser">
