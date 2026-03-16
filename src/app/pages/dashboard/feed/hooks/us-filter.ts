@@ -87,10 +87,7 @@ export function buildUSOnlyQuery(query: any): any {
     // Tier 3: loc_country NULL but explicit US text in location string
     'and(loc_country.is.null,location.ilike.%United States%)',
     'and(loc_country.is.null,location.ilike.% USA%)',
-    'and(loc_country.is.null,location.ilike.%(USA)%)',
-    'and(loc_country.is.null,location.ilike.%, US)',
     'and(loc_country.is.null,location.ilike.%, US %)',
-    'and(loc_country.is.null,location.ilike.%(US)%)',
     'and(loc_country.is.null,location.ilike.%- US)',
     'and(loc_country.is.null,location.ilike.%- US %)',
 
@@ -125,9 +122,7 @@ export function buildUSRemoteClauses(): string[] {
     `and(loc_country.is.null,loc_state.in.(${BJ_US_STATES}),is_remote.eq.true)`,
     'and(loc_country.is.null,location.ilike.Remote%United States%)',
     'and(loc_country.is.null,location.ilike.Remote%USA%)',
-    'and(loc_country.is.null,location.ilike.Remote%, US)',
     'and(loc_country.is.null,location.ilike.Remote%, US %)',
-    'and(loc_country.is.null,location.ilike.Remote%(US)%)',
     'and(loc_country.is.null,location.ilike.Remote%- US)',
     'and(loc_country.is.null,location.ilike.Remote%- US %)',
     'and(loc_country.is.null,location.eq.Remote)',

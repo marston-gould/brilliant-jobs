@@ -97,10 +97,10 @@ function buildUSOnlyQuery(query) {
     // Tier 3: loc_country NULL but explicit US text in location string
     'and(loc_country.is.null,location.ilike.%United States%)',
     'and(loc_country.is.null,location.ilike.% USA%)',
-    'and(loc_country.is.null,location.ilike.%(USA)%)',
-    'and(loc_country.is.null,location.ilike.%, US)',       // "Remote, US" — end of string
-    'and(loc_country.is.null,location.ilike.%, US %)',     // "Remote, US Only"
-    'and(loc_country.is.null,location.ilike.%(US)%)',      // "Remote (US)"
+    // NOTE: Patterns %(USA)%, %(US)% removed — literal parentheses in values
+    // break PostgREST's .or() logic tree parser (400 error).
+    // Comma+US patterns use ilike with trailing space to avoid parser ambiguity.
+    'and(loc_country.is.null,location.ilike.%, US %)',     // "Remote, US Only" / "Remote, US -"
     'and(loc_country.is.null,location.ilike.%- US)',       // "Remote - US" — end of string
     'and(loc_country.is.null,location.ilike.%- US %)',     // "Remote - US Only"
 
