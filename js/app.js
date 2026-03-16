@@ -1184,17 +1184,20 @@ initGmailStatus();
 window.switchAppTab = function(panel) {
   // FB-APPS-001: Migrate legacy values to new 2-tab model
   if (panel === 'board' || panel === 'queue' || panel === 'history') panel = 'pipeline';
-  if (panel !== 'pipeline' && panel !== 'settings') panel = 'pipeline';
+  if (panel !== 'pipeline' && panel !== 'settings' && panel !== 'review-queue') panel = 'pipeline';
 
   // Toggle top-level tab buttons
   var tabPipeline = document.getElementById('app-top-tab-pipeline');
   var tabSettings = document.getElementById('app-top-tab-settings');
+  var tabReviewQueue = document.getElementById('app-top-tab-review-queue');
   if (tabPipeline) tabPipeline.classList.toggle('active', panel === 'pipeline');
   if (tabSettings) tabSettings.classList.toggle('active', panel === 'settings');
+  if (tabReviewQueue) tabReviewQueue.classList.toggle('active', panel === 'review-queue');
 
   // Toggle tab content panels
   var panelPipeline = document.getElementById('app-tab-pipeline');
   var panelSettings = document.getElementById('app-tab-settings');
+  var panelReviewQueue = document.getElementById('app-tab-review-queue');
   if (panelPipeline) {
     if (panel === 'pipeline') panelPipeline.classList.remove('u-hidden');
     else panelPipeline.classList.add('u-hidden');
@@ -1202,6 +1205,10 @@ window.switchAppTab = function(panel) {
   if (panelSettings) {
     if (panel === 'settings') panelSettings.classList.remove('u-hidden');
     else panelSettings.classList.add('u-hidden');
+  }
+  if (panelReviewQueue) {
+    if (panel === 'review-queue') { panelReviewQueue.classList.remove('u-hidden'); if (typeof loadReviewQueue === 'function') loadReviewQueue(); }
+    else panelReviewQueue.classList.add('u-hidden');
   }
 
   // Show/hide settings summary banner (only visible on Pipeline tab)

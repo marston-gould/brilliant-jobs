@@ -76,6 +76,14 @@ function openRewritePanel(jobId, jobTitle, company, resumeId, matchScore) {
   document.addEventListener('keydown', panel._escHandler);
 
   // Start analysis
+  if (typeof capturePostHog === 'function') {
+    capturePostHog('resume_rewrite_started', {
+      job_id: jobId,
+      resume_id: resumeId,
+      original_score: matchScore || null,
+      mode: 'manual',
+    });
+  }
   _rwStartAnalysis();
 }
 
@@ -211,6 +219,12 @@ function _rwSkipQuestion(qId) {
     if (input) { input.value = ''; input.disabled = true; }
   }
   _rwState.userAnswers[qId] = null;
+  // PostHog: resume_rewrite_qa_skipped
+  if (typeof capturePostHog === 'function') {
+    var qIdx = (_rwState.questions || []).findIndex(function(q){ return q.id === qId; });
+    var qType = (_rwState.questions && _rwState.questions[qIdx]) ? (_rwState.questions[qIdx].type || 'unknown') : 'unknown';
+    capturePostHog('resume_rewrite_qa_skipped', { question_index: qIdx, question_type: qType });
+  }
 }
 
 // ════════════════════════════════════════════════════════════
@@ -333,6 +347,17 @@ async function _rwAcceptAll() {
     setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
 
     showToast('Resume rewrite downloaded! File saved to your account.', { type: 'success', duration: 5000 });
+
+    // PostHog: resume_rewrite_completed
+    if (typeof capturePostHog === 'function') {
+      capturePostHog('resume_rewrite_completed', {
+        job_id: _rwState.jobId,
+        resume_id: _rwState.resumeId,
+        original_score: _rwState.originalScore || null,
+        new_score: _rwState.newScore || null,
+        credits_charged: 3,
+      });
+    }
     closeRewritePanel();
 
   } catch (e) {

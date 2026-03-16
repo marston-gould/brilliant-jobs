@@ -102,6 +102,10 @@ async function _initModeSelector(): Promise<void> {
       const mode = (card as HTMLElement).dataset.mode;
       if (!mode) return;
 
+      // Capture old mode before change
+      const prev = await chrome.storage.sync.get('applicationMode');
+      const oldMode = prev.applicationMode || 'manual';
+
       _selectModeCard(mode);
       _updateThresholdVisibility(mode);
 
@@ -119,7 +123,7 @@ async function _initModeSelector(): Promise<void> {
         chrome.runtime.sendMessage({ type: 'syncApplySettingsToSupabase', settings });
       } catch {}
 
-      try { phCapture('application_mode_changed', { mode }); } catch {}
+      try { phCapture('application_mode_changed', { mode, old_mode: oldMode, source: 'extension' }); } catch {}
     });
   });
 }

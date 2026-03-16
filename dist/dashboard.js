@@ -3360,17 +3360,20 @@ initGmailStatus();
 window.switchAppTab = function(panel) {
   // FB-APPS-001: Migrate legacy values to new 2-tab model
   if (panel === 'board' || panel === 'queue' || panel === 'history') panel = 'pipeline';
-  if (panel !== 'pipeline' && panel !== 'settings') panel = 'pipeline';
+  if (panel !== 'pipeline' && panel !== 'settings' && panel !== 'review-queue') panel = 'pipeline';
 
   // Toggle top-level tab buttons
   var tabPipeline = document.getElementById('app-top-tab-pipeline');
   var tabSettings = document.getElementById('app-top-tab-settings');
+  var tabReviewQueue = document.getElementById('app-top-tab-review-queue');
   if (tabPipeline) tabPipeline.classList.toggle('active', panel === 'pipeline');
   if (tabSettings) tabSettings.classList.toggle('active', panel === 'settings');
+  if (tabReviewQueue) tabReviewQueue.classList.toggle('active', panel === 'review-queue');
 
   // Toggle tab content panels
   var panelPipeline = document.getElementById('app-tab-pipeline');
   var panelSettings = document.getElementById('app-tab-settings');
+  var panelReviewQueue = document.getElementById('app-tab-review-queue');
   if (panelPipeline) {
     if (panel === 'pipeline') panelPipeline.classList.remove('u-hidden');
     else panelPipeline.classList.add('u-hidden');
@@ -3378,6 +3381,10 @@ window.switchAppTab = function(panel) {
   if (panelSettings) {
     if (panel === 'settings') panelSettings.classList.remove('u-hidden');
     else panelSettings.classList.add('u-hidden');
+  }
+  if (panelReviewQueue) {
+    if (panel === 'review-queue') { panelReviewQueue.classList.remove('u-hidden'); if (typeof loadReviewQueue === 'function') loadReviewQueue(); }
+    else panelReviewQueue.classList.add('u-hidden');
   }
 
   // Show/hide settings summary banner (only visible on Pipeline tab)
@@ -25658,6 +25665,14 @@ function openRewritePanel(jobId, jobTitle, company, resumeId, matchScore) {
   document.addEventListener('keydown', panel._escHandler);
 
   // Start analysis
+  if (typeof capturePostHog === 'function') {
+    capturePostHog('resume_rewrite_started', {
+      job_id: jobId,
+      resume_id: resumeId,
+      original_score: matchScore || null,
+      mode: 'manual',
+    });
+  }
   _rwStartAnalysis();
 }
 
@@ -25793,6 +25808,12 @@ function _rwSkipQuestion(qId) {
     if (input) { input.value = ''; input.disabled = true; }
   }
   _rwState.userAnswers[qId] = null;
+  // PostHog: resume_rewrite_qa_skipped
+  if (typeof capturePostHog === 'function') {
+    var qIdx = (_rwState.questions || []).findIndex(function(q){ return q.id === qId; });
+    var qType = (_rwState.questions && _rwState.questions[qIdx]) ? (_rwState.questions[qIdx].type || 'unknown') : 'unknown';
+    capturePostHog('resume_rewrite_qa_skipped', { question_index: qIdx, question_type: qType });
+  }
 }
 
 // ════════════════════════════════════════════════════════════
@@ -25915,6 +25936,17 @@ async function _rwAcceptAll() {
     setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
 
     showToast('Resume rewrite downloaded! File saved to your account.', { type: 'success', duration: 5000 });
+
+    // PostHog: resume_rewrite_completed
+    if (typeof capturePostHog === 'function') {
+      capturePostHog('resume_rewrite_completed', {
+        job_id: _rwState.jobId,
+        resume_id: _rwState.resumeId,
+        original_score: _rwState.originalScore || null,
+        new_score: _rwState.newScore || null,
+        credits_charged: 3,
+      });
+    }
     closeRewritePanel();
 
   } catch (e) {
@@ -32627,6 +32659,73 @@ window.buildGhostBadge = buildGhostBadge;
 window.showGhostBadgeTooltip = showGhostBadgeTooltip;
 window.confirmGhostReport = confirmGhostReport;
 window.submitGhostReport = submitGhostReport;
+
+// ── AIS-F6 gap: Review Queue — load pending_applications with status='review_queue' ──
+async function loadReviewQueue() {
+  var listEl = document.getElementById('review-queue-items');
+  var loadingEl = document.getElementById('review-queue-loading');
+  var emptyEl = document.getElementById('review-queue-empty');
+  var badgeEl = document.getElementById('review-queue-badge');
+  if (!listEl) return;
+
+  try {
+    var { data, error } = await sb.from('pending_applications')
+      .select('id, job_title, company_name, job_url, created_at')
+      .eq('user_id', currentUser.id)
+      .eq('status', 'review_queue')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (loadingEl) loadingEl.style.display = 'none';
+
+    if (error) { reportError('loadReviewQueue', error); return; }
+
+    if (!data || !data.length) {
+      if (emptyEl) emptyEl.style.display = '';
+      listEl.innerHTML = '';
+      if (badgeEl) badgeEl.style.display = 'none';
+      return;
+    }
+
+    if (badgeEl) { badgeEl.style.display = ''; badgeEl.textContent = data.length; }
+    if (emptyEl) emptyEl.style.display = 'none';
+
+    var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){ return String(s||''); };
+    listEl.innerHTML = data.map(function(app) {
+      var daysAgo = Math.floor((Date.now() - new Date(app.created_at).getTime()) / 86400000);
+      var when = daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : daysAgo + 'd ago';
+      return '<div class="card" style="margin-bottom:8px;padding:12px 16px;display:flex;align-items:center;gap:12px;">' +
+        '<div style="flex:1;">' +
+          '<div style="font-size:13px;font-weight:600;">' + esc(app.job_title || 'Unknown Role') + '</div>' +
+          '<div style="font-size:11px;color:var(--text-muted);">' + esc(app.company_name || '') + ' · ' + when + '</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:6px;">' +
+          '<a href="' + esc(app.job_url || '#') + '" target="_blank" class="btn btn-sm btn-primary" style="font-size:11px;">Apply Now</a>' +
+          '<button class="btn btn-sm" onclick="dismissReviewQueueItem(\'' + app.id + '\', this)" style="font-size:11px;">Dismiss</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  } catch(e) {
+    reportError('loadReviewQueue', e);
+    if (loadingEl) loadingEl.style.display = 'none';
+  }
+}
+
+async function dismissReviewQueueItem(appId, btn) {
+  try {
+    btn.disabled = true;
+    await sb.from('pending_applications').update({ status: 'dismissed' }).eq('id', appId).eq('user_id', currentUser.id);
+    var card = btn.closest('.card');
+    if (card) card.remove();
+    var remaining = document.querySelectorAll('#review-queue-items .card').length;
+    var badgeEl = document.getElementById('review-queue-badge');
+    if (badgeEl) { if (remaining === 0) { badgeEl.style.display = 'none'; } else { badgeEl.textContent = remaining; } }
+    if (remaining === 0) { var emptyEl = document.getElementById('review-queue-empty'); if (emptyEl) emptyEl.style.display = ''; }
+  } catch(e) { reportError('dismissReviewQueueItem', e); btn.disabled = false; }
+}
+
+window.loadReviewQueue = loadReviewQueue;
+window.dismissReviewQueueItem = dismissReviewQueueItem;
 
 
 // === js/referrals.js ===

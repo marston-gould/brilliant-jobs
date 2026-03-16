@@ -2041,15 +2041,18 @@
       if (rewriteBtn) rewriteBtn.addEventListener('click', function () {
         hideScoreGatePopup();
         showRewriteProgressPopup(data);
+        sendMsg('POSTHOG_CAPTURE', { event: 'score_gate_shown', properties: { score: data.score || 0, threshold: data.threshold || 75, user_action: 'rewrite', platform: currentSite ? currentSite.platform : 'unknown' } });
         _sendConfirm('rewrite', data);
       });
       if (submitBtn) submitBtn.addEventListener('click', function () {
         hideScoreGatePopup();
         showToast('Submitting with current resume...');
+        sendMsg('POSTHOG_CAPTURE', { event: 'score_gate_shown', properties: { score: data.score || 0, threshold: data.threshold || 75, user_action: 'apply', platform: currentSite ? currentSite.platform : 'unknown' } });
         _sendConfirm('submit_anyway', data);
       });
       if (cancelBtn) cancelBtn.addEventListener('click', function () {
         hideScoreGatePopup();
+        sendMsg('POSTHOG_CAPTURE', { event: 'score_gate_shown', properties: { score: data.score || 0, threshold: data.threshold || 75, user_action: 'cancel', platform: currentSite ? currentSite.platform : 'unknown' } });
         _sendConfirm('cancel', data);
       });
     }
@@ -2464,6 +2467,18 @@
     _answerReviewPayload = data;
     _answerFeedback = [];
 
+    // PostHog: review_panel_shown (spec §8.1 item 27)
+    sendMsg('POSTHOG_CAPTURE', {
+      event: 'review_panel_shown',
+      properties: {
+        job_id: data.jobTitle || '',
+        resume_version: 1,
+        has_cover_letter: !!(data.coverLetter),
+        questions_count: (data.answers || []).length,
+        mode: data.mode || '',
+      },
+    });
+
     var answersHtml = data.answers.map(function(a, i) {
       var esc = function(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
       return '<div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.08);" id="bj-ar-item-' + i + '">' +
@@ -2492,9 +2507,14 @@
           '<button onclick="window._bjAnswerReviewSkip()" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:20px;cursor:pointer;padding:0 4px;line-height:1;" title="Skip review">×</button>' +
         '</div>' +
         '<div style="padding:16px 18px;" id="bj-ar-answers-body">' + answersHtml + '</div>' +
+        (data.coverLetter ? '<div style="padding:0 18px 14px;">' +
+          '<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">Cover Letter</div>' +
+          '<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:10px;font-size:11px;color:rgba(255,255,255,0.7);max-height:120px;overflow-y:auto;white-space:pre-wrap;">' + (data.coverLetter.slice(0,300) + (data.coverLetter.length > 300 ? '…' : '')) + '</div>' +
+        '</div>' : '') +
         '<div style="padding:12px 18px 16px;border-top:1px solid rgba(255,255,255,0.1);display:flex;gap:8px;position:sticky;bottom:0;background:#1a1d2e;">' +
           '<button onclick="window._bjAnswerReviewAccept()" style="flex:1;background:#6366f1;color:#fff;border:none;padding:10px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Accept &amp; Submit</button>' +
           '<button onclick="window._bjAnswerReviewRegenerate()" style="background:rgba(255,255,255,0.1);color:#fff;border:none;padding:10px 14px;border-radius:8px;font-size:13px;cursor:pointer;" title="Regenerate answers">↺</button>' +
+          '<button onclick="window._bjAnswerReviewSaveLater()" style="background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.6);border:none;padding:10px 14px;border-radius:8px;font-size:13px;cursor:pointer;" title="Save to Review Queue">💾</button>' +
           '<button onclick="window._bjAnswerReviewSkip()" style="background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.6);border:none;padding:10px 14px;border-radius:8px;font-size:13px;cursor:pointer;">Skip</button>' +
         '</div>' +
       '</div>';
@@ -2578,6 +2598,23 @@
       mode: _answerReviewPayload.mode || 'score-gated',
     });
     hideAnswerReviewPanel();
+  };
+
+  // AIS-F6 gap: Save for Later — sends to Review Queue on dashboard
+  window._bjAnswerReviewSaveLater = function() {
+    if (!_answerReviewPayload) return;
+    sendMsg('bj:toolbar:answerReviewConfirm', {
+      action: 'save_later',
+      answers: [],
+      feedback: [],
+      jobTitle: _answerReviewPayload.jobTitle || '',
+      company: _answerReviewPayload.company || '',
+      jobUrl: _answerReviewPayload.jobUrl || '',
+      mode: _answerReviewPayload.mode || 'score-gated',
+    });
+    hideAnswerReviewPanel();
+    // Show confirmation toast (injected into shadow DOM)
+    showToast('Saved to Review Queue — finish later from your dashboard.');
   };
 
   function _sendRewriteDecision(decision, data) {

@@ -58,9 +58,11 @@ async function generateCoverLetter(params: {
   userName: string;
   tone?: string;
   emphasis?: string[];
+  linkedInContext?: Record<string, unknown> | null;
+  companyContext?: Record<string, unknown> | null;
 }): Promise<{ letter: string; model: string; inputTokens: number; outputTokens: number }> {
 
-  const { resumeText, jobDescription, jobTitle, companyName, userName, tone, emphasis } = params;
+  const { resumeText, jobDescription, jobTitle, companyName, userName, tone, emphasis, linkedInContext, companyContext } = params;
 
   const toneInstruction =
     tone === 'professional' || tone === 'formal'
@@ -77,10 +79,20 @@ async function generateCoverLetter(params: {
     ? `\nPay special attention to highlighting: ${emphasis.join(', ')}.`
     : '';
 
+  // AIS-F8 gap: build LinkedIn + company context blocks for richer letters
+  const linkedInBlock = linkedInContext
+    ? `\nCANDIDATE LINKEDIN PROFILE:\nHeadline: ${linkedInContext.headline || ''}\nTop Skills: ${Array.isArray(linkedInContext.skills_array) ? (linkedInContext.skills_array as string[]).slice(0, 10).join(', ') : ''}\n`
+    : '';
+
+  const companyBlock = companyContext
+    ? `\nCOMPANY DETAILS:\n${companyContext.mission ? 'Mission: ' + companyContext.mission + '\n' : ''}${companyContext.description ? 'About: ' + String(companyContext.description).slice(0, 300) + '\n' : ''}${companyContext.industry ? 'Industry: ' + companyContext.industry + '\n' : ''}`
+    : '';
+
   const systemPrompt = `You are a professional cover letter writer. Write concise, compelling cover letters that:
 - Open with a specific hook showing genuine interest in the company/role
 - Connect the candidate's experience directly to the job requirements
 - Use concrete examples and metrics from the resume where possible
+- Reference specific company details (mission, product, culture) when provided
 - Close with clear enthusiasm and a forward-looking statement
 - Stay under 350 words (3-4 short paragraphs)
 - Never use generic filler phrases like "I am writing to express my interest"
@@ -93,15 +105,14 @@ Output ONLY the cover letter text. No greeting line (Dear Hiring Manager), no si
 
 RESUME:
 ${truncateToTokens(stripHtml(resumeText), 2000)}
-
+${linkedInBlock}
 JOB TITLE: ${jobTitle}
 COMPANY: ${companyName}
-
+${companyBlock}
 JOB DESCRIPTION:
 ${truncateToTokens(stripHtml(jobDescription), 2000)}
 
 Write a cover letter for this candidate applying to this specific role.`;
-
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -198,6 +209,33 @@ serve(async (req: Request) => {
       ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
       : 'the candidate';
 
+    // AIS-F8 gap: Fetch LinkedIn profile for richer personal context (spec §10.1 item 39)
+    let linkedInContext: Record<string, unknown> | null = null;
+    try {
+      const { data: liRow } = await supabase
+        .from('linkedin_profiles')
+        .select('display_name, headline, skills_array, experience_json')
+        .eq('user_id', user.id)
+        .order('parsed_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (liRow) linkedInContext = liRow;
+    } catch { /* non-fatal */ }
+
+    // AIS-F8 gap: Fetch company info from ats_companies for specific details (spec §10.1 item 39)
+    let companyContext: Record<string, unknown> | null = null;
+    if (companyName) {
+      try {
+        const { data: compRow } = await supabase
+          .from('ats_companies')
+          .select('description, mission, size_range, industry, glassdoor_rating')
+          .ilike('name', companyName.slice(0, 30) + '%')
+          .limit(1)
+          .maybeSingle();
+        if (compRow) companyContext = compRow;
+      } catch { /* non-fatal */ }
+    }
+
     // AIS-F8-S1: Determine version (increment if job already has a letter with this tone)
     const normalizedTone = ['professional','conversational','enthusiastic','executive'].includes(tone)
       ? tone : 'professional';
@@ -226,6 +264,8 @@ serve(async (req: Request) => {
         userName,
         tone: normalizedTone,
         emphasis,
+        linkedInContext,
+        companyContext,
       })
     );
     if (_br.circuitOpen) {

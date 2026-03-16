@@ -1714,6 +1714,25 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         surface: 'extension',
       });
 
+      // AIS-F6 gap: fetch cover letter for this job to show in review panel
+      let coverLetterForReview: string | null = null;
+      if (authToken && payload.jobId) {
+        try {
+          const sbCl = createSupabaseClient(authToken);
+          const userForCl = await sbCl.auth.getUser();
+          if (userForCl.data.user) {
+            const { data: clRow } = await sbCl.from('cover_letters')
+              .select('content')
+              .eq('user_id', userForCl.data.user.id)
+              .eq('job_id', payload.jobId)
+              .order('version', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            if (clRow) coverLetterForReview = clRow.content;
+          }
+        } catch { /* non-fatal */ }
+      }
+
       // Send answer review panel to overlay
       chrome.tabs.sendMessage(tabId, {
         type: 'bj:toolbar:answerReview',
@@ -1721,8 +1740,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           answers,
           jobTitle: payload.jobTitle || '',
           company: payload.company || '',
+          jobUrl: payload.jobUrl || '',
           originalAction: payload.action || 'submit_anyway',
           mode: payload.mode || 'score-gated',
+          coverLetter: coverLetterForReview,
         },
       });
 
@@ -1861,6 +1882,64 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     const newCount = (counter.date === today) ? counter.count + 1 : 1;
     await chrome.storage.local.set({ dailyApplyCount: { date: today, count: newCount } });
     return newCount;
+  }
+
+  // AIS-F3 gap: Circuit breaker — pause after 3 consecutive failures on same platform (spec §5.2)
+  const _platformFailStreaks: Record<string, number> = {};
+  const _platformLastApply: Record<string, number> = {};
+  const PLATFORM_SPACING_MS = 60_000; // 60s minimum between apps on same platform
+  const CIRCUIT_BREAKER_THRESHOLD = 3;
+
+  function _recordPlatformResult(platform: string, success: boolean): void {
+    if (!platform) return;
+    if (success) {
+      _platformFailStreaks[platform] = 0;
+    } else {
+      _platformFailStreaks[platform] = (_platformFailStreaks[platform] || 0) + 1;
+    }
+  }
+
+  async function _checkPlatformCircuitBreaker(platform: string, tabId: number): Promise<boolean> {
+    if (!platform) return true; // unknown platform — allow
+    const streak = _platformFailStreaks[platform] || 0;
+    if (streak >= CIRCUIT_BREAKER_THRESHOLD) {
+      captureEvent('auto_apply_circuit_breaker_tripped', { platform, consecutive_failures: streak });
+      try {
+        chrome.tabs.sendMessage(tabId, {
+          type: 'bj:toolbar:applyStatus',
+          payload: {
+            status: 'error',
+            error: `circuit_breaker_open`,
+            message: `${streak} consecutive failures on ${platform} — paused. Check extension settings.`,
+          },
+        });
+      } catch { /* non-fatal */ }
+      return false; // blocked
+    }
+    return true; // allowed
+  }
+
+  async function _checkPlatformSpacing(platform: string, tabId: number): Promise<boolean> {
+    if (!platform) return true;
+    const lastApply = _platformLastApply[platform] || 0;
+    const elapsed = Date.now() - lastApply;
+    if (lastApply && elapsed < PLATFORM_SPACING_MS) {
+      const waitSec = Math.ceil((PLATFORM_SPACING_MS - elapsed) / 1000);
+      captureEvent('auto_apply_platform_spacing_enforced', { platform, wait_seconds: waitSec });
+      try {
+        chrome.tabs.sendMessage(tabId, {
+          type: 'bj:toolbar:applyStatus',
+          payload: {
+            status: 'error',
+            error: 'platform_spacing',
+            message: `Please wait ${waitSec}s before the next ${platform} application.`,
+          },
+        });
+      } catch { /* non-fatal */ }
+      return false;
+    }
+    _platformLastApply[platform] = Date.now();
+    return true;
   }
 
   // ── EXT-AS-9: Log submission attempt to submission_attempts table ──
@@ -2055,6 +2134,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             return;
           }
 
+          // AIS-F3 gap: Circuit breaker + platform spacing (spec §5.2)
+          const platformForCheck = payload?.platform || payload?.atsSource || '';
+          if (!(await _checkPlatformCircuitBreaker(platformForCheck, tabId))) {
+            sendResponse({ status: 'circuit_breaker_open', platform: platformForCheck });
+            return;
+          }
+          if (!(await _checkPlatformSpacing(platformForCheck, tabId))) {
+            sendResponse({ status: 'platform_spacing_enforced', platform: platformForCheck });
+            return;
+          }
+
           // Send auto-apply status to overlay
           chrome.tabs.sendMessage(tabId, {
             type: 'bj:toolbar:autoApplyStatus',
@@ -2068,6 +2158,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           });
 
           const newCount = await _incrementDailyApplyCount();
+          _recordPlatformResult(p.platform || '', true); // AIS-F3 gap: reset failure streak on success
           captureEvent('auto_apply_submitted', {
             platform: p.platform,
             mode,
@@ -2411,6 +2502,29 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           return;
         }
 
+        // 'save_later' — add to Review Queue in pending_applications with status 'review_queue'
+        if (action === 'save_later') {
+          const authToken = await _getAuthToken();
+          if (authToken) {
+            const sb = createSupabaseClient(authToken);
+            const user = await sb.auth.getUser();
+            if (user.data.user) {
+              await sb.from('pending_applications').upsert({
+                user_id: user.data.user.id,
+                job_url: p.jobUrl || '',
+                job_title: p.jobTitle || '',
+                company_name: p.company || '',
+                status: 'review_queue',
+                idempotency_key: `review_${p.jobUrl || Date.now()}`,
+              }, { onConflict: 'idempotency_key' })
+              .then(({ error }) => { if (error) console.warn('[bg] review queue upsert:', error.message); });
+            }
+          }
+          captureEvent('review_panel_shown', { user_action: 'save_later', job_title: p.jobTitle || '' });
+          sendResponse({ status: 'saved_to_review_queue' });
+          return;
+        }
+
         // 'accepted' or 'skipped' — proceed with fill
         if (tabId) {
           chrome.tabs.sendMessage(tabId, {
@@ -2428,11 +2542,33 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         if (p.feedback && Array.isArray(p.feedback)) {
           for (const fb of p.feedback as Array<{field_label: string; rating: string}>) {
             captureEvent('ai_answer_feedback', {
-              job_id: p.jobId || '',
+              job_id: p.jobTitle || p.jobUrl || '',
               field_label: fb.field_label,
               rating: fb.rating, // 'up' or 'down'
               surface: 'extension',
             });
+          }
+        }
+
+        // AIS-F4-S1 gap: persist user_edited_answer if user modified any answers
+        if (action === 'accepted' && p.answers && Array.isArray(p.answers)) {
+          const authToken = await _getAuthToken();
+          if (authToken) {
+            const sb = createSupabaseClient(authToken);
+            for (const ans of p.answers as Array<{id: string; answer: string; label?: string; original_answer?: string}>) {
+              const wasEdited = ans.original_answer && ans.answer !== ans.original_answer;
+              if (wasEdited && ans.label) {
+                await sb.from('answers')
+                  .update({ user_edited_answer: ans.answer })
+                  .eq('user_id', (await sb.auth.getUser()).data.user?.id || '')
+                  .eq('field_label', ans.label)
+                  .order('created_at', { ascending: false })
+                  .limit(1)
+                  .then(({ error }) => {
+                    if (error) console.warn('[bg] user_edited_answer update error:', error.message);
+                  });
+              }
+            }
           }
         }
 

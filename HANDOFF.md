@@ -3976,11 +3976,23 @@ Deliverables:
 
 ---
 
+## Last Gap-Fix Session
+
+**AIS Gap Fixes** ✅ — v9.66 → v9.67
+- F1: resume_rewrite_started/completed/qa_skipped PostHog events in rewrite.js
+- F3: Circuit breaker (3 consecutive fails) + 60s platform spacing in background.ts
+- F4: user_edited_answer persisted to answers table when user edits in review panel
+- F5: application_mode_changed includes old_mode + source; score_gate_shown includes user_action; review_panel_shown fired
+- F5: extension/job-sites.json created with per-ATS CSS selectors for 7 platforms
+- F6: Cover letter shown in review panel; Save for Later button + save_later handler; Review Queue loadReviewQueue/dismissReviewQueueItem; switchAppTab wired
+- F8: LinkedIn profile + ats_companies company info fetched and injected into generate-cover-letter EF prompt
+- 59 validation tests passing
+
 ## Next Session
 
-**SPEC-AIS-001 Application Intelligence Suite — Phase A continues**
+**SPEC-AIS-001 Application Intelligence Suite — Phase D**
 
-Active workstream: **AIS-F8-S1 — Cover Letter Generator: UI + Table**
+Active workstream: **AIS-F9-S1 — Bulk Apply Multi-Select UI**
 
 **Entry Gate:**
 - [ ] Confirm `answers` table exists in Supabase (migration v9.56 applied)
@@ -4035,7 +4047,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.67`** | **AIS-F9 (Bulk Apply S1-S3). 32 tests.** |
+| **Product (BJ_VERSION)** | **`v9.67`** | **AIS gap fixes: F1/F3/F4/F5/F6/F8 — 12 gaps resolved, 59 tests.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

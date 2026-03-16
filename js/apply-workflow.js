@@ -2635,3 +2635,70 @@ window.buildGhostBadge = buildGhostBadge;
 window.showGhostBadgeTooltip = showGhostBadgeTooltip;
 window.confirmGhostReport = confirmGhostReport;
 window.submitGhostReport = submitGhostReport;
+
+// ── AIS-F6 gap: Review Queue — load pending_applications with status='review_queue' ──
+async function loadReviewQueue() {
+  var listEl = document.getElementById('review-queue-items');
+  var loadingEl = document.getElementById('review-queue-loading');
+  var emptyEl = document.getElementById('review-queue-empty');
+  var badgeEl = document.getElementById('review-queue-badge');
+  if (!listEl) return;
+
+  try {
+    var { data, error } = await sb.from('pending_applications')
+      .select('id, job_title, company_name, job_url, created_at')
+      .eq('user_id', currentUser.id)
+      .eq('status', 'review_queue')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (loadingEl) loadingEl.style.display = 'none';
+
+    if (error) { reportError('loadReviewQueue', error); return; }
+
+    if (!data || !data.length) {
+      if (emptyEl) emptyEl.style.display = '';
+      listEl.innerHTML = '';
+      if (badgeEl) badgeEl.style.display = 'none';
+      return;
+    }
+
+    if (badgeEl) { badgeEl.style.display = ''; badgeEl.textContent = data.length; }
+    if (emptyEl) emptyEl.style.display = 'none';
+
+    var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s){ return String(s||''); };
+    listEl.innerHTML = data.map(function(app) {
+      var daysAgo = Math.floor((Date.now() - new Date(app.created_at).getTime()) / 86400000);
+      var when = daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : daysAgo + 'd ago';
+      return '<div class="card" style="margin-bottom:8px;padding:12px 16px;display:flex;align-items:center;gap:12px;">' +
+        '<div style="flex:1;">' +
+          '<div style="font-size:13px;font-weight:600;">' + esc(app.job_title || 'Unknown Role') + '</div>' +
+          '<div style="font-size:11px;color:var(--text-muted);">' + esc(app.company_name || '') + ' · ' + when + '</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:6px;">' +
+          '<a href="' + esc(app.job_url || '#') + '" target="_blank" class="btn btn-sm btn-primary" style="font-size:11px;">Apply Now</a>' +
+          '<button class="btn btn-sm" onclick="dismissReviewQueueItem(\'' + app.id + '\', this)" style="font-size:11px;">Dismiss</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  } catch(e) {
+    reportError('loadReviewQueue', e);
+    if (loadingEl) loadingEl.style.display = 'none';
+  }
+}
+
+async function dismissReviewQueueItem(appId, btn) {
+  try {
+    btn.disabled = true;
+    await sb.from('pending_applications').update({ status: 'dismissed' }).eq('id', appId).eq('user_id', currentUser.id);
+    var card = btn.closest('.card');
+    if (card) card.remove();
+    var remaining = document.querySelectorAll('#review-queue-items .card').length;
+    var badgeEl = document.getElementById('review-queue-badge');
+    if (badgeEl) { if (remaining === 0) { badgeEl.style.display = 'none'; } else { badgeEl.textContent = remaining; } }
+    if (remaining === 0) { var emptyEl = document.getElementById('review-queue-empty'); if (emptyEl) emptyEl.style.display = ''; }
+  } catch(e) { reportError('dismissReviewQueueItem', e); btn.disabled = false; }
+}
+
+window.loadReviewQueue = loadReviewQueue;
+window.dismissReviewQueueItem = dismissReviewQueueItem;

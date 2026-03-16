@@ -1,0 +1,151 @@
+{
+  "_comment": "AIS-F5-S1 spec §7.2 item 22 — per-ATS CSS selectors for Save-to-BJ-Pipeline button injection and apply button interception. This is the authoritative selector config; job-site-overlay.ts JOB_SITE_REGISTRY is the runtime implementation.",
+  "version": "1.0.0",
+  "sites": [
+    {
+      "platform": "linkedin",
+      "hostPattern": "linkedin.com",
+      "urlPattern": "/jobs/",
+      "applyButtonSelectors": [
+        ".jobs-apply-button",
+        "button[aria-label*='Easy Apply']",
+        "button[aria-label*='Apply']",
+        ".jobs-apply-button--top-card"
+      ],
+      "saveButtonTarget": {
+        "position": "adjacent",
+        "selector": ".jobs-apply-button, .jobs-s-apply"
+      },
+      "jobMetaSelectors": {
+        "title": [".jobs-unified-top-card__job-title h1", ".job-details-jobs-unified-top-card__job-title h1", "h1"],
+        "company": [".jobs-unified-top-card__company-name", ".job-details-jobs-unified-top-card__company-name"],
+        "location": [".jobs-unified-top-card__bullet", ".job-details-jobs-unified-top-card__workplace-type"],
+        "salary": [".compensation-module__salary", "[class*='salary']"],
+        "description": ["#job-details", ".jobs-description__content"]
+      }
+    },
+    {
+      "platform": "indeed",
+      "hostPattern": "indeed.com",
+      "urlPattern": "/viewjob|/jobs?",
+      "applyButtonSelectors": [
+        "#indeedApplyButton",
+        ".ia-continueButton",
+        "button[data-testid='indeedApplyButton']",
+        "button[class*='apply']",
+        "a[href*='apply']"
+      ],
+      "saveButtonTarget": {
+        "position": "adjacent",
+        "selector": "#indeedApplyButton, .jobsearch-IndeedApplyButton"
+      },
+      "jobMetaSelectors": {
+        "title": ["h1.jobsearch-JobInfoHeader-title", "h1[class*='jobTitle']", "h1"],
+        "company": ["[data-testid='inlineHeader-companyName']", ".jobsearch-InlineCompanyRating"],
+        "location": ["[data-testid='job-location']", ".jobsearch-JobInfoHeader-subtitle span"],
+        "salary": ["[data-testid='attribute_snippet_testid']", "#salaryInfoAndJobType"],
+        "description": ["#jobDescriptionText"]
+      }
+    },
+    {
+      "platform": "greenhouse",
+      "hostPattern": "boards.greenhouse.io|boards-api.greenhouse.io",
+      "urlPattern": "/jobs/|/job_app",
+      "applyButtonSelectors": [
+        "#submit_app",
+        "input[type='submit'][value*='Submit']",
+        "input[type='submit'][value*='Apply']",
+        "button[type='submit']"
+      ],
+      "saveButtonTarget": {
+        "position": "before",
+        "selector": "#submit_app, .application, #application"
+      },
+      "jobMetaSelectors": {
+        "title": ["h1.app-title", "h1[class*='title']", "h1"],
+        "company": ["[class*='company']", ".header--company"],
+        "location": ["[class*='location']"],
+        "description": [".job__description", "#content"]
+      }
+    },
+    {
+      "platform": "lever",
+      "hostPattern": "jobs.lever.co",
+      "urlPattern": "/apply|/",
+      "applyButtonSelectors": [
+        ".postings-btn",
+        "a[href*='apply']",
+        "button[class*='apply']"
+      ],
+      "saveButtonTarget": {
+        "position": "adjacent",
+        "selector": ".postings-btn, .posting-apply"
+      },
+      "jobMetaSelectors": {
+        "title": ["h2", ".posting-headline h2"],
+        "company": [".posting-headline .main-header-logo"],
+        "location": [".posting-categories .location"],
+        "description": [".section-wrapper .section", ".posting-description"]
+      }
+    },
+    {
+      "platform": "ashby",
+      "hostPattern": "jobs.ashbyhq.com",
+      "urlPattern": "/",
+      "applyButtonSelectors": [
+        "a[href*='apply']",
+        "button[type='submit']",
+        ".ashby-application-form-button"
+      ],
+      "saveButtonTarget": {
+        "position": "before",
+        "selector": ".ashby-application-form-button, [data-testid='apply-button']"
+      },
+      "jobMetaSelectors": {
+        "title": ["h1", "[class*='title']"],
+        "company": ["[class*='company']"],
+        "location": ["[class*='location']"],
+        "description": ["[class*='description']"]
+      }
+    },
+    {
+      "platform": "workable",
+      "hostPattern": "apply.workable.com",
+      "urlPattern": "/",
+      "applyButtonSelectors": [
+        "button[type='submit']",
+        "[data-ui='apply-button']"
+      ],
+      "saveButtonTarget": {
+        "position": "before",
+        "selector": "[data-ui='apply-button'], .apply-section"
+      },
+      "jobMetaSelectors": {
+        "title": ["h1", ".job-title"],
+        "company": [".company-name", "[class*='company']"],
+        "location": ["[class*='location']", ".job-location"],
+        "description": [".job-sections", ".description"]
+      }
+    },
+    {
+      "platform": "workday",
+      "hostPattern": "myworkdayjobs.com",
+      "urlPattern": "/job/|/jobs/",
+      "applyButtonSelectors": [
+        "button[data-uxi-element-id*='apply']",
+        "a[data-uxi-element-id*='apply']",
+        "button[title*='Apply']"
+      ],
+      "saveButtonTarget": {
+        "position": "adjacent",
+        "selector": "button[data-uxi-element-id*='apply'], [class*='applyButton']"
+      },
+      "jobMetaSelectors": {
+        "title": ["h2[data-automation-id='jobPostingHeader']", "h2", "h1"],
+        "company": ["[data-automation-id='company']"],
+        "location": ["[data-automation-id='location']"],
+        "description": ["[data-automation-id='jobPostingDescription']"]
+      }
+    }
+  ]
+}
