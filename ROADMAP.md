@@ -3643,7 +3643,7 @@ Phase S is complete when ALL of the following are true:
 
 | ID | Item | Status | Notes |
 |----|------|--------|-------|
-| AIS-F5-S1 | App Modes — Extension Popup + chrome.storage Sync — Radio card mode selector in extension popup (6 modes: Manual/Score-Gated/Auto Apply/Auto+Score Gate/Auto Rewrite/Full Autopilot). Persist to chrome.storage.sync for cross-device roaming. Admin/consumer toggle: admin sees legacy + consumer view, non-admin sees consumer only. PostHog: application_mode_changed. | 🔲 | |
+| AIS-F5-S1 | App Modes — Extension Popup + chrome.storage Sync — Radio card mode selector in extension popup (6 modes: Manual/Score-Gated/Auto Apply/Auto+Score Gate/Auto Rewrite/Full Autopilot). Persist to chrome.storage.sync for cross-device roaming. Admin/consumer toggle: admin sees legacy + consumer view, non-admin sees consumer only. PostHog: application_mode_changed. | ✅ | Extension popup 6 modes + chrome.storage.sync. 14 tests. |
 | AIS-F5-S2 | App Modes — Content Script + Apply Button Interception — job-site-overlay.ts: 'Save to BJ Pipeline' button injection using job-sites.json per-site CSS selectors. Apply button interception routing through mode logic before submission. manifest.json update for content_scripts. Shadow DOM scoped to avoid host page CSS conflicts. | 🔲 | |
 | AIS-F5-S3 | App Modes — Shadow DOM Score Gate Popup — Shadow DOM overlay on apply click: match score display, JD gap summary, rewrite CTA, apply/cancel actions. Wire score-resume EF call. Must not conflict with host page CSS. Viewport-aware rendering. PostHog: score_gate_shown. | 🔲 | |
 | AIS-F5-S4 | App Modes — Dashboard Sync + Anti-Detection — Mode visible + changeable from Applications page dashboard. Bi-directional sync: extension popup ↔ dashboard. Anti-detection hardening: 45–90s randomized delay, max 25 applications/session, 30-min cool-down after session, failure circuit breaker (3 consecutive = pause + user alert). | 🔲 | |
@@ -3695,7 +3695,7 @@ Phase S is complete when ALL of the following are true:
 
 | ID | Item | Status | Notes |
 |----|------|--------|-------|
-| AIS-F5-S1 | App Modes — Extension Popup + Storage Sync — Radio card mode selector (6 modes). chrome.storage.sync persistence. Admin/consumer toggle. PostHog: application_mode_changed. | 🔲 | Pod 3: 2d |
+| AIS-F5-S1 | App Modes — Extension Popup + Storage Sync — Radio card mode selector (6 modes). chrome.storage.sync persistence. Admin/consumer toggle. PostHog: application_mode_changed. | ✅ | Extension popup 6 modes + chrome.storage.sync. 14 tests. |
 | AIS-F5-S2 | App Modes — Content Script + Button Injection — job-site-overlay.ts save button injection (job-sites.json per-site selectors). Apply button interception routing through mode logic. manifest.json update. | 🔲 | Pod 3: 3d |
 | AIS-F5-S3 | App Modes — Shadow DOM Score Gate Popup — Shadow DOM overlay on apply click (score, JD gap, rewrite CTA, apply/cancel). CSS isolation from host page. score-resume EF call. PostHog: score_gate_shown. | 🔲 | Pod 2: 2d, Pod 3: 2d |
 | AIS-F5-S4 | App Modes — Dashboard Sync + Rate Limiting — Mode visible + changeable from Applications Settings tab. Bidirectional sync (extension ↔ dashboard). Anti-detection enforcement. | 🔲 | Pod 2: 1d, Pod 3: 1d |
