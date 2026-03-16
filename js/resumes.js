@@ -324,7 +324,8 @@ function renderResumes() {
         <div class="nri-score ${scoreClass}">${scoreDisplay}</div>
         <div class="nri-actions" onclick="event.stopPropagation()">
           <button onclick="openAssignPopover(${i}, this)" title="Manage filter assignment"><i data-lucide="link" class="icon-sm icon-stroke"></i></button>
-          <button onclick="downloadResume(${i})" title="Download"><i data-lucide="download" class="icon-sm icon-stroke"></i></button>
+          <button onclick="downloadResume(${i})" title="Download PDF"><i data-lucide="download" class="icon-sm icon-stroke"></i></button>
+          <button onclick="downloadResumeDocx(${i})" title="Download as .docx (ATS-optimized)"><i data-lucide="file-text" class="icon-sm icon-stroke"></i></button>
           <button onclick="renameResume(${i})" title="Rename"><i data-lucide="pencil" class="icon-sm icon-stroke"></i></button>
           <button onclick="archiveResume(${i})" title="Archive"><i data-lucide="archive" class="icon-sm icon-stroke"></i></button>
         </div>
@@ -1526,6 +1527,73 @@ window.downloadResume = async function(idx) {
     }
   } catch(e) {
     showToast('Download failed: ' + e.message, { type: 'error' });
+  }
+};
+
+// ATS-002: Download resume as ATS-optimized .docx
+window.downloadResumeDocx = async function(idx) {
+  var r = resumes[idx];
+  if (!r) return;
+
+  // Need resume_id from resume_archive (cloud-synced resumes have archiveId)
+  var resumeId = r.archiveId || r.id;
+  if (!resumeId) {
+    showToast('This resume needs to be synced to the cloud first. Re-upload it.', { type: 'warning' });
+    return;
+  }
+
+  try {
+    var session = await sb.auth.getSession();
+    if (!session || !session.data || !session.data.session) {
+      showToast('Please sign in to export.', { type: 'error' });
+      return;
+    }
+    var token = session.data.session.access_token;
+
+    showToast('Generating .docx\u2026', { type: 'info', duration: 10000 });
+
+    var resp = await fetch(SUPABASE_URL + '/functions/v1/api-gateway/export-resume-docx', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+      },
+      body: JSON.stringify({ resume_id: resumeId }),
+    });
+
+    if (!resp.ok) {
+      var errData = await resp.json().catch(function() { return {}; });
+      showToast(errData.error || 'Failed to generate .docx', { type: 'error' });
+      return;
+    }
+
+    var data = await resp.json();
+    if (!data.docx_url) {
+      showToast('No download URL returned.', { type: 'error' });
+      return;
+    }
+
+    // Trigger download
+    var a = document.createElement('a');
+    a.href = data.docx_url;
+    a.download = data.filename || (r.name + '.docx');
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    showToast('Downloaded ' + (data.filename || 'resume.docx'), { type: 'success' });
+
+    if (typeof capturePostHog === 'function') {
+      capturePostHog('resume_download_format', {
+        format: 'docx',
+        resume_id: resumeId,
+        file_size: data.file_size || 0,
+      });
+    }
+  } catch (e) {
+    reportError('resumes:docx-export', e);
+    showToast('Export failed: ' + e.message, { type: 'error' });
   }
 };
 

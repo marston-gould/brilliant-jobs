@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v9.74';
+var BJ_VERSION = 'v9.75';
 
 
 // === js/globals.ts ===
@@ -19606,7 +19606,8 @@ function renderResumes() {
         <div class="nri-score ${scoreClass}">${scoreDisplay}</div>
         <div class="nri-actions" onclick="event.stopPropagation()">
           <button onclick="openAssignPopover(${i}, this)" title="Manage filter assignment"><i data-lucide="link" class="icon-sm icon-stroke"></i></button>
-          <button onclick="downloadResume(${i})" title="Download"><i data-lucide="download" class="icon-sm icon-stroke"></i></button>
+          <button onclick="downloadResume(${i})" title="Download PDF"><i data-lucide="download" class="icon-sm icon-stroke"></i></button>
+          <button onclick="downloadResumeDocx(${i})" title="Download as .docx (ATS-optimized)"><i data-lucide="file-text" class="icon-sm icon-stroke"></i></button>
           <button onclick="renameResume(${i})" title="Rename"><i data-lucide="pencil" class="icon-sm icon-stroke"></i></button>
           <button onclick="archiveResume(${i})" title="Archive"><i data-lucide="archive" class="icon-sm icon-stroke"></i></button>
         </div>
@@ -20808,6 +20809,73 @@ window.downloadResume = async function(idx) {
     }
   } catch(e) {
     showToast('Download failed: ' + e.message, { type: 'error' });
+  }
+};
+
+// ATS-002: Download resume as ATS-optimized .docx
+window.downloadResumeDocx = async function(idx) {
+  var r = resumes[idx];
+  if (!r) return;
+
+  // Need resume_id from resume_archive (cloud-synced resumes have archiveId)
+  var resumeId = r.archiveId || r.id;
+  if (!resumeId) {
+    showToast('This resume needs to be synced to the cloud first. Re-upload it.', { type: 'warning' });
+    return;
+  }
+
+  try {
+    var session = await sb.auth.getSession();
+    if (!session || !session.data || !session.data.session) {
+      showToast('Please sign in to export.', { type: 'error' });
+      return;
+    }
+    var token = session.data.session.access_token;
+
+    showToast('Generating .docx\u2026', { type: 'info', duration: 10000 });
+
+    var resp = await fetch(SUPABASE_URL + '/functions/v1/api-gateway/export-resume-docx', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+      },
+      body: JSON.stringify({ resume_id: resumeId }),
+    });
+
+    if (!resp.ok) {
+      var errData = await resp.json().catch(function() { return {}; });
+      showToast(errData.error || 'Failed to generate .docx', { type: 'error' });
+      return;
+    }
+
+    var data = await resp.json();
+    if (!data.docx_url) {
+      showToast('No download URL returned.', { type: 'error' });
+      return;
+    }
+
+    // Trigger download
+    var a = document.createElement('a');
+    a.href = data.docx_url;
+    a.download = data.filename || (r.name + '.docx');
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    showToast('Downloaded ' + (data.filename || 'resume.docx'), { type: 'success' });
+
+    if (typeof capturePostHog === 'function') {
+      capturePostHog('resume_download_format', {
+        format: 'docx',
+        resume_id: resumeId,
+        file_size: data.file_size || 0,
+      });
+    }
+  } catch (e) {
+    reportError('resumes:docx-export', e);
+    showToast('Export failed: ' + e.message, { type: 'error' });
   }
 };
 
@@ -32343,6 +32411,44 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
       var clRes = await sb.from('cover_letters').select('id,content').eq('user_id', currentUser.id).eq('job_id', jobId).order('version', { ascending: false }).limit(1).maybeSingle();
       if (clRes.data) { coverLetterId = clRes.data.id; coverLetterContent = clRes.data.content; }
     } catch(_e) { /* non-fatal */ }
+  }
+
+  // ATS-004: Auto-generate cover letter if none exists and we're in an auto mode
+  if (!coverLetterId && _isAutoMode && jobId && currentUser) {
+    try {
+      var clSession = await sb.auth.getSession();
+      var clToken = clSession && clSession.data && clSession.data.session ? clSession.data.session.access_token : null;
+      if (clToken) {
+        var clResp = await fetch(SUPABASE_URL + '/functions/v1/api-gateway/generate-cover-letter', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + clToken, 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+          body: JSON.stringify({
+            job_title: jobTitle || '',
+            company_name: companyName || '',
+            job_description: scoreResult && scoreResult.analysis_summary ? scoreResult.analysis_summary : '',
+            resume_id: resume.archiveId || resume.id || null,
+            tone: 'professional',
+          }),
+        });
+        if (clResp.ok) {
+          var clData = await clResp.json();
+          if (clData.id) { coverLetterId = clData.id; coverLetterContent = clData.content || ''; }
+          if (typeof capturePostHog === 'function') {
+            capturePostHog('cover_letter_auto_generated', {
+              job_id: jobId,
+              company: companyName,
+              mode: mode,
+              word_count: clData.word_count || 0,
+            });
+          }
+          console.log('[apply] ATS-004: Auto-generated cover letter for', companyName, jobTitle);
+        }
+      }
+    } catch (clErr) {
+      // Non-fatal — apply proceeds without cover letter
+      reportError('apply:cover-letter-auto', clErr);
+      console.warn('[apply] ATS-004: Cover letter auto-generation failed (non-fatal):', clErr.message);
+    }
   }
 
   // Create pending_applications row

@@ -1463,6 +1463,44 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
     } catch(_e) { /* non-fatal */ }
   }
 
+  // ATS-004: Auto-generate cover letter if none exists and we're in an auto mode
+  if (!coverLetterId && _isAutoMode && jobId && currentUser) {
+    try {
+      var clSession = await sb.auth.getSession();
+      var clToken = clSession && clSession.data && clSession.data.session ? clSession.data.session.access_token : null;
+      if (clToken) {
+        var clResp = await fetch(SUPABASE_URL + '/functions/v1/api-gateway/generate-cover-letter', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + clToken, 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+          body: JSON.stringify({
+            job_title: jobTitle || '',
+            company_name: companyName || '',
+            job_description: scoreResult && scoreResult.analysis_summary ? scoreResult.analysis_summary : '',
+            resume_id: resume.archiveId || resume.id || null,
+            tone: 'professional',
+          }),
+        });
+        if (clResp.ok) {
+          var clData = await clResp.json();
+          if (clData.id) { coverLetterId = clData.id; coverLetterContent = clData.content || ''; }
+          if (typeof capturePostHog === 'function') {
+            capturePostHog('cover_letter_auto_generated', {
+              job_id: jobId,
+              company: companyName,
+              mode: mode,
+              word_count: clData.word_count || 0,
+            });
+          }
+          console.log('[apply] ATS-004: Auto-generated cover letter for', companyName, jobTitle);
+        }
+      }
+    } catch (clErr) {
+      // Non-fatal — apply proceeds without cover letter
+      reportError('apply:cover-letter-auto', clErr);
+      console.warn('[apply] ATS-004: Cover letter auto-generation failed (non-fatal):', clErr.message);
+    }
+  }
+
   // Create pending_applications row
   var pendingRow = {
     user_id: currentUser.id,

@@ -52,7 +52,10 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FB-ATS-001-S2** — ATS Pass Rate Improvement: Keyword Match Rate Breakdown (ATS-003) + Resume Format Health Check (ATS-001) ✅
+**FB-ATS-001-S3** — ATS Pass Rate Improvement: .docx Export (ATS-002) + Cover Letter Auto-Generation (ATS-004) ✅
+- v9.74→v9.75 — ATS-002: New export-resume-docx EF. Pure OOXML builder (no libraries) — single-column, Arial font, US Letter, 1-inch margins. Parses raw resume text into sections by detecting header-like lines (uppercase/title case), bullet points, and paragraphs. Builds valid .docx ZIP, uploads to Supabase Storage resumes/docx-exports/, returns signed URL (1hr expiry). Gateway route added. Client: downloadResumeDocx() async function, file-text icon button on resume cards, toast feedback, PostHog resume_download_format with format:'docx'. ATS-004: Auto-generate cover letter in proceedToApply() when _isAutoMode && !coverLetterId. Calls existing generate-cover-letter EF (AIS-F8-S1) with job_title, company_name, resume_id, tone:'professional'. Stores coverLetterId on success for pending_applications attachment. All 15+ ATS handlers already fill cover letter fields (AIS-F8-S2). Non-fatal try/catch with reportError. PostHog cover_letter_auto_generated with job_id, company, mode, word_count. 52 tests.
+
+**Previous: FB-ATS-001-S2** — ATS-003 Keyword Match Rate Breakdown + ATS-001 Format Health Check ✅
 - v9.73→v9.74 — ATS-003: Score gate modal enhanced with keyword match rate progress bar ("8 of 12 keywords matched (67%)") color-coded green/warm/red. Categorized core_requirements checklist grouped by technical/soft/tool/domain/certification with per-category match counts. Partial evidence shown with ≈ icon. Fallback to flat key_matches/key_gaps when no categories. Match rate bar also added to readiness results per-filter breakdown in keywords.js. PostHog keyword_breakdown_viewed event. CSS: sg-match-rate, sg-cat-group, sg-partial-chip classes. ATS-001: New validate-resume-format EF with 7 detection checks (scanned_pdf, multi_column, tables_detected, non_standard_fonts, header_footer_contact, encoding_issues, non_standard_headers). ATS-safe font list (23 fonts). Section header standardization map integrated from ATS-007. Format score: 100 - 30*blocking - 10*warnings, clamped 0-100. is_ats_ready when 0 blocking + ≤1 warning. Gateway route added. Client: validateResumeFormat() called after text extraction. formatCheck stored on resume object. buildFormatBadge() renders ATS-Ready (green shield-check) / Format Issues (red triangle-alert) / Warnings (amber info) on resume cards. showFormatIssues() popup with per-issue severity badges. PostHog resume_format_check_run. 61 tests.
 
 **Previous: FB-ATS-001-S1** — ATS-006 Acronym Dual Inclusion + ATS-007 Section Header Standardization ✅
@@ -4002,29 +4005,29 @@ Deliverables:
 
 ## Next Session
 
-**FB-ATS-001-S3** — ATS Pass Rate Improvement: .docx Export (ATS-002) + Cover Letter Generation (ATS-004)
+**FB-ATS-001-S4** — ATS Pass Rate Improvement: LinkedIn Keyword Alignment Nudge (ATS-005)
 
 **Entry Gate:**
-- [x] FB-ATS-001-S2 complete (keyword breakdown + format check deployed)
-- [x] score-resume and rewrite-resume EFs operational
-- [x] Apply workflow with mode routing operational
-- [x] ATS handlers functional (15 extension + 4 worker)
+- [x] FB-ATS-001-S3 complete (docx export + cover letter auto-gen deployed)
+- [x] LinkedIn PDF parsing operational (PAYL gate / AIS-F2-S1)
+- [x] Notification center functional
 
 **Fix Items:**
-1. ATS-002: .docx Export — new export-resume-docx EF. Accepts resume_id, builds .docx from structured resume data using ATS-optimized template (single column, Arial 11pt, standard headers). Format toggle (PDF/DOCX) on resume download button. Extension rewrite review: .docx download option.
-2. ATS-004: Cover Letter Generation — new generate-cover-letter EF. Claude Haiku. 250-350 words, 3-4 paragraphs, references specific company/role/JD requirements. New cover_letters Supabase table. Auto-generate in auto apply modes. ATS handler updates (15 extension + 4 worker) to detect and fill cover letter upload/text fields. Manual mode: generate from resume card.
-3. Tests: 60+ validation tests
-4. Three-file close
+1. ATS-005: LinkedIn Keyword Alignment Nudge — post-apply coaching feature. After successful application submission, compare resume keywords against stored LinkedIn profile data (skills_array, experience_json from linkedin_profiles table). Surface keyword gaps with specific suggestions for where to add them on LinkedIn (headline, summary, experience, skills section). Dashboard notification card. Once-per-day cap. Minimum 3-keyword gap threshold. "Update LinkedIn" CTA. Dismiss/suppress options.
+2. linkedin-alignment.js: New client module for comparison logic
+3. notification-center.js: New notification type
+4. apply-workflow.js: Trigger after successful submission
+5. Tests: 40+ validation tests
+6. Three-file close
 
 **Exit Gate:**
-- [ ] .docx download from resume card works, opens clean in Word
-- [ ] Cover letter auto-generated and attached in auto apply mode
-- [ ] Cover letter references specific company and role
-- [ ] ATS handlers fill cover letter fields
+- [ ] LinkedIn alignment nudge appears after apply with 4+ keyword gaps
+- [ ] Suggestions indicate where to add each keyword on LinkedIn
+- [ ] No duplicate nudge same day
+- [ ] Dismiss works
 - [ ] Tests passing
 
 **Other backlog:**
-- FB-ATS-001-S4: ATS-005 LinkedIn Keyword Alignment Nudge
 - SPEC-LPG-001-S3: LinkedIn Summary Generator (F4) + Integration Polish
 - CASA-001: Google CASA assessment + gmail.readonly upgrade
 
@@ -4057,7 +4060,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v9.74`** | **FB-ATS-001-S2: ATS-003 Keyword Match Rate Breakdown + ATS-001 Format Health Check. 61 tests.** |
+| **Product (BJ_VERSION)** | **`v9.75`** | **FB-ATS-001-S3: ATS-002 .docx Export + ATS-004 Cover Letter Auto-Generation. 52 tests.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
