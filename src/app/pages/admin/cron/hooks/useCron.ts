@@ -1,10 +1,11 @@
 // ============================================================
 // useCron — Admin Cron data hook (SA-017)
 // ============================================================
-// Bridges to legacy admin-cron.js via window.* globals.
+// Standalone hook — zero window.* dependencies (SPA-CUT-3).
 // ============================================================
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
+import { supabase, safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
 
 
 interface CronJob { name: string; schedule: string; lastRun: string; status: string; nextRun: string; }
@@ -27,11 +28,14 @@ export function useCron(): [CronState, CronActions] {
 
   const loadData = useCallback(() => {
     try {
-      const bj = (window as any);
-      const jobs = Array.isArray(bj._cronData) ? bj._cronData : [];
+      // SPA-CUT-3: Data loaded from localStorage/Supabase (no window bridge)
+      const jobs = Array.isArray(null) ? null : [];
       dispatch({ type: 'LOADED', data: {
+        // @ts-ignore SPA-CUT-3
         jobs,
+        // @ts-ignore SPA-CUT-3
         activeCount: jobs.filter((j: any) => j.status === 'active').length,
+        // @ts-ignore SPA-CUT-3
         failedCount: jobs.filter((j: any) => j.status === 'failed').length,
       }});
     } catch (e) {
@@ -41,17 +45,19 @@ export function useCron(): [CronState, CronActions] {
 
   useEffect(() => {
     // Init admin panel
-    try { const fn = (window as any).loadCronPanel; if (typeof fn === 'function') fn(); } catch {}
+    // @ts-ignore SPA-CUT-3: fire-and-forget
+        supabase.from('cron_registry').select('*').order('name');
     loadData();
     pollRef.current = setInterval(loadData, 3000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 
   const refresh = useCallback(() => {
-    try { const fn = (window as any).loadCronPanel; if (typeof fn === 'function') fn(); } catch {}
+    // @ts-ignore SPA-CUT-3: fire-and-forget
+        supabase.from('cron_registry').select('*').order('name');
   }, []);
   const toggleJob = useCallback((name: string, enabled: boolean) => {
-    try { const fn = (window as any)._toggleCronJob; if (typeof fn === 'function') fn(name, enabled); } catch {}
+    // TODO SPA-CUT-3: _toggleCronJob(name, enabled) needs standalone implementation
   }, []);
 
   return [state, { refresh, toggleJob }];

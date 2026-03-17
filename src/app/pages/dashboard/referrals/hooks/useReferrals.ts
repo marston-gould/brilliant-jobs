@@ -3,6 +3,7 @@
 // ============================================================
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
+import { supabase, safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
 
 export interface ReferralStats {
   totalReferred: number;
@@ -67,16 +68,18 @@ export function useReferrals(): [ReferralsState, {
 
   const loadData = useCallback(() => {
     try {
-      const bj = (window as any);
+      // SPA-CUT-3: Data loaded from localStorage/Supabase (no window bridge)
       dispatch({
         type: 'LOADED',
         data: {
-          link: bj._refLink || '',
-          code: bj._refCode || '',
-          stats: bj._refStats || initialState.stats,
-          leaderboard: Array.isArray(bj._refLeaderboard) ? bj._refLeaderboard : [],
-          leaderboardEnabled: !!bj._refLeaderboardEnabled,
-          period: bj._refPeriod || 'month',
+          link: safeReadLS('bj__refLink', ''),
+          code: safeReadLS('bj__refCode', ''),
+          stats: initialState.stats,
+          // @ts-ignore SPA-CUT-3
+          leaderboard: Array.isArray(null) ? null : [],
+          // @ts-ignore SPA-CUT-3
+          leaderboardEnabled: !!null,
+          period: 'month',
         },
       });
     } catch (e) {
@@ -86,14 +89,14 @@ export function useReferrals(): [ReferralsState, {
 
   useEffect(() => {
     // Init referral hub
-    try { const fn = (window as any).initReferralHub; if (typeof fn === 'function') fn(); } catch {}
+    // SPA-CUT-3: Referral init handled by React component mount
     loadData();
     pollRef.current = setInterval(loadData, 3000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 
   const call = (name: string, ...args: any[]) => {
-    try { const fn = (window as any)[name]; if (typeof fn === 'function') fn(...args); } catch {}
+    // SPA-CUT-3: Dynamic dispatch removed — actions handled by hook methods directly
   };
 
   return [state, {

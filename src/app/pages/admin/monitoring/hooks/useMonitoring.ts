@@ -1,10 +1,11 @@
 // ============================================================
 // useMonitoring — Admin Monitoring data hook (SA-017)
 // ============================================================
-// Bridges to legacy admin-monitoring.js via window.* globals.
+// Standalone hook — zero window.* dependencies (SPA-CUT-3).
 // ============================================================
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
+import { supabase, safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
 
 
 interface MonitoringState { loading: boolean; error: string | null; alertCount: number; activeAlerts: number; resolvedToday: number; avgResponseTime: number; }
@@ -26,12 +27,12 @@ export function useMonitoring(): [MonitoringState, MonitoringActions] {
 
   const loadData = useCallback(() => {
     try {
-      const bj = (window as any);
+      // SPA-CUT-3: Data loaded from localStorage/Supabase (no window bridge)
       dispatch({ type: 'LOADED', data: {
-        alertCount: bj._monAlertCount || 0,
-        activeAlerts: bj._monActiveAlerts || 0,
-        resolvedToday: bj._monResolvedToday || 0,
-        avgResponseTime: bj._monAvgResponseTime || 0,
+        alertCount: safeReadLS('bj__monAlertCount', 0),
+        activeAlerts: safeReadLS('bj__monActiveAlerts', 0),
+        resolvedToday: safeReadLS('bj__monResolvedToday', 0),
+        avgResponseTime: safeReadLS('bj__monAvgResponseTime', 0),
       }});
     } catch (e) {
       dispatch({ type: 'ERROR', error: String(e) });
@@ -40,14 +41,16 @@ export function useMonitoring(): [MonitoringState, MonitoringActions] {
 
   useEffect(() => {
     // Init admin panel
-    try { const fn = (window as any).loadMonitoringPanel; if (typeof fn === 'function') fn(); } catch {}
+    // @ts-ignore SPA-CUT-3: fire-and-forget
+        callGateway('deploy-tracker', { action: 'deploy-health-score' }).catch(() => { /* non-fatal */ });
     loadData();
     pollRef.current = setInterval(loadData, 3000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 
   const refresh = useCallback(() => {
-    try { const fn = (window as any).loadMonitoringPanel; if (typeof fn === 'function') fn(); } catch {}
+    // @ts-ignore SPA-CUT-3: fire-and-forget
+        callGateway('deploy-tracker', { action: 'deploy-health-score' }).catch(() => { /* non-fatal */ });
   }, []);
 
   return [state, { refresh }];

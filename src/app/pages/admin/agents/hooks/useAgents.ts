@@ -1,10 +1,11 @@
 // ============================================================
 // useAgents — Admin Agents data hook (SA-017)
 // ============================================================
-// Bridges to legacy admin-agents.js via window.* globals.
+// Standalone hook — zero window.* dependencies (SPA-CUT-3).
 // ============================================================
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
+import { supabase, safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
 
 
 interface AgentsState { loading: boolean; error: string | null; agentCount: number; activeCount: number; actionCount: number; errorRate: number; }
@@ -26,12 +27,12 @@ export function useAgents(): [AgentsState, AgentsActions] {
 
   const loadData = useCallback(() => {
     try {
-      const bj = (window as any);
+      // SPA-CUT-3: Data loaded from localStorage/Supabase (no window bridge)
       dispatch({ type: 'LOADED', data: {
-        agentCount: bj._crewaiAgentCount || 0,
-        activeCount: bj._crewaiActiveCount || 0,
-        actionCount: bj._crewaiActionCount || 0,
-        errorRate: bj._crewaiErrorRate || 0,
+        agentCount: safeReadLS('bj__crewaiAgentCount', 0),
+        activeCount: safeReadLS('bj__crewaiActiveCount', 0),
+        actionCount: safeReadLS('bj__crewaiActionCount', 0),
+        errorRate: safeReadLS('bj__crewaiErrorRate', 0),
       }});
     } catch (e) {
       dispatch({ type: 'ERROR', error: String(e) });
@@ -40,14 +41,16 @@ export function useAgents(): [AgentsState, AgentsActions] {
 
   useEffect(() => {
     // Init admin panel
-    try { const fn = (window as any).loadCrewAIPanel; if (typeof fn === 'function') fn(); } catch {}
+    // @ts-ignore SPA-CUT-3: fire-and-forget
+        callGateway('crewai-orchestrator', { action: 'status' }).catch(() => { /* non-fatal */ });
     loadData();
     pollRef.current = setInterval(loadData, 3000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 
   const refresh = useCallback(() => {
-    try { const fn = (window as any).loadCrewAIPanel; if (typeof fn === 'function') fn(); } catch {}
+    // @ts-ignore SPA-CUT-3: fire-and-forget
+        callGateway('crewai-orchestrator', { action: 'status' }).catch(() => { /* non-fatal */ });
   }, []);
 
   return [state, { refresh }];

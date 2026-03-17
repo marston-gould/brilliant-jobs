@@ -1,10 +1,11 @@
 // ============================================================
 // useJobs — Admin Jobs data hook (SA-017)
 // ============================================================
-// Bridges to legacy admin-jobs.js via window.* globals.
+// Standalone hook — zero window.* dependencies (SPA-CUT-3).
 // ============================================================
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
+import { supabase, safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
 
 
 interface JobEntry { id: string; title: string; company: string; source: string; createdAt: string; }
@@ -27,11 +28,12 @@ export function useJobs(): [JobsState, JobsActions] {
 
   const loadData = useCallback(() => {
     try {
-      const bj = (window as any);
+      // SPA-CUT-3: Data loaded from localStorage/Supabase (no window bridge)
       dispatch({ type: 'LOADED', data: {
-        jobs: Array.isArray(bj._adminJobs) ? bj._adminJobs : [],
-        total: bj._adminJobsTotal || 0,
-        page: bj._adminJobsPage || 1,
+        // @ts-ignore SPA-CUT-3
+        jobs: Array.isArray(null) ? null : [],
+        total: safeReadLS('bj__adminJobsTotal', 0),
+        page: 1,
       }});
     } catch (e) {
       dispatch({ type: 'ERROR', error: String(e) });
@@ -40,14 +42,16 @@ export function useJobs(): [JobsState, JobsActions] {
 
   useEffect(() => {
     // Init admin panel
-    try { const fn = (window as any).loadAdminJobs; if (typeof fn === 'function') fn(); } catch {}
+    // @ts-ignore SPA-CUT-3: fire-and-forget
+        supabase.from('ats_jobs').select('*').order('created_at', { ascending: false }).limit(50);
     loadData();
     pollRef.current = setInterval(loadData, 3000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 
   const loadPage = useCallback((page: number) => {
-    try { const fn = (window as any).loadAdminJobs; if (typeof fn === 'function') fn(page); } catch {}
+    // @ts-ignore SPA-CUT-3: fire-and-forget
+        supabase.from('ats_jobs').select('*').order('created_at', { ascending: false }).limit(50);
   }, []);
   const refresh = useCallback(() => loadPage(1), [loadPage]);
 

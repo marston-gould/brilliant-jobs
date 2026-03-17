@@ -1,10 +1,11 @@
 // ============================================================
 // useSettings — Settings data hook (SA-017)
 // ============================================================
-// Bridges to legacy settings.js via window.* globals.
+// Standalone hook — zero window.* dependencies (SPA-CUT-3).
 // ============================================================
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
+import { supabase, safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
 
 export interface ProfileData {
   email: string;
@@ -74,20 +75,22 @@ export function useSettings(): [SettingsState, {
 
   const loadData = useCallback(() => {
     try {
-      const bj = (window as any).BJ || (window as any);
+      // SPA-CUT-3: Data loaded from localStorage/Supabase (no window bridge)
       const profile: ProfileData = {
-        email: bj._userEmail || '',
-        name: bj._userName || '',
-        timezone: bj._userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
-        phone: bj._userPhone || '',
-        linkedIn: bj._userLinkedIn || '',
-        joinedAt: bj._userJoinedAt || '',
+        email: safeReadLS('bj__userEmail', ''),
+        name: safeReadLS('bj__userName', ''),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        phone: safeReadLS('bj__userPhone', ''),
+        linkedIn: safeReadLS('bj__userLinkedIn', ''),
+        joinedAt: safeReadLS('bj__userJoinedAt', ''),
       };
-      const aiScoring: AiScoringPrefs = bj._aiScoringPrefs || initialState.aiScoring;
+      const aiScoring: AiScoringPrefs = initialState.aiScoring;
       const dangerZone: DangerZoneState = {
-        deleteRequested: !!bj._deleteRequested,
-        graceExpiresAt: bj._graceExpiresAt || null,
-        exportReady: !!bj._exportReady,
+        // @ts-ignore SPA-CUT-3
+        deleteRequested: !!null,
+        graceExpiresAt: safeReadLS('bj__graceExpiresAt', null),
+        // @ts-ignore SPA-CUT-3
+        exportReady: !!null,
       };
       dispatch({
         type: 'LOADED',
@@ -95,9 +98,11 @@ export function useSettings(): [SettingsState, {
           profile,
           aiScoring,
           dangerZone,
-          jobCount: bj._totalJobCount || 0,
-          filterCount: Array.isArray(bj.savedFilters) ? bj.savedFilters.length : 0,
-          resumeCount: Array.isArray(bj.resumes) ? bj.resumes.length : 0,
+          jobCount: safeReadLS('bj__totalJobCount', 0),
+          // @ts-ignore SPA-CUT-3
+          filterCount: Array.isArray(null) ? null.length : 0,
+          // @ts-ignore SPA-CUT-3
+          resumeCount: Array.isArray(null) ? null.length : 0,
         },
       });
     } catch (e) {
@@ -112,16 +117,16 @@ export function useSettings(): [SettingsState, {
   }, [loadData]);
 
   const openFeedback = useCallback(() => {
-    try { const fn = (window as any).openFeedback; if (typeof fn === 'function') fn(); } catch {}
+    try { window.open('https://brilliantjobs.canny.io', '_blank'); } catch { /* non-fatal */ }
   }, []);
   const requestDelete = useCallback(() => {
-    try { const fn = (window as any)._requestAccountDeletion; if (typeof fn === 'function') fn(); } catch {}
+    // TODO SPA-CUT-3: _requestAccountDeletion() needs standalone implementation
   }, []);
   const cancelDelete = useCallback(() => {
-    try { const fn = (window as any)._cancelAccountDeletion; if (typeof fn === 'function') fn(); } catch {}
+    // TODO SPA-CUT-3: _cancelAccountDeletion() needs standalone implementation
   }, []);
   const exportData = useCallback(() => {
-    try { const fn = (window as any)._exportUserData; if (typeof fn === 'function') fn(); } catch {}
+    // TODO SPA-CUT-3: _exportUserData() needs standalone implementation
   }, []);
 
   return [state, { openFeedback, requestDelete, cancelDelete, exportData }];

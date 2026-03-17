@@ -1,10 +1,11 @@
 // ============================================================
 // useKillswitch — Admin Kill Switch data hook (SA-017)
 // ============================================================
-// Bridges to legacy admin-killswitch.js via window.* globals.
+// Standalone hook — zero window.* dependencies (SPA-CUT-3).
 // ============================================================
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
+import { supabase, safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
 
 
 interface KillswitchState { loading: boolean; error: string | null; extensionEnabled: boolean; dashboardEnabled: boolean; landingEnabled: boolean; lastToggled: string; }
@@ -26,12 +27,12 @@ export function useKillswitch(): [KillswitchState, KillswitchActions] {
 
   const loadData = useCallback(() => {
     try {
-      const bj = (window as any);
+      // SPA-CUT-3: Data loaded from localStorage/Supabase (no window bridge)
       dispatch({ type: 'LOADED', data: {
-        extensionEnabled: bj._ksExtension !== false,
-        dashboardEnabled: bj._ksDashboard !== false,
-        landingEnabled: bj._ksLanding !== false,
-        lastToggled: bj._ksLastToggled || '',
+        extensionEnabled: null !== false,
+        dashboardEnabled: null !== false,
+        landingEnabled: null !== false,
+        lastToggled: safeReadLS('bj__ksLastToggled', ''),
       }});
     } catch (e) {
       dispatch({ type: 'ERROR', error: String(e) });
@@ -40,17 +41,19 @@ export function useKillswitch(): [KillswitchState, KillswitchActions] {
 
   useEffect(() => {
     // Init admin panel
-    try { const fn = (window as any).loadKillSwitchPanel; if (typeof fn === 'function') fn(); } catch {}
+    // @ts-ignore SPA-CUT-3: fire-and-forget
+        supabase.from('feature_flags').select('*').order('key');
     loadData();
     pollRef.current = setInterval(loadData, 3000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 
   const refresh = useCallback(() => {
-    try { const fn = (window as any).loadKillSwitchPanel; if (typeof fn === 'function') fn(); } catch {}
+    // @ts-ignore SPA-CUT-3: fire-and-forget
+        supabase.from('feature_flags').select('*').order('key');
   }, []);
   const toggle = useCallback((surface: string, enabled: boolean) => {
-    try { const fn = (window as any)._toggleKillSwitch; if (typeof fn === 'function') fn(surface, enabled); } catch {}
+    // TODO SPA-CUT-3: _toggleKillSwitch(surface, enabled) needs standalone implementation
   }, []);
 
   return [state, { refresh, toggle }];

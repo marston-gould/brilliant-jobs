@@ -1,10 +1,11 @@
 // ============================================================
 // useContent — Admin Content data hook (SA-017)
 // ============================================================
-// Bridges to legacy admin-content.js via window.* globals.
+// Standalone hook — zero window.* dependencies (SPA-CUT-3).
 // ============================================================
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
+import { supabase, safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
 
 
 interface ContentState { loading: boolean; error: string | null; storyCount: number; pendingCount: number; publishedCount: number; }
@@ -26,8 +27,8 @@ export function useContent(): [ContentState, ContentActions] {
 
   const loadData = useCallback(() => {
     try {
-      const bj = (window as any);
-      const stories = bj._contentStories || {};
+      // SPA-CUT-3: Data loaded from localStorage/Supabase (no window bridge)
+      const stories = safeReadLS('bj__contentStories', {});
       const all = Object.values(stories);
       dispatch({ type: 'LOADED', data: {
         storyCount: all.length,
@@ -41,14 +42,16 @@ export function useContent(): [ContentState, ContentActions] {
 
   useEffect(() => {
     // Init admin panel
-    try { const fn = (window as any).loadContentTab; if (typeof fn === 'function') fn(); } catch {}
+    // @ts-ignore SPA-CUT-3: fire-and-forget
+        callGateway('admin-analytics', { action: 'content' }).catch(() => { /* non-fatal */ });
     loadData();
     pollRef.current = setInterval(loadData, 3000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 
   const refresh = useCallback(() => {
-    try { const fn = (window as any).loadContentTab; if (typeof fn === 'function') fn(); } catch {}
+    // @ts-ignore SPA-CUT-3: fire-and-forget
+        callGateway('admin-analytics', { action: 'content' }).catch(() => { /* non-fatal */ });
   }, []);
 
   return [state, { refresh }];

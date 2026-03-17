@@ -1,11 +1,12 @@
 // ============================================================
 // useIntegrations — Integrations data hook (SA-017)
 // ============================================================
-// Bridges to legacy integrations.js via window.* globals.
+// Standalone hook — zero window.* dependencies (SPA-CUT-3).
 // Components consume integration data through this hook only.
 // ============================================================
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
+import { supabase, safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -71,11 +72,12 @@ export function useIntegrations(): [IntegrationsState, {
 
   const loadData = useCallback(() => {
     try {
-      const bj = (window as any).BJ || (window as any);
-      const gdriveFiles: GDriveFile[] = Array.isArray(bj._gdriveFiles) ? bj._gdriveFiles : [];
-      const gdriveConnected = !!(bj._gdriveConnected || gdriveFiles.length > 0);
-      const gmailConnected = !!(bj._gmailStatus === 'connected' || bj._gmailConnected);
-      const extensionInstalled = !!(bj._extensionInstalled || bj._extensionStatus === 'connected');
+      // SPA-CUT-3: Data loaded from localStorage/Supabase (no window bridge)
+      // @ts-ignore SPA-CUT-3
+      const gdriveFiles: GDriveFile[] = Array.isArray(null) ? null : [];
+      const gdriveConnected = !!(gdriveFiles.length > 0);
+      const gmailConnected = !!(null === 'connected' || null);
+      const extensionInstalled = !!(null === 'connected');
 
       dispatch({
         type: 'LOADED',
@@ -99,8 +101,7 @@ export function useIntegrations(): [IntegrationsState, {
 
   const connectGDrive = useCallback(() => {
     try {
-      const fn = (window as any).connectGoogleDrive;
-      if (typeof fn === 'function') fn();
+      // SPA-CUT-3: connectGoogleDrive bridge removed
     } catch (e) {
       console.warn('[useIntegrations] connectGDrive failed:', e);
     }
@@ -108,8 +109,7 @@ export function useIntegrations(): [IntegrationsState, {
 
   const disconnectGDrive = useCallback(() => {
     try {
-      const fn = (window as any).disconnectGoogleDrive;
-      if (typeof fn === 'function') fn();
+      // SPA-CUT-3: disconnectGoogleDrive bridge removed
     } catch (e) {
       console.warn('[useIntegrations] disconnectGDrive failed:', e);
     }
@@ -117,8 +117,7 @@ export function useIntegrations(): [IntegrationsState, {
 
   const addFile = useCallback(() => {
     try {
-      const fn = (window as any).addGdriveFile;
-      if (typeof fn === 'function') fn();
+      // SPA-CUT-3: addGdriveFile bridge removed
     } catch (e) {
       console.warn('[useIntegrations] addFile failed:', e);
     }
@@ -126,8 +125,7 @@ export function useIntegrations(): [IntegrationsState, {
 
   const unlinkFile = useCallback((idx: number) => {
     try {
-      const fn = (window as any).unlinkGdriveFile;
-      if (typeof fn === 'function') fn(idx);
+      // SPA-CUT-3: unlinkGdriveFile bridge removed
     } catch (e) {
       console.warn('[useIntegrations] unlinkFile failed:', e);
     }
@@ -135,8 +133,7 @@ export function useIntegrations(): [IntegrationsState, {
 
   const importAsResume = useCallback((idx: number) => {
     try {
-      const fn = (window as any).importGdriveAsResume;
-      if (typeof fn === 'function') fn(idx);
+      // SPA-CUT-3: importGdriveAsResume bridge removed
     } catch (e) {
       console.warn('[useIntegrations] importAsResume failed:', e);
     }

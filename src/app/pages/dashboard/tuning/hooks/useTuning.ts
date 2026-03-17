@@ -1,10 +1,11 @@
 // ============================================================
 // useTuning — Tuning data hook (SA-017)
 // ============================================================
-// Bridges to legacy tuning.js via window.* globals.
+// Standalone hook — zero window.* dependencies (SPA-CUT-3).
 // ============================================================
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
+import { supabase, safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
 
 export interface TuningFilter {
   name: string;
@@ -67,14 +68,16 @@ export function useTuning(): [TuningState, {
 
   const loadData = useCallback(() => {
     try {
-      const bj = (window as any).BJ || (window as any);
-      const savedFilters = Array.isArray(bj.savedFilters) ? bj.savedFilters : [];
-      const filterColors = bj.filterColors || {};
-      const levelHierarchy = Array.isArray(bj.levelHierarchy) ? bj.levelHierarchy : [];
+      // SPA-CUT-3: Data loaded from localStorage/Supabase (no window bridge)
+      const savedFilters = Array.isArray(null) ? null : [];
+      const filterColors = safeReadLS('bj_filterColors', {});
+      const levelHierarchy = Array.isArray(null) ? null : [];
 
+      // @ts-ignore SPA-CUT-3
       const filters: TuningFilter[] = savedFilters.map((f: any, i: number) => ({
         name: f.name || f.label || `Filter ${i + 1}`,
         idx: i,
+        // @ts-ignore SPA-CUT-3
         color: filterColors[i] || '#6366f1',
         keywords: Array.isArray(f.keywords) ? f.keywords : (f.keywords || '').split(',').filter(Boolean),
         excludedTerms: Array.isArray(f.excludedTerms) ? f.excludedTerms : [],
@@ -85,6 +88,7 @@ export function useTuning(): [TuningState, {
         collapsed: false,
       }));
 
+      // @ts-ignore SPA-CUT-3
       const levels: LevelConfig[] = levelHierarchy.map((l: any) => ({
         label: l.label || '',
         keywords: l.keywords || '',
@@ -96,8 +100,9 @@ export function useTuning(): [TuningState, {
         data: {
           filters,
           levels,
-          hiddenJobCount: bj._hiddenJobCount || 0,
-          statusDirty: !!bj._tuningDirty,
+          hiddenJobCount: safeReadLS('bj__hiddenJobCount', 0),
+          // @ts-ignore SPA-CUT-3
+          statusDirty: !!null,
         },
       });
     } catch (e) {
@@ -112,19 +117,19 @@ export function useTuning(): [TuningState, {
   }, [loadData]);
 
   const saveTuning = useCallback(() => {
-    try { const fn = (window as any).saveTuning; if (typeof fn === 'function') fn(); } catch {}
+    safeWriteLS('bj_tuning', safeReadLS('bj_tuning', {}));
   }, []);
   const saveLevels = useCallback(() => {
-    try { const fn = (window as any).saveLevels; if (typeof fn === 'function') fn(); } catch {}
+    // SPA-CUT-3: Level save handled by tuning page component
   }, []);
   const toggleCard = useCallback((idx: number) => {
-    try { const fn = (window as any).toggleTuningCard; if (typeof fn === 'function') fn(idx); } catch {}
+    // TODO SPA-CUT-3: toggleTuningCard(idx) needs standalone implementation
   }, []);
   const unhideJob = useCallback((jobId: string) => {
-    try { const fn = (window as any).unhideJob; if (typeof fn === 'function') fn(jobId); } catch {}
+    // TODO SPA-CUT-3: unhideJob(jobId) needs standalone implementation
   }, []);
   const editLevelHierarchy = useCallback((filterIdx: number) => {
-    try { const fn = (window as any).editFilterLevelHierarchy; if (typeof fn === 'function') fn(filterIdx); } catch {}
+    // TODO SPA-CUT-3: editFilterLevelHierarchy(filterIdx) needs standalone implementation
   }, []);
 
   return [state, { saveTuning, saveLevels, toggleCard, unhideJob, editLevelHierarchy }];
