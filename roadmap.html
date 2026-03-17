@@ -185,7 +185,6 @@
     .blocked-tag.bt-dependency { background: rgba(245,158,11,0.12); color: #f59e0b; }
     .blocked-tag.bt-external   { background: rgba(239,68,68,0.12); color: #ef4444; }
     .blocked-tag.bt-ceo        { background: rgba(168,85,247,0.12); color: #a855f7; }
-    .blocked-tag.bt-deferred   { background: rgba(107,114,128,0.12); color: #6b7280; }
 
     /* Filter bar */
     .filter-bar {
@@ -221,9 +220,7 @@
     /* CEO */
     .filter-btn.fb-ceo { background: rgba(168,85,247,0.08); color: #c4a0fa; }
     .filter-btn.fb-ceo.active { background: rgba(168,85,247,0.22); color: #d8c2fc; border-color: rgba(168,85,247,0.4); }
-    /* Deferred */
-    .filter-btn.fb-deferred { background: rgba(107,114,128,0.08); color: #9ca3af; }
-    .filter-btn.fb-deferred.active { background: rgba(107,114,128,0.22); color: #d1d5db; border-color: rgba(107,114,128,0.4); }
+
     /* No tag (done items etc) */
     .filter-btn.fb-done { background: rgba(52,211,153,0.08); color: var(--green); }
     .filter-btn.fb-done.active { background: rgba(52,211,153,0.22); color: #6ee7b7; border-color: rgba(52,211,153,0.4); }
@@ -683,8 +680,8 @@ const features = [
   // Phase 5 — User Management
   { s: 'done', n: 'Automated user approval', d: 'Edge Function validate-signup: LinkedIn URL validation with test profile bypass (testprofile1-3), uniqueness check, JSONB audit trail. Auto-approves valid signups, sets approved=true + approved_at.', p: 6 },
   { s: 'done', n: 'Competitor employer blocklist', d: 'v6.76. 24 companies blocked across 4 categories (competitor, ats_vendor, data_vendor, job_board). Employer extracted from LinkedIn title + SERP title. Fuzzy company matching with aliases. Admin-editable via competitor_blocklist table. Includes: Indeed, ZipRecruiter, LinkedIn, Glassdoor, Greenhouse, Lever, Workable, Ashby, iCIMS, Workday, SmartRecruiters, Jobvite, Handshake, Hired, Wellfound, The Muse, Dice, Monster, CareerBuilder, Ladders, DataForSEO, TheirStack, Jobscan, Recruitee.', b: 'post-launch', p: 6, t: ['signup-validation', 'security'] },
-  { s: 'done', n: 'DataForSEO profile verification', d: 'v6.75. Cross-reference signup LinkedIn URL against DataForSEO SERP (site:linkedin.com/in) for legitimacy. URL-match + slug-match verification. Approval rescue when LinkedIn direct fetch fails. ~$0.01/signup.', b: 'post-launch', p: 6, b: 'deferred', e: '2h'},
-  { s: 'todo', n: 'Two-factor authentication', d: 'TOTP-based 2FA for account security', b: 'post-launch', p: 6, b: 'deferred', e: '3h'},
+  { s: 'done', n: 'DataForSEO profile verification', d: 'v6.75. Cross-reference signup LinkedIn URL against DataForSEO SERP (site:linkedin.com/in) for legitimacy. URL-match + slug-match verification. Approval rescue when LinkedIn direct fetch fails. ~$0.01/signup.', b: 'post-launch', p: 6, b: 'post-launch', e: '2h'},
+  { s: 'todo', n: 'Two-factor authentication', d: 'TOTP-based 2FA for account security', b: 'post-launch', p: 6, b: 'post-launch', e: '3h'},
   { s: 'done', n: 'Admin dashboard', d: 'View pending approvals, user stats, and system health', p: 6 },
 
   // Phase 6 — Monetization & Growth
@@ -699,7 +696,7 @@ const features = [
   { s: 'done', n: 'Referral fraud prevention', d: 'v5.09+v5.10: referral-fraud-scan EF detects duplicate IPs, same-device signups, self-referrals. fingerprint.js for browser fingerprinting. referral_fraud_flags table. referral-reward-clawback EF for reversing fraudulent rewards. Admin fraud queue in Referrals panel with ban management. FB-PAYL-S1 added anti-gaming engine (IP, device, payment method, circular enrollment checks). Polish: unify v5.10 fraud scan with PAYL anti-gaming into single fraud pipeline.', b: 'needs-referrals', p: 7, b: 'post-launch' },
   { s: 'todo', n: 'Application source branding', d: 'Ensure Brilliant Jobs attribution visible to hiring teams — UTM params on ATS links, "How did you hear about us?" auto-fill. Organic employer awareness as candidates apply.', b: 'needs-apply', p: 7, b: 'needs-apply', e: '2h'},
   { s: 'done', n: 'Archive status for inactive users', d: 'v6.77. 4-stage inactivity sequence (14d/30d/60d/90d) with $5/yr storage fee CTA at each stage. Auto-archive at day 91 via archive-inactive Edge Function + pg_cron. profiles.archived_at + archive_storage_paid_until columns. Reactivation via login. Storage fee preserves data indefinitely while archived.', b: 'post-launch', p: 6, t: ['account-lifecycle', 'retention'] },
-  { s: 'todo', n: 'Consolidate vendor payouts + centralize accounting', d: 'Route all vendor billing (Vercel, Supabase, DataForSEO, Cloudflare) through Stripe for unified revenue/cost tracking. Options: Stripe Issuing virtual card for all vendors, or reconciliation system pulling invoice data from each vendor API into cost_tracking table. Enables single-dashboard margin analysis in admin Revenue tab.', b: 'post-launch', p: 7, b: 'deferred', e: '8h'},
+  { s: 'todo', n: 'Consolidate vendor payouts + centralize accounting', d: 'Route all vendor billing (Vercel, Supabase, DataForSEO, Cloudflare) through Stripe for unified revenue/cost tracking. Options: Stripe Issuing virtual card for all vendors, or reconciliation system pulling invoice data from each vendor API into cost_tracking table. Enables single-dashboard margin analysis in admin Revenue tab.', b: 'post-launch', p: 7, b: 'post-launch', e: '8h'},
   { s: 'todo', n: 'Survey reward fulfillment (Pro grant)', d: 'Wire 7-day Pro entitlement grant in submitSurvey() for periodic and NPS surveys. Wire exit survey save-offer buttons (downgrade to free, 2-week Pro trial). Depends on plans/subscriptions tables + check_entitlement() v2. UI already promises rewards — this delivers them.', b: 'stripe', p: 7, b: 'post-launch', e: '3h'},
 
   // Phase 7 — Anti-detection
@@ -766,7 +763,7 @@ const features = [
   { s: 'done', n: '[GH] Location normalization', d: 'Ran normalize_job_locations() on all 116K rows + manual cleanup SQL. lat/lng populated for 20K jobs from ref_city_radius.', p: 10 },
   { s: 'done', n: '[GH] Alphabet crawl expansion', d: 'DataForSEO alphabet crawl for Greenhouse-specific boards. Got through letters a-s before Task Handed errors. 78 new boards discovered.', p: 10 },
   { s: 'done', n: '[GH] TheirStack board discovery — NOT NEEDED', d: 'Removed. Already have 10,019 boards across 5 ATS platforms. TheirStack import unnecessary.', p: 10 },
-  { s: 'wontdo', n: '[GH] Board discovery from LinkedIn outbound links', d: 'During profile scanning, capture outbound links to boards.greenhouse.io', b: 'needs-extension', p: 10, b: 'deferred', e: '2h'},
+  { s: 'wontdo', n: '[GH] Board discovery from LinkedIn outbound links', d: 'During profile scanning, capture outbound links to boards.greenhouse.io', b: 'needs-extension', p: 10, b: 'post-launch', e: '2h'},
 
   // ── Lever (ACTIVE — 1,154 boards, scraping live) ──
   { s: 'done', n: '[LV] Board discovery', d: 'DataForSEO alphabet crawl: 1,154 Lever boards discovered. All imported to ats_companies with source=lever.', p: 10 },
@@ -813,7 +810,7 @@ const features = [
   // ── Future Sources ──
   { s: 'done', n: '[IND] Indeed RSS — DEPRECATED', d: 'Removed. Indeed deprecated their RSS feed. No longer viable as a data source.', p: 10 },
   { s: 'done', n: '[USJ] USAJobs API integration', d: 'refresh-usajobs Edge Function live (v3.80-v4.09). 6th job source. ~10K federal listings. Propagated to landing, data lab, Feed Health, stats. Standard platform in admin console.', p: 10 },
-  { s: 'wontdo', n: '[GJ] DataForSEO Google Jobs API', d: 'Fallback discovery for companies on closed ATS platforms (Workday, iCIMS).', b: 'post-launch', p: 10, b: 'deferred', e: '4h'},
+  { s: 'wontdo', n: '[GJ] DataForSEO Google Jobs API', d: 'Fallback discovery for companies on closed ATS platforms (Workday, iCIMS).', b: 'post-launch', p: 10, b: 'post-launch', e: '4h'},
   { s: 'done', n: 'Cross-source job deduplication', d: 'Normalize title + company + location hash for dedup across all sources.', p: 10 },
   { s: 'done', n: 'Auto-apply form-fill automation', d: 'v5.36-v5.42+v5.75: Browser-fill submission chain complete for 13 ATS platforms. Per-platform handlers: Greenhouse (token-aware), Lever (DOM fill), Ashby (React-aware), Workable (widget detection), Recruitee (iframe handling), LinkedIn Easy Apply (multi-step), Indeed (anti-bot sim), Workday (section navigation), iCIMS (v5.75), Taleo/Oracle (v5.75), SmartRecruiters (v5.75), Avature (v5.75), generic fallback (heuristic field matching). AI question answering via Claude Haiku (50/day) for custom fields. Multilingual label detection (FR/ES/DE/IT). Human-simulation typing with bezier cursor paths. 3-layer code obfuscation. Implemented via browser-fill rather than API — formal ATS partnerships provide API path for future.', p: 10 },
 
@@ -844,7 +841,7 @@ const features = [
   // CE Handoff v3 — Section A: Permanent Pages (added v4.71)
   { s: 'done', n: 'Company SEO pages + ghost rate reports (A1)', d: 'CE Handoff v3 Section A. v4.76. /company/:slug live. Vercel rewrite rule. Schema.org Organization JSON-LD. seo_page_cache extended with company rows.', b: 'needs-data', p: 11, b: 'needs-data' },
   { s: 'done', n: 'College major outcomes page (A2)', d: 'CE Handoff v3 Section A. v4.77. /college-major-outcomes live. 73 majors ranked by employment, salary, trajectory. NY Fed data cross-referenced with live BJ ATS data. major_keyword_mapping table + get_jobs_by_major() RPC.', b: 'needs-data', p: 11, b: 'needs-data' },
-  { s: 'progress', n: 'Jobs by Location data page (A3) — consolidated', d: 'Single /jobs-by-location page combining: (1) state choropleth + top 20 metros + salary by region + remote %% by state (original A3), (2) metro-vs-metro comparison section with salary differentials + top industries + top employers (was B1 + P39 metro pages), (3) notable shifts callouts when salary gap or volume ratio changes significantly (was B1 anomaly trigger). get_jobs_by_state() + get_jobs_by_metro() RPCs. FAQ schema for city-specific SEO queries. Absorbs: Metro comparison stories B1, First 10 metro comparison pages P39. 5-6 days.', b: 'needs-data', p: 11, b: 'deferred', e: '5-6d'},
+  { s: 'progress', n: 'Jobs by Location data page (A3) — consolidated', d: 'Single /jobs-by-location page combining: (1) state choropleth + top 20 metros + salary by region + remote %% by state (original A3), (2) metro-vs-metro comparison section with salary differentials + top industries + top employers (was B1 + P39 metro pages), (3) notable shifts callouts when salary gap or volume ratio changes significantly (was B1 anomaly trigger). get_jobs_by_state() + get_jobs_by_metro() RPCs. FAQ schema for city-specific SEO queries. Absorbs: Metro comparison stories B1, First 10 metro comparison pages P39. 5-6 days.', b: 'needs-data', p: 11, b: 'post-launch', e: '5-6d'},
 
   // CE Handoff v3 — Section B: Topical Coverage (added v4.71)
   { s: 'todo', n: 'Multi-dimensional insight stories (B2)', d: 'CE Topical: 3 new detection rules (salary_x_remote, role_x_industry, level_x_location) + cross_dimension story template. Gate: all dimensions need 100+ data points in intersection. 2-3 days. UNBLOCKED: industry at 77.4%%, location at 92.2%%, JD AI at 82.4%%.', b: 'needs-data', p: 11, b: 'needs-data', e: '2-3d'},
@@ -2004,7 +2001,7 @@ const features = [
 { s: 'done', b: 'pre-launch', n: '0.116 DS1-7: Pipeline dark mode', d: 'CS-P1-009: CSS dark overrides + hex→CSS vars.', p: 100, e: '1h' },
 { s: 'done', b: 'pre-launch', n: '0.117 DS1-8: Gmail connection buried', d: 'IA/UX discoverability fix.', p: 100, e: '1h' },
 { s: 'done', b: 'pre-launch', n: '0.118 DS1-9: ECharts global load', d: 'CS-014 CX-09: ECharts lazy-loaded via loadECharts() on first Stats tab open. Removed eager CDN script from dashboard head.', p: 100, e: '1h' },
-{ s: 'done', b: 'deferred', n: '0.119 DS1-10: 14 pages single HTML', d: 'CS-P1-009: ADR written. Defer to SA-013 React Router.', p: 100, e: '4h' },
+{ s: 'done', b: 'post-launch', n: '0.119 DS1-10: 14 pages single HTML', d: 'CS-P1-009: ADR written. Defer to SA-013 React Router.', p: 100, e: '4h' },
 { s: 'done', b: 'pre-launch', n: '0.120 DS1A-13: Extension sideload friction', d: 'Smoother install UX (ADR-008).', p: 100, e: '1h' },
 { s: 'done', b: 'pre-launch', n: '0.121 DS1A-14: Tuning page dark', d: 'Zero events. filter_changed, weight_adjusted.', p: 100, e: '1h' },
 { s: 'done', b: 'pre-launch', n: '0.122 DS1A-17: 75 notif inputs 0 events', d: 'Quick-win instrumentation.', p: 100, e: '1h' },
@@ -2391,7 +2388,6 @@ const filterGroups = {
   'needs-apply':   'dependency',
   'external':      'external',
   'ceo':           'ceo',
-  'deferred':      'deferred',
 };
 
 const filterLabels = {
@@ -2401,7 +2397,6 @@ const filterLabels = {
   'dependency': 'DEPENDENCY',
   'external':   'EXTERNAL',
   'ceo':        'CEO ACTION',
-  'deferred':   'DEFERRED',
   'done':       'COMPLETED',
 };
 
