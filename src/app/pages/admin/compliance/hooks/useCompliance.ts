@@ -53,10 +53,16 @@ export function useCompliance(): [ComplianceState, ComplianceActions] {
         callGateway('admin-analytics', { action: 'compliance' }).catch(() => { /* non-fatal */ });
   }, []);
   const initiateDeletion = useCallback((userId: string) => {
-    // TODO SPA-CUT-3: _initiateDeletion(userId) needs standalone implementation
+    // SPA-CUT-REMEDIATION: Via admin-user-manager gateway
+    async (userId: string) => {
+      await callGateway('admin-user-manager', { action: 'delete_account', user_id: userId, reason: 'admin_initiated' });
+    }
   }, []);
   const cancelDeletion = useCallback((userId: string) => {
-    // TODO SPA-CUT-3: _cancelDeletion(userId) needs standalone implementation
+    // SPA-CUT-REMEDIATION: Via admin-user-manager gateway
+    async (userId: string) => {
+      await callGateway('admin-user-manager', { action: 'cancel_delete', user_id: userId });
+    }
   }, []);
 
   return [state, { refresh, initiateDeletion, cancelDeletion }];

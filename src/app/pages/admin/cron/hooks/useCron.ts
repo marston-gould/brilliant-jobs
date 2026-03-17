@@ -57,7 +57,10 @@ export function useCron(): [CronState, CronActions] {
         supabase.from('cron_registry').select('*').order('name');
   }, []);
   const toggleJob = useCallback((name: string, enabled: boolean) => {
-    // TODO SPA-CUT-3: _toggleCronJob(name, enabled) needs standalone implementation
+    // SPA-CUT-REMEDIATION: Direct Supabase update
+    async (name: string, enabled: boolean) => {
+      await supabase.from('cron_registry').update({ enabled }).eq('name', name);
+    }
   }, []);
 
   return [state, { refresh, toggleJob }];

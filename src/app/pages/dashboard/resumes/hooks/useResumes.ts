@@ -266,23 +266,57 @@ function buildActions(dispatch: React.Dispatch<ResumesAction>, reload: () => voi
       }
     },
 
-    uploadResume(_file: File) {
-      // TODO SPA-CUT-2: Upload needs standalone Supabase Storage + text extraction.
-      // Legacy used addResume() which uploads, parses, and updates localStorage.
-      console.warn('[SPA] uploadResume not yet standalone');
+    async uploadResume(file: File) {
+      // SPA-CUT-REMEDIATION: Upload to Supabase Storage + add to localStorage
+      try {
+        const user = await getUser();
+        if (!user) return;
+        const ext = file.name.split('.').pop() || 'pdf';
+        const path = `${user.id}/${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from('resumes').upload(path, file);
+        if (upErr) { console.error('[SPA] Upload failed:', upErr); return; }
+
+        // Add to localStorage resume array
+        const all = loadResumesFromLS();
+        all.push({
+          name: file.name,
+          archived: false,
+          textStatus: 'pending' as const,
+          storagePath: path,
+          size: file.size,
+          uploadedAt: new Date().toISOString(),
+          source: 'upload' as const,
+          filterIds: [],
+        });
+        saveResumesToLS(all);
+
+        // Trigger text extraction via gateway (fire-and-forget)
+        callGateway('extract-resume-profile', { storage_path: path }).catch(() => { /* non-fatal */ });
+      } catch (err) {
+        console.error('[SPA] uploadResume error:', err);
+      }
       setTimeout(reload, 300);
     },
 
     replacePlaceholder(idx: number) {
-      // TODO SPA-CUT-2: Placeholder replacement needs file input trigger
-      console.warn('[SPA] replacePlaceholder not yet standalone for idx', idx);
-      setTimeout(reload, 100);
+      // SPA-CUT-REMEDIATION: Trigger file input for replacement upload
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.pdf,.doc,.docx,.txt';
+      input.onchange = () => {
+        const file = input.files?.[0];
+        if (file) {
+          const all = loadResumesFromLS();
+          if (all[idx]) { all.splice(idx, 1); saveResumesToLS(all); }
+          this.uploadResume(file);
+        }
+      };
+      input.click();
     },
 
     reUpload(idx: number) {
-      // TODO SPA-CUT-2: Re-upload needs file input trigger
-      console.warn('[SPA] reUpload not yet standalone for idx', idx);
-      setTimeout(reload, 100);
+      // SPA-CUT-REMEDIATION: Same as replacePlaceholder
+      this.replacePlaceholder(idx);
     },
 
     getPipelineMeta(): Record<string, PipelineMeta> {

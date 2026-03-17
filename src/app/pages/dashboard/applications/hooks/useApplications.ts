@@ -166,9 +166,22 @@ function buildActions(dispatch: React.Dispatch<ApplicationsAction>, reload: () =
       setTimeout(reload, 50);
     },
 
-    processQueue() {
-      // TODO SPA-CUT-2: Process queue needs standalone worker routing
-      console.warn('[SPA] processQueue not yet standalone');
+    async processQueue() {
+      // SPA-CUT-REMEDIATION: Approve all queued items → worker picks them up
+      const queue = safeReadLS<AppEntry[]>('bj_app_queue', []);
+      const queued = queue.filter(e => e.status === 'queued');
+      if (queued.length === 0) return;
+
+      // Mark all as approved → headless worker polls for approved status
+      for (const entry of queued) {
+        try {
+          await supabase.from('pending_applications')
+            .update({ status: 'approved' })
+            .eq('id', entry.id);
+          entry.status = 'pending' as AppStatus;
+        } catch { /* non-fatal per-item */ }
+      }
+      safeWriteLS('bj_app_queue', queue);
       setTimeout(reload, 100);
     },
 

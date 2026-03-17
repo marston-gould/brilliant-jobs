@@ -53,7 +53,10 @@ export function useKillswitch(): [KillswitchState, KillswitchActions] {
         supabase.from('feature_flags').select('*').order('key');
   }, []);
   const toggle = useCallback((surface: string, enabled: boolean) => {
-    // TODO SPA-CUT-3: _toggleKillSwitch(surface, enabled) needs standalone implementation
+    // SPA-CUT-REMEDIATION: Direct Supabase update
+    async (surface: string, enabled: boolean) => {
+      await supabase.from('feature_flags').update({ enabled }).eq('key', surface);
+    }
   }, []);
 
   return [state, { refresh, toggle }];

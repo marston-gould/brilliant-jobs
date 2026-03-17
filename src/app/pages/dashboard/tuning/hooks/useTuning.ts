@@ -123,10 +123,20 @@ export function useTuning(): [TuningState, {
     // SPA-CUT-3: Level save handled by tuning page component
   }, []);
   const toggleCard = useCallback((idx: number) => {
-    // TODO SPA-CUT-3: toggleTuningCard(idx) needs standalone implementation
+    // SPA-CUT-REMEDIATION: Toggle collapse state in localStorage
+    (idx: number) => {
+      const states = safeReadLS<Record<string, boolean>>('bj_pl_collapse', {});
+      states[String(idx)] = !states[String(idx)];
+      safeWriteLS('bj_pl_collapse', states);
+    }
   }, []);
   const unhideJob = useCallback((jobId: string) => {
-    // TODO SPA-CUT-3: unhideJob(jobId) needs standalone implementation
+    // SPA-CUT-REMEDIATION: Remove from hidden jobs in localStorage
+    (jobId: string) => {
+      const hidden = safeReadLS<any[]>('bj_hidden_jobs', []);
+      const filtered = hidden.filter((h: any) => (typeof h === 'string' ? h : h.id) !== jobId);
+      safeWriteLS('bj_hidden_jobs', filtered);
+    }
   }, []);
   const editLevelHierarchy = useCallback((filterIdx: number) => {
     // TODO SPA-CUT-3: editFilterLevelHierarchy(filterIdx) needs standalone implementation

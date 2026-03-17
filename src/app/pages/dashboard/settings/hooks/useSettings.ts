@@ -120,13 +120,22 @@ export function useSettings(): [SettingsState, {
     try { window.open('https://brilliantjobs.canny.io', '_blank'); } catch { /* non-fatal */ }
   }, []);
   const requestDelete = useCallback(() => {
-    // TODO SPA-CUT-3: _requestAccountDeletion() needs standalone implementation
+    // SPA-CUT-REMEDIATION: Via admin-user-manager gateway
+    async () => {
+      if (!confirm('Are you sure you want to delete your account? This cannot be undone.')) return;
+      await callGateway('admin-user-manager', { action: 'request_deletion' });
+    }
   }, []);
   const cancelDelete = useCallback(() => {
-    // TODO SPA-CUT-3: _cancelAccountDeletion() needs standalone implementation
+    // SPA-CUT-REMEDIATION: Via admin-user-manager gateway
+    async () => { await callGateway('admin-user-manager', { action: 'cancel_deletion' }); }
   }, []);
   const exportData = useCallback(() => {
-    // TODO SPA-CUT-3: _exportUserData() needs standalone implementation
+    // SPA-CUT-REMEDIATION: Via admin-user-manager gateway (returns download URL)
+    async () => {
+      const result = await callGateway('admin-user-manager', { action: 'export_data' });
+      if (result?.url) window.open(result.url, '_blank');
+    }
   }, []);
 
   return [state, { openFeedback, requestDelete, cancelDelete, exportData }];

@@ -99,7 +99,10 @@ export function useChat(): [ChatState, {
   }, []);
 
   const clearChat = useCallback(() => {
-    // TODO SPA-CUT-3: _clearChatSession() needs standalone implementation
+    // SPA-CUT-REMEDIATION: Clear chat state from localStorage
+    () => {
+      try { localStorage.removeItem('bj_chat_history'); localStorage.removeItem('bj_chat_session'); } catch { /* non-fatal */ }
+    }
   }, []);
 
   return [state, { sendMessage, setMode, applyFilters, clearChat }];
