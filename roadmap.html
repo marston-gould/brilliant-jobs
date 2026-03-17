@@ -11,7 +11,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v10.25"></script>
+  <script src="/js/version.js?v=v10.26"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2353,7 +2353,7 @@ const features = [
 { s: 'done', b: 'feature', n: 'FB-SURVEY-DELIVERY-001 SDV-S2: Question Bank + My Surveys', d: 'v10.23: js/survey-questions.js shared module (all banks + getQuestionText). survey.html refactored. My Surveys subtab (available with credit badges, completed with expand/collapse + pagination + credit lookup). PostHog survey_history_viewed + survey_response_expanded. 56 tests.', p: 100, e: '1 session' },
 { s: 'done', b: 'feature', n: 'FB-SURVEY-DELIVERY-001 SDV-S3: Overlay + Priority Engine', d: 'v10.24: js/survey-delivery.js. MutationObserver page-nav hook. Session dedup + 7-day cooldown + completion check + audience targeting. Priority resolution. Overlay UI with credit badge. PostHog survey_overlay_shown/accepted/dismissed. 60 tests.', p: 100, e: '1 session' },
 { s: 'done', b: 'feature', n: 'FB-SURVEY-DELIVERY-001 SDV-S4: Micro-Survey Fix + Merch', d: 'v10.25: micro-surveys.js 500ms→2s debounce, 3 silent catches fixed. app.js survey_cta content_type (completion check, credit badge, survey URL routing). PostHog survey_merch_cta_shown/clicked. 26 tests.', p: 100, e: '1 session' },
-{ s: 'todo', b: 'feature', n: 'FB-SURVEY-DELIVERY-001 SDV-S5: Email Delivery EF', d: 'send-survey-invite EF. pg_cron schedules. Resend dispatch.', p: 0, e: '1 session' },
+{ s: 'done', b: 'feature', n: 'FB-SURVEY-DELIVERY-001 SDV-S5: Email Delivery EF', d: 'v10.26: send-survey-invite EF (Resend, frequency cap, survey_links 6-char/24h, HTML template, 100ms throttle, 2-min abort). pg_cron NPS monthly + Periodic bi-weekly. Gateway #139-140. PostHog survey_email_sent. 46 tests.', p: 100, e: '1 session' },
 { s: 'todo', b: 'feature', n: 'FB-SURVEY-DELIVERY-001 SDV-S6: SMS + Short URLs', d: 'Vonage SMS. resolve-survey-link EF. /s/{token} Vercel rewrite.', p: 0, e: '1 session' },
 { s: 'todo', b: 'feature', n: 'FB-SURVEY-DELIVERY-001 SDV-S7: PostHog + Integration Test', d: 'All 12 events. E2E walkthrough. Fitness score.', p: 0, e: '1 session' },
 ];

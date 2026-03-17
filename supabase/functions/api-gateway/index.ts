@@ -262,9 +262,11 @@ const ROUTE_REGISTRY: Record<string, string> = {
   "admin-billing-manager":       "admin-billing-manager",       // SPEC-ADMIN-002-S2: Billing Manager (#136)
   "admin-filter-prompt":         "admin-filter-prompt",         // SPEC-ADMIN-002-S2: Filter & Prompt Manager (#137)
   "admin-audit-log":             "admin-audit-log",             // SPEC-ADMIN-002-S2: Audit Log Viewer (#138)
+  "send-survey-invite":          "send-survey-invite",          // FB-SURVEY-DELIVERY-001 SDV-S5: Email/SMS survey dispatch (#139)
+  "resolve-survey-link":         "resolve-survey-link",         // FB-SURVEY-DELIVERY-001 SDV-S6: Short URL resolution (#140)
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // TOTAL: 129 routes (128 prev + 1 FB-INTPREP-001-S3). Direct paths deprecated.
+  // TOTAL: 140 routes (138 prev + 2 FB-SURVEY-DELIVERY-001). Direct paths deprecated.
   // HOOK: Future EFs register here. Future: load from DB table for
   //       runtime updates without redeploy (api_consumers integration).
   // ═══════════════════════════════════════════════════════════════════════════

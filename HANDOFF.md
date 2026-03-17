@@ -3850,7 +3850,17 @@ None.
 
 ## Last Completed Session
 
-**FB-SURVEY-DELIVERY-001 SDV-S4** — Micro-Survey Priority Fix + Merch Integration ✅
+**FB-SURVEY-DELIVERY-001 SDV-S5** — Email Delivery Edge Function ✅
+- v10.25→v10.26
+- **supabase/functions/send-survey-invite/index.ts (NEW):** 3 actions: `send_email` (query eligible users from profiles, frequency cap via notification_log, completion check via feedback, survey_links token generation 6-char/24h expiry, Resend HTML email with credit badge + CTA, 100ms inter-send throttle, 2-min wall-time abort), `send_sms` (SDV-S6 stub, returns 501), `status` (active campaigns + 7d send count). Email template: logo, title, description, credit badge #22c55e, estimated time, Take Survey button, notification preferences link. Subject lines per spec §3.3 (NPS/Periodic/Ghost patterns). Short URL `/s/{token}` with fallback to direct `/survey?src=email`. PostHog `survey_email_sent`. Error response includes sent/skipped/failed/errors/elapsed_ms counts.
+- **supabase/migrations/v10.25-fb-sdv-s5-survey-cron.sql:** pg_cron `survey-nps-monthly` (0 15 1 * * = 1st of month 10am ET), `survey-periodic-biweekly` (0 15 * * 2 = Tuesdays 10am ET). ON CONFLICT DO UPDATE for idempotency.
+- **api-gateway:** Routes #139 (send-survey-invite) + #140 (resolve-survey-link pre-registered for SDV-S6). Total: 140 routes.
+- **Tests:** 46 validation tests (tests/sdv-s5-email-delivery.test.js) — all passing.
+- **Pending manual steps (Marston):**
+  - `supabase db push` (migration v10.25-fb-sdv-s5-survey-cron.sql)
+  - `SUPABASE_ACCESS_TOKEN=<token> npx supabase functions deploy send-survey-invite api-gateway --project-ref qojhagupdnbtomfoxnsf`
+
+**Previous: FB-SURVEY-DELIVERY-001 SDV-S4** — Micro-Survey Priority Fix + Merch Integration ✅
 - v10.24→v10.25
 - **micro-surveys.js:** `FLUSH_DELAY_MS` changed from 500ms to 2000ms (2s debounce per spec). 3 bare `catch {}` blocks replaced with `console.warn` (sessionStorage read/write, session parse). Priority queue logic unchanged — already sorts by `PRIORITY[version]` descending, picks winner. SDV-S4 comment added noting future campaign table lookup.
 - **js/app.js merch loader:** Added `survey_cta` content_type handler inside existing merch card IIFE. When `c.content_type === 'survey_cta'`: (1) extracts survey_version from `c.survey_url` via regex, (2) checks `feedback` table for existing completion — hides card if completed, (3) renders credit badge (#22c55e) when `c.credit_amount > 0`, (4) overrides CTA to navigate to `c.survey_url + '&src=merch'`, (5) fires `survey_merch_cta_shown` PostHog (survey_version, placement_id, credit_amount) on render, (6) fires `survey_merch_cta_clicked` PostHog on click. Completion check is non-fatal.
@@ -4162,25 +4172,27 @@ Deliverables:
 
 ## Next Session
 
-**FB-SURVEY-DELIVERY-001 SDV-S5** — Email Delivery Edge Function
+**FB-SURVEY-DELIVERY-001 SDV-S6** — SMS Delivery + Short URL Resolution
 
 **Entry Gate:**
-- SDV-S4 complete: all in-dashboard delivery channels operational ✅
-- Resend API key confirmed in Supabase Vault
-- pg_cron extension enabled on Supabase project
+- SDV-S5 complete: email delivery operational ✅
+- Open Question #5: Vonage 10DLC campaign registered and approved
+- Open Question #2: /s/{token} routing decided (Vercel rewrite)
+- Vonage API credentials in Supabase Vault
 
 **Scope:**
-- Build send-survey-invite EF: query eligible users, frequency cap check, survey_links token generation (6-char, 24h expiry for email), Resend dispatch, notification_log insert
-- pg_cron schedules: NPS monthly 1st at 10am ET, Periodic bi-weekly Tuesday 10am ET
-- Rate limiting: 100ms between sends, 2-minute wall-time abort
-- PostHog: survey_email_sent
+- Extend send-survey-invite EF with SMS channel (Vonage dispatch, phone_verified gate, 30-day cap, quiet hours 10pm-7am user TZ, 160-char template, $10/day budget alert)
+- Build resolve-survey-link EF (token lookup, expiry validation, used_at marking, auth session, redirect)
+- Vercel rewrite /s/:token → resolve-survey-link EF
+- Vonage STOP webhook handler for opt-out sync
+- PostHog: survey_sms_sent, survey_sms_clicked
 
 **Exit Gate:**
-- send-survey-invite EF deployed and invocable
-- pg_cron schedules created
-- Test email dispatched via Resend
-- notification_log entry created
-- All SDV-S5 tests passing
+- SMS dispatch verified via Vonage test
+- Short URL resolution verified end-to-end
+- Vercel rewrite operational
+- STOP webhook syncing opt-out
+- All SDV-S6 tests passing
 - Three-file close
 
 
@@ -4212,7 +4224,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v10.25`** | **FB-SURVEY-DELIVERY-001 SDV-S4: Micro-survey 2s debounce + merch survey_cta.** |
+| **Product (BJ_VERSION)** | **`v10.26`** | **FB-SURVEY-DELIVERY-001 SDV-S5: Email delivery EF + pg_cron.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
