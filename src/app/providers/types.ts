@@ -290,6 +290,33 @@ export interface NotificationProvider {
 }
 
 /**
+ * InterviewPrepProvider — question bank, practice sessions, simulation.
+ */
+export interface InterviewPrepProvider {
+  getQuestions(filters?: InterviewQuestionFilters): Promise<InterviewQuestion[]>;
+  getClusterMeta(): Promise<InterviewClusterMeta>;
+  getBookmarks(): Promise<string[]>;
+  toggleBookmark(questionId: string): Promise<void>;
+  getSessions(): Promise<InterviewSession[]>;
+  getSession(sessionId: string): Promise<InterviewSession | null>;
+  startSimulation(params: { questionIds: string[]; jobContext?: string }): Promise<InterviewSession>;
+  sendSimulationMessage(sessionId: string, message: string, history: SimulationMessage[]): Promise<SimulationMessage>;
+  endSimulation(sessionId: string, history: SimulationMessage[]): Promise<InterviewScorecard>;
+}
+
+/**
+ * DashboardNotificationProvider — user-facing notification center.
+ */
+export interface DashboardNotificationProvider {
+  getNotifications(limit?: number): Promise<UserNotification[]>;
+  markRead(notificationId: string): Promise<void>;
+  markAllRead(): Promise<void>;
+  getUnreadCount(): Promise<number>;
+  getPreferences(): Promise<NotificationPref | null>;
+  updatePreferences(prefs: Partial<NotificationPref>): Promise<void>;
+}
+
+/**
  * Extended DataProviders — includes all domain providers.
  */
 export interface ExtendedDataProviders extends DataProviders {
@@ -303,6 +330,8 @@ export interface ExtendedDataProviders extends DataProviders {
   referrals: ReferralProvider;
   admin: AdminProvider;
   notifications: NotificationProvider;
+  interviewPrep: InterviewPrepProvider;
+  dashboardNotifications: DashboardNotificationProvider;
 }
 
 // ── Domain Types for Extended Providers ───────────────────
@@ -432,4 +461,77 @@ export interface CampaignItem {
   name: string;
   priority: number;
   status?: string;
+}
+
+// ── Interview Prep Domain Types ─────────────────────────
+
+export interface InterviewQuestion {
+  id: string;
+  question: string;
+  category: 'behavioral' | 'technical' | 'situational' | 'case_study';
+  difficulty: 'standard' | 'advanced';
+  role_cluster?: string;
+  department?: string;
+  level?: string;
+  tips?: string;
+  sample_answer?: string;
+  created_at?: string;
+}
+
+export interface InterviewQuestionFilters {
+  category?: string;
+  difficulty?: string;
+  role?: string;
+  department?: string;
+  level?: string;
+  search?: string;
+  bookmarked?: boolean;
+}
+
+export interface InterviewClusterMeta {
+  roles: string[];
+  departments: string[];
+  levels: string[];
+}
+
+export interface InterviewSession {
+  id: string;
+  user_id: string;
+  status: 'active' | 'completed' | 'cancelled';
+  question_ids: string[];
+  job_context?: string;
+  scorecard?: InterviewScorecard;
+  created_at: string;
+  completed_at?: string;
+}
+
+export interface SimulationMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp?: string;
+}
+
+export interface InterviewScorecard {
+  overall_score: number;
+  categories: Array<{
+    name: string;
+    score: number;
+    feedback: string;
+  }>;
+  strengths: string[];
+  improvements: string[];
+  summary: string;
+}
+
+// ── User Notification Types ─────────────────────────────
+
+export interface UserNotification {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  body: string;
+  read: boolean;
+  action_url?: string;
+  created_at: string;
 }

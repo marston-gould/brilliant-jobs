@@ -70,5 +70,7 @@ export function useIntegrationsProvider() { return useProviders().integrations; 
 export function useReferralsProvider() { return useProviders().referrals; }
 export function useAdminProvider() { return useProviders().admin; }
 export function useNotificationsProvider() { return useProviders().notifications; }
+export function useInterviewPrepProvider() { return useProviders().interviewPrep; }
+export function useDashboardNotificationsProvider() { return useProviders().dashboardNotifications; }
 
 export default DataProvider;

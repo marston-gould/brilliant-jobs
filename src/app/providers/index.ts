@@ -9,7 +9,7 @@ export type {
   SearchProvider, JobProvider, UserProvider, PipelineProvider,
   ResumeProvider, ApplicationProvider, StatsProvider, BillingProvider,
   TuningProvider, ChatProvider, IntegrationProvider, ReferralProvider,
-  AdminProvider, NotificationProvider,
+  AdminProvider, NotificationProvider, InterviewPrepProvider, DashboardNotificationProvider,
   DataProviders, ExtendedDataProviders,
 } from './types';
 export { ProviderError } from './types';
@@ -23,6 +23,7 @@ export {
   useBillingProvider, useTuningProvider, useChatProvider,
   useIntegrationsProvider, useReferralsProvider,
   useAdminProvider, useNotificationsProvider,
+  useInterviewPrepProvider, useDashboardNotificationsProvider,
 } from './DataProvider';
 
 // Implementations (for direct use or DI)
@@ -34,5 +35,6 @@ export {
   SupabaseTuningProvider, SupabaseChatProvider,
   SupabaseIntegrationProvider, SupabaseReferralProvider,
   SupabaseAdminProvider, SupabaseNotificationProvider,
+  SupabaseInterviewPrepProvider, SupabaseDashboardNotificationProvider,
   createSupabaseProviders, createExtendedSupabaseProviders,
 } from './supabase';

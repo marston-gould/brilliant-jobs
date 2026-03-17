@@ -158,9 +158,9 @@ export class SupabaseUserProvider implements UserProvider {
     const { data: { user }, error } = await sb.auth.getUser();
     if (error || !user) return null;
 
-    // Fetch profile from user_profiles table
+    // Fetch profile from profiles table
     const { data: profile } = await sb
-      .from('user_profiles')
+      .from('profiles')
       .select('*')
       .eq('id', user.id)
       .maybeSingle();
@@ -182,7 +182,7 @@ export class SupabaseUserProvider implements UserProvider {
     if (!user) throw new ProviderError('Not authenticated', 'AUTH_REQUIRED', 401);
 
     const { error } = await sb
-      .from('user_profiles')
+      .from('profiles')
       .update({ preferences: prefs })
       .eq('id', user.id);
     if (error) throw new ProviderError(error.message, 'PREFS_UPDATE_FAILED', undefined, error);
@@ -273,7 +273,10 @@ export function createSupabaseProviders(): DataProviders {
 import type {
   ResumeProvider, ApplicationProvider, StatsProvider, BillingProvider,
   TuningProvider, ChatProvider, IntegrationProvider, ReferralProvider,
-  AdminProvider, NotificationProvider, ExtendedDataProviders, ChatMessage,
+  AdminProvider, NotificationProvider, InterviewPrepProvider, DashboardNotificationProvider,
+  ExtendedDataProviders, ChatMessage,
+  InterviewQuestion, InterviewQuestionFilters, InterviewClusterMeta,
+  InterviewSession, SimulationMessage, InterviewScorecard, UserNotification,
 } from './types';
 import { safeReadLS, safeWriteLS, callGateway } from '@lib/supabase';
 
@@ -346,13 +349,34 @@ export class SupabaseApplicationProvider implements ApplicationProvider {
 export class SupabaseStatsProvider implements StatsProvider {
   async getJobCounts() {
     const sb = getSupabase();
-    const { data } = await sb.from('mv_job_feed_counts').select('*').limit(1).single();
-    return data;
+    // Try materialized view first, fallback to direct count
+    try {
+      const { data, error } = await sb.from('mv_job_feed_counts').select('*').limit(1).single();
+      if (!error && data) return data;
+    } catch { /* view may not exist */ }
+    // Fallback: direct count from ats_jobs
+    const { count: total } = await sb.from('ats_jobs').select('*', { count: 'exact', head: true });
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+    const { count: newToday } = await sb.from('ats_jobs').select('*', { count: 'exact', head: true }).gte('scraped_at', todayStart.toISOString());
+    const { data: companiesData } = await sb.from('ats_jobs').select('company_name').limit(10000);
+    const uniqueCompanies = new Set((companiesData || []).map((r: { company_name: string }) => r.company_name)).size;
+    return { total_open: total || 0, new_today: newToday || 0, total_companies: uniqueCompanies };
   }
   async getSourceBreakdown() {
     const sb = getSupabase();
-    const { data } = await sb.from('mv_source_breakdown').select('*');
-    return data || [];
+    // Try materialized view first, fallback to RPC or direct query
+    try {
+      const { data, error } = await sb.from('mv_source_breakdown').select('*');
+      if (!error && data?.length) return data;
+    } catch { /* view may not exist */ }
+    // Fallback: group by source via RPC or raw query
+    const { data } = await sb.rpc('get_source_breakdown').select('*');
+    if (data?.length) return data;
+    // Last resort: fetch sources and count client-side (not ideal but works)
+    const { data: jobs } = await sb.from('ats_jobs').select('source').limit(10000);
+    const counts: Record<string, number> = {};
+    (jobs || []).forEach((j: { source: string }) => { counts[j.source] = (counts[j.source] || 0) + 1; });
+    return Object.entries(counts).map(([source_name, job_count]) => ({ source_name, job_count }));
   }
 }
 
@@ -395,7 +419,51 @@ export class SupabaseTuningProvider implements TuningProvider {
 
 export class SupabaseChatProvider implements ChatProvider {
   async getHistory() { return safeReadLS<any[]>('bj_chat_history', []); }
-  async sendMessage(_text: string): Promise<ChatMessage> { return { role: 'assistant', content: '' }; /* TODO: callGateway('chat-job-search') */ }
+  async sendMessage(text: string): Promise<ChatMessage> {
+    // Get existing history for context
+    const history = safeReadLS<ChatMessage[]>('bj_chat_history', []);
+    const userMsg: ChatMessage = { role: 'user', content: text, timestamp: new Date().toISOString() };
+    history.push(userMsg);
+
+    try {
+      const sessionId = localStorage.getItem('bj_chat_session') || crypto.randomUUID();
+      localStorage.setItem('bj_chat_session', sessionId);
+      const mode = localStorage.getItem('bj_search_mode') || 'chat';
+      const derivedFilters = JSON.parse(localStorage.getItem('bj_chat_derived_filters') || '{}');
+
+      const result = await callGateway<{ reply: string; filters?: Record<string, any> }>('chat-job-search', {
+        message: text,
+        session_id: sessionId,
+        mode,
+        filters: derivedFilters,
+        history: history.slice(-10).map(m => ({ role: m.role, content: m.content })),
+      }, { timeout: 30000 });
+
+      const assistantMsg: ChatMessage = {
+        role: 'assistant',
+        content: result?.reply || 'Sorry, I couldn\'t process that request.',
+        timestamp: new Date().toISOString(),
+      };
+      history.push(assistantMsg);
+      safeWriteLS('bj_chat_history', history);
+
+      // If the response includes derived filters, store them
+      if (result?.filters) {
+        this.applyFilters(result.filters);
+      }
+
+      return assistantMsg;
+    } catch (err) {
+      const errorMsg: ChatMessage = {
+        role: 'assistant',
+        content: 'Sorry, something went wrong. Please try again.',
+        timestamp: new Date().toISOString(),
+      };
+      history.push(errorMsg);
+      safeWriteLS('bj_chat_history', history);
+      return errorMsg;
+    }
+  }
   async clearSession() { try { localStorage.removeItem('bj_chat_history'); localStorage.removeItem('bj_chat_session'); } catch {} }
   async setMode(mode: string) { try { localStorage.setItem('bj_search_mode', mode); } catch {} }
   async applyFilters(filters: Record<string, any>) {
@@ -407,12 +475,12 @@ export class SupabaseChatProvider implements ChatProvider {
 }
 
 export class SupabaseIntegrationProvider implements IntegrationProvider {
-  async getGDriveFiles() { return []; /* TODO */ }
-  async connectGDrive() { /* TODO */ }
-  async disconnectGDrive() { /* TODO */ }
-  async addGDriveFile(_fileId: string) { /* TODO */ }
-  async unlinkGDriveFile(_fileId: string) { /* TODO */ }
-  async importGDriveAsResume(_fileId: string) { /* TODO */ }
+  async getGDriveFiles() { return []; /* GDrive integration not yet available */ }
+  async connectGDrive() { throw new ProviderError('Google Drive integration is not yet available. Coming soon!', 'GDRIVE_NOT_AVAILABLE'); }
+  async disconnectGDrive() { throw new ProviderError('Google Drive integration is not yet available.', 'GDRIVE_NOT_AVAILABLE'); }
+  async addGDriveFile(_fileId: string) { throw new ProviderError('Google Drive integration is not yet available.', 'GDRIVE_NOT_AVAILABLE'); }
+  async unlinkGDriveFile(_fileId: string) { throw new ProviderError('Google Drive integration is not yet available.', 'GDRIVE_NOT_AVAILABLE'); }
+  async importGDriveAsResume(_fileId: string) { throw new ProviderError('Google Drive integration is not yet available.', 'GDRIVE_NOT_AVAILABLE'); }
 }
 
 export class SupabaseReferralProvider implements ReferralProvider {
@@ -447,6 +515,179 @@ export class SupabaseNotificationProvider implements NotificationProvider {
   async getStats24h() { const sb = getSupabase(); const since = new Date(Date.now() - 86400000).toISOString(); const { count: sent } = await sb.from('notification_log').select('*', { count: 'exact', head: true }).eq('status', 'sent').gte('created_at', since); const { count: failed } = await sb.from('notification_log').select('*', { count: 'exact', head: true }).eq('status', 'failed').gte('created_at', since); return { sent: sent || 0, failed: failed || 0 }; }
 }
 
+// ── Interview Prep Provider (Supabase + Edge Functions) ──
+
+export class SupabaseInterviewPrepProvider implements InterviewPrepProvider {
+  async getQuestions(filters?: InterviewQuestionFilters): Promise<InterviewQuestion[]> {
+    const sb = getSupabase();
+    let query = sb.from('interview_questions').select('*');
+
+    if (filters?.category) query = query.eq('category', filters.category);
+    if (filters?.difficulty) query = query.eq('difficulty', filters.difficulty);
+    if (filters?.role) query = query.eq('role_cluster', filters.role);
+    if (filters?.department) query = query.eq('department', filters.department);
+    if (filters?.level) query = query.eq('level', filters.level);
+    if (filters?.search) query = query.ilike('question', `%${filters.search}%`);
+
+    query = query.order('created_at', { ascending: false }).limit(200);
+    const { data, error } = await query;
+    if (error) throw new ProviderError(error.message, 'QUESTIONS_FETCH_FAILED', undefined, error);
+
+    let questions = (data || []) as InterviewQuestion[];
+
+    // Client-side bookmark filter (bookmarks stored in localStorage)
+    if (filters?.bookmarked) {
+      const bookmarks = safeReadLS<string[]>('bj_interview_bookmarks', []);
+      questions = questions.filter(q => bookmarks.includes(q.id));
+    }
+
+    return questions;
+  }
+
+  async getClusterMeta(): Promise<InterviewClusterMeta> {
+    const sb = getSupabase();
+    const { data } = await sb.from('interview_questions').select('role_cluster, department, level');
+    const roles = new Set<string>();
+    const departments = new Set<string>();
+    const levels = new Set<string>();
+    (data || []).forEach((q: Record<string, string | null>) => {
+      if (q.role_cluster) roles.add(q.role_cluster);
+      if (q.department) departments.add(q.department);
+      if (q.level) levels.add(q.level);
+    });
+    return {
+      roles: Array.from(roles).sort(),
+      departments: Array.from(departments).sort(),
+      levels: Array.from(levels).sort(),
+    };
+  }
+
+  async getBookmarks(): Promise<string[]> {
+    return safeReadLS<string[]>('bj_interview_bookmarks', []);
+  }
+
+  async toggleBookmark(questionId: string): Promise<void> {
+    const bookmarks = safeReadLS<string[]>('bj_interview_bookmarks', []);
+    const idx = bookmarks.indexOf(questionId);
+    if (idx >= 0) {
+      bookmarks.splice(idx, 1);
+    } else {
+      bookmarks.push(questionId);
+    }
+    safeWriteLS('bj_interview_bookmarks', bookmarks);
+  }
+
+  async getSessions(): Promise<InterviewSession[]> {
+    const sb = getSupabase();
+    const user = await getUser();
+    if (!user) return [];
+    const { data } = await sb
+      .from('interview_sessions')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    return (data || []) as InterviewSession[];
+  }
+
+  async getSession(sessionId: string): Promise<InterviewSession | null> {
+    const sb = getSupabase();
+    const { data } = await sb
+      .from('interview_sessions')
+      .select('*')
+      .eq('id', sessionId)
+      .maybeSingle();
+    return data as InterviewSession | null;
+  }
+
+  async startSimulation(params: { questionIds: string[]; jobContext?: string }): Promise<InterviewSession> {
+    const result = await callGateway<InterviewSession>('interview-simulate', {
+      action: 'start',
+      question_ids: params.questionIds,
+      job_context: params.jobContext,
+    }, { timeout: 15000 });
+    return result;
+  }
+
+  async sendSimulationMessage(sessionId: string, message: string, history: SimulationMessage[]): Promise<SimulationMessage> {
+    const result = await callGateway<{ message: SimulationMessage }>('interview-simulate', {
+      action: 'respond',
+      session_id: sessionId,
+      message,
+      history,
+    }, { timeout: 30000 });
+    return result.message;
+  }
+
+  async endSimulation(sessionId: string, history: SimulationMessage[]): Promise<InterviewScorecard> {
+    const result = await callGateway<{ scorecard: InterviewScorecard }>('interview-simulate', {
+      action: 'end',
+      session_id: sessionId,
+      history,
+    }, { timeout: 30000 });
+    return result.scorecard;
+  }
+}
+
+// ── Dashboard Notification Provider (user-facing) ────────
+
+export class SupabaseDashboardNotificationProvider implements DashboardNotificationProvider {
+  async getNotifications(limit = 50): Promise<UserNotification[]> {
+    const sb = getSupabase();
+    const user = await getUser();
+    if (!user) return [];
+    const { data } = await sb
+      .from('notification_log')
+      .select('id, user_id, type, title:subject, body:message, read, action_url, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    return (data || []) as unknown as UserNotification[];
+  }
+
+  async markRead(notificationId: string): Promise<void> {
+    const sb = getSupabase();
+    await sb.from('notification_log').update({ read: true }).eq('id', notificationId);
+  }
+
+  async markAllRead(): Promise<void> {
+    const sb = getSupabase();
+    const user = await getUser();
+    if (!user) return;
+    await sb.from('notification_log').update({ read: true }).eq('user_id', user.id).eq('read', false);
+  }
+
+  async getUnreadCount(): Promise<number> {
+    const sb = getSupabase();
+    const user = await getUser();
+    if (!user) return 0;
+    const { count } = await sb
+      .from('notification_log')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('read', false);
+    return count || 0;
+  }
+
+  async getPreferences(): Promise<import('./types').NotificationPref | null> {
+    const user = await getUser();
+    if (!user) return null;
+    const sb = getSupabase();
+    const { data } = await sb.from('notification_preferences').select('*').eq('user_id', user.id).single();
+    return data;
+  }
+
+  async updatePreferences(prefs: Partial<import('./types').NotificationPref>): Promise<void> {
+    const user = await getUser();
+    if (!user) throw new ProviderError('Not authenticated', 'AUTH_REQUIRED', 401);
+    const sb = getSupabase();
+    const { error } = await sb
+      .from('notification_preferences')
+      .upsert({ user_id: user.id, ...prefs });
+    if (error) throw new ProviderError(error.message, 'NOTIF_PREFS_UPDATE_FAILED', undefined, error);
+  }
+}
+
 // ── Extended Factory ──────────────────────────────────────
 
 export function createExtendedSupabaseProviders(): ExtendedDataProviders {
@@ -465,5 +706,7 @@ export function createExtendedSupabaseProviders(): ExtendedDataProviders {
     referrals: new SupabaseReferralProvider(),
     admin: new SupabaseAdminProvider(),
     notifications: new SupabaseNotificationProvider(),
+    interviewPrep: new SupabaseInterviewPrepProvider(),
+    dashboardNotifications: new SupabaseDashboardNotificationProvider(),
   };
 }

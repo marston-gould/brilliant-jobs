@@ -35,6 +35,8 @@ const SettingsPage = lazy(() => import('@app/pages/dashboard/settings/SettingsPa
 const IntegrationsPage = lazy(() => import('@app/pages/dashboard/integrations/IntegrationsPage'));
 const ChatPage = lazy(() => import('@app/pages/dashboard/chat/ChatPage'));
 const ReferralsPage = lazy(() => import('@app/pages/dashboard/referrals/ReferralsPage'));
+const InterviewPrepPage = lazy(() => import('@app/pages/dashboard/interview-prep/InterviewPrepPage'));
+const DashboardNotificationsPage = lazy(() => import('@app/pages/dashboard/notifications/NotificationsPage'));
 
 // Admin pages (SA-017)
 const OverviewPage = lazy(() => import('@app/pages/admin/overview/OverviewPage'));
@@ -74,6 +76,8 @@ function SettingsPageRoute() { return <Suspense fallback={<Loader label="setting
 function IntegrationsPageRoute() { return <Suspense fallback={<Loader label="integrations" />}><IntegrationsPage /></Suspense>; }
 function ChatPageRoute() { return <Suspense fallback={<Loader label="chat" />}><ChatPage /></Suspense>; }
 function ReferralsPageRoute() { return <Suspense fallback={<Loader label="referrals" />}><ReferralsPage /></Suspense>; }
+function InterviewPrepPageRoute() { return <Suspense fallback={<Loader label="interview prep" />}><InterviewPrepPage /></Suspense>; }
+function DashboardNotificationsPageRoute() { return <Suspense fallback={<Loader label="notifications" />}><DashboardNotificationsPage /></Suspense>; }
 
 // Admin route wrappers
 function OverviewPageRoute() { return <Suspense fallback={<Loader label="overview" />}><OverviewPage /></Suspense>; }
@@ -111,6 +115,8 @@ export const routes: RouteObject[] = [
           { path: 'integrations', element: <IntegrationsPageRoute /> },
           { path: 'chat', element: <ChatPageRoute /> },
           { path: 'referrals', element: <ReferralsPageRoute /> },
+          { path: 'interview-prep', element: <InterviewPrepPageRoute /> },
+          { path: 'notifications', element: <DashboardNotificationsPageRoute /> },
 
           // ── Admin Routes (role-guarded) ──
           {
