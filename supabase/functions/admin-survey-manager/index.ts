@@ -260,6 +260,160 @@ async function handleDuplicate(id: string): Promise<Response> {
   return json({ campaign: created }, 201);
 }
 
+// ─── SVM-S4: Analytics ────────────────────────────────────────────────────────
+async function handleAnalytics(surveyVersion: string): Promise<Response> {
+  // Total responses
+  const { count: totalCount } = await sb.from("feedback")
+    .select("id", { count: "exact", head: true })
+    .eq("survey_version", surveyVersion);
+
+  // 7d and 30d counts
+  const now = Date.now();
+  const { count: count7d } = await sb.from("feedback")
+    .select("id", { count: "exact", head: true })
+    .eq("survey_version", surveyVersion)
+    .gte("created_at", new Date(now - 7 * 86400000).toISOString());
+  const { count: count30d } = await sb.from("feedback")
+    .select("id", { count: "exact", head: true })
+    .eq("survey_version", surveyVersion)
+    .gte("created_at", new Date(now - 30 * 86400000).toISOString());
+
+  // Credits granted
+  const { data: creditData } = await sb.from("credit_transactions")
+    .select("amount")
+    .eq("source", "survey_reward")
+    .eq("feature", surveyVersion);
+  const totalCredits = (creditData || []).reduce((s: number, r: { amount: number }) => s + (r.amount || 0), 0);
+
+  // Channel breakdown (from feedback.metadata or delivery src)
+  const { data: responses } = await sb.from("feedback")
+    .select("answers,type,created_at")
+    .eq("survey_version", surveyVersion)
+    .order("created_at", { ascending: false })
+    .limit(500);
+
+  // Notification log for channel attribution
+  const { data: notifLogs } = await sb.from("notification_log")
+    .select("channel")
+    .eq("notification_type", "survey_invite")
+    .limit(1000);
+  const channelCounts: Record<string, number> = {};
+  (notifLogs || []).forEach((n: { channel: string }) => {
+    channelCounts[n.channel] = (channelCounts[n.channel] || 0) + 1;
+  });
+
+  return json({
+    survey_version: surveyVersion,
+    total: totalCount || 0,
+    last_7d: count7d || 0,
+    last_30d: count30d || 0,
+    total_credits: totalCredits,
+    avg_credits: (totalCount && totalCount > 0) ? Math.round(totalCredits / totalCount * 10) / 10 : 0,
+    channel_breakdown: channelCounts,
+    response_count: (responses || []).length,
+  });
+}
+
+// ─── SVM-S4: Responses ───────────────────────────────────────────────────────
+async function handleResponses(surveyVersion: string, page: number, pageSize: number): Promise<Response> {
+  const offset = page * pageSize;
+  const { data, error, count } = await sb.from("feedback")
+    .select("id,user_id,survey_version,type,answers,created_at", { count: "exact" })
+    .eq("survey_version", surveyVersion)
+    .order("created_at", { ascending: false })
+    .range(offset, offset + pageSize - 1);
+
+  if (error) return json({ error: "Failed to fetch responses", detail: error.message }, 500);
+
+  // Get user emails for display (anonymized: first 3 chars + ***)
+  const userIds = (data || []).map((r: { user_id: string }) => r.user_id);
+  let emailMap: Record<string, string> = {};
+  if (userIds.length > 0) {
+    const { data: profiles } = await sb.from("profiles")
+      .select("id,email")
+      .in("id", userIds);
+    (profiles || []).forEach((p: { id: string; email: string }) => {
+      if (p.email) {
+        const at = p.email.indexOf("@");
+        emailMap[p.id] = p.email.substring(0, Math.min(3, at)) + "***" + p.email.substring(at);
+      }
+    });
+  }
+
+  // Get credit grants
+  let creditMap: Record<string, number> = {};
+  if (userIds.length > 0) {
+    const { data: credits } = await sb.from("credit_transactions")
+      .select("user_id,amount")
+      .eq("source", "survey_reward")
+      .eq("feature", surveyVersion)
+      .in("user_id", userIds);
+    (credits || []).forEach((c: { user_id: string; amount: number }) => {
+      creditMap[c.user_id] = c.amount;
+    });
+  }
+
+  const enriched = (data || []).map((r: Record<string, unknown>) => ({
+    ...r,
+    email_anon: emailMap[r.user_id as string] || "unknown",
+    credits_earned: creditMap[r.user_id as string] || 0,
+  }));
+
+  return json({
+    survey_version: surveyVersion,
+    responses: enriched,
+    total: count || 0,
+    page,
+    page_size: pageSize,
+    has_more: (count || 0) > offset + pageSize,
+  });
+}
+
+// ─── SVM-S4: CSV Export ──────────────────────────────────────────────────────
+async function handleExportCsv(surveyVersion: string): Promise<Response> {
+  const { data } = await sb.from("feedback")
+    .select("id,user_id,survey_version,type,answers,created_at")
+    .eq("survey_version", surveyVersion)
+    .order("created_at", { ascending: false })
+    .limit(5000);
+
+  if (!data || data.length === 0) {
+    return new Response("No data", { status: 204, headers: CORS });
+  }
+
+  // Build CSV: flatten answers JSONB into columns
+  const allKeys = new Set<string>();
+  data.forEach((r: { answers: Record<string, unknown> }) => {
+    if (r.answers) Object.keys(r.answers).forEach(k => allKeys.add(k));
+  });
+  const answerCols = Array.from(allKeys).sort();
+
+  const header = ["id", "user_id", "survey_version", "type", "created_at", ...answerCols];
+  const rows = data.map((r: Record<string, unknown>) => {
+    const answers = (r.answers || {}) as Record<string, unknown>;
+    const base = [r.id, r.user_id, r.survey_version, r.type, r.created_at];
+    const ansVals = answerCols.map(k => {
+      const v = answers[k];
+      if (v === null || v === undefined) return "";
+      if (typeof v === "string") return v.replace(/"/g, '""');
+      if (typeof v === "object") return JSON.stringify(v).replace(/"/g, '""');
+      return String(v);
+    });
+    return [...base, ...ansVals].map(v => `"${v}"`).join(",");
+  });
+
+  const csv = header.map(h => `"${h}"`).join(",") + "\n" + rows.join("\n");
+
+  return new Response(csv, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/csv",
+      "Content-Disposition": `attachment; filename="survey_${surveyVersion}_export.csv"`,
+      ...CORS,
+    },
+  });
+}
+
 // ─── Router ───────────────────────────────────────────────────────────────────
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
@@ -290,6 +444,18 @@ serve(async (req: Request) => {
       case "duplicate":
         if (!body.id) return json({ error: "id required" }, 400);
         return await handleDuplicate(body.id as string);
+
+      case "analytics":
+        if (!body.survey_version) return json({ error: "survey_version required" }, 400);
+        return await handleAnalytics(body.survey_version as string);
+
+      case "responses":
+        if (!body.survey_version) return json({ error: "survey_version required" }, 400);
+        return await handleResponses(body.survey_version as string, (body.page as number) || 0, (body.page_size as number) || 20);
+
+      case "export_csv":
+        if (!body.survey_version) return json({ error: "survey_version required" }, 400);
+        return await handleExportCsv(body.survey_version as string);
 
       default:
         return json({ error: `Unknown action: ${action}` }, 400);

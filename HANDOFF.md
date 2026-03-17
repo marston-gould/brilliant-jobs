@@ -52,7 +52,22 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FB-SURVEY-ADMIN-001 SVM-S3** — Engine Rewiring ✅
+**FB-SURVEY-ADMIN-001 SVM-S4** — Analytics + Response Viewer + Close ✅ — **FB-SURVEY-ADMIN-001 COMPLETE**
+- v10.31→v10.32
+- **admin-survey-manager EF extended with 3 new actions:**
+  - `analytics`: total/7d/30d response counts, total+avg credits granted, channel breakdown from notification_log. Returns survey_version, total, last_7d, last_30d, total_credits, avg_credits, channel_breakdown.
+  - `responses`: paginated (page+page_size), anonymized emails (first 3 chars + ***), enriched with credits_earned per user. Returns responses array + has_more flag.
+  - `export_csv`: flattens answers JSONB into dynamic columns, builds full CSV with header row. Returns Content-Type text/csv with Content-Disposition attachment.
+- **js/admin-survey-manager.js extended:**
+  - Response count in campaign table is now clickable → drills into analytics view.
+  - Analytics view: 5 stat cards (Total Responses, Last 7 Days, Last 30 Days, Credits Granted, Avg Credits/Response). Channel breakdown table. Export CSV button. Back to campaigns button.
+  - Response viewer: paginated list with anonymized email, date, credits badge. Expand/collapse per response showing question ID + answer pairs. Load more button.
+  - CSV export: calls EF, creates Blob, triggers browser download, cleans up.
+- **EF deployed.** 9 total actions: list, get, create, update, delete, duplicate, analytics, responses, export_csv.
+- **Tests:** 35 tests (tests/svm-s4-analytics-close.test.js) — all passing.
+- **FB-SURVEY-ADMIN-001 COMPLETE** — 4 sessions, v10.29→v10.32, 165 tests, full admin CRUD + analytics.
+
+**Previous: FB-SURVEY-ADMIN-001 SVM-S3** — Engine Rewiring ✅
 - v10.30→v10.31
 - **survey-delivery.js:** Overlay eligible filter reads `placement_config.overlay.pages` — only evaluates on pages admin configured. Falls back to `channels` array if no placement_config. `matchesAudience()` rewritten: handles `type=all`, `type=time_cohort` (signup_after/signup_before date comparison), `type=behavioral` (plan, min_sessions, min_applications, days_since_signup_min). Legacy flat target_audience still works.
 - **survey.html:** `resolveVersionAsync()` fetches `questions` JSONB from survey_campaigns REST API when version param present. Falls back to hardcoded banks on failure. `init()` now called by async wrapper instead of directly.
@@ -4278,7 +4293,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v10.31`** | **FB-SURVEY-ADMIN-001 SVM-S3: Engine rewiring — admin creates = live.** |
+| **Product (BJ_VERSION)** | **`v10.32`** | **FB-SURVEY-ADMIN-001 COMPLETE: 4 sessions, 165 tests, full admin CRUD + analytics.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

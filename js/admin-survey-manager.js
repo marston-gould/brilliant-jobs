@@ -91,7 +91,7 @@
         + '<td style="padding:6px 8px;"><span style="font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;background:var(--accent-glow);color:var(--accent);">' + esc(c.survey_type) + '</span></td>'
         + '<td style="padding:6px 8px;text-align:center;">P' + (c.priority || '?') + '</td>'
         + '<td style="padding:6px 8px;">' + channelBadges + '</td>'
-        + '<td style="padding:6px 8px;text-align:center;">' + (c.response_count || 0) + '</td>'
+        + '<td style="padding:6px 8px;text-align:center;"><a href="#" onclick="event.preventDefault();window.svmShowAnalytics(\'' + _svmAttr(c.survey_version) + '\')" style="color:var(--accent);text-decoration:underline;cursor:pointer;">' + (c.response_count || 0) + '</a></td>'
         + '<td style="padding:6px 8px;text-align:center;">' + (c.credit_reward || 0) + '</td>'
         + '<td style="padding:6px 8px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + statusColor + ';margin-right:4px;"></span><span style="font-size:10px;">' + statusLabel + '</span></td>'
         + '<td style="padding:6px 8px;">'
@@ -548,5 +548,186 @@
     var d = document.createElement('div');
     d.textContent = str;
     return d.innerHTML;
+  }
+
+  // ─── SVM-S4: Analytics + Response Viewer ──────────────────────────────────
+
+  window.svmShowAnalytics = async function(surveyVersion) {
+    var container = document.getElementById('svm-table-wrap');
+    if (!container) return;
+    container.innerHTML = '<div class="u-text-faint" style="padding:16px 0;">Loading analytics...</div>';
+
+    try {
+      var sb = window.supabase || window._supabase;
+      if (!sb) throw new Error('Not connected');
+
+      // Fetch analytics
+      var res = await sb.functions.invoke('admin-survey-manager', {
+        body: { action: 'analytics', survey_version: surveyVersion }
+      });
+      if (res.error) throw res.error;
+      var data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+
+      var html = '<div style="margin-bottom:12px;">'
+        + '<button class="btn btn-sm" style="font-size:10px;" onclick="window.svmBackToList()">\u2190 Back to campaigns</button>'
+        + '<span style="font-size:14px;font-weight:600;margin-left:12px;">' + _svmEsc(surveyVersion) + ' — Analytics</span>'
+        + '</div>';
+
+      // Stats cards
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px;">';
+      html += _svmStatCard('Total Responses', data.total);
+      html += _svmStatCard('Last 7 Days', data.last_7d);
+      html += _svmStatCard('Last 30 Days', data.last_30d);
+      html += _svmStatCard('Credits Granted', data.total_credits);
+      html += _svmStatCard('Avg Credits/Response', data.avg_credits);
+      html += '</div>';
+
+      // Channel breakdown
+      if (data.channel_breakdown && Object.keys(data.channel_breakdown).length > 0) {
+        html += '<div style="margin-bottom:16px;padding:12px;border:1px solid var(--border);border-radius:8px;">'
+          + '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">Channel Breakdown (Invites Sent)</div>';
+        var channels = data.channel_breakdown;
+        for (var ch in channels) {
+          html += '<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;">'
+            + '<span>' + _svmEsc(ch) + '</span><span style="font-weight:600;">' + channels[ch] + '</span></div>';
+        }
+        html += '</div>';
+      }
+
+      // Export button
+      html += '<div style="margin-bottom:12px;">'
+        + '<button class="btn btn-sm" style="font-size:10px;" onclick="window.svmExportCsv(\'' + _svmAttr(surveyVersion) + '\')">Export CSV</button>'
+        + '</div>';
+
+      // Response viewer
+      html += '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">Responses</div>';
+      html += '<div id="svm-responses-wrap"><div class="u-text-faint" style="padding:8px 0;">Loading...</div></div>';
+      html += '<div id="svm-responses-more" style="display:none;text-align:center;padding:8px;">'
+        + '<button class="btn btn-secondary btn-sm" style="font-size:10px;" onclick="window.svmLoadMoreResponses()">Load more</button></div>';
+
+      container.innerHTML = html;
+
+      // Load first page of responses
+      window._svmResponseVersion = surveyVersion;
+      window._svmResponsePage = 0;
+      svmLoadResponses(surveyVersion, 0, false);
+
+    } catch (e) {
+      reportError('admin_survey_manager', e, { action: 'analytics', survey_version: surveyVersion });
+      container.innerHTML = '<div class="u-text-faint" style="padding:16px 0;">Failed to load analytics.</div>';
+    }
+  };
+
+  async function svmLoadResponses(surveyVersion, page, append) {
+    var wrap = document.getElementById('svm-responses-wrap');
+    if (!wrap) return;
+    if (!append) wrap.innerHTML = '<div class="u-text-faint" style="padding:8px 0;">Loading...</div>';
+
+    try {
+      var sb = window.supabase || window._supabase;
+      var res = await sb.functions.invoke('admin-survey-manager', {
+        body: { action: 'responses', survey_version: surveyVersion, page: page, page_size: 20 }
+      });
+      if (res.error) throw res.error;
+      var data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+
+      var responses = data.responses || [];
+      if (responses.length === 0 && !append) {
+        wrap.innerHTML = '<div class="u-text-faint" style="font-size:11px;">No responses yet.</div>';
+        document.getElementById('svm-responses-more').style.display = 'none';
+        return;
+      }
+
+      var html = append ? '' : '';
+      for (var i = 0; i < responses.length; i++) {
+        var r = responses[i];
+        var date = r.created_at ? new Date(r.created_at).toLocaleDateString() + ' ' + new Date(r.created_at).toLocaleTimeString() : '';
+        var respId = 'svm-resp-' + r.id;
+
+        html += '<div style="padding:8px 10px;margin-bottom:4px;border:1px solid var(--border);border-radius:6px;cursor:pointer;" onclick="var el=document.getElementById(\'' + respId + '\');el.style.display=el.style.display===\'none\'?\'\':\'none\'">'
+          + '<div style="display:flex;justify-content:space-between;align-items:center;">'
+          + '<div style="display:flex;gap:8px;align-items:center;">'
+          + '<span style="font-size:10px;color:var(--text-dim);">' + _svmEsc(r.email_anon) + '</span>'
+          + '<span style="font-size:10px;">' + date + '</span>'
+          + '</div>'
+          + '<div style="display:flex;gap:6px;align-items:center;">';
+        if (r.credits_earned > 0) {
+          html += '<span style="font-size:9px;color:#22c55e;font-weight:600;">+' + r.credits_earned + ' cr</span>';
+        }
+        html += '<span class="u-text-faint" style="font-size:9px;">\u25BC</span></div></div>';
+
+        // Expandable detail
+        html += '<div id="' + respId + '" style="display:none;margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">';
+        if (r.answers && typeof r.answers === 'object') {
+          var keys = Object.keys(r.answers);
+          for (var k = 0; k < keys.length; k++) {
+            var qId = keys[k];
+            var answer = r.answers[qId];
+            html += '<div style="margin-bottom:6px;">'
+              + '<div style="font-size:10px;font-weight:600;color:var(--text-dim);">' + _svmEsc(qId) + '</div>'
+              + '<div style="font-size:11px;">' + _svmEsc(typeof answer === 'object' ? JSON.stringify(answer) : String(answer)) + '</div>'
+              + '</div>';
+          }
+        }
+        html += '</div></div>';
+      }
+
+      if (append) {
+        wrap.insertAdjacentHTML('beforeend', html);
+      } else {
+        wrap.innerHTML = html;
+      }
+
+      // Show/hide load more
+      var moreBtn = document.getElementById('svm-responses-more');
+      if (moreBtn) moreBtn.style.display = data.has_more ? '' : 'none';
+
+    } catch (e) {
+      reportError('admin_survey_manager', e, { action: 'responses' });
+      if (!append) wrap.innerHTML = '<div class="u-text-faint">Failed to load responses.</div>';
+    }
+  }
+
+  window.svmLoadMoreResponses = function() {
+    window._svmResponsePage = (window._svmResponsePage || 0) + 1;
+    svmLoadResponses(window._svmResponseVersion, window._svmResponsePage, true);
+  };
+
+  window.svmBackToList = function() {
+    svmFetchCampaigns();
+  };
+
+  // ─── CSV Export ─────────────────────────────────────────────────────────────
+  window.svmExportCsv = async function(surveyVersion) {
+    try {
+      var sb = window.supabase || window._supabase;
+      if (!sb) throw new Error('Not connected');
+
+      var res = await sb.functions.invoke('admin-survey-manager', {
+        body: { action: 'export_csv', survey_version: surveyVersion }
+      });
+      if (res.error) throw res.error;
+
+      // Download the CSV
+      var csvText = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
+      var blob = new Blob([csvText], { type: 'text/csv' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'survey_' + surveyVersion + '_export.csv';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function() { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+    } catch (e) {
+      reportError('admin_survey_manager', e, { action: 'export_csv' });
+      alert('Export failed: ' + (e.message || e));
+    }
+  };
+
+  function _svmStatCard(label, value) {
+    return '<div style="padding:12px;border:1px solid var(--border);border-radius:8px;text-align:center;">'
+      + '<div style="font-size:20px;font-weight:700;">' + (value != null ? value : '—') + '</div>'
+      + '<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">' + _svmEsc(label) + '</div>'
+      + '</div>';
   }
 })();
