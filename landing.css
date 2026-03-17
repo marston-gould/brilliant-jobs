@@ -72,15 +72,6 @@
 .compare-table td:nth-child(3) { color: var(--text); font-weight: 500; }
 
 /* ======================== FILTER PREVIEW ======================== */
-/* ─── Ghost Button (outside hero) ─── */
-.preview-section .btn-ghost {
-  background: transparent; border: 1.5px solid var(--border);
-  color: var(--text-dim); padding: 12px 28px; border-radius: 10px;
-  font-weight: 600; font-size: 15px; cursor: pointer;
-  transition: all 0.15s; font-family: var(--sans);
-}
-.preview-section .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
-
 /* ─── Interactive Preview ─── */
 .preview-section {
   background: var(--bg-card); border: 1px solid var(--border);
@@ -342,12 +333,9 @@ html:not([data-segment]) .carousel .carousel-dots {
 /* CS-P1-008 (LS1-7): Tablet intermediate breakpoint */
 @media (max-width: 900px) {
   .hero { padding: 120px 28px 60px; }
-  .hero h1, .hero .hero-heading { font-size: clamp(30px, 4.5vw, 48px); }
-  .hero-sub { font-size: 16px; max-width: 480px; }
   .section { padding: 56px 24px; }
   .preview-input-row { flex-wrap: wrap; }
   .preview-input-row .preview-input { flex: 1 1 200px; }
-  .steps { grid-template-columns: 1fr 1fr; }
   .compare-table { font-size: 13px; }
 }
 
@@ -360,12 +348,10 @@ html:not([data-segment]) .carousel .carousel-dots {
   .preview-input-row { flex-direction: column; }
   .preview-cta { flex-direction: column; text-align: center; }
   .ghost-grid { grid-template-columns: 1fr; }
-  .steps { grid-template-columns: 1fr 1fr; gap: 20px; }
   .compare-table th, .compare-table td { padding: 10px 12px; font-size: 12px; }
   .compare-table td:first-child { width: 100px; }
 }
 @media (max-width: 480px) {
-  .steps { grid-template-columns: 1fr; }
   .pricing-grid { gap: 16px; }
 }
 
@@ -399,8 +385,7 @@ html:not([data-segment]) .carousel .carousel-dots {
 [data-segment="active"] #benefits,
 [data-segment="active"] #how-it-works,
 [data-segment="active"] #pricing,
-[data-segment="active"] .section,
-[data-segment="active"] .site-footer { display: none; }
+[data-segment="active"] .section { display: none; }
 
 /* Fallback: if no segment set yet (script hasn't run), show new variant */
 html:not([data-segment]) .segment-new { display: block; }
