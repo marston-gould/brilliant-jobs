@@ -69,22 +69,19 @@ jobs:
           npx tsc --noEmit
           echo "✅ TypeScript strict type-check passed"
 
-      - name: Reject new .js files in migrated directories
+      - name: Reject new .js files in js/ directory
         run: |
-          # CS-P1-015: Prevent new .js files from being added for migrated modules
-          MIGRATED_FILES="version globals sync fingerprint tier-gating lazy-loader api"
-          VIOLATIONS=""
-          for f in $MIGRATED_FILES; do
-            if git diff --name-only HEAD~1 2>/dev/null | grep -q "js/${f}.js$"; then
-              VIOLATIONS="$VIOLATIONS js/${f}.js"
-            fi
-          done
-          if [ -n "$VIOLATIONS" ]; then
-            echo "::error::New changes to migrated .js files detected:$VIOLATIONS"
-            echo "These files are auto-generated from .ts sources. Edit the .ts files instead."
+          # SPA-CUT v10.48: All 123 legacy JS files migrated to TypeScript.
+          # No .js files should exist in js/ (except vendor/ and auto-generated from .ts).
+          # This gate prevents accidental .js additions.
+          NEW_JS=$(git diff --name-only HEAD~1 2>/dev/null | grep '^js/.*\.js$' | grep -v 'vendor/' | grep -v '\.min\.js' || true)
+          if [ -n "$NEW_JS" ]; then
+            echo "::error::New .js files added to js/ directory:"
+            echo "$NEW_JS"
+            echo "All files in js/ must be .ts. Edit the .ts source — build.js compiles to .js automatically."
             exit 1
           fi
-          echo "✅ No direct edits to generated .js files"
+          echo "✅ No new .js files in js/"
 
       - name: SA-022 Extension TypeScript gate — no .js source files
         run: |
