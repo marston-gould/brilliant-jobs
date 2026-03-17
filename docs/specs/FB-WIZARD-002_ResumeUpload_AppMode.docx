@@ -1,0 +1,269 @@
+FB-WIZARD-002
+
+**Guided Wizard: Resume Upload + Application Mode Setup**
+
+Pod 1 Feature Brief | Roadmap: P12 | Ref: VERSION_METHODOLOGY.docx
+
+1. Problem Statement
+
+The guided intake wizard (FB-CHAT-002) walks users through 7 steps of
+search preferences but never asks them to upload a resume or choose an
+application mode. Users exit the wizard with filters populated but no
+resume attached and no mode selected. This means the setup gate
+(AF-002) blocks them the moment they try to apply, and the AI-powered
+filter onboarding promise (P12) is only partially delivered.
+
+Two new steps at the end of the wizard close both gaps:
+  - Step 8: Upload your resume
+  - Step 9: Choose your application mode
+
+2. Implementation Authority
+
++-----------------------------------------------------------------------+
+| **POD 2 MUST NOT:**                                                   |
+|                                                                       |
+| -   Skip the resume upload step or make it mandatory                  |
+|     (it must be skippable but strongly encouraged)                    |
+|                                                                       |
+| -   Add mode options beyond the existing 6 from apply-workflow.js     |
+|                                                                       |
+| -   Call any AI endpoint from the wizard itself — resume parsing      |
+|     happens via existing EFs after upload completes                   |
+|                                                                       |
+| -   Change the existing 7 steps or their ordering                    |
+|                                                                       |
+| Any deviation requires written Pod 1 approval before implementation.  |
++-----------------------------------------------------------------------+
+
+3. Step 8: Resume Upload
+
+3.1 UI
+
+Conversational header: "Almost there! Upload your resume so we can
+match you to the right jobs automatically."
+
+Sub-text: "We'll extract your skills and experience to create
+personalized filters. PDF or Word accepted."
+
+Content area:
+  - Drag-and-drop upload zone (reuse pattern from Resumes tab)
+  - File picker button: "Choose file" (accepts .pdf, .doc, .docx)
+  - 5MB file size limit
+  - Upload progress indicator (spinner → green check on success)
+  - After upload: show resume name + "Uploaded ✓" confirmation
+  - Skip link: "Skip for now →" (bottom of step, subtle styling)
+
+3.2 On Upload
+
+1. Call existing addResume() flow from resumes.js:
+   - Upload file to Supabase Storage
+   - Create resume record
+   - Extract text via extractTextFromFile()
+   - Extract keywords via extractResumeKeywords()
+
+2. Auto-create a saved filter from extracted keywords:
+   - Take top 5-8 keywords from extraction
+   - Create a saved filter named "From my resume" (or resume filename)
+   - Populate whatPills with extracted keywords
+   - If location data found in resume text, populate wherePills
+   - If salary expectations found, populate payPills
+   - Save via commitSaveFilter()
+   - This filter becomes the user's first saved search
+
+3. Set as active resume:
+   - Mark this resume as the default for applications
+   - Write activeResumeId to apply settings
+
+3.3 On Skip
+
+- Set a flag: bj_wizard_resume_skipped = true (localStorage)
+- Proceed to Step 9
+- No resume created, no auto-filter generated
+- Get Started page will still show the resume upload prompt
+
+3.4 PostHog Events
+
+- wizard_resume_uploaded: { file_type, file_size_kb, keywords_extracted }
+- wizard_resume_skipped: { step: 8 }
+- wizard_auto_filter_created: { keyword_count, has_location, has_salary }
+
+4. Step 9: Application Mode
+
+4.1 UI
+
+Conversational header varies based on resume upload:
+  - If resume uploaded: "Great resume! Last step — how do you want to
+    apply to jobs?"
+  - If skipped: "One more thing — how do you want to apply to jobs?"
+
+Sub-text: "You can change this anytime in Settings."
+
+Content area: 6 mode cards (same visual pattern as Step 1 and Step 5
+option cards). Single-select. Cards:
+
+  1. Manual (default selected)
+     Label: "I'll apply myself"
+     Sub: "Review each job and apply on the company's site"
+     Icon: hand
+
+  2. Score-Gated
+     Label: "Score my resume first"
+     Sub: "See how well you match before applying"
+     Icon: bar-chart-3
+
+  3. Auto-Apply
+     Label: "Apply automatically"
+     Sub: "We submit applications for you"
+     Icon: zap
+
+  4. Auto + Score Gate
+     Label: "Auto-apply if score is high"
+     Sub: "Only auto-submit when your resume matches well"
+     Icon: shield-check
+
+  5. Auto Rewrite
+     Label: "Rewrite + apply"
+     Sub: "AI tailors your resume per job, then submits"
+     Icon: wand-2
+
+  6. Full Autopilot
+     Label: "Full autopilot"
+     Sub: "Rewrite and submit everything automatically"
+     Icon: rocket
+
+4.2 On Selection
+
+- Write mode to localStorage bj_apply_settings.default_apply_mode
+- Write to Supabase via syncApplySettingsToSupabase()
+- If score-gated mode selected, show inline threshold slider:
+  "Minimum score to apply: 75%" (range 30-95, default 75)
+  Write threshold to bj_apply_settings.default_score_threshold
+
+4.3 On Complete (Finish button)
+
+- Same flow as current wizard completion:
+  - Assemble prompt from all 9 steps
+  - Call chat-job-search EF
+  - Save as prompt with derived_filters
+- Additionally:
+  - Call checkAndSetSetupComplete() from apply-workflow.js
+  - If resume uploaded + mode selected: setup_complete = true
+  - User lands on job feed with filters populated, resume attached,
+    mode configured — ready to apply immediately
+
+4.4 PostHog Events
+
+- wizard_mode_selected: { mode, has_resume }
+- wizard_threshold_set: { threshold, mode }
+- wizard_completed_full: { steps_completed, has_resume, mode,
+    auto_filter_created, total_time_ms }
+
+5. Changes to Existing Wizard
+
+5.1 Step Count
+
+- _WIZ_TOTAL: 7 → 9
+- _WIZ_STEPS array: append two new entries:
+  { id: 8, title: 'Resume', required: false }
+  { id: 9, title: 'Apply Mode', required: false }
+
+5.2 Progress Bar
+
+- Progress bar segments update from 7 to 9 segments
+- Width per segment: 100/9 = ~11.1%
+
+5.3 Prompt Assembly
+
+- Step 8 (resume) does NOT contribute to the search prompt
+  (it creates a filter separately)
+- Step 9 (mode) does NOT contribute to the search prompt
+  (it configures apply settings separately)
+- _wizAssemblePrompt() only reads steps 1-7 as before
+
+5.4 Navigation
+
+- Step 7 "Next" button goes to Step 8 (was "Finish")
+- Step 8 "Next" goes to Step 9
+- Step 9 has "Finish" button (triggers prompt assembly + completion)
+- Back button from Step 8 goes to Step 7
+- Back button from Step 9 goes to Step 8
+
+6. Files Affected
+
+  File                         Changes
+  --------------------------   ------------------------------------------
+  js/wizard.js                 _WIZ_STEPS + 2 entries, _WIZ_TOTAL = 9,
+                               Step 8 render (upload zone), Step 9 render
+                               (mode cards), _wizHeader cases 8+9,
+                               progress bar width calc, navigation flow,
+                               completion handler extended
+
+  js/resumes.js                No changes — addResume() already exists
+                               and is called from wizard
+
+  js/apply-workflow.js         No changes — checkAndSetSetupComplete()
+                               and syncApplySettingsToSupabase() already
+                               exist
+
+  js/location.js               No changes — commitSaveFilter() already
+                               exists
+
+  dashboard.html               No changes expected (wizard panel already
+                               has dynamic step rendering)
+
+  js/version.js                Version bump
+
+  CHANGELOG.md                 Entry for FB-WIZARD-002
+
+7. Testing Checklist
+
+7.1 Resume Upload (Step 8)
+1. Upload zone renders with drag-and-drop + file picker
+2. PDF upload works — file stored, text extracted, keywords extracted
+3. DOCX upload works — same flow
+4. Auto-filter created with extracted keywords as What pills
+5. Resume set as active (activeResumeId written)
+6. Skip link advances to Step 9 without creating resume or filter
+7. 5MB limit enforced — oversized file shows error
+8. PostHog events fire: wizard_resume_uploaded or wizard_resume_skipped
+
+7.2 Application Mode (Step 9)
+9. 6 mode cards render with correct labels and icons
+10. Manual is default selected
+11. Selecting a mode writes to apply settings
+12. Score-gated modes show inline threshold slider
+13. Threshold value persists to apply settings
+14. PostHog wizard_mode_selected fires
+
+7.3 Completion
+15. Finish button triggers prompt assembly from steps 1-7
+16. Resume from step 8 is NOT included in prompt text
+17. Mode from step 9 is NOT included in prompt text
+18. checkAndSetSetupComplete() runs — setup_complete = true when
+    resume uploaded + mode selected
+19. User lands on feed with populated filters
+20. wizard_completed_full PostHog event fires with all properties
+
+7.4 Regression
+21. Skipping both step 8 and step 9 still completes wizard
+    (steps are not required)
+22. Existing 7-step flow unchanged — steps 1-7 behave identically
+23. Progress bar shows 9 segments
+24. Back navigation works through all 9 steps
+
+8. Deployment
+
+Standard pipeline: dev → staging → main → git tag → Vercel deploy.
+All HTML cache busters updated (?v= params).
+Version bump per VERSION_METHODOLOGY.docx.
+Roadmap P12 card updated on deploy.
+
+9. Session Estimate
+
+Single session. Both steps reuse existing infrastructure:
+  - Resume upload: addResume() + extractResumeKeywords() +
+    commitSaveFilter() all exist
+  - Mode selection: same card pattern as Steps 1/5, writes to
+    existing apply settings
+
+No new EFs. No new migrations. No new tables.
