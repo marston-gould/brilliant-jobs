@@ -15,14 +15,20 @@ export function AuthGuard() {
 
   useEffect(() => {
     let cancelled = false;
-    console.log('[AuthGuard] Starting auth check...');
-    userProvider.getCurrentUser().then((user) => {
-      console.log('[AuthGuard] getCurrentUser resolved:', user ? 'authenticated' : 'no user');
-      if (cancelled) return;
-      setStatus(user ? 'authenticated' : 'unauthenticated');
-    }).catch((err) => {
-      console.error('[AuthGuard] getCurrentUser error:', err);
-      if (!cancelled) setStatus('unauthenticated');
+
+    // Use Supabase getSession() first — reads localStorage, no network call.
+    // getUser() makes a network request that can hang if there's no session token.
+    import('@lib/supabase').then(({ supabase }) => {
+      supabase.auth.getSession().then(({ data }) => {
+        if (cancelled) return;
+        if (data?.session?.user) {
+          setStatus('authenticated');
+        } else {
+          setStatus('unauthenticated');
+        }
+      }).catch(() => {
+        if (!cancelled) setStatus('unauthenticated');
+      });
     });
 
     const unsub = userProvider.onAuthChange((user) => {
