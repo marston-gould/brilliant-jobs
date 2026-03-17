@@ -134,10 +134,10 @@ describe('FB-CARDS-001: Fix B — Pipeline Row Synergy', () => {
       expect(pipelineJs).toContain('Suspicious');
     });
 
-    it('renders ghost badge inline after title when ghost_report_count > 0', () => {
+    it('renders ghost badge inline after title when ghost score exists', () => {
       expect(pipelineJs).toContain('_plGhostBadge');
       expect(pipelineJs).toContain('_plGhostCount');
-      expect(pipelineJs).toContain('ghost_report_count');
+      expect(pipelineJs).toContain('_plGhostCache');
       expect(pipelineJs).toContain('x-circle');
       expect(pipelineJs).toContain('ghost');
     });
@@ -191,9 +191,9 @@ describe('FB-CARDS-001: Fix B — Pipeline Row Synergy', () => {
       expect(pipelineJs).toContain('salary_rate');
     });
 
-    it('includes ghost_report_count column', () => {
-      const selectLine = pipelineJs.match(/from\('ats_jobs'\)\.select\('.*ghost_report_count/);
-      expect(selectLine).toBeTruthy();
+    it('ghost data fetched from ghost_company_scores table', () => {
+      expect(pipelineJs).toContain('ghost_company_scores');
+      expect(pipelineJs).toContain('effective_count');
     });
   });
 });

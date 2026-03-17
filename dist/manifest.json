@@ -16,8 +16,8 @@
   },
   "pipeline": {
     "file": "dashboard-pipeline.min.js",
-    "hash": "b49fe32f",
-    "size": 75459
+    "hash": "8dab93ce",
+    "size": 76143
   },
   "tuning": {
     "file": "dashboard-tuning.min.js",
@@ -31,13 +31,13 @@
   },
   "full": {
     "file": "dashboard.min.js",
-    "hash": "f2486b85",
-    "size": 1306931
+    "hash": "ed99ee63",
+    "size": 1307615
   },
   "styles": {
     "file": "styles.css",
     "hash": "564c5982",
     "size": 128113
   },
-  "_buildHash": "16d28e14"
+  "_buildHash": "bed6485c"
 }

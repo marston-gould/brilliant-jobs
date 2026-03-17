@@ -1172,7 +1172,7 @@ async function renderPipeline() {
   for (let i = 0; i < allIds.length; i += batchSize) {
     const batch = allIds.slice(i, i + batchSize);
     try {
-      const data = await safeQuery(() => sb.from('ats_jobs').select('greenhouse_id, title, company_name, location, loc_display, status, closed_at, first_seen_at, content, salary_min, salary_max, salary_currency, salary_rate, ghost_report_count')
+      const data = await safeQuery(() => sb.from('ats_jobs').select('greenhouse_id, title, company_name, location, loc_display, status, closed_at, first_seen_at, content, salary_min, salary_max, salary_currency, salary_rate')
         .in('greenhouse_id', batch), { label: 'pipeline:ats_jobs', fallback: [] });
       if (data) allJobData = allJobData.concat(data);
     } catch (e) { reportError('pipeline', e); console.error('[BJ] Pipeline fetch error:', e); toastWarning('Some pipeline job details failed to load'); }
@@ -1190,17 +1190,33 @@ async function renderPipeline() {
   });
 
   // FB-CARDS-001 Fix B: Hydrate fraud score cache for pipeline jobs independently
-  // If Feed has already populated _fraudScoreCache, reuse. Otherwise fetch.
+  // Non-blocking: render pipeline first, inject badges after fetch completes
   var _plFraudCache = (typeof _fraudScoreCache !== 'undefined' && _fraudScoreCache) ? _fraudScoreCache : {};
   var _plFraudMissing = allIds.filter(function(id) { return !_plFraudCache[id]; });
   if (_plFraudMissing.length > 0) {
-    try {
-      for (var _fi = 0; _fi < _plFraudMissing.length; _fi += batchSize) {
-        var _fBatch = _plFraudMissing.slice(_fi, _fi + batchSize);
-        var _fData = await safeQuery(function() { return sb.from('job_fraud_scores').select('job_id, fraud_score, fraud_label, confidence').in('job_id', _fBatch); }, { label: 'pipeline:fraud_scores', fallback: [] });
-        if (_fData) _fData.forEach(function(f) { _plFraudCache[f.job_id] = { score: f.fraud_score, label: f.fraud_label, confidence: f.confidence }; });
-      }
-    } catch (_fErr) { reportError('pipeline:fraud_fetch', _fErr); }
+    // Fire-and-forget — don't block rendering
+    (async function() {
+      try {
+        for (var _fi = 0; _fi < _plFraudMissing.length; _fi += batchSize) {
+          var _fBatch = _plFraudMissing.slice(_fi, _fi + batchSize);
+          var _fData = await safeQuery(function() { return sb.from('job_fraud_scores').select('job_id, fraud_score, fraud_label, confidence').in('job_id', _fBatch); }, { label: 'pipeline:fraud_scores', fallback: [] });
+          if (_fData) _fData.forEach(function(f) { _plFraudCache[f.job_id] = { score: f.fraud_score, label: f.fraud_label, confidence: f.confidence }; });
+        }
+      } catch (_fErr) { reportError('pipeline:fraud_fetch', _fErr); }
+    })();
+  }
+
+  // FB-CARDS-001 Fix B: Ghost scores by company name (non-blocking)
+  var _plGhostCache = {};
+  var _plCompanyNames = allJobData.map(function(j) { return j.company_name; }).filter(Boolean);
+  var _plUniqueCompanies = _plCompanyNames.filter(function(c, i) { return _plCompanyNames.indexOf(c) === i; });
+  if (_plUniqueCompanies.length > 0) {
+    (async function() {
+      try {
+        var _gData = await safeQuery(function() { return sb.from('ghost_company_scores').select('company_name, effective_count, tier').in('company_name', _plUniqueCompanies); }, { label: 'pipeline:ghost_scores', fallback: [] });
+        if (_gData) _gData.forEach(function(g) { _plGhostCache[g.company_name] = { count: g.effective_count, tier: g.tier }; });
+      } catch (_gErr) { reportError('pipeline:ghost_fetch', _gErr); }
+    })();
   }
 
   const now = new Date();
@@ -1436,7 +1452,7 @@ async function renderPipeline() {
           try { if (typeof posthog !== 'undefined') posthog.capture('pipeline_trust_badge_rendered', { job_id: item.id, label: 'suspicious', stage: stage }); } catch(_e){}
         }
       }
-      var _plGhostCount = j ? (j.ghost_report_count || 0) : 0;
+      var _plGhostCount = (j && j.company_name && _plGhostCache[j.company_name]) ? _plGhostCache[j.company_name].count : 0;
       if (_plGhostCount > 0) {
         _plGhostBadge = '<span style="display:inline-flex;align-items:center;gap:2px;font-size:9px;font-weight:500;padding:0 5px;border-radius:100px;background:var(--bg-danger,#fee2e2);color:var(--red,#dc2626);margin-left:4px;"><i data-lucide="x-circle" style="width:9px;height:9px;"></i>' + _plGhostCount + ' ghost</span>';
         try { if (typeof posthog !== 'undefined') posthog.capture('pipeline_ghost_badge_rendered', { job_id: item.id, ghost_count: _plGhostCount, stage: stage }); } catch(_e){}
