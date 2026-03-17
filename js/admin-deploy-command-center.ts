@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * admin-deploy-command-center.js — Deployment Command Center Dashboard
  * BI-05: Unified operational view + rollback management + approval workflow

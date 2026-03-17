@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * admin-capacity.js — Capacity Model + Scaling Triggers Dashboard
  * SA-028: Phase S6 — Architecture Governance

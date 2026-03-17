@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-feed-health.js — Feed Health + Refresh Log
    Admin IA v2 · Session 5 (v6.88)

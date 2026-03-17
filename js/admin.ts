@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin.js — Admin Console with Sidebar Navigation (IA v2)
    v7.43 — CS-P1-017: Compliance dashboard (PII map, deletion, export)

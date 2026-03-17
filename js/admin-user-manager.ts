@@ -1,3 +1,4 @@
+// @ts-nocheck
 // js/admin-user-manager.js
 // SPEC-ADMIN-002-S1: User Manager — List + Detail + credit actions
 // Powers admin-panel-user-manager

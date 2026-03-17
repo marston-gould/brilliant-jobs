@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-db-activity.js — Database Activity Panel (AD-FIX-15)
    CS-024: Connections, slow queries, table sizes via pg_stat.

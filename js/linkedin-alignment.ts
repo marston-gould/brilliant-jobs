@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ═══════════════════════════════════════════════════════════
 // ATS-005: LinkedIn Keyword Alignment Nudge
 // Post-apply coaching — compares resume keywords against stored

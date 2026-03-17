@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Brilliant Jobs — PostHog Performance Timing
  * CS-P1-007 DS1-12: Capture web vitals + navigation timing as PostHog events

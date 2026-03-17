@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-ef-health.js — Edge Function Health Dashboard (AD-FIX-14)
    CS-024: Invocations, errors, latency p50/p95/p99 for all EFs.

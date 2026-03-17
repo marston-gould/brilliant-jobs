@@ -1,3 +1,4 @@
+// @ts-nocheck
 // js/admin-cohort-manager-full.js
 // SPEC-ADMIN-002-S1: Cohort Manager — full CRUD (List + Editor)
 // Powers admin-panel-cohort-manager

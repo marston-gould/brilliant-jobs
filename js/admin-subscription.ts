@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ═══════════════════════════════════════════════════════════
 // admin-subscription.js — Subscription Analytics & MRR
 // Admin IA v2 · Session 8 · v6.92

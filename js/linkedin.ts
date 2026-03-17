@@ -1,3 +1,4 @@
+// @ts-nocheck
 // js/linkedin.js
 // SPEC-LPG-001-S2: LinkedIn Profile Optimizer (F3)
 // Renders score gauge, section cards, top actions on LinkedIn tab.

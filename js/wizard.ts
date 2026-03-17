@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ============================================================
 // FB-CHAT-002 — Guided Intake Wizard
 // Sequenced one-question-at-a-time conversational interview

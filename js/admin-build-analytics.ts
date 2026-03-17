@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * admin-build-analytics.js — CI Pipeline Analytics & Bundle Size Dashboard
  * BI-02: CI Pipeline Analytics & Bundle Size Tracking

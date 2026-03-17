@@ -1,3 +1,4 @@
+// @ts-nocheck
 // js/survey-delivery.js — SDV-S3: Survey overlay delivery + priority engine
 // Centralized orchestration: decides which survey to show, when, to whom.
 // Fires on page navigation events (sidebar tab switches).

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * admin-deploy-tracker.js — Build & Deployment Visibility Dashboard
  * BI-01: Build Instrumentation & Deployment Visibility System

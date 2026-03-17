@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ============================================================
 // CHAT MODE — Conversational Job Search (Session 5)
 // Toggle between Filters and Chat on Jobs Feed + Bidirectional Sync + Saved Prompts

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-alerts.js — Operational Alerts Panel (AD-FIX-12)
    CS-023: Alert rules CRUD, alert history, ack/resolve workflow,

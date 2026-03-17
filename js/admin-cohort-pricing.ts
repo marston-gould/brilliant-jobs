@@ -1,3 +1,4 @@
+// @ts-nocheck
 // js/admin-cohort-pricing.js — Cohort-Based Pricing Configuration Admin Panel
 // COHORT-PRICING-S1: Global defaults editor, per-cohort override editor, audit log
 

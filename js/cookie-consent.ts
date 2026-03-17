@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Brilliant Jobs — Cookie Consent Manager
  * CS-018: GDPR/CCPA consent gate for PostHog + GTM

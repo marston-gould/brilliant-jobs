@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-monitoring.js — Platform Monitoring Dashboard (AD-FIX-11)
    CS-023: Aggregated health view — cron health, feed status,

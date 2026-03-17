@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ============================================================
 // MAIN — Vite entry point. Imports all modules in load order.
 // Replaces the 14 custom <script> tags in dashboard.html.

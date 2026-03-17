@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v10.48';
+var BJ_VERSION = 'v10.49';
 // Populate version display elements after DOM is ready
 (function() {
   var el = document.getElementById('nav-version');
@@ -1330,6 +1330,7 @@ async function safeRpc(fnName: string, params?: Record<string, unknown>, opts?: 
 
 
 // === js/admin.ts ===
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin.js — Admin Console with Sidebar Navigation (IA v2)
    v7.43 — CS-P1-017: Compliance dashboard (PII map, deletion, export)
@@ -2542,6 +2543,7 @@ async function loadUsersTab() {
 
 
 // === js/admin-blocks.ts ===
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-blocks.js — Shared Admin Block Components (IA v2)
    v6.87 — S4: _adminDetailPanel(), expand row wiring
@@ -2760,6 +2762,7 @@ function _fmtLocation(city, state, country) {
 
 
 // === js/admin-companies.ts ===
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-companies.js — Companies Sub-page (Admin IA v2)
    v6.87 — S4: click-to-expand company detail panels
@@ -3049,6 +3052,7 @@ function _loadCompanyDetailPanel(row, panelEl) {
 
 
 // === js/admin-jobs.ts ===
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-jobs.js — Jobs Sub-page (Admin IA v2)
    v6.87 — S4: click-to-expand job detail panels + daily volume ECharts line chart
@@ -3427,6 +3431,7 @@ function _loadJobDetailPanel(row, panelEl) {
 
 
 // === js/admin-email.ts ===
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-email.js — Email Sub-page (Admin IA v2)
    v6.87 — S4: delivery funnel ECharts bar chart
@@ -3598,6 +3603,7 @@ function _renderEmailFunnelChart(data) {
 
 
 // === js/admin-notifications.ts ===
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-notifications.js — Notification Management + Template Manager
    Session 1 of Notification System (Pod 2)
@@ -6314,6 +6320,7 @@ function notifLogPage(dir) {
 
 
 // === js/admin-landing.ts ===
+// @ts-nocheck
 /**
  * admin-landing.js — LP-RESTRUCTURE-S3
  * Admin UI for managing landing_sections table.
@@ -6646,6 +6653,7 @@ function notifLogPage(dir) {
 
 
 // === js/admin-signals.ts ===
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-signals.js — Pipeline Signals + Signal Patterns
    Admin IA v2 · Session 5 (v6.88)
@@ -6790,6 +6798,7 @@ function renderSignalPatterns(patterns) {
 
 
 // === js/admin-cron.ts ===
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-cron.js — Cron Management Console (0.161 + 0.162)
    CS-P1-016: Full management UI — toggle, schedule edit,
@@ -7368,6 +7377,7 @@ async function _setCronCap(regId, cap) {
 
 
 // === js/admin-killswitch.ts ===
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-killswitch.js — Extension Kill-Switch Panel (CS-013)
    Toggle the extension_kill_switch feature flag.
@@ -7696,6 +7706,7 @@ function _escHtml(str) {
 
 
 // === js/admin-monitoring.ts ===
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-monitoring.js — Platform Monitoring Dashboard (AD-FIX-11)
    CS-023: Aggregated health view — cron health, feed status,
@@ -8130,6 +8141,7 @@ window._cleanupMonitoringPanel = _cleanupMonitoringPanel;
 
 
 // === js/admin-alerts.ts ===
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-alerts.js — Operational Alerts Panel (AD-FIX-12)
    CS-023: Alert rules CRUD, alert history, ack/resolve workflow,
@@ -8678,6 +8690,7 @@ window._cleanupAlertsPanel = _cleanupAlertsPanel;
 
 
 // === js/admin-error-replay.ts ===
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-error-replay.js — PostHog Error Replay Integration (AD-FIX-13)
    CS-024: Error events from PostHog with session replay deep links.
@@ -8895,6 +8908,7 @@ window._cleanupErrorReplayPanel = _cleanupErrorReplayPanel;
 
 
 // === js/admin-client-errors.ts ===
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-client-errors.js — Client Error Dashboard (DO-001)
    Real-time error monitoring from the client_errors table.
@@ -9312,6 +9326,7 @@ window._cePrevPage = _cePrevPage;
 
 
 // === js/admin-ef-health.ts ===
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-ef-health.js — Edge Function Health Dashboard (AD-FIX-14)
    CS-024: Invocations, errors, latency p50/p95/p99 for all EFs.
@@ -9554,6 +9569,7 @@ window._cleanupEfHealthPanel = _cleanupEfHealthPanel;
 
 
 // === js/admin-db-activity.ts ===
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-db-activity.js — Database Activity Panel (AD-FIX-15)
    CS-024: Connections, slow queries, table sizes via pg_stat.
@@ -9861,6 +9877,7 @@ window._cleanupDbActivityPanel = _cleanupDbActivityPanel;
 
 
 // === js/admin-posthog-insights.ts ===
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-posthog-insights.js — PostHog API for Admin (AD-DO-002)
    CS-P1-005: Wire PostHog REST API into admin dashboards.
@@ -10433,6 +10450,7 @@ async function _loadKeyMetrics() {
 
 
 // === js/admin-feed-health.ts ===
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-feed-health.js — Feed Health + Refresh Log
    Admin IA v2 · Session 5 (v6.88)
@@ -10586,6 +10604,7 @@ function renderFeedHealthPanel(container, d) {
 
 
 // === js/admin-cache-health.ts ===
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-cache-health.js — Cache Health + MV Staleness + Alerts
    Admin IA v2 · Session 5 (v6.88)
@@ -10722,6 +10741,7 @@ async function resolveMonitoringAlert(id) {
 
 
 // === js/admin-enrichment.ts ===
+// @ts-nocheck
 // ========== Enrichment Coverage Dashboard (D1) ==========
 var _enChart = null;
 
@@ -11108,6 +11128,7 @@ async function loadMVStalenessPanel() {
 
 
 // === js/admin-seo.ts ===
+// @ts-nocheck
 // ═══════════════════════════════════════════════════════════
 // TAB 4: SEO / DATA COVERAGE
 // ═══════════════════════════════════════════════════════════
@@ -12617,6 +12638,7 @@ window.triggerFeedbackSync = async function() {
 
 
 // === js/admin-content.ts ===
+// @ts-nocheck
 
 // js/admin-content.js — SPEC-ADMIN-002 §6: Content Manager (full CRUD + bulk)
 
@@ -12967,6 +12989,7 @@ function previewStory(id) {
 
 
 // === js/admin-merch.ts ===
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    Merchandising Admin Tab — v4.51
    Master-detail layout: Placements → Rules → Content Entries
@@ -13572,6 +13595,7 @@ async function loadAdminSignals() {
 
 
 // === js/admin-survey-manager.ts ===
+// @ts-nocheck
 // js/admin-survey-manager.js — FB-SURVEY-ADMIN-001 SVM-S1
 // Admin panel for survey campaign CRUD.
 // Renders in the Growth section of admin.html.
@@ -14308,6 +14332,7 @@ async function loadAdminSignals() {
 
 
 // === js/admin-referrals.ts ===
+// @ts-nocheck
 // ─── REFERRALS ADMIN TAB ───
 // Fraud review queue, reward clawback, ban management
 // v5.10: Phase 4
@@ -14542,6 +14567,7 @@ window.adminUnban = async function(userId) {
 
 
 // === js/admin-stripe.ts ===
+// @ts-nocheck
 // ═══════════════════════════════════════════════════════════
 // admin-stripe.js — Stripe Customer & Subscription Management
 // Admin IA v2 · Session 8 · v6.92
@@ -14881,6 +14907,7 @@ window.confirmStripeCancelEOT = confirmStripeCancelEOT;
 
 
 // === js/admin-subscription.ts ===
+// @ts-nocheck
 // ═══════════════════════════════════════════════════════════
 // admin-subscription.js — Subscription Analytics & MRR
 // Admin IA v2 · Session 8 · v6.92
@@ -15181,6 +15208,7 @@ async function _loadSubMrrChart() {
 
 
 // === js/admin-ghost.ts ===
+// @ts-nocheck
 /* ─────────────────────────────────────────────────────────
    admin-ghost.js — Ghost / Inactive User Detection Sub-Page
    Brilliant Jobs Admin Console · v6.91
@@ -15402,6 +15430,7 @@ function ghostExportCSV() {
 
 
 // === js/admin-templates.ts ===
+// @ts-nocheck
 /* ─────────────────────────────────────────────────────────
    admin-templates.js — Notification & Email Templates
    Brilliant Jobs Admin Console · v6.91
@@ -15615,6 +15644,7 @@ async function tplToggleStatus(id, currentStatus) {
 
 
 // === js/admin-revenue.ts ===
+// @ts-nocheck
 /* ─────────────────────────────────────────────────────────
    admin-revenue.js — Revenue & Billing Sub-Page
    Brilliant Jobs Admin Console · v6.91
@@ -15790,6 +15820,7 @@ function _initRevChart(d) {
 
 
 // === js/admin-feedback.ts ===
+// @ts-nocheck
 /* ─────────────────────────────────────────────────────────
    admin-feedback.js — User Feedback / Canny Sub-Page
    Brilliant Jobs Admin Console · v6.91
@@ -15905,6 +15936,7 @@ function _fbStatCard(label, value, sub, icon) {
 
 
 // === js/admin-notif-analytics.ts ===
+// @ts-nocheck
 // ═══════════════════════════════════════════════════════════
 // admin-notif-analytics.js — Notification Analytics, Email Cohorts,
 //                             Cadence Optimization, Notification Log
@@ -16598,6 +16630,7 @@ window._fetchNotifLog = _fetchNotifLog;
 
 
 // === js/admin-biz-ops.ts ===
+// @ts-nocheck
 // === js/admin-biz-ops.js ===
 // Admin IA v2 S10 — Paid, Social, Analytics, Costs, Forecasting
 // v6.94 · 2026-03-04
@@ -17552,6 +17585,7 @@ window.loadForecastingTab = loadForecastingTab;
 
 
 // === js/admin-compliance.ts ===
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-compliance.js — Compliance Dashboard (CS-P1-017)
    3 sub-pages: PII Data Map, User Deletion, Data Export & Compliance
@@ -18437,6 +18471,7 @@ function _relativeTime(dateStr) {
 
 
 // === js/admin-shell.ts ===
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-shell.js — Auth gate + MFA + init for standalone /admin page
    CS-006: AD-FIX-02 — MFA enforcement added

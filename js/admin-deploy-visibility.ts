@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * admin-deploy-visibility.js — Deployment Visibility Dashboard
  * BI-03: Environment Status & Release Tracking

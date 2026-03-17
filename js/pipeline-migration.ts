@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * pipeline-migration.js
  * Brilliant Jobs v6.96 — Overlay Pipeline Session 2

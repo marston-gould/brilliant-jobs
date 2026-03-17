@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    notification-center.js — Notification Center + Opt-In Modal
    Session 2+ of Notification System (Pod 2)

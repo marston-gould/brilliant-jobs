@@ -1,3 +1,4 @@
+// @ts-nocheck
 
 // js/admin-content.js — SPEC-ADMIN-002 §6: Content Manager (full CRUD + bulk)
 

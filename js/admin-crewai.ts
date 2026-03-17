@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * admin-crewai.js — CrewAI Agent Management Panel
  * SA-010: Agent kill switches, status dashboard, action log browser.

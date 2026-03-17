@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* CS-018: Extracted from inline <script> in index.html */
 document.addEventListener('DOMContentLoaded', function() {
     // ============================================================

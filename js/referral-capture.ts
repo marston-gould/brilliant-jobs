@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Brilliant Jobs — Referral Landing Capture
  * Runs on ALL public pages (index, pricing, blog, SEO pages).

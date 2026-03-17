@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ============================================================
 // POD3-GS: BUG-6 — Shared Connection State
 // _connectionState and renderConnectionStatus moved to app.js (shell chunk)

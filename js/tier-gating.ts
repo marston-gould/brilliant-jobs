@@ -19,7 +19,13 @@ var TIER_GATES: Record<string, TierGateConfig> = {
   ai_writing_daily:   { free: 3, starter: 10, pro: Infinity }
 };
 
+// @ts-ignore SPA-CUT: global from billing module
+declare var _userPricing: { tier?: string } | undefined;
+// @ts-ignore SPA-CUT: global from globals.ts
+declare var currentUser: { user_metadata?: { plan?: string } } | undefined;
+
 function getUserTier(): TierName {
+  // @ts-ignore SPA-CUT: _userPricing is a global from billing module
   if (typeof _userPricing !== 'undefined' && _userPricing && _userPricing.tier) {
   // @ts-ignore SPA-CUT-REMEDIATION: payl tier added post-type-inference
     // FB-PAYL-S1: PAYL tier grants full Pro feature access

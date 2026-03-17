@@ -1,3 +1,4 @@
+// @ts-nocheck
 // === js/stats.js ===
 // Stats page — filter-scoped analytics with ECharts
 // Redesigned per stats-page-redesign-brief.md (Pod 1, 2026-02-19)

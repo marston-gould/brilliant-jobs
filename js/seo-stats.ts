@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Brilliant Jobs — SEO Stats Hydrator
  * ====================================

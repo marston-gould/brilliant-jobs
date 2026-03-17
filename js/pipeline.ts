@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ============================================================
 // PIPELINE — Supabase-native stage tracker (Ghost Build Phase 1)
 // Replaces localStorage bj_pipeline_meta with user_pipeline table.

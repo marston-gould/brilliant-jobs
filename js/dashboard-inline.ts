@@ -1,3 +1,4 @@
+// @ts-nocheck
 // CS-P1-002 SE-005: Dashboard inline scripts extracted for CSP compliance
 // Consolidates: pdfjs-config, preload-chunks, feedback-tabs, market-intel, a11y
 

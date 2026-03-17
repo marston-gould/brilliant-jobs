@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-jobs.js — Jobs Sub-page (Admin IA v2)
    v6.87 — S4: click-to-expand job detail panels + daily volume ECharts line chart

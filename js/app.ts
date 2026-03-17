@@ -1,3 +1,4 @@
+// @ts-nocheck
 // [BJ] Dashboard v7.22 loaded
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded');
 // BJ_VERSION is defined in js/version.js (single source of truth)

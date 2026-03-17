@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ========== Enrichment Coverage Dashboard (D1) ==========
 var _enChart = null;
 

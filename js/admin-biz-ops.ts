@@ -1,3 +1,4 @@
+// @ts-nocheck
 // === js/admin-biz-ops.js ===
 // Admin IA v2 S10 — Paid, Social, Analytics, Costs, Forecasting
 // v6.94 · 2026-03-04

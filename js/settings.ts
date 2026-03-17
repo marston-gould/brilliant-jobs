@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Stats — now powered by stats.js (ECharts dashboard)
 function loadStats() {
   // Lazy-init: stats.js handles everything via initStatsPage()

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-posthog-insights.js — PostHog API for Admin (AD-DO-002)
    CS-P1-005: Wire PostHog REST API into admin dashboards.

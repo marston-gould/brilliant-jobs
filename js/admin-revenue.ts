@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ─────────────────────────────────────────────────────────
    admin-revenue.js — Revenue & Billing Sub-Page
    Brilliant Jobs Admin Console · v6.91

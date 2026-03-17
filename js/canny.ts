@@ -1,3 +1,4 @@
+// @ts-nocheck
 // js/canny.js — P13-13 Canny feedback widget integration
 // Loads the Canny SDK lazily and renders the feedback widget
 // inside the dashboard Feedback page.

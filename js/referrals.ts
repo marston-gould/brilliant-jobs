@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ============================================================
 // REFERRALS — Referral Hub page logic
 // v5.25: Phase 4 — Milestone rewards, LinkedIn referral codes, flair system

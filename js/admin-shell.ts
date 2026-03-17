@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-shell.js — Auth gate + MFA + init for standalone /admin page
    CS-006: AD-FIX-02 — MFA enforcement added

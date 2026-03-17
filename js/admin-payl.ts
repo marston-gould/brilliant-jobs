@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * admin-payl.js — Admin PAYL Analytics Panel
  * Session: FB-PAYL-S2

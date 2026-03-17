@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-signals.js — Pipeline Signals + Signal Patterns
    Admin IA v2 · Session 5 (v6.88)

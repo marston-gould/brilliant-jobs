@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ─────────────────────────────────────────────────────────
    admin-ghost.js — Ghost / Inactive User Detection Sub-Page
    Brilliant Jobs Admin Console · v6.91

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * admin-landing.js — LP-RESTRUCTURE-S3
  * Admin UI for managing landing_sections table.

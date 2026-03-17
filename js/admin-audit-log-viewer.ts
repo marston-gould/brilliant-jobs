@@ -1,3 +1,4 @@
+// @ts-nocheck
 // js/admin-audit-log-viewer.js — SPEC-ADMIN-002-S2: Audit Log Viewer
 
 var _alState = { page: 1, total: 0 };

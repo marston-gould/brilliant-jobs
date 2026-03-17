@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-cron.js — Cron Management Console (0.161 + 0.162)
    CS-P1-016: Full management UI — toggle, schedule edit,

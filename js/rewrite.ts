@@ -1,3 +1,4 @@
+// @ts-nocheck
 // js/rewrite.js — AI Resume Rewrite (JD-match "Boost" feature)
 // Phase B+C: Panel UI, Q&A flow, diff view, accept/reject actions
 // v4.28

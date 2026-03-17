@@ -92,12 +92,12 @@ export function AppShell() {
     <div className="flex h-screen bg-bg-main">
       {/* Sidebar Navigation */}
       <nav
+        aria-label="Main navigation"
         className={`
           flex flex-col h-full bg-[#1a1f36] text-white
           transition-all duration-200
           ${collapsed ? 'w-[60px]' : 'w-[240px]'}
         `}
-        aria-label="Main navigation"
       >
         {/* Logo / Brand */}
         <div className="flex items-center gap-3 px-4 py-4 border-b border-white/10">
@@ -154,7 +154,7 @@ export function AppShell() {
                   : 'text-white/65 hover:text-white hover:bg-white/8'
                 }
               `}
-            >
+             aria-label="toggle Admin View">
               <span className="text-base">⚡</span>
               {!collapsed && (
                 <span>{showAdmin || isAdminSection ? 'Dashboard' : 'Admin'}</span>
@@ -181,7 +181,7 @@ export function AppShell() {
       </nav>
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto">
+      <main id="main-content" role="main" className="flex-1 overflow-y-auto">
         <Outlet />
       </main>
     </div>

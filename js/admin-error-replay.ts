@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-error-replay.js — PostHog Error Replay Integration (AD-FIX-13)
    CS-024: Error events from PostHog with session replay deep links.

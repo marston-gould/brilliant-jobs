@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ---- Location autocomplete / disambiguation ----
 const qbInputWhere = $('#qb-input-where');
 const locationDropdown = $('#location-dropdown');

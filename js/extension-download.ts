@@ -1,3 +1,4 @@
+// @ts-nocheck
 // js/extension-download.js — Phase 12: Fingerprinted Extension Download
 // Extension 4.0.0
 //

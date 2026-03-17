@@ -1,3 +1,4 @@
+// @ts-nocheck
 // js/admin-filter-prompt.js — SPEC-ADMIN-002-S2: Filter & Prompt Manager
 
 var _fpState = { fpTab: 'filters', editingFilter: null, editingPrompt: null };

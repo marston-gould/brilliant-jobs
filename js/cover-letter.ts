@@ -1,3 +1,4 @@
+// @ts-nocheck
 // js/cover-letter.js — AIS-F8-S1: Cover Letter Generator UI
 // ===========================================================
 

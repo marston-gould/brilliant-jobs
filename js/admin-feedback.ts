@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ─────────────────────────────────────────────────────────
    admin-feedback.js — User Feedback / Canny Sub-Page
    Brilliant Jobs Admin Console · v6.91

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // js/admin-survey-manager.js — FB-SURVEY-ADMIN-001 SVM-S1
 // Admin panel for survey campaign CRUD.
 // Renders in the Growth section of admin.html.

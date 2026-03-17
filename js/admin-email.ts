@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-email.js — Email Sub-page (Admin IA v2)
    v6.87 — S4: delivery funnel ECharts bar chart

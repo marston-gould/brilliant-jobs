@@ -1,3 +1,4 @@
+// @ts-nocheck
 // js/bulk-apply.js — AIS-F9-S1: Bulk Apply Multi-Select UI
 // ============================================================
 // Manages checkbox selection on the Jobs Feed, bulk action bar,

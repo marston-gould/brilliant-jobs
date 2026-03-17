@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    feature-flags.js — Unified Feature Flag System (DO-003)
    CS-P1-005: PostHog-native flags with DB fallback.

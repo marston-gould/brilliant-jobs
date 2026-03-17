@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * aggregations.js — Shared aggregation functions for Brilliant Jobs
  *

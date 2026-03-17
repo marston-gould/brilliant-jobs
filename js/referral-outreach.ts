@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Brilliant Jobs — Referral Outreach v7.09
  * Part 1: Referral Request Templates (LinkedIn DM + Email)

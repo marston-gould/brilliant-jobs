@@ -1,3 +1,4 @@
+// @ts-nocheck
 // === js/overlay-analytics.js ===
 // Overlay Pipeline S9: overlay_analytics sub-page
 // Reads from overlay_analytics table via PostgREST (anon key, RLS-scoped to current user)

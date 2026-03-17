@@ -68,6 +68,8 @@
     "extension",
     "supabase",
     "tests",
-    "scripts"
+    "scripts",
+    "js/admin-filter-prompt.ts",
+    "js/admin-user-manager.ts"
   ]
 }

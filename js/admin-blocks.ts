@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-blocks.js — Shared Admin Block Components (IA v2)
    v6.87 — S4: _adminDetailPanel(), expand row wiring

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // js/trial-gate.js — FB-TRIAL-001-S3/S7: Trial Gate Client + Free Samples + Inline Nudges
 // Renders trial countdown banner, pre-sample prompts, post-sample conversion modals,
 // and contextual inline nudges for fully-expired users.

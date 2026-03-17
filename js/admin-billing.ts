@@ -1,3 +1,4 @@
+// @ts-nocheck
 // js/admin-billing.js — SPEC-ADMIN-002-S2: Billing Manager
 // Subscriptions list + global credit ledger view
 

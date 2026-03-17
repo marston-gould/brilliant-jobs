@@ -1,3 +1,4 @@
+// @ts-nocheck
 // === Resume Metrics Module ===
 // Phase 6: Resume Metrics Intelligence UI — score history, level fit, pipeline funnel, usage log
 

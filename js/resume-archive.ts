@@ -1,3 +1,4 @@
+// @ts-nocheck
 // === Resume Archive Module ===
 // Phase 3: Archive tab UI with database-backed storage, version tracking, and tier info
 

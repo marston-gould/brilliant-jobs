@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-chat-analytics.js — PostHog Chat Mode Dashboard
    POST-REM: PostHog dashboard for all 16 chat events

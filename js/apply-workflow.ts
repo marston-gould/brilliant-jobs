@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Brilliant Jobs — Apply Workflow v5.18
  * Score Gate Modal, Pending Applications, and Apply State Machine

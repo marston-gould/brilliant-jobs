@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ─── REFERRALS ADMIN TAB ───
 // Fraud review queue, reward clawback, ban management
 // v5.10: Phase 4

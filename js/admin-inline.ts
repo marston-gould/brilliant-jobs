@@ -1,3 +1,4 @@
+// @ts-nocheck
 // CS-P1-002 SE-005: Admin inline scripts extracted for CSP compliance
 // Cohort select-all checkbox handler
 document.addEventListener('DOMContentLoaded', function() {

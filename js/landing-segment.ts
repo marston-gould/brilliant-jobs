@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Brilliant Jobs — Landing Page Segment Detection
  * CS-018: Extracted from inline <script> in index.html

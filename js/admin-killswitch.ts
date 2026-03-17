@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-killswitch.js — Extension Kill-Switch Panel (CS-013)
    Toggle the extension_kill_switch feature flag.

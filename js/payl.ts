@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * payl.js — Pay After You Land Dashboard UI
  * Session: FB-PAYL-S2

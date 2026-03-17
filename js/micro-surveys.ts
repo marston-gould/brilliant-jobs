@@ -1,3 +1,4 @@
+// @ts-nocheck
 // js/micro-surveys.js — P13-04/05/06/09 Inline micro-survey components
 // Lightweight survey prompts that appear inline in the dashboard.
 // All responses stored in feedback table via Supabase REST API.

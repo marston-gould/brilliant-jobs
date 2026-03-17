@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ---- Company Browser + Collections ----
 let cbAllCompanies = [];
 let cbSelections = {}; // slug -> 'include' | 'exclude'

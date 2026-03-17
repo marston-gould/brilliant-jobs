@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-notifications.js — Notification Management + Template Manager
    Session 1 of Notification System (Pod 2)

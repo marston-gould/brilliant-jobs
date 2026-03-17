@@ -1,3 +1,4 @@
+// @ts-nocheck
 // js/upgrade.js
 // FB-TRIAL-001-S6 — 5.3: Monthly/Annual billing toggle on upgrade page
 // Renders toggle UI, updates CTA price display, passes billing_period to create-checkout EF

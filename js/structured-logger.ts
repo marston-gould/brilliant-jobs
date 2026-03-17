@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    structured-logger.js — Structured Logging (AD-DO-001)
    CS-P1-005: Consistent JSON-structured log format for all

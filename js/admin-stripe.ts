@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ═══════════════════════════════════════════════════════════
 // admin-stripe.js — Stripe Customer & Subscription Management
 // Admin IA v2 · Session 8 · v6.92

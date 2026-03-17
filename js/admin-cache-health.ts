@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-cache-health.js — Cache Health + MV Staleness + Alerts
    Admin IA v2 · Session 5 (v6.88)

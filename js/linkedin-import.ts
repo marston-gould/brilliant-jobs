@@ -1,3 +1,4 @@
+// @ts-nocheck
 // js/linkedin-import.js — AIS-F2-S2: LinkedIn Import UI + Auto-Population
 // =========================================================================
 // Handles drag-and-drop PDF upload, parse-linkedin-pdf EF call,

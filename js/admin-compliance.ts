@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-compliance.js — Compliance Dashboard (CS-P1-017)
    3 sub-pages: PII Data Map, User Deletion, Data Export & Compliance

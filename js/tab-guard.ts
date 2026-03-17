@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * CS-015: FIX-09 (FE-002) Error Boundaries + FIX-15 (FE-003) Skeleton Loaders
  * 

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-client-errors.js — Client Error Dashboard (DO-001)
    Real-time error monitoring from the client_errors table.

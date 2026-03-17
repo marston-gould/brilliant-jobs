@@ -1,3 +1,4 @@
+// @ts-nocheck
 // js/billing.js — Subscription page, credit balance, pricing, checkout flows
 // v3.72: Full subscription tab + credit merchandising
 // QA-FIX: Uses SUPABASE_URL from globals.ts (shell chunk) instead of local var

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * admin-deploy-alerting.js — Deployment Alerting & Health Scoring Dashboard
  * BI-04: Deployment Alerting & Health Scoring

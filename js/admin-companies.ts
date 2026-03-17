@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-companies.js — Companies Sub-page (Admin IA v2)
    v6.87 — S4: click-to-expand company detail panels

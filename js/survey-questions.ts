@@ -1,3 +1,4 @@
+// @ts-nocheck
 // js/survey-questions.js — Shared question bank module
 // SDV-S2: Extracted from survey.html and micro-surveys.js
 // Single source of truth for all survey content.

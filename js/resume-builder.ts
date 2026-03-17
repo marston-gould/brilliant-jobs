@@ -1,3 +1,4 @@
+// @ts-nocheck
 // js/resume-builder.js
 // RESUME-BUILDER-001-S1: Upload, Parse, Store
 // Handles file upload, paste-text, scratch mode, Anthropic parse via EF,

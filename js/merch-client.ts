@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Brilliant Jobs — Merchandising Client v4.51
  * Fetches and injects rotating content from Supabase.

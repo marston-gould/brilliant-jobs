@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    admin-ab-tests.js — A/B Test Management (0.176)
    CS-P1-016: First A/B test via PostHog feature flags

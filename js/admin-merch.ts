@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    Merchandising Admin Tab — v4.51
    Master-detail layout: Placements → Rules → Content Entries

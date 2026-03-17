@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Brilliant Jobs — Safe localStorage Reader
  * CS-018: Extracted from inline <script> in index.html

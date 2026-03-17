@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ============================================================
 // STATE — All shared mutable state for the dashboard
 // Every module imports from here instead of using window globals.

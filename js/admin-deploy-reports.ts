@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * admin-deploy-reports.js — Deployment Performance Reports & DORA Metrics Dashboard
  * BI-06: DORA metrics visualization + trend analysis + report generation

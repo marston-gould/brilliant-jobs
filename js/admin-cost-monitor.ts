@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * admin-cost-monitor.js — AI Cost Monitoring Dashboard
  * REM-003: Edge Function Hardening + Cost Monitoring

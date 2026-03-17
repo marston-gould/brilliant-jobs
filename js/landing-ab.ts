@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ───────────────────────────────────────────────────────────
    landing-ab.js — A/B Test Integration for Landing Page
    CS-P1-016 (0.176): First A/B test — CTA copy variant

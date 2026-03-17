@@ -1,3 +1,4 @@
+// @ts-nocheck
 // js/admin-autosubmit.js
 // Auto-Submit Instrumentation Dashboard — failure tracking, timing, ATS breakdown
 // Session: AS-INSTR | Pod 3

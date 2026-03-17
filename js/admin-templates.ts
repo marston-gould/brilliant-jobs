@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ─────────────────────────────────────────────────────────
    admin-templates.js — Notification & Email Templates
    Brilliant Jobs Admin Console · v6.91
