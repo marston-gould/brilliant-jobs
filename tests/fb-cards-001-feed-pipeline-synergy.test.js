@@ -57,17 +57,16 @@ describe('FB-CARDS-001: Fix A — Match Score Decoupled from Preview JD', () => 
     expect(snippetSection).not.toContain('background:var(--accent);color:#fff');
   });
 
-  it('color tiers per spec: green ≥80, amber ≥60, dim 40-59, hidden <40', () => {
+  it('color tiers: consistent blue pill with white text for all scores ≥40', () => {
     const metaRow = jobFeedJs.slice(
-      jobFeedJs.indexOf('_matchPct'),
+      jobFeedJs.indexOf('FB-CARDS-001 Fix A'),
       jobFeedJs.indexOf('// Action buttons')
     );
-    expect(metaRow).toContain('>= 80');
-    expect(metaRow).toContain('>= 60');
-    expect(metaRow).toContain('>= 40');
-    expect(metaRow).toContain('--green-dim');
-    expect(metaRow).toContain('--warm-dim');
-    expect(metaRow).toContain('--text-faint');
+    expect(metaRow).toContain('--accent');
+    expect(metaRow).toContain('#fff');
+    // Should NOT have tiered green/amber/dim colors
+    expect(metaRow).not.toContain('--green-dim');
+    expect(metaRow).not.toContain('--warm-dim');
   });
 
   it('jobs below 40% match do not render badge', () => {

@@ -2645,12 +2645,7 @@ function renderJobRows(jobs, total, page, filtersToRun) {
     const _matchData = jobMatchScores[job.greenhouse_id];
     const _matchPct = _matchData && typeof _matchData === 'object' ? _matchData.score : (typeof _matchData === 'number' ? _matchData : null);
     if (_matchPct && _matchPct >= 40) {
-      const _mBg = _matchPct >= 80 ? 'var(--green-dim,#dcfce7)' : _matchPct >= 60 ? 'var(--warm-dim,#fef3c7)' : 'transparent';
-      const _mColor = _matchPct >= 80 ? 'var(--green,#22c55e)' : _matchPct >= 60 ? 'var(--warm,#f59e0b)' : 'var(--text-faint)';
-      const _mStyle = _matchPct >= 60
-        ? `display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;background:${_mBg};color:${_mColor};`
-        : `font-size:10px;color:${_mColor};`;
-      metaParts.push(`<span style="${_mStyle}">${_matchPct}%</span>`);
+      metaParts.push(`<span style="display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;background:var(--accent);color:#fff;">${_matchPct}%</span>`);
     }
 
     // Action buttons (exactly 3: Dismiss is left column, Pipeline + Apply right)
