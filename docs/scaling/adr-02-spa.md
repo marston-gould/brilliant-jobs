@@ -151,3 +151,39 @@ Initial SPA payload target: < 160KB gzip (shell + providers + feed page).
 ## Next: SA-014
 Feed page migration: React + TypeScript component tree (FeedPage, JobCard, SearchBar,
 FilterSidebar, PaginationControls). First real page using the design system and providers.
+
+## SPA-CUT-1/2/3/FINAL: Bridge Elimination + Legacy Retirement (v10.39–v10.42)
+
+**STATUS: IMPLEMENTED**
+
+### What was delivered
+- **Standalone Supabase client** (`src/app/lib/supabase.ts`) — zero window.BJ dependency
+- **All 22 hooks cut from window.* bridge** — 133 total bridge calls eliminated
+- **dashboard.html archived** (4,378 lines → `legacy/dashboard.html`)
+- **admin.html archived** (1,318 lines → `legacy/admin.html`)
+- **CSP hardened** — `unsafe-inline` removed from catch-all script-src
+- **Vercel rewrites** — /dashboard, /admin → SPA
+- **258 tests** across 4 sessions
+
+### Bundle analysis
+- FeedPage: 51.69KB (14.28KB gzip)
+- PipelinePage: 29.74KB (8.18KB gzip)
+- KeywordsPage: 13.03KB (4.06KB gzip)
+- ResumesPage: 20.29KB (6.11KB gzip)
+- ApplicationsPage: 12.17KB (3.31KB gzip)
+- providers (incl Supabase client): 179.82KB (48.17KB gzip)
+- app shell: 13.60KB (3.89KB gzip)
+- Total initial: ~78KB gzip (React + Router + App shell)
+
+### Design system
+- 6 primitives: Button, Card, Badge, Input, Select, Modal
+- Design tokens in `src/app/design-tokens/tokens.ts`
+- 16 data-driven inline styles remaining (dynamic colors, widths, animation delays)
+- All static styles via Tailwind utilities
+
+### Known limitations
+- Legacy JS modules (130 files in `js/`) still in repo — needed by roadmap.html and non-SPA pages
+- `build.js` / `build-admin.js` still exist — build legacy bundles for non-SPA pages
+- Tailwind output 167KB (custom CSS in input.css accounts for ~70KB floor)
+- 6 TODO stubs in hooks: launchRewrite, uploadResume, replacePlaceholder, reUpload, processQueue, openJobModal
+- These features work in legacy mode but need standalone React implementation

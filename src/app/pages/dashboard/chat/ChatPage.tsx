@@ -32,7 +32,7 @@ export function ChatPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto flex flex-col" style={{ height: 'calc(100vh - 120px)' }}>
+    <div className="max-w-3xl mx-auto flex flex-col h-[calc(100vh-120px)]">
       {/* Mode toggle + clear */}
       <div className="flex items-center justify-between py-3">
         <div className="flex gap-1">
