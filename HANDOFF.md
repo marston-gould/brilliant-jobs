@@ -3894,7 +3894,53 @@ None.
 
 ## Last Completed Session
 
-**FB-CARDS-001** — Feed + Pipeline Card Synergy & Match Score Fix ✅
+**SPA-CUT-1** — Feed + Pipeline + Keywords Bridge Elimination ✅
+- v10.38→v10.39
+- **src/app/lib/supabase.ts (NEW):** Standalone Supabase client — `createClient` with persistSession+autoRefreshToken, shares auth session with legacy via same localStorage key. Exports: `supabase` (singleton client), `getSession()`, `getUser()`, `getAccessToken()`, `callGateway<T>(route, body?, options?)` (authenticated gateway caller with timeout+abort), `isFeatureEnabled(flagKey, default)` (deterministic bucket based on user ID hash), `safeReadLS<T>(key, fallback)` (handles enc: PII prefix), `safeWriteLS(key, value)`, `GATEWAY_URL`. Zero window.BJ dependency.
+- **@lib path alias:** Added to vite.config.js (`'@lib': resolve(__dirname, 'src/app/lib')`) and tsconfig.json (`"@lib/*": ["src/app/lib/*"]`).
+- **src/app/providers/supabase.ts:** `getSupabase()` now imports from `@lib/supabase` instead of `(window as any).BJ.supabase`. Zero window.BJ runtime dependency.
+- **useFeedSearch.ts — 15 window refs → 0:**
+  - `getSupabase()` → imports standalone `_sb` from `@lib/supabase`
+  - `(window as any).savedJobIds` → `safeReadLS<string[]>('bj_saved_jobs', [])`
+  - `(window as any).appliedJobIds` → `safeReadLS<string[]>('bj_applied_jobs', [])`
+  - `(window as any).hiddenJobIds` → `safeReadLS<any[]>('bj_hidden_jobs', [])` with string→object migration
+  - `(window as any).jobMatchScores` → module-level `_matchScoreCache`
+  - `(window as any)._fraudScoreCache` → module-level `_fraudCache` (widened type: +signals, +confidence)
+  - `(window as any)._aiJdCache` → module-level `_aiJdCacheLocal` (widened type: +score, +confidence, +summary, +perplexity, +burstiness, +topSignals)
+  - `(window as any).isFeatureEnabled` → `_isFlagEnabled` from `@lib/supabase`
+  - `(window as any).savedFilters` → `safeReadLS<SavedFilter[]>('bj_saved_filters', [])`
+  - `saveJob` → direct `sb.from('user_pipeline').upsert({job_id, stage:'saved', entry_source:'feed'})`
+  - `unsaveJob` → direct `sb.from('user_pipeline').delete().eq('job_id', jobId)`
+  - `hideJob` → direct `localStorage.setItem('bj_hidden_jobs', ...)` + optimistic UI remove
+  - `markApplied` → direct `localStorage.setItem('bj_applied_jobs', ...)`
+- **usePipeline.ts — 19 win() refs → 0:**
+  - Removed `function win()` helper entirely
+  - `getSb()` → imports standalone `_sb` from `@lib/supabase`
+  - `getUser()` → `async getUserId()` using `_getUser()` from `@lib/supabase`
+  - `win()._pipelineCache` → module-level `let _pipelineCache`
+  - `win()._pendingSignals` → module-level `let _pendingSignalsCache`
+  - `win().loadPipelineFromSupabase()` → direct `sb.from('user_pipeline').select('*').eq('user_id', uid)` with full field mapping
+  - `win().loadPendingSignals()` → direct `sb.from('pipeline_signals').select('*').eq('status', 'pending_confirmation')`
+  - `win().movePipelineStage()` → direct `sb.from('user_pipeline').update({stage, stage_changed_at, [stageCol]_at}).eq('job_id', jobId)`
+  - `win().confirmPipelineSignal()` → direct `sb.from('pipeline_signals').update({status, action_taken, user_response})` + optional stage correction on user_pipeline
+  - `win().unsaveFromPipeline()` → direct `sb.from('user_pipeline').delete()` + cache cleanup
+  - `win().setTrackingMode()` → direct `sb.from('user_pipeline').update({tracking_mode})`
+  - `win().openJobModal()` → TODO stub (legacy modal needs React implementation)
+  - Ghost monitor: `getUser()` → `await getUserId()`
+  - PipelineMeta type extended: +interviewAt, +offerAt, +hiredAt, +rejectedAt, +archivedAt, +stageChangedAt, +entrySource
+- **useKeywords.ts — 7 win() refs → 0 (full rewrite):**
+  - Removed `function win()` helper entirely
+  - `win().resumes` → `safeReadLS<any[]>('bj_resumes', [])` with ResumeInfo mapping
+  - `win().readinessCache` → `safeReadLS('bj_readiness', null)`
+  - `win().runReadinessAnalysis()` → `callGateway('score-resume', {mode:'single', resume_text, tier})` per-resume with 30s timeout
+  - `win().openJobModal()` → TODO stub
+  - Results persisted via `safeWriteLS('bj_readiness', {scores, lastRun})` for cross-tab compat
+- **SPA build clean:** `npm run build:spa` succeeds. FeedPage 51.69KB (14.28KB gzip), PipelinePage 29.74KB (8.18KB gzip), KeywordsPage 13.03KB (4.06KB gzip). providers chunk 179.81KB (48.16KB gzip — includes Supabase client).
+- **Tests:** 61 validation tests (tests/spa-cut-1-bridge-elimination.test.js) — all passing.
+- **Modified:** src/app/lib/supabase.ts (NEW), vite.config.js (@lib alias), tsconfig.json (@lib/* path), src/app/providers/supabase.ts (standalone import), src/app/pages/dashboard/feed/hooks/useFeedSearch.ts (15 refs cut), src/app/pages/dashboard/pipeline/hooks/usePipeline.ts (19 refs cut + PipelineMeta extended), src/app/pages/dashboard/keywords/hooks/useKeywords.ts (full rewrite), dist/dashboard.min.js, dist/dashboard-deferred.min.js, dist/admin.min.js, styles.css, ROADMAP.md, roadmap.html.
+- **Created:** src/app/lib/supabase.ts, tests/spa-cut-1-bridge-elimination.test.js.
+
+**Previous: FB-CARDS-001** — Feed + Pipeline Card Synergy & Match Score Fix ✅
 - v10.36→v10.37
 - **Fix A — Match Score Decoupled from Preview JD:**
   - Match % badge moved from inside `showPreview` conditional to meta row (after days-ago indicator).
@@ -3938,7 +3984,24 @@ None.
 
 ## Next Session
 
-No specific session queued. FB-CARDS-001 is feature-complete (38 tests).
+**SPA-CUT-2** — Resumes + Applications + Notifications + Stats + Billing Bridge Elimination
+
+**Entry Gate:**
+- SPA-CUT-1 complete: Feed, Pipeline, Keywords hooks fully standalone ✅
+- `src/app/lib/supabase.ts` available for all hooks to import
+- SPA builds clean
+
+**Scope:**
+- Cut `useResumes.ts` (15 win() calls → direct Supabase for resume CRUD, AI scoring, rewrite, archive, filter assignment)
+- Cut `useApplications.ts` (5 win() calls → direct Supabase for pending_applications, notification log, preferences)  
+- Cut `useStats.ts` (6 window refs → direct MV queries for job counts, source breakdown, salary distributions)
+- Cut `useBilling.ts` (5 window refs → direct Supabase for credit balance, pricing, Stripe, auto-refill)
+- Cut `useNotifications.ts` (3 window refs → direct Supabase for notification_log, preferences)
+
+**Exit Gate:**
+- Zero `(window as any)` or `win()` in all 5 hooks (code-only, excluding comments)
+- SPA builds clean (`npm run build:spa`)
+- Tests passing. Three-file close.
 
 Pending manual steps (Marston):
 - `supabase db push` (migration v10.33-fb-chat-002-b-wizard-columns.sql — from FB-CHAT-002)
@@ -4343,7 +4406,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v10.37`** | **FB-CARDS-001: Feed + Pipeline Card Synergy & Match Score Fix. 38 tests.** |
+| **Product (BJ_VERSION)** | **`v10.39`** | **SPA-CUT-1: Feed + Pipeline + Keywords bridge elimination. Standalone Supabase client. 41 window refs → 0. 61 tests.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

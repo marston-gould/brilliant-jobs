@@ -1,11 +1,13 @@
 // ============================================================
-// useKeywords — Keywords/Readiness data hook (SA-015)
+// useKeywords — Keywords/Readiness data hook (SA-015 → SPA-CUT-1)
 // ============================================================
-// Bridges to legacy keywords.js via window.* globals.
-// Components consume readiness data through this hook only.
+// Standalone hook — reads resumes from localStorage, readiness
+// cache from localStorage, calls score-resume EF via gateway.
+// Zero window.* dependencies.
 // ============================================================
 
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
+import { safeReadLS, safeWriteLS, callGateway } from '@lib/supabase';
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -23,7 +25,6 @@ export interface FilterScore {
   topMissing: KeywordTerm[];
   bigramMatched?: KeywordTerm[];
   bigramMissing?: KeywordTerm[];
-  // AI scoring extras (Pro tier)
   aiPowered?: boolean;
   tier?: 'basic' | 'premium';
   recommendations?: string[];
@@ -109,14 +110,10 @@ function reducer(state: KeywordsState, action: KeywordsAction): KeywordsState {
   }
 }
 
-// ── Legacy bridge helpers ────────────────────────────────────
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function win(): any { return window as any; }
+// ── Standalone data access (SPA-CUT-1) ───────────────────────
 
 function getResumes(): ResumeInfo[] {
-  const resumes = win().resumes || [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const resumes = safeReadLS<any[]>('bj_resumes', []);
   return resumes.map((r: any, i: number) => ({
     index: i,
     name: r.name || `Resume ${i + 1}`,
@@ -129,7 +126,7 @@ function getResumes(): ResumeInfo[] {
 }
 
 function getReadinessCache(): { scores: Record<number, ResumeScore>; lastRun: string } | null {
-  return win().readinessCache || null;
+  return safeReadLS<{ scores: Record<number, ResumeScore>; lastRun: string } | null>('bj_readiness', null);
 }
 
 // ── Hook ─────────────────────────────────────────────────────
@@ -146,12 +143,10 @@ export function useKeywords(): [KeywordsState, KeywordsActions] {
   const [state, dispatch] = useReducer(reducer, initialState);
   const mountedRef = useRef(true);
 
-  // Load resumes and cached scores
   const loadResumes = useCallback(() => {
     const resumes = getResumes();
     dispatch({ type: 'SET_RESUMES', payload: resumes });
 
-    // Load cached readiness results
     const cache = getReadinessCache();
     if (cache?.scores) {
       dispatch({
@@ -161,26 +156,59 @@ export function useKeywords(): [KeywordsState, KeywordsActions] {
     }
   }, []);
 
-  // Run readiness analysis via legacy function
+  // SPA-CUT-1: Standalone analysis via score-resume gateway
   const runAnalysis = useCallback(async (opts?: { tier?: string; resumeIndex?: number }) => {
     dispatch({ type: 'SET_ANALYZING', payload: true });
     dispatch({ type: 'SET_STATUS', payload: 'Starting analysis…' });
 
     try {
-      if (typeof win().runReadinessAnalysis === 'function') {
-        await win().runReadinessAnalysis({
-          ...opts,
-          silent: false,
-        });
+      const allResumes = safeReadLS<any[]>('bj_resumes', []);
+      const selectedIndices = state.resumes
+        .filter(r => r.selected)
+        .map(r => r.index);
+
+      const resumesToScore = selectedIndices.length > 0
+        ? selectedIndices.map(i => allResumes[i]).filter(Boolean)
+        : allResumes.filter((r: any) => !r.archived && r.textStatus === 'ready');
+
+      if (resumesToScore.length === 0) {
+        dispatch({ type: 'SET_ERROR', payload: 'No resumes with extracted text available for scoring' });
+        return;
       }
 
-      // Read results from cache after analysis completes
-      const cache = getReadinessCache();
-      if (cache?.scores && mountedRef.current) {
-        dispatch({
-          type: 'SET_SCORES',
-          payload: { scores: cache.scores, lastRun: cache.lastRun || new Date().toISOString() },
-        });
+      const scores: Record<number, ResumeScore> = {};
+
+      for (const resume of resumesToScore) {
+        const idx = allResumes.indexOf(resume);
+        if (mountedRef.current) {
+          dispatch({ type: 'SET_STATUS', payload: `Scoring ${resume.name}…` });
+        }
+
+        try {
+          const result = await callGateway<any>('score-resume', {
+            mode: 'single',
+            resume_text: resume.extractedText || '',
+            tier: opts?.tier || 'basic',
+          }, { timeout: 30000 });
+
+          if (result) {
+            scores[idx] = {
+              resumeName: resume.name,
+              overallScore: result.score || result.overallScore || 0,
+              filters: result.filters || {},
+              levels: result.levels || {},
+            };
+          }
+        } catch (err) {
+          console.warn(`[SPA] Score failed for ${resume.name}:`, err);
+        }
+      }
+
+      const lastRun = new Date().toISOString();
+      safeWriteLS('bj_readiness', { scores, lastRun });
+
+      if (mountedRef.current) {
+        dispatch({ type: 'SET_SCORES', payload: { scores, lastRun } });
       }
     } catch (err) {
       if (mountedRef.current) {
@@ -192,7 +220,7 @@ export function useKeywords(): [KeywordsState, KeywordsActions] {
       dispatch({ type: 'SET_ANALYZING', payload: false });
       dispatch({ type: 'SET_STATUS', payload: '' });
     }
-  }, []);
+  }, [state.resumes]);
 
   const toggleResume = useCallback((index: number) => {
     dispatch({ type: 'TOGGLE_RESUME', payload: index });
@@ -206,13 +234,10 @@ export function useKeywords(): [KeywordsState, KeywordsActions] {
     dispatch({ type: 'SET_RESUMES', payload: updated });
   }, []);
 
-  const openJobModal = useCallback((jobId: string) => {
-    if (typeof win().openJobModal === 'function') {
-      win().openJobModal(jobId);
-    }
+  const openJobModal = useCallback((_jobId: string) => {
+    // TODO SPA-CUT-1: Job detail modal needs standalone React implementation
   }, []);
 
-  // Initial load
   useEffect(() => {
     mountedRef.current = true;
     loadResumes();

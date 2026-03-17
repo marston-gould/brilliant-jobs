@@ -50,14 +50,21 @@ export interface PipelineMeta {
   savedAt?: string;
   appliedAt?: string;
   respondedAt?: string;
+  interviewAt?: string;
+  offerAt?: string;
+  hiredAt?: string;
+  rejectedAt?: string;
+  archivedAt?: string;
   resumeUsed?: string;
   matchScore?: number;
   filterTags?: string[];
   tracking_mode?: 'auto' | 'muted';
   status_note?: string;
   stage_changed_at?: string;
+  stageChangedAt?: string;
   lastPromptedAt?: string;
   salaryEstimate?: number;
+  entrySource?: string;
   _dbId?: string;
 }
 
@@ -205,15 +212,23 @@ function reducer(state: PipelineState, action: PipelineAction): PipelineState {
   }
 }
 
-// ── Legacy bridge helpers ────────────────────────────────────
+// ── Standalone data access (SPA-CUT-1) ───────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function win(): any { return window as any; }
+import { supabase as _sb, getUser as _getUser, safeReadLS } from '@lib/supabase';
 
-function getSb() { return win().sb || win().BJ?.sb; }
-function getUser() { return win().currentUser; }
-function getPipelineCache(): Record<string, PipelineMeta> { return win()._pipelineCache || {}; }
-function getPendingSignals(): Record<string, PipelineSignal> { return win()._pendingSignals || {}; }
+function getSb() { return _sb; }
+async function getUserId(): Promise<string | null> {
+  const user = await _getUser();
+  return user?.id ?? null;
+}
+
+// Module-level caches — populated by loadPipeline(), consumed by components
+let _pipelineCache: Record<string, PipelineMeta> = {};
+let _pendingSignalsCache: Record<string, PipelineSignal> = {};
+let _pipelineLoaded = false;
+
+function getPipelineCache(): Record<string, PipelineMeta> { return _pipelineCache; }
+function getPendingSignals(): Record<string, PipelineSignal> { return _pendingSignalsCache; }
 function getSavedFilters(): Array<{ name: string; _filterColor?: string }> {
   try {
     const ls = localStorage.getItem('bj_saved_filters');
@@ -289,24 +304,63 @@ export function usePipeline(): [PipelineState, PipelineActions] {
   });
   const mountedRef = useRef(true);
 
-  // Load pipeline data from legacy cache + Supabase
+  // Load pipeline data directly from Supabase (SPA-CUT-1)
   const refresh = useCallback(async () => {
     dispatch({ type: 'SET_LOADING', payload: true });
 
     try {
       const sb = getSb();
-      const user = getUser();
-      if (!sb || !user?.id) {
+      const uid = await getUserId();
+      if (!uid) {
         dispatch({ type: 'SET_ERROR', payload: 'Not authenticated' });
         return;
       }
 
-      // Trigger legacy load if not already loaded
-      if (!win()._pipelineLoaded && typeof win().loadPipelineFromSupabase === 'function') {
-        await win().loadPipelineFromSupabase();
+      // Load pipeline entries directly
+      if (!_pipelineLoaded) {
+        const { data: pipeData, error: pipeErr } = await sb.from('user_pipeline')
+          .select('*')
+          .eq('user_id', uid);
+        if (pipeErr) throw pipeErr;
+        _pipelineCache = {};
+        (pipeData || []).forEach((row: any) => {
+          const key = row.job_id || row.id;
+          _pipelineCache[key] = {
+            _dbId: row.id,
+            stage: row.stage,
+            savedAt: row.saved_at,
+            appliedAt: row.applied_at,
+            respondedAt: row.responded_at,
+            interviewAt: row.interview_at,
+            offerAt: row.offer_at,
+            hiredAt: row.hired_at,
+            rejectedAt: row.rejected_at,
+            archivedAt: row.archived_at,
+            resumeUsed: row.resume_used || '',
+            filterTags: row.filter_tags || [],
+            matchScore: row.match_score,
+            companyName: row.company_name || '',
+            company: row.company_name || '',
+            title: row.job_title || '',
+            salaryEstimate: row.salary_estimate,
+            entrySource: row.entry_source,
+            stageChangedAt: row.stage_changed_at || row.saved_at,
+          };
+        });
+        _pipelineLoaded = true;
       }
-      if (typeof win().loadPendingSignals === 'function') {
-        await win().loadPendingSignals();
+
+      // Load pending signals directly
+      const { data: sigData, error: sigErr } = await sb.from('pipeline_signals')
+        .select('*')
+        .eq('user_id', uid)
+        .eq('status', 'pending_confirmation')
+        .order('created_at', { ascending: false });
+      if (!sigErr && sigData) {
+        _pendingSignalsCache = {};
+        sigData.forEach((s: any) => {
+          if (s.pipeline_entry_id) _pendingSignalsCache[s.pipeline_entry_id] = s;
+        });
       }
 
       const cache = getPipelineCache();
@@ -428,10 +482,10 @@ export function usePipeline(): [PipelineState, PipelineActions] {
     dispatch({ type: 'SET_GHOST_LOADING', payload: true });
     try {
       const sb = getSb();
-      const user = getUser();
-      if (!sb || !user?.id) return;
+      const uid = await getUserId();
+      if (!uid) return;
 
-      const { data, error } = await sb.rpc('get_pipeline_ghost_status', { p_user_id: user.id });
+      const { data, error } = await sb.rpc('get_pipeline_ghost_status', { p_user_id: uid });
       if (error) throw error;
 
       const entries: GhostEntry[] = (data || []).sort(
@@ -457,40 +511,77 @@ export function usePipeline(): [PipelineState, PipelineActions] {
     }
   }, []);
 
-  // Bridge actions to legacy functions
-  const moveStage = useCallback((jobId: string, newStage: PipelineStage) => {
-    if (typeof win().movePipelineStage === 'function') {
-      win().movePipelineStage(jobId, newStage);
+  // SPA-CUT-1: Standalone pipeline actions (direct Supabase)
+  const moveStage = useCallback(async (jobId: string, newStage: PipelineStage) => {
+    const sb = getSb();
+    const uid = await getUserId();
+    if (!uid) return;
+    const now = new Date().toISOString();
+    const upd: Record<string, any> = { stage: newStage, stage_changed_at: now };
+    // Set stage timestamp
+    const stageCol = newStage + '_at';
+    if (['applied', 'responded', 'interview', 'offer', 'hired', 'rejected', 'archived'].includes(newStage)) {
+      upd[stageCol] = now;
     }
-    // Re-read cache after a short delay
+    await sb.from('user_pipeline').update(upd).eq('job_id', jobId).eq('user_id', uid);
+    // Update local cache
+    if (_pipelineCache[jobId]) {
+      _pipelineCache[jobId].stage = newStage;
+      _pipelineCache[jobId].stageChangedAt = now;
+    }
     setTimeout(() => refresh(), 200);
   }, [refresh]);
 
-  const confirmSignal = useCallback((signalId: string, action: string, correctedStage?: string) => {
-    if (typeof win().confirmPipelineSignal === 'function') {
-      win().confirmPipelineSignal(signalId, action, correctedStage);
+  const confirmSignal = useCallback(async (signalId: string, action: string, correctedStage?: string) => {
+    const sb = getSb();
+    const uid = await getUserId();
+    if (!uid) return;
+    if (action === 'confirm' || action === 'correct') {
+      // Update signal status
+      await sb.from('pipeline_signals').update({
+        status: 'confirmed',
+        action_taken: action === 'correct' ? 'corrected' : 'confirmed',
+        user_response: action,
+      }).eq('id', signalId);
+      // If corrected, also update the pipeline entry stage
+      if (correctedStage) {
+        const signal = Object.values(_pendingSignalsCache).find(s => s.id === signalId);
+        if (signal?.pipeline_entry_id) {
+          const now = new Date().toISOString();
+          await sb.from('user_pipeline').update({
+            stage: correctedStage, stage_changed_at: now,
+          }).eq('id', signal.pipeline_entry_id).eq('user_id', uid);
+        }
+      }
+    } else if (action === 'dismiss') {
+      await sb.from('pipeline_signals').update({
+        status: 'dismissed', action_taken: 'dismissed', user_response: 'dismissed',
+      }).eq('id', signalId);
     }
     setTimeout(() => refresh(), 300);
   }, [refresh]);
 
-  const unsave = useCallback((jobId: string) => {
-    if (typeof win().unsaveFromPipeline === 'function') {
-      win().unsaveFromPipeline(jobId);
-    }
+  const unsave = useCallback(async (jobId: string) => {
+    const sb = getSb();
+    const uid = await getUserId();
+    if (!uid) return;
+    await sb.from('user_pipeline').delete().eq('job_id', jobId).eq('user_id', uid);
+    delete _pipelineCache[jobId];
     setTimeout(() => refresh(), 200);
   }, [refresh]);
 
-  const setTrackingMode = useCallback((jobId: string, mode: string) => {
-    if (typeof win().setTrackingMode === 'function') {
-      win().setTrackingMode(jobId, mode);
-    }
+  const setTrackingMode = useCallback(async (jobId: string, mode: string) => {
+    const sb = getSb();
+    const uid = await getUserId();
+    if (!uid) return;
+    await sb.from('user_pipeline').update({ tracking_mode: mode }).eq('job_id', jobId).eq('user_id', uid);
     setTimeout(() => refresh(), 200);
   }, [refresh]);
 
-  const openJobModal = useCallback((jobId: string) => {
-    if (typeof win().openJobModal === 'function') {
-      win().openJobModal(jobId);
-    }
+  const openJobModal = useCallback((_jobId: string) => {
+    // TODO SPA-CUT-1: Job detail modal needs standalone React implementation.
+    // For now, navigate to job URL or show inline detail.
+    // Legacy modal relied on dashboard.html DOM which won't exist post-cut.
   }, []);
 
   const setFilter = useCallback((tag: string) => {
