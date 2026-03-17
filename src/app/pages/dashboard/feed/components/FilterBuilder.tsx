@@ -102,6 +102,7 @@ export function FilterBuilder({
         onClick={onToggleCollapse}
       >
         <svg
+          aria-hidden="true"
           viewBox="0 0 24 24"
           width={14}
           height={14}
@@ -131,7 +132,7 @@ export function FilterBuilder({
               <input
                 type="text"
                 className="w-full px-2 py-1.5 text-xs bg-bg-input border border-border rounded-md text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
-                placeholder="title, keyword, dept…"
+                placeholder="title, keyword, dept…" aria-label="Job title or keyword"
                 value={values.what}
                 onChange={(e) => update('what', e.target.value)}
                 onKeyDown={handleKeyDown}

@@ -28,6 +28,7 @@ export function FilterCard({ filter, onToggle, onEditLevels }: FilterCardProps) 
           <Badge variant="secondary">{filter.keywords.length} keywords</Badge>
         </div>
         <svg
+          aria-hidden="true"
           className={`w-4 h-4 text-text-faint transition-transform ${filter.collapsed ? '' : 'rotate-180'}`}
           fill="none" viewBox="0 0 24 24" stroke="currentColor"
         >

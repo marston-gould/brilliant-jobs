@@ -67,7 +67,7 @@ function EmptyState({ hasFilters }: { hasFilters: boolean }) {
     <tr>
       <td colSpan={9} className="text-center py-12 px-3">
         <div className="text-text-faint mb-3 opacity-25">
-          <svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="inline-block">
+          <svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="inline-block" aria-hidden="true">
             <rect x={2} y={7} width={20} height={14} rx={2} />
             <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
           </svg>

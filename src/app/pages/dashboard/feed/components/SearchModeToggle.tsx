@@ -21,7 +21,7 @@ export function SearchModeToggle({ mode, onModeChange }: SearchModeToggleProps) 
           }`}
           onClick={() => onModeChange('filters')}
         >
-          <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2}>
+          <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
             <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />
           </svg>
           Filters
@@ -35,7 +35,7 @@ export function SearchModeToggle({ mode, onModeChange }: SearchModeToggleProps) 
           }`}
           onClick={() => onModeChange('chat')}
         >
-          <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2}>
+          <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
           Chat

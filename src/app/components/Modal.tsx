@@ -106,7 +106,7 @@ export function Modal({
               className="text-text-faint hover:text-text p-1 rounded-md hover:bg-bg-hover transition-all"
               aria-label="Close dialog"
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <path d="M4 4l8 8M12 4l-8 8" />
               </svg>
             </button>

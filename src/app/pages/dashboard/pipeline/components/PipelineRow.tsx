@@ -79,6 +79,8 @@ function ActionMenu({ jobId, isMuted, hasNote, onFindRecruiters, onToggleMute, o
         onClick={() => setOpen(!open)}
         className="px-2 py-0.5 text-xs text-text-dim hover:text-text hover:bg-bg-hover rounded transition-all"
         title="Actions"
+        aria-label="Actions menu"
+        aria-expanded={open}
       >
         ⋮
       </button>

@@ -340,7 +340,7 @@ export function FeedPage() {
       {state.searchMode === 'chat' && (
         <div className="border border-border rounded-lg p-6 text-center">
           <div className="text-text-faint mb-2">
-            <svg viewBox="0 0 24 24" width={28} height={28} fill="none" stroke="currentColor" strokeWidth={1.5} className="inline-block opacity-40">
+            <svg viewBox="0 0 24 24" width={28} height={28} fill="none" stroke="currentColor" strokeWidth={1.5} className="inline-block opacity-40" aria-hidden="true">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
           </div>
