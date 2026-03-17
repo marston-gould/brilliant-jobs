@@ -380,6 +380,23 @@
     }
     .handoff-link svg { width: 12px; height: 12px; flex-shrink: 0; }
 
+    .file-link {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 600; color: var(--green, #22c55e);
+      text-decoration: none; margin-top: 4px; margin-right: 6px;
+      padding: 2px 8px; border-radius: 4px;
+      background: rgba(34,197,94,0.06);
+      border: 1px solid rgba(34,197,94,0.15);
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .file-link:hover {
+      background: rgba(34,197,94,0.14);
+      border-color: rgba(34,197,94,0.3);
+      transform: translateY(-1px);
+    }
+    .file-link svg { width: 12px; height: 12px; flex-shrink: 0; }
+
     /* Group filter pills in filter bar */
     .group-filter-bar {
       display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
@@ -913,7 +930,7 @@ const features = [
   { s: 'done', n: 'Usage limits per tier', d: 'DONE — SA-025 feature flag system provides per-tier gating infrastructure (feature_flags + fn_evaluate_flag with plan-based rollout). tier-gating.js/ts getUserTier() + hasAccess() + isPaylUser() handle Free/Pro/PAYL assignment. Polish: configure specific limit values per feature once tier pricing is finalized.', p: 14 },
   { s: 'done', n: 'Data freshness gating — SUPERSEDED', d: 'SUPERSEDED by FB-TRIAL-001 trial gate system. Features gated by user_state (trialing/active_pro/expired_free) rather than data recency tiers.', p: 100},
   { s: 'done', n: 'A/B test framework (notification layer)', d: 'A/B subject line testing in admin_notification_config. subject_variants JSONB with weighted allocation. Applied to 82+ notification types. CS-P1-016 added landing CTA copy test (3 variants) with PostHog feature flag integration + admin-ab-tests.js. SA-025 feature flags add broader experimentation capability. Polish: run more experiments once user volume supports statistical significance.', p: 14 },
-  { s: 'todo', n: 'Per-feature usage analytics', d: 'FB-PHI-001: PostHog Full Interaction Instrumentation. 543 interactive elements catalogued (63 landing + 408 dashboard + 72 extension). 196 interaction events + 73 outcome events = 269 total. Every element fires action event; every server response fires paired outcome event with success/error. Admin Interaction Analytics panel with 6 views: Interaction Volume, Success/Error Rate, Cohort Breakdown (10 dimensions inc. plan tier), Temporal View (24h/7d/30d/90d/custom with anomaly detection), Funnel Analysis, Error Drilldown. Covers usage frequency, retention correlation, upgrade correlation per feature per tier. Satisfaction scores excluded (not meaningful at feature level). 10 sessions, 66-100h. Spec: FB-PHI-001_v2. Inventory: FB-PHI-001_Interactive_Elements_Inventory.xlsx.', p: 14, b: 'post-launch', e: '66-100h'},
+  { s: 'todo', n: 'Per-feature usage analytics', d: 'FB-PHI-001: PostHog Full Interaction Instrumentation. 543 interactive elements catalogued (63 landing + 408 dashboard + 72 extension). 196 interaction events + 73 outcome events = 269 total. Every element fires action event; every server response fires paired outcome event with success/error. Admin Interaction Analytics panel with 6 views: Interaction Volume, Success/Error Rate, Cohort Breakdown (10 dimensions inc. plan tier), Temporal View (24h/7d/30d/90d/custom with anomaly detection), Funnel Analysis, Error Drilldown. Covers usage frequency, retention correlation, upgrade correlation per feature per tier. Satisfaction scores excluded (not meaningful at feature level). 10 sessions, 66-100h.', p: 14, b: 'post-launch', e: '66-100h', files: [{url: '/docs/specs/FB-PHI-001_PostHog_Interaction_Instrumentation.docx', label: 'Instrumentation Spec'}, {url: '/docs/specs/FB-PHI-001_Interactive_Elements_Inventory.xlsx', label: 'Elements Inventory (543)'}]},
   { s: 'todo', n: 'Product health dashboard', d: 'Search quality (avg relevance, 0-click %), process ease, data value ratings, churn risk alerts — all from survey + behavioral data', b: 'needs-users', p: 14, b: 'post-launch', e: '6h'},
   { s: 'todo', n: 'Tier migration analytics', d: 'What triggers Free→Pro? What predicts Premium? Churn reasons by tier. Feature-level conversion attribution.', b: 'needs-users', p: 14, b: 'post-launch', e: '4h'},
   { s: 'todo', n: 'Adaptive upgrade nudges', d: 'Context-aware: Director+ searcher → Premium pitch. Ghost score user → accountability features. High-CoL city → salary negotiation data.', b: 'needs-users', p: 14, b: 'post-launch', e: '4h'},
@@ -2646,12 +2663,13 @@ function render() {
         const eTag = f.e ? `<span class="estimate-tag">${f.e}</span>` : '';
         const gTag = f.g ? `<span class="group-tag">${f.g.replace(/-/g, ' ')}</span>` : '';
         const hLink = f.h ? `<a class="handoff-link" href="${f.h}" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Handoff Doc</a>` : '';
+        const fLinks = f.files ? f.files.map(fl => `<a class="file-link" href="${fl.url}" target="_blank" download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>${fl.label}</a>`).join('') : '';
         html += `<li class="feature-item" style="animation-delay:${i * 0.03}s">
           <div class="status-icon ${statusCls}">${statusIcon}</div>
           <div>
             <div class="${nameCls}">${f.n}${bTag}${gTag}${eTag}</div>
             <div class="feature-detail">${f.d}</div>
-            ${hLink ? '<div>' + hLink + '</div>' : ''}
+            ${hLink || fLinks ? '<div>' + hLink + fLinks + '</div>' : ''}
           </div>
         </li>
 `;
