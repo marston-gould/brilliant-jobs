@@ -48,7 +48,8 @@
       "@providers": ["src/app/providers/index.ts"],
       "@providers/*": ["src/app/providers/*"],
       "@shell": ["src/app/shell/index.ts"],
-      "@shell/*": ["src/app/shell/*"]
+      "@shell/*": ["src/app/shell/*"],
+      "@lib/*": ["src/app/lib/*"]
     },
 
     // === Type Roots ===

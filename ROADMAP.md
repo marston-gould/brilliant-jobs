@@ -3793,3 +3793,16 @@ Phase S is complete when ALL of the following are true:
 | FB-CHAT-002-A | Wizard UI + Step Definitions — 7 wizard steps with input widgets (card selectors, pill inputs, location autocomplete, dual-handle salary slider, textarea), progress bar, navigation (Next/Back/Skip), keyboard shortcuts (Enter/Escape), review screen with editable prompt + answer summary, prompt assembly per spec §7, mode toggle 3rd segment (Guided), chat empty state entry point, new user default, CSS (cards/pills/slider/progress/review/responsive). Addendum A resolved: is_us_job is dead code. 112 tests. | ✅ | v10.33 |
 | FB-CHAT-002-B | Backend Wiring + Save/Edit + Result Presentation — Schema migration (source + wizard_answers on saved_prompts), chat-job-search EF editorial commentary ([WIZARD] prefix → per-job XML commentary), prompt assembly → EF call, editorial result cards (headline/why-fit/watch-for), derived_filters extraction + feed application, save dialog (upsert for re-edits, POST for new), wizard re-entry (_wizEditFromPrompt pre-fills from wizard_answers), wand icon for wizard prompts in filter selector, Edit in Wizard button on loaded prompt, 8 PostHog events. 62 tests. | ✅ | v10.34 |
 | FB-CHAT-002-C | Polish + Hardening + CI/CD — Focus-visible rings on all interactive elements, card hover/press micro-interactions (box-shadow, scale, pill animation), slider track styling, 480px mobile breakpoint, prevMode 3-state tracking fix, abandon tracking on mode switch, EF latency monitoring (server console.log + response latency_ms + client PostHog wizard_ef_latency), freeform chat regression verified (all 8 core functions intact, bidirectional sync, save/load prompts). 67 tests. **FB-CHAT-002 COMPLETE: 3 sessions, 241 tests.** | ✅ | v10.35 |
+
+## SPA-CUT: Legacy Bridge Elimination (Dashboard + Admin → Standalone SPA)
+
+Phase S3 (SA-013–SA-017) built the SPA scaffold with React bridge hooks to legacy window.* globals. SPA-CUT sessions eliminate those bridges, making each React page own its data, then removing dashboard.html + admin.html entirely.
+
+| Session | Scope | Status | Notes |
+|---------|-------|--------|-------|
+| SPA-CUT-1 | Feed + Pipeline + Keywords — Bridge Elimination. Standalone Supabase client (src/app/lib/supabase.ts). Provider cut from window.BJ. Feed: 15 window refs → 0 (localStorage reads, module caches, standalone feature flags, direct Supabase save/unsave/hide/apply). Pipeline: 19 win() refs → 0 (direct user_pipeline + pipeline_signals queries, module-level caches, async getUserId). Keywords: 7 win() refs → 0 (full rewrite — localStorage for resumes/readiness, callGateway for score-resume EF). @lib path alias added. PipelineMeta type extended. SPA builds clean (51KB Feed, 30KB Pipeline, 13KB Keywords gzip). 61 tests. | ✅ | v10.39 |
+| SPA-CUT-2 | Resumes + Applications + Notifications + Stats + Billing — bridge elimination | 🔲 | |
+| SPA-CUT-3 | Settings + Tuning + Integrations + Interview Prep + LinkedIn + Browsers | 🔲 | |
+| SPA-CUT-4 | Get Started (Home) + Chat + Referral section | 🔲 | |
+| SPA-CUT-5 | Admin surface standalone (64 subpages, 54 modules) | 🔲 | |
+| SPA-CUT-6 | Legacy HTML elimination + CSP strict (delete dashboard.html + admin.html) | 🔲 | |

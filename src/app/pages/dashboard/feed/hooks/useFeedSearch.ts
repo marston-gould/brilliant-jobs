@@ -134,67 +134,54 @@ const JOBS_PER_PAGE = 50;
 const ALL_TRUST: Set<TrustLabel> = new Set(['safe', 'caution', 'suspicious', 'unknown']);
 const ALL_AI: Set<AiLabel> = new Set(['human', 'mixed', 'ai_generated', 'unscored']);
 
-// ── Helper: get Supabase client from legacy bridge ────────
+// ── Helper: standalone Supabase client (SPA-CUT-1) ────────
+
+import { supabase as _sb, isFeatureEnabled as _isFlagEnabled, safeReadLS } from '@lib/supabase';
 
 function getSupabase() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const bj = (window as any).BJ;
-  if (!bj?.supabase) {
-    throw new ProviderError('Supabase client not initialized', 'SUPABASE_NOT_READY');
-  }
-  return bj.supabase;
+  return _sb;
 }
 
-// ── Helper: read from legacy localStorage safely ──────────
-
-function safeReadLS<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-// ── Helper: get legacy global arrays ──────────────────────
+// ── Helper: read feed state from localStorage (SPA-CUT-1) ──
+// These replace the window.* globals from legacy JS.
+// savedJobIds, appliedJobIds, hiddenJobIds are all persisted
+// to localStorage by the legacy code. We read directly.
 
 function getLegacySavedJobIds(): string[] {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (window as any).savedJobIds || [];
+  return safeReadLS<string[]>('bj_saved_jobs', []);
 }
 
 function getLegacyAppliedJobIds(): string[] {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (window as any).appliedJobIds || [];
+  return safeReadLS<string[]>('bj_applied_jobs', []);
 }
 
 function getLegacyHiddenJobIds(): Array<{ id: string }> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (window as any).hiddenJobIds || [];
+  const raw = safeReadLS<any[]>('bj_hidden_jobs', []);
+  // Legacy format: array of strings OR array of {id, reason, ...}
+  return raw.map((item: any) => typeof item === 'string' ? { id: item } : item);
 }
 
+// Match scores are session-only (not persisted) — use module-level cache
+const _matchScoreCache: Record<string, number | { score: number }> = {};
 function getLegacyMatchScores(): Record<string, number | { score: number }> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (window as any).jobMatchScores || {};
+  return _matchScoreCache;
 }
 
-function getLegacyFraudCache(): Record<string, { label: TrustLabel; score: number }> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (window as any)._fraudScoreCache || {};
+// Fraud + AI caches are session-only — module-level caches
+const _fraudCache: Record<string, { label: TrustLabel; score: number; signals?: any[]; confidence?: number }> = {};
+function getLegacyFraudCache(): Record<string, { label: TrustLabel; score: number; signals?: any[]; confidence?: number }> {
+  return _fraudCache;
 }
 
-function getLegacyAiJdCache(): Record<string, { label: AiLabel; ai_probability: number }> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (window as any)._aiJdCache || {};
+const _aiJdCacheLocal: Record<string, { label: AiLabel; ai_probability: number; score?: number; confidence?: number; summary?: string; perplexity?: number; burstiness?: number; topSignals?: any[] }> = {};
+function getLegacyAiJdCache(): Record<string, { label: AiLabel; ai_probability: number; score?: number }> {
+  return _aiJdCacheLocal;
 }
 
-// ── Helper: check feature flags from legacy bridge ──────────
+// ── Helper: check feature flags (SPA-CUT-1) ────────────────
 
 async function isFeatureFlagEnabled(key: string, fallback: boolean): Promise<boolean> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const fn = (window as any).isFeatureEnabled;
-  if (typeof fn !== 'function') return fallback;
-  try { return await fn(key, fallback); } catch { return fallback; }
+  return _isFlagEnabled(key, fallback);
 }
 
 // ── FA-005: Serialize filter for server-side merge RPC ──────
@@ -670,9 +657,8 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
       const tuning = safeReadLS('bj_tuning', {});
       const hiddenIds = getLegacyHiddenJobIds().map(h => h.id);
 
-      // Get active filters from legacy saved filters
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const legacySavedFilters: SavedFilter[] = (window as any).savedFilters || [];
+      // Get active filters — SPA-CUT-1: read from localStorage
+      const legacySavedFilters: SavedFilter[] = safeReadLS<SavedFilter[]>('bj_saved_filters', []);
       const checkedFilters = legacySavedFilters.filter(f => f.checked);
 
       if (checkedFilters.length === 0) {
@@ -769,21 +755,21 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
           const serverJobs = resultData.data || [];
 
           // FA-006: Populate legacy caches from server-returned data for badge rendering
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const fraudCache = (window as any)._fraudScoreCache = (window as any)._fraudScoreCache || {};
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const aiCache = (window as any)._aiJdCache = (window as any)._aiJdCache || {};
+          // SPA-CUT-1: Use module-level caches instead of window globals
+          const fraudCacheRef = _fraudCache;
+          const aiCacheRef = _aiJdCacheLocal;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           serverJobs.forEach((job: any) => {
             if (job._fraud_label != null) {
-              fraudCache[job.greenhouse_id] = {
+              fraudCacheRef[job.greenhouse_id] = {
                 score: job._fraud_score, label: job._fraud_label,
                 signals: job._fraud_signals || [], confidence: job._fraud_confidence,
               };
             }
             if (job._ai_label != null) {
-              aiCache[job.greenhouse_id] = {
-                label: job._ai_label, score: job._ai_score,
+              aiCacheRef[job.greenhouse_id] = {
+                label: job._ai_label, ai_probability: job._ai_score || 0,
+                score: job._ai_score,
                 confidence: job._ai_confidence, summary: job._ai_summary,
                 perplexity: job._ai_perplexity, burstiness: job._ai_burstiness,
                 topSignals: job._ai_signals || [],
@@ -983,16 +969,14 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
   // ── Job actions (bridge to legacy) ──────────────────────
 
   const saveJob = useCallback(async (jobId: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const bj = (window as any).BJ;
-    if (typeof bj?.toggleSaveJob === 'function') {
-      await bj.toggleSaveJob(jobId);
-    } else {
-      // Direct Supabase call
-      const sb = getSupabase();
-      const { error } = await sb.from('saved_jobs').insert({ greenhouse_id: jobId });
-      if (error) throw new ProviderError(error.message, 'SAVE_FAILED');
-    }
+    // SPA-CUT-1: Direct pipeline save
+    const sb = getSupabase();
+    const { error } = await sb.from('user_pipeline').upsert({
+      job_id: jobId,
+      stage: 'saved',
+      entry_source: 'feed',
+    }, { onConflict: 'job_id' });
+    if (error) throw new ProviderError(error.message, 'SAVE_FAILED');
     setState(prev => ({
       ...prev,
       stats: { ...prev.stats, pipeline: prev.stats.pipeline + 1 },
@@ -1000,11 +984,9 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
   }, []);
 
   const unsaveJob = useCallback(async (jobId: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const bj = (window as any).BJ;
-    if (typeof bj?.toggleSaveJob === 'function') {
-      await bj.toggleSaveJob(jobId);
-    }
+    // SPA-CUT-1: Direct Supabase delete
+    const sb = getSupabase();
+    await sb.from('user_pipeline').delete().eq('job_id', jobId);
     setState(prev => ({
       ...prev,
       stats: { ...prev.stats, pipeline: Math.max(0, prev.stats.pipeline - 1) },
@@ -1012,11 +994,10 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
   }, []);
 
   const hideJob = useCallback(async (jobId: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const bj = (window as any).BJ;
-    if (typeof bj?.hideJob === 'function') {
-      bj.hideJob(jobId);
-    }
+    // SPA-CUT-1: Direct localStorage write + optimistic UI
+    const hidden = safeReadLS<any[]>('bj_hidden_jobs', []);
+    hidden.push({ id: jobId, reason: 'dismissed', hiddenAt: new Date().toISOString() });
+    try { localStorage.setItem('bj_hidden_jobs', JSON.stringify(hidden)); } catch { /* non-fatal */ }
     setState(prev => ({
       ...prev,
       jobs: prev.jobs.filter(j => j.greenhouse_id !== jobId),
@@ -1026,10 +1007,11 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
   }, []);
 
   const markApplied = useCallback(async (jobId: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const bj = (window as any).BJ;
-    if (typeof bj?.markJobApplied === 'function') {
-      await bj.markJobApplied(jobId);
+    // SPA-CUT-1: Direct localStorage write
+    const applied = safeReadLS<string[]>('bj_applied_jobs', []);
+    if (!applied.includes(jobId)) {
+      applied.push(jobId);
+      try { localStorage.setItem('bj_applied_jobs', JSON.stringify(applied)); } catch { /* non-fatal */ }
     }
   }, []);
 

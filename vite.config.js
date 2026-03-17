@@ -23,6 +23,7 @@ export default defineConfig({
       '@components': resolve(__dirname, 'src/app/components'),
       '@providers': resolve(__dirname, 'src/app/providers'),
       '@shell': resolve(__dirname, 'src/app/shell'),
+      '@lib': resolve(__dirname, 'src/app/lib'),
     },
   },
 

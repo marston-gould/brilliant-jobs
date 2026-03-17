@@ -1,12 +1,8 @@
 // ============================================================
-// Supabase Provider Implementations (SA-013)
+// Supabase Provider Implementations (SA-013 → SPA-CUT-1)
 // ============================================================
-// These implementations bridge the provider interfaces to the
-// existing Supabase client and global functions from globals.ts.
-//
-// During migration, these read from the existing window.BJ
-// namespace established in CS-P1-004. After full migration,
-// they'll be refactored to use direct ES module imports.
+// These implementations use the standalone Supabase client.
+// No dependency on window.BJ or legacy globals.ts.
 // ============================================================
 
 import type {
@@ -22,18 +18,14 @@ import type {
   DataProviders,
 } from './types';
 import { ProviderError } from './types';
+import { supabase, getUser } from '@lib/supabase';
 
 // ── Supabase client accessor ──────────────────────────────
-// During dual-mode: reads from window.BJ.supabase (set by globals.ts)
-// Post-migration: will import directly from a Supabase module
+// SPA-CUT-1: Direct import from standalone client module.
+// No window.BJ dependency.
 
 function getSupabase() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const bj = (window as any).BJ;
-  if (!bj?.supabase) {
-    throw new ProviderError('Supabase client not initialized', 'SUPABASE_NOT_READY');
-  }
-  return bj.supabase;
+  return supabase;
 }
 
 // SA-014+: Gateway URL accessor for migrated pages
