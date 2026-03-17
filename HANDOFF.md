@@ -3850,7 +3850,14 @@ None.
 
 ## Last Completed Session
 
-**FB-SURVEY-DELIVERY-001 SDV-S2** — Question Bank Extraction + My Surveys Tab ✅
+**FB-SURVEY-DELIVERY-001 SDV-S3** — Overlay Delivery + Priority Engine ✅
+- v10.23→v10.24
+- **js/survey-delivery.js (NEW):** Centralized survey orchestration engine. IIFE, strict mode. MutationObserver on `.page` class changes detects page navigation (skips first load via _navCount debounce). `evaluateSurveyOverlay()` runs 5 eligibility gates in order: (1) logged-in user, (2) session rate limit (sessionStorage `bj_survey_overlay_shown`), (3) 7-day cooldown (reads `bj_user_data.last_survey_prompt_at`, writes to localStorage + Supabase profiles), (4) overlay not already active, (5) eligible campaigns exist. Fetches active campaigns from `survey_campaigns` (5-min cache) + completed versions from `feedback` in parallel. Filters to: overlay channel enabled, not completed, not exit type, audience matched. `matchesAudience()` checks `plan` and `min_sessions` from target_audience JSONB (fail-open on errors). `resolveHighestPriority()` picks lowest priority number. Overlay UI: fixed backdrop rgba(0,0,0,0.5), centered card max-width 480px with dark theme, close X, title, description, credit badge (#22c55e), estimated time, Take Survey (primary) + Not Now (ghost) buttons. Take Survey navigates to `/survey?context=...&v=...&src=overlay`. Dismiss methods: x_button, not_now, backdrop. Fade-in/out animations. Auto-init after 2s delay on page load.
+- **PostHog events:** `survey_overlay_shown` (survey_version, credit_amount), `survey_overlay_accepted` (survey_version), `survey_overlay_dismissed` (dismiss_method: x_button/not_now/backdrop).
+- **build.js:** `js/survey-delivery.js` added to deferred chunk after `survey-questions.js`.
+- **Tests:** 60 validation tests (tests/sdv-s3-overlay-priority.test.js) — all passing.
+
+**Previous: FB-SURVEY-DELIVERY-001 SDV-S2** — Question Bank Extraction + My Surveys Tab ✅
 - v10.22→v10.23
 - **js/survey-questions.js (NEW):** Shared question bank module. IIFE, strict mode. Contains churnQuestions (8 Qs), periodicQuestions (8 Qs), periodicQuestionsV2 (extends V1 + 8 more), ghostQuestions (10 Qs), npsQuestions (3 Qs), microSurveyQuestions (4 types: paywall/search/apply/data). Version maps (exitVersions, periodicVersions, npsVersions, ghostVersions). `getQuestionText(questionId)` lookup function searches all banks, falls back to raw ID. Exported as `window.BJ_SURVEY_QUESTIONS`.
 - **survey.html refactored:** Replaced ~470 lines of inline question bank definitions (lines 604–1074) with 14-line import from `BJ_SURVEY_QUESTIONS`. Script tag `<script src="/js/survey-questions.js">` added before main script. Local aliases with fallback defaults (`_SQ.churnQuestions || []`). resolveVersion() unchanged — references local aliases. File reduced from 1572 to 1111 lines.
@@ -4149,26 +4156,24 @@ Deliverables:
 
 ## Next Session
 
-**FB-SURVEY-DELIVERY-001 SDV-S3** — Overlay Delivery + Priority Engine
+**FB-SURVEY-DELIVERY-001 SDV-S4** — Micro-Survey Priority Fix + Merch Integration
 
 **Entry Gate:**
-- SDV-S2 complete: question bank extracted, My Surveys tab operational ✅
-- survey_campaigns table seeded with priority values (SDV-S1)
-- profiles.user_data.last_survey_prompt_at field accessible
+- SDV-S3 complete: overlay delivery + priority engine operational ✅
+- Open Question #4: merchandising system (merch_placements / merch_rules / merch_content) deployed? If not, merch half defers to SDV-S4b.
+- micro-surveys.js trigger functions identified (showPaywallFriction, showSearchRelevance, showApplyConfidence, showDataValue)
 
 **Scope:**
-- Build js/survey-delivery.js: centralized survey orchestration engine
-- Overlay UI (modal with semi-transparent backdrop, centered card, credit badge, Take Survey / Not Now buttons)
-- Eligibility checks: session dedup, 7-day cooldown (last_survey_prompt_at), version completion check, audience targeting from survey_campaigns.target_audience
-- Priority resolution: highest-priority eligible survey wins when multiple qualify
-- Session gating: one survey prompt per session max
-- PostHog: survey_overlay_shown, survey_overlay_accepted, survey_overlay_dismissed (with dismiss_method)
+- Replace micro-surveys.js 500ms flush with 2s debounce reading priority from survey_campaigns
+- Add survey_cta content_type handler to js/merch-client.js with credit badge rendering
+- Create initial merch placements via admin for Jobs Feed / Stats / Applications
+- PostHog: survey_merch_cta_shown, survey_merch_cta_clicked
 
 **Exit Gate:**
-- Overlay appears on page navigation for eligible users
-- Rate limiting and dedup verified
-- Priority resolution verified with multiple eligible campaigns
-- All SDV-S3 tests passing
+- Paywall friction micro-survey consistently wins over lower-priority surveys
+- Merch CTA cards rendering in designated placements
+- Cross-channel dedup: overlay and merch do not both prompt in same session
+- All SDV-S4 tests passing
 - Three-file close
 
 
@@ -4200,7 +4205,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v10.23`** | **FB-SURVEY-DELIVERY-001 SDV-S2: Question bank extraction + My Surveys tab.** |
+| **Product (BJ_VERSION)** | **`v10.24`** | **FB-SURVEY-DELIVERY-001 SDV-S3: Overlay delivery + priority engine.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

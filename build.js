@@ -53,6 +53,7 @@ const chunks = {
     'js/stats.js',
     'js/billing.js',
     'js/survey-questions.js',
+    'js/survey-delivery.js',
     'js/micro-surveys.js',
     'js/rewrite.js',
     'js/resume-archive.js',
