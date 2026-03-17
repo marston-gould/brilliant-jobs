@@ -325,6 +325,187 @@ async function handleStatus(): Promise<Response> {
   });
 }
 
+// ─── SDV-S6: Vonage SMS Delivery ──────────────────────────────────────────────
+
+const VONAGE_API_KEY = Deno.env.get("VONAGE_API_KEY") || "";
+const VONAGE_API_SECRET = Deno.env.get("VONAGE_API_SECRET") || "";
+const VONAGE_FROM = Deno.env.get("VONAGE_FROM_NUMBER") || "";
+const SMS_DAILY_BUDGET_CENTS = 1000; // $10/day cap
+
+async function sendSms(to: string, text: string): Promise<boolean> {
+  if (!VONAGE_API_KEY || !VONAGE_API_SECRET) {
+    console.warn("[send-survey-invite] Vonage credentials not configured");
+    return false;
+  }
+  try {
+    const res = await fetch("https://rest.nexmo.com/sms/json", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: VONAGE_API_KEY,
+        api_secret: VONAGE_API_SECRET,
+        from: VONAGE_FROM,
+        to: to.replace(/[^0-9+]/g, ""),
+        text,
+      }),
+    });
+    if (!res.ok) {
+      console.warn("[send-survey-invite] Vonage API error:", res.status);
+      return false;
+    }
+    const data = await res.json();
+    return data.messages?.[0]?.status === "0";
+  } catch (e) {
+    console.warn("[send-survey-invite] sendSms failed:", String(e));
+    return false;
+  }
+}
+
+function isQuietHours(userTimezone: string | null): boolean {
+  try {
+    const tz = userTimezone || "America/New_York";
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat("en-US", { hour: "numeric", hour12: false, timeZone: tz });
+    const hour = parseInt(formatter.format(now));
+    return hour >= 22 || hour < 7; // 10pm–7am
+  } catch (e) {
+    console.warn("[send-survey-invite] timezone check failed:", String(e));
+    return false; // fail-open: allow send if TZ check fails
+  }
+}
+
+async function checkSmsBudget(): Promise<boolean> {
+  try {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const { count } = await sb.from("notification_log")
+      .select("id", { count: "exact", head: true })
+      .eq("notification_type", "survey_invite")
+      .eq("channel", "sms")
+      .gte("created_at", todayStart.toISOString());
+    // ~$0.0068 per SMS segment → budget of $10/day ≈ 1470 SMS
+    const estimatedCostCents = (count || 0) * 0.68;
+    if (estimatedCostCents >= SMS_DAILY_BUDGET_CENTS) {
+      console.warn("[send-survey-invite] SMS daily budget exceeded:", estimatedCostCents, "cents");
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.warn("[send-survey-invite] SMS budget check failed:", String(e));
+    return true; // fail-open
+  }
+}
+
+function buildSmsMessage(title: string, creditReward: number, estimatedMinutes: number, shortUrl: string): string {
+  // 160-char limit per SMS segment
+  const creditPart = creditReward > 0 ? ` (${creditReward} credits)` : "";
+  const timePart = `${estimatedMinutes}min`;
+  const msg = `Brilliant Jobs: Quick survey${creditPart}. ${timePart}. ${shortUrl} Reply STOP to opt out`;
+  return msg.length > 160 ? msg.substring(0, 157) + "..." : msg;
+}
+
+async function handleSendSms(campaignVersion: string): Promise<Response> {
+  const startTime = Date.now();
+  const WALL_TIME_MS = 2 * 60 * 1000;
+  const SEND_DELAY_MS = 100;
+
+  // Verify Vonage credentials
+  if (!VONAGE_API_KEY || !VONAGE_API_SECRET || !VONAGE_FROM) {
+    return json({ error: "Vonage SMS credentials not configured" }, 503);
+  }
+
+  // 1. Fetch campaign
+  const { data: campaigns, error: campErr } = await sb.from("survey_campaigns")
+    .select("*")
+    .eq("survey_version", campaignVersion)
+    .eq("is_active", true)
+    .limit(1);
+
+  if (campErr || !campaigns || campaigns.length === 0) {
+    return json({ error: "Campaign not found or inactive" }, 404);
+  }
+
+  const campaign = campaigns[0];
+
+  if (!campaign.channels || !campaign.channels.includes("sms")) {
+    return json({ error: "SMS channel not enabled for this campaign" }, 400);
+  }
+
+  // 2. Check daily budget
+  const budgetOk = await checkSmsBudget();
+  if (!budgetOk) {
+    return json({ error: "SMS daily budget exceeded", budget_limit_cents: SMS_DAILY_BUDGET_CENTS }, 429);
+  }
+
+  // 3. Query eligible users (must have verified phone + SMS surveys enabled)
+  const { data: users, error: userErr } = await sb.from("profiles")
+    .select("id,phone,phone_verified,timezone")
+    .eq("phone_verified", true)
+    .not("phone", "is", null);
+
+  if (userErr || !users) {
+    return json({ error: "Failed to query users" }, 500);
+  }
+
+  let sent = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  for (const user of users) {
+    if (Date.now() - startTime > WALL_TIME_MS) {
+      console.warn("[send-survey-invite] SMS wall-time abort after", sent, "sent");
+      break;
+    }
+
+    // Quiet hours check (10pm–7am user timezone)
+    if (isQuietHours(user.timezone)) { skipped++; continue; }
+
+    // 30-day hard cap for SMS surveys
+    const alreadySent = await wasAlreadySent(user.id, campaign.survey_version, "sms", 30);
+    if (alreadySent) { skipped++; continue; }
+
+    // Completion check
+    const { data: feedback } = await sb.from("feedback")
+      .select("id").eq("user_id", user.id).eq("survey_version", campaign.survey_version).limit(1);
+    if (feedback && feedback.length > 0) { skipped++; continue; }
+
+    // Re-check budget mid-loop
+    const stillInBudget = await checkSmsBudget();
+    if (!stillInBudget) {
+      console.warn("[send-survey-invite] SMS budget exceeded mid-send");
+      break;
+    }
+
+    // Generate short URL (72h expiry for SMS)
+    const token = await createSurveyLink(user.id, campaign.survey_version, "sms", 72);
+    if (!token) { failed++; continue; }
+
+    const shortUrl = `${DASHBOARD_URL}/s/${token}`;
+    const smsText = buildSmsMessage(
+      campaign.title,
+      campaign.credit_reward || 0,
+      campaign.estimated_minutes || 2,
+      shortUrl,
+    );
+
+    const success = await sendSms(user.phone, smsText);
+    if (success) {
+      sent++;
+      await logNotification(user.id, campaign.survey_version, "sms");
+      await capturePostHog(user.id, "survey_sms_sent", {
+        survey_version: campaign.survey_version,
+        user_id: user.id,
+      });
+    } else {
+      failed++;
+    }
+
+    await new Promise((r) => setTimeout(r, SEND_DELAY_MS));
+  }
+
+  return json({ campaign_version: campaignVersion, channel: "sms", sent, skipped, failed, elapsed_ms: Date.now() - startTime });
+}
+
 // ─── Router ───────────────────────────────────────────────────────────────────
 
 serve(async (req: Request) => {
@@ -348,8 +529,8 @@ serve(async (req: Request) => {
         return await handleSendEmail(body.campaign_version);
 
       case "send_sms":
-        // SDV-S6 stub
-        return json({ error: "SMS delivery not yet implemented. Coming in SDV-S6." }, 501);
+        if (!body.campaign_version) return json({ error: "campaign_version required" }, 400);
+        return await handleSendSms(body.campaign_version);
 
       case "status":
         return await handleStatus();

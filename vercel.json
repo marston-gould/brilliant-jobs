@@ -105,6 +105,10 @@
       "destination": "https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/:path*"
     },
     {
+      "source": "/s/:token",
+      "destination": "https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/resolve-survey-link?token=:token"
+    },
+    {
       "source": "/app",
       "destination": "/src/app/index.html"
     },

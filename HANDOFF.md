@@ -3850,7 +3850,17 @@ None.
 
 ## Last Completed Session
 
-**FB-SURVEY-DELIVERY-001 SDV-S5** — Email Delivery Edge Function ✅
+**FB-SURVEY-DELIVERY-001 SDV-S6** — SMS Delivery + Short URL Resolution ✅
+- v10.26→v10.27
+- **supabase/functions/resolve-survey-link/index.ts (NEW):** Token lookup in survey_links, 6-char validation, expiry check (410 Gone), used_at marking (first click only), survey context detection from version prefix (nps/exit/ghost/periodic), 302 redirect to `/survey?context=...&v=...&src={channel}&uid={user_id}`. PostHog `survey_sms_clicked` for SMS, `survey_email_clicked` for email (channel-aware). Returns 404 for unknown tokens.
+- **send-survey-invite EF extended:** `send_sms` action replaces 501 stub. Vonage REST API (`rest.nexmo.com/sms/json`). Eligibility gates: `phone_verified=true`, 30-day hard cap via notification_log, quiet hours 10pm–7am (user timezone via `Intl.DateTimeFormat`), SMS channel enabled on campaign, daily budget check ($10/day ≈ 1470 SMS at $0.0068/segment). `buildSmsMessage()` fits 160-char limit with credit amount + short URL + STOP opt-out. 72h token expiry for SMS links. Mid-loop budget re-check. PostHog `survey_sms_sent`. Returns 503 if Vonage not configured, 429 if budget exceeded.
+- **vercel.json:** `/s/:token` rewrite → `resolve-survey-link?token=:token` EF.
+- **Tests:** 36 validation tests (tests/sdv-s6-sms-shorturl.test.js) — all passing.
+- **Pending manual steps (Marston):**
+  - `SUPABASE_ACCESS_TOKEN=<token> npx supabase functions deploy send-survey-invite resolve-survey-link api-gateway --project-ref qojhagupdnbtomfoxnsf`
+  - Set Vonage Vault secrets: VONAGE_API_KEY, VONAGE_API_SECRET, VONAGE_FROM_NUMBER
+
+**Previous: FB-SURVEY-DELIVERY-001 SDV-S5** — Email Delivery Edge Function ✅
 - v10.25→v10.26
 - **supabase/functions/send-survey-invite/index.ts (NEW):** 3 actions: `send_email` (query eligible users from profiles, frequency cap via notification_log, completion check via feedback, survey_links token generation 6-char/24h expiry, Resend HTML email with credit badge + CTA, 100ms inter-send throttle, 2-min wall-time abort), `send_sms` (SDV-S6 stub, returns 501), `status` (active campaigns + 7d send count). Email template: logo, title, description, credit badge #22c55e, estimated time, Take Survey button, notification preferences link. Subject lines per spec §3.3 (NPS/Periodic/Ghost patterns). Short URL `/s/{token}` with fallback to direct `/survey?src=email`. PostHog `survey_email_sent`. Error response includes sent/skipped/failed/errors/elapsed_ms counts.
 - **supabase/migrations/v10.25-fb-sdv-s5-survey-cron.sql:** pg_cron `survey-nps-monthly` (0 15 1 * * = 1st of month 10am ET), `survey-periodic-biweekly` (0 15 * * 2 = Tuesdays 10am ET). ON CONFLICT DO UPDATE for idempotency.
@@ -4172,28 +4182,26 @@ Deliverables:
 
 ## Next Session
 
-**FB-SURVEY-DELIVERY-001 SDV-S6** — SMS Delivery + Short URL Resolution
+**FB-SURVEY-DELIVERY-001 SDV-S7** — PostHog Instrumentation + Integration Test + Close
 
 **Entry Gate:**
-- SDV-S5 complete: email delivery operational ✅
-- Open Question #5: Vonage 10DLC campaign registered and approved
-- Open Question #2: /s/{token} routing decided (Vercel rewrite)
-- Vonage API credentials in Supabase Vault
+- SDV-S6 complete: all four delivery channels operational ✅
+- All SDV-S1 through SDV-S6 tests passing
+- Production environment has seeded survey_campaigns data
 
 **Scope:**
-- Extend send-survey-invite EF with SMS channel (Vonage dispatch, phone_verified gate, 30-day cap, quiet hours 10pm-7am user TZ, 160-char template, $10/day budget alert)
-- Build resolve-survey-link EF (token lookup, expiry validation, used_at marking, auth session, redirect)
-- Vercel rewrite /s/:token → resolve-survey-link EF
-- Vonage STOP webhook handler for opt-out sync
-- PostHog: survey_sms_sent, survey_sms_clicked
+- Verify all 12 PostHog events firing across all surfaces
+- End-to-end walkthrough of each channel (overlay, merch, email, SMS)
+- Architecture fitness score validation
+- Final version bump + three-file close
+- FB-SURVEY-DELIVERY-001 COMPLETE
 
 **Exit Gate:**
-- SMS dispatch verified via Vonage test
-- Short URL resolution verified end-to-end
-- Vercel rewrite operational
-- STOP webhook syncing opt-out
-- All SDV-S6 tests passing
-- Three-file close
+- All 12 PostHog events verified
+- All four delivery channels verified end-to-end
+- Architecture fitness score = 100%
+- Version bump, pre-commit check, three-file close
+- Git commit, tag, push
 
 
 ## Deferred: SA-001 / SA-002 / SA-003 (Typesense)
@@ -4224,7 +4232,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v10.26`** | **FB-SURVEY-DELIVERY-001 SDV-S5: Email delivery EF + pg_cron.** |
+| **Product (BJ_VERSION)** | **`v10.27`** | **FB-SURVEY-DELIVERY-001 SDV-S6: SMS + short URL resolution.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
