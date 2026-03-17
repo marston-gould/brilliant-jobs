@@ -1,11 +1,34 @@
-## v10.35 Session NN: TITLE (2026-03-17)
-- DESCRIBE CHANGES HERE
+## v10.35 FB-CHAT-002-C: Polish + Hardening + Release (2026-03-16)
+- Focus-visible keyboard rings on all wizard interactive elements
+- Card hover/selected micro-interactions (box-shadow, scale, pill animation)
+- Slider track styling, 480px mobile breakpoint
+- prevMode 3-state tracking fix (guided mode was invisible to sync logic)
+- Abandon tracking fires wizard_abandoned when switching away from wizard
+- EF latency monitoring: server console.log + response latency_ms + client PostHog wizard_ef_latency
+- Freeform chat regression verified: all 8 core functions, bidirectional sync, save/load intact
+- 67 tests. FB-CHAT-002 COMPLETE: 3 sessions, 241 tests.
 
-## v10.34 Session NN: TITLE (2026-03-17)
-- DESCRIBE CHANGES HERE
+## v10.34 FB-CHAT-002-B: Backend Wiring + Save/Edit + Result Presentation (2026-03-16)
+- Schema migration: source text + wizard_answers jsonb on saved_prompts (applied to prod)
+- chat-job-search EF: WIZARD EDITORIAL COMMENTARY in system prompt ([WIZARD] prefix → per-job XML)
+- _wizExecuteSearch: async EF call, editorial result parsing, result card rendering
+- Save dialog: auto-open after search, upsert for re-edits, source:'wizard' + wizard_answers
+- Wizard re-entry: _wizEditFromPrompt pre-fills from stored wizard_answers
+- Filter selector: wand-2 icon for wizard prompts, Edit in Wizard button on loaded prompt
+- 8 PostHog events (prompt_assembled, prompt_edited, filters_extracted, results_shown, prompt_saved, edit_started, edit_saved, abandoned)
+- chat-job-search EF deployed to production
+- 62 tests.
 
-## v10.33 Session NN: TITLE (2026-03-17)
-- DESCRIBE CHANGES HERE
+## v10.33 FB-CHAT-002-A: Guided Intake Wizard UI + Step Definitions (2026-03-16)
+- 7-step guided intake wizard (js/wizard.js, 570+ lines)
+- Card selectors (Steps 1,5), pill inputs (Steps 2,3,6), dual-handle salary slider (Step 4), textarea (Step 7)
+- Progress bar (7 segments), navigation (Next/Back/Skip), Enter/Escape keyboard
+- Review screen: editable prompt + answer summary sidebar
+- Prompt assembly per spec Section 7 format
+- Mode toggle 3rd segment (Guided), chat empty state Start Guided Search button, new user default
+- ~160 lines wizard CSS with responsive breakpoints (375px, 600px)
+- Addendum A resolved: is_us_job is dead code, feed uses loc_country + FA-009 4-tier smart filter
+- 112 tests.
 
 ## v10.32 Session NN: TITLE (2026-03-17)
 - DESCRIBE CHANGES HERE

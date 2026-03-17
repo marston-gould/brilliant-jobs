@@ -26,18 +26,18 @@
   },
   "deferred": {
     "file": "dashboard-deferred.min.js",
-    "hash": "534a38b9",
-    "size": 673158
+    "hash": "d580bfbf",
+    "size": 673533
   },
   "full": {
     "file": "dashboard.min.js",
-    "hash": "cd9ed6b6",
-    "size": 1302650
+    "hash": "48347d3d",
+    "size": 1303025
   },
   "styles": {
     "file": "styles.css",
     "hash": "564c5982",
     "size": 128113
   },
-  "_buildHash": "ba2140aa"
+  "_buildHash": "b842f3c2"
 }

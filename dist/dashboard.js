@@ -33160,7 +33160,14 @@ async function _wizSavePrompt(existingId, name, prompt, derivedFilters) {
       if (!resp.ok) throw new Error('Update failed: ' + resp.status);
       if (typeof showToast === 'function') showToast('Search updated', 'success');
       if (typeof captureEvent === 'function') {
-        try { captureEvent('wizard_edit_saved', { prompt_id: existingId }); } catch (_) { /* intentional */ }
+        // Determine which steps changed vs original
+        var stepsChanged = [];
+        var origPrompt = (typeof _savedPrompts !== 'undefined' && Array.isArray(_savedPrompts)) ? _savedPrompts.find(function(p) { return p.id === existingId; }) : null;
+        var origAnswers = (origPrompt && origPrompt.wizard_answers) ? origPrompt.wizard_answers : {};
+        for (var sc = 1; sc <= 7; sc++) {
+          if (JSON.stringify(_wizardState.answers[sc]) !== JSON.stringify(origAnswers[sc])) stepsChanged.push(sc);
+        }
+        try { captureEvent('wizard_edit_saved', { prompt_id: existingId, steps_changed: stepsChanged }); } catch (_) { /* intentional */ }
       }
     } else {
       // Create new
