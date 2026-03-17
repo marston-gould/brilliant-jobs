@@ -518,7 +518,7 @@ html:not([data-segment]) .carousel .carousel-dots {
   .hero h1, .hero .hero-heading { font-size: 32px; }
   .hero-sub { font-size: 16px; }
   .section { padding: 48px 20px; }
-  .data-stats-grid { grid-template-columns: 1fr 1fr !important; }
+  .data-stats-grid { grid-template-columns: 1fr 1fr; }
   .benefit-grid, .pricing-grid { grid-template-columns: 1fr; }
   .modal { margin: 16px; }
   .stats-row { gap: 20px; }
@@ -576,8 +576,8 @@ html:not([data-segment]) .carousel .carousel-dots {
 [data-segment="active"] .pricing-section,
 [data-segment="active"] .faq-section,
 [data-segment="active"] .final-cta,
-[data-segment="active"] .site-footer,
-[data-segment="active"] .auth-modal-overlay { display: none !important; }
+[data-segment="active"] .site-footer { display: none; }
+/* Note: auth modal uses id #auth-modal with class modal-overlay, not .auth-modal-overlay */
 
 /* Fallback: if no segment set yet (script hasn't run), show new variant */
 html:not([data-segment]) .segment-new { display: block; }
@@ -1226,22 +1226,6 @@ html:not([data-segment]) footer.segment-new { display: block; }
 
   .hero-img-col {
     display: none; /* hide screenshot at 375px — text is priority */
-  }
-}
-
-/* Admin landing page modal at 375px */
-@media (max-width: 375px) {
-  #al-modal {
-    padding: 16px !important;
-    border-radius: 8px !important;
-  }
-}
-
-/* Stats bar at 375px — reduce to 2-col grid */
-@media (max-width: 375px) {
-  .stats-row {
-    grid-template-columns: 1fr 1fr !important;
-    gap: 12px !important;
   }
 }
 
