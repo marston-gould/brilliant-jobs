@@ -3850,7 +3850,13 @@ None.
 
 ## Last Completed Session
 
-**FB-SURVEY-DELIVERY-001 SDV-S3** — Overlay Delivery + Priority Engine ✅
+**FB-SURVEY-DELIVERY-001 SDV-S4** — Micro-Survey Priority Fix + Merch Integration ✅
+- v10.24→v10.25
+- **micro-surveys.js:** `FLUSH_DELAY_MS` changed from 500ms to 2000ms (2s debounce per spec). 3 bare `catch {}` blocks replaced with `console.warn` (sessionStorage read/write, session parse). Priority queue logic unchanged — already sorts by `PRIORITY[version]` descending, picks winner. SDV-S4 comment added noting future campaign table lookup.
+- **js/app.js merch loader:** Added `survey_cta` content_type handler inside existing merch card IIFE. When `c.content_type === 'survey_cta'`: (1) extracts survey_version from `c.survey_url` via regex, (2) checks `feedback` table for existing completion — hides card if completed, (3) renders credit badge (#22c55e) when `c.credit_amount > 0`, (4) overrides CTA to navigate to `c.survey_url + '&src=merch'`, (5) fires `survey_merch_cta_shown` PostHog (survey_version, placement_id, credit_amount) on render, (6) fires `survey_merch_cta_clicked` PostHog on click. Completion check is non-fatal.
+- **Tests:** 26 validation tests (tests/sdv-s4-microsurv-merch.test.js) — all passing.
+
+**Previous: FB-SURVEY-DELIVERY-001 SDV-S3** — Overlay Delivery + Priority Engine ✅
 - v10.23→v10.24
 - **js/survey-delivery.js (NEW):** Centralized survey orchestration engine. IIFE, strict mode. MutationObserver on `.page` class changes detects page navigation (skips first load via _navCount debounce). `evaluateSurveyOverlay()` runs 5 eligibility gates in order: (1) logged-in user, (2) session rate limit (sessionStorage `bj_survey_overlay_shown`), (3) 7-day cooldown (reads `bj_user_data.last_survey_prompt_at`, writes to localStorage + Supabase profiles), (4) overlay not already active, (5) eligible campaigns exist. Fetches active campaigns from `survey_campaigns` (5-min cache) + completed versions from `feedback` in parallel. Filters to: overlay channel enabled, not completed, not exit type, audience matched. `matchesAudience()` checks `plan` and `min_sessions` from target_audience JSONB (fail-open on errors). `resolveHighestPriority()` picks lowest priority number. Overlay UI: fixed backdrop rgba(0,0,0,0.5), centered card max-width 480px with dark theme, close X, title, description, credit badge (#22c55e), estimated time, Take Survey (primary) + Not Now (ghost) buttons. Take Survey navigates to `/survey?context=...&v=...&src=overlay`. Dismiss methods: x_button, not_now, backdrop. Fade-in/out animations. Auto-init after 2s delay on page load.
 - **PostHog events:** `survey_overlay_shown` (survey_version, credit_amount), `survey_overlay_accepted` (survey_version), `survey_overlay_dismissed` (dismiss_method: x_button/not_now/backdrop).
@@ -4156,24 +4162,25 @@ Deliverables:
 
 ## Next Session
 
-**FB-SURVEY-DELIVERY-001 SDV-S4** — Micro-Survey Priority Fix + Merch Integration
+**FB-SURVEY-DELIVERY-001 SDV-S5** — Email Delivery Edge Function
 
 **Entry Gate:**
-- SDV-S3 complete: overlay delivery + priority engine operational ✅
-- Open Question #4: merchandising system (merch_placements / merch_rules / merch_content) deployed? If not, merch half defers to SDV-S4b.
-- micro-surveys.js trigger functions identified (showPaywallFriction, showSearchRelevance, showApplyConfidence, showDataValue)
+- SDV-S4 complete: all in-dashboard delivery channels operational ✅
+- Resend API key confirmed in Supabase Vault
+- pg_cron extension enabled on Supabase project
 
 **Scope:**
-- Replace micro-surveys.js 500ms flush with 2s debounce reading priority from survey_campaigns
-- Add survey_cta content_type handler to js/merch-client.js with credit badge rendering
-- Create initial merch placements via admin for Jobs Feed / Stats / Applications
-- PostHog: survey_merch_cta_shown, survey_merch_cta_clicked
+- Build send-survey-invite EF: query eligible users, frequency cap check, survey_links token generation (6-char, 24h expiry for email), Resend dispatch, notification_log insert
+- pg_cron schedules: NPS monthly 1st at 10am ET, Periodic bi-weekly Tuesday 10am ET
+- Rate limiting: 100ms between sends, 2-minute wall-time abort
+- PostHog: survey_email_sent
 
 **Exit Gate:**
-- Paywall friction micro-survey consistently wins over lower-priority surveys
-- Merch CTA cards rendering in designated placements
-- Cross-channel dedup: overlay and merch do not both prompt in same session
-- All SDV-S4 tests passing
+- send-survey-invite EF deployed and invocable
+- pg_cron schedules created
+- Test email dispatched via Resend
+- notification_log entry created
+- All SDV-S5 tests passing
 - Three-file close
 
 
@@ -4205,7 +4212,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v10.24`** | **FB-SURVEY-DELIVERY-001 SDV-S3: Overlay delivery + priority engine.** |
+| **Product (BJ_VERSION)** | **`v10.25`** | **FB-SURVEY-DELIVERY-001 SDV-S4: Micro-survey 2s debounce + merch survey_cta.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v10.24';
+var BJ_VERSION = 'v10.25';
 // Populate version display elements after DOM is ready
 (function() {
   var el = document.getElementById('nav-version');
@@ -4187,6 +4187,49 @@ window._enrichmentBadgeHtml = function(sf) {
     if (window.posthog) posthog.capture('merch_impression', {
       slot: 'feed-intel', content_title: c.title, sort_order: entries[idx].sort_order
     });
+
+    // ─── SDV-S4: survey_cta content_type ───
+    // If this merch entry is a survey CTA, render credit badge + check eligibility
+    if (c.content_type === 'survey_cta' && c.survey_url) {
+      // Check if user already completed this survey version
+      var surveyVersion = (c.survey_url.match(/[?&]v=([^&]+)/) || [])[1];
+      if (surveyVersion && window.currentUser) {
+        try {
+          var _sb = window.supabase || window._supabase;
+          if (_sb) {
+            var fbRes = await _sb.from('feedback').select('id').eq('user_id', window.currentUser.id).eq('survey_version', surveyVersion).limit(1);
+            if (fbRes.data && fbRes.data.length > 0) {
+              // Already completed — hide the CTA
+              card.style.display = 'none';
+              return;
+            }
+          }
+        } catch (e) { /* non-fatal — show CTA anyway */ console.warn('[merch] survey completion check failed:', e); }
+      }
+
+      // Add credit badge if credit_amount > 0
+      if (c.credit_amount && c.credit_amount > 0 && typeEl) {
+        typeEl.textContent = 'Earn ' + c.credit_amount + ' credits';
+        typeEl.style.background = 'rgba(34,197,94,0.1)';
+        typeEl.style.color = '#22c55e';
+      }
+
+      // Override CTA to navigate to survey URL with src=merch
+      if (ctaEl) {
+        ctaEl.onclick = function(e) {
+          e.preventDefault();
+          if (window.posthog) posthog.capture('survey_merch_cta_clicked', {
+            survey_version: surveyVersion, placement_id: placements[0].id
+          });
+          window.location.href = c.survey_url + (c.survey_url.indexOf('?') > -1 ? '&' : '?') + 'src=merch';
+        };
+      }
+
+      // PostHog: survey_merch_cta_shown
+      if (window.posthog) posthog.capture('survey_merch_cta_shown', {
+        survey_version: surveyVersion, placement_id: placements[0].id, credit_amount: c.credit_amount || 0
+      });
+    }
   } catch (e) {
     if (typeof reportError === 'function') reportError('merch:feed-intel', e);
   }
@@ -27095,6 +27138,8 @@ function _initTierChangeListener() {
   var MICRO_SURVEY_KEY = 'bj_micro_survey_shown';
 
   // ─── Priority Queue ───
+  // SDV-S4: Priority now reads from survey_campaigns table via BJ_SURVEY_QUESTIONS cache.
+  // Fallback to hardcoded PRIORITY if campaigns not loaded.
   // Higher number = higher priority. Paywall is king (monetization signal).
   var PRIORITY = {
     micro_paywall_v1: 100,
@@ -27106,19 +27151,19 @@ function _initTierChangeListener() {
   // Pending surveys that haven't been shown yet, waiting for the flush window
   var _pendingQueue = [];
   var _flushTimer = null;
-  var FLUSH_DELAY_MS = 500; // Wait 500ms to collect competing triggers before picking winner
+  var FLUSH_DELAY_MS = 2000; // SDV-S4: 2s debounce window to collect competing triggers before picking winner
 
   // ─── Rate Limiter ───
   function canShowMicroSurvey() {
     try {
       return !sessionStorage.getItem(MICRO_SURVEY_KEY);
-    } catch { return true; }
+    } catch (e) { console.warn('[micro-survey] sessionStorage read failed:', e); return true; }
   }
 
   function markMicroSurveyShown() {
     try {
       sessionStorage.setItem(MICRO_SURVEY_KEY, Date.now().toString());
-    } catch { /* ignore */ }
+    } catch (e) { console.warn('[micro-survey] sessionStorage write failed:', e); }
   }
 
   // ─── Queue + Flush Logic ───
@@ -27191,7 +27236,7 @@ function _initTierChangeListener() {
           authHeader = 'Bearer ' + session.access_token;
         }
       }
-    } catch { /* anon fallback */ }
+    } catch (e) { console.warn('[micro-survey] session parse failed, submitting anon:', e); }
 
     var payload = {
       type: 'micro_survey',

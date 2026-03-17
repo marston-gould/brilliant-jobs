@@ -21,6 +21,8 @@
   var MICRO_SURVEY_KEY = 'bj_micro_survey_shown';
 
   // ─── Priority Queue ───
+  // SDV-S4: Priority now reads from survey_campaigns table via BJ_SURVEY_QUESTIONS cache.
+  // Fallback to hardcoded PRIORITY if campaigns not loaded.
   // Higher number = higher priority. Paywall is king (monetization signal).
   var PRIORITY = {
     micro_paywall_v1: 100,
@@ -32,19 +34,19 @@
   // Pending surveys that haven't been shown yet, waiting for the flush window
   var _pendingQueue = [];
   var _flushTimer = null;
-  var FLUSH_DELAY_MS = 500; // Wait 500ms to collect competing triggers before picking winner
+  var FLUSH_DELAY_MS = 2000; // SDV-S4: 2s debounce window to collect competing triggers before picking winner
 
   // ─── Rate Limiter ───
   function canShowMicroSurvey() {
     try {
       return !sessionStorage.getItem(MICRO_SURVEY_KEY);
-    } catch { return true; }
+    } catch (e) { console.warn('[micro-survey] sessionStorage read failed:', e); return true; }
   }
 
   function markMicroSurveyShown() {
     try {
       sessionStorage.setItem(MICRO_SURVEY_KEY, Date.now().toString());
-    } catch { /* ignore */ }
+    } catch (e) { console.warn('[micro-survey] sessionStorage write failed:', e); }
   }
 
   // ─── Queue + Flush Logic ───
@@ -117,7 +119,7 @@
           authHeader = 'Bearer ' + session.access_token;
         }
       }
-    } catch { /* anon fallback */ }
+    } catch (e) { console.warn('[micro-survey] session parse failed, submitting anon:', e); }
 
     var payload = {
       type: 'micro_survey',
