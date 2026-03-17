@@ -47,6 +47,7 @@ export function JobDetailModal({ jobId, onClose }: JobDetailModalProps) {
         .single();
       if (err) throw err;
       setJob(data);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       setError(e?.message || 'Failed to load job');
     } finally {

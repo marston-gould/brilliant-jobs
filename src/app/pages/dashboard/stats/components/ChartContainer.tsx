@@ -21,6 +21,7 @@ export function ChartContainer({ title, chartId, height = '320px' }: ChartContai
     return () => {
       // Cleanup: dispose chart if legacy code left it
       try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const echarts = (window as any).echarts;
         if (echarts && ref.current) {
           const instance = echarts.getInstanceByDom(ref.current);

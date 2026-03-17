@@ -158,6 +158,7 @@ function getLegacyAppliedJobIds(): string[] {
 function getLegacyHiddenJobIds(): Array<{ id: string }> {
   const raw = safeReadLS<any[]>('bj_hidden_jobs', []);
   // Legacy format: array of strings OR array of {id, reason, ...}
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return raw.map((item: any) => typeof item === 'string' ? { id: item } : item);
 }
 
@@ -168,11 +169,14 @@ function getLegacyMatchScores(): Record<string, number | { score: number }> {
 }
 
 // Fraud + AI caches are session-only — module-level caches
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const _fraudCache: Record<string, { label: TrustLabel; score: number; signals?: any[]; confidence?: number }> = {};
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getLegacyFraudCache(): Record<string, { label: TrustLabel; score: number; signals?: any[]; confidence?: number }> {
   return _fraudCache;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const _aiJdCacheLocal: Record<string, { label: AiLabel; ai_probability: number; score?: number; confidence?: number; summary?: string; perplexity?: number; burstiness?: number; topSignals?: any[] }> = {};
 function getLegacyAiJdCache(): Record<string, { label: AiLabel; ai_probability: number; score?: number }> {
   return _aiJdCacheLocal;

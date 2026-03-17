@@ -74,6 +74,7 @@ export function useTuning(): [TuningState, {
       const levelHierarchy = Array.isArray(null) ? null : [];
 
       // @ts-ignore SPA-CUT-3
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const filters: TuningFilter[] = savedFilters.map((f: any, i: number) => ({
         name: f.name || f.label || `Filter ${i + 1}`,
         idx: i,
@@ -89,6 +90,7 @@ export function useTuning(): [TuningState, {
       }));
 
       // @ts-ignore SPA-CUT-3
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const levels: LevelConfig[] = levelHierarchy.map((l: any) => ({
         label: l.label || '',
         keywords: l.keywords || '',
@@ -134,6 +136,7 @@ export function useTuning(): [TuningState, {
     // SPA-CUT-REMEDIATION: Remove from hidden jobs in localStorage
     (jobId: string) => {
       const hidden = safeReadLS<any[]>('bj_hidden_jobs', []);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const filtered = hidden.filter((h: any) => (typeof h === 'string' ? h : h.id) !== jobId);
       safeWriteLS('bj_hidden_jobs', filtered);
     }

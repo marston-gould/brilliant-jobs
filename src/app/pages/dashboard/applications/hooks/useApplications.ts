@@ -141,6 +141,7 @@ function buildActions(dispatch: React.Dispatch<ApplicationsAction>, reload: () =
     addManual(jobTitle: string, company: string, url: string) {
       const queue = safeReadLS<AppEntry[]>('bj_app_queue', []);
       const resumes = safeReadLS<any[]>('bj_resumes', []);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const firstResume = resumes.find((r: any) => !r.archived && r.textStatus === 'ready');
       const mode = (localStorage.getItem('bj_app_mode') || 'manual') as AppMode;
 
@@ -195,6 +196,7 @@ function buildActions(dispatch: React.Dispatch<ApplicationsAction>, reload: () =
         const user = await getUser();
         if (!user) return;
         const data = await providers.applications.getNotifPrefs();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (data) dispatch({ type: 'SET_NOTIF_PREFS', prefs: data as any });
       } catch { /* non-fatal */ }
     },
@@ -204,6 +206,7 @@ function buildActions(dispatch: React.Dispatch<ApplicationsAction>, reload: () =
         const user = await getUser();
         if (!user) return;
         const data = await providers.applications.getNotifLog();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (data) dispatch({ type: 'SET_NOTIF_LOG', log: data as any[] });
       } catch { /* non-fatal */ }
     },

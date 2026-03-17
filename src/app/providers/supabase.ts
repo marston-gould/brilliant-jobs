@@ -315,11 +315,13 @@ export class SupabaseResumeProvider implements ResumeProvider {
 export class SupabaseApplicationProvider implements ApplicationProvider {
   async getQueue() { return safeReadLS<any[]>('bj_app_queue', []); }
   async getHistory() { return safeReadLS<any[]>('bj_app_history', []); }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async addToQueue(entry: any) { const q = safeReadLS<any[]>('bj_app_queue', []); q.push(entry); safeWriteLS('bj_app_queue', q); }
   async removeFromQueue(idx: number) { const q = safeReadLS<any[]>('bj_app_queue', []); if (idx >= 0 && idx < q.length) { q.splice(idx, 1); safeWriteLS('bj_app_queue', q); } }
   async processQueue() {
     const sb = getSupabase();
     const q = safeReadLS<any[]>('bj_app_queue', []);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const entry of q.filter((e: any) => e.status === 'queued')) {
       await sb.from('pending_applications').update({ status: 'approved' }).eq('id', entry.id);
       entry.status = 'pending';
@@ -376,9 +378,11 @@ export class SupabaseBillingProvider implements BillingProvider {
 
 export class SupabaseTuningProvider implements TuningProvider {
   async getTuning() { return safeReadLS<any>('bj_tuning', {}); }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async saveTuning(data: any) { safeWriteLS('bj_tuning', data); }
   async unhideJob(jobId: string) {
     const hidden = safeReadLS<any[]>('bj_hidden_jobs', []);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     safeWriteLS('bj_hidden_jobs', hidden.filter((h: any) => (typeof h === 'string' ? h : h.id) !== jobId));
   }
   async getCollapsedStates() { return safeReadLS<Record<string, boolean>>('bj_pl_collapse', {}); }

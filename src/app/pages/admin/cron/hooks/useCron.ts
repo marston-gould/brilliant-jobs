@@ -35,8 +35,10 @@ export function useCron(): [CronState, CronActions] {
         // @ts-ignore SPA-CUT-3
         jobs,
         // @ts-ignore SPA-CUT-3
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         activeCount: jobs.filter((j: any) => j.status === 'active').length,
         // @ts-ignore SPA-CUT-3
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         failedCount: jobs.filter((j: any) => j.status === 'failed').length,
       }});
     } catch (e) {

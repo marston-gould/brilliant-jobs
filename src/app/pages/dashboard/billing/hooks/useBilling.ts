@@ -80,6 +80,7 @@ export function useBilling(): [BillingState, BillingActions] {
       const applySettings = safeReadLS<any>('bj_apply_settings', {});
       const autoRefill = safeReadLS<AutoRefillConfig>('bj_auto_refill', { enabled: false, threshold: 0, amount: 0 });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const tiers: PricingTier[] = (pricing || []).map((t: any) => ({
         name: t.tier, price: (t.subscription_price_cents || 0) / 100,
         credits: t.included_credits || 0,

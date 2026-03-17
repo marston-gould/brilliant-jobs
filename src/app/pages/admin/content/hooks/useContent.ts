@@ -32,7 +32,9 @@ export function useContent(): [ContentState, ContentActions] {
       const all = Object.values(stories);
       dispatch({ type: 'LOADED', data: {
         storyCount: all.length,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         pendingCount: all.filter((s: any) => s.status === 'pending').length,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         publishedCount: all.filter((s: any) => s.status === 'published').length,
       }});
     } catch (e) {

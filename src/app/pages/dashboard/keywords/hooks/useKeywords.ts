@@ -122,6 +122,7 @@ function reducer(state: KeywordsState, action: KeywordsAction): KeywordsState {
 
 function getResumes(): ResumeInfo[] {
   const resumes = safeReadLS<any[]>('bj_resumes', []);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return resumes.map((r: any, i: number) => ({
     index: i,
     name: r.name || `Resume ${i + 1}`,
@@ -178,6 +179,7 @@ export function useKeywords(): [KeywordsState, KeywordsActions] {
 
       const resumesToScore = selectedIndices.length > 0
         ? selectedIndices.map(i => allResumes[i]).filter(Boolean)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         : allResumes.filter((r: any) => !r.archived && r.textStatus === 'ready');
 
       if (resumesToScore.length === 0) {

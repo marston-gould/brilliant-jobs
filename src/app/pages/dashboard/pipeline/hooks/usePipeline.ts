@@ -332,6 +332,7 @@ export function usePipeline(): [PipelineState, PipelineActions] {
           .eq('user_id', uid);
         if (pipeErr) throw pipeErr;
         _pipelineCache = {};
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (pipeData || []).forEach((row: any) => {
           const key = row.job_id || row.id;
           _pipelineCache[key] = {
@@ -367,6 +368,7 @@ export function usePipeline(): [PipelineState, PipelineActions] {
         .order('created_at', { ascending: false });
       if (!sigErr && sigData) {
         _pendingSignalsCache = {};
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         sigData.forEach((s: any) => {
           if (s.pipeline_entry_id) _pendingSignalsCache[s.pipeline_entry_id] = s;
         });

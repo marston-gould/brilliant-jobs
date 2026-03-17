@@ -75,12 +75,14 @@ export function useStats(): [StatsState, StatsActions] {
         cards.push({ label: 'Companies', value: String(counts.total_companies || 0) });
       }
       if (sources) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const topSource = sources.sort((a: any, b: any) => (b.job_count || 0) - (a.job_count || 0))[0];
         if (topSource) cards.push({ label: 'Top Source', value: topSource.source_name, sub: `${topSource.job_count} jobs` });
       }
 
       // Saved filters for comparison
       const savedFilters = safeReadLS<any[]>('bj_saved_filters', []);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const filters: FilterPill[] = savedFilters.map((f: any, i: number) => ({
         label: f.name || `Filter ${i + 1}`,
         color: f.color || '#6366f1',

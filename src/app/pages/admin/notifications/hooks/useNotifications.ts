@@ -12,7 +12,9 @@ import { providers } from '@app/providers/bridge';
 interface NotificationsState {
   loading: boolean;
   error: string | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   templates: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   campaigns: any[];
   stats: { total: number; sent24h: number; failed24h: number; pending: number };
 }

@@ -95,6 +95,7 @@ export function useReferrals(): [ReferralsState, {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const call = (name: string, ...args: any[]) => {
     // SPA-CUT-3: Dynamic dispatch removed — actions handled by hook methods directly
   };

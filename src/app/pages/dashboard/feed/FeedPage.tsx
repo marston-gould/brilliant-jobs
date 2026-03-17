@@ -132,6 +132,7 @@ export function FeedPage() {
     // Sync to legacy and re-search
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const legacyFilters: any[] = (window as any).savedFilters || [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const target = legacyFilters.find((f: any) => f.id === id);
     if (target) target.checked = !target.checked;
     actions.search(0);
@@ -143,6 +144,7 @@ export function FeedPage() {
     );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const legacyFilters: any[] = (window as any).savedFilters || [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     legacyFilters.forEach((f: any) => { f.checked = checked; });
     actions.search(0);
   }, [actions]);
@@ -152,6 +154,7 @@ export function FeedPage() {
     setSavedSearchItems(prev => prev.filter(item => !idSet.has(item.id)));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).savedFilters = ((window as any).savedFilters || []).filter(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (f: any) => !idSet.has(f.id)
     );
   }, []);
