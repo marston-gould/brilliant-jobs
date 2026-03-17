@@ -3762,7 +3762,7 @@ Phase S is complete when ALL of the following are true:
 | ID | Item | Status | Notes |
 |----|------|--------|-------|
 | SDV-S1 | Schema + Credit Grant Wiring — survey_campaigns table, survey_links table, grant_survey_credits RPC (idempotent). submitSurvey() wired to RPC. Credit confirmation toast. PostHog survey_credits_granted event. 7 campaign seeds (NPS/Periodic/4 micro/Exit with spec priorities). 50 tests. | ✅ | v10.02 |
-| SDV-S2 | Question Bank Extraction + My Surveys Tab — js/survey-questions.js shared module. My Surveys subtab in Notification Center. Available + completed sections. | 🔲 | |
+| SDV-S2 | Question Bank Extraction + My Surveys Tab — js/survey-questions.js shared module (all banks + getQuestionText lookup). survey.html refactored to import. My Surveys subtab in Notification Center (available surveys with credit badges, completed with expand/collapse + pagination + credit lookup). PostHog: survey_history_viewed, survey_response_expanded. 56 tests. | ✅ | v10.23 |
 | SDV-S3 | Overlay Delivery + Priority Engine — js/survey-delivery.js. Eligibility, session gating, priority resolution. | 🔲 | |
 | SDV-S4 | Micro-Survey Priority Fix + Merch Integration — Debounced priority queue. survey_cta merch content type. | 🔲 | |
 | SDV-S5 | Email Delivery EF — send-survey-invite EF. pg_cron schedules. Resend dispatch. | 🔲 | |

@@ -1385,6 +1385,14 @@ window.renderSettingsSummary = function() {
   // Notifications tabs (unchanged)
   if (typeof initTabGroup === 'function') initTabGroup('#page-notifications');
 
+  // SDV-S2: Load My Surveys data when tab is clicked
+  var ncSurveysTab = document.querySelector('[data-panel="nc-surveys"]');
+  if (ncSurveysTab) {
+    ncSurveysTab.addEventListener('click', function() {
+      if (typeof window.ncLoadMySurveys === 'function') window.ncLoadMySurveys();
+    });
+  }
+
   // FB-APPS-001: Queue section visibility — show when queue count > 0
   window.updateQueueSectionVisibility = function() {
     var queueSection = document.getElementById('app-queue-section');

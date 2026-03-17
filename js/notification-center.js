@@ -823,3 +823,259 @@ function ncUpdateArchiveButtonState() {
   var btn = document.getElementById('nc-archive-selected');
   if (btn) btn.disabled = !anyChecked;
 }
+
+// ─── SDV-S2: MY SURVEYS TAB ──────────────────────────────────────────────────
+
+var _ncSurveysPage = 0;
+var _ncSurveysPageSize = 10;
+var _ncSurveysLoaded = false;
+
+function ncLoadMySurveys() {
+  if (!currentUser) return;
+  _ncSurveysPage = 0;
+  _ncSurveysLoaded = false;
+  ncLoadAvailableSurveys();
+  ncLoadCompletedSurveys();
+
+  // PostHog: survey_history_viewed
+  try {
+    if (typeof captureEvent === 'function') captureEvent('survey_history_viewed', { tab: 'my_surveys' });
+    else if (typeof posthog !== 'undefined') posthog.capture('survey_history_viewed', { tab: 'my_surveys' });
+  } catch (_ph) { /* PostHog fire-and-forget */ }
+}
+
+// ─── Available Surveys ───
+async function ncLoadAvailableSurveys() {
+  var container = document.getElementById('nc-surveys-available-list');
+  if (!container) return;
+  container.innerHTML = '<div class="u-text-faint" style="padding:16px 0;">Loading...</div>';
+
+  try {
+    var sb = window.supabase || window._supabase;
+    if (!sb) { container.innerHTML = '<div class="u-text-faint" style="padding:16px 0;">Not connected.</div>'; return; }
+
+    // Fetch active campaigns
+    var campaignRes = await sb.from('survey_campaigns')
+      .select('survey_version,survey_type,title,description,estimated_minutes,credit_reward')
+      .eq('is_active', true)
+      .order('priority', { ascending: true });
+
+    if (campaignRes.error) throw campaignRes.error;
+    var campaigns = campaignRes.data || [];
+
+    if (campaigns.length === 0) {
+      container.innerHTML = '<div class="u-text-faint" style="padding:16px 0;">No surveys available right now. Check back soon.</div>';
+      return;
+    }
+
+    // Fetch user's completed survey versions from feedback table
+    var feedbackRes = await sb.from('feedback')
+      .select('survey_version')
+      .eq('user_id', currentUser.id);
+    var completedVersions = new Set();
+    if (feedbackRes.data) feedbackRes.data.forEach(function(r) { if (r.survey_version) completedVersions.add(r.survey_version); });
+
+    // Filter to only uncompleted, non-exit surveys
+    var available = campaigns.filter(function(c) {
+      return !completedVersions.has(c.survey_version) && c.survey_type !== 'exit';
+    });
+
+    if (available.length === 0) {
+      container.innerHTML = '<div class="u-text-faint" style="padding:16px 0;">No surveys available right now. Check back soon.</div>';
+      return;
+    }
+
+    var html = '';
+    for (var i = 0; i < available.length; i++) {
+      var s = available[i];
+      var esc = _ncEsc;
+      html += '<div class="card" style="margin-bottom:10px;padding:14px 16px;border:1px solid var(--border);">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;">';
+      html += '<div>';
+      html += '<div style="font-weight:600;font-size:13px;">' + esc(s.title) + '</div>';
+      if (s.description) html += '<div class="u-text-faint" style="font-size:11px;margin-top:2px;">' + esc(s.description) + '</div>';
+      html += '<div style="font-size:11px;margin-top:4px;color:var(--text-dim);">~' + (s.estimated_minutes || 2) + ' min</div>';
+      html += '</div>';
+      html += '<div style="display:flex;align-items:center;gap:8px;">';
+      if (s.credit_reward > 0) {
+        html += '<span style="background:#22c55e;color:#fff;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;">Earn ' + s.credit_reward + ' credits</span>';
+      }
+      html += '<a href="/survey?context=' + (s.survey_type === 'nps' ? 'nps' : s.survey_type === 'exit' ? 'churn' : s.survey_type === 'micro' ? 'periodic' : 'periodic') + '&v=' + encodeURIComponent(s.survey_version) + '&src=my_surveys" class="btn btn-primary btn-sm" style="font-size:11px;padding:4px 12px;">Take Survey</a>';
+      html += '</div></div></div>';
+    }
+    container.innerHTML = html;
+  } catch (err) {
+    reportError('nc_surveys_available', err);
+    container.innerHTML = '<div class="u-text-faint" style="padding:16px 0;">Failed to load surveys.</div>';
+  }
+}
+
+// ─── Completed Surveys ───
+async function ncLoadCompletedSurveys() {
+  var container = document.getElementById('nc-surveys-completed-list');
+  if (!container) return;
+  container.innerHTML = '<div class="u-text-faint" style="padding:16px 0;">Loading...</div>';
+  _ncSurveysPage = 0;
+  _ncSurveysLoaded = false;
+  await _ncFetchCompletedPage(container, false);
+}
+
+async function _ncFetchCompletedPage(container, append) {
+  try {
+    var sb = window.supabase || window._supabase;
+    if (!sb) { container.innerHTML = '<div class="u-text-faint" style="padding:16px 0;">Not connected.</div>'; return; }
+
+    var offset = _ncSurveysPage * _ncSurveysPageSize;
+    var res = await sb.from('feedback')
+      .select('id,type,survey_version,answers,created_at')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + _ncSurveysPageSize - 1);
+
+    if (res.error) throw res.error;
+    var rows = res.data || [];
+
+    if (rows.length === 0 && !append) {
+      container.innerHTML = '<div class="u-text-faint" style="padding:16px 0;">No survey responses yet.</div>';
+      _hideLoadMore();
+      return;
+    }
+
+    // Look up credit grants for these versions
+    var versions = rows.map(function(r) { return r.survey_version; }).filter(Boolean);
+    var creditMap = {};
+    if (versions.length > 0) {
+      var creditRes = await sb.from('credit_transactions')
+        .select('feature,amount')
+        .eq('user_id', currentUser.id)
+        .eq('source', 'survey_reward')
+        .in('feature', versions);
+      if (creditRes.data) creditRes.data.forEach(function(c) { creditMap[c.feature] = c.amount; });
+    }
+
+    var html = append ? '' : '';
+    var esc = _ncEsc;
+    var getQ = (typeof window.BJ_SURVEY_QUESTIONS !== 'undefined') ? window.BJ_SURVEY_QUESTIONS.getQuestionText : function(id) { return id; };
+
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      var typeLabel = _ncSurveyTypeLabel(r.type);
+      var dateStr = r.created_at ? new Date(r.created_at).toLocaleDateString() : '';
+      var credits = creditMap[r.survey_version];
+      var cardId = 'nc-survey-resp-' + r.id;
+
+      html += '<div class="card" style="margin-bottom:8px;padding:12px 16px;border:1px solid var(--border);cursor:pointer;" onclick="window.ncToggleSurveyResponse(\'' + r.id + '\')">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+      html += '<div style="display:flex;align-items:center;gap:8px;">';
+      html += '<span style="font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;background:var(--accent-glow);color:var(--accent);">' + esc(typeLabel) + '</span>';
+      html += '<span style="font-size:12px;font-weight:500;">' + esc(dateStr) + '</span>';
+      html += '</div>';
+      html += '<div style="display:flex;align-items:center;gap:8px;">';
+      if (credits && credits > 0) {
+        html += '<span style="font-size:10px;color:#22c55e;font-weight:600;">+' + credits + ' credits</span>';
+      } else {
+        html += '<span class="u-text-faint" style="font-size:10px;">\u2014</span>';
+      }
+      html += '<span class="u-text-faint" style="font-size:10px;">\u25BC</span>';
+      html += '</div></div>';
+
+      // Expandable response detail (hidden by default)
+      html += '<div id="' + cardId + '" style="display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px;">';
+      if (r.answers && typeof r.answers === 'object') {
+        var keys = Object.keys(r.answers);
+        for (var k = 0; k < keys.length; k++) {
+          var qId = keys[k];
+          var answer = r.answers[qId];
+          var qText = getQ(qId);
+          html += '<div style="margin-bottom:8px;">';
+          html += '<div style="font-size:11px;font-weight:600;color:var(--text-dim);">' + esc(qText) + '</div>';
+          html += '<div style="font-size:12px;margin-top:2px;">' + _ncRenderAnswer(answer) + '</div>';
+          html += '</div>';
+        }
+      } else {
+        html += '<div class="u-text-faint" style="font-size:11px;">No response data available.</div>';
+      }
+      html += '</div></div>';
+    }
+
+    if (append) {
+      container.insertAdjacentHTML('beforeend', html);
+    } else {
+      container.innerHTML = html;
+    }
+
+    // Show/hide load more
+    if (rows.length < _ncSurveysPageSize) {
+      _ncSurveysLoaded = true;
+      _hideLoadMore();
+    } else {
+      _showLoadMore();
+    }
+  } catch (err) {
+    reportError('nc_surveys_completed', err);
+    if (!append) container.innerHTML = '<div class="u-text-faint" style="padding:16px 0;">Failed to load responses.</div>';
+  }
+}
+
+function _ncRenderAnswer(answer) {
+  if (answer === null || answer === undefined) return '<span class="u-text-faint">—</span>';
+  if (typeof answer === 'string') {
+    var truncated = answer.length > 200 ? _ncEsc(answer.substring(0, 200)) + '<span class="u-text-faint">… (show more)</span>' : _ncEsc(answer);
+    return truncated;
+  }
+  if (typeof answer === 'number') return String(answer);
+  if (answer.label) return _ncEsc(answer.label);
+  if (answer.rating !== undefined) return 'Rating: ' + answer.rating + (answer.maxRating ? '/' + answer.maxRating : '/5');
+  if (answer.text) {
+    var t = answer.text;
+    return t.length > 200 ? _ncEsc(t.substring(0, 200)) + '<span class="u-text-faint">… (show more)</span>' : _ncEsc(t);
+  }
+  if (answer.index !== undefined && answer.label === undefined) return 'Option ' + (answer.index + 1);
+  if (Array.isArray(answer)) return answer.map(function(a) { return _ncEsc(typeof a === 'string' ? a : (a.label || JSON.stringify(a))); }).join(', ');
+  return _ncEsc(JSON.stringify(answer));
+}
+
+function _ncSurveyTypeLabel(type) {
+  if (!type) return 'Survey';
+  var map = { 'exit_survey': 'Exit', 'nps_survey': 'NPS', 'user_survey': 'Periodic', 'ghost_survey': 'Ghost', 'micro_survey': 'Micro' };
+  return map[type] || type;
+}
+
+function _ncEsc(str) {
+  if (!str) return '';
+  var d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function _showLoadMore() {
+  var el = document.getElementById('nc-surveys-load-more');
+  if (el) el.style.display = '';
+}
+
+function _hideLoadMore() {
+  var el = document.getElementById('nc-surveys-load-more');
+  if (el) el.style.display = 'none';
+}
+
+// ─── Window Exports ───
+window.ncLoadMySurveys = ncLoadMySurveys;
+
+window.ncLoadMoreSurveys = function() {
+  _ncSurveysPage++;
+  var container = document.getElementById('nc-surveys-completed-list');
+  if (container) _ncFetchCompletedPage(container, true);
+};
+
+window.ncToggleSurveyResponse = function(id) {
+  var el = document.getElementById('nc-survey-resp-' + id);
+  if (!el) return;
+  var isHidden = el.style.display === 'none';
+  el.style.display = isHidden ? '' : 'none';
+  if (isHidden) {
+    try {
+      if (typeof captureEvent === 'function') captureEvent('survey_response_expanded', { survey_id: id });
+      else if (typeof posthog !== 'undefined') posthog.capture('survey_response_expanded', { survey_id: id });
+    } catch (_ph) { /* PostHog fire-and-forget */ }
+  }
+};

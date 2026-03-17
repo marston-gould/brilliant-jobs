@@ -3850,7 +3850,17 @@ None.
 
 ## Last Completed Session
 
-**FB-SURVEY-DELIVERY-001 SDV-S1** — Schema + Credit Grant Wiring ✅
+**FB-SURVEY-DELIVERY-001 SDV-S2** — Question Bank Extraction + My Surveys Tab ✅
+- v10.22→v10.23
+- **js/survey-questions.js (NEW):** Shared question bank module. IIFE, strict mode. Contains churnQuestions (8 Qs), periodicQuestions (8 Qs), periodicQuestionsV2 (extends V1 + 8 more), ghostQuestions (10 Qs), npsQuestions (3 Qs), microSurveyQuestions (4 types: paywall/search/apply/data). Version maps (exitVersions, periodicVersions, npsVersions, ghostVersions). `getQuestionText(questionId)` lookup function searches all banks, falls back to raw ID. Exported as `window.BJ_SURVEY_QUESTIONS`.
+- **survey.html refactored:** Replaced ~470 lines of inline question bank definitions (lines 604–1074) with 14-line import from `BJ_SURVEY_QUESTIONS`. Script tag `<script src="/js/survey-questions.js">` added before main script. Local aliases with fallback defaults (`_SQ.churnQuestions || []`). resolveVersion() unchanged — references local aliases. File reduced from 1572 to 1111 lines.
+- **dashboard.html:** My Surveys tab added to NC tabs (`data-panel="nc-surveys"`). `panel-nc-surveys` panel with: Available Surveys card (`nc-surveys-available-list`), Completed Surveys card (`nc-surveys-completed-list`), Load More button (`nc-surveys-load-more`).
+- **js/notification-center.js:** `ncLoadMySurveys()` entry point (fires `survey_history_viewed` PostHog). `ncLoadAvailableSurveys()` queries `survey_campaigns` (active, ordered by priority), cross-references `feedback` table for completions, filters out exit surveys, renders cards with credit badge + Take Survey CTA linking to `/survey?src=my_surveys`. `ncLoadCompletedSurveys()` queries `feedback` (reverse chrono, paginated 10/page), looks up credit grants from `credit_transactions`, renders collapsed cards with type badge + date + credits. Expand/collapse via `ncToggleSurveyResponse()` (fires `survey_response_expanded` PostHog). `_ncRenderAnswer()` handles string/number/label/rating/text/array answer types. Text truncated at 200 chars with "show more". `_ncEsc()` XSS protection. `ncLoadMoreSurveys()` increments page, appends. All errors via `reportError()`.
+- **js/app.js:** Click listener on `[data-panel="nc-surveys"]` triggers `ncLoadMySurveys()`.
+- **build.js:** `js/survey-questions.js` added to deferred chunk before `js/micro-surveys.js`.
+- **Tests:** 56 validation tests (tests/sdv-s2-question-bank-my-surveys.test.js) — all passing.
+
+**Previous: FB-SURVEY-DELIVERY-001 SDV-S1** — Schema + Credit Grant Wiring ✅
 - v10.01→v10.02 — Survey delivery foundation.
 - **Migration v10.01-fb-survey-delivery-001-s1.sql:**
   - `survey_campaigns` table: survey_version (UNIQUE), survey_type CHECK (nps/periodic/micro/exit), title, description, estimated_minutes, credit_reward, priority CHECK (1-10), is_active, channels text[] (overlay/merch/email/sms), target_audience JSONB (Hook: schema-free, new dimensions without migration), frequency_days, expires_at, scar_meta JSONB. 3 indexes (active+priority, type, version). RLS: authenticated read, service_role full.
@@ -4139,23 +4149,26 @@ Deliverables:
 
 ## Next Session
 
-**FB-SURVEY-DELIVERY-001 SDV-S2** — Question Bank Extraction + My Surveys Tab
+**FB-SURVEY-DELIVERY-001 SDV-S3** — Overlay Delivery + Priority Engine
 
 **Entry Gate:**
-- SDV-S1 complete: survey_campaigns table seeded, credit grant wired ✅
-- `supabase db push` applied (migration v10.01) — Marston manual step
-- Notification Center subtab infrastructure confirmed operational (Preferences | Log tabs at dashboard.html line 2561)
+- SDV-S2 complete: question bank extracted, My Surveys tab operational ✅
+- survey_campaigns table seeded with priority values (SDV-S1)
+- profiles.user_data.last_survey_prompt_at field accessible
 
 **Scope:**
-- Extract all question banks from survey.html (exitQuestions, periodicQuestions_v2, npsQuestions, ghostQuestions) and micro-surveys.js into shared module `js/survey-questions.js`
-- Refactor both source files to import from the shared module
-- Build My Surveys subtab in Notification Center: available surveys section (cards with credit badge, take survey CTA) and completed surveys section (collapsed cards with expand/collapse, response rendering from feedback table, pagination)
-- PostHog events: survey_history_viewed, survey_response_expanded
+- Build js/survey-delivery.js: centralized survey orchestration engine
+- Overlay UI (modal with semi-transparent backdrop, centered card, credit badge, Take Survey / Not Now buttons)
+- Eligibility checks: session dedup, 7-day cooldown (last_survey_prompt_at), version completion check, audience targeting from survey_campaigns.target_audience
+- Priority resolution: highest-priority eligible survey wins when multiple qualify
+- Session gating: one survey prompt per session max
+- PostHog: survey_overlay_shown, survey_overlay_accepted, survey_overlay_dismissed (with dismiss_method)
 
 **Exit Gate:**
-- Shared module imported by both survey.html and micro-surveys.js with no regressions
-- My Surveys tab renders available and completed sections correctly
-- All SDV-S2 tests passing
+- Overlay appears on page navigation for eligible users
+- Rate limiting and dedup verified
+- Priority resolution verified with multiple eligible campaigns
+- All SDV-S3 tests passing
 - Three-file close
 
 
@@ -4187,7 +4200,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v10.02`** | **FB-SURVEY-DELIVERY-001 SDV-S1: survey_campaigns + survey_links + grant_survey_credits RPC + credit toast + PostHog.** |
+| **Product (BJ_VERSION)** | **`v10.23`** | **FB-SURVEY-DELIVERY-001 SDV-S2: Question bank extraction + My Surveys tab.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
