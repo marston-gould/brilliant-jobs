@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v10.34';
+var BJ_VERSION = 'v10.35';
 // Populate version display elements after DOM is ready
 (function() {
   var el = document.getElementById('nav-version');
@@ -30808,7 +30808,8 @@ function initChatMode() {
 }
 
 function setSearchMode(mode) {
-  var prevMode = _chatMode ? 'chat' : 'filters';
+  // FB-CHAT-002: Track all 3 modes for proper sync
+  var prevMode = _chatMode ? 'chat' : (document.getElementById('wizard-panel') && document.getElementById('wizard-panel').style.display !== 'none') ? 'guided' : 'filters';
   _chatMode = (mode === 'chat');
 
   var toggle = document.getElementById('search-mode-toggle');
@@ -30851,6 +30852,7 @@ function setSearchMode(mode) {
   // Hide wizard when switching to filters or chat
   if (wizPanel) {
     wizPanel.style.display = 'none';
+    if (typeof window._wizTrackAbandon === 'function') window._wizTrackAbandon();
     if (typeof window._wizClose === 'function') window._wizClose();
   }
 
@@ -32972,6 +32974,11 @@ async function _wizExecuteSearch() {
     var data = await resp.json();
     var aiResponse = (data.response || data.content || '');
     var derivedFilters = data.filters || data.derived_filters || null;
+
+    // FB-CHAT-002-C: EF latency monitoring — log to PostHog
+    if (data.latency_ms && typeof captureEvent === 'function') {
+      try { captureEvent('wizard_ef_latency', { latency_ms: data.latency_ms, cache_hit: !!data.cache_hit }); } catch (_) { /* intentional */ }
+    }
 
     // PostHog: wizard_filters_extracted
     if (derivedFilters && typeof captureEvent === 'function') {

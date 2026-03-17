@@ -271,6 +271,8 @@ n    // SPEC-COHORT-001-S2: Credit gate
     }
 
     // ─── Call Claude Haiku (BP-001: circuit breaker) ───
+    // FB-CHAT-002-C: EF latency monitoring
+    const _efStartMs = Date.now();
     const breakerResult = await withAnthropicBreaker(sb, 'chat-job-search', async () => {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -340,10 +342,15 @@ n    // SPEC-COHORT-001-S2: Credit gate
     // ─── Log usage ───
     await sb.from('chat_usage').insert({ user_id: user.id });
 
+    // FB-CHAT-002-C: EF latency monitoring
+    const _efDurationMs = Date.now() - _efStartMs;
+    console.log(`[chat-job-search] latency_ms=${_efDurationMs} cache_hit=${!!cached}`);
+
     // ─── Return response ───
     return new Response(JSON.stringify({
       response: responseText,
       filters: filters || {},
+      latency_ms: _efDurationMs,
       usage: {
         hourly: { used: (hourlyCount ?? 0) + 1, limit: limits.hourly },
         daily: { used: (dailyCount ?? 0) + 1, limit: limits.daily },

@@ -667,6 +667,11 @@ async function _wizExecuteSearch() {
     var aiResponse = (data.response || data.content || '');
     var derivedFilters = data.filters || data.derived_filters || null;
 
+    // FB-CHAT-002-C: EF latency monitoring — log to PostHog
+    if (data.latency_ms && typeof captureEvent === 'function') {
+      try { captureEvent('wizard_ef_latency', { latency_ms: data.latency_ms, cache_hit: !!data.cache_hit }); } catch (_) { /* intentional */ }
+    }
+
     // PostHog: wizard_filters_extracted
     if (derivedFilters && typeof captureEvent === 'function') {
       var fCount = 0;

@@ -201,7 +201,8 @@ function initChatMode() {
 }
 
 function setSearchMode(mode) {
-  var prevMode = _chatMode ? 'chat' : 'filters';
+  // FB-CHAT-002: Track all 3 modes for proper sync
+  var prevMode = _chatMode ? 'chat' : (document.getElementById('wizard-panel') && document.getElementById('wizard-panel').style.display !== 'none') ? 'guided' : 'filters';
   _chatMode = (mode === 'chat');
 
   var toggle = document.getElementById('search-mode-toggle');
@@ -244,6 +245,7 @@ function setSearchMode(mode) {
   // Hide wizard when switching to filters or chat
   if (wizPanel) {
     wizPanel.style.display = 'none';
+    if (typeof window._wizTrackAbandon === 'function') window._wizTrackAbandon();
     if (typeof window._wizClose === 'function') window._wizClose();
   }
 

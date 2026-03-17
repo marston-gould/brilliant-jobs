@@ -1,6 +1,6 @@
 // tests/fb-chat-002-b-backend-wiring.test.js
 // FB-CHAT-002 Session B: Backend Wiring + Save/Edit + Result Presentation
-// 2026-03-16 | v10.34
+// 2026-03-16 | v10.35
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'fs';
@@ -270,8 +270,8 @@ describe('FB-CHAT-002-B: Backend Wiring + Save/Edit + Result Presentation', () =
 
   // --- Section 14: Build + Version ---
   describe('14. Build + Version', () => {
-    it('version is v10.34', () => {
-      expect(versionJs).toContain('v10.34');
+    it('version is v10.35', () => {
+      expect(versionJs).toContain('v10.35');
     });
     it('dist/dashboard-deferred.min.js exists', () => {
       expect(existsSync('dist/dashboard-deferred.min.js')).toBe(true);

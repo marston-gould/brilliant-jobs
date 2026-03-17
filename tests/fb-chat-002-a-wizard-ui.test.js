@@ -1,6 +1,6 @@
 // tests/fb-chat-002-a-wizard-ui.test.js
 // FB-CHAT-002 Session A: Guided Intake Wizard UI + Step Definitions
-// 2026-03-16 | v10.34
+// 2026-03-16 | v10.35
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'fs';
@@ -412,11 +412,11 @@ describe('FB-CHAT-002-A: Wizard UI + Step Definitions', () => {
     it('wizard.js in deferred chunk', () => {
       expect(buildJs).toContain("'js/wizard.js'");
     });
-    it('version is v10.34', () => {
-      expect(versionJs).toContain('v10.34');
+    it('version is v10.35', () => {
+      expect(versionJs).toContain('v10.35');
     });
-    it('dashboard.html has v10.34', () => {
-      expect(dashHtml).toContain('v10.34');
+    it('dashboard.html has v10.35', () => {
+      expect(dashHtml).toContain('v10.35');
     });
     it('dist/dashboard.min.js exists', () => {
       expect(existsSync('dist/dashboard.min.js')).toBe(true);

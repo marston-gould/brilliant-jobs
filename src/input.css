@@ -3820,3 +3820,47 @@
     .wiz-ed-label { font-weight: 600; color: var(--text-dim); }
     .wiz-ed-fit { color: #16a34a; }
     .wiz-ed-watch { color: #d97706; }
+
+    /* FB-CHAT-002-C: Polish + Hardening */
+
+    /* Focus rings for keyboard navigation */
+    .wiz-pill-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .wiz-range:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .wiz-range:focus-visible::-moz-range-thumb { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .wiz-textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .wiz-review-textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .wiz-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .wiz-skip-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+    .wiz-toggle-label input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    /* Slider track fill between handles */
+    .wiz-range::-webkit-slider-runnable-track { height: 4px; background: var(--border); border-radius: 2px; }
+    .wiz-range::-moz-range-track { height: 4px; background: var(--border); border-radius: 2px; }
+
+    /* Card press micro-interaction */
+    .wiz-card { transition: border-color 0.15s, background 0.15s, transform 0.1s, box-shadow 0.15s; }
+    .wiz-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .wiz-card-selected { box-shadow: 0 0 0 1px var(--accent), 0 2px 8px rgba(59,130,246,0.1); }
+
+    /* Progress bar segment transitions */
+    .wiz-seg { transition: background 0.3s ease, width 0.2s ease; }
+
+    /* Pill entry animation */
+    .wiz-pill { animation: wizPillIn 0.15s ease; }
+    @keyframes wizPillIn { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: scale(1); } }
+
+    /* Save row animation */
+    .wiz-save-row { animation: wizSlideIn 0.2s ease; }
+
+    /* Mobile: stack review body vertically on narrow screens */
+    @media (max-width: 480px) {
+      .wiz-ai-header { font-size: 13px; }
+      .wiz-ai-sub { font-size: 11px; }
+      .wiz-card { padding: 12px 10px; }
+      .wiz-card i { width: 16px; height: 16px; }
+      .wiz-card-label { font-size: 12px; }
+      .wiz-nav { flex-wrap: wrap; gap: 8px; }
+      .wiz-editorial-cards { gap: 8px; }
+      .wiz-editorial-card { padding: 10px; }
+      .wiz-results-actions { flex-wrap: wrap; }
+    }
