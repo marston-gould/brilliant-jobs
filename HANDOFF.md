@@ -52,7 +52,6 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-<<<<<<< HEAD
 **TW-STD-001** — CSS Standardization: Gut input.css ✅
 - v10.50→v10.51
 - **input.css:** 3,888 lines → 296 lines (92% reduction). Entire @layer components block (2,277 lines) removed. All unlayered legacy CSS after line 2574 (1,314 lines) removed. Only @layer base remains (tokens, dark mode, resets).
@@ -64,19 +63,11 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 - **SPA build:** Vite build clean. All page chunks compile.
 - **Bundles rebuilt:** dist/dashboard.min.js v10.51 ✅. styles.css 30KB ✅. All cache busters updated ✅.
 
+**Previous: SPA-CONVERSION-COMPLETE** — Full SA-013 through SA-017 Spec Compliance ✅
+- v10.38→v10.50 (12 versions). All 22 hooks standalone. Legacy HTML archived. Provider compliance. 123 .ts. A11y. Production verified. 258 tests.
+
 **Previous: HP-STATS-CLEANUP** — Homepage Stats Cleanup ✅
 - v10.43→v10.44
-=======
-**SPA-CONVERSION-COMPLETE** — Full SA-013 through SA-017 Spec Compliance ✅
-- v10.38→v10.50 (12 versions across one extended session)
-- **SPA-CUT-1/2/3 (v10.39–v10.41):** All 22 hooks cut from window.* bridge. Standalone Supabase client (`src/app/lib/supabase.ts`). 133 window refs eliminated. Feed (15→0), Pipeline (19→0), Keywords (7→0), Resumes (15→0), Applications (5→0), Stats (6→0), Billing (5→0), Admin Notifications (3→0), remaining 14 hooks batch-transformed. 212 tests.
-- **SPA-CUT-FINAL (v10.42):** dashboard.html (4,378 lines) + admin.html (1,318 lines) archived to `legacy/`. 6 legacy scripts removed from SPA index.html. Vercel rewrites: /dashboard, /admin → SPA. CSP `unsafe-inline` removed from script-src (SHA-256 only). 46 tests.
-- **Spec Remediation (v10.43–v10.47):** 36 TS errors→0. CSS 188→120KB (safelist 7→1 regex). 26 TODO stubs→0 (JobDetailModal, RewritePanel, chat stubs, admin actions, file operations all implemented). Provider layer compliance (all 22 hooks via bridge, zero direct supabase.from). 16 typed domain interfaces. PostHog $pageview on route transitions. darkMode: 'class'. Extension hash-to-path redirect. ESLint no-explicit-any (60 eslint-disable annotations).
-- **Legacy TS Migration (v10.48):** 123 .js → .ts. Zero .js remaining. 114 @ts-nocheck. 19 files compiled to .js for direct HTML loading. CI gate updated to reject any new .js.
-- **Accessibility (v10.49–v10.50):** Global focus-visible ring. Skip-to-content link. Main/nav landmarks with aria-labels. 11 SVGs aria-hidden. PipelineRow aria-expanded. ChatInput aria-label. RewritePanel + tuning level editor state (final 2 TODO stubs).
-- **Production verified:** All 22 SPA routes return 200. Legacy rewrites (/dashboard, /admin) working. Vercel rewrite fix: `/src/app/index.html` → `/src/app/` (was 308 redirect, now resolves). Semantic tags pushed: `dashboard@10.50-spa-complete`, `admin@10.50-spa-complete`.
-- **258 tests. Zero TS errors. All SA-013–SA-017 spec items resolved.**
->>>>>>> c292dc7e (Three-file close: HANDOFF.md updated for SPA conversion completion)
 - **index.html:** "Career Pages Monitored" stat label renamed to "Companies in Database" (accurately reflects `ats_companies` total count, not just pages scanned). "Companies Hiring Now" stat block removed (redundant — active jobs count already conveys hiring activity). Social proof bar (`#social-proof-bar`) removed — off-brand blue floating box that duplicated stats bar content.
 - **js/landing-app.js:** Dead social proof IIFE removed (lines that called `document.getElementById('social-proof-bar')`). All removed element references were already guarded with `if (el)` checks — no silent fails introduced.
 - No migrations. No EF changes. No new tests needed (pure DOM/label cleanup).
@@ -4116,7 +4107,6 @@ None.
 
 ## Next Session
 
-<<<<<<< HEAD
 No specific session queued. TW-STD-001 complete (input.css gutted, 92% reduction).
 
 Potential next workstreams (CSS Standardization continuation):
@@ -4128,17 +4118,6 @@ Potential next workstreams (CSS Standardization continuation):
 - Remove 146 legacy JS modules from js/ (after confirming no other surfaces import them — SPA doesn't)
 - PostHog Google OAuth verification (R5 in FB-PI-001)
 - New feature work
-=======
-SPA conversion complete (SA-013 through SA-017). All spec items resolved. Production verified.
-
-Potential next workstreams:
-- AIS feature sessions (Application Intelligence Suite phases A–D)
-- Feed expansion (aggregator APIs to scale from ~500K to millions of listings)
-- AI resume rewrite + cover letter generation (spec already complete)
-- Remove legacy build.js / build-admin.js (once roadmap.html migrated)
-- Delete legacy/ archive after 30-day bake period
-- Tailwind CSS 120KB → 100KB (requires input.css audit of 1,802 custom rules)
->>>>>>> c292dc7e (Three-file close: HANDOFF.md updated for SPA conversion completion)
 
 Pending manual steps (Marston):
 - `supabase db push` (migration v10.33-fb-chat-002-b-wizard-columns.sql — from FB-CHAT-002)
