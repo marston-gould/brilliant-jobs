@@ -3848,3 +3848,19 @@ Phase S3 (SA-013–SA-017) built the SPA scaffold with React bridge hooks to leg
 | PaginationControls fp-btn/fp-active/fp-ellipsis | input.css dependency | Tailwind utilities | ✅ v10.51 |
 | SPA @layer components class dependencies | 3 (fp-btn, fp-active, fp-ellipsis) | 0 | ✅ v10.51 |
 | Legacy CSS backup | N/A | src/input.css.legacy-backup | ✅ v10.51 |
+
+## TW-STD-002: Landing Page CSS Standardization
+
+| Item | Before | After | Status |
+|------|--------|-------|--------|
+| landing.css total lines | 1,332 | 997 | ✅ v10.52 |
+| Duplicate font-faces + :root tokens | 57 lines | 0 (provided by styles.css) | ✅ v10.52 |
+| Dead CSS classes | 52 | 0 | ✅ v10.52 |
+| !important in landing.css | 6 (4 dead, 2 specificity fights) | 0 | ✅ v10.52 |
+| Platform-wide !important | 35 (28 input.css + 7 landing.css) | 0 | ✅ v10.52 |
+| Nav sections (2x) | landing.css semantic classes | Tailwind utilities in HTML | ✅ v10.52 |
+| Hero sections (4 variants) | landing.css semantic classes | Tailwind utilities in HTML | ✅ v10.52 |
+| Stats bar | landing.css semantic classes | Tailwind utilities (kept .stat-num for JS) | ✅ v10.52 |
+| Steps grid | landing.css semantic classes | Tailwind utilities in HTML | ✅ v10.52 |
+| Footer | landing.css semantic classes | Tailwind utilities in HTML | ✅ v10.52 |
+| index.html styles.css link | Not present | Added (Tailwind utilities available) | ✅ v10.52 |

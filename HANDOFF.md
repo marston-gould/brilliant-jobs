@@ -52,16 +52,20 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**TW-STD-001** — CSS Standardization: Gut input.css ✅
+**TW-STD-002** — Landing Page CSS Standardization ✅
+- v10.51→v10.52
+- **landing.css:** 1,332 → 997 lines (25% reduction).
+- **Removed duplicates:** Font-faces (2x), :root tokens, global resets — all already provided by styles.css via input.css @layer base.
+- **Converted to Tailwind in index.html:** Nav (2 variants), Hero (4 variants: new/returning/lapsed/active), Stats bar, Steps grid, Footer. Each section's semantic classes replaced with Tailwind utility classes directly in HTML markup.
+- **Purged 52 dead CSS classes:** Social proof bar (removed in HP-STATS-CLEANUP), rigged section grid/items (LP-RESTRUCTURE), old benefits grid/cards/icons, insights grid, feature cards, carousel subcomponents, optin-row, preview-unavailable.
+- **Killed all 6 !important:** 4 were dead CSS targeting non-existent elements. 2 were specificity fights between duplicate media queries.
+- **Platform-wide !important count: 35 → 0** (28 in input.css from TW-STD-001 + 7 in landing.css from TW-STD-002).
+- **index.html:** Now links styles.css (Tailwind utilities available) alongside landing.css.
+- **Remaining 997 lines:** All live CSS — sections base (.section used 26x), comparison table, filter preview, carousel, ghost section, pricing cards, auth modal, segment visibility, cookie consent, responsive breakpoints. These have pseudo-elements, :nth-child selectors, and JS-toggled states that are valid CSS use cases.
+
+**Previous: TW-STD-001** — CSS Standardization: Gut input.css ✅
 - v10.50→v10.51
-- **input.css:** 3,888 lines → 296 lines (92% reduction). Entire @layer components block (2,277 lines) removed. All unlayered legacy CSS after line 2574 (1,314 lines) removed. Only @layer base remains (tokens, dark mode, resets).
-- **Key discovery:** SPA had ZERO dependencies on @layer components. All 80+ React components in src/app/ are pure Tailwind. The 2,277 lines of semantic CSS (.nav-*, .page-header, .stat-grid, .pl-stage-*, .qb-*, etc.) were consumed only by legacy js/ modules serving dead legacy/dashboard.html and legacy/admin.html.
-- **PaginationControls.tsx:** Last 3 input.css dependencies (fp-btn, fp-active, fp-ellipsis) converted to Tailwind utilities.
-- **28 !important declarations:** All eliminated (were in removed @layer components).
-- **CSS output:** 128KB → 30KB (76% reduction).
-- **Legacy backup:** src/input.css.legacy-backup (full 3,888-line original preserved).
-- **SPA build:** Vite build clean. All page chunks compile.
-- **Bundles rebuilt:** dist/dashboard.min.js v10.51 ✅. styles.css 30KB ✅. All cache busters updated ✅.
+- input.css: 3,888 → 296 lines (92%). CSS output: 128KB → 30KB (76%). 28 !important → 0.
 
 **Previous: SPA-CONVERSION-COMPLETE** — Full SA-013 through SA-017 Spec Compliance ✅
 - v10.38→v10.50 (12 versions). All 22 hooks standalone. Legacy HTML archived. Provider compliance. 123 .ts. A11y. Production verified. 258 tests.
@@ -4107,22 +4111,25 @@ None.
 
 ## Next Session
 
-No specific session queued. TW-STD-001 complete (input.css gutted, 92% reduction).
+No specific session queued. TW-STD-001 + TW-STD-002 complete.
 
-Potential next workstreams (CSS Standardization continuation):
-- **TW-STD-002: Kill landing.css** (1,332 lines) — convert all semantic classes to Tailwind utilities in index.html markup. Page already has 0 inline `<style>` blocks and only 1 inline style.
-- **TW-STD-003: Kill seo-pages.css** (316 lines) + inline `<style>` blocks in SEO/data pages (hiring-trends, compare, industry/*, salary-data, jobs-by-industry, career-level-data, market-dynamics, data-lab, ghost-report, roadmap, pricing, help, survey, install, uninstall, 404, 503).
-- **TW-STD-004: Extension Tailwind conversion** — popup.html (608 lines), inject-overlay.js (322 .style assignments), inject.css (27 lines).
-- Remove legacy build.js / build-admin.js (once roadmap.html is migrated off dashboard.min.js dependency)
+**CSS Standardization status:**
+- ✅ TW-STD-001: input.css gutted (3,888→296 lines, 92%)
+- ✅ TW-STD-002: landing.css cleaned (1,332→997 lines, 25%) + 35 !important→0
+- Remaining: landing.css 997 lines (live CSS, pseudo-elements, segment visibility — valid CSS use cases)
+
+Potential next workstreams:
+- **TW-STD-003: Extension Tailwind conversion** — popup.html (608 lines), inject-overlay.js (322 .style assignments), inject.css (27 lines). Highest remaining CSS debt.
+- **TW-STD-004: SEO page cleanup** — seo-pages.css (316 lines) + ~4,127 lines of inline `<style>` across ~30 pages. Data pages share identical 90-line template. Industry pages share 64-line template.
+- Remove legacy build.js / build-admin.js (once roadmap.html migrated off dashboard.min.js)
 - Delete legacy/ archive + src/input.css.legacy-backup after bake period
-- Remove 146 legacy JS modules from js/ (after confirming no other surfaces import them — SPA doesn't)
+- Remove 146 legacy JS modules from js/ (SPA doesn't import them)
 - PostHog Google OAuth verification (R5 in FB-PI-001)
 - New feature work
 
 Pending manual steps (Marston):
 - `supabase db push` (migration v10.33-fb-chat-002-b-wizard-columns.sql — from FB-CHAT-002)
 - Deploy chat-job-search EF (from FB-CHAT-002)
-- Verify staging environment matches production (Vercel staging config)
 
 **Previous: FB-SURVEY-DELIVERY-001 SDV-S7** — Spec Gap Remediation + Integration Test + Close ✅ — **FB-SURVEY-DELIVERY-001 COMPLETE**
 - v10.27→v10.28
