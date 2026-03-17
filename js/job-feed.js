@@ -2641,6 +2641,18 @@ function renderJobRows(jobs, total, page, filtersToRun) {
     if (sal && sal !== '—') metaParts.push(`<span style="color:var(--text-faint);">${sal}</span>`);
     if (daysStr) metaParts.push(`<span style="${daysColor}">${daysStr}</span>`);
 
+    // FB-CARDS-001 Fix A: Match % badge in meta row, decoupled from Preview JD toggle
+    const _matchData = jobMatchScores[job.greenhouse_id];
+    const _matchPct = _matchData && typeof _matchData === 'object' ? _matchData.score : (typeof _matchData === 'number' ? _matchData : null);
+    if (_matchPct && _matchPct >= 40) {
+      const _mBg = _matchPct >= 80 ? 'var(--green-dim,#dcfce7)' : _matchPct >= 60 ? 'var(--warm-dim,#fef3c7)' : 'transparent';
+      const _mColor = _matchPct >= 80 ? 'var(--green,#22c55e)' : _matchPct >= 60 ? 'var(--warm,#f59e0b)' : 'var(--text-faint)';
+      const _mStyle = _matchPct >= 60
+        ? `display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;background:${_mBg};color:${_mColor};`
+        : `font-size:10px;color:${_mColor};`;
+      metaParts.push(`<span style="${_mStyle}">${_matchPct}%</span>`);
+    }
+
     // Action buttons (exactly 3: Dismiss is left column, Pipeline + Apply right)
     let pipelineBtn, applyBtn;
     if (isApplied) {
@@ -2654,14 +2666,10 @@ function renderJobRows(jobs, total, page, filtersToRun) {
       applyBtn = `<button class="jc-apply-btn" data-jobid="${escapeHtml(job.greenhouse_id)}" data-url="${escapeHtml(jobUrl)}" style="font-size:12px;padding:5px 14px;border:none;border-radius:6px;background:var(--accent);color:#fff;font-weight:600;cursor:pointer;">Apply →</button>`;
     }
 
-    // Preview JD snippet
+    // Preview JD snippet — FB-CARDS-001: match badge moved to meta row
     let snippetHtml = '';
     if (showPreview) {
-      const matchData = jobMatchScores[job.greenhouse_id];
-      const matchPct = matchData && typeof matchData === 'object' ? matchData.score : (typeof matchData === 'number' ? matchData : null);
-      const matchBadgeHtml = matchPct ? `<span style="display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;background:var(--accent);color:#fff;margin-bottom:4px;">${matchPct}% match</span>` : '';
       snippetHtml = `<div style="border-top:0.5px solid var(--border);padding:8px 0 0 48px;margin-top:8px;">
-        ${matchBadgeHtml}
         <div class="jc-snippet" data-preview-id="${escapeHtml(job.greenhouse_id)}" style="font-size:12px;color:var(--text-faint);line-height:1.6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;"></div>
       </div>`;
     }
@@ -2696,6 +2704,20 @@ function renderJobRows(jobs, total, page, filtersToRun) {
 
   // Re-initialize Lucide icons
   if (typeof window.refreshIcons === 'function') window.refreshIcons();
+
+  // FB-CARDS-001 §8: PostHog match badge visibility tracking
+  try {
+    if (typeof posthog !== 'undefined') {
+      var _badgeJobsWithScore = jobs.filter(function(j) {
+        var _md = jobMatchScores[j.greenhouse_id];
+        var _mp = _md && typeof _md === 'object' ? _md.score : (typeof _md === 'number' ? _md : null);
+        return _mp && _mp >= 40;
+      }).length;
+      if (_badgeJobsWithScore > 0) {
+        posthog.capture('feed_match_badge_visible', { preview_on: showPreview, jobs_with_score: _badgeJobsWithScore, jobs_total: jobs.length });
+      }
+    }
+  } catch (_phErr) { reportError('feed:match_badge_ph', _phErr); }
 
   // Wire card event handlers
   container.querySelectorAll('.jc-dismiss').forEach(function(btn) {
@@ -2873,6 +2895,10 @@ function _buildPageRange(current, total) {
 
 // UX-006: Export renderPagination for SPA bridge
 window.renderPagination = renderPagination;
+
+// FB-CARDS-001: Export formatters for pipeline synergy
+window.formatLocation = formatLocation;
+window.formatSalaryCell = formatSalaryCell;
 
 let _enrichRunning = false;
 async function backgroundEnrichSalary() {

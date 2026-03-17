@@ -3757,6 +3757,12 @@ Phase S is complete when ALL of the following are true:
 | FB-FEED-CARDS-001-S1 | Card-based feed layout. 3-action model (Dismiss/Pipeline/Apply). Inline signal badges (Verified/AI/Ghost). Preview JD toggle with 3-line snippet. Removed Bulk Apply, Save All, checkboxes, Optimize Resume from feed. Sort bar buttons. Card skeleton loader. 4 PostHog events. | ✅ | v9.99 |
 | FB-FEED-CARDS-001-S2 | Pipeline: Optimize Resume per-job in Saved stage. Bulk Apply toolbar (checkboxes, select-all, progress indicator, PostHog). Sort indicator refresh on new .sort-btn elements. Trust Level + AI Content toggles removed from feed toolbar (replaced by inline signal badges). unsaveFromPipeline confirmed no tuning signal. All 6 PostHog events wired. | ✅ | v10.00 |
 
+## FB-CARDS-001: Feed + Pipeline Card Synergy & Match Score Fix
+
+| Session | Description | Status | Version |
+|---------|-------------|--------|---------|
+| FB-CARDS-001 | Fix A: Match % badge decoupled from Preview JD toggle — now renders in meta row (company·location·salary·days·match%) with color tiers (green ≥80, amber ≥60, dim 40-59, hidden <40). Fix B: Pipeline row synergy — Location + Salary columns added after Company. Trust/ghost badges inline after title (caution/suspicious/ghost). Fraud cache hydrated independently for pipeline jobs. Match % color tiers aligned (80/60/40). formatLocation + formatSalaryCell exported to window. ats_jobs query extended (salary_currency, salary_rate, ghost_report_count). 3 PostHog events (feed_match_badge_visible, pipeline_trust_badge_rendered, pipeline_ghost_badge_rendered). 38 tests. | ✅ | v10.37 |
+
 ## FB-SURVEY-DELIVERY-001: Survey Delivery System
 
 | ID | Item | Status | Notes |

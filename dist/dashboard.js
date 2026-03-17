@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v10.36';
+var BJ_VERSION = 'v10.37';
 // Populate version display elements after DOM is ready
 (function() {
   var el = document.getElementById('nav-version');
@@ -7234,6 +7234,18 @@ function renderJobRows(jobs, total, page, filtersToRun) {
     if (sal && sal !== '—') metaParts.push(`<span style="color:var(--text-faint);">${sal}</span>`);
     if (daysStr) metaParts.push(`<span style="${daysColor}">${daysStr}</span>`);
 
+    // FB-CARDS-001 Fix A: Match % badge in meta row, decoupled from Preview JD toggle
+    const _matchData = jobMatchScores[job.greenhouse_id];
+    const _matchPct = _matchData && typeof _matchData === 'object' ? _matchData.score : (typeof _matchData === 'number' ? _matchData : null);
+    if (_matchPct && _matchPct >= 40) {
+      const _mBg = _matchPct >= 80 ? 'var(--green-dim,#dcfce7)' : _matchPct >= 60 ? 'var(--warm-dim,#fef3c7)' : 'transparent';
+      const _mColor = _matchPct >= 80 ? 'var(--green,#22c55e)' : _matchPct >= 60 ? 'var(--warm,#f59e0b)' : 'var(--text-faint)';
+      const _mStyle = _matchPct >= 60
+        ? `display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;background:${_mBg};color:${_mColor};`
+        : `font-size:10px;color:${_mColor};`;
+      metaParts.push(`<span style="${_mStyle}">${_matchPct}%</span>`);
+    }
+
     // Action buttons (exactly 3: Dismiss is left column, Pipeline + Apply right)
     let pipelineBtn, applyBtn;
     if (isApplied) {
@@ -7247,14 +7259,10 @@ function renderJobRows(jobs, total, page, filtersToRun) {
       applyBtn = `<button class="jc-apply-btn" data-jobid="${escapeHtml(job.greenhouse_id)}" data-url="${escapeHtml(jobUrl)}" style="font-size:12px;padding:5px 14px;border:none;border-radius:6px;background:var(--accent);color:#fff;font-weight:600;cursor:pointer;">Apply →</button>`;
     }
 
-    // Preview JD snippet
+    // Preview JD snippet — FB-CARDS-001: match badge moved to meta row
     let snippetHtml = '';
     if (showPreview) {
-      const matchData = jobMatchScores[job.greenhouse_id];
-      const matchPct = matchData && typeof matchData === 'object' ? matchData.score : (typeof matchData === 'number' ? matchData : null);
-      const matchBadgeHtml = matchPct ? `<span style="display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;background:var(--accent);color:#fff;margin-bottom:4px;">${matchPct}% match</span>` : '';
       snippetHtml = `<div style="border-top:0.5px solid var(--border);padding:8px 0 0 48px;margin-top:8px;">
-        ${matchBadgeHtml}
         <div class="jc-snippet" data-preview-id="${escapeHtml(job.greenhouse_id)}" style="font-size:12px;color:var(--text-faint);line-height:1.6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;"></div>
       </div>`;
     }
@@ -7289,6 +7297,20 @@ function renderJobRows(jobs, total, page, filtersToRun) {
 
   // Re-initialize Lucide icons
   if (typeof window.refreshIcons === 'function') window.refreshIcons();
+
+  // FB-CARDS-001 §8: PostHog match badge visibility tracking
+  try {
+    if (typeof posthog !== 'undefined') {
+      var _badgeJobsWithScore = jobs.filter(function(j) {
+        var _md = jobMatchScores[j.greenhouse_id];
+        var _mp = _md && typeof _md === 'object' ? _md.score : (typeof _md === 'number' ? _md : null);
+        return _mp && _mp >= 40;
+      }).length;
+      if (_badgeJobsWithScore > 0) {
+        posthog.capture('feed_match_badge_visible', { preview_on: showPreview, jobs_with_score: _badgeJobsWithScore, jobs_total: jobs.length });
+      }
+    }
+  } catch (_phErr) { reportError('feed:match_badge_ph', _phErr); }
 
   // Wire card event handlers
   container.querySelectorAll('.jc-dismiss').forEach(function(btn) {
@@ -7466,6 +7488,10 @@ function _buildPageRange(current, total) {
 
 // UX-006: Export renderPagination for SPA bridge
 window.renderPagination = renderPagination;
+
+// FB-CARDS-001: Export formatters for pipeline synergy
+window.formatLocation = formatLocation;
+window.formatSalaryCell = formatSalaryCell;
 
 let _enrichRunning = false;
 async function backgroundEnrichSalary() {
@@ -17272,7 +17298,7 @@ async function renderPipeline() {
   for (let i = 0; i < allIds.length; i += batchSize) {
     const batch = allIds.slice(i, i + batchSize);
     try {
-      const data = await safeQuery(() => sb.from('ats_jobs').select('greenhouse_id, title, company_name, location, loc_display, status, closed_at, first_seen_at, content, salary_min, salary_max')
+      const data = await safeQuery(() => sb.from('ats_jobs').select('greenhouse_id, title, company_name, location, loc_display, status, closed_at, first_seen_at, content, salary_min, salary_max, salary_currency, salary_rate, ghost_report_count')
         .in('greenhouse_id', batch), { label: 'pipeline:ats_jobs', fallback: [] });
       if (data) allJobData = allJobData.concat(data);
     } catch (e) { reportError('pipeline', e); console.error('[BJ] Pipeline fetch error:', e); toastWarning('Some pipeline job details failed to load'); }
@@ -17288,6 +17314,20 @@ async function renderPipeline() {
       savePipelineEntry(j.greenhouse_id, meta[j.greenhouse_id]);
     }
   });
+
+  // FB-CARDS-001 Fix B: Hydrate fraud score cache for pipeline jobs independently
+  // If Feed has already populated _fraudScoreCache, reuse. Otherwise fetch.
+  var _plFraudCache = (typeof _fraudScoreCache !== 'undefined' && _fraudScoreCache) ? _fraudScoreCache : {};
+  var _plFraudMissing = allIds.filter(function(id) { return !_plFraudCache[id]; });
+  if (_plFraudMissing.length > 0) {
+    try {
+      for (var _fi = 0; _fi < _plFraudMissing.length; _fi += batchSize) {
+        var _fBatch = _plFraudMissing.slice(_fi, _fi + batchSize);
+        var _fData = await safeQuery(function() { return sb.from('job_fraud_scores').select('job_id, fraud_score, fraud_label, confidence').in('job_id', _fBatch); }, { label: 'pipeline:fraud_scores', fallback: [] });
+        if (_fData) _fData.forEach(function(f) { _plFraudCache[f.job_id] = { score: f.fraud_score, label: f.fraud_label, confidence: f.confidence }; });
+      }
+    } catch (_fErr) { reportError('pipeline:fraud_fetch', _fErr); }
+  }
 
   const now = new Date();
   const sf = safeReadLS('bj_saved_filters', []);
@@ -17404,7 +17444,7 @@ async function renderPipeline() {
 
     let html = bulkToolbar + '<table class="pl-table"><thead><tr>';
     if (stage === 'saved') html += '<th style="width:24px;padding:0 2px;"><input type="checkbox" id="pl-bulk-select-all" style="cursor:pointer;accent-color:var(--accent);" title="Select all"></th>';
-    html += '<th></th><th>Title</th><th>Company</th><th>Level</th><th>Discovered</th><th>Days In Stage</th>';
+    html += '<th></th><th>Title</th><th>Company</th><th>Location</th><th>Salary</th><th>Level</th><th>Discovered</th><th>Days In Stage</th>';
     html += '<th>Filter</th><th>Resume</th><th>Match</th><th></th><th>Move</th><th></th>';
     html += '</tr></thead><tbody>';
 
@@ -17498,7 +17538,8 @@ async function renderPipeline() {
       }).join(' ');
 
       const matchScore = typeof m.matchScore === 'number' ? m.matchScore + '%' : '—';
-      const matchColor = typeof m.matchScore === 'number' ? (m.matchScore >= 70 ? 'color:var(--green);' : m.matchScore >= 40 ? 'color:var(--warm);' : 'color:var(--red);') : '';
+      // FB-CARDS-001: Match color tiers aligned with Feed — green ≥80, amber ≥60, dim ≥40, faint <40
+      const matchColor = typeof m.matchScore === 'number' ? (m.matchScore >= 80 ? 'color:var(--green);' : m.matchScore >= 60 ? 'color:var(--warm);' : m.matchScore >= 40 ? 'color:var(--text-dim);' : 'color:var(--text-faint);') : '';
 
       let moveOpts = PL_STAGES.filter(s => s !== stage).map(s =>
         '<option value="' + s + '">' + PL_STAGE_LABELS[s] + '</option>'
@@ -17507,8 +17548,43 @@ async function renderPipeline() {
       html += '<tr data-jobid="' + item.id + '">';
       if (stage === 'saved') html += '<td style="width:24px;padding:0 2px;"><input type="checkbox" class="pl-bulk-cb" data-jobid="' + item.id + '" style="cursor:pointer;accent-color:var(--accent);"></td>';
       html += '<td style="width:16px;text-align:center;padding:4px 2px;">' + staleDot + '</td>';
-      html += '<td class="pl-title" onclick="openJobModal(\'' + item.id + '\')" title="' + title.replace(/"/g, '&quot;') + '">' + (title.length > 35 ? title.slice(0,35) + '…' : title) + '</td>';
+
+      // FB-CARDS-001 Fix B: Trust + ghost badges inline after title (same visual DNA as Feed)
+      var _plTrustBadge = '';
+      var _plGhostBadge = '';
+      if (_plFraudCache[item.id]) {
+        var _plTrust = _plFraudCache[item.id];
+        if (_plTrust.label === 'caution') {
+          _plTrustBadge = '<span style="display:inline-flex;align-items:center;gap:2px;font-size:9px;font-weight:500;padding:0 5px;border-radius:100px;background:var(--warm-dim,#fef3c7);color:var(--warm,#f59e0b);margin-left:4px;"><i data-lucide="alert-triangle" style="width:9px;height:9px;"></i>Caution</span>';
+          try { if (typeof posthog !== 'undefined') posthog.capture('pipeline_trust_badge_rendered', { job_id: item.id, label: 'caution', stage: stage }); } catch(_e){}
+        } else if (_plTrust.label === 'suspicious') {
+          _plTrustBadge = '<span style="display:inline-flex;align-items:center;gap:2px;font-size:9px;font-weight:500;padding:0 5px;border-radius:100px;background:var(--red-dim,#fee2e2);color:var(--red,#dc2626);margin-left:4px;"><i data-lucide="shield-alert" style="width:9px;height:9px;"></i>Suspicious</span>';
+          try { if (typeof posthog !== 'undefined') posthog.capture('pipeline_trust_badge_rendered', { job_id: item.id, label: 'suspicious', stage: stage }); } catch(_e){}
+        }
+      }
+      var _plGhostCount = j ? (j.ghost_report_count || 0) : 0;
+      if (_plGhostCount > 0) {
+        _plGhostBadge = '<span style="display:inline-flex;align-items:center;gap:2px;font-size:9px;font-weight:500;padding:0 5px;border-radius:100px;background:var(--bg-danger,#fee2e2);color:var(--red,#dc2626);margin-left:4px;"><i data-lucide="x-circle" style="width:9px;height:9px;"></i>' + _plGhostCount + ' ghost</span>';
+        try { if (typeof posthog !== 'undefined') posthog.capture('pipeline_ghost_badge_rendered', { job_id: item.id, ghost_count: _plGhostCount, stage: stage }); } catch(_e){}
+      }
+
+      html += '<td class="pl-title" onclick="openJobModal(\'' + item.id + '\')" title="' + title.replace(/"/g, '&quot;') + '">' + (title.length > 35 ? title.slice(0,35) + '…' : title) + _plTrustBadge + _plGhostBadge + '</td>';
       html += '<td class="pl-company" title="' + company.replace(/"/g, '&quot;') + '">' + (company.length > 20 ? company.slice(0,20) + '…' : company) + '</td>';
+
+      // FB-CARDS-001 Fix B: Location + Salary columns (shared DNA with Feed)
+      var _plLoc = '';
+      if (j && (j.location || j.loc_display)) {
+        _plLoc = (typeof window.formatLocation === 'function') ? window.formatLocation(j.location, j.loc_display) : (j.loc_display || j.location || '');
+        if (_plLoc && _plLoc.length > 20) _plLoc = _plLoc.slice(0, 20) + '…';
+      }
+      var _plSal = '';
+      if (j && (j.salary_min || j.salary_max)) {
+        _plSal = (typeof window.formatSalaryCell === 'function') ? window.formatSalaryCell(j) : '';
+        if (_plSal === '—') _plSal = '';
+      }
+      html += '<td style="font-size:11px;color:var(--text-faint);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (_plLoc || '').replace(/"/g, '&quot;') + '">' + (_plLoc || '<span style="color:var(--text-faint);font-size:10px;">—</span>') + '</td>';
+      html += '<td style="font-size:11px;color:var(--text-faint);white-space:nowrap;">' + (_plSal || '<span style="color:var(--text-faint);font-size:10px;">—</span>') + '</td>';
+
       html += '<td>' + levelCell + '</td>';
       html += '<td class="pl-date">' + discovered + '</td>';
       html += '<td class="pl-days">' + daysInStage + (typeof daysInStage === 'number' ? 'd' : '') + '</td>';

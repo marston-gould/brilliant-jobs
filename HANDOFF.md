@@ -3894,7 +3894,29 @@ None.
 
 ## Last Completed Session
 
-**FB-CHAT-002-C** — Polish + Hardening + CI/CD + Release ✅ — **FB-CHAT-002 COMPLETE**
+**FB-CARDS-001** — Feed + Pipeline Card Synergy & Match Score Fix ✅
+- v10.36→v10.37
+- **Fix A — Match Score Decoupled from Preview JD:**
+  - Match % badge moved from inside `showPreview` conditional to meta row (after days-ago indicator).
+  - Color tiers per spec: green bg (≥80%), amber bg (60-79%), dim text (40-59%), hidden (<40% or no score).
+  - Preview JD snippet area no longer contains match badge (only jc-snippet div).
+  - PostHog `feed_match_badge_visible` event with preview_on, jobs_with_score, jobs_total.
+- **Fix B — Pipeline Row Synergy:**
+  - Location + Salary columns added to pipeline table header after Company, before Level.
+  - Location cell: uses `window.formatLocation()` (exported from job-feed.js), truncated at 20 chars.
+  - Salary cell: uses `window.formatSalaryCell()` (exported from job-feed.js).
+  - Trust badges (caution/suspicious) rendered inline after title in pipeline rows from `_plFraudCache`.
+  - Ghost badge rendered inline after title when `ghost_report_count > 0`.
+  - Fraud cache hydrated independently for pipeline job IDs (avoids Feed ordering dependency).
+  - Match % color tiers aligned with Feed: green ≥80, amber ≥60, dim ≥40, faint <40 (was 70/40).
+  - `ats_jobs` query extended with `salary_currency, salary_rate, ghost_report_count`.
+  - PostHog: `pipeline_trust_badge_rendered` (job_id, label, stage), `pipeline_ghost_badge_rendered` (job_id, ghost_count, stage).
+- **Tests:** 38 validation tests (tests/fb-cards-001-feed-pipeline-synergy.test.js) — all passing.
+- **Modified:** js/job-feed.js (match badge to meta row, preview snippet cleaned, formatLocation/formatSalaryCell exports, PostHog event), js/pipeline.js (Location+Salary columns, trust/ghost badges, fraud cache fetch, match color alignment, ats_jobs query extended).
+- **Created:** tests/fb-cards-001-feed-pipeline-synergy.test.js.
+- **FB-CARDS-001 COMPLETE** — single session, all spec items delivered.
+
+**Previous: FB-CHAT-002-C** — Polish + Hardening + CI/CD + Release ✅ — **FB-CHAT-002 COMPLETE**
 - v10.34→v10.35
 - **Keyboard accessibility:** Focus-visible rings (2px accent, offset 2px) on cards, pill inputs, range slider thumbs, textareas, buttons, skip link, toggle checkbox. Cards already had tabindex=0, role=button, aria-pressed (Session A). Pill × buttons have aria-label="Remove".
 - **Micro-interactions:** Card hover box-shadow (0 2px 8px), selected card accent shadow, pill entry animation (wizPillIn 0.15s scale), save row slide-in, progress bar segment transition (0.3s background), slider track styling (webkit + moz).
@@ -3916,11 +3938,11 @@ None.
 
 ## Next Session
 
-No specific session queued. FB-CHAT-002 is feature-complete (3 sessions, 241 tests).
+No specific session queued. FB-CARDS-001 is feature-complete (38 tests).
 
 Pending manual steps (Marston):
-- `supabase db push` (migration v10.33-fb-chat-002-b-wizard-columns.sql)
-- `SUPABASE_ACCESS_TOKEN=<token> npx supabase functions deploy chat-job-search --project-ref qojhagupdnbtomfoxnsf`
+- `supabase db push` (migration v10.33-fb-chat-002-b-wizard-columns.sql — from FB-CHAT-002)
+- `SUPABASE_ACCESS_TOKEN=<token> npx supabase functions deploy chat-job-search --project-ref qojhagupdnbtomfoxnsf` (from FB-CHAT-002)
 
 **Previous: FB-SURVEY-DELIVERY-001 SDV-S7** — Spec Gap Remediation + Integration Test + Close ✅ — **FB-SURVEY-DELIVERY-001 COMPLETE**
 - v10.27→v10.28
@@ -4321,7 +4343,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v10.35`** | **FB-CHAT-002 COMPLETE: Guided Intake Wizard. 3 sessions, 241 tests.** |
+| **Product (BJ_VERSION)** | **`v10.37`** | **FB-CARDS-001: Feed + Pipeline Card Synergy & Match Score Fix. 38 tests.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
