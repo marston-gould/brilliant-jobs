@@ -20,61 +20,61 @@ const chunks = {
   shell: [
     'js/version.ts',
     'js/globals.ts',
-    'js/theme.js',
+    'js/theme.ts',
     'js/sync.ts',
     'js/fingerprint.ts',
     'js/tier-gating.ts',
     'js/lazy-loader.ts',
-    'js/tab-guard.js',
-    'js/app.js',
-    'js/integrations.js',
+    'js/tab-guard.ts',
+    'js/app.ts',
+    'js/integrations.ts',
   ],
   feed: [
-    'js/us-filter.js',
-    'js/job-feed.js',
-    'js/sort-bar.js',
-    'js/query-builder.js',
+    'js/us-filter.ts',
+    'js/job-feed.ts',
+    'js/sort-bar.ts',
+    'js/query-builder.ts',
   ],
   keywords: [
-    'js/keywords.js',
-    'js/browsers.js',
-    'js/location.js',
+    'js/keywords.ts',
+    'js/browsers.ts',
+    'js/location.ts',
   ],
   pipeline: [
-    'js/pipeline.js',
+    'js/pipeline.ts',
   ],
   tuning: [
-    'js/tuning.js',
+    'js/tuning.ts',
   ],
   deferred: [
-    'js/resumes.js',
-    'js/applications.js',
-    'js/settings.js',
-    'js/stats.js',
-    'js/billing.js',
-    'js/survey-questions.js',
-    'js/survey-delivery.js',
-    'js/micro-surveys.js',
-    'js/rewrite.js',
-    'js/resume-archive.js',
-    'js/resume-metrics.js',
-    'js/resume-builder.js',
-    'js/overlay-analytics.js',
-    'js/chat.js',
-    'js/wizard.js',
-    'js/apply-workflow.js',
-    'js/referrals.js',
-    'js/referral-outreach.js',
-    'js/payl.js',
-    'js/trial-gate.js',
-    'js/upgrade.js',         // FB-TRIAL-001-S6: billing toggle for upgrade page
-    'js/extension-download.js', // EXT-BUILD-001-S2: fingerprinted extension download + channel map
-    'js/linkedin-import.js',    // AIS-F2-S2: LinkedIn PDF import UI + auto-population
-    'js/bulk-apply.js',         // AIS-F9-S1: Bulk apply multi-select UI
-    'js/cover-letter.js',       // AIS-F8-S1: Cover letter generator UI
-    'js/interview-prep.js',     // FB-INTPREP-001-S2: Interview Prep question bank UI
-    'js/linkedin.js',           // SPEC-LPG-001-S2: LinkedIn Profile Optimizer
-    'js/linkedin-alignment.js', // FB-ATS-001-S4: LinkedIn Keyword Alignment Nudge
+    'js/resumes.ts',
+    'js/applications.ts',
+    'js/settings.ts',
+    'js/stats.ts',
+    'js/billing.ts',
+    'js/survey-questions.ts',
+    'js/survey-delivery.ts',
+    'js/micro-surveys.ts',
+    'js/rewrite.ts',
+    'js/resume-archive.ts',
+    'js/resume-metrics.ts',
+    'js/resume-builder.ts',
+    'js/overlay-analytics.ts',
+    'js/chat.ts',
+    'js/wizard.ts',
+    'js/apply-workflow.ts',
+    'js/referrals.ts',
+    'js/referral-outreach.ts',
+    'js/payl.ts',
+    'js/trial-gate.ts',
+    'js/upgrade.ts',         // FB-TRIAL-001-S6: billing toggle for upgrade page
+    'js/extension-download.ts', // EXT-BUILD-001-S2: fingerprinted extension download + channel map
+    'js/linkedin-import.ts',    // AIS-F2-S2: LinkedIn PDF import UI + auto-population
+    'js/bulk-apply.ts',         // AIS-F9-S1: Bulk apply multi-select UI
+    'js/cover-letter.ts',       // AIS-F8-S1: Cover letter generator UI
+    'js/interview-prep.ts',     // FB-INTPREP-001-S2: Interview Prep question bank UI
+    'js/linkedin.ts',           // SPEC-LPG-001-S2: LinkedIn Profile Optimizer
+    'js/linkedin-alignment.ts', // FB-ATS-001-S4: LinkedIn Keyword Alignment Nudge
   ],
 };
 
@@ -196,6 +196,19 @@ const tsFiles = [
   'js/tier-gating.ts',
   'js/lazy-loader.ts',
   'js/api.ts',
+  // SPA-CUT: Additional files loaded directly by HTML pages
+  'js/cookie-consent.ts',
+  'js/feature-flags.ts',
+  'js/landing-ab.ts',
+  'js/landing-app.ts',
+  'js/landing-segment.ts',
+  'js/merch-client.ts',
+  'js/posthog-perf.ts',
+  'js/referral-capture.ts',
+  'js/safe-read-ls.ts',
+  'js/seo-stats.ts',
+  'js/structured-logger.ts',
+  'js/survey-questions.ts',
 ];
 
 for (const tsFile of tsFiles) {

@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v10.47';
+var BJ_VERSION = 'v10.48';
 // Populate version display elements after DOM is ready
 (function() {
   var el = document.getElementById('nav-version');
@@ -1329,7 +1329,7 @@ async function safeRpc(fnName: string, params?: Record<string, unknown>, opts?: 
 }
 
 
-// === js/theme.js ===
+// === js/theme.ts ===
 /* ──────────────────────────────────────────────────────────
    Brilliant Jobs — Theme Toggle (CS-P1-009: CSS-002)
    
@@ -2016,7 +2016,7 @@ window.checkAutoApplyTierGate = checkAutoApplyTierGate;
 })();
 
 
-// === js/tab-guard.js ===
+// === js/tab-guard.ts ===
 /**
  * CS-015: FIX-09 (FE-002) Error Boundaries + FIX-15 (FE-003) Skeleton Loaders
  * 
@@ -2235,7 +2235,7 @@ window.checkAutoApplyTierGate = checkAutoApplyTierGate;
 })();
 
 
-// === js/app.js ===
+// === js/app.ts ===
 // [BJ] Dashboard v7.22 loaded
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded');
 // BJ_VERSION is defined in js/version.js (single source of truth)
@@ -4244,7 +4244,7 @@ window._enrichmentBadgeHtml = function(sf) {
 })();
 
 
-// === js/integrations.js ===
+// === js/integrations.ts ===
 // ============================================================
 // POD3-GS: BUG-6 — Shared Connection State
 // _connectionState and renderConnectionStatus moved to app.js (shell chunk)
@@ -4425,7 +4425,7 @@ renderGcalState();
 })();
 
 
-// === js/us-filter.js ===
+// === js/us-filter.ts ===
 // ============================================================
 // us-filter.js — Shared US Eligibility Filter
 // ============================================================
@@ -4595,7 +4595,7 @@ function buildUSRemoteClauses() {
 }
 
 
-// === js/job-feed.js ===
+// === js/job-feed.ts ===
 // ============================================================
 // JOB SEARCH — Driven by checked saved filters
 // ============================================================
@@ -7587,7 +7587,7 @@ async function backgroundEnrichSalary() {
 })();
 
 
-// === js/sort-bar.js ===
+// === js/sort-bar.ts ===
 // ============================================================
 // SORT BAR — Visible multi-sort with numbered pills
 // ============================================================
@@ -8110,7 +8110,7 @@ if (qbInputDept) {
 } // end sort-bar guard
 
 
-// === js/query-builder.js ===
+// === js/query-builder.ts ===
 // ============================================================
 // JOBS — TAG QUERY BUILDER
 // ============================================================
@@ -8329,7 +8329,7 @@ function renderAllPills() {
 
 
 
-// === js/keywords.js ===
+// === js/keywords.ts ===
 // ============================================================
 // KEYWORD EXTRACTION ENGINE (P4)
 // ============================================================
@@ -12725,7 +12725,7 @@ function _startScoreQueuePoll(queueId, originalParams) {
 })();
 
 
-// === js/browsers.js ===
+// === js/browsers.ts ===
 // ---- Company Browser + Collections ----
 let cbAllCompanies = [];
 let cbSelections = {}; // slug -> 'include' | 'exclude'
@@ -14152,7 +14152,7 @@ if ($('#browse-jd-btn'))       $('#browse-jd-btn').addEventListener('click', () 
 window.openFilterBrowser = openFilterBrowser;
 
 
-// === js/location.js ===
+// === js/location.ts ===
 // ---- Location autocomplete / disambiguation ----
 const qbInputWhere = $('#qb-input-where');
 const locationDropdown = $('#location-dropdown');
@@ -16123,7 +16123,7 @@ if (document.readyState === 'loading') {
 })();
 
 
-// === js/pipeline.js ===
+// === js/pipeline.ts ===
 // ============================================================
 // PIPELINE — Supabase-native stage tracker (Ghost Build Phase 1)
 // Replaces localStorage bj_pipeline_meta with user_pipeline table.
@@ -18226,7 +18226,7 @@ async function loadRecruiterContacts() {
 })();
 
 
-// === js/tuning.js ===
+// === js/tuning.ts ===
 // ============================================================
 // RESUME PICKER ON APPLY
 // ============================================================
@@ -19757,7 +19757,7 @@ function acceptAnalyzeHidden() {
 })();
 
 
-// === js/resumes.js ===
+// === js/resumes.ts ===
 // ============================================================
 // RESUMES
 // ============================================================
@@ -22401,7 +22401,7 @@ window._bjFileStore = bjFileStore;
 })();
 
 
-// === js/applications.js ===
+// === js/applications.ts ===
 // ============================================================
 // APPLICATIONS — Flow Management
 // ============================================================
@@ -23372,7 +23372,7 @@ if (typeof _origInitApplications === 'undefined') {
 })();
 
 
-// === js/settings.js ===
+// === js/settings.ts ===
 // Stats — now powered by stats.js (ECharts dashboard)
 function loadStats() {
   // Lazy-init: stats.js handles everything via initStatsPage()
@@ -24532,7 +24532,7 @@ window._applicantProfile = _applicantProfile;
 })();
 
 
-// === js/stats.js ===
+// === js/stats.ts ===
 // === js/stats.js ===
 // Stats page — filter-scoped analytics with ECharts
 // Redesigned per stats-page-redesign-brief.md (Pod 1, 2026-02-19)
@@ -25836,7 +25836,7 @@ function refreshStatsCharts() {
 }
 
 
-// === js/billing.js ===
+// === js/billing.ts ===
 // js/billing.js — Subscription page, credit balance, pricing, checkout flows
 // v3.72: Full subscription tab + credit merchandising
 // QA-FIX: Uses SUPABASE_URL from globals.ts (shell chunk) instead of local var
@@ -26684,7 +26684,7 @@ function _initTierChangeListener() {
 })();
 
 
-// === js/survey-questions.js ===
+// === js/survey-questions.ts ===
 // js/survey-questions.js — Shared question bank module
 // SDV-S2: Extracted from survey.html and micro-surveys.js
 // Single source of truth for all survey content.
@@ -26838,7 +26838,7 @@ function _initTierChangeListener() {
 })();
 
 
-// === js/survey-delivery.js ===
+// === js/survey-delivery.ts ===
 // js/survey-delivery.js — SDV-S3: Survey overlay delivery + priority engine
 // Centralized orchestration: decides which survey to show, when, to whom.
 // Fires on page navigation events (sidebar tab switches).
@@ -27299,7 +27299,7 @@ function _initTierChangeListener() {
 })();
 
 
-// === js/micro-surveys.js ===
+// === js/micro-surveys.ts ===
 // js/micro-surveys.js — P13-04/05/06/09 Inline micro-survey components
 // Lightweight survey prompts that appear inline in the dashboard.
 // All responses stored in feedback table via Supabase REST API.
@@ -27718,7 +27718,7 @@ function _initTierChangeListener() {
 })();
 
 
-// === js/rewrite.js ===
+// === js/rewrite.ts ===
 // js/rewrite.js — AI Resume Rewrite (JD-match "Boost" feature)
 // Phase B+C: Panel UI, Q&A flow, diff view, accept/reject actions
 // v4.28
@@ -28582,7 +28582,7 @@ function matchBadgeWithBoost(result, jobId, jobTitle, company) {
 })();
 
 
-// === js/resume-archive.js ===
+// === js/resume-archive.ts ===
 // === Resume Archive Module ===
 // Phase 3: Archive tab UI with database-backed storage, version tracking, and tier info
 
@@ -28942,7 +28942,7 @@ window.restoreArchiveResume = async function(resumeId) {
 })();
 
 
-// === js/resume-metrics.js ===
+// === js/resume-metrics.ts ===
 // === Resume Metrics Module ===
 // Phase 6: Resume Metrics Intelligence UI — score history, level fit, pipeline funnel, usage log
 
@@ -29315,7 +29315,7 @@ window.addEventListener('resize', function() {
 })();
 
 
-// === js/resume-builder.js ===
+// === js/resume-builder.ts ===
 // js/resume-builder.js
 // RESUME-BUILDER-001-S1: Upload, Parse, Store
 // Handles file upload, paste-text, scratch mode, Anthropic parse via EF,
@@ -30450,7 +30450,7 @@ window.addEventListener('resize', function() {
 })();
 
 
-// === js/overlay-analytics.js ===
+// === js/overlay-analytics.ts ===
 // === js/overlay-analytics.js ===
 // Overlay Pipeline S9: overlay_analytics sub-page
 // Reads from overlay_analytics table via PostgREST (anon key, RLS-scoped to current user)
@@ -30696,7 +30696,7 @@ window.addEventListener('resize', function() {
 })();
 
 
-// === js/chat.js ===
+// === js/chat.ts ===
 // ============================================================
 // CHAT MODE — Conversational Job Search (Session 5)
 // Toggle between Filters and Chat on Jobs Feed + Bidirectional Sync + Saved Prompts
@@ -32398,7 +32398,7 @@ if (document.readyState === 'loading') {
 })();
 
 
-// === js/wizard.js ===
+// === js/wizard.ts ===
 // ============================================================
 // FB-CHAT-002 — Guided Intake Wizard
 // Sequenced one-question-at-a-time conversational interview
@@ -33512,7 +33512,7 @@ if (typeof window.BJ === 'object') {
 }
 
 
-// === js/apply-workflow.js ===
+// === js/apply-workflow.ts ===
 /**
  * Brilliant Jobs — Apply Workflow v5.18
  * Score Gate Modal, Pending Applications, and Apply State Machine
@@ -36343,7 +36343,7 @@ window.loadReviewQueue = loadReviewQueue;
 window.dismissReviewQueueItem = dismissReviewQueueItem;
 
 
-// === js/referrals.js ===
+// === js/referrals.ts ===
 // ============================================================
 // REFERRALS — Referral Hub page logic
 // v5.25: Phase 4 — Milestone rewards, LinkedIn referral codes, flair system
@@ -37368,7 +37368,7 @@ Or use my code: ${referralStats.referral_code}`);
 })();
 
 
-// === js/referral-outreach.js ===
+// === js/referral-outreach.ts ===
 /**
  * Brilliant Jobs — Referral Outreach v7.09
  * Part 1: Referral Request Templates (LinkedIn DM + Email)
@@ -37634,7 +37634,7 @@ function sendReferralTemplate() {
 }
 
 
-// === js/payl.js ===
+// === js/payl.ts ===
 /**
  * payl.js — Pay After You Land Dashboard UI
  * Session: FB-PAYL-S2
@@ -38347,7 +38347,7 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
 }
 
 
-// === js/trial-gate.js ===
+// === js/trial-gate.ts ===
 // js/trial-gate.js — FB-TRIAL-001-S3/S7: Trial Gate Client + Free Samples + Inline Nudges
 // Renders trial countdown banner, pre-sample prompts, post-sample conversion modals,
 // and contextual inline nudges for fully-expired users.
@@ -38952,7 +38952,7 @@ if (typeof window.BJ !== 'undefined') {
 }
 
 
-// === js/upgrade.js ===
+// === js/upgrade.ts ===
 // js/upgrade.js
 // FB-TRIAL-001-S6 — 5.3: Monthly/Annual billing toggle on upgrade page
 // Renders toggle UI, updates CTA price display, passes billing_period to create-checkout EF
@@ -39080,7 +39080,7 @@ window.initBillingToggle = initBillingToggle;
 })();
 
 
-// === js/extension-download.js ===
+// === js/extension-download.ts ===
 // js/extension-download.js — Phase 12: Fingerprinted Extension Download
 // Extension 4.0.0
 //
@@ -39350,7 +39350,7 @@ window.initBillingToggle = initBillingToggle;
 })();
 
 
-// === js/linkedin-import.js ===
+// === js/linkedin-import.ts ===
 // js/linkedin-import.js — AIS-F2-S2: LinkedIn Import UI + Auto-Population
 // =========================================================================
 // Handles drag-and-drop PDF upload, parse-linkedin-pdf EF call,
@@ -39604,7 +39604,7 @@ window.initBillingToggle = initBillingToggle;
 })();
 
 
-// === js/bulk-apply.js ===
+// === js/bulk-apply.ts ===
 // js/bulk-apply.js — AIS-F9-S1: Bulk Apply Multi-Select UI
 // ============================================================
 // Manages checkbox selection on the Jobs Feed, bulk action bar,
@@ -39937,7 +39937,7 @@ window._bulkCancelRemaining = async function () {
 window.loadBulkProgress = window.loadBulkProgress;
 
 
-// === js/cover-letter.js ===
+// === js/cover-letter.ts ===
 // js/cover-letter.js — AIS-F8-S1: Cover Letter Generator UI
 // ===========================================================
 
@@ -40223,7 +40223,7 @@ window.loadBulkProgress = window.loadBulkProgress;
 })();
 
 
-// === js/interview-prep.js ===
+// === js/interview-prep.ts ===
 // FB-INTPREP-001-S2: Interview Prep — Question Bank UI
 // Spec: FB-INTPREP-001_InterviewPrep.docx §3.4, §5.2, §5.3, §10 Phase 2
 //
@@ -41271,7 +41271,7 @@ window._ipShowHistoryPanel = function() {
 };
 
 
-// === js/linkedin.js ===
+// === js/linkedin.ts ===
 // js/linkedin.js
 // SPEC-LPG-001-S2: LinkedIn Profile Optimizer (F3)
 // Renders score gauge, section cards, top actions on LinkedIn tab.
@@ -41591,7 +41591,7 @@ window._ipShowHistoryPanel = function() {
 })();
 
 
-// === js/linkedin-alignment.js ===
+// === js/linkedin-alignment.ts ===
 // ═══════════════════════════════════════════════════════════
 // ATS-005: LinkedIn Keyword Alignment Nudge
 // Post-apply coaching — compares resume keywords against stored
