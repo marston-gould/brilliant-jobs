@@ -82,6 +82,7 @@ var ADMIN_SUBPAGE_MAP = {
   'content':        { section: 'growth',      label: 'Content',        init: function(){ loadContentTab(); } },
   'email':          { section: 'growth',      label: 'Email',          init: function(){ loadAdminEmail(); } },
   'merch':          { section: 'growth',      label: 'Merchandising',  init: function(){ loadMerchTab(); } },
+  'surveys':        { section: 'growth',      label: 'Surveys',        init: function(){ loadSurveyManagerTab(); } },
   'notifications':  { section: 'growth',      label: 'Notifications',  init: function(){ loadNotificationsTab(); } },
   'templates':      { section: 'growth',      label: 'Templates',      init: function(){ loadTemplatesTab(); } },
   'notif-analytics':{ section: 'growth',      label: 'Notif Analytics', init: function(){ loadNotifAnalyticsTab(); } },

@@ -3768,3 +3768,12 @@ Phase S is complete when ALL of the following are true:
 | SDV-S5 | Email Delivery EF — send-survey-invite EF (send_email action, Resend dispatch, frequency cap via notification_log, survey_links token 6-char/24h, HTML template with credit badge, subject lines per spec, 100ms throttle + 2-min abort). pg_cron: NPS monthly 1st 10am ET, Periodic bi-weekly Tue 10am ET. Gateway routes #139-140. PostHog: survey_email_sent. 46 tests. | ✅ | v10.26 |
 | SDV-S6 | SMS Delivery + Short URL Resolution — resolve-survey-link EF (token lookup, expiry validation, used_at marking, 302 redirect, PostHog survey_sms_clicked/survey_email_clicked). send-survey-invite extended: Vonage SMS dispatch, phone_verified gate, 30-day cap, quiet hours 10pm-7am user TZ, 160-char template, $10/day budget alert. Vercel rewrite /s/:token. 72h token expiry for SMS. 36 tests. | ✅ | v10.27 |
 | SDV-S7 | Spec Gap Remediation + Integration Test + Close — 12 spec gaps closed (cross-channel dedup, overlay/micro cross-suppression, DB priority fetch, SMS pref check, ghost feedback trigger, merch accent border, merch seeding, auth session magic link, micro-survey shared module import, dismiss survey_version). All 12 PostHog events verified. 3 EFs redeployed. 359 total tests across 7 suites. FB-SURVEY-DELIVERY-001 COMPLETE. | ✅ | v10.28 |
+
+## FB-SURVEY-ADMIN-001: Admin Survey Manager
+
+| Session | Description | Status | Version |
+|---------|-------------|--------|---------|
+| SVM-S1 | Schema Evolution + Admin Panel Foundation — 4 new JSONB columns (questions, audience_config, trigger_config, placement_config). admin-survey-manager EF (6 actions: list/get/create/update/delete/duplicate). admin-survey-manager.js panel (campaign table, channel+trigger badges, active toggle). Gateway #141. Questions backfilled. Ghost survey killed. 47 tests. | ✅ | v10.29 |
+| SVM-S2 | Full CRUD UI — WHAT (question builder) / WHO (audience targeting) / WHEN (trigger config) / WHERE (channel + page placement). Create/edit modal. | 🔲 | |
+| SVM-S3 | Engine Rewiring — Delivery stack reads from new JSONB columns. Zero-code survey creation. | 🔲 | |
+| SVM-S4 | Analytics + Response Viewer + Close — Per-campaign stats, response drill-down, CSV export. | 🔲 | |

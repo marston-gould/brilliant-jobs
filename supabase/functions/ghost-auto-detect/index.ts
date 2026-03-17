@@ -135,15 +135,8 @@ serve(async (req) => {
       } catch (_) { /* fire-and-forget */ }
     }
 
-    // SDV-S7: Ghost rate feedback survey trigger (§3.3 event-driven)
-    // After ghost patterns detected, dispatch survey invite to affected users
-    if (totalFlagged > 0) {
-      try {
-        await sb.functions.invoke("send-survey-invite", {
-          body: { action: "send_email", campaign_version: "ghost_rate_feedback_v1" },
-        });
-      } catch (e) { console.warn("[ghost-auto-detect] Survey invite dispatch failed (non-fatal):", String(e)); }
-    }
+    // SDV-S7: Ghost rate feedback survey trigger — DISABLED (ghost survey killed per Marston)
+    // Campaign ghost_rate_feedback_v1 set is_active=false in production.
 
     return new Response(JSON.stringify({
       success:       true,

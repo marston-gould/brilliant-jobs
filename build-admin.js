@@ -27,6 +27,7 @@ const jsFiles = [
   'js/admin-seo.js',
   'js/admin-content.js',
   'js/admin-merch.js',
+  'js/admin-survey-manager.js',
   'js/admin-referrals.js',
   'js/admin-stripe.js',
   'js/admin-subscription.js',

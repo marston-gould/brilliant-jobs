@@ -11,7 +11,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v10.28"></script>
+  <script src="/js/version.js?v=v10.29"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2356,6 +2356,10 @@ const features = [
 { s: 'done', b: 'feature', n: 'FB-SURVEY-DELIVERY-001 SDV-S5: Email Delivery EF', d: 'v10.26: send-survey-invite EF (Resend, frequency cap, survey_links 6-char/24h, HTML template, 100ms throttle, 2-min abort). pg_cron NPS monthly + Periodic bi-weekly. Gateway #139-140. PostHog survey_email_sent. 46 tests.', p: 100, e: '1 session' },
 { s: 'done', b: 'feature', n: 'FB-SURVEY-DELIVERY-001 SDV-S6: SMS + Short URLs', d: 'v10.27: resolve-survey-link EF (token lookup, expiry, used_at, redirect). Vonage SMS (phone_verified, 30d cap, quiet hours, $10/day budget, 160-char). Vercel /s/:token rewrite. 36 tests.', p: 100, e: '1 session' },
 { s: 'done', b: 'feature', n: 'FB-SURVEY-DELIVERY-001 SDV-S7: Spec Remediation + Close', d: 'v10.28: 12 spec gaps closed (cross-channel dedup, overlay/micro cross-suppression, DB priority fetch, SMS pref, ghost trigger, merch border+seed, auth magic link, shared module import, dismiss version). 359 tests. FB-SURVEY-DELIVERY-001 COMPLETE.', p: 100, e: '1 session' },
+{ s: 'done', b: 'feature', n: 'FB-SURVEY-ADMIN-001 SVM-S1: Schema + Admin Foundation', d: 'v10.29: 4 JSONB columns (questions, audience_config, trigger_config, placement_config). admin-survey-manager EF (list/get/create/update/delete/duplicate). Admin panel with campaign table. Gateway #141. Ghost killed. 47 tests.', p: 100, e: '1 session' },
+{ s: 'todo', b: 'feature', n: 'FB-SURVEY-ADMIN-001 SVM-S2: Full CRUD UI', d: 'WHAT/WHO/WHEN/WHERE modal. Question builder. Audience targeting. Trigger config. Page placement.', p: 0, e: '1 session' },
+{ s: 'todo', b: 'feature', n: 'FB-SURVEY-ADMIN-001 SVM-S3: Engine Rewiring', d: 'Delivery reads from JSONB. Zero-code survey creation.', p: 0, e: '1 session' },
+{ s: 'todo', b: 'feature', n: 'FB-SURVEY-ADMIN-001 SVM-S4: Analytics + Close', d: 'Per-campaign stats, response viewer, CSV export.', p: 0, e: '1 session' },
 ];
 
 

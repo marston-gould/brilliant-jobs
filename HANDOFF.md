@@ -52,7 +52,18 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FB-FEED-CARDS-001-S1** — Jobs Feed Card Redesign: Core Card Layout ✅
+**FB-SURVEY-ADMIN-001 SVM-S1** — Schema Evolution + Admin Panel Foundation ✅
+- v10.28→v10.29
+- **Migration v10.28-fb-survey-admin-001-s1.sql:** 4 new JSONB columns on survey_campaigns: `questions` (question bank array), `audience_config` (all/time_cohort/behavioral), `trigger_config` (page_navigation/cron/event/behavioral), `placement_config` (overlay+pages/merch+pages+position/email/sms). Backfills from existing flat fields. Index on (is_active, survey_type). Applied to production.
+- **Questions backfilled:** All 6 active campaigns have questions JSONB populated from hardcoded JS banks (NPS 3Q, Periodic 16Q, 4 micros 1-2Q each).
+- **Ghost survey killed:** exit_v1 and ghost_rate_feedback_v1 set is_active=false. Ghost trigger removed from ghost-auto-detect EF.
+- **admin-survey-manager EF (NEW):** 6 actions — list (with response_count join from feedback), get (single with response_count), create (validates survey_type/version/title, syncs channels from placement_config, audit log), update (partial, diff audit log, syncs channels), delete (soft-delete, audit log), duplicate (clone + "_copy_" suffix, starts inactive, audit log). Gateway route #141. Deployed.
+- **js/admin-survey-manager.js (NEW):** Campaign list table with: title + version, type badge, priority, channel badges (overlay with page count, merch, email, SMS — reads from placement_config), trigger badge (page_navigation/cron/event/behavioral), response count, status dot, Edit/Dup/Deactivate actions. Active/inactive toggle. New Survey button. Edit + Create are SVM-S2 stubs.
+- **js/admin.js:** `surveys` entry added to ADMIN_SUBPAGE_MAP under Growth section.
+- **build-admin.js:** admin-survey-manager.js added to admin build.
+- **Tests:** 47 tests (tests/svm-s1-schema-admin-foundation.test.js) — all passing.
+
+**Previous: FB-FEED-CARDS-001-S1** — Jobs Feed Card Redesign ✅
 - v9.98→v9.99 — Replaced table-based job feed with card-based layout per spec.
 - dashboard.html: Removed `<table>`, Bulk Apply bar, Save All, checkboxes, Trust/AI toggles. New `#job-cards-container` + compact sort bar with `.sort-btn` buttons + Preview JD toggle.
 - js/job-feed.js: `renderJobRows()` now emits card HTML. CSS Grid (28px dismiss | 1fr title+meta | auto actions). 3-action model: Dismiss ✕ (slide-left animation, red hover, `bj_dismissed_jobs` localStorage), Pipeline (secondary, 1.5s "Saved ✓" confirmation), Apply → (primary blue, routes through `proceedToApply`). Signal badges inline on title row (Verified/AI/Ghost, only when data). Preview JD: 3-line clamped snippet full-width with match % badge. Card skeleton loader. All 4 feed PostHog events (feed_card_dismiss, feed_card_pipeline, feed_card_apply, feed_preview_jd_toggle).
@@ -4200,16 +4211,25 @@ Deliverables:
 
 ## Next Session
 
-No specific session queued. FB-SURVEY-DELIVERY-001 is complete (7 sessions, 340 tests).
+**FB-SURVEY-ADMIN-001 SVM-S2** — Full CRUD UI: WHAT / WHO / WHEN / WHERE
 
-**Pending manual steps (Marston):**
-- `supabase db push` (migrations v10.01-fb-survey-delivery-001-s1.sql + v10.25-fb-sdv-s5-survey-cron.sql)
-- `SUPABASE_ACCESS_TOKEN=<token> npx supabase functions deploy send-survey-invite resolve-survey-link api-gateway --project-ref qojhagupdnbtomfoxnsf`
-- Set Vonage Vault secrets: VONAGE_API_KEY, VONAGE_API_SECRET, VONAGE_FROM_NUMBER (if 10DLC approved)
+**Entry Gate:**
+- SVM-S1 complete: schema evolved, EF deployed, admin panel foundation operational ✅
+- All 6 active campaigns have questions JSONB populated
 
-**Potential next workstreams:**
-- SPA cutover (make /app/* the default authenticated entry point — highest leverage for stability)
-- Any new feature work
+**Scope:**
+- Full create/edit modal for campaigns with 4 sections:
+  - **WHAT:** Title, description, credits, estimated time. Question builder (add/remove/reorder, type selector, options editor, follow-up nesting). Preview button.
+  - **WHO:** Audience type selector (All / Time Cohort / Behavioral). Time cohort: signup date range pickers. Behavioral: min_sessions, min_applications, plan tier, days_since_signup. Live estimated reach count.
+  - **WHEN:** Trigger type (Page Navigation / Cron / Event / Behavioral). Cron expression input with presets. Event name dropdown. Behavioral condition builder. frequency_days + expires_at.
+  - **WHERE:** Channel toggles (Overlay + page checkboxes, Merch + page + position, Email, SMS). Priority input.
+- Wire to admin-survey-manager EF create/update actions.
+
+**Exit Gate:**
+- Create/edit/duplicate/delete all functional from admin UI
+- All 4 modal sections save correctly to DB
+- New campaign visible in campaign list table immediately
+- Tests passing. Three-file close.
 
 
 ## Deferred: SA-001 / SA-002 / SA-003 (Typesense)
@@ -4240,7 +4260,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v10.28`** | **FB-SURVEY-DELIVERY-001 COMPLETE: 7 sessions, 359 tests, 4 delivery channels, 12 spec gaps remediated.** |
+| **Product (BJ_VERSION)** | **`v10.29`** | **FB-SURVEY-ADMIN-001 SVM-S1: Schema evolution + admin panel foundation.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
