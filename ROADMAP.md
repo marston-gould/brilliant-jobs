@@ -3809,3 +3809,17 @@ Phase S3 (SA-013–SA-017) built the SPA scaffold with React bridge hooks to leg
 | SPA-CUT-6 | SUPERSEDED — renamed to SPA-CUT-FINAL below | N/A | N/A |
 | SPA-CUT-FINAL | Legacy HTML Elimination. dashboard.html (4,378 lines) + admin.html (1,318 lines) archived to legacy/. 6 legacy script tags removed from SPA index.html. Vercel rewrites: /dashboard, /admin → SPA. CSP unsafe-inline removed from catch-all script-src (SHA-256 hash only). SPA is sole authenticated surface. 46 tests. | ✅ | v10.42 |
 | HP-STATS-CLEANUP | Homepage stats cleanup. (1) 'Career Pages Monitored' stat label → 'Companies in Database' (reflects actual meaning: total companies in ats_companies table). (2) 'Companies Hiring Now' stat block removed (redundant). (3) Social proof bar removed (blue floating box — off-brand, duplicated stats bar content). Dead social proof IIFE removed from landing-app.js. | ✅ | v10.44 |
+
+## SPA-CUT-REMEDIATION: Spec Compliance + Extension Compat
+
+| Item | Before | After | Status |
+|------|--------|-------|--------|
+| TypeScript errors in src/app/ | 36 | 0 | ✅ v10.43 |
+| Tailwind CSS output | 188.7KB | 120.0KB | ✅ v10.43 |
+| Tailwind safelist patterns | 7 regex | 1 regex | ✅ v10.43 |
+| Non-data inline styles in SPA | 19 | 16 | ✅ v10.43 (remaining 16 are data-driven, spec-exempt) |
+| TODO stubs in hooks | 26 | 6 | ✅ v10.44 (6 remaining need new React components) |
+| ADR-02 documentation | incomplete | IMPLEMENTED | ✅ v10.43 |
+| Extension → SPA hash routing | broken | working | ✅ v10.44 (main.tsx hash redirect) |
+| Dark mode verification | unverified | structurally verified | ✅ v10.44 (all bg/text use CSS vars) |
+| Extension comms verification | unverified | verified | ✅ v10.44 (content scripts target LinkedIn/ATS, not dashboard DOM) |

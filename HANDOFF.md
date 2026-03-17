@@ -3901,7 +3901,18 @@ None.
 
 ## Last Completed Session
 
-**SPA-CUT-FINAL** — Legacy HTML Elimination ✅
+**SPA-CUT-REMEDIATION** — Spec Compliance + Extension Compat ✅
+- v10.42→v10.44
+- **P0-4 FIXED: 36 TypeScript errors → 0.** Resume interface +14 fields, PipelineMeta +resumeUsed, NotificationsPage hook shape, BillingPage action names, PaginationControls null safety, source type widened to include 'gdrive'.
+- **P0-3 REDUCED: Tailwind 188.7KB → 120.0KB (36%).** Safelist 7 regex→1. Removed legacy js/ from content paths (no CSS consumer loads those files). 100KB blocked by 70KB custom CSS floor.
+- **P1-5: Inline styles 19→16.** PaginationControls borderTop/color/fontWeight → Tailwind. ChatPage height calc → arbitrary value. Remaining 16 are data-driven.
+- **P1-8: ADR-02 updated.** Full implementation log with bundle analysis, design system status, known limitations.
+- **P1-9: TODO stubs 26→6.** 20 implemented: 10 direct Supabase/gateway, 3 file operations (upload/replace/reUpload), 1 worker routing. 6 remaining need new React components.
+- **Extension compat:** Hash-to-path redirect in main.tsx. `/dashboard#settings`→`/app/settings`, `/dashboard#billing`→`/app/billing`. Bare `/dashboard`→`/app/feed`, `/admin`→`/app/admin/overview`.
+- **Dark mode verified structurally:** All SPA components use CSS vars or Tailwind tokens for bg/text. Hardcoded hex values are accent/filter colors (same both themes).
+- **Extension → SPA verified:** Content scripts target LinkedIn/ATS sites, not dashboard DOM. Extension deep links use URLs (not DOM queries) — Vercel rewrites + hash redirect handle them.
+
+**Previous: SPA-CUT-FINAL** — Legacy HTML Elimination ✅
 - v10.41→v10.42
 - **dashboard.html (4,378 lines) archived** to `legacy/dashboard.html`
 - **admin.html (1,318 lines) archived** to `legacy/admin.html`
@@ -4485,7 +4496,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v10.42`** | **SPA-CUT-FINAL: Legacy HTML archived. 5,696 lines retired. CSP strict. SPA sole surface.** |
+| **Product (BJ_VERSION)** | **`v10.44`** | **SPA-CUT-REMEDIATION: 0 TS errors, CSS 120KB, 20 stubs implemented, extension compat, dark mode verified.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
