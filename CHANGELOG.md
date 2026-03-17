@@ -1,3 +1,6 @@
+## v10.36 Session NN: TITLE (2026-03-17)
+- DESCRIBE CHANGES HERE
+
 ## v10.35 FB-CHAT-002-C: Polish + Hardening + Release (2026-03-16)
 - Focus-visible keyboard rings on all wizard interactive elements
 - Card hover/selected micro-interactions (box-shadow, scale, pill animation)

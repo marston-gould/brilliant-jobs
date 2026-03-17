@@ -237,7 +237,7 @@ function setSearchMode(mode) {
     if (wizPanel) { wizPanel.style.display = ''; }
     if (typeof window._wizOpen === 'function') window._wizOpen('toggle');
     if (window.posthog) {
-      try { posthog.capture('chat_mode_toggled', { mode: mode }); } catch(e) { reportError('chat:chat', e); }
+      try { posthog.capture('chat_mode_toggled', { from_mode: prevMode, to_mode: mode }); } catch(e) { reportError('chat:chat', e); }
     }
     return;
   }
@@ -314,7 +314,7 @@ function setSearchMode(mode) {
 
   // PostHog event
   if (window.posthog) {
-    try { posthog.capture('chat_mode_toggled', { mode: mode }); } catch(e) { reportError('chat:chat', e); }
+    try { posthog.capture('chat_mode_toggled', { from_mode: prevMode, to_mode: mode }); } catch(e) { reportError('chat:chat', e); }
   }
 }
 
@@ -1262,7 +1262,7 @@ async function executeSavePrompt() {
 
     // PostHog
     if (window.posthog) {
-      try { posthog.capture('chat_prompt_saved', { name: name, color_index: colorIndex, filter_count: Object.keys(derivedFilters).length, is_update: !!_currentPromptId }); } catch(e) { reportError('chat:chat', e); }
+      try { posthog.capture('chat_prompt_saved', { has_name: !!name, color: colorIndex, source: 'chat', filter_count: Object.keys(derivedFilters).length, is_update: !!_currentPromptId }); } catch(e) { reportError('chat:chat', e); }
     }
 
   } catch (err) {
@@ -1394,7 +1394,7 @@ async function loadPrompt(promptId) {
 
   // PostHog
   if (window.posthog) {
-    try { posthog.capture('chat_prompt_loaded', { prompt_id: promptId, name: prompt.name }); } catch(e) { reportError('chat:chat', e); }
+    try { posthog.capture('chat_prompt_loaded', { prompt_id: promptId, name: prompt.name, source: prompt.source || 'chat' }); } catch(e) { reportError('chat:chat', e); }
   }
 }
 
@@ -1432,7 +1432,8 @@ async function deletePrompt(promptId) {
 
       // PostHog
       if (window.posthog) {
-        try { posthog.capture('chat_prompt_deleted', { prompt_id: promptId }); } catch(e) { reportError('chat:chat', e); }
+        var _delPrompt = _savedPrompts.find(function(p) { return p.id === promptId; });
+        try { posthog.capture('chat_prompt_deleted', { prompt_id: promptId, source: (_delPrompt && _delPrompt.source) || 'chat' }); } catch(e) { reportError('chat:chat', e); }
       }
     }
   } catch(err) { reportError('chat', err); console.error('[BJ] Delete prompt error:', err);

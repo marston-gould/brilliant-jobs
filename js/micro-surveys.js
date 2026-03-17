@@ -34,8 +34,8 @@
   // Fetch campaign priorities from DB and merge into PRIORITY map
   (function loadCampaignPriorities() {
     try {
-      var sb = window.supabase || window._supabase;
-      if (!sb) return;
+      // sb is the global Supabase client from globals.ts (module-level const)
+      if (typeof sb === 'undefined' || !sb || typeof sb.from !== 'function') return;
       sb.from('survey_campaigns')
         .select('survey_version,priority')
         .eq('survey_type', 'micro')

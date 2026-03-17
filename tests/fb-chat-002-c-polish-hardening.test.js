@@ -1,6 +1,6 @@
 // tests/fb-chat-002-c-polish-hardening.test.js
 // FB-CHAT-002 Session C: Polish + Hardening + CI/CD + Release
-// 2026-03-16 | v10.35
+// 2026-03-16 | v10.36
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'fs';
@@ -246,11 +246,11 @@ describe('FB-CHAT-002-C: Polish + Hardening + CI/CD + Release', () => {
 
   // --- Section 10: Build + Version ---
   describe('10. Build + Version', () => {
-    it('version is v10.35', () => {
-      expect(versionJs).toContain('v10.35');
+    it('version is v10.36', () => {
+      expect(versionJs).toContain('v10.36');
     });
-    it('dashboard.html has v10.35', () => {
-      expect(dashHtml).toContain('v10.35');
+    it('dashboard.html has v10.36', () => {
+      expect(dashHtml).toContain('v10.36');
     });
     it('dist bundles exist', () => {
       expect(existsSync('dist/dashboard.min.js')).toBe(true);

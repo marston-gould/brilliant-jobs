@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v10.35';
+var BJ_VERSION = 'v10.36';
 // Populate version display elements after DOM is ready
 (function() {
   var el = document.getElementById('nav-version');
@@ -27244,8 +27244,8 @@ function _initTierChangeListener() {
   // Fetch campaign priorities from DB and merge into PRIORITY map
   (function loadCampaignPriorities() {
     try {
-      var sb = window.supabase || window._supabase;
-      if (!sb) return;
+      // sb is the global Supabase client from globals.ts (module-level const)
+      if (typeof sb === 'undefined' || !sb || typeof sb.from !== 'function') return;
       sb.from('survey_campaigns')
         .select('survey_version,priority')
         .eq('survey_type', 'micro')
@@ -30844,7 +30844,7 @@ function setSearchMode(mode) {
     if (wizPanel) { wizPanel.style.display = ''; }
     if (typeof window._wizOpen === 'function') window._wizOpen('toggle');
     if (window.posthog) {
-      try { posthog.capture('chat_mode_toggled', { mode: mode }); } catch(e) { reportError('chat:chat', e); }
+      try { posthog.capture('chat_mode_toggled', { from_mode: prevMode, to_mode: mode }); } catch(e) { reportError('chat:chat', e); }
     }
     return;
   }
@@ -30921,7 +30921,7 @@ function setSearchMode(mode) {
 
   // PostHog event
   if (window.posthog) {
-    try { posthog.capture('chat_mode_toggled', { mode: mode }); } catch(e) { reportError('chat:chat', e); }
+    try { posthog.capture('chat_mode_toggled', { from_mode: prevMode, to_mode: mode }); } catch(e) { reportError('chat:chat', e); }
   }
 }
 
@@ -31869,7 +31869,7 @@ async function executeSavePrompt() {
 
     // PostHog
     if (window.posthog) {
-      try { posthog.capture('chat_prompt_saved', { name: name, color_index: colorIndex, filter_count: Object.keys(derivedFilters).length, is_update: !!_currentPromptId }); } catch(e) { reportError('chat:chat', e); }
+      try { posthog.capture('chat_prompt_saved', { has_name: !!name, color: colorIndex, source: 'chat', filter_count: Object.keys(derivedFilters).length, is_update: !!_currentPromptId }); } catch(e) { reportError('chat:chat', e); }
     }
 
   } catch (err) {
@@ -32001,7 +32001,7 @@ async function loadPrompt(promptId) {
 
   // PostHog
   if (window.posthog) {
-    try { posthog.capture('chat_prompt_loaded', { prompt_id: promptId, name: prompt.name }); } catch(e) { reportError('chat:chat', e); }
+    try { posthog.capture('chat_prompt_loaded', { prompt_id: promptId, name: prompt.name, source: prompt.source || 'chat' }); } catch(e) { reportError('chat:chat', e); }
   }
 }
 
@@ -32039,7 +32039,8 @@ async function deletePrompt(promptId) {
 
       // PostHog
       if (window.posthog) {
-        try { posthog.capture('chat_prompt_deleted', { prompt_id: promptId }); } catch(e) { reportError('chat:chat', e); }
+        var _delPrompt = _savedPrompts.find(function(p) { return p.id === promptId; });
+        try { posthog.capture('chat_prompt_deleted', { prompt_id: promptId, source: (_delPrompt && _delPrompt.source) || 'chat' }); } catch(e) { reportError('chat:chat', e); }
       }
     }
   } catch(err) { reportError('chat', err); console.error('[BJ] Delete prompt error:', err);
