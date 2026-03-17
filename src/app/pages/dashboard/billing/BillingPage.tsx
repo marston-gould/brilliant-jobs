@@ -76,8 +76,8 @@ export function BillingPage() {
           planPrice={state.planPrice}
           billingPeriod={state.billingPeriod}
           periodEnd={state.periodEnd}
-          onOpenPortal={actions.openPortal}
-          onOpenCheckout={actions.openCheckout}
+          onOpenPortal={actions.openBillingPortal}
+          onOpenCheckout={actions.openPricing}
         />
       )}
 

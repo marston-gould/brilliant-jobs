@@ -64,7 +64,7 @@ export function ResumeCard({
   onReplacePlaceholder,
   onReUpload,
 }: ResumeCardProps) {
-  const icon = getFileIcon(r.fileName);
+  const icon = getFileIcon(r.fileName || r.name);
   const assignedIds = r.filterIds || [];
   const isPlaceholder = r.needsUpload;
 

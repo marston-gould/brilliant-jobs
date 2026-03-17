@@ -28,19 +28,29 @@ export interface ReadinessScore {
 }
 
 export interface Resume {
+  id?: string;
   name: string;
+  fileName?: string;
   archived: boolean;
   textStatus: 'pending' | 'extracting' | 'ready' | 'no-text';
   extractedText?: string;
   keywords?: string[];
   filterIds?: string[];
   level?: string;
+  levelLabel?: string;
   aiScore?: AIScore;
   aiScoreHistory?: AIScoreHistoryEntry[];
+  aiScoreStatus?: 'pending' | 'scoring' | 'scored' | 'failed';
   readinessScore?: ReadinessScore;
   storagePath?: string;
   supabaseId?: string;
   archiveId?: string;
+  source?: 'upload' | 'drive' | 'gdrive' | 'rewrite';
+  rewrite_round?: number;
+  needsUpload?: boolean;
+  size?: number;
+  uploadedAt?: string;
+  _rescoreCooldownUntil?: number;
 }
 
 export interface SavedFilter {
@@ -54,6 +64,7 @@ export interface PipelineMeta {
   stage: string;
   title?: string;
   company?: string;
+  resumeUsed?: string;
 }
 
 // ── State ────────────────────────────────────────────────────

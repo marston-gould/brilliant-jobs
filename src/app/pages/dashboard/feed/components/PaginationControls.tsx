@@ -30,10 +30,10 @@ function buildPageRange(current: number, totalPages: number): (number | '...')[]
   const sorted = [...pages].sort((a, b) => a - b);
   const result: (number | '...')[] = [];
   for (let i = 0; i < sorted.length; i++) {
-    if (i > 0 && sorted[i] - sorted[i - 1] > 1) {
+    if (i > 0 && sorted[i]! - sorted[i - 1]! > 1) {
       result.push('...');
     }
-    result.push(sorted[i]);
+    result.push(sorted[i]!);
   }
   return result;
 }
@@ -53,8 +53,8 @@ export function PaginationControls({
   const pages = buildPageRange(page, totalPages);
 
   return (
-    <div className="flex flex-col items-center gap-2 py-4" style={{ borderTop: '1px solid var(--border)' }}>
-      <span className="text-xs" style={{ color: 'var(--text-faint)', fontWeight: 500 }}>
+    <div className="flex flex-col items-center gap-2 py-4 border-t border-border">
+      <span className="text-xs text-text-faint font-medium">
         Showing {from.toLocaleString()}–{to.toLocaleString()} of {total.toLocaleString()} job{total !== 1 ? 's' : ''}
       </span>
       {totalPages > 1 && (

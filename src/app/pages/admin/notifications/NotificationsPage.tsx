@@ -6,7 +6,7 @@ import { NotificationsHero } from './components';
 import { useNotifications } from './hooks/useNotifications';
 
 export function NotificationsPage() {
-  const [state, _actions] = useNotifications();
+  const { state, refresh: _refresh } = useNotifications();
 
   if (state.loading) {
     return (
@@ -32,7 +32,7 @@ export function NotificationsPage() {
 
   return (
     <div className="max-w-5xl mx-auto">
-      <NotificationsHero totalSent={state.totalSent} deliveryRate={state.deliveryRate} templateCount={state.templateCount} failedCount={state.failedCount} />
+      <NotificationsHero totalSent={state.stats.sent24h} deliveryRate={state.stats.sent24h > 0 ? Math.round((state.stats.sent24h - state.stats.failed24h) / state.stats.sent24h * 100) : 100} templateCount={state.stats.total} failedCount={state.stats.failed24h} />
 
       <div id="admin-notifications-panel" />
       <div id="admin-templates-panel" />

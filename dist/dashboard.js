@@ -1,5 +1,5 @@
 // === js/version.ts ===
-var BJ_VERSION = 'v10.42';
+var BJ_VERSION = 'v10.43';
 // Populate version display elements after DOM is ready
 (function() {
   var el = document.getElementById('nav-version');
