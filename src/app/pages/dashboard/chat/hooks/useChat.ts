@@ -91,18 +91,22 @@ export function useChat(): [ChatState, {
   }, []);
 
   const setMode = useCallback((mode: 'filters' | 'chat') => {
-    // TODO SPA-CUT-3: setSearchMode(mode) needs standalone implementation
+    // SPA-CUT-REMEDIATION: Persist mode choice to localStorage
+    try { localStorage.setItem('bj_search_mode', mode); } catch { /* non-fatal */ }
   }, []);
 
   const applyFilters = useCallback((filters: Record<string, any>) => {
-    // TODO SPA-CUT-3: applyChatFilters(filters) needs standalone implementation
+    // SPA-CUT-REMEDIATION: Save derived filters from chat to localStorage for Feed pickup
+    try {
+      const existing = JSON.parse(localStorage.getItem('bj_chat_derived_filters') || '{}');
+      const merged = { ...existing, ...filters, _appliedAt: Date.now() };
+      localStorage.setItem('bj_chat_derived_filters', JSON.stringify(merged));
+    } catch { /* non-fatal */ }
   }, []);
 
   const clearChat = useCallback(() => {
     // SPA-CUT-REMEDIATION: Clear chat state from localStorage
-    () => {
-      try { localStorage.removeItem('bj_chat_history'); localStorage.removeItem('bj_chat_session'); } catch { /* non-fatal */ }
-    }
+    try { localStorage.removeItem('bj_chat_history'); localStorage.removeItem('bj_chat_session'); } catch { /* non-fatal */ }
   }, []);
 
   return [state, { sendMessage, setMode, applyFilters, clearChat }];

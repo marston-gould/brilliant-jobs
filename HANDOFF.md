@@ -3901,7 +3901,16 @@ None.
 
 ## Last Completed Session
 
-**SPA-CUT-REMEDIATION** — Spec Compliance + Extension Compat ✅
+**SPA-CUT-REMEDIATION-2** — JobDetailModal + Final TODO Resolution ✅
+- v10.44→v10.45
+- **JobDetailModal component** (`src/app/components/JobDetailModal.tsx`): Fetches job from `ats_jobs` by `greenhouse_id`. Renders title, company, location, salary (formatted with Intl.NumberFormat), dates, full JD content. Uses design system Modal (xl size). Link to career page in footer.
+- **Pipeline openJobModal resolved:** `SELECT_JOB`/`CLOSE_JOB` action types. `selectedJobId` in PipelineState + initialState + reducer. `openJobModal` dispatches `SELECT_JOB`. `closeJobModal` dispatches `CLOSE_JOB`. PipelinePage renders `<JobDetailModal jobId={state.selectedJobId} onClose={actions.closeJobModal} />`.
+- **Keywords openJobModal resolved:** Same pattern — `SELECT_JOB`/`CLOSE_JOB` actions, `selectedJobId` state, `closeJobModal` action. KeywordsPage renders `<JobDetailModal>`.
+- **Chat stubs resolved:** `setSearchMode` → `localStorage.setItem('bj_search_mode', mode)`. `applyChatFilters` → merge into `bj_chat_derived_filters` localStorage. `clearChat` fixed — was broken nested function that never executed.
+- **TODO stubs: 26 → 2.** Only `launchRewrite` (multi-step rewrite interview) and `editFilterLevelHierarchy` (level editor modal) remain — both need dedicated React UI.
+- **Tests:** 258 passing. Zero TS errors. SPA builds clean.
+
+**Previous: SPA-CUT-REMEDIATION** — Spec Compliance + Extension Compat ✅
 - v10.42→v10.44
 - **P0-4 FIXED: 36 TypeScript errors → 0.** Resume interface +14 fields, PipelineMeta +resumeUsed, NotificationsPage hook shape, BillingPage action names, PaginationControls null safety, source type widened to include 'gdrive'.
 - **P0-3 REDUCED: Tailwind 188.7KB → 120.0KB (36%).** Safelist 7 regex→1. Removed legacy js/ from content paths (no CSS consumer loads those files). 100KB blocked by 70KB custom CSS floor.
@@ -4496,7 +4505,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v10.44`** | **SPA-CUT-REMEDIATION: 0 TS errors, CSS 120KB, 20 stubs implemented, extension compat, dark mode verified.** |
+| **Product (BJ_VERSION)** | **`v10.45`** | **SPA-CUT-REMEDIATION-2: JobDetailModal, 24 of 26 stubs resolved, chat stubs fixed. 2 TODOs remain (launchRewrite, editFilterLevelHierarchy).** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

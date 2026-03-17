@@ -63,6 +63,7 @@ interface KeywordsState {
   scores: Record<number, ResumeScore>;
   resumes: ResumeInfo[];
   lastRun: string | null;
+  selectedJobId: string | null;
 }
 
 type KeywordsAction =
@@ -72,7 +73,9 @@ type KeywordsAction =
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'SET_SCORES'; payload: { scores: Record<number, ResumeScore>; lastRun: string } }
   | { type: 'SET_RESUMES'; payload: ResumeInfo[] }
-  | { type: 'TOGGLE_RESUME'; payload: number };
+  | { type: 'TOGGLE_RESUME'; payload: number }
+  | { type: 'SELECT_JOB'; jobId: string }
+  | { type: 'CLOSE_JOB' };
 
 const initialState: KeywordsState = {
   loading: true,
@@ -82,6 +85,7 @@ const initialState: KeywordsState = {
   scores: {},
   resumes: [],
   lastRun: null,
+  selectedJobId: null,
 };
 
 function reducer(state: KeywordsState, action: KeywordsAction): KeywordsState {
@@ -105,6 +109,10 @@ function reducer(state: KeywordsState, action: KeywordsAction): KeywordsState {
           r.index === action.payload ? { ...r, selected: !r.selected } : r
         ),
       };
+    case 'SELECT_JOB':
+      return { ...state, selectedJobId: action.jobId };
+    case 'CLOSE_JOB':
+      return { ...state, selectedJobId: null };
     default:
       return state;
   }
@@ -137,6 +145,7 @@ export interface KeywordsActions {
   toggleResume: (index: number) => void;
   selectAll: (selected: boolean) => void;
   openJobModal: (jobId: string) => void;
+  closeJobModal: () => void;
 }
 
 export function useKeywords(): [KeywordsState, KeywordsActions] {
@@ -234,8 +243,12 @@ export function useKeywords(): [KeywordsState, KeywordsActions] {
     dispatch({ type: 'SET_RESUMES', payload: updated });
   }, []);
 
-  const openJobModal = useCallback((_jobId: string) => {
-    // TODO SPA-CUT-1: Job detail modal needs standalone React implementation
+  const openJobModal = useCallback((jobId: string) => {
+    dispatch({ type: 'SELECT_JOB', jobId });
+  }, []);
+
+  const closeJobModal = useCallback(() => {
+    dispatch({ type: 'CLOSE_JOB' });
   }, []);
 
   useEffect(() => {
@@ -250,7 +263,8 @@ export function useKeywords(): [KeywordsState, KeywordsActions] {
     toggleResume,
     selectAll,
     openJobModal,
-  }), [loadResumes, runAnalysis, toggleResume, selectAll, openJobModal]);
+    closeJobModal,
+  }), [loadResumes, runAnalysis, toggleResume, selectAll, openJobModal, closeJobModal]);
 
   return [state, actions];
 }

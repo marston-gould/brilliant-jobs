@@ -14,6 +14,7 @@
 
 import { useCallback } from 'react';
 import { Button } from '@app/components';
+import { JobDetailModal } from '@app/components/JobDetailModal';
 import {
   PipelineHero,
   PipelineFilterTags,
@@ -118,6 +119,12 @@ export function PipelinePage() {
           onArchive={handleArchive}
         />
       )}
+
+      {/* Job detail modal */}
+      <JobDetailModal
+        jobId={state.selectedJobId}
+        onClose={actions.closeJobModal}
+      />
     </div>
   );
 }

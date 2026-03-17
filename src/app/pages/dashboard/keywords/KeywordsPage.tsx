@@ -12,6 +12,7 @@
 
 import { useCallback, useMemo } from 'react';
 import { Button, Card } from '@app/components';
+import { JobDetailModal } from '@app/components/JobDetailModal';
 import { ResumeSelector, ResumeScoreCard } from './components';
 import { useKeywords } from './hooks/useKeywords';
 
@@ -155,6 +156,10 @@ export function KeywordsPage() {
           ))}
         </div>
       )}
+      <JobDetailModal
+        jobId={state.selectedJobId}
+        onClose={actions.closeJobModal}
+      />
     </div>
   );
 }

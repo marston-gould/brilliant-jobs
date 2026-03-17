@@ -3823,3 +3823,15 @@ Phase S3 (SA-013–SA-017) built the SPA scaffold with React bridge hooks to leg
 | Extension → SPA hash routing | broken | working | ✅ v10.44 (main.tsx hash redirect) |
 | Dark mode verification | unverified | structurally verified | ✅ v10.44 (all bg/text use CSS vars) |
 | Extension comms verification | unverified | verified | ✅ v10.44 (content scripts target LinkedIn/ATS, not dashboard DOM) |
+
+## SPA-CUT-REMEDIATION-2: JobDetailModal + Final TODO Resolution
+
+| Item | Status | Version |
+|------|--------|---------|
+| JobDetailModal component (Pipeline + Keywords) | ✅ | v10.45 |
+| Pipeline openJobModal → state-based modal dispatch | ✅ | v10.45 |
+| Keywords openJobModal → state-based modal dispatch | ✅ | v10.45 |
+| Chat setSearchMode → localStorage persist | ✅ | v10.45 |
+| Chat applyChatFilters → localStorage merged filters | ✅ | v10.45 |
+| Chat clearChat → fixed broken nested function | ✅ | v10.45 |
+| TODO stubs remaining: 2 of 26 (launchRewrite, editFilterLevelHierarchy) | Deferred | — |

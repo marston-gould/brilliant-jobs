@@ -151,6 +151,7 @@ interface PipelineState {
   activeFilter: string;
   collapseStates: Record<string, boolean>;
   view: 'pipeline' | 'ghost';
+  selectedJobId: string | null;
 }
 
 type PipelineAction =
@@ -161,7 +162,9 @@ type PipelineAction =
   | { type: 'SET_GHOST_LOADING'; payload: boolean }
   | { type: 'SET_FILTER'; payload: string }
   | { type: 'TOGGLE_COLLAPSE'; payload: string }
-  | { type: 'SET_VIEW'; payload: 'pipeline' | 'ghost' };
+  | { type: 'SET_VIEW'; payload: 'pipeline' | 'ghost' }
+  | { type: 'SELECT_JOB'; jobId: string }
+  | { type: 'CLOSE_JOB' };
 
 const initialState: PipelineState = {
   loading: true,
@@ -181,6 +184,7 @@ const initialState: PipelineState = {
   activeFilter: 'all',
   collapseStates: {},
   view: 'pipeline',
+  selectedJobId: null,
 };
 
 function reducer(state: PipelineState, action: PipelineAction): PipelineState {
@@ -207,6 +211,10 @@ function reducer(state: PipelineState, action: PipelineAction): PipelineState {
       };
     case 'SET_VIEW':
       return { ...state, view: action.payload };
+    case 'SELECT_JOB':
+      return { ...state, selectedJobId: action.jobId };
+    case 'CLOSE_JOB':
+      return { ...state, selectedJobId: null };
     default:
       return state;
   }
@@ -295,6 +303,7 @@ export interface PipelineActions {
   loadGhostMonitor: () => Promise<void>;
   setTrackingMode: (jobId: string, mode: string) => void;
   openJobModal: (jobId: string) => void;
+  closeJobModal: () => void;
 }
 
 export function usePipeline(): [PipelineState, PipelineActions] {
@@ -578,10 +587,13 @@ export function usePipeline(): [PipelineState, PipelineActions] {
     setTimeout(() => refresh(), 200);
   }, [refresh]);
 
-  const openJobModal = useCallback((_jobId: string) => {
-    // TODO SPA-CUT-1: Job detail modal needs standalone React implementation.
-    // For now, navigate to job URL or show inline detail.
-    // Legacy modal relied on dashboard.html DOM which won't exist post-cut.
+  const openJobModal = useCallback((jobId: string) => {
+    // SPA-CUT-REMEDIATION: Set selectedJobId → PipelinePage renders JobDetailModal
+    dispatch({ type: 'SELECT_JOB', jobId });
+  }, []);
+
+  const closeJobModal = useCallback(() => {
+    dispatch({ type: 'CLOSE_JOB' });
   }, []);
 
   const setFilter = useCallback((tag: string) => {
@@ -626,7 +638,8 @@ export function usePipeline(): [PipelineState, PipelineActions] {
     loadGhostMonitor,
     setTrackingMode,
     openJobModal,
-  }), [refresh, moveStage, confirmSignal, unsave, setFilter, toggleCollapse, setView, loadGhostMonitor, setTrackingMode, openJobModal]);
+    closeJobModal,
+  }), [refresh, moveStage, confirmSignal, unsave, setFilter, toggleCollapse, setView, loadGhostMonitor, setTrackingMode, openJobModal, closeJobModal]);
 
   return [state, actions];
 }
