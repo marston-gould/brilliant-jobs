@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import { supabase, safeReadLS, safeWriteLS, getUser } from '@lib/supabase';
+import { providers } from '@app/providers/bridge';
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -175,9 +176,8 @@ function buildActions(dispatch: React.Dispatch<ApplicationsAction>, reload: () =
       // Mark all as approved → headless worker polls for approved status
       for (const entry of queued) {
         try {
-          await supabase.from('pending_applications')
-            .update({ status: 'approved' })
-            .eq('id', entry.id);
+          // Approved via provider
+            await providers.applications.processQueue();
           entry.status = 'pending' as AppStatus;
         } catch { /* non-fatal per-item */ }
       }
@@ -194,8 +194,7 @@ function buildActions(dispatch: React.Dispatch<ApplicationsAction>, reload: () =
       try {
         const user = await getUser();
         if (!user) return;
-        const { data } = await supabase.from('notification_preferences')
-          .select('*').eq('user_id', user.id).single();
+        const data = await providers.applications.getNotifPrefs();
         if (data) dispatch({ type: 'SET_NOTIF_PREFS', prefs: data as any });
       } catch { /* non-fatal */ }
     },
@@ -204,9 +203,7 @@ function buildActions(dispatch: React.Dispatch<ApplicationsAction>, reload: () =
       try {
         const user = await getUser();
         if (!user) return;
-        const { data } = await supabase.from('notification_log')
-          .select('*').eq('user_id', user.id)
-          .order('created_at', { ascending: false }).limit(50);
+        const data = await providers.applications.getNotifLog();
         if (data) dispatch({ type: 'SET_NOTIF_LOG', log: data as any[] });
       } catch { /* non-fatal */ }
     },

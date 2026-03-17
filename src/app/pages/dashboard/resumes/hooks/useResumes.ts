@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import { supabase, safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
+import { providers } from '@app/providers/bridge';
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -210,10 +211,10 @@ function buildActions(dispatch: React.Dispatch<ResumesAction>, reload: () => voi
       const r = all[idx];
       if (!r?.storagePath) return;
       // Download from Supabase Storage
-      supabase.storage.from('resumes').download(r.storagePath)
-        .then(({ data }) => {
-          if (data) {
-            const url = URL.createObjectURL(data);
+      providers.resumes.download(r.storagePath)
+        .then((blob) => {
+          if (blob) {
+            const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url; a.download = r.name || 'resume.pdf';
             a.click(); URL.revokeObjectURL(url);
@@ -269,12 +270,9 @@ function buildActions(dispatch: React.Dispatch<ResumesAction>, reload: () => voi
     async uploadResume(file: File) {
       // SPA-CUT-REMEDIATION: Upload to Supabase Storage + add to localStorage
       try {
-        const user = await getUser();
-        if (!user) return;
-        const ext = file.name.split('.').pop() || 'pdf';
-        const path = `${user.id}/${Date.now()}.${ext}`;
-        const { error: upErr } = await supabase.storage.from('resumes').upload(path, file);
-        if (upErr) { console.error('[SPA] Upload failed:', upErr); return; }
+        const uploadResult = await providers.resumes.upload(file);
+        if (!uploadResult) { console.error('[SPA] Upload failed'); return; }
+        const path = uploadResult.storagePath;
 
         // Add to localStorage resume array
         const all = loadResumesFromLS();

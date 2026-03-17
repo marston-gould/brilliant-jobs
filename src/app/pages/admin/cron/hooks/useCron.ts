@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
 import { supabase, safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
+import { providers } from '@app/providers/bridge';
 
 
 interface CronJob { name: string; schedule: string; lastRun: string; status: string; nextRun: string; }
@@ -46,7 +47,7 @@ export function useCron(): [CronState, CronActions] {
   useEffect(() => {
     // Init admin panel
     // @ts-ignore SPA-CUT-3: fire-and-forget
-        supabase.from('cron_registry').select('*').order('name');
+        providers.admin.getCronJobs();
     loadData();
     pollRef.current = setInterval(loadData, 3000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
@@ -54,12 +55,12 @@ export function useCron(): [CronState, CronActions] {
 
   const refresh = useCallback(() => {
     // @ts-ignore SPA-CUT-3: fire-and-forget
-        supabase.from('cron_registry').select('*').order('name');
+        providers.admin.getCronJobs();
   }, []);
   const toggleJob = useCallback((name: string, enabled: boolean) => {
     // SPA-CUT-REMEDIATION: Direct Supabase update
     async (name: string, enabled: boolean) => {
-      await supabase.from('cron_registry').update({ enabled }).eq('name', name);
+      await providers.admin.toggleCronJob(name, enabled);
     }
   }, []);
 

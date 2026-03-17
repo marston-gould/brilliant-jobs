@@ -7,6 +7,7 @@
 ──────────────────────────────────────────────────────────*/
 
 module.exports = {
+  darkMode: 'class',
   safelist: [
     /* SPA-CUT-FINAL: Reduced from 7 regex patterns to minimal.
        SPA uses Tailwind utilities directly — no safelist needed for React.

@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
 import { supabase, safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
+import { providers } from '@app/providers/bridge';
 
 
 interface KillswitchState { loading: boolean; error: string | null; extensionEnabled: boolean; dashboardEnabled: boolean; landingEnabled: boolean; lastToggled: string; }
@@ -42,7 +43,7 @@ export function useKillswitch(): [KillswitchState, KillswitchActions] {
   useEffect(() => {
     // Init admin panel
     // @ts-ignore SPA-CUT-3: fire-and-forget
-        supabase.from('feature_flags').select('*').order('key');
+        providers.admin.getFeatureFlags();
     loadData();
     pollRef.current = setInterval(loadData, 3000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
@@ -50,12 +51,12 @@ export function useKillswitch(): [KillswitchState, KillswitchActions] {
 
   const refresh = useCallback(() => {
     // @ts-ignore SPA-CUT-3: fire-and-forget
-        supabase.from('feature_flags').select('*').order('key');
+        providers.admin.getFeatureFlags();
   }, []);
   const toggle = useCallback((surface: string, enabled: boolean) => {
     // SPA-CUT-REMEDIATION: Direct Supabase update
     async (surface: string, enabled: boolean) => {
-      await supabase.from('feature_flags').update({ enabled }).eq('key', surface);
+      await providers.admin.toggleFeatureFlag(surface, enabled);
     }
   }, []);
 

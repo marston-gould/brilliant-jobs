@@ -163,3 +163,144 @@ export interface DataProviders {
   user: UserProvider;
   pipeline: PipelineProvider;
 }
+
+// ── Extended Provider Interfaces (SPA-CUT-REMEDIATION) ────
+
+/**
+ * ResumeProvider — resume CRUD, upload, AI scoring.
+ */
+export interface ResumeProvider {
+  getAll(): Promise<any[]>;
+  upload(file: File): Promise<{ storagePath: string }>;
+  download(storagePath: string): Promise<Blob | null>;
+  remove(idx: number): Promise<void>;
+  archive(idx: number): Promise<void>;
+  unarchive(idx: number): Promise<void>;
+  rename(idx: number, name: string): Promise<void>;
+  setLevel(idx: number, level: string): Promise<void>;
+  toggleFilter(idx: number, filterName: string): Promise<void>;
+  scoreAI(resumeText: string): Promise<{ score: number; summary?: string }>;
+}
+
+/**
+ * ApplicationProvider — application queue and history.
+ */
+export interface ApplicationProvider {
+  getQueue(): Promise<any[]>;
+  getHistory(): Promise<any[]>;
+  addToQueue(entry: any): Promise<void>;
+  removeFromQueue(idx: number): Promise<void>;
+  processQueue(): Promise<void>;
+  clearHistory(): Promise<void>;
+  getNotifPrefs(): Promise<any | null>;
+  getNotifLog(): Promise<any[]>;
+}
+
+/**
+ * StatsProvider — materialized view queries for dashboard stats.
+ */
+export interface StatsProvider {
+  getJobCounts(): Promise<any>;
+  getSourceBreakdown(): Promise<any[]>;
+}
+
+/**
+ * BillingProvider — credit balance, pricing, Stripe portal.
+ */
+export interface BillingProvider {
+  getBalance(): Promise<number>;
+  getPricing(): Promise<any[]>;
+  getUserProfile(): Promise<any>;
+  openBillingPortal(): Promise<string | null>;
+}
+
+/**
+ * TuningProvider — tuning settings and hidden job management.
+ */
+export interface TuningProvider {
+  getTuning(): Promise<any>;
+  saveTuning(data: any): Promise<void>;
+  unhideJob(jobId: string): Promise<void>;
+  getCollapsedStates(): Promise<Record<string, boolean>>;
+  setCollapsedState(idx: string, collapsed: boolean): Promise<void>;
+}
+
+/**
+ * ChatProvider — chat messages and sessions.
+ */
+export interface ChatProvider {
+  getHistory(): Promise<any[]>;
+  sendMessage(text: string): Promise<any>;
+  clearSession(): Promise<void>;
+  setMode(mode: string): Promise<void>;
+  applyFilters(filters: Record<string, any>): Promise<void>;
+}
+
+/**
+ * IntegrationProvider — Google Drive and other integrations.
+ */
+export interface IntegrationProvider {
+  getGDriveFiles(): Promise<any[]>;
+  connectGDrive(): Promise<void>;
+  disconnectGDrive(): Promise<void>;
+  addGDriveFile(fileId: string): Promise<void>;
+  unlinkGDriveFile(fileId: string): Promise<void>;
+  importGDriveAsResume(fileId: string): Promise<void>;
+}
+
+/**
+ * ReferralProvider — referral stats and leaderboard.
+ */
+export interface ReferralProvider {
+  getStats(): Promise<any>;
+  getLeaderboard(): Promise<any[]>;
+  getCode(): Promise<string>;
+}
+
+/**
+ * AdminProvider — admin panel operations.
+ */
+export interface AdminProvider {
+  getOverview(): Promise<any>;
+  getBoardHealth(): Promise<any>;
+  getJobs(page?: number): Promise<any[]>;
+  getNotificationTemplates(): Promise<any[]>;
+  getCampaigns(): Promise<any[]>;
+  getNotificationStats(): Promise<any>;
+  getCronJobs(): Promise<any[]>;
+  toggleCronJob(name: string, enabled: boolean): Promise<void>;
+  getFeatureFlags(): Promise<any[]>;
+  toggleFeatureFlag(key: string, enabled: boolean): Promise<void>;
+  getAgentStatus(): Promise<any>;
+  getMonitoringHealth(): Promise<any>;
+  getSeoData(): Promise<any>;
+  generateSeoReport(): Promise<void>;
+  getComplianceData(): Promise<any>;
+  initiateUserDeletion(userId: string): Promise<void>;
+  cancelUserDeletion(userId: string): Promise<void>;
+}
+
+/**
+ * NotificationProvider — notification management (admin).
+ */
+export interface NotificationProvider {
+  getTemplates(): Promise<any[]>;
+  getCampaigns(): Promise<any[]>;
+  getStats24h(): Promise<{ sent: number; failed: number }>;
+}
+
+/**
+ * Extended DataProviders — includes all domain providers.
+ */
+export interface ExtendedDataProviders extends DataProviders {
+  resumes: ResumeProvider;
+  applications: ApplicationProvider;
+  stats: StatsProvider;
+  billing: BillingProvider;
+  tuning: TuningProvider;
+  chat: ChatProvider;
+  integrations: IntegrationProvider;
+  referrals: ReferralProvider;
+  admin: AdminProvider;
+  notifications: NotificationProvider;
+}

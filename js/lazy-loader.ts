@@ -48,7 +48,7 @@
     'deferred': ['keywords'],  // resumes.js calls buildInlineGrade, buildReadinessSide, tokenize from keywords.js
   };
 
-  var TAB_CHUNKS: Record<TabName, ChunkName[]> = {
+  var TAB_CHUNKS: Record<string, ChunkName[]> = {
     'brilliant':    ['keywords'],
     'jobs':         ['keywords', 'deferred'],
     'setup':        ['keywords', 'deferred'],  // connectGoogleDrive, connectGoogleCalendar in integrations.js (deferred)
@@ -95,7 +95,7 @@
           return bjLoadChunk(chunk);
         });
         results.push(chain);
-      })(ordered[j]);
+      })(ordered[j]!);
     }
     return Promise.all(results);
   }

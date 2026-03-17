@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
 import { supabase, safeReadLS } from '@lib/supabase';
+import { providers } from '@app/providers/bridge';
 
 export interface StatCard {
   label: string;
@@ -62,12 +63,10 @@ export function useStats(): [StatsState, StatsActions] {
   const refresh = useCallback(async () => {
     try {
       // Job feed counts MV
-      const { data: counts } = await supabase.from('mv_job_feed_counts')
-        .select('*').limit(1).single();
+      const counts = await providers.stats.getJobCounts();
 
       // Source breakdown MV
-      const { data: sources } = await supabase.from('mv_source_breakdown')
-        .select('*');
+      const sources = await providers.stats.getSourceBreakdown();
 
       const cards: StatCard[] = [];
       if (counts) {

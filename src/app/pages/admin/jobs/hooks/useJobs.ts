@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
 import { supabase, safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
+import { providers } from '@app/providers/bridge';
 
 
 interface JobEntry { id: string; title: string; company: string; source: string; createdAt: string; }
@@ -43,7 +44,7 @@ export function useJobs(): [JobsState, JobsActions] {
   useEffect(() => {
     // Init admin panel
     // @ts-ignore SPA-CUT-3: fire-and-forget
-        supabase.from('ats_jobs').select('*').order('created_at', { ascending: false }).limit(50);
+        providers.admin.getJobs();
     loadData();
     pollRef.current = setInterval(loadData, 3000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
@@ -51,7 +52,7 @@ export function useJobs(): [JobsState, JobsActions] {
 
   const loadPage = useCallback((page: number) => {
     // @ts-ignore SPA-CUT-3: fire-and-forget
-        supabase.from('ats_jobs').select('*').order('created_at', { ascending: false }).limit(50);
+        providers.admin.getJobs();
   }, []);
   const refresh = useCallback(() => loadPage(1), [loadPage]);
 

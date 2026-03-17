@@ -62,6 +62,16 @@ export function AppShell() {
   // Detect if we're in admin section
   const isAdminSection = location.pathname.startsWith('/app/admin');
 
+  // SPA-CUT-REMEDIATION: PostHog $pageview on route transitions (SA-017 spec)
+  useEffect(() => {
+    try {
+      const ph = (window as Record<string, any>).posthog;
+      if (ph?.capture) {
+        ph.capture('$pageview', { $current_url: window.location.href });
+      }
+    } catch { /* non-fatal */ }
+  }, [location.pathname]);
+
   useEffect(() => {
     userProvider.getCurrentUser().then(setUser).catch(() => setUser(null));
     const unsub = userProvider.onAuthChange(setUser);

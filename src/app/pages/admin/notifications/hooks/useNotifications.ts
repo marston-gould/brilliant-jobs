@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
 import { supabase } from '@lib/supabase';
+import { providers } from '@app/providers/bridge';
 
 interface NotificationsState {
   loading: boolean;
@@ -39,17 +40,15 @@ export function useNotifications() {
 
   const refresh = useCallback(async () => {
     try {
-      const [{ data: templates }, { data: campaigns }] = await Promise.all([
-        supabase.from('notification_templates').select('*').order('created_at', { ascending: false }),
-        supabase.from('survey_campaigns').select('*').order('priority'),
+      const [templates, campaigns] = await Promise.all([
+        providers.notifications.getTemplates(),
+        providers.notifications.getCampaigns(),
       ]);
 
       // 24h stats from notification_log
-      const since = new Date(Date.now() - 86400000).toISOString();
-      const { count: sent24h } = await supabase.from('notification_log')
-        .select('*', { count: 'exact', head: true }).eq('status', 'sent').gte('created_at', since);
-      const { count: failed24h } = await supabase.from('notification_log')
-        .select('*', { count: 'exact', head: true }).eq('status', 'failed').gte('created_at', since);
+      const _stats24h = await providers.notifications.getStats24h();
+      const sent24h = _stats24h?.sent || 0;
+      const failed24h = _stats24h?.failed || 0;
 
       if (mountedRef.current) {
         dispatch({ type: 'LOADED', data: {

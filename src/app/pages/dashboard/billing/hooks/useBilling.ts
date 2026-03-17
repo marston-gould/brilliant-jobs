@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
 import { supabase, safeReadLS, callGateway, getUser } from '@lib/supabase';
+import { providers } from '@app/providers/bridge';
 
 export interface PricingTier { name: string; price: number; credits: number; features: string[]; current: boolean; }
 export interface UsageEntry { date: string; type: string; credits: number; description: string; }
@@ -72,11 +73,9 @@ export function useBilling(): [BillingState, BillingActions] {
       } catch { /* fallback to 0 */ }
 
       // Get pricing from DB
-      const { data: pricing } = await supabase.from('pricing_defaults')
-        .select('*').order('display_order');
+      const pricing = await providers.billing.getPricing();
 
-      const { data: profile } = await supabase.from('profiles')
-        .select('role, user_data').eq('id', user.id).single();
+      const profile = await providers.billing.getUserProfile();
 
       const applySettings = safeReadLS<any>('bj_apply_settings', {});
       const autoRefill = safeReadLS<AutoRefillConfig>('bj_auto_refill', { enabled: false, threshold: 0, amount: 0 });

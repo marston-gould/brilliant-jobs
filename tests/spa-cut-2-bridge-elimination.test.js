@@ -41,7 +41,7 @@ describe('1. Resumes Hook — Bridge Cut', () => {
     expect(src).toContain('saveResumesToLS');
   });
   it('1.11 deleteResume splices + writes LS', () => expect(src).toContain('splice(idx, 1)'));
-  it('1.12 downloadResume uses Supabase Storage', () => expect(src).toContain("storage.from('resumes')"));
+  it('1.12 downloadResume uses provider', () => expect(src).toContain('providers.resumes.download'));
   it('1.13 rescoreAI uses callGateway', () => expect(src).toContain("callGateway<any>('score-resume'"));
   it('1.14 getLevels reads from LS tuning', () => expect(src).toContain("safeReadLS<Record<string, any>>('bj_tuning'"));
 });
@@ -59,8 +59,8 @@ describe('2. Applications Hook — Bridge Cut', () => {
   it('2.06 removeFromQueue writes LS', () => expect(src).toContain("safeWriteLS('bj_app_queue'"));
   it('2.07 clearHistory writes LS', () => expect(src).toContain("safeWriteLS('bj_app_history', [])"));
   it('2.08 addManual writes LS', () => expect(src).toContain("safeWriteLS('bj_app_queue', queue)"));
-  it('2.09 loadNotifPrefs uses Supabase', () => expect(src).toContain("from('notification_preferences')"));
-  it('2.10 loadNotifLog uses Supabase', () => expect(src).toContain("from('notification_log')"));
+  it('2.09 loadNotifPrefs uses provider', () => expect(src).toContain('providers.applications.getNotifPrefs'));
+  it('2.10 loadNotifLog uses provider', () => expect(src).toContain('providers.applications.getNotifLog'));
   it('2.11 getQueueStats reads LS', () => expect(src).toContain("safeReadLS<AppEntry[]>('bj_app_queue', [])"));
   it('2.12 No document.getElementById', () => expect(code).not.toContain('document.getElementById'));
 });
@@ -76,8 +76,8 @@ describe('3. Stats Hook — Bridge Cut', () => {
     expect(code).not.toContain('document.querySelectorAll');
     expect(code).not.toContain('textContent');
   });
-  it('3.04 Queries mv_job_feed_counts', () => expect(src).toContain("from('mv_job_feed_counts')"));
-  it('3.05 Queries mv_source_breakdown', () => expect(src).toContain("from('mv_source_breakdown')"));
+  it('3.04 Stats via provider', () => expect(src).toContain('providers.stats.getJobCounts'));
+  it('3.05 Sources via provider', () => expect(src).toContain('providers.stats.getSourceBreakdown'));
   it('3.06 Reads saved filters from LS', () => expect(src).toContain("safeReadLS<any[]>('bj_saved_filters'"));
   it('3.07 No initStatsPage bridge', () => expect(code).not.toContain('initStatsPage'));
   it('3.08 No _statsToggleFilter bridge', () => expect(code).not.toContain('_statsToggleFilter'));
@@ -91,8 +91,8 @@ describe('4. Billing Hook — Bridge Cut', () => {
   it('4.01 Imports @lib/supabase', () => expect(src).toContain("from '@lib/supabase'"));
   it('4.02 Zero (window as any)', () => expect(code).not.toContain('window as any'));
   it('4.03 Calls get-user-balance via gateway', () => expect(src).toContain("callGateway<any>('get-user-balance'"));
-  it('4.04 Queries pricing_defaults', () => expect(src).toContain("from('pricing_defaults')"));
-  it('4.05 Queries profiles for role', () => expect(src).toContain("from('profiles')"));
+  it('4.04 Pricing via provider', () => expect(src).toContain('providers.billing.getPricing'));
+  it('4.05 Profile via provider', () => expect(src).toContain('providers.billing.getUserProfile'));
   it('4.06 Opens billing portal via gateway', () => expect(src).toContain("callGateway<{ url: string }>('create-portal-session'"));
   it('4.07 No _openBillingPortal bridge', () => expect(code).not.toContain('_openBillingPortal'));
   it('4.08 No openPricingModal bridge', () => expect(code).not.toContain('openPricingModal'));
@@ -106,9 +106,9 @@ describe('5. Admin Notifications Hook — Bridge Cut', () => {
   const code = codeOnly(src);
   it('5.01 Imports @lib/supabase', () => expect(src).toContain("from '@lib/supabase'"));
   it('5.02 Zero (window as any)', () => expect(code).not.toContain('window as any'));
-  it('5.03 Queries notification_templates', () => expect(src).toContain("from('notification_templates')"));
-  it('5.04 Queries survey_campaigns', () => expect(src).toContain("from('survey_campaigns')"));
-  it('5.05 Queries notification_log for stats', () => expect(src).toContain("from('notification_log')"));
+  it('5.03 Templates via provider', () => expect(src).toContain('providers.notifications.getTemplates'));
+  it('5.04 Campaigns via provider', () => expect(src).toContain('providers.notifications.getCampaigns'));
+  it('5.05 Stats via provider', () => expect(src).toContain('providers.notifications.getStats24h'));
   it('5.06 No loadNotificationsTab bridge', () => expect(code).not.toContain('loadNotificationsTab'));
 });
 
