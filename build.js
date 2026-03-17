@@ -209,6 +209,7 @@ const tsFiles = [
   'js/seo-stats.ts',
   'js/structured-logger.ts',
   'js/survey-questions.ts',
+  'js/roadmap.ts',
 ];
 
 for (const tsFile of tsFiles) {
