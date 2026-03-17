@@ -612,6 +612,13 @@ const periodicVersions = _SQ.periodicVersions || { 'periodic_v1': periodicQuesti
 const npsVersions = _SQ.npsVersions || { 'nps_v1': npsQuestions };
 const ghostVersions = _SQ.ghostVersions || { 'ghost_v1': ghostQuestions };
 
+// ─── URL Parameters ───
+const params = new URLSearchParams(window.location.search);
+const context = params.get('context') || 'periodic';
+const reason = params.get('reason') || null;
+const version = params.get('v') || null;
+const deliverySource = params.get('src') || 'direct';
+
 function resolveVersion() {
   if (context === 'churn') {
     if (version && exitVersions[version]) return { id: version, questions: exitVersions[version] };

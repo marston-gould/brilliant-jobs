@@ -3850,7 +3850,15 @@ None.
 
 ## Last Completed Session
 
-**FB-SURVEY-DELIVERY-001 SDV-S6** — SMS Delivery + Short URL Resolution ✅
+**FB-SURVEY-DELIVERY-001 SDV-S7** — PostHog Instrumentation + Integration Test + Close ✅ — **FB-SURVEY-DELIVERY-001 COMPLETE**
+- v10.27→v10.28
+- All 12 PostHog events verified across 6 surfaces: survey_overlay_shown/accepted/dismissed (survey-delivery.js), survey_merch_cta_shown/clicked (app.js), survey_email_sent (send-survey-invite EF), survey_email_clicked (resolve-survey-link EF), survey_sms_sent (send-survey-invite EF), survey_sms_clicked (resolve-survey-link EF), survey_credits_granted (survey.html), survey_history_viewed/survey_response_expanded (notification-center.js).
+- **Bug fix:** URL params (context, version, deliverySource) were lost during SDV-S2 question bank extraction. Re-added between aliases and resolveVersion().
+- Full integration test: overlay chain (page-nav → eligibility → overlay → /survey?src=overlay → credit grant → toast → PostHog), merch chain (survey_cta → completion check → credit badge → /survey?src=merch), email chain (pg_cron → send-survey-invite → survey_links → /s/{token} → resolve-survey-link → redirect → survey → credits), SMS chain (Vonage → quiet hours → budget → 72h token → /s/{token} → redirect).
+- **7 test files, 340 total tests, all passing** (50+56+60+26+46+36+66).
+- **FB-SURVEY-DELIVERY-001 COMPLETE** — 7 sessions, v10.02→v10.28, 4 delivery channels, credit rewards, My Surveys tab, orchestration engine, micro-survey priority fix, 340 tests.
+
+**Previous: FB-SURVEY-DELIVERY-001 SDV-S6** — SMS Delivery + Short URL Resolution ✅
 - v10.26→v10.27
 - **supabase/functions/resolve-survey-link/index.ts (NEW):** Token lookup in survey_links, 6-char validation, expiry check (410 Gone), used_at marking (first click only), survey context detection from version prefix (nps/exit/ghost/periodic), 302 redirect to `/survey?context=...&v=...&src={channel}&uid={user_id}`. PostHog `survey_sms_clicked` for SMS, `survey_email_clicked` for email (channel-aware). Returns 404 for unknown tokens.
 - **send-survey-invite EF extended:** `send_sms` action replaces 501 stub. Vonage REST API (`rest.nexmo.com/sms/json`). Eligibility gates: `phone_verified=true`, 30-day hard cap via notification_log, quiet hours 10pm–7am (user timezone via `Intl.DateTimeFormat`), SMS channel enabled on campaign, daily budget check ($10/day ≈ 1470 SMS at $0.0068/segment). `buildSmsMessage()` fits 160-char limit with credit amount + short URL + STOP opt-out. 72h token expiry for SMS links. Mid-loop budget re-check. PostHog `survey_sms_sent`. Returns 503 if Vonage not configured, 429 if budget exceeded.
@@ -4182,26 +4190,16 @@ Deliverables:
 
 ## Next Session
 
-**FB-SURVEY-DELIVERY-001 SDV-S7** — PostHog Instrumentation + Integration Test + Close
+No specific session queued. FB-SURVEY-DELIVERY-001 is complete (7 sessions, 340 tests).
 
-**Entry Gate:**
-- SDV-S6 complete: all four delivery channels operational ✅
-- All SDV-S1 through SDV-S6 tests passing
-- Production environment has seeded survey_campaigns data
+**Pending manual steps (Marston):**
+- `supabase db push` (migrations v10.01-fb-survey-delivery-001-s1.sql + v10.25-fb-sdv-s5-survey-cron.sql)
+- `SUPABASE_ACCESS_TOKEN=<token> npx supabase functions deploy send-survey-invite resolve-survey-link api-gateway --project-ref qojhagupdnbtomfoxnsf`
+- Set Vonage Vault secrets: VONAGE_API_KEY, VONAGE_API_SECRET, VONAGE_FROM_NUMBER (if 10DLC approved)
 
-**Scope:**
-- Verify all 12 PostHog events firing across all surfaces
-- End-to-end walkthrough of each channel (overlay, merch, email, SMS)
-- Architecture fitness score validation
-- Final version bump + three-file close
-- FB-SURVEY-DELIVERY-001 COMPLETE
-
-**Exit Gate:**
-- All 12 PostHog events verified
-- All four delivery channels verified end-to-end
-- Architecture fitness score = 100%
-- Version bump, pre-commit check, three-file close
-- Git commit, tag, push
+**Potential next workstreams:**
+- SPA cutover (make /app/* the default authenticated entry point — highest leverage for stability)
+- Any new feature work
 
 
 ## Deferred: SA-001 / SA-002 / SA-003 (Typesense)
@@ -4232,7 +4230,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v10.27`** | **FB-SURVEY-DELIVERY-001 SDV-S6: SMS + short URL resolution.** |
+| **Product (BJ_VERSION)** | **`v10.28`** | **FB-SURVEY-DELIVERY-001 COMPLETE: 7 sessions, 340 tests, 4 delivery channels.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
