@@ -204,6 +204,7 @@ const tsFiles = [
   'js/landing-segment.ts',
   'js/merch-client.ts',
   'js/posthog-perf.ts',
+  'js/posthog-dashboard.ts',
   'js/referral-capture.ts',
   'js/safe-read-ls.ts',
   'js/seo-stats.ts',

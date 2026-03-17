@@ -18,6 +18,10 @@
        Auth session shared via localStorage (same persistSession key).
        Theme handled by inline script above (CSP-whitelisted via SHA-256). -->
 
+  <!-- PostHog analytics (required for $pageview, session recording, feature flags) -->
+  <script src="/js/posthog-dashboard.js" defer></script>
+  <script src="/js/posthog-perf.js" defer></script>
+
   <!-- Shared stylesheet (design tokens + Tailwind utilities) -->
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>

@@ -18,17 +18,21 @@
        Auth session shared via localStorage (same persistSession key).
        Theme handled by inline script above (CSP-whitelisted via SHA-256). -->
 
+  <!-- PostHog analytics (required for $pageview, session recording, feature flags) -->
+  <script src="/js/posthog-dashboard.js" defer></script>
+  <script src="/js/posthog-perf.js" defer></script>
+
   <!-- Shared stylesheet (design tokens + Tailwind utilities) -->
   <link rel="preload" href="/assets/outfit-latin-var-DqqFFacx.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/assets/jetbrains-mono-latin-var-C18OjFjb.woff2" as="font" type="font/woff2" crossorigin>
 
   <!-- React SPA bundle (Vite injects this in production build) -->
-  <script type="module" crossorigin src="/assets/app-B2UX9Y-l.js"></script>
+  <script type="module" crossorigin src="/assets/app-YNM5VCXD.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/react-vendor-DGWi3gCj.js">
   <link rel="modulepreload" crossorigin href="/assets/react-dom-Dsjvxb5P.js">
   <link rel="modulepreload" crossorigin href="/assets/router-CpLNlDHX.js">
   <link rel="modulepreload" crossorigin href="/assets/providers-CaZ6IGhe.js">
-  <link rel="stylesheet" crossorigin href="/assets/app-BCWavxkI.css">
+  <link rel="stylesheet" crossorigin href="/assets/app-CPPBa07F.css">
 </head>
 <body class="bg-bg-main text-text">
   <!-- SPA mount point -->
