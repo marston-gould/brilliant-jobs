@@ -9,10 +9,8 @@
 /* TW-STD-002: Converted to Tailwind utilities in index.html */
 
 /* ======================== HERO ======================== */
-.hero {
-  padding: 140px 32px 88px; text-align: center; position: relative; overflow: hidden;
-  background: var(--nav-bg); color: #fff;
-}
+/* TW-STD-002: Child classes converted to Tailwind in index.html.
+   .hero kept for ::before/::after pseudo-element gradients. */
 .hero::after {
   content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
   background-image:
@@ -25,63 +23,12 @@
   background: linear-gradient(to bottom, transparent, var(--bg-main));
   pointer-events: none; z-index: 2;
 }
-.hero-label {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 6px 16px; background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.15); border-radius: 20px;
-  font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.8); margin-bottom: 28px;
-  position: relative; z-index: 1;
-}
-.hero-label .dot {
-  width: 6px; height: 6px; background: var(--green); border-radius: 50%;
-  animation: pulse 2s infinite;
-}
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-.hero h1, .hero .hero-heading {
-  font-size: clamp(36px, 5.5vw, 62px);
-  font-weight: 800; line-height: 1.08; margin-bottom: 24px;
-  max-width: 800px; margin-left: auto; margin-right: auto;
-  letter-spacing: -0.025em; position: relative; z-index: 1;
-}
-.hero h1 .accent, .hero .hero-heading .accent { color: #f59e0b; }
-.hero-sub {
-  font-size: 18px; color: rgba(255,255,255,0.6); max-width: 580px;
-  margin: 0 auto 40px; line-height: 1.65; font-weight: 300;
-  position: relative; z-index: 1;
-}
-.hero-ctas {
-  display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
-  position: relative; z-index: 1;
-}
-.btn {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 14px 28px; border: none; border-radius: 10px;
-  font-family: var(--sans); font-size: 15px; font-weight: 600;
-  cursor: pointer; transition: all 0.15s;
-}
-.btn-primary {
-  background: #fff; color: var(--nav-bg);
-  box-shadow: 0 2px 16px rgba(0,0,0,0.15);
-}
-.btn-primary:hover { background: rgba(255,255,255,0.92); transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
-.btn-ghost { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,0.4); }
-.btn-ghost:hover { border-color: rgba(255,255,255,0.7); color: #fff; }
 
 /* ======================== LIVE STATS BAR ======================== */
-.stats-bar { padding: 48px 32px 0; text-align: center; position: relative; z-index: 1; }
-.stats-row { display: flex; justify-content: center; gap: 48px; flex-wrap: wrap; }
-.stat-item { text-align: center; }
-.stat-num {
-  font-family: var(--mono); font-size: 32px; font-weight: 600;
-  color: var(--text); line-height: 1;
-  transition: opacity 0.4s ease;
-}
+/* TW-STD-002: Layout converted to Tailwind. Keep JS-toggled state classes. */
 .stat-num.loading { opacity: 0.3; }
 .stat-num.loaded { opacity: 1; }
-.stat-label {
-  font-size: 13px; color: #7884a8; margin-top: 6px;
-  text-transform: uppercase; letter-spacing: 1px; font-weight: 600;
-}
 
 /* ======================== SOCIAL PROOF BAR ======================== */
 /* DEAD: Removed in HP-STATS-CLEANUP. Social proof bar no longer in HTML. */
@@ -254,15 +201,7 @@ html:not([data-segment]) .carousel .carousel-dots {
 
 
 /* ======================== STEPS ======================== */
-.steps {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 32px;
-}
-.step-num {
-  font-family: var(--mono); font-size: 48px; font-weight: 600;
-  color: var(--border-hover); line-height: 1; margin-bottom: 12px;
-}
-.step h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
-.step p { font-size: 14px; color: var(--text-dim); line-height: 1.6; }
+/* TW-STD-002: Converted to Tailwind utilities in index.html */
 
 /* ======================== PRICING ======================== */
 .pricing-grid {
@@ -306,14 +245,7 @@ html:not([data-segment]) .carousel .carousel-dots {
 .price-btn-outline:hover { border-color: var(--accent); color: var(--accent); }
 
 /* ======================== FOOTER ======================== */
-.site-footer {
-  text-align: center; padding: 40px 32px;
-  border-top: 1px solid var(--border);
-}
-.footer-links { display: flex; justify-content: center; gap: 24px; margin-bottom: 12px; }
-.footer-links a { font-size: 13px; color: var(--text-dim); }
-.footer-links a:hover { color: var(--accent); }
-.footer-copy { font-size: 12px; color: var(--text-dim); }
+/* TW-STD-002: Converted to Tailwind utilities in index.html */
 
 /* ======================== AUTH MODAL ======================== */
 .modal-overlay {
@@ -420,29 +352,20 @@ html:not([data-segment]) .carousel .carousel-dots {
 }
 
 @media (max-width: 768px) {
-  .hero { padding: 120px 20px 60px; }
-  .hero h1, .hero .hero-heading { font-size: 32px; }
-  .hero-sub { font-size: 16px; }
   .section { padding: 48px 20px; }
   .data-stats-grid { grid-template-columns: 1fr 1fr; }
   .pricing-grid { grid-template-columns: 1fr; }
   .modal { margin: 16px; }
-  .stats-row { gap: 20px; }
-  .stat-num { font-size: 24px; }
-  .stat-label { font-size: 11px; letter-spacing: 0.5px; }
   .preview-stats { grid-template-columns: repeat(2, 1fr); }
   .preview-input-row { flex-direction: column; }
   .preview-cta { flex-direction: column; text-align: center; }
   .ghost-grid { grid-template-columns: 1fr; }
   .steps { grid-template-columns: 1fr 1fr; gap: 20px; }
-  .hero-ctas { flex-direction: column; align-items: center; gap: 12px; }
-  .hero-ctas .btn { width: 100%; max-width: 280px; justify-content: center; }
   .compare-table th, .compare-table td { padding: 10px 12px; font-size: 12px; }
   .compare-table td:first-child { width: 100px; }
 }
 @media (max-width: 480px) {
   .steps { grid-template-columns: 1fr; }
-  .stats-row { flex-direction: column; gap: 16px; }
   .pricing-grid { gap: 16px; }
 }
 
@@ -472,7 +395,6 @@ html:not([data-segment]) .carousel .carousel-dots {
 [data-segment="active"] section.segment-active { display: flex; }
 
 /* CRITICAL: Hide ALL marketing content for active users (redirect-only) */
-[data-segment="active"] .stats-bar,
 [data-segment="active"] #why,
 [data-segment="active"] #benefits,
 [data-segment="active"] #how-it-works,

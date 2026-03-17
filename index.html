@@ -225,15 +225,15 @@ height="0" width="0" class="gtm-iframe"></iframe></noscript>
   <main id="main-content" itemprop="mainContentOfPage">
 
   <!-- ==================== HERO: NEW VISITOR (full pitch) ==================== -->
-  <section class="hero segment-new">
+  <section class="hero pt-[140px] px-8 pb-[88px] text-center relative overflow-hidden bg-nav-bg text-white segment-new">
     <div class="hero-with-screenshot">
       <div class="hero-text-col">
-        <div class="hero-label"><span class="dot"></span> Now in private beta</div>
-        <h1>The job search<br>for people who are<br><span class="accent">done with job boards.</span></h1>
-        <p class="hero-sub">We scan <span id="lp-hero-companies" data-stat="total-pages">39,000+</span> company career pages daily and found <span id="lp-companies-hiring">8,700+</span> currently hiring. Salary data they don't want you to see. And the first public record of which companies actually respond.</p>
-        <div class="hero-ctas">
-          <button class="btn btn-primary" id="hero-signup-btn">Start Free</button>
-          <button class="btn btn-ghost" id="hero-preview-btn">See Jobs in Your Field ↓</button>
+        <div class="inline-flex items-center gap-2 py-1.5 px-4 bg-white/[0.08] border border-white/[0.15] rounded-[20px] text-[13px] font-medium text-white/80 mb-7 relative z-[1]"><span class="w-1.5 h-1.5 bg-green rounded-full animate-[pulse_2s_infinite]"></span> Now in private beta</div>
+        <h1 class="text-[clamp(36px,5.5vw,62px)] font-extrabold leading-[1.08] mb-6 max-w-[800px] mx-auto tracking-tight relative z-[1]">The job search<br>for people who are<br><span class="text-warm">done with job boards.</span></h1>
+        <p class="text-lg text-white/60 max-w-[580px] mx-auto mb-10 leading-relaxed font-light relative z-[1]">We scan <span id="lp-hero-companies" data-stat="total-pages">39,000+</span> company career pages daily and found <span id="lp-companies-hiring">8,700+</span> currently hiring. Salary data they don't want you to see. And the first public record of which companies actually respond.</p>
+        <div class="flex gap-4 justify-center flex-wrap relative z-[1]">
+          <button class="inline-flex items-center gap-2 py-3.5 px-7 border-none rounded-[10px] font-sans text-[15px] font-semibold cursor-pointer transition-all bg-white text-nav-bg shadow-[0_2px_16px_rgba(0,0,0,0.15)] hover:bg-white/[0.92] hover:-translate-y-px hover:shadow-[0_4px_20px_rgba(0,0,0,0.2)]" id="hero-signup-btn">Start Free</button>
+          <button class="inline-flex items-center gap-2 py-3.5 px-7 rounded-[10px] font-sans text-[15px] font-semibold cursor-pointer transition-all bg-transparent text-white border border-white/40 hover:border-white/70" id="hero-preview-btn">See Jobs in Your Field ↓</button>
         </div>
       </div>
       <div class="hero-img-col" aria-hidden="true">
@@ -254,23 +254,23 @@ height="0" width="0" class="gtm-iframe"></iframe></noscript>
   </section>
 
   <!-- ==================== HERO: RETURNING VISITOR (shorter) ==================== -->
-  <section class="hero segment-returning">
-    <div class="hero-label"><span class="dot"></span> Welcome back</div>
-    <h2 class="hero-heading" data-merch-field="h1">See what's new<br><span class="accent">since your last visit.</span></h2>
-    <p class="hero-sub" data-merch-field="sub">Jump right into exploring <span id="lp-hero-jobs-ret">400,000+</span> jobs from real company career pages — with salary data and ghost rate tracking.</p>
-    <div class="hero-ctas">
-      <button class="btn btn-primary" id="hero-signup-ret" onclick="if(window.posthog&&window._merchContentId)posthog.capture('merch_content_click',{element_id:window._merchElementId,content_id:window._merchContentId,page_url:'/',action:'signup'})">Start Free</button>
-      <button class="btn btn-ghost" id="hero-preview-ret">Search Jobs ↓</button>
+  <section class="hero pt-[140px] px-8 pb-[88px] text-center relative overflow-hidden bg-nav-bg text-white segment-returning">
+    <div class="inline-flex items-center gap-2 py-1.5 px-4 bg-white/[0.08] border border-white/[0.15] rounded-[20px] text-[13px] font-medium text-white/80 mb-7 relative z-[1]"><span class="w-1.5 h-1.5 bg-green rounded-full animate-[pulse_2s_infinite]"></span> Welcome back</div>
+    <h2 class="text-[clamp(36px,5.5vw,62px)] font-extrabold leading-[1.08] mb-6 max-w-[800px] mx-auto tracking-tight relative z-[1]" data-merch-field="h1">See what's new<br><span class="text-warm">since your last visit.</span></h2>
+    <p class="text-lg text-white/60 max-w-[580px] mx-auto mb-10 leading-relaxed font-light relative z-[1]" data-merch-field="sub">Jump right into exploring <span id="lp-hero-jobs-ret">400,000+</span> jobs from real company career pages — with salary data and ghost rate tracking.</p>
+    <div class="flex gap-4 justify-center flex-wrap relative z-[1]">
+      <button class="inline-flex items-center gap-2 py-3.5 px-7 border-none rounded-[10px] font-sans text-[15px] font-semibold cursor-pointer transition-all bg-white text-nav-bg shadow-[0_2px_16px_rgba(0,0,0,0.15)] hover:bg-white/[0.92] hover:-translate-y-px hover:shadow-[0_4px_20px_rgba(0,0,0,0.2)]" id="hero-signup-ret" onclick="if(window.posthog&&window._merchContentId)posthog.capture('merch_content_click',{element_id:window._merchElementId,content_id:window._merchContentId,page_url:'/',action:'signup'})">Start Free</button>
+      <button class="inline-flex items-center gap-2 py-3.5 px-7 rounded-[10px] font-sans text-[15px] font-semibold cursor-pointer transition-all bg-transparent text-white border border-white/40 hover:border-white/70" id="hero-preview-ret">Search Jobs ↓</button>
     </div>
   </section>
 
   <!-- ==================== HERO: LAPSED REGISTERED ==================== -->
-  <section class="hero segment-lapsed">
-    <h2 class="hero-heading" data-merch-field="h1">Welcome back.<br><span class="accent">Your search continues.</span></h2>
-    <p class="hero-sub" data-merch-field="sub">New jobs have been added since your last visit. Log in to pick up where you left off.</p>
-    <div class="hero-ctas">
-      <button class="btn btn-primary" onclick="if(window.posthog&&window._merchContentId)posthog.capture('merch_content_click',{element_id:window._merchElementId,content_id:window._merchContentId,page_url:'/',action:'login'});openModal('login')">Log in</button>
-      <a href="#" class="btn btn-ghost" onclick="event.preventDefault();openModal('forgot');">Forgot Password?</a>
+  <section class="hero pt-[140px] px-8 pb-[88px] text-center relative overflow-hidden bg-nav-bg text-white segment-lapsed">
+    <h2 class="text-[clamp(36px,5.5vw,62px)] font-extrabold leading-[1.08] mb-6 max-w-[800px] mx-auto tracking-tight relative z-[1]" data-merch-field="h1">Welcome back.<br><span class="text-warm">Your search continues.</span></h2>
+    <p class="text-lg text-white/60 max-w-[580px] mx-auto mb-10 leading-relaxed font-light relative z-[1]" data-merch-field="sub">New jobs have been added since your last visit. Log in to pick up where you left off.</p>
+    <div class="flex gap-4 justify-center flex-wrap relative z-[1]">
+      <button class="inline-flex items-center gap-2 py-3.5 px-7 border-none rounded-[10px] font-sans text-[15px] font-semibold cursor-pointer transition-all bg-white text-nav-bg shadow-[0_2px_16px_rgba(0,0,0,0.15)] hover:bg-white/[0.92] hover:-translate-y-px hover:shadow-[0_4px_20px_rgba(0,0,0,0.2)]" onclick="if(window.posthog&&window._merchContentId)posthog.capture('merch_content_click',{element_id:window._merchElementId,content_id:window._merchContentId,page_url:'/',action:'login'});openModal('login')">Log in</button>
+      <a href="#" class="inline-flex items-center gap-2 py-3.5 px-7 rounded-[10px] font-sans text-[15px] font-semibold cursor-pointer transition-all bg-transparent text-white border border-white/40 hover:border-white/70 no-underline" onclick="event.preventDefault();openModal('forgot');">Forgot Password?</a>
     </div>
   </section>
 
@@ -284,23 +284,23 @@ height="0" width="0" class="gtm-iframe"></iframe></noscript>
   </section>
 
   <!-- ==================== STATS BAR ==================== -->
-  <div class="stats-bar fade-up">
-    <div class="stats-row">
-      <div class="stat-item">
-        <div class="stat-num" id="lp-active-jobs">—</div>
-        <div class="stat-label">Active Jobs</div>
+  <div class="pt-12 px-8 text-center relative z-[1] fade-up">
+    <div class="flex justify-center gap-12 flex-wrap">
+      <div class="text-center">
+        <div class="stat-num font-mono text-[32px] font-semibold text-text leading-none transition-opacity duration-[400ms]" id="lp-active-jobs">—</div>
+        <div class="text-[13px] text-[#7884a8] mt-1.5 uppercase tracking-[1px] font-semibold">Active Jobs</div>
       </div>
-      <div class="stat-item">
-        <div class="stat-num" id="lp-companies" data-stat="total-pages">—</div>
-        <div class="stat-label">Companies in Database</div>
+      <div class="text-center">
+        <div class="stat-num font-mono text-[32px] font-semibold text-text leading-none transition-opacity duration-[400ms]" id="lp-companies" data-stat="total-pages">—</div>
+        <div class="text-[13px] text-[#7884a8] mt-1.5 uppercase tracking-[1px] font-semibold">Companies in Database</div>
       </div>
-      <div class="stat-item">
-        <div class="stat-num" id="lp-metros">—</div>
-        <div class="stat-label">Metro Areas</div>
+      <div class="text-center">
+        <div class="stat-num font-mono text-[32px] font-semibold text-text leading-none transition-opacity duration-[400ms]" id="lp-metros">—</div>
+        <div class="text-[13px] text-[#7884a8] mt-1.5 uppercase tracking-[1px] font-semibold">Metro Areas</div>
       </div>
-      <div class="stat-item">
-        <div class="stat-num">Daily</div>
-        <div class="stat-label">Refresh Cycle</div>
+      <div class="text-center">
+        <div class="font-mono text-[32px] font-semibold text-text leading-none">Daily</div>
+        <div class="text-[13px] text-[#7884a8] mt-1.5 uppercase tracking-[1px] font-semibold">Refresh Cycle</div>
       </div>
     </div>
     <!-- CS-014: staleness badge + retry button -->
@@ -467,11 +467,11 @@ height="0" width="0" class="gtm-iframe"></iframe></noscript>
     <div class="section-label">How It Works</div>
     <h2>Set up once. It gets smarter<br>every time you use it.</h2>
     <p class="section-desc">Three minutes to launch. Then the system learns from everything you do.</p>
-    <div class="steps">
-      <div class="step"><div class="step-num">01</div><h3>Upload a resume</h3><p>Drop in your PDF or DOCX. We read it and auto-generate search filters from your skills, titles, and locations — no manual entry.</p></div>
-      <div class="step"><div class="step-num">02</div><h3>Connect Gmail &amp; Calendar</h3><p>We detect interview invites, application confirmations, and recruiter replies automatically. Your pipeline stays current without you touching it.</p></div>
-      <div class="step"><div class="step-num">03</div><h3>Review your feed</h3><p>Jobs matched to your filters, scored against your resume, with salary data extracted. Hide what doesn't fit — we learn from that too.</p></div>
-      <div class="step"><div class="step-num">04</div><h3>The system learns</h3><p>Every job you hide trains your exclusion filters. Every application you track builds employer accountability data. Your feed gets cleaner and your intelligence gets sharper.</p></div>
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-8">
+      <div><div class="font-mono text-[48px] font-semibold text-border-hover leading-none mb-3">01</div><h3 class="text-base font-semibold mb-2">Upload a resume</h3><p class="text-sm text-text-dim leading-relaxed">Drop in your PDF or DOCX. We read it and auto-generate search filters from your skills, titles, and locations — no manual entry.</p></div>
+      <div><div class="font-mono text-[48px] font-semibold text-border-hover leading-none mb-3">02</div><h3 class="text-base font-semibold mb-2">Connect Gmail &amp; Calendar</h3><p class="text-sm text-text-dim leading-relaxed">We detect interview invites, application confirmations, and recruiter replies automatically. Your pipeline stays current without you touching it.</p></div>
+      <div><div class="font-mono text-[48px] font-semibold text-border-hover leading-none mb-3">03</div><h3 class="text-base font-semibold mb-2">Review your feed</h3><p class="text-sm text-text-dim leading-relaxed">Jobs matched to your filters, scored against your resume, with salary data extracted. Hide what doesn't fit — we learn from that too.</p></div>
+      <div><div class="font-mono text-[48px] font-semibold text-border-hover leading-none mb-3">04</div><h3 class="text-base font-semibold mb-2">The system learns</h3><p class="text-sm text-text-dim leading-relaxed">Every job you hide trains your exclusion filters. Every application you track builds employer accountability data. Your feed gets cleaner and your intelligence gets sharper.</p></div>
     </div>
   </section>
 
@@ -599,19 +599,19 @@ height="0" width="0" class="gtm-iframe"></iframe></noscript>
 
   </main>
 
-  <footer class="site-footer segment-new segment-returning segment-lapsed">
-    <div class="footer-links">
-      <a href="/job-market-data">Market Data</a>
-      <a href="/salary-data">Salaries</a>
-      <a href="/hiring-trends">Hiring</a>
-      <a href="/compare">Compare</a>
-      <a href="/help">Help</a>
-      <a href="/blog">Market Insights</a>
-      <a href="/terms">Terms</a>
-      <a href="/privacy">Privacy</a>
-      <a href="/help">Contact</a>
+  <footer class="text-center py-10 px-8 border-t border-border segment-new segment-returning segment-lapsed">
+    <div class="flex justify-center gap-6 mb-3">
+      <a href="/job-market-data" class="text-[13px] text-text-dim hover:text-accent">Market Data</a>
+      <a href="/salary-data" class="text-[13px] text-text-dim hover:text-accent">Salaries</a>
+      <a href="/hiring-trends" class="text-[13px] text-text-dim hover:text-accent">Hiring</a>
+      <a href="/compare" class="text-[13px] text-text-dim hover:text-accent">Compare</a>
+      <a href="/help" class="text-[13px] text-text-dim hover:text-accent">Help</a>
+      <a href="/blog" class="text-[13px] text-text-dim hover:text-accent">Market Insights</a>
+      <a href="/terms" class="text-[13px] text-text-dim hover:text-accent">Terms</a>
+      <a href="/privacy" class="text-[13px] text-text-dim hover:text-accent">Privacy</a>
+      <a href="/help" class="text-[13px] text-text-dim hover:text-accent">Contact</a>
     </div>
-    <p class="footer-copy">&copy; <span class="bj-year"></span> Brilliant Jobs. All rights reserved. · <span class="bj-version"></span></p>
+    <p class="text-xs text-text-dim">&copy; <span class="bj-year"></span> Brilliant Jobs. All rights reserved. · <span class="bj-version"></span></p>
   </footer>
 
   <!-- AUTH MODAL -->
