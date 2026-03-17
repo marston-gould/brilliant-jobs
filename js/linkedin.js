@@ -153,25 +153,60 @@
     } catch (e) {
       reportError('_bjAnalyzeLinkedIn', e);
       if (loading) loading.style.display = 'none';
-      // Show score section with error banner — don't destroy the UI
-      var scoreEl = document.getElementById('li-score-section');
-      var noProf = document.getElementById('li-no-profile');
-      // Check if user has linkedin profile data in cache
-      var hasProfile = !!(typeof currentUser !== 'undefined' && currentUser && currentUser.linkedin_headline);
-      if (hasProfile && scoreEl) {
-        scoreEl.style.display = 'block';
-        // Prepend error banner if not already there
-        var errBanner = document.getElementById('li-error-banner');
-        if (!errBanner) {
-          errBanner = document.createElement('div');
-          errBanner.id = 'li-error-banner';
-          scoreEl.insertBefore(errBanner, scoreEl.firstChild);
+
+      // EXT-LI-001: Try loading raw profile data from linkedin_profiles as fallback
+      try {
+        var token2 = (typeof sb !== 'undefined' && sb.auth) ? (await sb.auth.getSession()).data?.session?.access_token : null;
+        if (token2 && typeof sb !== 'undefined') {
+          var lpResp = await sb.from('linkedin_profiles').select('*').limit(1).maybeSingle();
+          if (lpResp.data && lpResp.data.display_name) {
+            var lp = lpResp.data;
+            var scoreEl = document.getElementById('li-score-section');
+            if (scoreEl) {
+              scoreEl.style.display = 'block';
+              scoreEl.innerHTML =
+                '<div class="card" style="padding:12px 18px;margin-bottom:16px;border-left:3px solid var(--warm);color:var(--warm);font-size:12px;">AI analysis unavailable (credits needed). Your profile data from the extension is shown below.' +
+                ' <button class="btn btn-sm btn-primary" onclick="window._bjAnalyzeLinkedIn(true)" style="margin-left:8px;">Run Analysis (2 credits)</button></div>' +
+
+                '<div class="card" style="padding:20px;margin-bottom:16px;">' +
+                '<div style="font-size:18px;font-weight:800;margin-bottom:2px;">' + ((typeof escHtml === 'function') ? escHtml(lp.display_name) : lp.display_name) + '</div>' +
+                (lp.headline ? '<div style="font-size:13px;color:var(--text-dim);margin-bottom:4px;">' + ((typeof escHtml === 'function') ? escHtml(lp.headline) : lp.headline) + '</div>' : '') +
+                (lp.location ? '<div style="font-size:12px;color:var(--text-faint);">' + ((typeof escHtml === 'function') ? escHtml(lp.location) : lp.location) + '</div>' : '') +
+                '<div style="font-size:10px;color:var(--text-faint);margin-top:8px;">Captured ' + (lp.parsed_at ? new Date(lp.parsed_at).toLocaleDateString() : 'recently') + ' via Chrome extension</div>' +
+                '</div>' +
+
+                (lp.experience_json && lp.experience_json.length ? '<div class="card" style="padding:16px;margin-bottom:12px;"><div style="font-weight:700;font-size:13px;margin-bottom:10px;">Experience (' + lp.experience_json.length + ')</div>' +
+                  lp.experience_json.slice(0, 5).map(function(exp) {
+                    return '<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><strong>' + ((typeof escHtml === 'function') ? escHtml(exp.title || '') : (exp.title || '')) + '</strong>' +
+                      (exp.company ? ' at ' + ((typeof escHtml === 'function') ? escHtml(exp.company) : exp.company) : '') +
+                      (exp.dates ? '<span style="color:var(--text-faint);margin-left:8px;">' + ((typeof escHtml === 'function') ? escHtml(exp.dates) : exp.dates) + '</span>' : '') + '</div>';
+                  }).join('') + '</div>' : '') +
+
+                (lp.skills_array && lp.skills_array.length ? '<div class="card" style="padding:16px;margin-bottom:12px;"><div style="font-weight:700;font-size:13px;margin-bottom:10px;">Skills (' + lp.skills_array.length + ')</div>' +
+                  '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + lp.skills_array.slice(0, 20).map(function(s) {
+                    return '<span style="font-size:11px;padding:3px 10px;border-radius:20px;background:var(--accent-dim);color:var(--accent);font-weight:500;">' + ((typeof escHtml === 'function') ? escHtml(s) : s) + '</span>';
+                  }).join('') + '</div></div>' : '') +
+
+                (lp.education_json && lp.education_json.length ? '<div class="card" style="padding:16px;margin-bottom:12px;"><div style="font-weight:700;font-size:13px;margin-bottom:10px;">Education</div>' +
+                  lp.education_json.map(function(edu) {
+                    return '<div style="padding:4px 0;font-size:12px;"><strong>' + ((typeof escHtml === 'function') ? escHtml(edu.institution || '') : (edu.institution || '')) + '</strong>' +
+                      (edu.degree ? ' — ' + ((typeof escHtml === 'function') ? escHtml(edu.degree) : edu.degree) : '') + '</div>';
+                  }).join('') + '</div>' : '');
+            }
+            return;
+          }
         }
-        errBanner.outerHTML = '<div id="li-error-banner" class="card" style="padding:12px 18px;margin-bottom:16px;border-left:3px solid var(--warm);color:var(--warm);font-size:12px;">Analysis unavailable: ' +
-          ((typeof escHtml === 'function') ? escHtml(e.message) : e.message) + '. Your existing scores are shown below.</div>';
-      } else if (noProf) {
-        // No profile — show upload CTA
+      } catch (fallbackErr) { /* silent — fall through to generic error */ }
+
+      // No raw profile data either — show appropriate state
+      var noProf = document.getElementById('li-no-profile');
+      var scoreEl2 = document.getElementById('li-score-section');
+      if (noProf) {
         noProf.style.display = 'block';
+      } else if (scoreEl2) {
+        scoreEl2.style.display = 'block';
+        scoreEl2.innerHTML = '<div class="card" style="padding:20px;color:var(--warm);font-size:12px;">Analysis unavailable: ' +
+          ((typeof escHtml === 'function') ? escHtml(e.message) : e.message) + '</div>';
       }
     }
   };

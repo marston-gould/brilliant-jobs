@@ -1348,6 +1348,21 @@ _startupActivitySync();
 // ============================================================
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  // EXT-LI-001: Handle LinkedIn profile capture from content.ts
+  if (msg.type === 'LI_PROFILE_CAPTURED' && msg.profile) {
+    _handleLinkedInCaptured(msg.profile);
+    return;
+  }
+  if (msg.type === 'LI_PROFILE_CAPTURE_FAILED') {
+    captureEvent('ext_li_auto_capture_failed', { error: msg.error || 'unknown', step: 'extract' });
+    // Clean up tab
+    chrome.storage.local.get(['_bj_li_capture_tab_id'], async (s) => {
+      try { if (s._bj_li_capture_tab_id) await chrome.tabs.remove(s._bj_li_capture_tab_id); } catch (_) {}
+      await chrome.storage.local.remove(['_bj_li_capture_tab_id', '_bj_li_capture_timeout', 'bj_li_auto_capture']);
+    });
+    return;
+  }
+
   // REM-002: Centralized error reporting from extension contexts
   if (msg.type === 'reportError' && msg.payload) {
     captureEvent('extension_catch_error', {
@@ -3408,6 +3423,8 @@ chrome.runtime.onInstalled.addListener((details) => {
   loadState().then(async () => {
     await checkMissedResume();
     await ensureLoopRunning('onInstalled');
+    // EXT-LI-001: Auto-capture LinkedIn profile on install/update
+    setTimeout(() => _bjLinkedInAutoCapture('install'), 8000);
   });
 });
 
@@ -3418,8 +3435,141 @@ chrome.runtime.onStartup.addListener(() => {
   loadState().then(async () => {
     checkDailyReset();
     await ensureLoopRunning('onStartup');
+    // EXT-LI-001: Auto-capture LinkedIn profile on startup
+    setTimeout(() => _bjLinkedInAutoCapture('startup'), 5000);
   });
 });
+
+// ── EXT-LI-001: LinkedIn Auto-Capture Orchestrator ──
+async function _bjLinkedInAutoCapture(trigger: string) {
+  try {
+    // Check throttle: max once per 7 days
+    const storage = await chrome.storage.local.get(['bj_li_last_capture', 'bj_applying']);
+    const lastCapture = storage.bj_li_last_capture ? new Date(storage.bj_li_last_capture).getTime() : 0;
+    const sevenDays = 7 * 24 * 60 * 60 * 1000;
+    if (Date.now() - lastCapture < sevenDays) {
+      captureEvent('ext_li_auto_capture_skipped', { reason: 'throttled', trigger });
+      return;
+    }
+
+    // Don't capture during active apply session
+    if (storage.bj_applying) {
+      captureEvent('ext_li_auto_capture_skipped', { reason: 'applying', trigger });
+      return;
+    }
+
+    // Need authenticated session
+    const authSession = await getAuth();
+    if (!authSession || !authSession.access_token) {
+      captureEvent('ext_li_auto_capture_skipped', { reason: 'no_session', trigger });
+      return;
+    }
+
+    // Get user's LinkedIn URL from profile
+    const linkedinUrl = await _getLinkedInUrl(authSession.access_token);
+    if (!linkedinUrl) {
+      captureEvent('ext_li_auto_capture_skipped', { reason: 'no_url', trigger });
+      return;
+    }
+
+    captureEvent('ext_li_auto_capture_started', { linkedin_url: linkedinUrl, trigger });
+
+    // Set auto-capture flag so content.ts knows to run automatically
+    await chrome.storage.local.set({ bj_li_auto_capture: true });
+
+    // Open LinkedIn profile in background tab
+    const tab = await chrome.tabs.create({ url: linkedinUrl, active: false });
+
+    // Set a timeout to close the tab if no response within 15s
+    const timeout = setTimeout(async () => {
+      try { if (tab.id) await chrome.tabs.remove(tab.id); } catch (_) {}
+      await chrome.storage.local.remove('bj_li_auto_capture');
+      captureEvent('ext_li_auto_capture_failed', { error: 'timeout', step: 'tab_open' });
+    }, 15000);
+
+    // Store tab info so message handler knows which tab to close
+    await chrome.storage.local.set({ _bj_li_capture_tab_id: tab.id, _bj_li_capture_timeout: timeout });
+
+  } catch (e) {
+    captureEvent('ext_li_auto_capture_failed', { error: (e as Error).message, step: 'orchestrate' });
+    console.error('[BJ] LinkedIn auto-capture error:', e);
+  }
+}
+
+async function _getLinkedInUrl(token: string): Promise<string | null> {
+  try {
+    const authSession = await getAuth();
+    if (!authSession || !authSession.user_id) return null;
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=linkedin_url&id=eq.${authSession.user_id}`, {
+      headers: { 'Authorization': 'Bearer ' + token, 'apikey': SUPABASE_KEY }
+    });
+    if (!resp.ok) return null;
+    const rows = await resp.json();
+    const url = rows && rows[0] && rows[0].linkedin_url;
+    if (!url) return null;
+    // Ensure it's a full URL
+    if (url.startsWith('http')) return url;
+    if (url.startsWith('linkedin.com')) return 'https://www.' + url;
+    if (url.startsWith('/in/')) return 'https://www.linkedin.com' + url;
+    return 'https://www.linkedin.com/in/' + url.replace(/^\/+/, '');
+  } catch (e) {
+    console.warn('[BJ] Failed to get LinkedIn URL:', e);
+    return null;
+  }
+}
+
+async function _getUserId(token: string): Promise<string> {
+  try {
+    const authSession = await getAuth();
+    return authSession?.user_id || '';
+  } catch (_) {
+    return '';
+  }
+}
+
+async function _handleLinkedInCaptured(profile: Record<string, unknown>) {
+  try {
+    const authSession = await getAuth();
+    if (!authSession || !authSession.access_token) return;
+
+    const resp = await fetch(`${SUPABASE_URL}/functions/v1/upsert-linkedin-profile`, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + authSession.access_token,
+        'apikey': SUPABASE_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ profile })
+    });
+
+    const data = await resp.json();
+    if (resp.ok && data.ok) {
+      await chrome.storage.local.set({ bj_li_last_capture: new Date().toISOString() });
+      const sections = [];
+      if (profile.experience && (profile.experience as unknown[]).length) sections.push('experience');
+      if (profile.education && (profile.education as unknown[]).length) sections.push('education');
+      if (profile.skills && (profile.skills as unknown[]).length) sections.push('skills');
+      if (profile.about) sections.push('about');
+      captureEvent('ext_li_auto_capture_success', {
+        sections_found: sections,
+        profile_url: profile.profile_url
+      });
+    } else {
+      captureEvent('ext_li_auto_capture_failed', { error: data.error || 'Unknown', step: 'upload' });
+    }
+  } catch (e) {
+    captureEvent('ext_li_auto_capture_failed', { error: (e as Error).message, step: 'upload' });
+  }
+
+  // Close the background tab
+  try {
+    const s = await chrome.storage.local.get(['_bj_li_capture_tab_id']);
+    if (s._bj_li_capture_tab_id) {
+      await chrome.tabs.remove(s._bj_li_capture_tab_id);
+    }
+  } catch (_) {}
+  await chrome.storage.local.remove(['_bj_li_capture_tab_id', '_bj_li_capture_timeout', 'bj_li_auto_capture']);
+}
 
 // Also handle service worker wakeup — ensure alarms exist and resume if needed
 setupAlarms();
