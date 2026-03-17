@@ -15,6 +15,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
 import { DataProvider } from '@providers';
+import { ToastProvider } from '@app/components/Toast';
 import { createAppRouter } from './routes';
 
 // Design tokens (CSS variables) + Tailwind base — bundled by Vite into app-xxx.css
@@ -47,7 +48,9 @@ function App() {
   return (
     <StrictMode>
       <DataProvider>
-        <RouterProvider router={router} />
+        <ToastProvider>
+          <RouterProvider router={router} />
+        </ToastProvider>
       </DataProvider>
     </StrictMode>
   );

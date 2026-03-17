@@ -54,11 +54,31 @@ const CompliancePage = lazy(() => import('@app/pages/admin/compliance/Compliance
 
 function Loader({ label }: { label: string }) {
   return (
-    <div className="flex items-center justify-center py-16">
-      <div className="text-center">
-        <div className="inline-block w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs text-text-faint mt-2">Loading {label}…</p>
+    <div className="p-6 max-w-6xl mx-auto">
+      {/* Skeleton header */}
+      <div className="space-y-2 mb-6">
+        <div className="animate-pulse rounded bg-gray-200/50 dark:bg-gray-700/30 h-7 w-48" />
+        <div className="animate-pulse rounded bg-gray-200/50 dark:bg-gray-700/30 h-4 w-72" />
       </div>
+      {/* Skeleton metric row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        {[1,2,3,4].map(i => (
+          <div key={i} className="p-4 rounded-lg border border-gray-200/50 dark:border-gray-700/30">
+            <div className="animate-pulse rounded bg-gray-200/50 dark:bg-gray-700/30 h-3 w-16 mb-2" />
+            <div className="animate-pulse rounded bg-gray-200/50 dark:bg-gray-700/30 h-8 w-24" />
+          </div>
+        ))}
+      </div>
+      {/* Skeleton cards */}
+      <div className="space-y-3">
+        {[1,2,3].map(i => (
+          <div key={i} className="p-4 rounded-lg border border-gray-200/50 dark:border-gray-700/30">
+            <div className="animate-pulse rounded bg-gray-200/50 dark:bg-gray-700/30 h-4 w-3/4 mb-2" />
+            <div className="animate-pulse rounded bg-gray-200/50 dark:bg-gray-700/30 h-3 w-1/2" />
+          </div>
+        ))}
+      </div>
+      <p className="sr-only">Loading {label}…</p>
     </div>
   );
 }
