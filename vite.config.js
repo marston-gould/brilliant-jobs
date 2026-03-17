@@ -32,7 +32,7 @@ export default defineConfig({
     open: '/dashboard.html',
   },
 
-  // Production: assets served at /dist/spa/ on Vercel (repo root = output dir)
+  // Vercel serves from repo root — SPA assets at /dist/spa/assets/
   base: '/dist/spa/',
 
   build: {
