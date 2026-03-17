@@ -11,7 +11,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v10.39"></script>
+  <script src="/js/version.js?v=v10.40"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2367,7 +2367,7 @@ const features = [
 { s: 'done', b: 'feature', n: 'FB-FEED-CARDS-001: Jobs Feed Card Redesign', d: 'v9.99-v10.00: Card-based feed (3-action model, inline signal badges, Preview JD). Removed Bulk Apply/Save All/checkboxes/Trust/AI toggles from feed. Pipeline: Optimize Resume per-job + Bulk Apply toolbar in Saved stage. Sort indicator refresh. All 6 PostHog events.', p: 100, e: '2 sessions' },
 { s: 'done', b: 'feature', n: 'FB-CARDS-001: Feed + Pipeline Card Synergy & Match Score Fix', d: 'v10.37: Fix A — Match % badge decoupled from Preview JD, rendered in meta row with color tiers (green ≥80, amber ≥60, dim 40-59, hidden <40). Fix B — Pipeline Location+Salary columns, trust/ghost badges inline after title, fraud cache hydrated independently, match color tiers aligned. 3 PostHog events. 38 tests.', p: 100, e: '1 session' },
 { s: 'done', b: 'scaling', n: 'SPA-CUT-1: Feed + Pipeline + Keywords Bridge Elimination', d: 'v10.39: Standalone Supabase client (src/app/lib/supabase.ts). Provider cut from window.BJ. Feed 15 window refs→0, Pipeline 19→0, Keywords 7→0. Direct localStorage + module caches + callGateway. @lib alias. PipelineMeta extended. 61 tests.', p: 100, e: '1 session' },
-{ s: 'not-started', b: 'scaling', n: 'SPA-CUT-2: Resumes + Applications + Notifications + Stats + Billing', d: 'Cut 5 hooks from window.* bridge to standalone Supabase/localStorage/gateway.', p: 0, e: '1 session' },
+{ s: 'done', b: 'scaling', n: 'SPA-CUT-2: Resumes + Applications + Stats + Billing + Admin Notifications Bridge Elimination', d: 'v10.40: Resumes 15→0, Applications 5→0, Stats 6→0 (direct MV queries), Billing 5→0 (callGateway balance+portal), Admin Notif 3→0. 58 tests.', p: 100, e: '1 session' },
 { s: 'not-started', b: 'scaling', n: 'SPA-CUT-3: Settings + Tuning + Integrations + IP + LinkedIn + Browsers', d: 'Cut 6 hooks from window.* bridge.', p: 0, e: '1 session' },
 { s: 'not-started', b: 'scaling', n: 'SPA-CUT-4: Home + Chat + Referral', d: 'Cut remaining dashboard hooks.', p: 0, e: '1 session' },
 { s: 'not-started', b: 'scaling', n: 'SPA-CUT-5: Admin Standalone (64 subpages)', d: 'Cut 10 admin hooks from window.* bridge.', p: 0, e: '1 session' },

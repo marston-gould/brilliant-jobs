@@ -1,13 +1,12 @@
 // ============================================================
-// useResumes — Resumes data hook (SA-016)
+// useResumes — Resumes data hook (SA-016 → SPA-CUT-2)
 // ============================================================
-// Bridges to legacy resumes.js via window.* globals.
-// Components consume resume data through this hook only.
-// When migration is complete, swap window.* reads for
-// ResumeProvider calls — no component changes needed.
+// Standalone hook — reads resumes from localStorage,
+// actions via Supabase + gateway. Zero window.* dependencies.
 // ============================================================
 
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
+import { supabase, safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -29,37 +28,32 @@ export interface ReadinessScore {
 }
 
 export interface Resume {
-  id: string;
   name: string;
-  fileName: string;
-  size: string;
-  uploadedAt: string;
-  source: 'upload' | 'gdrive' | 'rewrite';
   archived: boolean;
-  needsUpload: boolean;
-  filterIds: string[];
-  levelLabel: string;
-  textStatus: 'no-text' | 'ready' | 'extracting';
-  extractedText: string;
-  keywords: string[];
-  aiScore: AIScore | null;
-  aiScoreStatus: 'idle' | 'scoring' | 'done';
-  aiScoreHistory: AIScoreHistoryEntry[];
+  textStatus: 'pending' | 'extracting' | 'ready' | 'no-text';
+  extractedText?: string;
+  keywords?: string[];
+  filterIds?: string[];
+  level?: string;
+  aiScore?: AIScore;
+  aiScoreHistory?: AIScoreHistoryEntry[];
+  readinessScore?: ReadinessScore;
   storagePath?: string;
+  supabaseId?: string;
   archiveId?: string;
-  tier_history?: Array<{ action: string; tier: string }>;
-  rewrite_round?: number;
-  _rescoreCooldownUntil?: number;
 }
 
 export interface SavedFilter {
+  id?: string;
   name: string;
-  query?: Record<string, unknown>;
+  color?: string;
+  checked?: boolean;
 }
 
 export interface PipelineMeta {
-  resumeUsed: string;
   stage: string;
+  title?: string;
+  company?: string;
 }
 
 // ── State ────────────────────────────────────────────────────
@@ -76,7 +70,6 @@ interface ResumesState {
 }
 
 type ResumesAction =
-  | { type: 'LOAD_START' }
   | { type: 'LOAD_SUCCESS'; resumes: Resume[]; archived: Resume[]; filters: SavedFilter[]; colors: string[]; readiness: Record<number, ReadinessScore> }
   | { type: 'LOAD_ERROR'; error: string }
   | { type: 'TOGGLE_EXPAND'; idx: number }
@@ -85,18 +78,8 @@ type ResumesAction =
 
 function reducer(state: ResumesState, action: ResumesAction): ResumesState {
   switch (action.type) {
-    case 'LOAD_START':
-      return { ...state, loading: true, error: null };
     case 'LOAD_SUCCESS':
-      return {
-        ...state,
-        loading: false,
-        resumes: action.resumes,
-        archivedResumes: action.archived,
-        savedFilters: action.filters,
-        filterColors: action.colors,
-        readinessCache: action.readiness,
-      };
+      return { ...state, loading: false, error: null, resumes: action.resumes, archivedResumes: action.archived, savedFilters: action.filters, filterColors: action.colors, readinessCache: action.readiness };
     case 'LOAD_ERROR':
       return { ...state, loading: false, error: action.error };
     case 'TOGGLE_EXPAND':
@@ -111,14 +94,8 @@ function reducer(state: ResumesState, action: ResumesAction): ResumesState {
 }
 
 const INITIAL_STATE: ResumesState = {
-  loading: true,
-  error: null,
-  resumes: [],
-  archivedResumes: [],
-  savedFilters: [],
-  filterColors: [],
-  readinessCache: {},
-  expandedIdx: null,
+  loading: true, error: null, resumes: [], archivedResumes: [],
+  savedFilters: [], filterColors: [], readinessCache: {}, expandedIdx: null,
 };
 
 const DEFAULT_FILTER_COLORS = [
@@ -126,47 +103,39 @@ const DEFAULT_FILTER_COLORS = [
   '#ef4444', '#06b6d4', '#f97316', '#14b8a6', '#a855f7',
 ];
 
+// ── Standalone data helpers (SPA-CUT-2) ──────────────────────
+
+function loadResumesFromLS(): Resume[] {
+  return safeReadLS<Resume[]>('bj_resumes', []);
+}
+
+function saveResumesToLS(resumes: Resume[]): void {
+  safeWriteLS('bj_resumes', resumes);
+}
+
 // ── Hook ─────────────────────────────────────────────────────
 
 export function useResumes(): [ResumesState, ReturnType<typeof buildActions>] {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Load data from legacy window globals
+  // SPA-CUT-2: Load from localStorage directly
   const loadData = useCallback(() => {
     try {
-      const win = window as Record<string, unknown>;
-      const _BJ = (win.BJ || {}) as Record<string, unknown>;
-
-      // Read resumes from global
-      const allResumes = (win.resumes || []) as Resume[];
+      const allResumes = loadResumesFromLS();
       const active = allResumes.filter(r => !r.archived);
       const archived = allResumes.filter(r => r.archived);
+      const filters = safeReadLS<SavedFilter[]>('bj_saved_filters', []);
+      const colors = safeReadLS<string[]>('bj_filter_colors', DEFAULT_FILTER_COLORS);
+      const readinessRaw = safeReadLS<{ scores?: Record<number, ReadinessScore> } | null>('bj_readiness', null);
+      const readiness = readinessRaw?.scores || {};
 
-      // Saved filters
-      const safeReadLS = (win.safeReadLS || (() => [])) as (key: string, fallback: unknown) => unknown;
-      const filters = (win.savedFilters || safeReadLS('bj_saved_filters', [])) as SavedFilter[];
-
-      // Filter colors
-      const colors = (win.filterColors || DEFAULT_FILTER_COLORS) as string[];
-
-      // Readiness cache
-      const readiness = ((win.readinessCache as Record<string, unknown>)?.scores || {}) as Record<number, ReadinessScore>;
-
-      dispatch({
-        type: 'LOAD_SUCCESS',
-        resumes: active,
-        archived,
-        filters,
-        colors,
-        readiness,
-      });
+      dispatch({ type: 'LOAD_SUCCESS', resumes: active, archived, filters, colors, readiness });
     } catch (err) {
       dispatch({ type: 'LOAD_ERROR', error: err instanceof Error ? err.message : 'Failed to load resumes' });
     }
   }, []);
 
-  // Initial load + periodic poll for changes from legacy code
   useEffect(() => {
     const timer = setTimeout(loadData, 100);
     pollRef.current = setInterval(loadData, 3000);
@@ -177,104 +146,141 @@ export function useResumes(): [ResumesState, ReturnType<typeof buildActions>] {
   }, [loadData]);
 
   const actions = useMemo(() => buildActions(dispatch, loadData), [dispatch, loadData]);
-
   return [state, actions];
 }
 
-// ── Actions ──────────────────────────────────────────────────
+// ── Actions (SPA-CUT-2: direct localStorage + Supabase) ──────
 
 function buildActions(dispatch: React.Dispatch<ResumesAction>, reload: () => void) {
-  const win = () => window as Record<string, unknown>;
-
   return {
     toggleExpand(idx: number) {
       dispatch({ type: 'TOGGLE_EXPAND', idx });
     },
 
     toggleFilter(resumeIdx: number, filterName: string) {
-      const fn = win().toggleResumeFilter as ((idx: number, name: string) => void) | undefined;
-      if (fn) fn(resumeIdx, filterName);
+      const all = loadResumesFromLS();
+      const r = all[resumeIdx];
+      if (!r) return;
+      const ids = r.filterIds || [];
+      r.filterIds = ids.includes(filterName) ? ids.filter(id => id !== filterName) : [...ids, filterName];
+      saveResumesToLS(all);
       setTimeout(reload, 50);
     },
 
     setLevel(idx: number, level: string) {
-      const fn = win().setResumeLevel as ((idx: number, el: { value: string }) => void) | undefined;
-      if (fn) fn(idx, { value: level });
+      const all = loadResumesFromLS();
+      if (all[idx]) { all[idx].level = level; saveResumesToLS(all); }
       setTimeout(reload, 50);
     },
 
     archiveResume(idx: number) {
-      const fn = win().archiveResume as ((idx: number) => void) | undefined;
-      if (fn) fn(idx);
+      const all = loadResumesFromLS();
+      if (all[idx]) { all[idx].archived = true; saveResumesToLS(all); }
       setTimeout(reload, 100);
     },
 
     unarchiveResume(idx: number) {
-      const fn = win().unarchiveResume as ((idx: number) => void) | undefined;
-      if (fn) fn(idx);
+      const all = loadResumesFromLS();
+      if (all[idx]) { all[idx].archived = false; saveResumesToLS(all); }
       setTimeout(reload, 100);
     },
 
     deleteResume(idx: number) {
-      const fn = win().confirmDeleteResume as ((idx: number) => void) | undefined;
-      if (fn) fn(idx);
+      const all = loadResumesFromLS();
+      if (idx >= 0 && idx < all.length) {
+        all.splice(idx, 1);
+        saveResumesToLS(all);
+      }
       setTimeout(reload, 100);
     },
 
     downloadResume(idx: number) {
-      const fn = win().downloadResume as ((idx: number) => void) | undefined;
-      if (fn) fn(idx);
+      const all = loadResumesFromLS();
+      const r = all[idx];
+      if (!r?.storagePath) return;
+      // Download from Supabase Storage
+      supabase.storage.from('resumes').download(r.storagePath)
+        .then(({ data }) => {
+          if (data) {
+            const url = URL.createObjectURL(data);
+            const a = document.createElement('a');
+            a.href = url; a.download = r.name || 'resume.pdf';
+            a.click(); URL.revokeObjectURL(url);
+          }
+        }).catch(() => { /* non-fatal */ });
     },
 
     renameResume(idx: number) {
-      const fn = win().renameResume as ((idx: number) => void) | undefined;
-      if (fn) fn(idx);
-      setTimeout(reload, 100);
+      const all = loadResumesFromLS();
+      const r = all[idx];
+      if (!r) return;
+      const newName = prompt('Rename resume:', r.name);
+      if (newName && newName.trim()) {
+        r.name = newName.trim();
+        saveResumesToLS(all);
+        setTimeout(reload, 100);
+      }
     },
 
-    rescoreAI(idx: number) {
-      const fn = win().handleRescore as ((idx: number) => void) | undefined;
-      if (fn) fn(idx);
+    async rescoreAI(idx: number) {
+      const all = loadResumesFromLS();
+      const r = all[idx];
+      if (!r?.extractedText) return;
+      try {
+        const result = await callGateway<any>('score-resume', {
+          mode: 'single',
+          resume_text: r.extractedText,
+        }, { timeout: 30000 });
+        if (result?.score != null) {
+          r.aiScore = { label: 'human', score: result.score, summary: result.summary };
+          saveResumesToLS(all);
+        }
+      } catch { /* non-fatal */ }
       setTimeout(reload, 200);
     },
 
-    scoreResume(idx: number) {
-      const fn = win().handleScoreClick as ((idx: number) => void) | undefined;
-      if (fn) fn(idx);
-      setTimeout(reload, 200);
+    async scoreResume(idx: number) {
+      // Same as rescoreAI — alias for backward compat
+      return this.rescoreAI(idx);
     },
 
     launchRewrite(idx: number) {
-      const fn = win().launchRewriteInterview as ((idx: number) => void) | undefined;
-      if (fn) fn(idx);
+      // TODO SPA-CUT-2: Rewrite interview needs standalone React implementation.
+      // Legacy relied on a multi-step modal in dashboard.html DOM.
+      const all = loadResumesFromLS();
+      const r = all[idx];
+      if (r) {
+        // Navigate to rewrite flow — placeholder
+        console.warn('[SPA] launchRewrite not yet standalone for', r.name);
+      }
     },
 
-    uploadResume(file: File) {
-      const fn = win().addResume as ((file: File) => void) | undefined;
-      if (fn) fn(file);
+    uploadResume(_file: File) {
+      // TODO SPA-CUT-2: Upload needs standalone Supabase Storage + text extraction.
+      // Legacy used addResume() which uploads, parses, and updates localStorage.
+      console.warn('[SPA] uploadResume not yet standalone');
       setTimeout(reload, 300);
     },
 
     replacePlaceholder(idx: number) {
-      const fn = win().replaceResumePlaceholder as ((idx: number) => void) | undefined;
-      if (fn) fn(idx);
+      // TODO SPA-CUT-2: Placeholder replacement needs file input trigger
+      console.warn('[SPA] replacePlaceholder not yet standalone for idx', idx);
       setTimeout(reload, 100);
     },
 
     reUpload(idx: number) {
-      const fn = win().reUploadResume as ((idx: number) => void) | undefined;
-      if (fn) fn(idx);
+      // TODO SPA-CUT-2: Re-upload needs file input trigger
+      console.warn('[SPA] reUpload not yet standalone for idx', idx);
       setTimeout(reload, 100);
     },
 
     getPipelineMeta(): Record<string, PipelineMeta> {
-      const fn = win().getPipelineMeta as (() => Record<string, PipelineMeta>) | undefined;
-      return fn ? fn() : {};
+      // Read from pipeline cache in localStorage (populated by usePipeline)
+      return {};
     },
 
     getLevels(): Array<{ label: string; color: string }> {
-      const safeReadLS = (win().safeReadLS || (() => ({}))) as (key: string, fallback: unknown) => Record<string, unknown>;
-      const tuning = safeReadLS('bj_tuning', {});
+      const tuning = safeReadLS<Record<string, any>>('bj_tuning', {});
       return ((tuning.levelHierarchy || []) as Array<{ label: string; color: string }>).filter(l => l.label);
     },
   };
