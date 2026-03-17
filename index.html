@@ -31,6 +31,7 @@
   <script src="/js/landing-ab.js?v=v10.51" defer></script>
   <script src="/js/structured-logger.js?v=v10.51" defer></script>
   <!-- REM-005 LS1-6: Ahrefs analytics removed — redundant with PostHog (all 4 surfaces) + GSC (organic search). Reduces 3rd-party script load and CSP surface area. -->
+  <link rel="stylesheet" href="/styles.css?v=v10.51">
   <link rel="stylesheet" href="/landing.css?v=v10.51">
 
   <!-- Schema.org structured data -->
@@ -188,36 +189,36 @@
 <!-- CS-014: CX-10 — External landing page stylesheet -->
 
 </head>
-<body itemscope itemtype="https://schema.org/WebPage">
+<body itemscope itemtype="https://schema.org/WebPage" class="overflow-x-hidden">
   <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PLHNJQLC"
 height="0" width="0" class="gtm-iframe"></iframe></noscript>
   <!-- CS-007: CX-04 — Skip navigation link -->
   <a href="#main-content" class="skip-link" onfocus="this.style.top='0'" onblur="this.style.top='-40px'">Skip to main content</a>
 
-  <nav class="site-nav segment-new segment-returning" aria-label="Main navigation">
-    <div class="nav-logo" itemscope itemtype="https://schema.org/Organization"><div class="mark" itemprop="logo">B</div> <span itemprop="name">Brilliant Jobs</span></div>
-    <div class="nav-links">
-      <a href="#why">Why</a>
-      <a href="#benefits">Benefits</a>
-      <a href="#how-it-works">How It Works</a>
-      <a href="#pricing">Pricing</a>
-      <a href="/data-lab">Data Lab</a>
-      <a href="/compare">Compare</a>
-      <a href="/dashboard" class="nav-cta" id="nav-login-btn" role="button">Log In</a>
+  <nav class="fixed top-0 left-0 right-0 z-[200] px-8 h-16 flex items-center justify-between bg-nav-bg border-b border-white/[0.08] segment-new segment-returning" aria-label="Main navigation">
+    <div class="font-bold text-[17px] text-white flex items-center gap-2.5" itemscope itemtype="https://schema.org/Organization"><div class="w-[30px] h-[30px] bg-white rounded-lg flex items-center justify-center text-sm font-extrabold text-nav-bg" itemprop="logo">B</div> <span itemprop="name">Brilliant Jobs</span></div>
+    <div class="flex items-center gap-6">
+      <a href="#why" class="text-sm font-medium text-white/65 transition-colors hover:text-white">Why</a>
+      <a href="#benefits" class="text-sm font-medium text-white/65 transition-colors hover:text-white">Benefits</a>
+      <a href="#how-it-works" class="text-sm font-medium text-white/65 transition-colors hover:text-white">How It Works</a>
+      <a href="#pricing" class="text-sm font-medium text-white/65 transition-colors hover:text-white">Pricing</a>
+      <a href="/data-lab" class="text-sm font-medium text-white/65 transition-colors hover:text-white">Data Lab</a>
+      <a href="/compare" class="text-sm font-medium text-white/65 transition-colors hover:text-white">Compare</a>
+      <a href="/dashboard" class="py-2 px-5 bg-white text-nav-bg rounded-lg font-bold text-[13px] transition-all hover:bg-white/90" id="nav-login-btn" role="button">Log In</a>
     </div>
   </nav>
 
   <!-- Lapsed nav: simplified -->
-  <nav class="site-nav segment-lapsed" aria-label="Main navigation">
-    <div class="nav-logo" itemscope itemtype="https://schema.org/Organization"><div class="mark" itemprop="logo">B</div> <span itemprop="name">Brilliant Jobs</span></div>
-    <div class="nav-links">
-      <a href="#why">Why</a>
-      <a href="#benefits">Benefits</a>
-      <a href="#how-it-works">How It Works</a>
-      <a href="#pricing">Pricing</a>
-      <a href="/data-lab">Data Lab</a>
-      <a href="/compare">Compare</a>
-      <a href="/dashboard" class="nav-cta" id="nav-login-btn-lapsed" role="button">Log In</a>
+  <nav class="fixed top-0 left-0 right-0 z-[200] px-8 h-16 flex items-center justify-between bg-nav-bg border-b border-white/[0.08] segment-lapsed" aria-label="Main navigation">
+    <div class="font-bold text-[17px] text-white flex items-center gap-2.5" itemscope itemtype="https://schema.org/Organization"><div class="w-[30px] h-[30px] bg-white rounded-lg flex items-center justify-center text-sm font-extrabold text-nav-bg" itemprop="logo">B</div> <span itemprop="name">Brilliant Jobs</span></div>
+    <div class="flex items-center gap-6">
+      <a href="#why" class="text-sm font-medium text-white/65 transition-colors hover:text-white">Why</a>
+      <a href="#benefits" class="text-sm font-medium text-white/65 transition-colors hover:text-white">Benefits</a>
+      <a href="#how-it-works" class="text-sm font-medium text-white/65 transition-colors hover:text-white">How It Works</a>
+      <a href="#pricing" class="text-sm font-medium text-white/65 transition-colors hover:text-white">Pricing</a>
+      <a href="/data-lab" class="text-sm font-medium text-white/65 transition-colors hover:text-white">Data Lab</a>
+      <a href="/compare" class="text-sm font-medium text-white/65 transition-colors hover:text-white">Compare</a>
+      <a href="/dashboard" class="py-2 px-5 bg-white text-nav-bg rounded-lg font-bold text-[13px] transition-all hover:bg-white/90" id="nav-login-btn-lapsed" role="button">Log In</a>
     </div>
   </nav>
 

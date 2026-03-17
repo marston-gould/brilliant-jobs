@@ -1,85 +1,12 @@
-/* landing.css — CS-018: Full external stylesheet for index.html
- * Merged from inline <style> block (625 lines) + CS-014 extracted styles
- * Contains: font-faces, CSS variables, all landing page layout/component styles
+/* landing.css — CS-018: Landing page component styles
+ * TW-STD-002: Font faces, :root tokens, and global resets removed
+ * (now provided by styles.css via input.css @layer base).
+ * Remaining: landing-page-specific component styles being
+ * progressively migrated to Tailwind utilities in index.html.
  */
 
-@font-face {
-  font-family: 'Outfit';
-  src: url('/fonts/outfit-latin-var.woff2') format('woff2');
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-  unicode-range: U+0000-00FF, U+0100-024F, U+2000-206F, U+20AC, U+2212, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: 'JetBrains Mono';
-  src: url('/fonts/jetbrains-mono-latin-var.woff2') format('woff2');
-  font-weight: 100 800;
-  font-style: normal;
-  font-display: swap;
-  unicode-range: U+0000-00FF, U+0100-024F, U+2000-206F, U+20AC, U+2212, U+FEFF, U+FFFD;
-}
-:root {
-  --bg-main: #f5f6fa;
-  --bg-card: #ffffff;
-  --bg-input: #f0f1f5;
-  --bg-hover: #eef0f6;
-  --border: #e2e4ed;
-  --border-hover: #cdd0de;
-  --text: #1a1d2e;
-  --text-dim: #5c6277;
-  --text-faint: #64748b;
-  --accent: #3d7eff;
-  --accent-hover: #2b6aeb;
-  --accent-glow: rgba(61,126,255,0.10);
-  --green: #22c55e;
-  --green-dim: rgba(34,197,94,0.10);
-  --warm: #f59e0b;
-  --warm-dim: rgba(245,158,11,0.10);
-  --red: #ef4444;
-  --red-dim: rgba(239,68,68,0.08);
-  --purple: #8b5cf6;
-  --purple-dim: rgba(139,92,246,0.10);
-  --nav-bg: #1a3a6e;
-  --sans: 'Outfit', -apple-system, sans-serif;
-  --mono: 'JetBrains Mono', monospace;
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: var(--sans);
-  background: var(--bg-main);
-  color: var(--text);
-  -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
-}
-a { color: var(--accent); text-decoration: none; }
-a:hover { color: var(--accent-hover); }
-
 /* ======================== NAV ======================== */
-.site-nav {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
-  padding: 0 32px; height: 64px;
-  display: flex; align-items: center; justify-content: space-between;
-  background: var(--nav-bg);
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-}
-.nav-logo {
-  font-weight: 700; font-size: 17px; color: #fff;
-  display: flex; align-items: center; gap: 10px;
-}
-.nav-logo .mark {
-  width: 30px; height: 30px; background: #fff; border-radius: 8px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 14px; font-weight: 800; color: var(--nav-bg);
-}
-.nav-links { display: flex; align-items: center; gap: 24px; }
-.nav-links a { font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.65); transition: color 0.15s; }
-.nav-links a:hover { color: #fff; }
-.nav-cta {
-  padding: 8px 20px; background: #fff; color: var(--nav-bg) !important;
-  border-radius: 8px; font-weight: 700; font-size: 13px; transition: all 0.15s;
-}
-.nav-cta:hover { background: rgba(255,255,255,0.9); }
+/* TW-STD-002: Converted to Tailwind utilities in index.html */
 
 /* ======================== HERO ======================== */
 .hero {
