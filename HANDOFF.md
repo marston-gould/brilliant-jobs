@@ -52,7 +52,14 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FB-SURVEY-ADMIN-001 SVM-S2** — Full CRUD UI: WHAT / WHO / WHEN / WHERE ✅
+**FB-SURVEY-ADMIN-001 SVM-S3** — Engine Rewiring ✅
+- v10.30→v10.31
+- **survey-delivery.js:** Overlay eligible filter reads `placement_config.overlay.pages` — only evaluates on pages admin configured. Falls back to `channels` array if no placement_config. `matchesAudience()` rewritten: handles `type=all`, `type=time_cohort` (signup_after/signup_before date comparison), `type=behavioral` (plan, min_sessions, min_applications, days_since_signup_min). Legacy flat target_audience still works.
+- **survey.html:** `resolveVersionAsync()` fetches `questions` JSONB from survey_campaigns REST API when version param present. Falls back to hardcoded banks on failure. `init()` now called by async wrapper instead of directly.
+- **send-survey-invite EF:** Reads `campaign.audience_config`. Time cohort: DB-level filter via `gte/lte created_at`. Behavioral: app-level filter against `user_data` (session_count, application_count, plan_tier, days_since_signup). Redeployed.
+- **Tests:** 19 tests (tests/svm-s3-engine-rewiring.test.js) — all passing.
+
+**Previous: FB-SURVEY-ADMIN-001 SVM-S2** — Full CRUD UI ✅
 - v10.29→v10.30
 - **js/admin-survey-manager.js:** Full create/edit modal with 4 sections:
   - **WHAT:** Title, version ID (disabled on edit), survey type selector (nps/periodic/micro/exit), credits, estimated minutes, description. Question builder: add/remove/reorder questions, 8 type selector (choice/rating/scale/text/nps/multiselect/dropdown/chips), options textarea for choice types, min/max labels for scale/rating, sub-text input, move up/down buttons.
@@ -4271,7 +4278,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v10.30`** | **FB-SURVEY-ADMIN-001 SVM-S2: Full CRUD UI with WHAT/WHO/WHEN/WHERE.** |
+| **Product (BJ_VERSION)** | **`v10.31`** | **FB-SURVEY-ADMIN-001 SVM-S3: Engine rewiring — admin creates = live.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

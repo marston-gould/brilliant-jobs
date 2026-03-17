@@ -619,7 +619,24 @@ const reason = params.get('reason') || null;
 const version = params.get('v') || null;
 const deliverySource = params.get('src') || 'direct';
 
-function resolveVersion() {
+// SVM-S3: Async resolveVersion — tries DB questions JSONB first, falls back to hardcoded banks
+async function resolveVersionAsync() {
+  // Try fetching from survey_campaigns if version param provided
+  if (version) {
+    try {
+      const res = await fetch(SUPABASE_URL + '/rest/v1/survey_campaigns?survey_version=eq.' + encodeURIComponent(version) + '&select=survey_version,questions', {
+        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+      });
+      if (res.ok) {
+        const rows = await res.json();
+        if (rows && rows.length > 0 && rows[0].questions && rows[0].questions.length > 0) {
+          return { id: rows[0].survey_version, questions: rows[0].questions };
+        }
+      }
+    } catch (e) { console.warn('[survey] DB question fetch failed, using hardcoded fallback:', e); }
+  }
+
+  // Fallback to hardcoded banks
   if (context === 'churn') {
     if (version && exitVersions[version]) return { id: version, questions: exitVersions[version] };
     const latest = Object.keys(exitVersions).pop();
@@ -639,11 +656,17 @@ function resolveVersion() {
   }
 }
 
-const resolved = resolveVersion();
-const surveyVersion = resolved.id;
-const questions = resolved.questions;
+let resolved, surveyVersion, questions;
 const answers = {};
 let currentStep = 0;
+
+// Async init wrapper — resolves version then starts survey
+(async function() {
+  resolved = await resolveVersionAsync();
+  surveyVersion = resolved.id;
+  questions = resolved.questions;
+  init();
+})();
 
 // ─── INIT ───
 
@@ -1110,7 +1133,7 @@ async function submitSurvey() {
   }
 }
 
-init();
+// SVM-S3: init() now called by async resolveVersionAsync wrapper above
 </script>
 
 </body>

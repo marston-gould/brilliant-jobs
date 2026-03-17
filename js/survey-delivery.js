@@ -98,32 +98,66 @@
     } catch (e) { return new Set(); }
   }
 
-  // ─── Audience Targeting ─────────────────────────────────────────────────────
-  // Hook: target_audience is JSONB — new dimensions added without code changes.
-  // Current dimensions: plan, min_sessions
+  // ─── Audience Targeting (SVM-S3: reads audience_config JSONB) ────────────
+  // Hook: target_audience is legacy; audience_config is the new schema.
+  // Supports: all, time_cohort, behavioral
   function matchesAudience(campaign) {
-    var audience = campaign.target_audience;
-    if (!audience || Object.keys(audience).length === 0) return true; // no targeting = all users
+    var ac = campaign.audience_config || campaign.target_audience;
+    if (!ac || Object.keys(ac).length === 0) return true;
+    if (ac.type === 'all') return true;
 
     try {
-      // Plan tier check
-      if (audience.plan) {
-        var userTier = 'free';
-        try { userTier = (typeof getUserTier === 'function') ? getUserTier() : 'free'; }
+      if (ac.type === 'time_cohort') {
+        // Check user signup date against range
+        var ud = JSON.parse(localStorage.getItem('bj_user_data') || '{}');
+        var signupDate = ud.created_at || ud.signup_date;
+        if (!signupDate) return true; // fail-open if no signup date available
+        var signup = new Date(signupDate).getTime();
+        if (ac.signup_after && signup < new Date(ac.signup_after).getTime()) return false;
+        if (ac.signup_before && signup > new Date(ac.signup_before).getTime()) return false;
+        return true;
+      }
+
+      if (ac.type === 'behavioral') {
+        var ud2 = JSON.parse(localStorage.getItem('bj_user_data') || '{}');
+
+        // Plan tier check
+        if (ac.plan && ac.plan !== 'any') {
+          var userTier = 'free';
+          try { userTier = (typeof getUserTier === 'function') ? getUserTier() : 'free'; }
+          catch (e) { /* default free */ }
+          if (userTier !== ac.plan) return false;
+        }
+
+        // Session count
+        if (ac.min_sessions && (ud2.session_count || 0) < ac.min_sessions) return false;
+
+        // Application count
+        if (ac.min_applications && (ud2.application_count || 0) < ac.min_applications) return false;
+
+        // Days since signup
+        if (ac.days_since_signup_min) {
+          var signupDate2 = ud2.created_at || ud2.signup_date;
+          if (signupDate2) {
+            var daysSince = (Date.now() - new Date(signupDate2).getTime()) / (1000 * 60 * 60 * 24);
+            if (daysSince < ac.days_since_signup_min) return false;
+          }
+        }
+
+        return true;
+      }
+
+      // Legacy flat target_audience fallback
+      if (ac.plan) {
+        var userTier3 = 'free';
+        try { userTier3 = (typeof getUserTier === 'function') ? getUserTier() : 'free'; }
         catch (e) { /* default free */ }
-        if (userTier !== audience.plan) return false;
+        if (userTier3 !== ac.plan) return false;
       }
-
-      // Session count check
-      if (audience.min_sessions) {
-        var sessionCount = 0;
-        try {
-          var ud = JSON.parse(localStorage.getItem('bj_user_data') || '{}');
-          sessionCount = ud.session_count || 0;
-        } catch (e) { /* default 0 */ }
-        if (sessionCount < audience.min_sessions) return false;
+      if (ac.min_sessions) {
+        var ud3 = JSON.parse(localStorage.getItem('bj_user_data') || '{}');
+        if ((ud3.session_count || 0) < ac.min_sessions) return false;
       }
-
       return true;
     } catch (e) { return true; } // fail-open on audience check errors
   }
@@ -315,9 +349,20 @@
       var completed = results[1];
 
       // Filter to overlay-enabled, non-completed, audience-matched campaigns
+      // SVM-S3: Also filter by placement_config.overlay.pages for current page
+      var currentPage = _lastActivePage || '';
       var eligible = campaigns.filter(function(c) {
-        // Must support overlay channel
-        if (!c.channels || c.channels.indexOf('overlay') === -1) return false;
+        // Must support overlay channel (check placement_config first, fallback to channels array)
+        var pc = c.placement_config;
+        if (pc && pc.overlay) {
+          if (!pc.overlay.enabled) return false;
+          // SVM-S3: Page-level filtering — only show on pages in the overlay.pages list
+          if (pc.overlay.pages && pc.overlay.pages.length > 0 && currentPage) {
+            if (pc.overlay.pages.indexOf(currentPage) === -1) return false;
+          }
+        } else if (!c.channels || c.channels.indexOf('overlay') === -1) {
+          return false;
+        }
         // Must not be completed by this user
         if (completed.has(c.survey_version)) return false;
         // Must not be exit survey (those are triggered by churn, not overlay)

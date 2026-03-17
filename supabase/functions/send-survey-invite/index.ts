@@ -222,10 +222,20 @@ async function handleSendEmail(campaignVersion: string): Promise<Response> {
   }
 
   // 2. Query eligible users
-  // Start with all authenticated users who have an email
-  const { data: users, error: userErr } = await sb.from("profiles")
-    .select("id,email")
+  // 2. Query eligible users
+  // SVM-S3: Read audience_config for smarter filtering
+  const ac = campaign.audience_config || { type: "all" };
+  let userQuery = sb.from("profiles")
+    .select("id,email,created_at,user_data")
     .not("email", "is", null);
+
+  // Time cohort: filter by signup date at DB level
+  if (ac.type === "time_cohort") {
+    if (ac.signup_after) userQuery = userQuery.gte("created_at", ac.signup_after);
+    if (ac.signup_before) userQuery = userQuery.lte("created_at", ac.signup_before);
+  }
+
+  const { data: users, error: userErr } = await userQuery;
 
   if (userErr || !users) {
     return json({ error: "Failed to query users", detail: userErr?.message }, 500);
@@ -242,6 +252,24 @@ async function handleSendEmail(campaignVersion: string): Promise<Response> {
     if (Date.now() - startTime > WALL_TIME_MS) {
       console.warn("[send-survey-invite] Wall-time abort after", sent, "sent,", skipped, "skipped");
       break;
+    }
+
+    // SVM-S3: Behavioral audience check at app level
+    if (ac.type === "behavioral") {
+      const ud = (user as Record<string, unknown>).user_data as Record<string, unknown> | null;
+      if (ac.min_sessions && ((ud?.session_count as number) || 0) < ac.min_sessions) { skipped++; continue; }
+      if (ac.min_applications && ((ud?.application_count as number) || 0) < ac.min_applications) { skipped++; continue; }
+      if (ac.plan && ac.plan !== "any") {
+        const tier = (ud?.plan_tier as string) || "free";
+        if (tier !== ac.plan) { skipped++; continue; }
+      }
+      if (ac.days_since_signup_min) {
+        const created = (user as Record<string, unknown>).created_at as string;
+        if (created) {
+          const daysSince = (Date.now() - new Date(created).getTime()) / (1000 * 60 * 60 * 24);
+          if (daysSince < ac.days_since_signup_min) { skipped++; continue; }
+        }
+      }
     }
 
     // Check frequency cap
