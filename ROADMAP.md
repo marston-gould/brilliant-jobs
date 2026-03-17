@@ -1040,6 +1040,7 @@
 | P13-15–17 — Market/employer/referral surveys | P13-14 + user volume | Launch | **Post-Launch** | |
 | P13-18 — Survey → content pipeline | P13-14/15-17 survey data | Launch | **Post-Launch** | |
 | P13-19–25 — User Intelligence System (7 items) | Launch + months of user data | Launch | **Post-Launch** | |
+| FB-PHI-001 — Per-feature usage analytics | PostHog instrumentation across all surfaces | Launch | **Post-Launch** | 543 elements catalogued (63 landing + 408 dashboard + 72 extension). 269 events (196 interaction + 73 outcome). Admin Interaction Analytics panel (6 views, temporal controls, 10 cohort dimensions). Spec: FB-PHI-001_v2. Inventory: FB-PHI-001_Interactive_Elements_Inventory.xlsx. 10 sessions, 66-100h. |
 
 ### Outstanding Items (Updated 2026-03-01)
 
