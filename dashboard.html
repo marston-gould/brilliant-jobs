@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v10.32 -->
+<!-- Brilliant Jobs Dashboard v10.33 -->
 <html lang="en">
 <head>
   <!-- CS-P1-009: Theme flash prevention — must be first script -->
@@ -19,21 +19,21 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="/js/vendor/supabase.min.js" defer></script>
-  <script src="/js/pipeline-migration.js?v=v10.32" defer></script>
-  <script src="/js/notification-center.js?v=v10.32" defer></script>
+  <script src="/js/pipeline-migration.js?v=v10.33" defer></script>
+  <script src="/js/notification-center.js?v=v10.33" defer></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" integrity="sha384-nFoSjZIoH3CCp8W639jJyQkuPHinJ2NHe7on1xvlUA7SuGfJAfvMldrsoAVm6ECz" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" integrity="sha384-eEu5CTj3qGvu9PdJuS+YlkNi7d2XxQROAFYOr59zgObtlcux1ae1Il3u7jvdCSWu" crossorigin="anonymous"></script>
   <!-- CS-014: CX-09 — ECharts lazy-loaded by stats.js when Stats tab opens -->
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js" integrity="sha384-TcLTgu6flPhnZ5dfHnHimsxNFjYWN0povfGgnOvgPJKbZe6IbuoC2ociiatSHl9E" crossorigin="anonymous"></script>
   <!-- CS-016 FIX-10: Code-split chunks — shell (globals+routing) + feed (job list) loaded eagerly; all other chunks lazy-loaded on tab switch -->
-  <script src="dist/dashboard-shell.min.js?v=v10.32" defer></script>
-  <script src="dist/dashboard-feed.min.js?v=v10.32" defer></script>
+  <script src="dist/dashboard-shell.min.js?v=v10.33" defer></script>
+  <script src="dist/dashboard-feed.min.js?v=v10.33" defer></script>
   <!-- CS-P1-002: dashboard inline scripts externalized (pdfjs, preload, feedback, insights, a11y) -->
-  <script src="js/dashboard-inline.js?v=v10.32" defer></script>
+  <script src="js/dashboard-inline.js?v=v10.33" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=v10.32">
+  <link rel="stylesheet" href="styles.css?v=v10.33">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -108,11 +108,11 @@
     </style>
   <!-- CSS extracted to styles.css in v3.28 -->
   <!-- A13: PostHog analytics — CS-P1-002: externalized for CSP compliance -->
-  <script src="js/posthog-dashboard.js?v=v10.32" defer></script>
-  <script src="js/posthog-perf.js?v=v10.32" defer></script>
-  <script src="js/feature-flags.js?v=v10.32" defer></script>
-  <script src="js/structured-logger.js?v=v10.32" defer></script>
-  <script src="js/theme.js?v=v10.32" defer></script>
+  <script src="js/posthog-dashboard.js?v=v10.33" defer></script>
+  <script src="js/posthog-perf.js?v=v10.33" defer></script>
+  <script src="js/feature-flags.js?v=v10.33" defer></script>
+  <script src="js/structured-logger.js?v=v10.33" defer></script>
+  <script src="js/theme.js?v=v10.33" defer></script>
 </head>
 <body>
 
@@ -881,6 +881,10 @@
                   <i data-lucide="message-square" class="icon-sm icon-stroke"></i>
                   Chat
                 </button>
+                <button class="smt-btn" data-mode="guided">
+                  <i data-lucide="wand-2" class="icon-sm icon-stroke"></i>
+                  Guided
+                </button>
               </div>
             </div>
           </div>
@@ -910,6 +914,7 @@
                 <div class="chat-empty-icon"><i data-lucide="message-square" class="icon-xl icon-stroke-lg"></i></div>
                 <div class="chat-empty-title">Describe your ideal role</div>
                 <div class="chat-empty-sub">Try: "Senior product manager roles in Austin, TX paying over $150K" or "Remote React developer positions at mid-size companies"</div>
+                <button class="wiz-btn wiz-btn-next" id="chat-empty-wizard-btn" style="margin-top:12px;font-size:12px;padding:6px 16px;" onclick="if(typeof setSearchMode==='function')setSearchMode('guided');"><i data-lucide="wand-2" class="icon-sm icon-stroke"></i> Start Guided Search</button>
               </div>
             </div>
             <div class="chat-typing u-hidden" id="chat-typing">
@@ -930,6 +935,22 @@
             </div>
 
             <!-- UX-001: Save dialog removed — inline save-prompt-row handles all prompt saving -->
+          </div>
+
+          <!-- FB-CHAT-002: Guided Intake Wizard Panel -->
+          <div class="wizard-panel" id="wizard-panel" style="display:none;">
+            <div class="wiz-progress" id="wiz-progress"></div>
+            <div class="wiz-step-label" id="wiz-step-label"></div>
+            <div class="wiz-viewport" id="wiz-viewport">
+              <div class="wiz-slider" id="wiz-slider"></div>
+            </div>
+            <div class="wiz-nav" id="wiz-nav">
+              <button class="wiz-btn wiz-btn-back u-hidden" id="wiz-back"><i data-lucide="arrow-left" class="icon-sm icon-stroke"></i> Back</button>
+              <div class="wiz-nav-right">
+                <a class="wiz-skip-link u-hidden" id="wiz-skip" href="#">Skip</a>
+                <button class="wiz-btn wiz-btn-next" id="wiz-next">Next</button>
+              </div>
+            </div>
           </div>
 
           <!-- filter-panel-wrap: visible in Filters mode, hidden in Chat mode -->

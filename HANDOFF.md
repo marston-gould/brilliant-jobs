@@ -3894,7 +3894,47 @@ None.
 
 ## Last Completed Session
 
-**FB-SURVEY-DELIVERY-001 SDV-S7** — Spec Gap Remediation + Integration Test + Close ✅ — **FB-SURVEY-DELIVERY-001 COMPLETE**
+**FB-CHAT-002-A** — Guided Intake Wizard: UI + Step Definitions ✅
+- v10.32→v10.33
+- **js/wizard.js (NEW, 570+ lines):** Full wizard engine with WizardState (currentStep, answers, active, editingPromptId, startTime). All 7 steps:
+  - Step 1: Card selector (single-select, 5 intent options with Lucide icons). Header: "Great to have you here!"
+  - Step 2: Pill input for role keywords. Min 1 required. Header adapts per Step 1 answer.
+  - Step 3: Location pill input + remote toggle (default ON). Pre-fills user location.
+  - Step 4: Dual-handle range slider ($0–$500K, $10K step). "No preference" checkbox. Comp note.
+  - Step 5: Multi-select card grid (startup/growth/mid-market/enterprise/no_pref). Mutual exclusion.
+  - Step 6: Company + industry exclusion pill inputs. Both optional.
+  - Step 7: Textarea (500 char max) with counter. Optional.
+  - Review: Editable prompt + answer summary + Search Jobs / Back / Start Over.
+- **Prompt assembly per spec §7.** Navigation: Next/Back/Skip, Enter/Escape. Progress bar (7 segments). CSS (~160 lines). Mode toggle 3rd segment (Guided). Entry points: toggle, chat empty state, new user default.
+- **13 PostHog events.** XSS protection. 112 tests all passing.
+- **Addendum A resolved:** is_us_job is dead code. Feed uses loc_country + FA-009 4-tier smart filter.
+
+## Next Session
+
+**FB-CHAT-002-B** — Backend Wiring + Save/Edit + Result Presentation
+
+**Entry Gate:**
+- FB-CHAT-002-A complete: all 7 wizard steps render, navigation works, review screen assembles prompt ✅
+
+**Scope (spec Session B):**
+1. Schema migration: `source` (text NOT NULL DEFAULT 'chat') + `wizard_answers` (jsonb) on saved_prompts
+2. Prompt assembly function → chat-job-search EF
+3. Update chat-job-search system prompt: wizard-source prompts produce per-job editorial commentary (Headline / Why Fit / Watch For)
+4. Build editorial job result cards in wizard panel
+5. On response: call prompt-to-filter → extract derived_filters → apply to feed
+6. Auto-open save dialog with source: 'wizard' + wizard_answers JSON
+7. Wizard re-entry: "Edit in Wizard" button on wizard-source prompts, pre-fill all steps
+8. Re-submit upserts (not creates) existing prompt
+9. Filter selector: wand icon for wizard prompts
+10. New user default: zero filters + zero prompts → wizard auto-open
+11. PostHog events: wizard_prompt_assembled, wizard_prompt_edited, wizard_filters_extracted, wizard_results_shown, wizard_prompt_saved, wizard_edit_started, wizard_edit_saved, wizard_abandoned
+
+**Exit Gate:**
+- Wizard → prompt assembled → jobs returned with editorial commentary → derived_filters applied → prompt saved with source:wizard + wizard_answers
+- Re-entry pre-fills all steps. Re-submit updates existing prompt. PostHog events fire. New users land on wizard.
+- Tests passing. Three-file close.
+
+**Previous: FB-SURVEY-DELIVERY-001 SDV-S7** — Spec Gap Remediation + Integration Test + Close ✅ — **FB-SURVEY-DELIVERY-001 COMPLETE**
 - v10.27→v10.28
 - **Spec gap remediation (12 gaps closed):**
   - Gap 3: Cross-channel dedup — `wasInvitedToday()` checks notification_log for same-day email/SMS invites before overlay.
@@ -4293,7 +4333,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v10.32`** | **FB-SURVEY-ADMIN-001 COMPLETE: 4 sessions, 165 tests, full admin CRUD + analytics.** |
+| **Product (BJ_VERSION)** | **`v10.33`** | **FB-CHAT-002-A: Guided Intake Wizard UI + Step Definitions. 112 tests.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

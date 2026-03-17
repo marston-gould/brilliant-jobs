@@ -61,6 +61,7 @@ const chunks = {
     'js/resume-builder.js',
     'js/overlay-analytics.js',
     'js/chat.js',
+    'js/wizard.js',
     'js/apply-workflow.js',
     'js/referrals.js',
     'js/referral-outreach.js',

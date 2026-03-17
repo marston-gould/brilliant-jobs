@@ -191,3 +191,11 @@
 | RESUME-BUILDER-001-S2 | Senior Backend Eng + Lead Platform Eng | Lead Platform Eng + Evolvability Strategist |
 | RESUME-BUILDER-001-S3 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
 | RESUME-BUILDER-001-S4 | Lead Platform Eng + Forward-Looking Dev | Chief Architect + Evolvability Strategist |
+
+## Pairing Assignments (Chat Mode Phase 2)
+
+| Session | Primary Pair | Pod 4 Reviewer |
+|---------|-------------|----------------|
+| FB-CHAT-002-A | Senior Frontend Eng + Lead Platform Eng | Chief Architect + Evolvability Strategist |
+| FB-CHAT-002-B | Lead Platform Eng + Forward-Looking Dev | Chief Architect + System Architect—Scalability |
+| FB-CHAT-002-C | QA/Test Eng + Senior Frontend Eng | Chief Architect + Evolvability Strategist |

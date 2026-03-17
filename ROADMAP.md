@@ -3777,3 +3777,13 @@ Phase S is complete when ALL of the following are true:
 | SVM-S2 | Full CRUD UI — WHAT (question builder: add/remove/reorder, 8 question types, options editor, scale labels, sub-text) / WHO (all/time_cohort/behavioral: signup dates, min sessions, min apps, plan tier, days since signup) / WHEN (page_navigation/cron/event/behavioral: cron presets, event dropdown, metric+operator+value) / WHERE (overlay+page checkboxes, merch+page+position, email, SMS, priority). Create/edit modal saves to EF. 64 tests. | ✅ | v10.30 |
 | SVM-S3 | Engine Rewiring — Overlay reads placement_config.overlay.pages for page-level filtering. matchesAudience handles all/time_cohort/behavioral from audience_config. survey.html async resolveVersionAsync fetches questions JSONB from DB (fallback hardcoded). send-survey-invite filters by time_cohort (DB-level) + behavioral (app-level). 19 tests. | ✅ | v10.31 |
 | SVM-S4 | Analytics + Response Viewer + Close — EF: analytics (total/7d/30d counts, credits, channel breakdown), responses (paginated, anonymized email, credits per response), export_csv (flattened JSONB→CSV columns). Admin UI: stat cards, channel breakdown, response drill-down with expand/collapse, load more, CSV download. 35 tests. FB-SURVEY-ADMIN-001 COMPLETE. | ✅ | v10.32 |
+
+## FB-CHAT-002: Chat Mode Phase 2 — Guided Intake Wizard
+
+**Spec:** POD3_HANDOFF_ChatModePhase2.docx | **Priority:** High — Primary UX differentiator | **Effort:** 3 sessions
+
+| Session | Scope | Status | Notes |
+|---------|-------|--------|-------|
+| FB-CHAT-002-A | Wizard UI + Step Definitions — 7 wizard steps with input widgets (card selectors, pill inputs, location autocomplete, dual-handle salary slider, textarea), progress bar, navigation (Next/Back/Skip), keyboard shortcuts (Enter/Escape), review screen with editable prompt + answer summary, prompt assembly per spec §7, mode toggle 3rd segment (Guided), chat empty state entry point, new user default, CSS (cards/pills/slider/progress/review/responsive). Addendum A resolved: is_us_job is dead code. 112 tests. | ✅ | v10.33 |
+| FB-CHAT-002-B | Backend Wiring + Save/Edit + Result Presentation — Schema migration (source + wizard_answers on saved_prompts), chat-job-search EF editorial commentary, prompt-to-filter extraction, save dialog auto-open, wizard re-entry with pre-fill, upsert on re-submit, wand icon for wizard prompts, PostHog events. | 🔲 | |
+| FB-CHAT-002-C | Polish + Hardening + CI/CD — Mobile responsive polish, edge case handling, validation UX, keyboard accessibility, CI/CD hardening, PostHog dashboard, EF latency monitoring, freeform chat regression, version bump + deploy. | 🔲 | |

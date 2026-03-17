@@ -86,6 +86,10 @@ function initChatMode() {
   if (filtersBtn) filtersBtn.addEventListener('click', function() { setSearchMode('filters'); });
   if (chatBtn) chatBtn.addEventListener('click', function() { setSearchMode('chat'); });
 
+  // FB-CHAT-002: Guided mode toggle
+  var guidedBtn = toggle.querySelector('[data-mode="guided"]');
+  if (guidedBtn) guidedBtn.addEventListener('click', function() { setSearchMode('guided'); });
+
   // Init chat input handlers
   var chatInput = document.getElementById('chat-input');
   var chatSendBtn = document.getElementById('chat-send-btn');
@@ -205,10 +209,12 @@ function setSearchMode(mode) {
 
   var filtersBtn = toggle.querySelector('[data-mode="filters"]');
   var chatBtn = toggle.querySelector('[data-mode="chat"]');
+  var guidedBtn = toggle.querySelector('[data-mode="guided"]');
 
-  // Update toggle state
-  if (filtersBtn) filtersBtn.classList.toggle('active', !_chatMode);
-  if (chatBtn) chatBtn.classList.toggle('active', _chatMode);
+  // Update toggle state — all three modes
+  if (filtersBtn) filtersBtn.classList.toggle('active', mode === 'filters');
+  if (chatBtn) chatBtn.classList.toggle('active', mode === 'chat');
+  if (guidedBtn) guidedBtn.classList.toggle('active', mode === 'guided');
 
   // GS-SETUP-V2: Update AI CTA label for current mode
   var aiCtaTitle = document.getElementById('ai-cta-title');
@@ -221,6 +227,25 @@ function setSearchMode(mode) {
   // Crossfade panels
   var filterPanel = document.getElementById('filter-panel-wrap');
   var chatPanel = document.getElementById('chat-panel');
+  var wizPanel = document.getElementById('wizard-panel');
+
+  // FB-CHAT-002: Guided mode — show wizard, hide others
+  if (mode === 'guided') {
+    if (filterPanel) { filterPanel.style.display = 'none'; filterPanel.style.opacity = '0'; }
+    if (chatPanel) { chatPanel.style.display = 'none'; chatPanel.style.opacity = '0'; }
+    if (wizPanel) { wizPanel.style.display = ''; }
+    if (typeof window._wizOpen === 'function') window._wizOpen('toggle');
+    if (window.posthog) {
+      try { posthog.capture('chat_mode_toggled', { mode: mode }); } catch(e) { reportError('chat:chat', e); }
+    }
+    return;
+  }
+
+  // Hide wizard when switching to filters or chat
+  if (wizPanel) {
+    wizPanel.style.display = 'none';
+    if (typeof window._wizClose === 'function') window._wizClose();
+  }
 
   if (filterPanel && chatPanel) {
     if (_chatMode) {
