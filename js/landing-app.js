@@ -596,20 +596,6 @@ document.addEventListener('DOMContentLoaded', function() {
       fetchLandingStats();
     })();
 
-    // ============================================================
-    // SOCIAL PROOF — Survey results (P13-11)
-    // ============================================================
-    (async () => {
-      // LP-RESTRUCTURE-S3: Social proof bar is now data-backed (scanning stats).
-      // Show bar immediately — stats are hydrated by applyStats above.
-      // The bar shows: career pages count, active jobs count, companies hiring count.
-      try {
-        const bar = document.getElementById('social-proof-bar');
-        if (bar) bar.classList.remove('hidden');
-      } catch (e) {
-        bjError('social_proof_error', e);
-      }
-    })();
 
     // ============================================================
     // PREVIEW — Try Before You Buy

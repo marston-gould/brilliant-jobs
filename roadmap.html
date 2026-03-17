@@ -11,7 +11,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v10.43"></script>
+  <script src="/js/version.js?v=v10.44"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -2371,6 +2371,7 @@ const features = [
 { s: 'done', b: 'scaling', n: 'SPA-CUT-3: All 14 Remaining Hooks Bridge Elimination', d: 'v10.41: Settings 5→0, Tuning 6→0, Integrations 6→0, Chat 6→0, Referrals 3→0, Admin Overview/Jobs/Content/SEO/Cron/Agents/Monitoring/KillSwitch/Compliance all→0. Batch Python transform. ALL 22 hooks standalone. 93 tests.', p: 100, e: '1 session' },
 { s: 'done', b: 'scaling', n: 'SPA-CUT-4/5: SUPERSEDED — absorbed into SPA-CUT-3 batch transform', d: 'All dashboard + admin hooks cut in CUT-3 via Python batch transform.', p: 100, e: '0 sessions' },
 { s: 'done', b: 'scaling', n: 'SPA-CUT-FINAL: Legacy HTML Elimination', d: 'v10.42: dashboard.html (4,378 lines) + admin.html (1,318 lines) archived to legacy/. 6 legacy scripts removed from SPA. Vercel rewrites /dashboard + /admin → SPA. CSP unsafe-inline removed (SHA-256 only). SPA is sole authenticated surface. 46 tests.', p: 100, e: '1 session' },
+{ s: 'done', b: 'post-launch', n: 'HP-STATS-CLEANUP: Homepage Stats Cleanup', d: 'v10.44: Renamed "Career Pages Monitored" → "Companies in Database". Removed "Companies Hiring Now" stat (redundant). Removed social proof bar (blue floating box — off-brand, duplicated stats). Dead social proof IIFE removed from landing-app.js.', p: 100, e: '1 session' },
 { s: 'done', b: 'post-launch', n: 'SPEC-ADMIN-002-REM: Spec Gap Remediation', d: 'Closed all 18 missing items from spec review. User List: country/date/status filters, suspend, impersonate (audit-first), delete account (email re-entry), cancel sub from detail, Applications+Activity tabs. Cohort: duplicate, Stripe validation, entitlements sub-form. Billing/Audit: CSV exports. Filters: weight warning. Prompts: version history panel + test runner. 66 tests. v9.84.', p: 100, e: '1 session' },
 { s: 'done', b: 'post-launch', n: 'SPEC-ADMIN-002-S2: Admin Control Panel — Billing, Filter/Prompt, Audit', d: 'admin-billing-manager (#136): subscription list+cancel+discount, global ledger. admin-filter-prompt (#137): filter CRUD + prompt CRUD (versioned, variable validation). admin-audit-log (#138): read-only paginated log. JS panels for all 3. admin.js subpages. COHORT GAP-14: rewrite.js 402 shows actual cost. 87 tests. v9.84.', p: 100, e: '1 session' },
 { s: 'done', b: 'post-launch', n: 'SPEC-ADMIN-002-S1: Admin Control Panel — Foundation', d: 'admin_audit_log (immutable, RLS), prompt_templates, filter_config, cohort_tiers.is_archived. admin-user-manager EF (#133), admin-cohort-manager EF (#134), admin-credit-action EF (#135). JS: User Manager (list+search+drawer+3 tabs+credit action), Cohort Manager (list+editor+archive). admin.js cohort-manager subpage. 93 tests. v9.84.', p: 100, e: '1 session' },

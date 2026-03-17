@@ -52,7 +52,14 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FB-SURVEY-ADMIN-001 SVM-S4** — Analytics + Response Viewer + Close ✅ — **FB-SURVEY-ADMIN-001 COMPLETE**
+**HP-STATS-CLEANUP** — Homepage Stats Cleanup ✅
+- v10.43→v10.44
+- **index.html:** "Career Pages Monitored" stat label renamed to "Companies in Database" (accurately reflects `ats_companies` total count, not just pages scanned). "Companies Hiring Now" stat block removed (redundant — active jobs count already conveys hiring activity). Social proof bar (`#social-proof-bar`) removed — off-brand blue floating box that duplicated stats bar content.
+- **js/landing-app.js:** Dead social proof IIFE removed (lines that called `document.getElementById('social-proof-bar')`). All removed element references were already guarded with `if (el)` checks — no silent fails introduced.
+- No migrations. No EF changes. No new tests needed (pure DOM/label cleanup).
+- Bundles rebuilt: `dist/dashboard.min.js` v10.44 ✅. All cache busters updated ✅.
+
+**Previous: FB-SURVEY-ADMIN-001 SVM-S4** — Analytics + Response Viewer + Close ✅ — **FB-SURVEY-ADMIN-001 COMPLETE**
 - v10.31→v10.32
 - **admin-survey-manager EF extended with 3 new actions:**
   - `analytics`: total/7d/30d response counts, total+avg credits granted, channel breakdown from notification_log. Returns survey_version, total, last_7d, last_30d, total_credits, avg_credits, channel_breakdown.
