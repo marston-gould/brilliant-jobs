@@ -934,7 +934,7 @@ const features = [
   { s: 'todo', n: 'Product health dashboard', d: 'Search quality (avg relevance, 0-click %), process ease, data value ratings, churn risk alerts — all from survey + behavioral data', b: 'needs-users', p: 14, b: 'post-launch', e: '6h'},
   { s: 'todo', n: 'Tier migration analytics', d: 'What triggers Free→Pro? What predicts Premium? Churn reasons by tier. Feature-level conversion attribution.', b: 'needs-users', p: 14, b: 'post-launch', e: '4h'},
   { s: 'todo', n: 'Adaptive upgrade nudges', d: 'Context-aware: Director+ searcher → Premium pitch. Ghost score user → accountability features. High-CoL city → salary negotiation data.', b: 'needs-users', p: 14, b: 'post-launch', e: '4h'},
-  { s: 'todo', n: 'Feature satisfaction delta analysis', d: '"If we build X, expected retention lift Y%." Combine survey priority rankings with usage data for build/kill decisions.', b: 'needs-users', p: 14, b: 'post-launch', e: '4h'},
+  { s: 'wont-do', n: 'Feature satisfaction delta analysis', d: 'WON\'T DO. "If we build X, expected retention lift Y%." Combine survey priority rankings with usage data for build/kill decisions.', b: 'wont-do', p: 14, e: '4h'},
 
   // ATS Board Health — Feb 19 2026
   { s: 'done', n: 'ATS board health: last_http_status column', d: 'Add last_http_status INT and last_refresh_at TIMESTAMPTZ columns to ats_companies. Update refresh-jobs Edge Function to record HTTP response status on every board refresh attempt (200=healthy, 4xx=dead, 5xx=server error, 0=timeout). Composite index on (source, last_http_status, job_count) for fast admin queries. Backfill 238 known dead boards from Feb 16 validation.', p: 14 },
