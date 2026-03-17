@@ -1,35 +1,16 @@
 // ============================================================
-// useBilling — Billing data hook (SA-017)
+// useBilling — Billing data hook (SA-017 → SPA-CUT-2)
 // ============================================================
-// Bridges to legacy billing.js via window.* globals.
-// Components consume billing data through this hook only.
+// Standalone — reads credit balance via get-user-balance EF,
+// pricing from Supabase. Zero window.* dependencies.
 // ============================================================
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
+import { supabase, safeReadLS, callGateway, getUser } from '@lib/supabase';
 
-// ── Types ────────────────────────────────────────────────────
-
-export interface PricingTier {
-  name: string;
-  price: number;
-  credits: number;
-  features: string[];
-  current: boolean;
-}
-
-export interface UsageEntry {
-  date: string;
-  type: string;
-  credits: number;
-  description: string;
-}
-
-export interface AutoRefillConfig {
-  enabled: boolean;
-  threshold: number;
-  amount: number;
-  paymentMethod?: string;
-}
+export interface PricingTier { name: string; price: number; credits: number; features: string[]; current: boolean; }
+export interface UsageEntry { date: string; type: string; credits: number; description: string; }
+export interface AutoRefillConfig { enabled: boolean; threshold: number; amount: number; paymentMethod?: string; }
 
 interface BillingState {
   loading: boolean;
@@ -52,119 +33,100 @@ type Action =
   | { type: 'LOADED'; data: Partial<BillingState> }
   | { type: 'ERROR'; error: string };
 
-const initialState: BillingState = {
-  loading: true,
-  error: null,
-  creditBalance: 0,
-  currentPlan: 'free',
-  planPrice: 0,
-  billingPeriod: 'monthly',
-  periodEnd: '',
-  usageHistory: [],
-  burnRate: 0,
-  daysRemaining: 0,
-  tiers: [],
-  autoRefill: { enabled: false, threshold: 0, amount: 0 },
-  lowCreditAlert: false,
-  isAdmin: false,
+const initial: BillingState = {
+  loading: true, error: null, creditBalance: 0, currentPlan: 'free', planPrice: 0,
+  billingPeriod: 'monthly', periodEnd: '', usageHistory: [], burnRate: 0,
+  daysRemaining: 999, tiers: [], autoRefill: { enabled: false, threshold: 0, amount: 0 },
+  lowCreditAlert: false, isAdmin: false,
 };
 
 function reducer(state: BillingState, action: Action): BillingState {
   switch (action.type) {
-    case 'LOADED':
-      return { ...state, loading: false, error: null, ...action.data };
-    case 'ERROR':
-      return { ...state, loading: false, error: action.error };
-    default:
-      return state;
+    case 'LOADED': return { ...state, loading: false, error: null, ...action.data };
+    case 'ERROR': return { ...state, loading: false, error: action.error };
+    default: return state;
   }
 }
 
-// ── Hook ─────────────────────────────────────────────────────
+export interface BillingActions {
+  refresh: () => Promise<void>;
+  openPricing: () => void;
+  openBillingPortal: () => void;
+  saveAutoRefill: (config: AutoRefillConfig) => void;
+}
 
-export function useBilling(): [BillingState, {
-  openCheckout: (mode: string, tier?: string) => void;
-  openPortal: () => void;
-  setAutoRefill: (config: Partial<AutoRefillConfig>) => void;
-  buyCredits: (qty: number) => void;
-}] {
-  const [state, dispatch] = useReducer(reducer, initialState);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+export function useBilling(): [BillingState, BillingActions] {
+  const [state, dispatch] = useReducer(reducer, initial);
+  const mountedRef = useRef(true);
 
-  const loadData = useCallback(() => {
+  const refresh = useCallback(async () => {
     try {
-      const bj = (window as any);
-      const balance = typeof bj.getUserCredits === 'function' ? bj.getUserCredits() : (bj._creditBalance || 0);
-      const pricing = bj._billingPricing || {};
-      const history = Array.isArray(bj._billingHistory) ? bj._billingHistory : [];
-      const autoRefill = bj._autoRefillConfig || { enabled: false, threshold: 0, amount: 0 };
-      const tiers = Array.isArray(pricing.tiers) ? pricing.tiers : [];
-      const burnRate = bj._burnRate || 0;
-      const daysRemaining = burnRate > 0 ? Math.floor(balance / burnRate) : 999;
+      const user = await getUser();
+      if (!user) { dispatch({ type: 'ERROR', error: 'Not authenticated' }); return; }
 
-      dispatch({
-        type: 'LOADED',
-        data: {
+      // Get balance via EF
+      let balance = 0;
+      try {
+        const bal = await callGateway<any>('get-user-balance', undefined, { method: 'GET', timeout: 10000 });
+        balance = bal?.total || 0;
+      } catch { /* fallback to 0 */ }
+
+      // Get pricing from DB
+      const { data: pricing } = await supabase.from('pricing_defaults')
+        .select('*').order('display_order');
+
+      const { data: profile } = await supabase.from('profiles')
+        .select('role, user_data').eq('id', user.id).single();
+
+      const applySettings = safeReadLS<any>('bj_apply_settings', {});
+      const autoRefill = safeReadLS<AutoRefillConfig>('bj_auto_refill', { enabled: false, threshold: 0, amount: 0 });
+
+      const tiers: PricingTier[] = (pricing || []).map((t: any) => ({
+        name: t.tier, price: (t.subscription_price_cents || 0) / 100,
+        credits: t.included_credits || 0,
+        features: t.features ? Object.keys(t.features) : [],
+        current: profile?.user_data?.cohort_tier === t.tier || (t.tier === 'free' && !profile?.user_data?.cohort_tier),
+      }));
+
+      const currentTier = tiers.find(t => t.current);
+
+      if (mountedRef.current) {
+        dispatch({ type: 'LOADED', data: {
           creditBalance: balance,
-          currentPlan: pricing.currentPlan || 'free',
-          planPrice: pricing.price || 0,
-          billingPeriod: pricing.period || 'monthly',
-          periodEnd: pricing.periodEnd || '',
-          usageHistory: history,
-          burnRate,
-          daysRemaining,
+          currentPlan: currentTier?.name || 'free',
+          planPrice: currentTier?.price || 0,
           tiers,
           autoRefill,
           lowCreditAlert: balance < 100,
-          isAdmin: bj._bjUserRole === 'admin',
-        },
-      });
-    } catch (e) {
-      dispatch({ type: 'ERROR', error: String(e) });
+          isAdmin: profile?.role === 'admin',
+        }});
+      }
+    } catch (err) {
+      if (mountedRef.current) dispatch({ type: 'ERROR', error: (err as Error).message });
     }
+  }, []);
+
+  const openPricing = useCallback(() => {
+    // Navigate to pricing or open modal — SPA handles routing
+    window.location.hash = '#subscription';
+  }, []);
+
+  const openBillingPortal = useCallback(async () => {
+    try {
+      const result = await callGateway<{ url: string }>('create-portal-session', {}, { timeout: 15000 });
+      if (result?.url) window.open(result.url, '_blank');
+    } catch { /* non-fatal */ }
+  }, []);
+
+  const saveAutoRefill = useCallback((config: AutoRefillConfig) => {
+    try { localStorage.setItem('bj_auto_refill', JSON.stringify(config)); } catch { /* non-fatal */ }
   }, []);
 
   useEffect(() => {
-    loadData();
-    pollRef.current = setInterval(loadData, 3000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [loadData]);
+    mountedRef.current = true;
+    refresh();
+    return () => { mountedRef.current = false; };
+  }, [refresh]);
 
-  const openCheckout = useCallback((mode: string, tier?: string) => {
-    try {
-      const fn = (window as any).openPricingModal;
-      if (typeof fn === 'function') fn(mode, tier);
-    } catch (e) {
-      console.warn('[useBilling] openCheckout failed:', e);
-    }
-  }, []);
-
-  const openPortal = useCallback(() => {
-    try {
-      const fn = (window as any).openBillingPortal || (window as any)._openBillingPortal;
-      if (typeof fn === 'function') fn();
-    } catch (e) {
-      console.warn('[useBilling] openPortal failed:', e);
-    }
-  }, []);
-
-  const setAutoRefill = useCallback((config: Partial<AutoRefillConfig>) => {
-    try {
-      const fn = (window as any)._saveAutoRefill;
-      if (typeof fn === 'function') fn(config);
-    } catch (e) {
-      console.warn('[useBilling] setAutoRefill failed:', e);
-    }
-  }, []);
-
-  const buyCredits = useCallback((qty: number) => {
-    try {
-      const fn = (window as any).openPricingModal;
-      if (typeof fn === 'function') fn('credits', null, qty);
-    } catch (e) {
-      console.warn('[useBilling] buyCredits failed:', e);
-    }
-  }, []);
-
-  return [state, { openCheckout, openPortal, setAutoRefill, buyCredits }];
+  return [state, { refresh, openPricing, openBillingPortal, saveAutoRefill }];
 }

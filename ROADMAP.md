@@ -3802,7 +3802,7 @@ Phase S3 (SA-013–SA-017) built the SPA scaffold with React bridge hooks to leg
 | Session | Scope | Status | Notes |
 |---------|-------|--------|-------|
 | SPA-CUT-1 | Feed + Pipeline + Keywords — Bridge Elimination. Standalone Supabase client (src/app/lib/supabase.ts). Provider cut from window.BJ. Feed: 15 window refs → 0 (localStorage reads, module caches, standalone feature flags, direct Supabase save/unsave/hide/apply). Pipeline: 19 win() refs → 0 (direct user_pipeline + pipeline_signals queries, module-level caches, async getUserId). Keywords: 7 win() refs → 0 (full rewrite — localStorage for resumes/readiness, callGateway for score-resume EF). @lib path alias added. PipelineMeta type extended. SPA builds clean (51KB Feed, 30KB Pipeline, 13KB Keywords gzip). 61 tests. | ✅ | v10.39 |
-| SPA-CUT-2 | Resumes + Applications + Notifications + Stats + Billing — bridge elimination | 🔲 | |
+| SPA-CUT-2 | Resumes + Applications + Stats + Billing + Admin Notifications — Bridge Elimination. Resumes: 15 window refs → 0 (localStorage CRUD, callGateway for AI scoring, Supabase Storage download). Applications: 5 → 0 (localStorage queue/history, direct Supabase for notif log/prefs). Stats: 6 → 0 (direct MV queries, no DOM scraping). Billing: 5 → 0 (callGateway for balance + portal, Supabase for pricing). Admin Notifications: 3 → 0 (direct Supabase for templates/campaigns/log). SPA builds clean. 58 tests. | ✅ | v10.40 |
 | SPA-CUT-3 | Settings + Tuning + Integrations + Interview Prep + LinkedIn + Browsers | 🔲 | |
 | SPA-CUT-4 | Get Started (Home) + Chat + Referral section | 🔲 | |
 | SPA-CUT-5 | Admin surface standalone (64 subpages, 54 modules) | 🔲 | |

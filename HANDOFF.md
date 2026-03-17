@@ -3894,7 +3894,46 @@ None.
 
 ## Last Completed Session
 
-**SPA-CUT-1** — Feed + Pipeline + Keywords Bridge Elimination ✅
+**SPA-CUT-2** — Resumes + Applications + Stats + Billing + Admin Notifications Bridge Elimination ✅
+- v10.39→v10.40
+- **useResumes.ts — 15 window refs → 0 (full rewrite):**
+  - `loadResumesFromLS()` / `saveResumesToLS()` — direct localStorage for all resume CRUD
+  - `toggleFilter` / `setLevel` / `archiveResume` / `unarchiveResume` / `deleteResume` / `renameResume` — all localStorage read-modify-write
+  - `downloadResume` — direct `supabase.storage.from('resumes').download()`
+  - `rescoreAI` — `callGateway('score-resume', {mode:'single', resume_text})`
+  - `getLevels` — `safeReadLS('bj_tuning', {}).levelHierarchy`
+  - Readiness cache from `safeReadLS('bj_readiness', null)`
+  - TODO stubs: `launchRewrite`, `uploadResume`, `replacePlaceholder`, `reUpload` (need standalone React implementation)
+- **useApplications.ts — 5 window refs → 0:**
+  - Queue/history from `safeReadLS('bj_app_queue'/'bj_app_history')`
+  - `removeFromQueue` — localStorage splice + write
+  - `addManual` — localStorage push + write
+  - `clearHistory` — `safeWriteLS('bj_app_history', [])`
+  - `loadNotifPrefs` — direct `supabase.from('notification_preferences')`
+  - `loadNotifLog` — direct `supabase.from('notification_log')` with user filter
+  - `getQueueStats` — computed from localStorage queue
+  - Removed: `document.getElementById('a-process-queue').click()` DOM manipulation
+- **useStats.ts — 6 window refs → 0 (full rewrite):**
+  - Direct `supabase.from('mv_job_feed_counts')` + `supabase.from('mv_source_breakdown')` MV queries
+  - Removed: `document.querySelectorAll('.stats-card')` DOM scraping + `textContent` reads
+  - Removed: `initStatsPage` / `_statsToggleFilter` / `refreshStatsCharts` bridge calls
+  - Saved filters from `safeReadLS('bj_saved_filters')` for comparison pills
+- **useBilling.ts — 5 window refs → 0 (full rewrite):**
+  - `callGateway('get-user-balance')` for credit balance
+  - `supabase.from('pricing_defaults')` for tier pricing
+  - `supabase.from('profiles')` for user role + cohort tier
+  - `callGateway('create-portal-session')` for Stripe billing portal
+  - Auto-refill config from localStorage
+  - Removed: `_openBillingPortal` / `openPricingModal` / `_saveAutoRefill` bridge calls
+- **useNotifications.ts (admin) — 3 window refs → 0 (full rewrite):**
+  - Direct `supabase.from('notification_templates')` + `supabase.from('survey_campaigns')`
+  - 24h stats from `supabase.from('notification_log')` with count queries
+  - Removed: `loadNotificationsTab` bridge call
+- **Tests:** 58 validation tests (tests/spa-cut-2-bridge-elimination.test.js) — all passing.
+- **Modified:** 5 hook files rewritten, dist/* rebuilt, ROADMAP.md, roadmap.html.
+- **Created:** tests/spa-cut-2-bridge-elimination.test.js.
+
+**Previous: SPA-CUT-1** — Feed + Pipeline + Keywords Bridge Elimination ✅
 - v10.38→v10.39
 - **src/app/lib/supabase.ts (NEW):** Standalone Supabase client — `createClient` with persistSession+autoRefreshToken, shares auth session with legacy via same localStorage key. Exports: `supabase` (singleton client), `getSession()`, `getUser()`, `getAccessToken()`, `callGateway<T>(route, body?, options?)` (authenticated gateway caller with timeout+abort), `isFeatureEnabled(flagKey, default)` (deterministic bucket based on user ID hash), `safeReadLS<T>(key, fallback)` (handles enc: PII prefix), `safeWriteLS(key, value)`, `GATEWAY_URL`. Zero window.BJ dependency.
 - **@lib path alias:** Added to vite.config.js (`'@lib': resolve(__dirname, 'src/app/lib')`) and tsconfig.json (`"@lib/*": ["src/app/lib/*"]`).
@@ -3984,23 +4023,19 @@ None.
 
 ## Next Session
 
-**SPA-CUT-2** — Resumes + Applications + Notifications + Stats + Billing Bridge Elimination
+**SPA-CUT-3** — Settings + Tuning + Integrations + Interview Prep + LinkedIn + Browsers + Chat + Referrals + Home
 
 **Entry Gate:**
-- SPA-CUT-1 complete: Feed, Pipeline, Keywords hooks fully standalone ✅
-- `src/app/lib/supabase.ts` available for all hooks to import
-- SPA builds clean
+- SPA-CUT-2 complete ✅
+- 8 hooks cut (Feed, Pipeline, Keywords, Resumes, Applications, Stats, Billing, Admin Notifications)
 
 **Scope:**
-- Cut `useResumes.ts` (15 win() calls → direct Supabase for resume CRUD, AI scoring, rewrite, archive, filter assignment)
-- Cut `useApplications.ts` (5 win() calls → direct Supabase for pending_applications, notification log, preferences)  
-- Cut `useStats.ts` (6 window refs → direct MV queries for job counts, source breakdown, salary distributions)
-- Cut `useBilling.ts` (5 window refs → direct Supabase for credit balance, pricing, Stripe, auto-refill)
-- Cut `useNotifications.ts` (3 window refs → direct Supabase for notification_log, preferences)
+- Cut all remaining dashboard hooks: useSettings (5), useTuning (6), useIntegrations (6), useChat (6), useReferrals (3)
+- Cut all remaining admin hooks: useOverview (3), useJobs (3), useContent (3), useSeo (4), useCron (4), useAgents (3), useMonitoring (3), useKillswitch (4), useCompliance (5)
 
 **Exit Gate:**
-- Zero `(window as any)` or `win()` in all 5 hooks (code-only, excluding comments)
-- SPA builds clean (`npm run build:spa`)
+- Zero window refs in all 22 hooks
+- SPA builds clean
 - Tests passing. Three-file close.
 
 Pending manual steps (Marston):
@@ -4406,7 +4441,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v10.39`** | **SPA-CUT-1: Feed + Pipeline + Keywords bridge elimination. Standalone Supabase client. 41 window refs → 0. 61 tests.** |
+| **Product (BJ_VERSION)** | **`v10.40`** | **SPA-CUT-2: Resumes + Applications + Stats + Billing + Admin Notif bridge elimination. 34 window refs → 0. 58 tests.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

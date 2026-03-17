@@ -1,11 +1,12 @@
 // ============================================================
-// useStats — Stats data hook (SA-017)
+// useStats — Stats data hook (SA-017 → SPA-CUT-2)
 // ============================================================
-// Bridges to legacy stats.js. ECharts are rendered by legacy code
-// into container divs. This hook exposes filter/stat card data.
+// Standalone — queries materialized views directly via Supabase.
+// Zero window.* dependencies.
 // ============================================================
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
+import { supabase, safeReadLS } from '@lib/supabase';
 
 export interface StatCard {
   label: string;
@@ -34,12 +35,8 @@ type Action =
   | { type: 'ERROR'; error: string };
 
 const initialState: StatsState = {
-  loading: true,
-  error: null,
-  cards: [],
-  filters: [],
-  compareMode: false,
-  chartsReady: false,
+  loading: true, error: null, cards: [], filters: [],
+  compareMode: false, chartsReady: false,
 };
 
 function reducer(state: StatsState, action: Action): StatsState {
@@ -50,105 +47,77 @@ function reducer(state: StatsState, action: Action): StatsState {
   }
 }
 
-export function useStats(): [StatsState, {
+export interface StatsActions {
+  refresh: () => Promise<void>;
   toggleFilter: (idx: number) => void;
   toggleCompare: () => void;
   refreshCharts: () => void;
-  initCharts: (containerIds: Record<string, HTMLDivElement | null>) => void;
-}] {
+}
+
+export function useStats(): [StatsState, StatsActions] {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const initRef = useRef(false);
+  const mountedRef = useRef(true);
 
-  const loadData = useCallback(() => {
+  // SPA-CUT-2: Load stats from materialized views directly
+  const refresh = useCallback(async () => {
     try {
-      const bj = (window as any);
-      const savedFilters = Array.isArray(bj.savedFilters) ? bj.savedFilters : [];
-      const filterColors = bj.filterColors || {};
-      const statsSelectedFilters: string[] = (() => {
-        try { return JSON.parse(localStorage.getItem('bj_stats_filters') || '["__all__"]'); } catch { return ['__all__']; }
-      })();
+      // Job feed counts MV
+      const { data: counts } = await supabase.from('mv_job_feed_counts')
+        .select('*').limit(1).single();
 
-      const filters: FilterPill[] = [
-        { label: 'All Filters', color: '#6366f1', selected: statsSelectedFilters.includes('__all__'), idx: -1 },
-        ...savedFilters.map((f: any, i: number) => ({
-          label: f.name || f.label || `Filter ${i + 1}`,
-          color: filterColors[i] || '#6366f1',
-          selected: statsSelectedFilters.includes(String(i)),
-          idx: i,
-        })),
-      ];
+      // Source breakdown MV
+      const { data: sources } = await supabase.from('mv_source_breakdown')
+        .select('*');
 
-      // Read stat cards from DOM if rendered by legacy code
-      const cardEls = document.querySelectorAll('.stats-card');
       const cards: StatCard[] = [];
-      cardEls.forEach((el) => {
-        const label = el.querySelector('.stats-card-label')?.textContent || '';
-        const value = el.querySelector('.stats-card-value')?.textContent || '';
-        const sub = el.querySelector('.stats-card-sub')?.textContent || undefined;
-        if (label) cards.push({ label, value, sub });
-      });
+      if (counts) {
+        cards.push({ label: 'Total Open Jobs', value: String(counts.total_open || 0) });
+        cards.push({ label: 'New Today', value: String(counts.new_today || 0) });
+        cards.push({ label: 'Companies', value: String(counts.total_companies || 0) });
+      }
+      if (sources) {
+        const topSource = sources.sort((a: any, b: any) => (b.job_count || 0) - (a.job_count || 0))[0];
+        if (topSource) cards.push({ label: 'Top Source', value: topSource.source_name, sub: `${topSource.job_count} jobs` });
+      }
 
-      dispatch({
-        type: 'LOADED',
-        data: {
-          cards: cards.length > 0 ? cards : state.cards,
-          filters,
-          compareMode: !!bj.statsCompareMode,
-          chartsReady: !!bj.statsInitialized,
-        },
-      });
-    } catch (e) {
-      dispatch({ type: 'ERROR', error: String(e) });
+      // Saved filters for comparison
+      const savedFilters = safeReadLS<any[]>('bj_saved_filters', []);
+      const filters: FilterPill[] = savedFilters.map((f: any, i: number) => ({
+        label: f.name || `Filter ${i + 1}`,
+        color: f.color || '#6366f1',
+        selected: !!f.checked,
+        idx: i,
+      }));
+
+      if (mountedRef.current) {
+        dispatch({ type: 'LOADED', data: { cards, filters, chartsReady: true } });
+      }
+    } catch (err) {
+      if (mountedRef.current) {
+        dispatch({ type: 'ERROR', error: (err as Error).message || 'Failed to load stats' });
+      }
     }
   }, []);
-
-  useEffect(() => {
-    // Trigger legacy init on first mount
-    if (!initRef.current) {
-      initRef.current = true;
-      try {
-        const fn = (window as any).initStatsPage;
-        if (typeof fn === 'function') fn();
-      } catch {}
-    }
-    loadData();
-    pollRef.current = setInterval(loadData, 3000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [loadData]);
 
   const toggleFilter = useCallback((idx: number) => {
-    try {
-      const fn = (window as any)._statsToggleFilter;
-      if (typeof fn === 'function') fn(idx);
-      else {
-        // Fallback: manipulate localStorage directly
-        const current: string[] = JSON.parse(localStorage.getItem('bj_stats_filters') || '["__all__"]');
-        const key = idx === -1 ? '__all__' : String(idx);
-        const updated = current.includes(key) ? current.filter(k => k !== key) : [...current.filter(k => k !== '__all__'), key];
-        localStorage.setItem('bj_stats_filters', JSON.stringify(updated.length ? updated : ['__all__']));
-      }
-    } catch {}
-  }, []);
+    dispatch({ type: 'LOADED', data: {
+      filters: state.filters.map((f, i) => i === idx ? { ...f, selected: !f.selected } : f),
+    }});
+  }, [state.filters]);
 
   const toggleCompare = useCallback(() => {
-    try { const bj = (window as any); bj.statsCompareMode = !bj.statsCompareMode; } catch {}
-  }, []);
+    dispatch({ type: 'LOADED', data: { compareMode: !state.compareMode } });
+  }, [state.compareMode]);
 
   const refreshCharts = useCallback(() => {
-    try {
-      const fn = (window as any).refreshStatsCharts;
-      if (typeof fn === 'function') fn();
-    } catch {}
-  }, []);
+    refresh();
+  }, [refresh]);
 
-  const initCharts = useCallback((_containers: Record<string, HTMLDivElement | null>) => {
-    // Charts are initialized by legacy code into the existing DOM
-    try {
-      const fn = (window as any).initStatsPage;
-      if (typeof fn === 'function') fn();
-    } catch {}
-  }, []);
+  useEffect(() => {
+    mountedRef.current = true;
+    refresh();
+    return () => { mountedRef.current = false; };
+  }, [refresh]);
 
-  return [state, { toggleFilter, toggleCompare, refreshCharts, initCharts }];
+  return [state, { refresh, toggleFilter, toggleCompare, refreshCharts }];
 }
