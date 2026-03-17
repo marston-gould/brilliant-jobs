@@ -4506,6 +4506,8 @@ All 5 REM sessions (REM-001 through REM-005) completed 2026-03-08.
 | ESLint `\|\| true` removal | BI-07 | ✅ RESOLVED: BI-07-FIX. eslint.config.mjs rewritten (tests/vendor/state.js excluded, no-undef off globally). 16 empty catches fixed. 5,843→0 errors. CI gate enforcing at --max-warnings 600. | Closed 2026-03-14 |
 | SA-022 stale test assertions | BI-07 | ✅ RESOLVED: BI-07-FIX. 16 test files bulk .js→.ts (68 lines). cs021 handler/auth/size fixes. 129→53 failures (remaining 53 are pre-existing structural from FB-TRIAL/FA/GHOST sessions, not .js→.ts). | Closed 2026-03-14 |
 | Extension build script | BI-07 | ✅ RESOLVED: BI-07-FIX. export/import stripping in transformSource() + bundle+iife fallback. killSwitch.ts missing brace fixed. Build succeeds: 62 files, 745→377KB. | Closed 2026-03-14 |
+| Referral impact reports | Roadmap Phase 11 | Needs referral system + user volume. SEO pages with original data from BJ user outcomes. | Post-launch |
+| Predictive acceptance likelihood | Roadmap Phase 14 | Needs data volume. Depends on ATS reverse-engineering data + application outcome history. | Post-launch |
 
 ---
 
