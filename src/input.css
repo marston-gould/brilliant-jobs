@@ -3810,3 +3810,13 @@
       .wiz-cards { grid-template-columns: 1fr; }
       .wiz-ai-header { font-size: 14px; }
     }
+
+    /* FB-CHAT-002-B: Editorial result cards */
+    .wiz-editorial-cards { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+    .wiz-editorial-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+    .wiz-ed-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+    .wiz-ed-company { font-size: 12px; color: var(--text-dim); margin-bottom: 8px; }
+    .wiz-ed-section { font-size: 12px; line-height: 1.5; color: var(--text); margin-bottom: 6px; }
+    .wiz-ed-label { font-weight: 600; color: var(--text-dim); }
+    .wiz-ed-fit { color: #16a34a; }
+    .wiz-ed-watch { color: #d97706; }

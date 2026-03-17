@@ -1444,7 +1444,7 @@ async function loadSavedPromptsFromDB() {
     if (!session.data.session) return;
 
     var token = session.data.session.access_token;
-    var resp = await fetch(SUPABASE_URL + '/rest/v1/saved_prompts?select=id,name,color_index,conversation,derived_filters,is_active,resume_id,created_at,updated_at&order=updated_at.desc&limit=50', {
+    var resp = await fetch(SUPABASE_URL + '/rest/v1/saved_prompts?select=id,name,color_index,conversation,derived_filters,is_active,resume_id,source,wizard_answers,created_at,updated_at&order=updated_at.desc&limit=50', {
       headers: {
         'Authorization': 'Bearer ' + token,
         'apikey': SUPABASE_KEY
@@ -1522,9 +1522,15 @@ function updateLoadedPromptIndicator() {
     var prompt = _savedPrompts.find(function(p) { return p.id === _currentPromptId; });
     if (prompt) {
       var color = PROMPT_COLORS[prompt.color_index || 0];
+      var editWizBtn = '';
+      // FB-CHAT-002-B: Show "Edit in Wizard" button for wizard-source prompts
+      if (prompt.source === 'wizard' && prompt.wizard_answers) {
+        editWizBtn = ' <button class="wiz-edit-in-wizard-btn" onclick="if(typeof _wizEditFromPrompt===\'function\'){setSearchMode(\'guided\');_wizEditFromPrompt(\'' + prompt.id + '\')}" style="font-size:10px;padding:2px 8px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--accent);cursor:pointer;margin-left:6px;font-weight:600;"><i data-lucide="wand-2" class="icon-xs icon-stroke" style="vertical-align:middle;margin-right:2px;"></i>Edit in Wizard</button>';
+      }
       indicator.innerHTML = '<span class="clp-dot" style="background:' + color + ';"></span>' +
-        '<span class="clp-name">' + escapeHtml(prompt.name) + '</span>';
+        '<span class="clp-name">' + escapeHtml(prompt.name) + '</span>' + editWizBtn;
       indicator.style.display = 'flex';
+      if (typeof window.refreshIcons === 'function') window.refreshIcons();
       return;
     }
   }
@@ -1552,6 +1558,8 @@ function renderSavedPromptsInFilterSelector() {
   _savedPrompts.forEach(function(prompt) {
     var color = PROMPT_COLORS[prompt.color_index || 0];
     var filterCount = prompt.derived_filters ? Object.keys(prompt.derived_filters).length : 0;
+    // FB-CHAT-002-B: wand icon for wizard-source prompts
+    var iconName = (prompt.source === 'wizard') ? 'wand-2' : 'message-square';
 
     var item = document.createElement('div');
     item.className = 'sf-item sf-item-prompt';
@@ -1560,15 +1568,20 @@ function renderSavedPromptsInFilterSelector() {
     item.innerHTML =
       '<div class="sf-item-left">' +
         '<div class="sf-color-dot" style="background:' + color + ';"></div>' +
-        '<i data-lucide="message-square" class="icon-xs icon-stroke" style="flex-shrink:0;margin-right:4px;" stroke="' + color + '"></i>' +
+        '<i data-lucide="' + iconName + '" class="icon-xs icon-stroke" style="flex-shrink:0;margin-right:4px;" stroke="' + color + '"></i>' +
         '<span class="sf-name">' + escapeHtml(prompt.name) + '</span>' +
         '<span class="sf-count">' + filterCount + '</span>' +
       '</div>';
 
     item.addEventListener('click', function() {
-      // Switch to chat mode and load this prompt
-      setSearchMode('chat');
-      setTimeout(function() { loadPrompt(prompt.id); }, 300);
+      // FB-CHAT-002-B: wizard prompts re-enter wizard, chat prompts use chat
+      if (prompt.source === 'wizard' && typeof window._wizEditFromPrompt === 'function') {
+        setSearchMode('guided');
+        setTimeout(function() { window._wizEditFromPrompt(prompt.id); }, 300);
+      } else {
+        setSearchMode('chat');
+        setTimeout(function() { loadPrompt(prompt.id); }, 300);
+      }
     });
 
     container.appendChild(item);

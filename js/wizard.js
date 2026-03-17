@@ -605,34 +605,311 @@ function _wizWireReviewEvents() {
 }
 
 // --- Execute search (Session B will wire to EF) ---
-function _wizExecuteSearch() {
+async function _wizExecuteSearch() {
   var promptEl = document.getElementById('wiz-review-prompt');
   var prompt = promptEl ? promptEl.value : _wizAssemblePrompt();
 
-  // PostHog
+  // PostHog: wizard_prompt_assembled
   if (typeof captureEvent === 'function') {
-    try { captureEvent('wizard_search_executed', { prompt_length: prompt.length }); } catch (_) { /* intentional: PostHog non-fatal */ }
+    var stepsIncluded = [];
+    for (var si = 1; si <= _WIZ_TOTAL; si++) { if (_wizardState.answers[si]) stepsIncluded.push(si); }
+    try { captureEvent('wizard_prompt_assembled', { prompt_length: prompt.length, steps_included: stepsIncluded }); } catch (_) { /* intentional */ }
   }
 
-  // Session B: wire to chat-job-search + prompt-to-filter + save dialog
-  // For now, send through existing chat infrastructure
-  if (typeof window._wizardSearchCallback === 'function') {
-    window._wizardSearchCallback(prompt, _wizardState.answers);
-  } else if (typeof window.sendChatMessage === 'function') {
-    // Fallback: use existing chat pipeline
+  // Check if user edited the prompt on review screen
+  var originalPrompt = _wizAssemblePrompt();
+  if (prompt !== originalPrompt && typeof captureEvent === 'function') {
+    try { captureEvent('wizard_prompt_edited', { edit_length_delta: prompt.length - originalPrompt.length }); } catch (_) { /* intentional */ }
+  }
+
+  // PostHog: wizard_search_executed
+  if (typeof captureEvent === 'function') {
+    try { captureEvent('wizard_search_executed', { prompt_length: prompt.length }); } catch (_) { /* intentional */ }
+  }
+
+  // Show loading state on search button
+  var searchBtn = document.getElementById('wiz-search-btn');
+  if (searchBtn) { searchBtn.disabled = true; searchBtn.textContent = 'Searching...'; }
+
+  try {
+    // Get auth
+    var session = await sb.auth.getSession();
+    if (!session.data.session) {
+      if (typeof showToast === 'function') showToast('Please sign in to search', 'error');
+      return;
+    }
+    var token = session.data.session.access_token;
+
+    // Prefix prompt with [WIZARD] marker for editorial commentary
+    var wizardPrompt = '[WIZARD] ' + prompt;
+
+    // Call chat-job-search EF via api-gateway
+    var gatewayUrl = (typeof SUPABASE_URL !== 'undefined' ? SUPABASE_URL : '') + '/functions/v1/api-gateway/chat-job-search';
+    var resp = await fetch(gatewayUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: wizardPrompt }],
+        conversation_id: 'wizard_' + Date.now()
+      })
+    });
+
+    if (!resp.ok) {
+      var errBody = '';
+      try { errBody = await resp.text(); } catch (_) { /* intentional */ }
+      throw new Error('Search failed: ' + resp.status + ' ' + errBody);
+    }
+
+    var data = await resp.json();
+    var aiResponse = (data.response || data.content || '');
+    var derivedFilters = data.filters || data.derived_filters || null;
+
+    // PostHog: wizard_filters_extracted
+    if (derivedFilters && typeof captureEvent === 'function') {
+      var fCount = 0;
+      try { fCount = Object.keys(derivedFilters).filter(function(k) { var v = derivedFilters[k]; return v !== null && v !== '' && !(Array.isArray(v) && v.length === 0); }).length; } catch (_) { /* intentional */ }
+      try { captureEvent('wizard_filters_extracted', { filter_count: fCount }); } catch (_) { /* intentional */ }
+    }
+
+    // Parse editorial commentary from response
+    var editorialJobs = _wizParseEditorial(aiResponse);
+
+    // Render results in wizard panel
+    _wizRenderResults(aiResponse, editorialJobs, derivedFilters);
+
+    // PostHog: wizard_results_shown
+    if (typeof captureEvent === 'function') {
+      try { captureEvent('wizard_results_shown', { job_count: editorialJobs.length, has_commentary: editorialJobs.length > 0 }); } catch (_) { /* intentional */ }
+    }
+
+    // Apply derived_filters to job feed
+    if (derivedFilters && typeof applyDerivedFilters === 'function') {
+      try { applyDerivedFilters(derivedFilters); } catch (_) { /* intentional: non-fatal filter application */ }
+    } else if (derivedFilters && typeof applyChatFilters === 'function') {
+      try { applyChatFilters(derivedFilters); } catch (_) { /* intentional */ }
+    }
+
+    // Auto-open save dialog
+    _wizOpenSaveDialog(prompt, derivedFilters);
+
+  } catch (err) {
+    if (typeof reportError === 'function') reportError('wizard:search', err);
+    // Show friendly error in wizard panel
+    var slider = document.getElementById('wiz-slider');
+    if (slider) {
+      slider.innerHTML = '<div class="wiz-step"><div class="wiz-ai-header">I couldn\'t find an exact match right now. Let me try again.</div>' +
+        '<div class="wiz-ai-sub">' + _wizEsc(err.message || 'Network error') + '</div>' +
+        '<div class="wiz-review-actions" style="margin-top:16px;">' +
+        '<button class="wiz-btn wiz-btn-back" onclick="_wizShow(\'review\')"><i data-lucide="arrow-left" class="icon-sm icon-stroke"></i> Back to Review</button>' +
+        '<button class="wiz-btn wiz-btn-next" onclick="_wizExecuteSearch()"><i data-lucide="refresh-cw" class="icon-sm icon-stroke"></i> Retry</button>' +
+        '</div></div>';
+      if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+    }
+  } finally {
+    if (searchBtn) { searchBtn.disabled = false; searchBtn.innerHTML = '<i data-lucide="search" class="icon-sm icon-stroke"></i> Search Jobs'; }
+    if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+  }
+}
+
+// --- Parse <editorial> block from AI response ---
+function _wizParseEditorial(response) {
+  var jobs = [];
+  var editMatch = response.match(/<editorial>([\s\S]*?)<\/editorial>/);
+  if (!editMatch) return jobs;
+  var editBlock = editMatch[1];
+  var jobRegex = /<job\s+title="([^"]*)"\s+company="([^"]*)"\s+headline="([^"]*)"\s+why_fit="([^"]*)"\s+watch_for="([^"]*)"[^/]*\/>/g;
+  var m;
+  while ((m = jobRegex.exec(editBlock)) !== null) {
+    jobs.push({ title: m[1], company: m[2], headline: m[3], why_fit: m[4], watch_for: m[5] });
+  }
+  return jobs;
+}
+
+// --- Render wizard results with editorial cards ---
+function _wizRenderResults(aiResponse, editorialJobs, derivedFilters) {
+  var slider = document.getElementById('wiz-slider');
+  var navEl = document.getElementById('wiz-nav');
+  if (!slider) return;
+  if (navEl) navEl.style.display = 'none';
+
+  var html = '<div class="wiz-step wiz-results" data-step="results">';
+  html += '<div class="wiz-ai-header">Here\'s what I found for you</div>';
+
+  if (editorialJobs.length > 0) {
+    html += '<div class="wiz-editorial-cards">';
+    for (var i = 0; i < editorialJobs.length; i++) {
+      var job = editorialJobs[i];
+      html += '<div class="wiz-editorial-card">';
+      html += '<div class="wiz-ed-title">' + _wizEsc(job.title) + '</div>';
+      html += '<div class="wiz-ed-company">' + _wizEsc(job.company) + '</div>';
+      html += '<div class="wiz-ed-section"><span class="wiz-ed-label">The headline:</span> ' + _wizEsc(job.headline) + '</div>';
+      html += '<div class="wiz-ed-section"><span class="wiz-ed-label wiz-ed-fit">Why this is a fit:</span> ' + _wizEsc(job.why_fit) + '</div>';
+      html += '<div class="wiz-ed-section"><span class="wiz-ed-label wiz-ed-watch">What to watch for:</span> ' + _wizEsc(job.watch_for) + '</div>';
+      html += '</div>';
+    }
+    html += '</div>';
+    // Clean AI text (strip editorial/filters tags)
+    var cleanText = aiResponse.replace(/<editorial>[\s\S]*?<\/editorial>/g, '').replace(/<filters>[\s\S]*?<\/filters>/g, '').trim();
+    if (cleanText) html += '<div class="wiz-ai-sub" style="margin-top:12px;">' + _wizEsc(cleanText) + '</div>';
+  } else {
+    // No editorial — show raw AI response
+    var cleanResp = aiResponse.replace(/<filters>[\s\S]*?<\/filters>/g, '').trim();
+    html += '<div class="wiz-ai-sub">' + _wizEsc(cleanResp) + '</div>';
+  }
+
+  html += '<div class="wiz-results-actions" style="margin-top:16px;display:flex;gap:12px;align-items:center;">';
+  html += '<button class="wiz-btn wiz-btn-next" id="wiz-view-feed-btn"><i data-lucide="layout-grid" class="icon-sm icon-stroke"></i> View Full Feed</button>';
+  html += '<button class="wiz-btn wiz-btn-back" id="wiz-edit-wizard-btn"><i data-lucide="pencil" class="icon-sm icon-stroke"></i> Edit Search</button>';
+  html += '</div>';
+  html += '</div>';
+
+  slider.innerHTML = html;
+  if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+
+  // Wire result action buttons
+  var feedBtn = document.getElementById('wiz-view-feed-btn');
+  if (feedBtn) feedBtn.addEventListener('click', function() {
     _wizClose();
-    // Switch to chat mode and send
-    var toggleBtns = document.querySelectorAll('#search-mode-toggle .smt-btn');
-    toggleBtns.forEach(function(b) { b.classList.remove('active'); });
-    var chatBtn = document.querySelector('#search-mode-toggle [data-mode="chat"]');
-    if (chatBtn) chatBtn.classList.add('active');
-    var chatPanel = document.getElementById('chat-panel');
-    var filterWrap = document.getElementById('filter-panel-wrap');
-    var wizPanel = document.getElementById('wizard-panel');
-    if (chatPanel) { chatPanel.style.display = ''; chatPanel.style.opacity = '1'; }
-    if (filterWrap) filterWrap.style.display = 'none';
-    if (wizPanel) wizPanel.style.display = 'none';
-    window.sendChatMessage(prompt);
+    if (typeof setSearchMode === 'function') setSearchMode('filters');
+  });
+  var editBtn = document.getElementById('wiz-edit-wizard-btn');
+  if (editBtn) editBtn.addEventListener('click', function() { _wizShow(1); });
+}
+
+// --- Save dialog integration ---
+function _wizOpenSaveDialog(prompt, derivedFilters) {
+  // Use existing inline save-prompt pattern from chat.js
+  // Set wizard-specific data for the save
+  window._wizardPendingSave = {
+    prompt: prompt,
+    answers: JSON.parse(JSON.stringify(_wizardState.answers)),
+    derivedFilters: derivedFilters,
+    editingId: _wizardState.editingPromptId
+  };
+
+  // If editing an existing prompt, upsert
+  if (_wizardState.editingPromptId) {
+    _wizSavePrompt(_wizardState.editingPromptId, null, prompt, derivedFilters);
+    return;
+  }
+
+  // Show inline save row in the results area
+  var slider = document.getElementById('wiz-slider');
+  if (!slider) return;
+  var existingRow = slider.querySelector('.wiz-save-row');
+  if (existingRow) return; // Already showing
+
+  var saveHtml = '<div class="wiz-save-row" style="margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);">';
+  saveHtml += '<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:6px;">Save this search</div>';
+  saveHtml += '<div style="display:flex;gap:8px;align-items:center;">';
+  saveHtml += '<input type="text" id="wiz-save-name" placeholder="Name this search..." maxlength="40" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--bg-card);color:var(--text);">';
+  saveHtml += '<button class="wiz-btn wiz-btn-next" id="wiz-save-btn" style="padding:6px 14px;font-size:12px;">Save</button>';
+  saveHtml += '</div></div>';
+
+  slider.insertAdjacentHTML('beforeend', saveHtml);
+
+  var saveBtn = document.getElementById('wiz-save-btn');
+  if (saveBtn) saveBtn.addEventListener('click', function() {
+    var nameInput = document.getElementById('wiz-save-name');
+    var name = nameInput ? nameInput.value.trim() : '';
+    if (!name) { if (nameInput) nameInput.style.borderColor = '#D97706'; return; }
+    _wizSavePrompt(null, name, prompt, derivedFilters);
+  });
+}
+
+// --- Save/upsert prompt to Supabase ---
+async function _wizSavePrompt(existingId, name, prompt, derivedFilters) {
+  try {
+    var session = await sb.auth.getSession();
+    if (!session.data.session) return;
+    var token = session.data.session.access_token;
+    var userId = session.data.session.user.id;
+
+    var payload = {
+      user_id: userId,
+      conversation: [{ role: 'user', content: prompt }],
+      derived_filters: derivedFilters || {},
+      source: 'wizard',
+      wizard_answers: _wizardState.answers,
+      is_active: true
+    };
+
+    if (existingId) {
+      // Upsert existing prompt
+      var resp = await fetch(SUPABASE_URL + '/rest/v1/saved_prompts?id=eq.' + existingId, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'apikey': SUPABASE_KEY, 'Prefer': 'return=representation' },
+        body: JSON.stringify(payload)
+      });
+      if (!resp.ok) throw new Error('Update failed: ' + resp.status);
+      if (typeof showToast === 'function') showToast('Search updated', 'success');
+      if (typeof captureEvent === 'function') {
+        try { captureEvent('wizard_edit_saved', { prompt_id: existingId }); } catch (_) { /* intentional */ }
+      }
+    } else {
+      // Create new
+      payload.name = name;
+      payload.color_index = Math.floor(Math.random() * 10);
+      var resp2 = await fetch(SUPABASE_URL + '/rest/v1/saved_prompts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'apikey': SUPABASE_KEY, 'Prefer': 'return=representation' },
+        body: JSON.stringify(payload)
+      });
+      if (!resp2.ok) throw new Error('Save failed: ' + resp2.status);
+      var saved = await resp2.json();
+      if (Array.isArray(saved) && saved.length > 0) {
+        _wizardState.editingPromptId = saved[0].id;
+      }
+      if (typeof showToast === 'function') showToast('Search saved: ' + name, 'success');
+      if (typeof captureEvent === 'function') {
+        try { captureEvent('wizard_prompt_saved', { source: 'wizard', has_name: !!name, color: payload.color_index }); } catch (_) { /* intentional */ }
+      }
+    }
+
+    // Refresh saved prompts list
+    if (typeof loadSavedPromptsFromDB === 'function') loadSavedPromptsFromDB();
+
+    // Hide save row
+    var saveRow = document.querySelector('.wiz-save-row');
+    if (saveRow) saveRow.remove();
+
+  } catch (err) {
+    if (typeof reportError === 'function') reportError('wizard:save', err);
+    if (typeof showToast === 'function') showToast('Failed to save search', 'error');
+  }
+}
+
+// --- Wizard re-entry from saved prompt ---
+function _wizEditFromPrompt(promptId) {
+  // Find the prompt in _savedPrompts
+  var prompt = null;
+  if (typeof _savedPrompts !== 'undefined' && Array.isArray(_savedPrompts)) {
+    prompt = _savedPrompts.find(function(p) { return p.id === promptId; });
+  }
+  if (!prompt || prompt.source !== 'wizard' || !prompt.wizard_answers) return false;
+
+  _wizardState.editingPromptId = promptId;
+  _wizOpen('edit', prompt.wizard_answers);
+
+  if (typeof captureEvent === 'function') {
+    try { captureEvent('wizard_edit_started', { prompt_id: promptId }); } catch (_) { /* intentional */ }
+  }
+  return true;
+}
+
+// --- Wizard abandoned tracking ---
+function _wizTrackAbandon() {
+  if (!_wizardState.active) return;
+  if (typeof captureEvent === 'function') {
+    try {
+      captureEvent('wizard_abandoned', {
+        last_step: _wizardState.currentStep,
+        time_spent_ms: Date.now() - (_wizardState.startTime || Date.now())
+      });
+    } catch (_) { /* intentional */ }
   }
 }
 
@@ -806,6 +1083,10 @@ window._wizOpen = _wizOpen;
 window._wizClose = _wizClose;
 window._wizAssemblePrompt = _wizAssemblePrompt;
 window._wizardState = _wizardState;
+window._wizEditFromPrompt = _wizEditFromPrompt;
+window._wizExecuteSearch = _wizExecuteSearch;
+window._wizTrackAbandon = _wizTrackAbandon;
+window._wizShow = _wizShow;
 
 // BJ namespace
 if (typeof window.BJ === 'object') {
@@ -813,4 +1094,6 @@ if (typeof window.BJ === 'object') {
   window.BJ._wizOpen = _wizOpen;
   window.BJ._wizClose = _wizClose;
   window.BJ._wizAssemblePrompt = _wizAssemblePrompt;
+  window.BJ._wizEditFromPrompt = _wizEditFromPrompt;
+  window.BJ._wizTrackAbandon = _wizTrackAbandon;
 }

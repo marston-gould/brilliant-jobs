@@ -3894,45 +3894,53 @@ None.
 
 ## Last Completed Session
 
-**FB-CHAT-002-A** — Guided Intake Wizard: UI + Step Definitions ✅
-- v10.32→v10.33
-- **js/wizard.js (NEW, 570+ lines):** Full wizard engine with WizardState (currentStep, answers, active, editingPromptId, startTime). All 7 steps:
-  - Step 1: Card selector (single-select, 5 intent options with Lucide icons). Header: "Great to have you here!"
-  - Step 2: Pill input for role keywords. Min 1 required. Header adapts per Step 1 answer.
-  - Step 3: Location pill input + remote toggle (default ON). Pre-fills user location.
-  - Step 4: Dual-handle range slider ($0–$500K, $10K step). "No preference" checkbox. Comp note.
-  - Step 5: Multi-select card grid (startup/growth/mid-market/enterprise/no_pref). Mutual exclusion.
-  - Step 6: Company + industry exclusion pill inputs. Both optional.
-  - Step 7: Textarea (500 char max) with counter. Optional.
-  - Review: Editable prompt + answer summary + Search Jobs / Back / Start Over.
-- **Prompt assembly per spec §7.** Navigation: Next/Back/Skip, Enter/Escape. Progress bar (7 segments). CSS (~160 lines). Mode toggle 3rd segment (Guided). Entry points: toggle, chat empty state, new user default.
-- **13 PostHog events.** XSS protection. 112 tests all passing.
-- **Addendum A resolved:** is_us_job is dead code. Feed uses loc_country + FA-009 4-tier smart filter.
+**FB-CHAT-002-B** — Backend Wiring + Save/Edit + Result Presentation ✅
+- v10.33→v10.34
+- **Schema migration (v10.33-fb-chat-002-b-wizard-columns.sql):** `source` text NOT NULL DEFAULT 'chat' + `wizard_answers` jsonb on saved_prompts.
+- **chat-job-search EF updated:** System prompt extended with WIZARD EDITORIAL COMMENTARY section. `[WIZARD]` prefix triggers per-job XML commentary (`<editorial><job title/company/headline/why_fit/watch_for/>`). References user wizard answers in why_fit. Honest watch_for assessments.
+- **`_wizExecuteSearch` fully wired:** async, auth (Bearer token), `[WIZARD]` prompt prefix, api-gateway/chat-job-search call, loading state ("Searching..."), error retry UI with Back to Review + Retry buttons.
+- **Editorial result parsing:** `_wizParseEditorial()` regex extracts `<editorial>` XML block → job array with title/company/headline/why_fit/watch_for.
+- **Editorial result cards:** Rendered in wizard panel: title, company, headline, why-fit (green label), watch-for (amber label). View Full Feed + Edit Search action buttons. CSS: `.wiz-editorial-card`, `.wiz-ed-fit`, `.wiz-ed-watch`.
+- **Derived filters:** Applied via `applyDerivedFilters()` with `applyChatFilters()` fallback.
+- **Save dialog:** Auto-opens after search. Inline save row with name input. Upserts existing prompt on re-edit (PATCH), creates new (POST). Saves `source:'wizard'` + `wizard_answers` JSONB. Refreshes saved prompts list.
+- **Wizard re-entry:** `_wizEditFromPrompt(promptId)` finds prompt in _savedPrompts, checks source=wizard, pre-fills all steps from wizard_answers, sets editingPromptId for upsert.
+- **Filter selector wand icon:** wizard-source prompts show `wand-2` Lucide icon (chat prompts keep `message-square`). Click on wizard prompt re-enters wizard via setSearchMode('guided') + _wizEditFromPrompt.
+- **Edit in Wizard button:** Shows in chat header loaded prompt indicator for wizard-source prompts with wizard_answers. Calls _wizEditFromPrompt on click.
+- **saved_prompts query:** Extended to select `source,wizard_answers` columns.
+- **8 PostHog events:** wizard_prompt_assembled (prompt_length, steps_included), wizard_prompt_edited (edit_length_delta), wizard_filters_extracted (filter_count), wizard_results_shown (job_count, has_commentary), wizard_prompt_saved (source, has_name, color), wizard_edit_started (prompt_id), wizard_edit_saved (prompt_id), wizard_abandoned (last_step, time_spent_ms).
+- **Error handling:** reportError for search/save failures. Friendly retry UI on search failure. Toast on save failure.
+- **Tests:** 62 validation tests (tests/fb-chat-002-b-backend-wiring.test.js) — all passing.
+- **Modified:** js/wizard.js (_wizExecuteSearch rewrite + _wizParseEditorial + _wizRenderResults + _wizOpenSaveDialog + _wizSavePrompt + _wizEditFromPrompt + _wizTrackAbandon + new exports), js/chat.js (source/wizard_answers in query + wand icon + edit-in-wizard button + wizard click handler), supabase/functions/chat-job-search/index.ts (WIZARD EDITORIAL COMMENTARY), src/input.css (editorial card CSS).
+- **Created:** supabase/migrations/v10.33-fb-chat-002-b-wizard-columns.sql, tests/fb-chat-002-b-backend-wiring.test.js.
+- **Pending manual steps (Marston):**
+  - `supabase db push` (migration v10.33-fb-chat-002-b-wizard-columns.sql)
+  - `SUPABASE_ACCESS_TOKEN=<token> npx supabase functions deploy chat-job-search --project-ref qojhagupdnbtomfoxnsf`
+
+**Previous: FB-CHAT-002-A** — Guided Intake Wizard: UI + Step Definitions ✅
+- v10.32→v10.33. 7 wizard steps, progress bar, navigation, prompt assembly, CSS, mode toggle, 112 tests.
 
 ## Next Session
 
-**FB-CHAT-002-B** — Backend Wiring + Save/Edit + Result Presentation
+**FB-CHAT-002-C** — Polish + Hardening + CI/CD + Release
 
 **Entry Gate:**
-- FB-CHAT-002-A complete: all 7 wizard steps render, navigation works, review screen assembles prompt ✅
+- FB-CHAT-002-B complete: wizard→EF→results→save→re-entry all functional ✅
 
-**Scope (spec Session B):**
-1. Schema migration: `source` (text NOT NULL DEFAULT 'chat') + `wizard_answers` (jsonb) on saved_prompts
-2. Prompt assembly function → chat-job-search EF
-3. Update chat-job-search system prompt: wizard-source prompts produce per-job editorial commentary (Headline / Why Fit / Watch For)
-4. Build editorial job result cards in wizard panel
-5. On response: call prompt-to-filter → extract derived_filters → apply to feed
-6. Auto-open save dialog with source: 'wizard' + wizard_answers JSON
-7. Wizard re-entry: "Edit in Wizard" button on wizard-source prompts, pre-fill all steps
-8. Re-submit upserts (not creates) existing prompt
-9. Filter selector: wand icon for wizard prompts
-10. New user default: zero filters + zero prompts → wizard auto-open
-11. PostHog events: wizard_prompt_assembled, wizard_prompt_edited, wizard_filters_extracted, wizard_results_shown, wizard_prompt_saved, wizard_edit_started, wizard_edit_saved, wizard_abandoned
+**Scope (spec Session C):**
+1. UI polish: card hover/press micro-interactions, slider thumb styling, progress bar segment transitions, responsive breakpoints for mobile (375px+). Conversational headers don't truncate.
+2. Edge cases: empty responses from chat-job-search (friendly retry). Network failures with retry button.
+3. Validation: Step 2 min 1 keyword, Step 3 location OR remote, friendly inline errors (warm tone).
+4. Keyboard accessibility: Tab through card selectors, Enter to select, arrow keys on slider, focus ring styling.
+5. CI/CD hardening (Session 8 carryover): Tailwind build verification in deploy checklist.
+6. PostHog dashboard setup: Chat Mode dashboard with all 13+12 wizard events. Funnels: wizard_started → wizard_completed → wizard_prompt_saved.
+7. EF latency monitoring: console.time/timeEnd in chat-job-search + prompt-to-filter. Log p50/p95 to PostHog.
+8. Full regression: freeform chat still works, mode toggle 3 modes, saved prompt loading for both source types.
+9. Version bump, CHANGELOG.md, git tag, deploy.
+10. Update roadmap card.
 
 **Exit Gate:**
-- Wizard → prompt assembled → jobs returned with editorial commentary → derived_filters applied → prompt saved with source:wizard + wizard_answers
-- Re-entry pre-fills all steps. Re-submit updates existing prompt. PostHog events fire. New users land on wizard.
-- Tests passing. Three-file close.
+- All wizard interactions polished with animations and micro-interactions. Mobile responsive (375px+). Keyboard accessible. Freeform chat regression passes. PostHog dashboard live with funnels. Version bumped, tagged, deployed. Roadmap card updated. Tests passing. Three-file close.
+- **FB-CHAT-002 COMPLETE.**
 
 **Previous: FB-SURVEY-DELIVERY-001 SDV-S7** — Spec Gap Remediation + Integration Test + Close ✅ — **FB-SURVEY-DELIVERY-001 COMPLETE**
 - v10.27→v10.28
@@ -4333,7 +4341,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v10.33`** | **FB-CHAT-002-A: Guided Intake Wizard UI + Step Definitions. 112 tests.** |
+| **Product (BJ_VERSION)** | **`v10.34`** | **FB-CHAT-002-B: Backend Wiring + Save/Edit + Result Presentation. 62 tests.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

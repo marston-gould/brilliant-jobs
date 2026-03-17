@@ -101,7 +101,16 @@ Rules for filters:
 - additional_context: Record<string, unknown> nuanced preferences that don't fit above fields
 - NEVER invent or assume values not explicitly stated by the user
 - Accumulate across the conversation — each message builds on previous filters
-- Normalize locations to "City, ST" format for US locations`;
+- Normalize locations to "City, ST" format for US locations
+
+WIZARD EDITORIAL COMMENTARY:
+When the user message starts with "[WIZARD]", it is a wizard-assembled prompt. For these:
+1. After your normal response, include an <editorial> block with commentary for the top 3-5 matched jobs.
+2. Format each job as: <job title="..." company="..." headline="one sentence on what the company does" why_fit="2-3 sentences connecting the user's answers to the job" watch_for="1-2 sentences on potential mismatches or things to investigate" />
+3. Reference the user's specific wizard answers in why_fit (e.g., "Since you mentioned wanting remote work..." or "Your interest in growth-stage companies aligns with...").
+4. Be honest in watch_for — if the role scope is broader/narrower than what the user described, say so.
+5. After the editorial jobs, include a closing line like: "I've also pulled more matches into your dashboard. Any of these catching your eye?"
+6. Still include the <filters> block as usual.`;
 
 // ─── Filter validation ───
 function validateFilters(raw: unknown): Record<string, unknown> | null {
