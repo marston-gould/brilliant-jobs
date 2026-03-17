@@ -13,13 +13,10 @@
   <meta name="description" content="Your command center. Better data, better jobs, less nonsense.">
   <title>Brilliant Jobs — Dashboard</title>
 
-  <!-- Legacy scripts: must load before React to populate window.BJ -->
-  <script src="/js/vendor/supabase.min.js"></script>
-  <script src="/js/version.js" defer></script>
-  <script src="/js/globals.js" defer></script>
-  <script src="/js/theme.js" defer></script>
-  <script src="/js/fingerprint.js" defer></script>
-  <script src="/js/tier-gating.js" defer></script>
+  <!-- SPA-CUT-FINAL: All legacy scripts removed. SPA is fully standalone.
+       Supabase client imported via npm (@supabase/supabase-js).
+       Auth session shared via localStorage (same persistSession key).
+       Theme handled by inline script above (CSP-whitelisted via SHA-256). -->
 
   <!-- Shared stylesheet (design tokens + Tailwind utilities) -->
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
@@ -34,19 +31,10 @@
   <div id="spa-root"></div>
 
   <!--
-    SA-013: During dual-mode migration, the legacy DOM elements from
-    dashboard.html are NOT present here. LegacyPageWrapper activates
-    legacy tabs via window.BJ.showTab(), which requires the legacy
-    page containers to exist.
-
-    PHASE 1 (SA-013): SPA shell renders nav + routing only.
-    Legacy pages still use dashboard.html and admin.html directly.
-
-    PHASE 2 (SA-014+): As pages are migrated to React, they render
-    directly inside the SPA. No legacy DOM needed for migrated pages.
-
-    PHASE 3 (SA-017): All pages migrated. Legacy HTML files deprecated.
-    This becomes the only entry point for authenticated surfaces.
+    SPA-CUT-FINAL: This is the sole entry point for all authenticated
+    surfaces (dashboard + admin). Legacy dashboard.html and admin.html
+    have been retired. All 22 React pages are standalone — zero
+    window.* bridge dependencies.
   -->
 </body>
 </html>

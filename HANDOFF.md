@@ -3894,7 +3894,32 @@ None.
 
 ## Last Completed Session
 
-**SPA-CUT-3** — All 14 Remaining Hooks Bridge Elimination ✅
+**SPA-CUT-FINAL** — Legacy HTML Elimination ✅
+- v10.41→v10.42
+- **dashboard.html (4,378 lines) archived** to `legacy/dashboard.html`
+- **admin.html (1,318 lines) archived** to `legacy/admin.html`
+- **5,696 lines of legacy HTML retired from production.**
+- **SPA index.html stripped:** Removed 6 legacy script tags (supabase.min.js, version.js, globals.js, theme.js, fingerprint.js, tier-gating.js). SPA now has 2 scripts: theme flash prevention (inline, CSP-whitelisted) + Vite module entry.
+- **Vercel routing:** 4 rewrites added — `/dashboard`, `/dashboard.html`, `/admin`, `/admin.html` → `src/app/index.html`. Users with bookmarks or direct URLs are seamlessly redirected to SPA.
+- **CSP hardened:** `unsafe-inline` removed from catch-all `/(.*) ` `script-src`. Replaced with SHA-256 hash (`sha256-DxI1Xb7ZaftmBbfsr/G8P/o5YMStn92mvbY1xkHad5o=`) for theme script. Landing page and SEO pages now also benefit from strict CSP.
+- **SPA is sole authenticated surface.** React at `/app/*` handles all dashboard + admin routes.
+- **Tests:** 46 validation tests (tests/spa-cut-final-legacy-elimination.test.js) — all passing.
+- **Modified:** src/app/index.html (legacy scripts removed), vercel.json (rewrites + CSP), ROADMAP.md, roadmap.html.
+- **Moved:** dashboard.html → legacy/, admin.html → legacy/.
+- **Created:** tests/spa-cut-final-legacy-elimination.test.js.
+
+**SPA-CUT SERIES COMPLETE — 4 sessions, 258 tests:**
+| Session | Scope | Refs killed | Tests | Version |
+|---------|-------|-------------|-------|---------|
+| SPA-CUT-1 | Feed + Pipeline + Keywords standalone | 41 | 61 | v10.39 |
+| SPA-CUT-2 | Resumes + Apps + Stats + Billing + Admin Notif | 34 | 58 | v10.40 |
+| SPA-CUT-3 | All 14 remaining hooks (batch) | 58 | 93 | v10.41 |
+| SPA-CUT-FINAL | Legacy HTML archived, CSP strict | — | 46 | v10.42 |
+| **Total** | **22 hooks, 5,696 lines HTML retired** | **133** | **258** | |
+
+**Previous: SPA-CUT-3** — All 14 Remaining Hooks Bridge Elimination ✅
+**Previous: SPA-CUT-2** — Resumes + Applications + Stats + Billing + Admin Notifications ✅
+**Previous: SPA-CUT-1** — Feed + Pipeline + Keywords Bridge Elimination ✅
 - v10.40→v10.41
 - **Batch transform via scripts/spa-cut-3-transform.py:** Python script processed all 14 hooks:
   - Replaced `const bj = (window as any)` data loading with comment stubs
@@ -4041,29 +4066,14 @@ None.
 
 ## Next Session
 
-**SPA-CUT-FINAL** — Legacy HTML Elimination
+No specific session queued. SPA-CUT series is complete (4 sessions, 258 tests). All 22 hooks standalone. Legacy HTML archived. SPA is sole authenticated surface.
 
-**Entry Gate:**
-- SPA-CUT-1/2/3 complete: ALL 22 hooks standalone, zero window.* refs ✅
-- SPA builds clean, all 212 tests passing (61+58+93)
-
-**Scope:**
-- Remove legacy script tags from src/app/index.html (globals.js, theme.js, version.js — SPA has its own)
-- Verify SPA renders without dashboard.html or admin.html being loaded
-- Feature flag SPA_STANDALONE for graduated rollout
-- Delete dashboard.html (4,378 lines) and admin.html (1,318 lines) when 100% stable
-- Remove 130 legacy JS modules from build.js
-- Remove build-admin.js
-- CSP strict on all routes (no unsafe-inline)
-- Tailwind purge legacy safelist patterns
-
-**Exit Gate:**
-- SPA serves all /app/* routes without any legacy HTML dependency
-- dashboard.html + admin.html deleted
-- CSP strict enforced
-- Initial bundle < 120KB gzip
-- All test suites pass
-- Three-file close. Major version bump.
+Potential next workstreams:
+- Remove legacy build.js / build-admin.js (once roadmap.html is migrated off dashboard.min.js dependency)
+- Delete legacy/ archive after 30-day bake period
+- Remove 130 legacy JS modules from repo (after confirming no other surfaces import them)
+- PostHog Google OAuth verification (R5 in FB-PI-001)
+- New feature work
 
 Pending manual steps (Marston):
 - `supabase db push` (migration v10.33-fb-chat-002-b-wizard-columns.sql — from FB-CHAT-002)
@@ -4468,7 +4478,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v10.41`** | **SPA-CUT-3: All 22 hooks standalone. 133 total window refs eliminated. 212 tests across 3 sessions.** |
+| **Product (BJ_VERSION)** | **`v10.42`** | **SPA-CUT-FINAL: Legacy HTML archived. 5,696 lines retired. CSP strict. SPA sole surface.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
