@@ -170,7 +170,7 @@ export interface DataProviders {
  * ResumeProvider — resume CRUD, upload, AI scoring.
  */
 export interface ResumeProvider {
-  getAll(): Promise<any[]>;
+  getAll(): Promise<ResumeItem[]>;
   upload(file: File): Promise<{ storagePath: string }>;
   download(storagePath: string): Promise<Blob | null>;
   remove(idx: number): Promise<void>;
@@ -186,22 +186,22 @@ export interface ResumeProvider {
  * ApplicationProvider — application queue and history.
  */
 export interface ApplicationProvider {
-  getQueue(): Promise<any[]>;
-  getHistory(): Promise<any[]>;
-  addToQueue(entry: any): Promise<void>;
+  getQueue(): Promise<AppQueueEntry[]>;
+  getHistory(): Promise<AppQueueEntry[]>;
+  addToQueue(entry: Partial<AppQueueEntry>): Promise<void>;
   removeFromQueue(idx: number): Promise<void>;
   processQueue(): Promise<void>;
   clearHistory(): Promise<void>;
-  getNotifPrefs(): Promise<any | null>;
-  getNotifLog(): Promise<any[]>;
+  getNotifPrefs(): Promise<NotificationPref | null>;
+  getNotifLog(): Promise<NotificationLogItem[]>;
 }
 
 /**
  * StatsProvider — materialized view queries for dashboard stats.
  */
 export interface StatsProvider {
-  getJobCounts(): Promise<any>;
-  getSourceBreakdown(): Promise<any[]>;
+  getJobCounts(): Promise<JobCountStats | null>;
+  getSourceBreakdown(): Promise<SourceBreakdown[]>;
 }
 
 /**
@@ -209,8 +209,8 @@ export interface StatsProvider {
  */
 export interface BillingProvider {
   getBalance(): Promise<number>;
-  getPricing(): Promise<any[]>;
-  getUserProfile(): Promise<any>;
+  getPricing(): Promise<PricingTierItem[]>;
+  getUserProfile(): Promise<UserProfileExtended | null>;
   openBillingPortal(): Promise<string | null>;
 }
 
@@ -218,8 +218,8 @@ export interface BillingProvider {
  * TuningProvider — tuning settings and hidden job management.
  */
 export interface TuningProvider {
-  getTuning(): Promise<any>;
-  saveTuning(data: any): Promise<void>;
+  getTuning(): Promise<TuningData>;
+  saveTuning(data: TuningData): Promise<void>;
   unhideJob(jobId: string): Promise<void>;
   getCollapsedStates(): Promise<Record<string, boolean>>;
   setCollapsedState(idx: string, collapsed: boolean): Promise<void>;
@@ -229,8 +229,8 @@ export interface TuningProvider {
  * ChatProvider — chat messages and sessions.
  */
 export interface ChatProvider {
-  getHistory(): Promise<any[]>;
-  sendMessage(text: string): Promise<any>;
+  getHistory(): Promise<ChatMessage[]>;
+  sendMessage(text: string): Promise<ChatMessage>;
   clearSession(): Promise<void>;
   setMode(mode: string): Promise<void>;
   applyFilters(filters: Record<string, any>): Promise<void>;
@@ -240,7 +240,7 @@ export interface ChatProvider {
  * IntegrationProvider — Google Drive and other integrations.
  */
 export interface IntegrationProvider {
-  getGDriveFiles(): Promise<any[]>;
+  getGDriveFiles(): Promise<GDriveFile[]>;
   connectGDrive(): Promise<void>;
   disconnectGDrive(): Promise<void>;
   addGDriveFile(fileId: string): Promise<void>;
@@ -252,8 +252,8 @@ export interface IntegrationProvider {
  * ReferralProvider — referral stats and leaderboard.
  */
 export interface ReferralProvider {
-  getStats(): Promise<any>;
-  getLeaderboard(): Promise<any[]>;
+  getStats(): Promise<Record<string, unknown>>;
+  getLeaderboard(): Promise<LeaderboardEntry[]>;
   getCode(): Promise<string>;
 }
 
@@ -261,21 +261,21 @@ export interface ReferralProvider {
  * AdminProvider — admin panel operations.
  */
 export interface AdminProvider {
-  getOverview(): Promise<any>;
-  getBoardHealth(): Promise<any>;
-  getJobs(page?: number): Promise<any[]>;
-  getNotificationTemplates(): Promise<any[]>;
-  getCampaigns(): Promise<any[]>;
-  getNotificationStats(): Promise<any>;
-  getCronJobs(): Promise<any[]>;
+  getOverview(): Promise<Record<string, unknown>>;
+  getBoardHealth(): Promise<Record<string, unknown>>;
+  getJobs(page?: number): Promise<Job[]>;
+  getNotificationTemplates(): Promise<NotificationTemplate[]>;
+  getCampaigns(): Promise<CampaignItem[]>;
+  getNotificationStats(): Promise<Record<string, unknown>>;
+  getCronJobs(): Promise<CronJobItem[]>;
   toggleCronJob(name: string, enabled: boolean): Promise<void>;
-  getFeatureFlags(): Promise<any[]>;
+  getFeatureFlags(): Promise<FeatureFlagItem[]>;
   toggleFeatureFlag(key: string, enabled: boolean): Promise<void>;
-  getAgentStatus(): Promise<any>;
-  getMonitoringHealth(): Promise<any>;
-  getSeoData(): Promise<any>;
+  getAgentStatus(): Promise<Record<string, unknown>>;
+  getMonitoringHealth(): Promise<Record<string, unknown>>;
+  getSeoData(): Promise<Record<string, unknown>>;
   generateSeoReport(): Promise<void>;
-  getComplianceData(): Promise<any>;
+  getComplianceData(): Promise<Record<string, unknown>>;
   initiateUserDeletion(userId: string): Promise<void>;
   cancelUserDeletion(userId: string): Promise<void>;
 }
@@ -284,8 +284,8 @@ export interface AdminProvider {
  * NotificationProvider — notification management (admin).
  */
 export interface NotificationProvider {
-  getTemplates(): Promise<any[]>;
-  getCampaigns(): Promise<any[]>;
+  getTemplates(): Promise<NotificationTemplate[]>;
+  getCampaigns(): Promise<CampaignItem[]>;
   getStats24h(): Promise<{ sent: number; failed: number }>;
 }
 
@@ -303,4 +303,133 @@ export interface ExtendedDataProviders extends DataProviders {
   referrals: ReferralProvider;
   admin: AdminProvider;
   notifications: NotificationProvider;
+}
+
+// ── Domain Types for Extended Providers ───────────────────
+
+export interface ResumeItem {
+  id?: string;
+  name: string;
+  fileName?: string;
+  archived: boolean;
+  textStatus: 'pending' | 'extracting' | 'ready' | 'no-text';
+  extractedText?: string;
+  keywords?: string[];
+  filterIds?: string[];
+  level?: string;
+  storagePath?: string;
+  source?: string;
+  size?: number;
+  uploadedAt?: string;
+}
+
+export interface AppQueueEntry {
+  id: string;
+  jobTitle: string;
+  company: string;
+  url: string;
+  resumeName: string;
+  resumeId: string;
+  mode: string;
+  status: string;
+  addedAt: string;
+  submittedAt?: string;
+  source: string;
+}
+
+export interface NotificationPref {
+  enabled: boolean;
+  channels: string[];
+  escalation: string;
+  timezone: string;
+  phone?: string;
+}
+
+export interface NotificationLogItem {
+  id: string;
+  type: string;
+  channel: string;
+  status: string;
+  sentAt: string;
+  subject?: string;
+  error?: string;
+}
+
+export interface SourceBreakdown {
+  source_name: string;
+  job_count: number;
+}
+
+export interface JobCountStats {
+  total_open?: number;
+  new_today?: number;
+  total_companies?: number;
+}
+
+export interface PricingTierItem {
+  tier: string;
+  subscription_price_cents?: number;
+  included_credits?: number;
+  features?: Record<string, unknown>;
+  display_order?: number;
+}
+
+export interface UserProfileExtended {
+  role?: string;
+  user_data?: Record<string, unknown>;
+}
+
+export interface TuningData {
+  levelHierarchy?: Array<{ label: string; color: string }>;
+  [key: string]: unknown;
+}
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp?: string;
+}
+
+export interface GDriveFile {
+  id: string;
+  name: string;
+  mimeType?: string;
+  url?: string;
+}
+
+export interface LeaderboardEntry {
+  userId: string;
+  displayName: string;
+  referralCount: number;
+  rank: number;
+}
+
+export interface CronJobItem {
+  name: string;
+  schedule: string;
+  enabled: boolean;
+  status?: string;
+  lastRun?: string;
+}
+
+export interface FeatureFlagItem {
+  key: string;
+  enabled: boolean;
+  rollout_pct?: number;
+}
+
+export interface NotificationTemplate {
+  id: string;
+  name: string;
+  channel: string;
+  subject?: string;
+  body?: string;
+  created_at?: string;
+}
+
+export interface CampaignItem {
+  id: string;
+  name: string;
+  priority: number;
+  status?: string;
 }

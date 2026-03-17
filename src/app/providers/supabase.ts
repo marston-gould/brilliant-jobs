@@ -273,7 +273,7 @@ export function createSupabaseProviders(): DataProviders {
 import type {
   ResumeProvider, ApplicationProvider, StatsProvider, BillingProvider,
   TuningProvider, ChatProvider, IntegrationProvider, ReferralProvider,
-  AdminProvider, NotificationProvider, ExtendedDataProviders,
+  AdminProvider, NotificationProvider, ExtendedDataProviders, ChatMessage,
 } from './types';
 import { safeReadLS, safeWriteLS, callGateway } from '@lib/supabase';
 
@@ -391,7 +391,7 @@ export class SupabaseTuningProvider implements TuningProvider {
 
 export class SupabaseChatProvider implements ChatProvider {
   async getHistory() { return safeReadLS<any[]>('bj_chat_history', []); }
-  async sendMessage(_text: string) { return {}; /* TODO: callGateway('chat-job-search') */ }
+  async sendMessage(_text: string): Promise<ChatMessage> { return { role: 'assistant', content: '' }; /* TODO: callGateway('chat-job-search') */ }
   async clearSession() { try { localStorage.removeItem('bj_chat_history'); localStorage.removeItem('bj_chat_session'); } catch {} }
   async setMode(mode: string) { try { localStorage.setItem('bj_search_mode', mode); } catch {} }
   async applyFilters(filters: Record<string, any>) {

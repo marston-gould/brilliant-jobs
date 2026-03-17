@@ -4505,7 +4505,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority â€
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v10.45`** | **SPA-CUT-REMEDIATION-2: JobDetailModal, 24 of 26 stubs resolved, chat stubs fixed. 2 TODOs remain (launchRewrite, editFilterLevelHierarchy).** |
+| **Product (BJ_VERSION)** | **`v10.47`** | **Provider layer compliance (all 22 hooks via bridge), PostHog pageview, darkMode, zero TS errors, 16 typed domain interfaces, 258 tests.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
