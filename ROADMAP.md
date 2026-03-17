@@ -3835,3 +3835,16 @@ Phase S3 (SA-013–SA-017) built the SPA scaffold with React bridge hooks to leg
 | Chat applyChatFilters → localStorage merged filters | ✅ | v10.45 |
 | Chat clearChat → fixed broken nested function | ✅ | v10.45 |
 | TODO stubs remaining: 2 of 26 (launchRewrite, editFilterLevelHierarchy) | Deferred | — |
+
+## TW-STD-001: CSS Standardization — Gut input.css
+
+| Item | Before | After | Status |
+|------|--------|-------|--------|
+| input.css total lines | 3,888 | 296 | ✅ v10.51 |
+| @layer components (hand-written CSS) | 2,277 lines | 0 lines | ✅ v10.51 (SPA has zero dependencies — all Tailwind-native) |
+| Unlayered legacy CSS | 1,314 lines | 0 lines | ✅ v10.51 |
+| !important declarations | 28 | 0 | ✅ v10.51 (all were in removed @layer components) |
+| Tailwind CSS output | 120.0KB → 128KB | 30KB | ✅ v10.51 (76% reduction) |
+| PaginationControls fp-btn/fp-active/fp-ellipsis | input.css dependency | Tailwind utilities | ✅ v10.51 |
+| SPA @layer components class dependencies | 3 (fp-btn, fp-active, fp-ellipsis) | 0 | ✅ v10.51 |
+| Legacy CSS backup | N/A | src/input.css.legacy-backup | ✅ v10.51 |

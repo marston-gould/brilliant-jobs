@@ -1917,6 +1917,7 @@ const features = [
 { s: 'done', b: 'feature', n: 'FB-CHAT-002-A: Wizard UI + Step Definitions', d: 'v10.33: 7 wizard steps (card selectors, pill inputs, salary slider, location, textarea). Progress bar, navigation, keyboard shortcuts, review screen, prompt assembly, mode toggle 3-segment, CSS, 112 tests.', p: 100, e: '1 session' },
 { s: 'done', b: 'feature', n: 'FB-CHAT-002-B: Backend Wiring + Save/Edit', d: 'v10.34: Schema migration (source+wizard_answers). chat-job-search EF editorial commentary. Wizard→EF call, editorial result cards, derived_filters, save/upsert, re-entry pre-fill, wand icon, Edit in Wizard button. 62 tests.', p: 100, e: '1 session' },
 { s: 'done', b: 'feature', n: 'FB-CHAT-002-C: Polish + Hardening + Release', d: 'v10.35: Focus-visible a11y, micro-interactions, mobile breakpoints, EF latency monitoring, prevMode 3-state fix, abandon tracking, freeform chat regression verified. 67 tests. FB-CHAT-002 COMPLETE: 3 sessions, 241 tests.', p: 100, e: '1 session' },
+{ s: 'done', b: 'post-launch', n: 'TW-STD-001: CSS Standardization — Gut input.css', d: 'v10.51: input.css 3,888→296 lines (92% reduction). Removed entire @layer components block (2,277 lines) + unlayered legacy CSS (1,314 lines). SPA had zero dependencies — all Tailwind-native. PaginationControls fp-btn/fp-active/fp-ellipsis converted to Tailwind utilities. 28 !important declarations eliminated. CSS output 128KB→30KB (76%). Legacy backup at input.css.legacy-backup.', p: 100, e: '1 session' },
 ];
 
 

@@ -52,7 +52,18 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**HP-STATS-CLEANUP** — Homepage Stats Cleanup ✅
+**TW-STD-001** — CSS Standardization: Gut input.css ✅
+- v10.50→v10.51
+- **input.css:** 3,888 lines → 296 lines (92% reduction). Entire @layer components block (2,277 lines) removed. All unlayered legacy CSS after line 2574 (1,314 lines) removed. Only @layer base remains (tokens, dark mode, resets).
+- **Key discovery:** SPA had ZERO dependencies on @layer components. All 80+ React components in src/app/ are pure Tailwind. The 2,277 lines of semantic CSS (.nav-*, .page-header, .stat-grid, .pl-stage-*, .qb-*, etc.) were consumed only by legacy js/ modules serving dead legacy/dashboard.html and legacy/admin.html.
+- **PaginationControls.tsx:** Last 3 input.css dependencies (fp-btn, fp-active, fp-ellipsis) converted to Tailwind utilities.
+- **28 !important declarations:** All eliminated (were in removed @layer components).
+- **CSS output:** 128KB → 30KB (76% reduction).
+- **Legacy backup:** src/input.css.legacy-backup (full 3,888-line original preserved).
+- **SPA build:** Vite build clean. All page chunks compile.
+- **Bundles rebuilt:** dist/dashboard.min.js v10.51 ✅. styles.css 30KB ✅. All cache busters updated ✅.
+
+**Previous: HP-STATS-CLEANUP** — Homepage Stats Cleanup ✅
 - v10.43→v10.44
 - **index.html:** "Career Pages Monitored" stat label renamed to "Companies in Database" (accurately reflects `ats_companies` total count, not just pages scanned). "Companies Hiring Now" stat block removed (redundant — active jobs count already conveys hiring activity). Social proof bar (`#social-proof-bar`) removed — off-brand blue floating box that duplicated stats bar content.
 - **js/landing-app.js:** Dead social proof IIFE removed (lines that called `document.getElementById('social-proof-bar')`). All removed element references were already guarded with `if (el)` checks — no silent fails introduced.
@@ -4093,12 +4104,15 @@ None.
 
 ## Next Session
 
-No specific session queued. SPA-CUT series is complete (4 sessions, 258 tests). All 22 hooks standalone. Legacy HTML archived. SPA is sole authenticated surface.
+No specific session queued. TW-STD-001 complete (input.css gutted, 92% reduction).
 
-Potential next workstreams:
+Potential next workstreams (CSS Standardization continuation):
+- **TW-STD-002: Kill landing.css** (1,332 lines) — convert all semantic classes to Tailwind utilities in index.html markup. Page already has 0 inline `<style>` blocks and only 1 inline style.
+- **TW-STD-003: Kill seo-pages.css** (316 lines) + inline `<style>` blocks in SEO/data pages (hiring-trends, compare, industry/*, salary-data, jobs-by-industry, career-level-data, market-dynamics, data-lab, ghost-report, roadmap, pricing, help, survey, install, uninstall, 404, 503).
+- **TW-STD-004: Extension Tailwind conversion** — popup.html (608 lines), inject-overlay.js (322 .style assignments), inject.css (27 lines).
 - Remove legacy build.js / build-admin.js (once roadmap.html is migrated off dashboard.min.js dependency)
-- Delete legacy/ archive after 30-day bake period
-- Remove 130 legacy JS modules from repo (after confirming no other surfaces import them)
+- Delete legacy/ archive + src/input.css.legacy-backup after bake period
+- Remove 146 legacy JS modules from js/ (after confirming no other surfaces import them — SPA doesn't)
 - PostHog Google OAuth verification (R5 in FB-PI-001)
 - New feature work
 
