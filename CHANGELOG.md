@@ -1,3 +1,6 @@
+## v10.38 Session NN: TITLE (2026-03-17)
+- DESCRIBE CHANGES HERE
+
 ## v10.37 FB-CARDS-001: Feed + Pipeline Card Synergy & Match Score Fix (2026-03-16)
 - Fix A: Match % badge decoupled from Preview JD toggle — now in meta row with color tiers (green ≥80, amber ≥60, dim 40-59, hidden <40)
 - Fix B: Pipeline Location + Salary columns after Company. Trust/ghost badges inline after title. Fraud cache hydrated independently.
