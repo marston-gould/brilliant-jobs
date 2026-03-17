@@ -980,7 +980,7 @@
 | **H** Stripe Monetization | 19/19 | v3.71–v3.75 | ⚠️ Billing Portal 🚫 blocked on CEO Stripe config |
 | **I** Communication Center v2 | 15/16 | v3.76–v3.79 | ⚠️ Toll-free verification 🚫 blocked on CEO Vonage action |
 | **J** Infrastructure Hardening | 12/13 | v3.81–v3.88 | ⚠️ J13 🚫 blocked on Greenhouse API partnership |
-| **M** Surveys & User Intelligence | 13/25 + 15 foundation | v3.92–v4.29 | ⚠️ M-R7 🚫 blocked (Stripe). 12 P13 items 🚫 blocked (user volume). |
+| **M** Surveys & User Intelligence | 13/25 + 15 foundation | v3.92–v10.32 | P13-01–11,13 ✅. P13-14,18 ❌ WONTDO. P13-12,15-17 🚫 blocked (user volume — infra ready via FB-SURVEY-ADMIN-001). P13-19-25 🚫 blocked (launch + user data). Survey delivery system COMPLETE (FB-SURVEY-DELIVERY-001 + FB-SURVEY-ADMIN-001). |
 | **N** USAJOBS Integration | 7/7 | v3.80–v4.09 | ✅ Complete |
 | **K-2** Admin Console Restructure | 5/5 | v4.00–v4.06 | ✅ Complete |
 | **P** Ghost Build + Perf | 30/30 | v4.07–v4.12 | ✅ Complete |
@@ -1226,7 +1226,7 @@ Complete survey infrastructure delivered by Pod 1 before Phase M engineering beg
 |---|------|---------|--------|-------|
 | P13-10 | Survey completion rate dashboard | v3.95 | ✅ | Admin Surveys tab: 4 ECharts, KPI cards, recent responses, period toggle. get_survey_analytics() RPC. |
 | P13-11 | Landing page survey social proof | v3.96 | ✅ | Social proof bar: star rating, respondent count, NPS recommend %. Min 20 threshold. survey_social_proof view. |
-| P13-12 | Quarterly feature prioritization | — | 🚫 BLOCKED | Drag-and-drop ranking. New rank question type. Quarterly cron. **⛔ Blocked on:** User volume — needs active users to make ranking data meaningful. |
+| P13-12 | Quarterly feature prioritization | — | 🚫 BLOCKED | Drag-and-drop ranking. Needs `rank` question type in admin question builder (8 types built, rank not yet). Quarterly cron ready via trigger_config. **⛔ Blocked on:** User volume + rank question type. |
 | P13-13 | Public changelog + feedback board | v3.97 | ✅ | Canny widget in dashboard Feedback page. Feature Requests + Bug Reports boards. Identify SSO. GitHub auto-complete. |
 
 ### Sprint 3: Tier 3 — Flagship Content Surveys
@@ -1234,7 +1234,7 @@ Complete survey infrastructure delivered by Pod 1 before Phase M engineering beg
 | # | Item | Status | Notes |
 |---|------|--------|-------|
 | P13-14 | Ghost Job Reality Check flagship survey | ❌ WONTDO | Killed — subjective recall-based survey replaced by measured ghost rate data from Gmail/Calendar integration. Real response-time data > self-reported memories. |
-| P13-15–17 | Market, employer, referral surveys | 🚫 BLOCKED | Same user volume dependency. **⛔ Blocked on:** Launch + user acquisition. |
+| P13-15–17 | Market, employer, referral surveys | 🚫 BLOCKED | Delivery infra ready (FB-SURVEY-ADMIN-001 — create from admin, goes live immediately). **⛔ Blocked on:** User volume only. Zero tech blockers remaining. |
 | P13-18 | Survey → content pipeline | ❌ WONTDO | Killed — primary input (P13-14) eliminated. Ghost rate content will derive from measured pipeline data, not survey responses. |
 
 ### Sprint 4: Tier 4 — User Intelligence System (ALL 🚫 BLOCKED — needs launch + user data)
