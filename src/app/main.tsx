@@ -17,6 +17,9 @@ import { RouterProvider } from 'react-router-dom';
 import { DataProvider } from '@providers';
 import { createAppRouter } from './routes';
 
+// Design tokens (CSS variables) + Tailwind base — bundled by Vite into app-xxx.css
+import '../input.css';
+
 // SPA-CUT-REMEDIATION: Handle legacy hash fragments from extension + bookmarks
 // MUST run BEFORE createAppRouter() so router sees the /app/* path.
 // /dashboard#settings → /app/settings, /dashboard#billing → /app/billing, etc.
