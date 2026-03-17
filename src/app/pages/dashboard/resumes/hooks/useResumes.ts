@@ -79,6 +79,7 @@ interface ResumesState {
   filterColors: string[];
   readinessCache: Record<number, ReadinessScore>;
   expandedIdx: number | null;
+  rewriteIdx: number | null;
 }
 
 type ResumesAction =
@@ -86,7 +87,9 @@ type ResumesAction =
   | { type: 'LOAD_ERROR'; error: string }
   | { type: 'TOGGLE_EXPAND'; idx: number }
   | { type: 'UPDATE_RESUMES'; resumes: Resume[]; archived: Resume[] }
-  | { type: 'UPDATE_READINESS'; readiness: Record<number, ReadinessScore> };
+  | { type: 'UPDATE_READINESS'; readiness: Record<number, ReadinessScore> }
+  | { type: 'SET_REWRITE_IDX'; idx: number }
+  | { type: 'CLOSE_REWRITE' };
 
 function reducer(state: ResumesState, action: ResumesAction): ResumesState {
   switch (action.type) {
@@ -100,6 +103,10 @@ function reducer(state: ResumesState, action: ResumesAction): ResumesState {
       return { ...state, resumes: action.resumes, archivedResumes: action.archived };
     case 'UPDATE_READINESS':
       return { ...state, readinessCache: action.readiness };
+    case 'SET_REWRITE_IDX':
+      return { ...state, rewriteIdx: action.idx };
+    case 'CLOSE_REWRITE':
+      return { ...state, rewriteIdx: null };
     default:
       return state;
   }
@@ -107,7 +114,7 @@ function reducer(state: ResumesState, action: ResumesAction): ResumesState {
 
 const INITIAL_STATE: ResumesState = {
   loading: true, error: null, resumes: [], archivedResumes: [],
-  savedFilters: [], filterColors: [], readinessCache: {}, expandedIdx: null,
+  savedFilters: [], filterColors: [], readinessCache: {}, expandedIdx: null, rewriteIdx: null,
 };
 
 const DEFAULT_FILTER_COLORS = [
@@ -257,14 +264,11 @@ function buildActions(dispatch: React.Dispatch<ResumesAction>, reload: () => voi
     },
 
     launchRewrite(idx: number) {
-      // TODO SPA-CUT-2: Rewrite interview needs standalone React implementation.
-      // Legacy relied on a multi-step modal in dashboard.html DOM.
+      // SPA-CUT-FINAL: Set rewriteIdx → ResumesPage shows rewrite panel
       const all = loadResumesFromLS();
       const r = all[idx];
-      if (r) {
-        // Navigate to rewrite flow — placeholder
-        console.warn('[SPA] launchRewrite not yet standalone for', r.name);
-      }
+      if (!r?.extractedText) return;
+      dispatch({ type: 'SET_REWRITE_IDX', idx });
     },
 
     async uploadResume(file: File) {

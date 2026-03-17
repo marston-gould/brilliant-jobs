@@ -33,11 +33,14 @@ interface TuningState {
   levels: LevelConfig[];
   hiddenJobCount: number;
   statusDirty: boolean;
+  editingFilterIdx: number | null;
 }
 
 type Action =
   | { type: 'LOADED'; data: Partial<TuningState> }
-  | { type: 'ERROR'; error: string };
+  | { type: 'ERROR'; error: string }
+  | { type: 'SET_EDITING_FILTER'; filterIdx: number }
+  | { type: 'CLOSE_EDITING_FILTER' };
 
 const initialState: TuningState = {
   loading: true,
@@ -46,12 +49,15 @@ const initialState: TuningState = {
   levels: [],
   hiddenJobCount: 0,
   statusDirty: false,
+  editingFilterIdx: null,
 };
 
 function reducer(state: TuningState, action: Action): TuningState {
   switch (action.type) {
     case 'LOADED': return { ...state, loading: false, error: null, ...action.data };
     case 'ERROR': return { ...state, loading: false, error: action.error };
+    case 'SET_EDITING_FILTER': return { ...state, editingFilterIdx: action.filterIdx };
+    case 'CLOSE_EDITING_FILTER': return { ...state, editingFilterIdx: null };
     default: return state;
   }
 }
@@ -142,7 +148,8 @@ export function useTuning(): [TuningState, {
     }
   }, []);
   const editLevelHierarchy = useCallback((filterIdx: number) => {
-    // TODO SPA-CUT-3: editFilterLevelHierarchy(filterIdx) needs standalone implementation
+    // SPA-CUT-FINAL: Set editingFilterIdx → TuningPage shows level editor
+    dispatch({ type: 'SET_EDITING_FILTER', filterIdx });
   }, []);
 
   return [state, { saveTuning, saveLevels, toggleCard, unhideJob, editLevelHierarchy }];
