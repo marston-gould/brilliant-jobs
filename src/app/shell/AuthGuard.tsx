@@ -15,10 +15,13 @@ export function AuthGuard() {
 
   useEffect(() => {
     let cancelled = false;
+    console.log('[AuthGuard] Starting auth check...');
     userProvider.getCurrentUser().then((user) => {
+      console.log('[AuthGuard] getCurrentUser resolved:', user ? 'authenticated' : 'no user');
       if (cancelled) return;
       setStatus(user ? 'authenticated' : 'unauthenticated');
-    }).catch(() => {
+    }).catch((err) => {
+      console.error('[AuthGuard] getCurrentUser error:', err);
       if (!cancelled) setStatus('unauthenticated');
     });
 
