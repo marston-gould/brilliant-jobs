@@ -1,47 +1,35 @@
 // ============================================================
 // AuthGuard — Authentication Route Guard (SA-013)
 // ============================================================
-// All /app/* routes require authentication.
-// Unauthenticated users are redirected to the landing page.
-// ============================================================
-
 import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
-import { useUser } from '@providers';
+import { supabase } from '@lib/supabase';
 
 export function AuthGuard() {
-  const userProvider = useUser();
   const [status, setStatus] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
 
   useEffect(() => {
     let cancelled = false;
 
-    // Use Supabase getSession() first — reads localStorage, no network call.
-    // getUser() makes a network request that can hang if there's no session token.
-    import('@lib/supabase').then(({ supabase }) => {
-      supabase.auth.getSession().then(({ data }) => {
-        if (cancelled) return;
-        if (data?.session?.user) {
-          setStatus('authenticated');
-        } else {
-          setStatus('unauthenticated');
-        }
-      }).catch(() => {
-        if (!cancelled) setStatus('unauthenticated');
-      });
+    // Static import — supabase client already in bundle, no dynamic import
+    supabase.auth.getSession().then(({ data }) => {
+      if (cancelled) return;
+      setStatus(data?.session?.user ? 'authenticated' : 'unauthenticated');
+    }).catch(() => {
+      if (!cancelled) setStatus('unauthenticated');
     });
 
-    const unsub = userProvider.onAuthChange((user) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!cancelled) {
-        setStatus(user ? 'authenticated' : 'unauthenticated');
+        setStatus(session?.user ? 'authenticated' : 'unauthenticated');
       }
     });
 
     return () => {
       cancelled = true;
-      unsub();
+      subscription.unsubscribe();
     };
-  }, [userProvider]);
+  }, []);
 
   if (status === 'loading') {
     return (
@@ -55,7 +43,6 @@ export function AuthGuard() {
   }
 
   if (status === 'unauthenticated') {
-    // Redirect to landing page for login
     window.location.href = '/';
     return null;
   }
