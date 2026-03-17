@@ -102,19 +102,19 @@
   "rewrites": [
     {
       "source": "/dashboard.html",
-      "destination": "/src/app/"
+      "destination": "/dist/spa/src/app/"
     },
     {
       "source": "/dashboard",
-      "destination": "/src/app/"
+      "destination": "/dist/spa/src/app/"
     },
     {
       "source": "/admin.html",
-      "destination": "/src/app/"
+      "destination": "/dist/spa/src/app/"
     },
     {
       "source": "/admin",
-      "destination": "/src/app/"
+      "destination": "/dist/spa/src/app/"
     },
     {
       "source": "/functions/v1/:path*",
@@ -126,11 +126,11 @@
     },
     {
       "source": "/app",
-      "destination": "/src/app/"
+      "destination": "/dist/spa/src/app/"
     },
     {
       "source": "/app/:path*",
-      "destination": "/src/app/"
+      "destination": "/dist/spa/src/app/"
     },
     {
       "source": "/blog/feed.xml",

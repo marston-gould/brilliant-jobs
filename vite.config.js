@@ -32,6 +32,9 @@ export default defineConfig({
     open: '/dashboard.html',
   },
 
+  // Production: assets served at /dist/spa/ on Vercel (repo root = output dir)
+  base: '/dist/spa/',
+
   build: {
     outDir: 'dist/spa',
     rollupOptions: {
