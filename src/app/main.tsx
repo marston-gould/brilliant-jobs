@@ -17,9 +17,8 @@ import { RouterProvider } from 'react-router-dom';
 import { DataProvider } from '@providers';
 import { createAppRouter } from './routes';
 
-const router = createAppRouter();
-
 // SPA-CUT-REMEDIATION: Handle legacy hash fragments from extension + bookmarks
+// MUST run BEFORE createAppRouter() so router sees the /app/* path.
 // /dashboard#settings → /app/settings, /dashboard#billing → /app/billing, etc.
 (function redirectLegacyHash() {
   const hash = window.location.hash?.replace('#', '');
@@ -38,6 +37,8 @@ const router = createAppRouter();
     window.history.replaceState(null, '', '/app/admin/overview');
   }
 })();
+
+const router = createAppRouter();
 
 function App() {
   return (
