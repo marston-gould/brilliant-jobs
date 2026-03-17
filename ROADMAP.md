@@ -3774,6 +3774,6 @@ Phase S is complete when ALL of the following are true:
 | Session | Description | Status | Version |
 |---------|-------------|--------|---------|
 | SVM-S1 | Schema Evolution + Admin Panel Foundation — 4 new JSONB columns (questions, audience_config, trigger_config, placement_config). admin-survey-manager EF (6 actions: list/get/create/update/delete/duplicate). admin-survey-manager.js panel (campaign table, channel+trigger badges, active toggle). Gateway #141. Questions backfilled. Ghost survey killed. 47 tests. | ✅ | v10.29 |
-| SVM-S2 | Full CRUD UI — WHAT (question builder) / WHO (audience targeting) / WHEN (trigger config) / WHERE (channel + page placement). Create/edit modal. | 🔲 | |
+| SVM-S2 | Full CRUD UI — WHAT (question builder: add/remove/reorder, 8 question types, options editor, scale labels, sub-text) / WHO (all/time_cohort/behavioral: signup dates, min sessions, min apps, plan tier, days since signup) / WHEN (page_navigation/cron/event/behavioral: cron presets, event dropdown, metric+operator+value) / WHERE (overlay+page checkboxes, merch+page+position, email, SMS, priority). Create/edit modal saves to EF. 64 tests. | ✅ | v10.30 |
 | SVM-S3 | Engine Rewiring — Delivery stack reads from new JSONB columns. Zero-code survey creation. | 🔲 | |
 | SVM-S4 | Analytics + Response Viewer + Close — Per-campaign stats, response drill-down, CSV export. | 🔲 | |

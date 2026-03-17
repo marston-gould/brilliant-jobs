@@ -52,7 +52,18 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**FB-SURVEY-ADMIN-001 SVM-S1** — Schema Evolution + Admin Panel Foundation ✅
+**FB-SURVEY-ADMIN-001 SVM-S2** — Full CRUD UI: WHAT / WHO / WHEN / WHERE ✅
+- v10.29→v10.30
+- **js/admin-survey-manager.js:** Full create/edit modal with 4 sections:
+  - **WHAT:** Title, version ID (disabled on edit), survey type selector (nps/periodic/micro/exit), credits, estimated minutes, description. Question builder: add/remove/reorder questions, 8 type selector (choice/rating/scale/text/nps/multiselect/dropdown/chips), options textarea for choice types, min/max labels for scale/rating, sub-text input, move up/down buttons.
+  - **WHO:** Audience type selector (All Users / Time Cohort / Behavioral). Time cohort: signup_after + signup_before date pickers. Behavioral: min_sessions, min_applications, plan tier (any/free/starter/pro), days_since_signup_min.
+  - **WHEN:** Trigger type selector (Page Navigation / Cron / Event / Behavioral). Cron: expression input with presets. Event: dropdown (ghost_detected, subscription_created, resume_uploaded, etc.). Behavioral: metric + operator + value. frequency_days + expires_at.
+  - **WHERE:** Overlay toggle + 10-page checkboxes. Merch toggle + page checkboxes + position selector (sidebar/after_20th_card/empty_state/top_of_page). Email toggle. SMS toggle. Priority input.
+- Save reads all form fields, builds audience_config + trigger_config + placement_config JSONB, sends create/update to admin-survey-manager EF. Disables button during save. Closes modal + refreshes table on success.
+- XSS: _svmAttr for attribute escaping, _svmEsc for content escaping.
+- **Tests:** 64 tests (tests/svm-s2-crud-ui.test.js) — all passing.
+
+**Previous: FB-SURVEY-ADMIN-001 SVM-S1** — Schema Evolution + Admin Panel Foundation ✅
 - v10.28→v10.29
 - **Migration v10.28-fb-survey-admin-001-s1.sql:** 4 new JSONB columns on survey_campaigns: `questions` (question bank array), `audience_config` (all/time_cohort/behavioral), `trigger_config` (page_navigation/cron/event/behavioral), `placement_config` (overlay+pages/merch+pages+position/email/sms). Backfills from existing flat fields. Index on (is_active, survey_type). Applied to production.
 - **Questions backfilled:** All 6 active campaigns have questions JSONB populated from hardcoded JS banks (NPS 3Q, Periodic 16Q, 4 micros 1-2Q each).
@@ -4260,7 +4271,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v10.29`** | **FB-SURVEY-ADMIN-001 SVM-S1: Schema evolution + admin panel foundation.** |
+| **Product (BJ_VERSION)** | **`v10.30`** | **FB-SURVEY-ADMIN-001 SVM-S2: Full CRUD UI with WHAT/WHO/WHEN/WHERE.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
