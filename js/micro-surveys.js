@@ -21,15 +21,36 @@
   var MICRO_SURVEY_KEY = 'bj_micro_survey_shown';
 
   // ─── Priority Queue ───
-  // SDV-S4: Priority now reads from survey_campaigns table via BJ_SURVEY_QUESTIONS cache.
-  // Fallback to hardcoded PRIORITY if campaigns not loaded.
-  // Higher number = higher priority. Paywall is king (monetization signal).
+  // SDV-S7: Priority reads from survey_campaigns table at init.
+  // Fallback to hardcoded PRIORITY if DB fetch fails.
+  // DB uses priority 1=highest; we invert to higher number = higher priority for sorting.
   var PRIORITY = {
     micro_paywall_v1: 100,
     micro_search_v1: 60,
     micro_apply_v1: 50,
     micro_data_v1: 30
   };
+
+  // Fetch campaign priorities from DB and merge into PRIORITY map
+  (function loadCampaignPriorities() {
+    try {
+      var sb = window.supabase || window._supabase;
+      if (!sb) return;
+      sb.from('survey_campaigns')
+        .select('survey_version,priority')
+        .eq('survey_type', 'micro')
+        .eq('is_active', true)
+        .then(function(res) {
+          if (res.data) {
+            res.data.forEach(function(c) {
+              // Invert: DB priority 1 (highest) → 100, 6 (lowest) → 10
+              PRIORITY[c.survey_version] = Math.max(10, 110 - (c.priority * 10));
+            });
+          }
+        })
+        .catch(function(e) { console.warn('[micro-survey] campaign priority fetch failed:', e); });
+    } catch (e) { console.warn('[micro-survey] campaign priority init failed:', e); }
+  })();
 
   // Pending surveys that haven't been shown yet, waiting for the flush window
   var _pendingQueue = [];
@@ -39,6 +60,8 @@
   // ─── Rate Limiter ───
   function canShowMicroSurvey() {
     try {
+      // SDV-S7: Cross-suppression — no micro-survey if overlay already shown this session
+      if (sessionStorage.getItem('bj_survey_overlay_shown')) return false;
       return !sessionStorage.getItem(MICRO_SURVEY_KEY);
     } catch (e) { console.warn('[micro-survey] sessionStorage read failed:', e); return true; }
   }
@@ -46,6 +69,8 @@
   function markMicroSurveyShown() {
     try {
       sessionStorage.setItem(MICRO_SURVEY_KEY, Date.now().toString());
+      // SDV-S7: Also mark for overlay cross-suppression — prevents overlay from showing after micro
+      sessionStorage.setItem('bj_survey_overlay_shown', Date.now().toString());
     } catch (e) { console.warn('[micro-survey] sessionStorage write failed:', e); }
   }
 
@@ -259,19 +284,31 @@
     return card;
   }
 
+  // ─── SDV-S7: Shared question bank accessor ───
+  // Reads micro-survey question config from js/survey-questions.js shared module.
+  // Falls back to inline defaults if module not loaded yet.
+  function getMicroConfig(version) {
+    var sq = window.BJ_SURVEY_QUESTIONS;
+    if (sq && sq.microSurveyQuestions && sq.microSurveyQuestions[version]) {
+      return sq.microSurveyQuestions[version];
+    }
+    return null;
+  }
+
   // ─── P13-09: Paywall Friction Survey ───
   // Shows when a free user hits a feature limit
   // PRIORITY: 100 (highest — monetization signal)
   window.showPaywallFriction = function(featureName) {
-    enqueueMicroSurvey({
-      question: 'Would you pay to unlock this feature?',
-      type: 'choice',
+    var cfg = getMicroConfig('micro_paywall_v1') || {
+      question: 'Would you pay to unlock this feature?', type: 'choice',
       options: ['Definitely', 'Maybe', 'No'],
-      followUp: {
-        question: 'What\'s holding you back?',
-        type: 'chips',
-        options: ['Too expensive', 'Not enough value yet', 'Just browsing', 'Already paying elsewhere']
-      },
+      followUp: { question: "What's holding you back?", type: 'chips', options: ['Too expensive', 'Not enough value yet', 'Just browsing', 'Already paying elsewhere'] }
+    };
+    enqueueMicroSurvey({
+      question: cfg.question,
+      type: cfg.type,
+      options: cfg.options,
+      followUp: cfg.followUp,
       version: 'micro_paywall_v1',
       featureContext: featureName,
       displayMode: 'inline',
@@ -282,16 +319,16 @@
   // ─── P13-04: Post-Search Relevance Survey ───
   // PRIORITY: 60
   window.showSearchRelevance = function(filterName, resultCount) {
+    var cfg = getMicroConfig('micro_search_v1') || {
+      question: 'How relevant were these results?', type: 'rating', minLabel: 'Not at all', maxLabel: 'Very relevant',
+      followUp: { question: 'What was missing?', type: 'chips', options: ['More salary data', 'Wrong seniority level', 'Too many ghost jobs', 'Not my industry', 'Other'] }
+    };
     enqueueMicroSurvey({
-      question: 'How relevant were these results?',
-      type: 'rating',
-      minLabel: 'Not at all',
-      maxLabel: 'Very relevant',
-      followUp: {
-        question: 'What was missing?',
-        type: 'chips',
-        options: ['More salary data', 'Wrong seniority level', 'Too many ghost jobs', 'Not my industry', 'Other']
-      },
+      question: cfg.question,
+      type: cfg.type,
+      minLabel: cfg.minLabel,
+      maxLabel: cfg.maxLabel,
+      followUp: cfg.followUp,
       version: 'micro_search_v1',
       featureContext: JSON.stringify({ filter: filterName, result_count: resultCount }),
       displayMode: 'inline',
@@ -303,16 +340,16 @@
   // ─── P13-05: Post-Application Confidence Survey ───
   // PRIORITY: 50
   window.showApplyConfidence = function(jobId, companyName) {
+    var cfg = getMicroConfig('micro_apply_v1') || {
+      question: 'How confident are you this job is real?', type: 'rating', minLabel: 'Likely ghost', maxLabel: 'Definitely real',
+      followUp: { question: 'Was the application process clear?', type: 'chips', options: ['Yes, very clear', 'Somewhat', 'No, confusing'] }
+    };
     enqueueMicroSurvey({
-      question: 'How confident are you this job is real?',
-      type: 'rating',
-      minLabel: 'Likely ghost',
-      maxLabel: 'Definitely real',
-      followUp: {
-        question: 'Was the application process clear?',
-        type: 'chips',
-        options: ['Yes, very clear', 'Somewhat', 'No, confusing']
-      },
+      question: cfg.question,
+      type: cfg.type,
+      minLabel: cfg.minLabel,
+      maxLabel: cfg.maxLabel,
+      followUp: cfg.followUp,
       version: 'micro_apply_v1',
       featureContext: JSON.stringify({ job_id: jobId, company: companyName }),
       displayMode: 'toast'
@@ -322,10 +359,14 @@
   // ─── P13-06: Data Value Assessment ───
   // PRIORITY: 30 (lowest — passive viewing, least commercial signal)
   window.showDataValue = function(featureContext) {
+    var cfg = getMicroConfig('micro_data_v1') || {
+      question: 'Did this data help your decision?', type: 'choice',
+      options: ['Yes, very helpful', 'Somewhat', 'Not really']
+    };
     enqueueMicroSurvey({
-      question: 'Did this data help your decision?',
-      type: 'choice',
-      options: ['Yes, very helpful', 'Somewhat', 'Not really'],
+      question: cfg.question,
+      type: cfg.type,
+      options: cfg.options,
       version: 'micro_data_v1',
       featureContext: featureContext,
       displayMode: 'toast'

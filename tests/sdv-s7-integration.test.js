@@ -276,3 +276,89 @@ describe('SDV-S7: Roadmap consistency', () => {
     });
   }
 });
+
+// ─── 11. Spec Gap Remediation Verification ───────────────────────────────────
+describe('SDV-S7: Spec gap remediation', () => {
+  const sd = readFile('js/survey-delivery.js');
+  const ms = readFile('js/micro-surveys.js');
+  const si = readFile('supabase/functions/send-survey-invite/index.ts');
+  const rl = readFile('supabase/functions/resolve-survey-link/index.ts');
+  const gad = readFile('supabase/functions/ghost-auto-detect/index.ts');
+  const app = readFile('js/app.js');
+
+  // Gap 3: Cross-channel dedup
+  it('overlay checks notification_log for same-day email/SMS invites', () => {
+    expect(sd).toContain('wasInvitedToday');
+    expect(sd).toContain("notification_log");
+    expect(sd).toContain("survey_invite");
+  });
+
+  // Gap 4: Overlay/micro cross-suppression
+  it('overlay checks if micro-survey was already shown this session', () => {
+    expect(sd).toContain('microSurveyShownThisSession');
+    expect(sd).toContain('bj_micro_survey_shown');
+  });
+  it('overlay marks micro-survey flag when shown', () => {
+    expect(sd).toContain('markAnySurveyShownForMicro');
+  });
+  it('micro-surveys check if overlay was already shown this session', () => {
+    expect(ms).toContain('bj_survey_overlay_shown');
+  });
+  it('micro-surveys set overlay flag when shown (bidirectional suppression)', () => {
+    expect(ms).toContain("sessionStorage.setItem('bj_survey_overlay_shown'");
+  });
+
+  // Gap 5: Micro-survey DB priority fetch
+  it('micro-surveys fetch priorities from survey_campaigns DB at init', () => {
+    expect(ms).toContain("from('survey_campaigns')");
+    expect(ms).toContain("eq('survey_type', 'micro')");
+    expect(ms).toContain('loadCampaignPriorities');
+  });
+
+  // Gap 6: SMS notification preference check
+  it('SMS send checks user notification_preferences for surveys category', () => {
+    expect(si).toContain('notification_preferences');
+    expect(si).toContain('survey_invite');
+    expect(si).toContain('sms === false');
+  });
+
+  // Gap 7: Ghost rate feedback event-driven email
+  it('ghost-auto-detect triggers survey invite after ghost patterns found', () => {
+    expect(gad).toContain('send-survey-invite');
+    expect(gad).toContain('ghost_rate_feedback_v1');
+  });
+
+  // Gap 8: Merch CTA accent blue border
+  it('survey_cta merch cards have accent blue border', () => {
+    expect(app).toContain('borderLeft');
+    expect(app).toContain('accent');
+  });
+
+  // Gap 10: Auth session in resolve-survey-link
+  it('resolve-survey-link generates magic link for auto-auth', () => {
+    expect(rl).toContain('generateLink');
+    expect(rl).toContain('magiclink');
+    expect(rl).toContain('hashed_token');
+  });
+  it('resolve-survey-link falls back to uid param if auth fails', () => {
+    expect(rl).toContain('uid fallback');
+  });
+
+  // Gap 11: Micro-surveys import from shared module
+  it('micro-surveys have getMicroConfig helper reading from BJ_SURVEY_QUESTIONS', () => {
+    expect(ms).toContain('getMicroConfig');
+    expect(ms).toContain('BJ_SURVEY_QUESTIONS');
+    expect(ms).toContain('microSurveyQuestions');
+  });
+  it('all 4 trigger functions use getMicroConfig', () => {
+    const configCalls = ms.match(/getMicroConfig\(/g);
+    expect(configCalls).not.toBeNull();
+    expect(configCalls.length).toBeGreaterThanOrEqual(4);
+  });
+
+  // Gap 12: survey_version in dismiss event
+  it('survey_overlay_dismissed includes survey_version', () => {
+    expect(sd).toContain('_activeOverlayCampaign');
+    expect(sd).toMatch(/survey_overlay_dismissed.*survey_version/s);
+  });
+});

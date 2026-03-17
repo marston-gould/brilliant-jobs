@@ -93,10 +93,31 @@ serve(async (req: Request) => {
     else if (link.survey_version.startsWith("exit")) surveyContext = "churn";
     else if (link.survey_version.startsWith("ghost")) surveyContext = "ghost";
 
-    // 5. Build redirect URL
-    const surveyUrl = `${DASHBOARD_URL}/survey?context=${surveyContext}&v=${encodeURIComponent(link.survey_version)}&src=${link.channel}&uid=${link.user_id}`;
+    // 5. Generate short-lived auth session (§7.2)
+    // Use Supabase admin API to get user email, then generate a magic link
+    // that auto-authenticates when the user lands on the survey page.
+    let authParam = `uid=${link.user_id}`;
+    try {
+      const { data: userData } = await sb.auth.admin.getUserById(link.user_id);
+      if (userData?.user?.email) {
+        const { data: magicLink } = await sb.auth.admin.generateLink({
+          type: "magiclink",
+          email: userData.user.email,
+          options: { redirectTo: `${DASHBOARD_URL}/survey?context=${surveyContext}&v=${encodeURIComponent(link.survey_version)}&src=${link.channel}` },
+        });
+        if (magicLink?.properties?.hashed_token) {
+          authParam = `token_hash=${magicLink.properties.hashed_token}&type=magiclink`;
+        }
+      }
+    } catch (e) {
+      // Non-fatal — fall back to uid param (survey page handles anonymous submission)
+      console.warn("[resolve-survey-link] Auth session generation failed, using uid fallback:", String(e));
+    }
 
-    // 6. PostHog: track click
+    // 6. Build redirect URL
+    const surveyUrl = `${DASHBOARD_URL}/survey?context=${surveyContext}&v=${encodeURIComponent(link.survey_version)}&src=${link.channel}&${authParam}`;
+
+    // 7. PostHog: track click
     const clickEvent = link.channel === "sms" ? "survey_sms_clicked" : "survey_email_clicked";
     await capturePostHog(link.user_id, clickEvent, {
       survey_version: link.survey_version,

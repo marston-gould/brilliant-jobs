@@ -1958,6 +1958,9 @@ window._enrichmentBadgeHtml = function(sf) {
     // ─── SDV-S4: survey_cta content_type ───
     // If this merch entry is a survey CTA, render credit badge + check eligibility
     if (c.content_type === 'survey_cta' && c.survey_url) {
+      // §3.2: Distinct visual treatment — subtle border highlight using accent blue
+      card.style.borderLeft = '3px solid var(--accent, #6da3ff)';
+
       // Check if user already completed this survey version
       var surveyVersion = (c.survey_url.match(/[?&]v=([^&]+)/) || [])[1];
       if (surveyVersion && window.currentUser) {

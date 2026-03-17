@@ -3850,13 +3850,23 @@ None.
 
 ## Last Completed Session
 
-**FB-SURVEY-DELIVERY-001 SDV-S7** — PostHog Instrumentation + Integration Test + Close ✅ — **FB-SURVEY-DELIVERY-001 COMPLETE**
+**FB-SURVEY-DELIVERY-001 SDV-S7** — Spec Gap Remediation + Integration Test + Close ✅ — **FB-SURVEY-DELIVERY-001 COMPLETE**
 - v10.27→v10.28
-- All 12 PostHog events verified across 6 surfaces: survey_overlay_shown/accepted/dismissed (survey-delivery.js), survey_merch_cta_shown/clicked (app.js), survey_email_sent (send-survey-invite EF), survey_email_clicked (resolve-survey-link EF), survey_sms_sent (send-survey-invite EF), survey_sms_clicked (resolve-survey-link EF), survey_credits_granted (survey.html), survey_history_viewed/survey_response_expanded (notification-center.js).
-- **Bug fix:** URL params (context, version, deliverySource) were lost during SDV-S2 question bank extraction. Re-added between aliases and resolveVersion().
-- Full integration test: overlay chain (page-nav → eligibility → overlay → /survey?src=overlay → credit grant → toast → PostHog), merch chain (survey_cta → completion check → credit badge → /survey?src=merch), email chain (pg_cron → send-survey-invite → survey_links → /s/{token} → resolve-survey-link → redirect → survey → credits), SMS chain (Vonage → quiet hours → budget → 72h token → /s/{token} → redirect).
-- **7 test files, 340 total tests, all passing** (50+56+60+26+46+36+66).
-- **FB-SURVEY-DELIVERY-001 COMPLETE** — 7 sessions, v10.02→v10.28, 4 delivery channels, credit rewards, My Surveys tab, orchestration engine, micro-survey priority fix, 340 tests.
+- **Spec gap remediation (12 gaps closed):**
+  - Gap 3: Cross-channel dedup — `wasInvitedToday()` checks notification_log for same-day email/SMS invites before overlay.
+  - Gap 4: Overlay/micro cross-suppression — bidirectional sessionStorage flags (`bj_survey_overlay_shown` + `bj_micro_survey_shown`). Both systems check + set each other's flags.
+  - Gap 5: DB priority fetch — `loadCampaignPriorities()` IIFE queries survey_campaigns for micro type at init, inverts to PRIORITY map. Falls back to hardcoded defaults.
+  - Gap 6: SMS notification pref — reads `notification_preferences.survey_invite.sms`, skips if false.
+  - Gap 7: Ghost rate feedback trigger — ghost-auto-detect EF invokes send-survey-invite with `ghost_rate_feedback_v1` after ghost patterns detected. New campaign seeded (email, 30d, 3 credits).
+  - Gap 8: Merch accent border — `borderLeft: 3px solid var(--accent)` on survey_cta cards.
+  - Gap 9: Merch placement seeded — survey CTA merch_content row for periodic_v2 (5 credits) in production.
+  - Gap 10: Auth session — resolve-survey-link calls `sb.auth.admin.generateLink({ type: 'magiclink' })`. Falls back to uid param.
+  - Gap 11: Micro-survey shared module — `getMicroConfig()` reads from `BJ_SURVEY_QUESTIONS.microSurveyQuestions`. All 4 triggers refactored.
+  - Gap 12: dismiss survey_version — `_activeOverlayCampaign` ref passed in `survey_overlay_dismissed` event.
+- All 12 PostHog events verified across 6 surfaces.
+- **Deployments:** ghost-auto-detect, resolve-survey-link, send-survey-invite redeployed. Migrations applied. pg_cron live. Merch content seeded.
+- **7 test files, 359 total tests, all passing** (50+56+60+26+46+36+85).
+- **FB-SURVEY-DELIVERY-001 COMPLETE** — 7 sessions, v10.02→v10.28, 4 delivery channels, credit rewards, My Surveys tab, orchestration engine, micro-survey priority fix, 359 tests.
 
 **Previous: FB-SURVEY-DELIVERY-001 SDV-S6** — SMS Delivery + Short URL Resolution ✅
 - v10.26→v10.27
@@ -4230,7 +4240,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v10.28`** | **FB-SURVEY-DELIVERY-001 COMPLETE: 7 sessions, 340 tests, 4 delivery channels.** |
+| **Product (BJ_VERSION)** | **`v10.28`** | **FB-SURVEY-DELIVERY-001 COMPLETE: 7 sessions, 359 tests, 4 delivery channels, 12 spec gaps remediated.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |

@@ -221,8 +221,10 @@
       credit_amount: campaign.credit_reward || 0
     });
 
-    // Mark shown + write cooldown
+    // Mark shown + write cooldown + cross-suppress micro-surveys
     markShownThisSession();
+    markAnySurveyShownForMicro();
+    _activeOverlayCampaign = campaign;
     writeCooldownTimestamp();
   }
 
@@ -234,10 +236,12 @@
     }
     _overlayActive = false;
 
-    // PostHog: survey_overlay_dismissed
+    // PostHog: survey_overlay_dismissed (with survey_version per spec §9)
     _captureEvent('survey_overlay_dismissed', {
+      survey_version: _activeOverlayCampaign ? _activeOverlayCampaign.survey_version : 'unknown',
       dismiss_method: method || 'unknown'
     });
+    _activeOverlayCampaign = null;
   }
 
   // ─── PostHog Helper ─────────────────────────────────────────────────────────
@@ -247,6 +251,40 @@
       else if (typeof posthog !== 'undefined') posthog.capture(name, props);
     } catch (_ph) { /* fire-and-forget */ }
   }
+
+  // ─── Cross-Channel Dedup (§6.1) ──────────────────────────────────────────
+  // Check if user received an email/SMS invite today for the same survey
+  async function wasInvitedToday(surveyVersion) {
+    try {
+      var sb = window.supabase || window._supabase;
+      if (!sb || !window.currentUser) return false;
+      var todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      var res = await sb.from('notification_log')
+        .select('id')
+        .eq('user_id', window.currentUser.id)
+        .eq('notification_type', 'survey_invite')
+        .gte('created_at', todayStart.toISOString())
+        .limit(1);
+      return !!(res.data && res.data.length > 0);
+    } catch (e) { return false; } // fail-open
+  }
+
+  // ─── Cross-Suppression with Micro-Surveys (§6.1) ───────────────────────
+  // If a micro-survey was already shown this session, don't show overlay
+  function microSurveyShownThisSession() {
+    try { return !!sessionStorage.getItem('bj_micro_survey_shown'); }
+    catch (e) { return false; }
+  }
+
+  // Mark that ANY survey (overlay or micro) was shown, so micro-surveys won't fire
+  function markAnySurveyShownForMicro() {
+    try { sessionStorage.setItem('bj_micro_survey_shown', Date.now().toString()); }
+    catch (e) { console.warn('[survey-delivery] micro cross-suppress write failed:', e); }
+  }
+
+  // Track active campaign for dismiss event
+  var _activeOverlayCampaign = null;
 
   // ─── Main Evaluation ───────────────────────────────────────────────────────
   // Called on each page navigation. Evaluates all eligibility criteria and
@@ -263,6 +301,9 @@
 
     // Gate 4: Overlay not already active
     if (_overlayActive) return;
+
+    // Gate 5: Cross-suppression — no overlay if micro-survey already shown this session
+    if (microSurveyShownThisSession()) return;
 
     try {
       // Fetch active campaigns + completed versions in parallel
@@ -291,6 +332,10 @@
       // Resolve highest priority
       var winner = resolveHighestPriority(eligible);
       if (!winner) return;
+
+      // Gate 6: Cross-channel dedup — skip if user was emailed/SMS'd today for this survey
+      var invitedToday = await wasInvitedToday(winner.survey_version);
+      if (invitedToday) return;
 
       // Show the overlay
       showOverlay(winner);

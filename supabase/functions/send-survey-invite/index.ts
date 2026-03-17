@@ -439,7 +439,7 @@ async function handleSendSms(campaignVersion: string): Promise<Response> {
 
   // 3. Query eligible users (must have verified phone + SMS surveys enabled)
   const { data: users, error: userErr } = await sb.from("profiles")
-    .select("id,phone,phone_verified,timezone")
+    .select("id,phone,phone_verified,timezone,notification_preferences")
     .eq("phone_verified", true)
     .not("phone", "is", null);
 
@@ -455,6 +455,13 @@ async function handleSendSms(campaignVersion: string): Promise<Response> {
     if (Date.now() - startTime > WALL_TIME_MS) {
       console.warn("[send-survey-invite] SMS wall-time abort after", sent, "sent");
       break;
+    }
+
+    // §3.4: User must have SMS notifications enabled for surveys category
+    const prefs = user.notification_preferences as Record<string, unknown> | null;
+    if (prefs) {
+      const surveyPref = prefs.survey_invite as Record<string, unknown> | undefined;
+      if (surveyPref && surveyPref.sms === false) { skipped++; continue; }
     }
 
     // Quiet hours check (10pm–7am user timezone)

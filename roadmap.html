@@ -2355,7 +2355,7 @@ const features = [
 { s: 'done', b: 'feature', n: 'FB-SURVEY-DELIVERY-001 SDV-S4: Micro-Survey Fix + Merch', d: 'v10.25: micro-surveys.js 500ms→2s debounce, 3 silent catches fixed. app.js survey_cta content_type (completion check, credit badge, survey URL routing). PostHog survey_merch_cta_shown/clicked. 26 tests.', p: 100, e: '1 session' },
 { s: 'done', b: 'feature', n: 'FB-SURVEY-DELIVERY-001 SDV-S5: Email Delivery EF', d: 'v10.26: send-survey-invite EF (Resend, frequency cap, survey_links 6-char/24h, HTML template, 100ms throttle, 2-min abort). pg_cron NPS monthly + Periodic bi-weekly. Gateway #139-140. PostHog survey_email_sent. 46 tests.', p: 100, e: '1 session' },
 { s: 'done', b: 'feature', n: 'FB-SURVEY-DELIVERY-001 SDV-S6: SMS + Short URLs', d: 'v10.27: resolve-survey-link EF (token lookup, expiry, used_at, redirect). Vonage SMS (phone_verified, 30d cap, quiet hours, $10/day budget, 160-char). Vercel /s/:token rewrite. 36 tests.', p: 100, e: '1 session' },
-{ s: 'done', b: 'feature', n: 'FB-SURVEY-DELIVERY-001 SDV-S7: Integration Test + Close', d: 'v10.28: All 12 PostHog events verified. Full E2E (overlay→merch→email→SMS). URL params fix. 340 total tests across 7 suites. FB-SURVEY-DELIVERY-001 COMPLETE.', p: 100, e: '1 session' },
+{ s: 'done', b: 'feature', n: 'FB-SURVEY-DELIVERY-001 SDV-S7: Spec Remediation + Close', d: 'v10.28: 12 spec gaps closed (cross-channel dedup, overlay/micro cross-suppression, DB priority fetch, SMS pref, ghost trigger, merch border+seed, auth magic link, shared module import, dismiss version). 359 tests. FB-SURVEY-DELIVERY-001 COMPLETE.', p: 100, e: '1 session' },
 ];
 
 
