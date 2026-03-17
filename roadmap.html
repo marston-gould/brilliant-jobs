@@ -163,6 +163,9 @@
     .status-wontdo {
       background: rgba(239,68,68,0.12); color: #ef4444; text-decoration: line-through;
     }
+    .status-deferred {
+      background: rgba(107,114,128,0.12); color: #9ca3af; font-style: italic;
+    }
 
     /* Feature content */
     .feature-name {
@@ -245,6 +248,7 @@
       letter-spacing: 0.02em;
     }
     .status-todo .estimate-tag { background: rgba(77,142,255,0.08); color: var(--accent); border-color: rgba(77,142,255,0.15); }
+    .status-deferred .estimate-tag { background: rgba(107,114,128,0.08); color: #9ca3af; border-color: rgba(107,114,128,0.15); }
     .status-progress .estimate-tag { background: rgba(245,158,11,0.08); color: var(--amber); border-color: rgba(245,158,11,0.15); }
 
     /* Phase badge */
@@ -286,6 +290,7 @@
     .section-wrap.sec-progress { border-left: 3px solid var(--amber); }
     .section-wrap.sec-todo { border-left: 3px solid var(--text-faint); }
     .section-wrap.sec-wontdo { border-left: 3px solid #ef4444; }
+    .section-wrap.sec-deferred { border-left: 3px solid #6b7280; }
 
     /* Section dividers / headers */
     .section-divider {
@@ -303,6 +308,7 @@
     .section-divider.sec-progress h3 { color: var(--amber); }
     .section-divider.sec-todo h3 { color: var(--text-faint); }
     .section-divider.sec-wontdo h3 { color: #ef4444; }
+    .section-divider.sec-deferred h3 { color: #9ca3af; }
     .section-divider::after {
       content: ''; flex: 1; height: 1px; background: var(--border);
     }
@@ -435,6 +441,7 @@
       <div class="header-stat"><span class="val" id="count-done">0</span><span class="lbl">Done</span></div>
       <div class="header-stat"><span class="val" id="count-progress">0</span><span class="lbl">In Progress</span></div>
       <div class="header-stat"><span class="val" id="count-todo">0</span><span class="lbl">Planned</span></div>
+      <div class="header-stat"><span class="val" id="count-deferred">0</span><span class="lbl">Deferred</span></div>
       <div class="header-stat"><span class="val" id="count-wontdo">0</span><span class="lbl">Won't Do</span></div>
     </div>
     <div class="progress-bar-outer">
@@ -731,11 +738,11 @@ const features = [
   { s: 'done', n: 'Filter-driven trend indicators', d: 'filterTrendEmail template implemented in email-templates.ts. Stats compare mode shows per-filter dual-series trends. Trend velocity computed from content_snapshots daily counts. v6.17.', p: 4 },
   { s: 'todo', n: 'Supply vs demand signals', d: '"47 users watching this filter, only 3 matching jobs" — opportunity scoring', b: 'needs-data', p: 4, b: 'needs-data', e: '4h'},
   { s: 'done', n: 'Company ghost rate rankings', d: 'company_ghost_stats table + Company Browser badges + Admin Ghost tab. Ghost rate, avg response days, total applications per company. v4.07-v4.11.', p: 4 },
-  { s: 'todo', n: 'Network strength scoring', d: 'Rate connection quality per company — 1st degree, mutual connections, recency', b: 'needs-extension', p: 4, b: 'needs-referrals', e: '4h'},
-  { s: 'todo', n: 'Warm intro pathways', d: 'You → Sarah → Tom at Company X — multi-hop connection mapping', b: 'needs-extension', p: 4, b: 'needs-referrals', e: '6h'},
+  { s: 'deferred', n: 'Network strength scoring', d: 'Rate connection quality per company — 1st degree, mutual connections, recency', b: 'needs-extension', p: 4, b: 'needs-referrals', e: '4h'},
+  { s: 'deferred', n: 'Warm intro pathways', d: 'You → Sarah → Tom at Company X — multi-hop connection mapping', b: 'needs-extension', p: 4, b: 'needs-referrals', e: '6h'},
   { s: 'done', n: 'Hiring velocity detection and alerts', d: 'CE Phase 2B+4: company_surge + new_entrant detection rules. Auto-generates stories + publishes. v4.66', b: 'needs-data', p: 4, b: 'needs-data' },
-  { s: 'todo', n: 'Referral availability indicator', d: 'Badge on job cards when user has 1+ connections at that company. Strength tiers: strong (1st degree, recent contact), warm (1st degree), weak (2nd degree). "You know 3 people here" in job modal.', b: 'needs-referrals', p: 4, b: 'needs-referrals', e: '3h'},
-  { s: 'todo', n: 'Referral prompt before apply', d: 'When connection exists at company, prompt before application: "Want to request a referral from [Name] first?" with templated outreach message. Referral-first flow increases success rate.', b: 'needs-referrals', p: 4, b: 'needs-referrals', e: '2h'},
+  { s: 'deferred', n: 'Referral availability indicator', d: 'Badge on job cards when user has 1+ connections at that company. Strength tiers: strong (1st degree, recent contact), warm (1st degree), weak (2nd degree). "You know 3 people here" in job modal.', b: 'needs-referrals', p: 4, b: 'needs-referrals', e: '3h'},
+  { s: 'deferred', n: 'Referral prompt before apply', d: 'When connection exists at company, prompt before application: "Want to request a referral from [Name] first?" with templated outreach message. Referral-first flow increases success rate.', b: 'needs-referrals', p: 4, b: 'needs-referrals', e: '2h'},
   { s: 'done', n: 'Personal stats — jobs by industry chart', d: 'Chart showing job counts grouped by industry for user filtered results. Data path: ats_jobs JOIN ats_companies ON company_slug=slug WHERE industry IS NOT NULL. Current coverage: 1,231/10,019 companies (12.3%) have industry. Needs enrichment pass to be useful.', p: 4 },
   { s: 'done', n: 'Industry enrichment pass — FCD pipeline', d: 'Backfill complete via local FCD matching (v1 + v3). 28,898/39,123 companies enriched (73.9%% overall, 77.4%% for companies with jobs). 5-strategy matching: exact name, LinkedIn slug, domain, unsquished slug. 24,956 companies also enriched with locality/region/country. Ongoing automated pipeline pending Supabase Storage upload + cron enable.', b: 'pre-launch', p: 4 },
 
@@ -2479,14 +2486,16 @@ function render() {
   const done = visible.filter(f => f.s === 'done' || f.s === 'complete');
   const progress = visible.filter(f => f.s === 'progress');
   const todo = visible.filter(f => f.s === 'todo');
+  const deferred = visible.filter(f => f.s === 'deferred');
   const wontdo = visible.filter(f => f.s === 'wontdo');
 
   document.getElementById('count-done').textContent = done.length;
   document.getElementById('count-progress').textContent = progress.length;
   document.getElementById('count-todo').textContent = todo.length;
+  document.getElementById('count-deferred').textContent = deferred.length;
   document.getElementById('count-wontdo').textContent = wontdo.length;
 
-  const total = features.filter(f => f.s !== 'wontdo').length;
+  const total = features.filter(f => f.s !== 'wontdo' && f.s !== 'deferred').length;
   const allDone = features.filter(f => f.s === 'done' || f.s === 'complete').length;
   const pct = Math.round((allDone / total) * 100);
   setTimeout(() => {
@@ -2664,6 +2673,9 @@ function render() {
     html += buildSection(progress, 'sec-progress', 'In Progress', false);
   }
   html += buildSection(todo, 'sec-todo', 'Planned', false);
+  if (deferred.length > 0) {
+    html += buildSection(deferred, 'sec-deferred', 'Deferred', true);
+  }
   if (wontdo.length > 0) {
     html += buildSection(wontdo, 'sec-wontdo', "Won't Do", true);
   }
