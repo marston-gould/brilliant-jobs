@@ -20,9 +20,18 @@ interface CompanyBrowseModalProps {
   open: boolean;
   onClose: () => void;
   onSelect?: (companies: string[], mode: 'include' | 'exclude') => void;
+  dimension?: string;
 }
 
-export function CompanyBrowseModal({ open, onClose, onSelect }: CompanyBrowseModalProps) {
+const DIMENSION_LABELS: Record<string, string> = {
+  company: 'Browse Companies', title: 'Browse Job Titles', skills: 'Browse Skills',
+  dept: 'Browse Departments', level: 'Browse Levels', location: 'Browse Locations',
+};
+const DIMENSION_COLUMNS: Record<string, string> = {
+  company: 'company_name', title: 'title', skills: 'department', dept: 'department', level: 'level', location: 'location',
+};
+
+export function CompanyBrowseModal({ open, onClose, onSelect, dimension = 'company' }: CompanyBrowseModalProps) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [search, setSearch] = useState('');
   const [mode, setMode] = useState<'all' | 'included' | 'excluded'>('all');
@@ -32,20 +41,23 @@ export function CompanyBrowseModal({ open, onClose, onSelect }: CompanyBrowseMod
   useEffect(() => {
     if (!open) return;
     setLoading(true);
+    const col = DIMENSION_COLUMNS[dimension] || 'company_name';
     (async () => {
       try {
-        const { data } = await supabase.rpc('get_company_list') as any;
-        if (data?.length) {
-          setCompanies(data.map((c: any) => ({ name: c.company_name, jobCount: c.job_count || 0, status: 'neutral' as const })));
-          setLoading(false);
-          return;
+        if (dimension === 'company') {
+          const { data } = await supabase.rpc('get_company_list') as any;
+          if (data?.length) {
+            setCompanies(data.map((c: any) => ({ name: c.company_name, jobCount: c.job_count || 0, status: 'neutral' as const })));
+            setLoading(false);
+            return;
+          }
         }
       } catch { /* fallback below */ }
       try {
-        const { data } = await supabase.from('ats_jobs').select('company_name').limit(500) as any;
+        const { data } = await supabase.from('ats_jobs').select(col).limit(1000) as any;
         if (data?.length) {
           const counts: Record<string, number> = {};
-          data.forEach((r: any) => { if (r.company_name) counts[r.company_name] = (counts[r.company_name] || 0) + 1; });
+          data.forEach((r: any) => { const v = r[col]; if (v) counts[v] = (counts[v] || 0) + 1; });
           setCompanies(Object.entries(counts).map(([name, jobCount]) => ({ name, jobCount, status: 'neutral' as const })).sort((a, b) => a.name.localeCompare(b.name)));
         }
       } catch { /* empty */ }
@@ -89,7 +101,7 @@ export function CompanyBrowseModal({ open, onClose, onSelect }: CompanyBrowseMod
   if (!open) return null;
 
   return (
-    <Modal open={open} onClose={onClose} title="Browse Companies" size="lg">
+    <Modal open={open} onClose={onClose} title={DIMENSION_LABELS[dimension] || 'Browse'} size="lg">
       <div className="w-[90vw] max-w-[600px] max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="px-5 py-4 border-b border-border flex-shrink-0">

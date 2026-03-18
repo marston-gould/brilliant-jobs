@@ -6,6 +6,7 @@
 // ============================================================
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { ShieldCheck, Bot } from 'lucide-react';
 import type { TrustLabel, AiLabel } from '../hooks/useFeedSearch';
 
 // ── Shared dropdown hook ──────────────────────────────────
@@ -68,7 +69,7 @@ export function TrustFilter({ active, onChange }: TrustFilterProps) {
         className="flex items-center gap-1 px-2.5 py-0.5 text-[10px] text-text-faint border border-border rounded hover:border-border-hover transition-colors"
         onClick={() => setOpen(prev => !prev)}
       >
-        🛡️ Trust Level
+        <ShieldCheck className="w-3 h-3" strokeWidth={2} /> Trust Level
         {filterCount > 0 && (
           <span className="px-1.5 rounded-full text-[9px] font-bold bg-accent text-white">
             {filterCount}
@@ -156,7 +157,7 @@ export function AiContentFilter({ active, onChange }: AiContentFilterProps) {
         className="flex items-center gap-1 px-2.5 py-0.5 text-[10px] text-text-faint border border-border rounded hover:border-border-hover transition-colors"
         onClick={() => setOpen(prev => !prev)}
       >
-        🤖 AI Content
+        <Bot className="w-3 h-3" strokeWidth={2} /> AI Content
         {filterCount > 0 && (
           <span className="px-1.5 rounded-full text-[9px] font-bold bg-accent text-white">
             {filterCount}

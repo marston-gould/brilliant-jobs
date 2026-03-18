@@ -17,6 +17,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Sparkles, SlidersHorizontal } from 'lucide-react';
 import { PageHeader } from '@app/components';
 import { JobDetailModal } from '@app/components/JobDetailModal';
 import { CompanyBrowseModal } from '@app/components/CompanyBrowseModal';
@@ -265,10 +266,10 @@ export function FeedPage() {
   }, []);
 
   // REM-S13: Bridge to legacy openFilterBrowser for browse buttons
+  const [browseDimension, setBrowseDimension] = useState<string>('');
   const handleBrowse = useCallback((dimension: string, _mode: 'include' | 'exclude') => {
-    if (dimension === 'company') {
-      setCompanyBrowseOpen(true);
-    }
+    setBrowseDimension(dimension);
+    setCompanyBrowseOpen(true);
   }, []);
 
   // REM-S14: Read US-Only from legacy tuning state
@@ -346,23 +347,29 @@ export function FeedPage() {
       />
 
       {/* Global Rules + AI Generation CTAs — legacy lines 856-873 */}
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-accent/15"
-          style={{ background: 'linear-gradient(135deg, rgba(77,142,255,0.05), rgba(167,139,250,0.05))' }}>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg border border-accent/20 bg-accent/[0.03]">
+          <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+            <SlidersHorizontal className="w-4 h-4 text-accent" strokeWidth={2} />
+          </div>
           <div className="flex-1 min-w-0">
-            <span className="text-[11px] font-bold text-accent">Adjust Global Rules</span>
+            <div className="text-[12px] font-bold text-accent">Adjust Global Rules</div>
+            <div className="text-[10px] text-text-faint leading-snug">Block companies, titles, and locations across all filters</div>
           </div>
           <button onClick={() => navigate('/app/tuning')}
-            className="px-3.5 py-1 rounded-md text-[10px] font-semibold bg-accent text-white whitespace-nowrap">Edit Rules</button>
+            className="px-4 py-[7px] rounded-lg text-[11px] font-semibold bg-accent text-white whitespace-nowrap">Edit Rules</button>
         </div>
-        <SearchBar
-          value=""
-          onChange={() => {}}
-          onSearch={handleSearch}
-          onAiGenerate={handleAiGenerate}
-          activeFilterCount={activeFilterCount}
-          onClearAll={handleClearAll}
-        />
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg border border-accent/20 bg-gradient-to-r from-purple-500/[0.03] to-accent/[0.03]">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500/15 to-accent/15 flex items-center justify-center flex-shrink-0">
+            <Sparkles className="w-4 h-4 text-accent" strokeWidth={2} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[12px] font-bold text-accent">Generate filters from your resume</div>
+            <div className="text-[10px] text-text-faint leading-snug">AI reads your resume and creates keyword, location, and level filters</div>
+          </div>
+          <button onClick={handleAiGenerate}
+            className="px-4 py-[7px] rounded-lg text-[11px] font-semibold bg-accent text-white whitespace-nowrap">Generate</button>
+        </div>
       </div>
 
       {/* Search mode toggle — Filters / Chat / Guided per legacy line 874-888 */}
@@ -440,20 +447,55 @@ export function FeedPage() {
         <ChatPanel />
       )}
 
-      {/* Guided mode — 3 analysis panels */}
+      {/* Guided mode — conversational AI job search */}
       {state.searchMode === 'guided' && (
-        <div className="border border-border rounded-xl bg-bg-card p-6 space-y-4">
-          <div className="text-[14px] font-bold text-text">Guided Search</div>
-          <div className="text-[12px] text-text-dim mb-2">Step-by-step search builder that walks you through building the perfect filter.</div>
-          <div className="flex gap-1 p-[3px] rounded-lg bg-[var(--bg-hover)] w-fit">
-            {['Resume Match', 'Company Match', 'Market Analysis'].map((label, i) => (
-              <button key={label} className={`px-3.5 py-1 rounded-md text-[11px] font-semibold transition-all border ${i === 0 ? 'bg-accent text-white border-accent' : 'bg-bg-card text-text-dim border-border hover:border-accent'}`}>{label}</button>
-            ))}
+        <div className="border border-border rounded-xl bg-bg-card overflow-hidden">
+          {/* Header */}
+          <div className="px-5 py-4 border-b border-border bg-gradient-to-r from-accent/5 to-purple-500/5">
+            <div className="text-[14px] font-bold text-text">Guided Job Search</div>
+            <div className="text-[11px] text-text-faint">Tell me what you're looking for and I'll build your search filters.</div>
           </div>
-          <div className="bg-bg-input rounded-lg p-5 text-center">
-            <div className="text-[13px] font-semibold text-text mb-1">Upload a resume to start</div>
-            <div className="text-[11px] text-text-faint mb-3">We'll analyze your experience and suggest matching jobs, companies, and market positions.</div>
-            <button onClick={() => navigate('/app/resumes')} className="px-3.5 py-[7px] rounded-lg bg-accent text-white text-[12px] font-semibold">Go to Resumes →</button>
+          {/* Chat-like interface */}
+          <div className="p-5 space-y-4 min-h-[300px] max-h-[500px] overflow-y-auto">
+            {/* AI greeting */}
+            <div className="flex gap-3">
+              <div className="w-7 h-7 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
+                <Sparkles className="w-3.5 h-3.5 text-accent" strokeWidth={2} />
+              </div>
+              <div className="flex-1 bg-bg-input rounded-lg rounded-tl-sm px-4 py-3 text-[13px] text-text-dim leading-relaxed">
+                Hi! I can help you build the perfect job search. Tell me about your ideal role — what titles are you targeting, where do you want to work, and what salary range matters to you?
+                <div className="flex gap-2 mt-3 flex-wrap">
+                  {['Senior Engineer, Remote, $150K+', 'Marketing Director in NYC', 'Product Manager at startups'].map(suggestion => (
+                    <button key={suggestion} onClick={async () => {
+                      try {
+                        const { callGateway } = await import('@app/lib/supabase');
+                        const result = await callGateway('chat-job-search', { message: suggestion, mode: 'guided' });
+                        if (result?.filters) setFilterValues((prev: any) => ({ ...prev, ...result.filters }));
+                        actions.setSearchMode('filters');
+                      } catch { /* fallback */ }
+                    }} className="text-[11px] px-3 py-1.5 rounded-full border border-accent/20 text-accent hover:bg-accent/5 transition-colors">
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* Input */}
+          <div className="px-5 py-3 border-t border-border flex gap-2">
+            <input type="text" placeholder="Describe your ideal role..." className="flex-1 px-3 py-2 rounded-lg bg-bg-input border border-border text-[13px] text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
+              onKeyDown={async (e) => {
+                if (e.key === 'Enter' && (e.target as HTMLInputElement).value.trim()) {
+                  const msg = (e.target as HTMLInputElement).value.trim();
+                  (e.target as HTMLInputElement).value = '';
+                  try {
+                    const { callGateway } = await import('@app/lib/supabase');
+                    const result = await callGateway('chat-job-search', { message: msg, mode: 'guided' });
+                    if (result?.filters) { setFilterValues((prev: any) => ({ ...prev, ...result.filters })); actions.setSearchMode('filters'); handleSearch(); }
+                  } catch { /* fallback */ }
+                }
+              }} />
+            <button className="px-4 py-2 rounded-lg bg-accent text-white text-[12px] font-semibold whitespace-nowrap">Send</button>
           </div>
         </div>
       )}
@@ -486,7 +528,7 @@ export function FeedPage() {
       <JobDetailModal jobId={selectedJobId} onClose={() => setSelectedJobId(null)} />
 
       {/* Company Browse Modal — legacy: openCompanyBrowser() (58 refs) */}
-      <CompanyBrowseModal open={companyBrowseOpen} onClose={() => setCompanyBrowseOpen(false)} />
+      <CompanyBrowseModal open={companyBrowseOpen} onClose={() => { setCompanyBrowseOpen(false); setBrowseDimension(''); }} dimension={browseDimension} />
     </div>
   );
 }

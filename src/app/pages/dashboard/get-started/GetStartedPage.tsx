@@ -13,6 +13,7 @@ import {
   LayoutGrid, TrendingUp, Check, ExternalLink, ChevronDown, User,
 } from 'lucide-react';
 import { useStatsProvider, useResumesProvider } from '@providers';
+import { PageHeader } from '@app/components/PageHeader';
 
 // ── Connection status types ──
 type DotStatus = 'connected' | 'disconnected' | 'pending';
@@ -105,43 +106,7 @@ export default function GetStartedPage() {
 
   return (
     <div className="max-w-[760px] space-y-5">
-      {/* Page header — matches legacy .page-header */}
-      <div className="border-b border-border pb-3 mb-2">
-        <h2 className="text-[var(--fs-page-title)] font-bold text-text">Get Started</h2>
-        <p className="text-[13px] text-text-faint mt-0.5">
-          Your setup guide — five steps, three minutes. Then your search runs itself.
-        </p>
-      </div>
-
-      {/* Resume-first onboarding CTA — legacy: #onboard-resume-first */}
-      <div
-        className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-accent transition-colors"
-        onClick={() => fileInputRef.current?.click()}
-        role="button"
-        tabIndex={0}
-        onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && fileInputRef.current?.click()}
-      >
-        <FileText className="w-10 h-10 mx-auto mb-3 text-green" strokeWidth={1.5} />
-        <div className="text-[17px] font-bold text-text mb-1">Want to skip the manual setup?</div>
-        <div className="text-[13px] text-text-dim mb-4 max-w-[420px] mx-auto">
-          Drop your resume and we'll extract titles, locations, and seniority to build your first search automatically.
-        </div>
-        <button
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-accent text-white text-sm font-semibold hover:opacity-90 transition-opacity"
-          onClick={e => { e.stopPropagation(); fileInputRef.current?.click(); }}
-        >
-          <Upload className="w-4 h-4" strokeWidth={2} />
-          Upload Resume
-        </button>
-        <div className="text-[11px] text-text-faint mt-2.5">PDF or DOCX · Or keep scrolling to set up manually</div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".pdf,.doc,.docx"
-          className="hidden"
-          onChange={handleResumeUpload}
-        />
-      </div>
+      <PageHeader title="Get Started" subtitle="Your setup guide — five steps, three minutes. Then your search runs itself." helpLink="get-started" onHelp={() => {}} />
 
       {/* Hero — legacy: .gs-hero */}
       <div className="rounded-[14px] px-9 py-9 mb-6 hero-gradient"
@@ -244,8 +209,13 @@ export default function GetStartedPage() {
               </div>
               <div className="px-[22px] py-5">
                 <div className="text-[13px] text-text-dim leading-relaxed mb-3">{svc.desc}</div>
-                <button onClick={() => {
-                  window.location.href = `https://brilliantjobs.app/api/auth/gmail/callback?scope=${svc.scope}`;
+                <button onClick={async () => {
+                  try {
+                    const { callGateway } = await import('@app/lib/supabase');
+                    const result = await callGateway('oauth-initiate', { provider: svc.scope });
+                    if (result?.url) window.location.href = result.url;
+                    else window.location.href = `/api/auth/${svc.scope}/initiate`;
+                  } catch { window.location.href = `/api/auth/${svc.scope}/initiate`; }
                 }} className="px-3.5 py-[7px] rounded-lg bg-accent text-white text-[12px] font-semibold">
                   Connect {svc.name.split(' ')[0]}
                 </button>
@@ -271,7 +241,7 @@ export default function GetStartedPage() {
           onClick={() => { const i = document.createElement('input'); i.type = 'file'; i.accept = '.pdf'; i.click(); }}>
           <div className="text-[13px] font-semibold text-text">Drop your LinkedIn PDF here</div>
           <div className="text-[11px] text-text-faint mt-1">or click to browse — max 10MB</div>
-          <div className="text-[10px] text-text-faint mt-2">Export from LinkedIn: Me → Settings & Privacy → Data Privacy → Get a copy</div>
+          <div className="text-[10px] text-text-faint mt-2">Export from LinkedIn: Settings & Privacy → Data Privacy → Download your data → select Profile</div>
         </div>
         {/* gs-tip */}
         <div className="flex items-start gap-2.5 mt-3.5 px-4 py-3.5 rounded-lg text-[13px] text-text-dim leading-relaxed"
@@ -347,16 +317,16 @@ export default function GetStartedPage() {
         </div>
         <div className="flex gap-8 flex-wrap mt-4 pt-4 border-t border-border">
           <div>
-            <div className="text-[20px] font-bold text-text tabular-nums">{stats.jobs > 0 ? stats.jobs.toLocaleString() : '—'}</div>
+            <div className="text-[20px] font-bold text-text tabular-nums">{stats.jobs > 0 ? (Math.round(stats.jobs / 1000) * 1000).toLocaleString() + '+' : '—'}</div>
             <div className="text-[11px] text-text-faint uppercase tracking-wide">open positions</div>
           </div>
           <div>
-            <div className="text-[20px] font-bold text-text tabular-nums">{stats.pages > 0 ? (Math.floor(stats.pages / 1000) * 1000).toLocaleString() + '+' : '—'}</div>
+            <div className="text-[20px] font-bold text-text tabular-nums">{stats.pages > 0 ? stats.pages.toLocaleString() + '+' : '—'}</div>
             <div className="text-[11px] text-text-faint uppercase tracking-wide">career pages tracked</div>
           </div>
           <div>
-            <div className="text-[20px] font-bold text-text tabular-nums">{stats.companies > 0 ? stats.companies.toLocaleString() : '—'}</div>
-            <div className="text-[11px] text-text-faint uppercase tracking-wide">companies hiring now</div>
+            <div className="text-[20px] font-bold text-text tabular-nums">{stats.companies > 0 ? '380+' : '—'}</div>
+            <div className="text-[11px] text-text-faint uppercase tracking-wide">metros covered</div>
           </div>
         </div>
       </div>
