@@ -211,6 +211,22 @@
     {
       "source": "/api/auth/gmail/disconnect",
       "destination": "https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/gmail-disconnect"
+    },
+    {
+      "source": "/api/auth/calendar/callback",
+      "destination": "https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/gmail-auth?scope=calendar"
+    },
+    {
+      "source": "/api/auth/drive/callback",
+      "destination": "https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/gmail-auth?scope=drive"
+    },
+    {
+      "source": "/api/webhook/stripe",
+      "destination": "https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/stripe-webhook"
+    },
+    {
+      "source": "/api/extension/download",
+      "destination": "https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/extension-download"
     }
   ]
 }
