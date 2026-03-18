@@ -716,11 +716,11 @@ html:not([data-segment]) footer.segment-new { display: block; }
 }
 
 .cc-btn-primary {
-  background: var(--primary, #4338ca);
+  background: var(--accent, #4d8eff);
   color: #fff;
 }
 .cc-btn-primary:hover {
-  background: var(--primary-hover, #3730a3);
+  background: var(--accent-hover, #3b7be8);
 }
 
 .cc-btn-secondary {
