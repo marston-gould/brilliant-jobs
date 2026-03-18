@@ -14,6 +14,7 @@
 // ============================================================
 
 import { useMemo, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@app/components';
 import { useProviders } from '@providers';
 import {
@@ -30,6 +31,7 @@ type ResumeTab = 'my-resumes' | 'builder' | 'linkedin';
 export function ResumesPage() {
   const [state, actions] = useResumes();
   const [activeTab, setActiveTab] = useState<ResumeTab>('my-resumes');
+  const navigate = useNavigate();
   const { resumes: resumeProvider } = useProviders();
   const [builderStatus, setBuilderStatus] = useState('');
   const [bulletStatus, setBulletStatus] = useState('');
@@ -299,7 +301,44 @@ export function ResumesPage() {
             </div>
           </div>
 
-          {/* Keyword Optimization section (hidden until resume parsed) */}
+          {/* Parsed Data Editor — legacy lines 1656-1724 */}
+          <div className="border border-border rounded-xl bg-bg-card overflow-hidden">
+            <div className="flex items-center gap-2 px-5 py-3 border-b border-border bg-bg-input/50">
+              <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} className="text-text-dim"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              <span className="text-[13px] font-bold text-text">Edit Your Resume</span>
+            </div>
+            <div className="p-5">
+              {/* Editor tabs */}
+              {(() => {
+                const tabs = ['Contact', 'Summary', 'Experience', 'Education', 'Skills', 'Certs'];
+                const inputCls = "w-full px-2.5 py-1.5 rounded-md border border-border bg-bg-input text-[12px] text-text";
+                return (
+                  <>
+                    <div className="flex gap-1 mb-4 border-b border-border">
+                      {tabs.map((t, i) => (
+                        <button key={t} className={`px-3 py-1.5 text-[11px] font-medium border-b-2 -mb-px transition-colors ${i === 0 ? 'border-accent text-accent' : 'border-transparent text-text-faint hover:text-text'}`}>{t}</button>
+                      ))}
+                    </div>
+                    {/* Contact tab (default visible) */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><label className="text-[10px] text-text-dim block mb-0.5">Full Name</label><input type="text" placeholder="Jane Smith" className={inputCls} /></div>
+                      <div><label className="text-[10px] text-text-dim block mb-0.5">Email</label><input type="email" placeholder="jane@example.com" className={inputCls} /></div>
+                      <div><label className="text-[10px] text-text-dim block mb-0.5">Phone</label><input type="tel" placeholder="+1 555 000 0000" className={inputCls} /></div>
+                      <div><label className="text-[10px] text-text-dim block mb-0.5">LinkedIn URL</label><input type="url" placeholder="linkedin.com/in/janesmith" className={inputCls} /></div>
+                      <div><label className="text-[10px] text-text-dim block mb-0.5">Location</label><input type="text" placeholder="San Francisco, CA" className={inputCls} /></div>
+                      <div><label className="text-[10px] text-text-dim block mb-0.5">Website</label><input type="url" placeholder="janesmith.dev" className={inputCls} /></div>
+                    </div>
+                    <div className="flex gap-2 mt-4">
+                      <button className="px-4 py-2 rounded-md bg-accent text-white text-sm font-semibold">Save Changes</button>
+                      <button className="px-4 py-2 rounded-md border border-border text-sm font-medium text-text-dim hover:border-accent">Start Over</button>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+
+          {/* Keyword Optimization section */}
           <div className="border border-border rounded-xl bg-bg-card overflow-hidden">
             <div className="flex items-center gap-2 px-5 py-3 border-b border-border bg-bg-input/50">
               <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} className="text-text-dim"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -363,21 +402,34 @@ export function ResumesPage() {
             <h3 className="text-[15px] font-bold text-text mb-2">No LinkedIn profile uploaded</h3>
             <p className="text-[12px] text-text-dim mb-4">Upload your LinkedIn PDF to get a section-by-section scorecard with actionable recommendations.</p>
             <button className="px-4 py-2 rounded-md bg-accent text-white text-sm font-semibold"
-              onClick={() => { /* navigate to get-started for upload */ }}>
+              onClick={() => navigate('/app/get-started')}>
               Upload on Get Started →
             </button>
           </div>
 
-          {/* LinkedIn Summary Generator (shown after profile uploaded) */}
-          <div className="border border-border rounded-xl bg-bg-card p-5" style={{ display: 'none' }}>
+          {/* Score Section — legacy lines 1894-1913 (shown after upload) */}
+          <div className="border border-border rounded-xl bg-bg-card p-5">
+            <div className="flex items-center gap-5 mb-4">
+              <div className="w-[100px] h-[100px] rounded-full border-4 border-bg-input flex items-center justify-center flex-shrink-0">
+                <span className="text-[28px] font-bold text-text-faint">—</span>
+              </div>
+              <div>
+                <div className="text-[20px] font-extrabold text-text">Profile Score</div>
+                <div className="text-[11px] text-text-faint mt-1">Upload your LinkedIn PDF to get scored</div>
+                <button className="mt-2 px-3 py-1 rounded-md text-xs font-medium border border-border text-text-dim hover:border-accent">Re-Analyze (2 credits)</button>
+              </div>
+            </div>
+            <div className="text-[11px] text-text-faint text-center">Section-by-section scorecard will appear here after analysis</div>
+          </div>
+
+          {/* LinkedIn Summary Generator */}
+          <div className="border border-border rounded-xl bg-bg-card p-5">
             <div className="text-[13px] font-bold text-text mb-1">Generate LinkedIn About Section</div>
             <div className="flex gap-2 items-end flex-wrap mb-3">
               <div className="min-w-[140px]">
                 <label className="text-[10px] text-text-dim block mb-0.5">Tone</label>
                 <select className="w-full px-2 py-1.5 rounded-md border border-border bg-bg-main text-[11px] text-text">
-                  <option>Professional</option>
-                  <option>Conversational</option>
-                  <option>Executive</option>
+                  <option>Professional</option><option>Conversational</option><option>Executive</option>
                 </select>
               </div>
               <div className="flex-1 min-w-[160px]">

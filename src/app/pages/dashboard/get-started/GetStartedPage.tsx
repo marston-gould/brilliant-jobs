@@ -161,12 +161,38 @@ export default function GetStartedPage() {
         </div>
       </div>
 
-      {/* Step 1: Chrome Extension */}
+      {/* Step 1: Chrome Extension — legacy lines 438-537 */}
       <Step num="Step 1" title="Install the Chrome Extension" icon={CirclePlus}
-        iconBg="var(--indigo-dim)" iconColor="var(--indigo)">
-        Your extension works quietly in the background, identifying opportunities at companies where you
-        already have professional connections. It maps your network to active hiring — so when a company
-        you're connected to posts a role, you'll know before most applicants do.
+        iconBg="var(--indigo-dim)" iconColor="var(--indigo)"
+        badge={extStatus === 'connected' ? <span className="text-[10px] font-semibold text-green bg-green/10 px-2 py-0.5 rounded-full">✓ Connected</span> : undefined}>
+        <div className="mb-3">
+          Your extension works quietly in the background, identifying opportunities at companies where you
+          already have professional connections. It maps your network to active hiring — so when a company
+          you're connected to posts a role, you'll know before most applicants do.
+        </div>
+        {extStatus !== 'connected' && (
+          <>
+            <button className="px-3 py-1.5 rounded-md text-xs font-semibold bg-accent text-white mb-3">Download Extension</button>
+            <div className="border border-border rounded-lg bg-bg-card p-4 space-y-3">
+              <div className="text-[12px] font-bold text-text mb-0.5">Installation Guide</div>
+              <div className="text-[11px] text-text-faint mb-2">Follow these 4 steps to get the extension running</div>
+              {[
+                { n: 1, title: 'Unzip the download', desc: 'Extract the .zip to a permanent folder. Don\'t delete it — Chrome needs the folder.' },
+                { n: 2, title: 'Open Chrome Extensions', desc: 'Go to chrome://extensions and turn on Developer mode (top right toggle).' },
+                { n: 3, title: 'Load the extension', desc: 'Click Load unpacked and select the unzipped folder from step 1.' },
+                { n: 4, title: 'Pin and open', desc: 'Click the puzzle icon in Chrome\'s toolbar and pin the Brilliant Jobs extension.' },
+              ].map(s => (
+                <div key={s.n} className="flex gap-3 items-start">
+                  <div className="w-6 h-6 rounded-full bg-accent/10 text-accent flex items-center justify-center text-[11px] font-bold flex-shrink-0">{s.n}</div>
+                  <div>
+                    <div className="text-[12px] font-semibold text-text">{s.title}</div>
+                    <div className="text-[11px] text-text-faint">{s.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </Step>
 
       {/* Step 2: Connect Accounts */}
