@@ -7,9 +7,28 @@
 // Overlay: stat cards + drilldown charts
 // ============================================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { PageHeader } from '@app/components';
 import { useStatsProvider } from '@providers';
+
+// Lazy-loaded ECharts chart box
+function ChartBox({ option, height = 220 }: { option: any; height?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!ref.current) return;
+    let chart: any;
+    import('echarts').then(echarts => {
+      if (!ref.current) return;
+      chart = echarts.init(ref.current, undefined, { renderer: 'svg' });
+      chart.setOption(option);
+      const ro = new ResizeObserver(() => chart?.resize());
+      ro.observe(ref.current);
+      return () => { ro.disconnect(); chart?.dispose(); };
+    });
+    return () => { chart?.dispose(); };
+  }, [option]);
+  return <div ref={ref} style={{ width: '100%', height }} />;
+}
 
 type StatsTab = 'market' | 'resume' | 'overlay';
 
@@ -93,13 +112,70 @@ export default function StatsPage() {
             ))}
           </div>
 
-          {/* Chart placeholders */}
+          {/* Charts powered by ECharts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {chartNames.map(ch => (
-              <div key={ch.title} className={`border border-border rounded-xl bg-bg-card p-4 ${ch.full ? 'lg:col-span-2' : ''}`}>
-                <div className="text-[13px] font-bold text-text mb-2">{ch.title}</div>
-                <div className="h-[280px] bg-bg-input rounded-lg flex items-center justify-center text-text-faint text-xs">
-                  Chart loads when data is available
+            {/* Work Arrangement — pie chart from counts */}
+            <div className="border border-border rounded-xl bg-bg-card p-4">
+              <div className="text-[13px] font-bold text-text mb-2">Work Arrangement</div>
+              <ChartBox option={{
+                tooltip: { trigger: 'item' },
+                series: [{ type: 'pie', radius: ['40%', '70%'], data: [
+                  { value: counts.remote || 0, name: 'Remote' },
+                  { value: (counts.total || 0) - (counts.remote || 0), name: 'On-site / Hybrid' },
+                ], label: { fontSize: 11 } }]
+              }} />
+            </div>
+
+            {/* Salary Coverage — pie */}
+            <div className="border border-border rounded-xl bg-bg-card p-4">
+              <div className="text-[13px] font-bold text-text mb-2">Salary Transparency</div>
+              <ChartBox option={{
+                tooltip: { trigger: 'item' },
+                series: [{ type: 'pie', radius: ['40%', '70%'], data: [
+                  { value: counts.withSalary || 0, name: 'With Salary' },
+                  { value: (counts.total || 0) - (counts.withSalary || 0), name: 'No Salary' },
+                ], label: { fontSize: 11 } }]
+              }} />
+            </div>
+
+            {/* ATS Source Breakdown — bar from sources */}
+            <div className="border border-border rounded-xl bg-bg-card p-4 lg:col-span-2">
+              <div className="text-[13px] font-bold text-text mb-2">ATS Source Breakdown</div>
+              <ChartBox option={{
+                tooltip: {},
+                xAxis: { type: 'category', data: sources.length ? sources.map((s: any) => s.source_name || s.source || 'Unknown') : ['Greenhouse', 'Lever', 'Workday', 'Ashby', 'SmartRecruiters', 'Other'], axisLabel: { fontSize: 10 } },
+                yAxis: { type: 'value', axisLabel: { fontSize: 10 } },
+                series: [{ type: 'bar', data: sources.length ? sources.map((s: any) => s.job_count || s.count || 0) : [0, 0, 0, 0, 0, 0], itemStyle: { borderRadius: [4, 4, 0, 0] } }],
+                grid: { left: 50, right: 20, top: 20, bottom: 40 },
+              }} />
+            </div>
+
+            {/* Stat summary — gauge for remote % */}
+            <div className="border border-border rounded-xl bg-bg-card p-4">
+              <div className="text-[13px] font-bold text-text mb-2">Remote Job Rate</div>
+              <ChartBox option={{
+                series: [{ type: 'gauge', progress: { show: true, width: 12 }, data: [{ value: counts.total ? Math.round(((counts.remote || 0) / counts.total) * 100) : 0, name: 'Remote %' }],
+                  detail: { fontSize: 20, offsetCenter: [0, '70%'] }, title: { offsetCenter: [0, '90%'], fontSize: 11 },
+                  axisLine: { lineStyle: { width: 12 } }, pointer: { show: false } }]
+              }} />
+            </div>
+
+            {/* Salary Rate gauge */}
+            <div className="border border-border rounded-xl bg-bg-card p-4">
+              <div className="text-[13px] font-bold text-text mb-2">Salary Disclosure Rate</div>
+              <ChartBox option={{
+                series: [{ type: 'gauge', progress: { show: true, width: 12 }, data: [{ value: counts.total ? Math.round(((counts.withSalary || 0) / counts.total) * 100) : 0, name: 'With Salary %' }],
+                  detail: { fontSize: 20, offsetCenter: [0, '70%'] }, title: { offsetCenter: [0, '90%'], fontSize: 11 },
+                  axisLine: { lineStyle: { width: 12 } }, pointer: { show: false } }]
+              }} />
+            </div>
+
+            {/* Placeholder for remaining charts that need time-series data */}
+            {['Job Count Over Time', 'Posting Age', 'Salary Distribution', 'Salary Ladder'].map(title => (
+              <div key={title} className={`border border-border rounded-xl bg-bg-card p-4 ${title.includes('Over Time') || title.includes('Ladder') ? 'lg:col-span-2' : ''}`}>
+                <div className="text-[13px] font-bold text-text mb-2">{title}</div>
+                <div className="h-[280px] bg-bg-input/30 rounded-lg flex items-center justify-center text-text-faint text-[11px]">
+                  Requires time-series data from daily snapshots
                 </div>
               </div>
             ))}
