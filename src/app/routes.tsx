@@ -135,9 +135,7 @@ export const routes: RouteObject[] = [
           { path: 'tuning', element: <TuningPageRoute /> },
           { path: 'billing', element: <BillingPageRoute /> },
           { path: 'settings', element: <SettingsPageRoute /> },
-          { path: 'integrations', element: <IntegrationsPageRoute /> },
-          { path: 'chat', element: <ChatPageRoute /> },
-          { path: 'referrals', element: <ReferralsPageRoute /> },
+          { path: 'chat', element: <Navigate to="/app/feed" replace /> },
           { path: 'interview-prep', element: <InterviewPrepPageRoute /> },
           { path: 'notifications', element: <DashboardNotificationsPageRoute /> },
 

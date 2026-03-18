@@ -215,13 +215,13 @@ export function AppShell() {
       {/* ── Sidebar ── */}
       <nav aria-label="Main navigation" className="flex flex-col h-full w-[var(--nav-w,240px)] bg-[var(--nav-bg)] flex-shrink-0 overflow-y-auto overflow-x-hidden">
 
-        {/* Brand — matches legacy: B mark + "Brilliant Jobs" + "Dashboard v10.75" */}
+        {/* Brand — matches legacy: B mark + "Brilliant Jobs" + "Dashboard v10.76" */}
         <div className="px-6 py-[22px] border-b border-white/[0.08]">
           <div className="flex items-center gap-3 max-md:justify-center">
             <div className="w-[30px] h-[30px] rounded-lg bg-white flex items-center justify-center text-[var(--nav-bg)] font-extrabold text-sm flex-shrink-0">B</div>
             <div className="max-md:hidden">
               <div className="font-bold text-[16px] text-white leading-tight">Brilliant Jobs</div>
-              <div className="text-[11px] text-[var(--nav-text)]">Dashboard <span className="text-[9px]">v10.75</span></div>
+              <div className="text-[11px] text-[var(--nav-text)]">Dashboard <span className="text-[9px]">v10.76</span></div>
             </div>
           </div>
         </div>
@@ -330,7 +330,7 @@ export function AppShell() {
       </nav>
 
       {/* ── Main content — legacy: .main { padding: 24px 28px } ── */}
-      <main id="main-content" role="main" className="flex-1 overflow-y-auto bg-[var(--bg-main)] px-10 py-7">
+      <main id="main-content" role="main" className="flex-1 overflow-y-auto bg-[var(--bg-main)]" style={{ padding: 'var(--page-py, 28px) var(--page-px, 40px)' }}>
         <Outlet />
       </main>
     </div>
