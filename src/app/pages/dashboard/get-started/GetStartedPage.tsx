@@ -79,7 +79,7 @@ export default function GetStartedPage() {
     statsProvider.getJobCounts().then(data => {
       if (data) setStats({
         jobs: data.total_open ?? 0,
-        pages: 39000, // fallback, updated by dynamic count
+        pages: data.total_companies ?? 39000,
         companies: data.total_companies ?? 0,
       });
     }).catch(() => {});

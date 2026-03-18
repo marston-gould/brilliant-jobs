@@ -145,6 +145,7 @@ export function AppShell() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [theme, setTheme] = useState<Theme>(getStoredTheme);
   const [credits, setCredits] = useState(0);
+  const [badgeCounts, setBadgeCounts] = useState<Record<string, number>>({});
 
   const isAdminSection = location.pathname.startsWith('/app/admin');
   const isAdmin = user?.role === 'admin';
@@ -163,6 +164,26 @@ export function AppShell() {
 
   // Credits
   useEffect(() => { providers.billing.getBalance().then(setCredits).catch(() => setCredits(0)); }, [providers]);
+
+  // Badge counts — legacy: nav-jobs-count, nav-resume-count, nav-app-count
+  useEffect(() => {
+    if (!user) return;
+    const load = async () => {
+      try {
+        const counts: Record<string, number> = {};
+        const stats = await providers.stats.getJobCounts();
+        if (stats) counts['/app/feed'] = stats.total_open ?? 0;
+        const resumes = await providers.resumes.getAll();
+        counts['/app/resumes'] = Array.isArray(resumes) ? resumes.length : 0;
+        const queue = await providers.applications.getQueue();
+        counts['/app/applications'] = Array.isArray(queue) ? queue.length : 0;
+        setBadgeCounts(counts);
+      } catch {}
+    };
+    load();
+    const interval = setInterval(load, 60000);
+    return () => clearInterval(interval);
+  }, [user, providers]);
 
   // Theme
   useEffect(() => {
@@ -188,13 +209,13 @@ export function AppShell() {
       {/* ── Sidebar ── */}
       <nav aria-label="Main navigation" className="flex flex-col h-full w-[var(--nav-w,240px)] bg-[var(--nav-bg)] flex-shrink-0 overflow-y-auto overflow-x-hidden">
 
-        {/* Brand — matches legacy: B mark + "Brilliant Jobs" + "Dashboard v10.60" */}
+        {/* Brand — matches legacy: B mark + "Brilliant Jobs" + "Dashboard v10.61" */}
         <div className="px-4 pt-5 pb-4">
           <div className="flex items-center gap-3">
             <div className="w-[30px] h-[30px] rounded-lg bg-white flex items-center justify-center text-[var(--nav-bg)] font-extrabold text-sm flex-shrink-0">B</div>
             <div>
               <div className="font-bold text-[16px] text-white leading-tight">Brilliant Jobs</div>
-              <div className="text-[11px] text-[var(--nav-text)]">Dashboard <span className="text-[9px]">v10.60</span></div>
+              <div className="text-[11px] text-[var(--nav-text)]">Dashboard <span className="text-[9px]">v10.61</span></div>
             </div>
           </div>
         </div>
@@ -220,9 +241,19 @@ export function AppShell() {
                 >
                   <item.Icon className="w-[18px] h-[18px] flex-shrink-0 opacity-80" strokeWidth={1.75} />
                   <span className="flex-1">{item.label}</span>
+                  {/* Badge count — legacy: nav-jobs-count, nav-resume-count, nav-app-count */}
+                  {item.badge && (badgeCounts[item.path] ?? 0) > 0 && (
+                    <span className="text-[9px] font-bold bg-white/15 px-1.5 py-0.5 rounded-full tabular-nums leading-none">
+                      {(badgeCounts[item.path] ?? 0) > 999 ? '999+' : badgeCounts[item.path]}
+                    </span>
+                  )}
                   {item.dot && (
                     <span className="w-[7px] h-[7px] rounded-full flex-shrink-0"
-                      style={{ background: item.dotColor || 'var(--green, #22c55e)' }} />
+                      style={{ background:
+                        item.badge && badgeCounts[item.path] !== undefined
+                          ? (badgeCounts[item.path] ?? 0) > 0 ? 'var(--green, #22c55e)' : '#ef4444'
+                          : item.dotColor || 'var(--green, #22c55e)'
+                      }} />
                   )}
                 </NavLink>
               ))}
