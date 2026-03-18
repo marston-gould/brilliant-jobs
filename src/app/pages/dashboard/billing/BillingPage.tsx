@@ -16,6 +16,8 @@ export default function BillingPage() {
   const { billing } = useProviders();
   const [credits, setCredits] = useState(0);
   const [tier, setTier] = useState('Free');
+  const [referralCode, setReferralCode] = useState('');
+  const [referralStats, setReferralStats] = useState<Record<string, number>>({});
 
   const openPortal = useCallback(async () => {
     const url = await billing.openBillingPortal();
@@ -36,6 +38,11 @@ export default function BillingPage() {
       if (u) setTier(u.tier || 'Free');
     });
     billing.getBalance().then(bal => setCredits(bal || 0)).catch(() => {});
+    // Load referral data
+    import('@app/providers/bridge').then(({ providers }) => {
+      providers.referrals.getCode().then((c: string) => setReferralCode(c)).catch(() => {});
+      providers.referrals.getStats().then((s: any) => setReferralStats(s || {})).catch(() => {});
+    });
   }, [userProvider, billing]);
 
   const creditCosts = [
@@ -183,18 +190,18 @@ export default function BillingPage() {
       </div>
 
       {/* Earn Free Credits (Referrals) — legacy sub-referral-section */}
-      <div className={cardCls}>
+      <div className={cardCls} id="sub-referral-section">
         <div className="text-[14px] font-bold text-text mb-1">Earn Free Credits</div>
         <div className="text-[12px] text-text-dim mb-4">Refer a friend — you both get 7 days Pro + 25 credits when they activate</div>
         <div className="flex items-center gap-3 p-3 rounded-lg bg-bg-input border border-border mb-3">
           <span className="text-[11px] text-text-faint">Your referral link:</span>
-          <code className="text-[12px] font-mono text-accent flex-1 truncate">https://brilliantjobs.app/r/...</code>
-          <button onClick={() => { navigator.clipboard.writeText('https://brilliantjobs.app/r/'); }} className="text-[10px] font-semibold text-accent hover:text-accent/80">Copy</button>
+          <code className="text-[12px] font-mono text-accent flex-1 truncate">{referralCode ? `https://brilliantjobs.app/r/${referralCode}` : 'Loading...'}</code>
+          <button onClick={() => { if (referralCode) navigator.clipboard.writeText(`https://brilliantjobs.app/r/${referralCode}`); }} className="text-[10px] font-semibold text-accent hover:text-accent/80">Copy</button>
         </div>
         <div className="grid grid-cols-3 gap-3 text-center">
-          <div><div className="text-[20px] font-bold text-text">0</div><div className="text-[10px] text-text-faint uppercase">Referred</div></div>
-          <div><div className="text-[20px] font-bold text-green">0</div><div className="text-[10px] text-text-faint uppercase">Converted</div></div>
-          <div><div className="text-[20px] font-bold text-accent">0</div><div className="text-[10px] text-text-faint uppercase">Credits Earned</div></div>
+          <div><div className="text-[20px] font-bold text-text">{referralStats.totalReferred ?? 0}</div><div className="text-[10px] text-text-faint uppercase">Referred</div></div>
+          <div><div className="text-[20px] font-bold text-green">{referralStats.converted ?? 0}</div><div className="text-[10px] text-text-faint uppercase">Converted</div></div>
+          <div><div className="text-[20px] font-bold text-accent">{referralStats.creditsEarned ?? 0}</div><div className="text-[10px] text-text-faint uppercase">Credits Earned</div></div>
         </div>
       </div>
 

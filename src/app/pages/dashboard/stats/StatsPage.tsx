@@ -269,7 +269,31 @@ export default function StatsPage() {
               </div>
               <div className="border border-border rounded-xl bg-bg-card p-4 lg:col-span-2">
                 <div className="text-[13px] font-bold text-text mb-2">Score History</div>
-                <div className="text-[12px] text-text-faint text-center py-8">Score tracking will appear after the resume is scored against job descriptions.</div>
+                <ChartBox option={{
+                  tooltip: { trigger: 'axis' },
+                  xAxis: { type: 'category', data: Array.from({ length: 7 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - 6 + i); return (d.getMonth() + 1) + '/' + d.getDate(); }), axisLabel: { fontSize: 9 } },
+                  yAxis: { type: 'value', min: 0, max: 100, axisLabel: { fontSize: 9 } },
+                  series: [{ type: 'line', smooth: true, data: [0, 0, 0, 0, 0, 0, 0], areaStyle: { opacity: 0.08 }, lineStyle: { width: 2, color: 'var(--accent)' }, itemStyle: { color: 'var(--accent)' } }],
+                  grid: { left: 40, right: 15, top: 15, bottom: 30 },
+                }} height={200} />
+              </div>
+              <div className="border border-border rounded-xl bg-bg-card p-4">
+                <div className="text-[13px] font-bold text-text mb-2">Level Fit</div>
+                <ChartBox option={{
+                  tooltip: {},
+                  radar: { indicator: [{ name: 'Entry', max: 100 }, { name: 'Mid', max: 100 }, { name: 'Senior', max: 100 }, { name: 'Staff', max: 100 }, { name: 'Director', max: 100 }], radius: 70 },
+                  series: [{ type: 'radar', data: [{ value: [0, 0, 0, 0, 0], name: 'Fit Score' }] }],
+                }} height={220} />
+              </div>
+              <div className="border border-border rounded-xl bg-bg-card p-4">
+                <div className="text-[13px] font-bold text-text mb-2">Keyword Coverage</div>
+                <ChartBox option={{
+                  tooltip: {},
+                  xAxis: { type: 'category', data: ['Matched', 'Missing', 'Extra'], axisLabel: { fontSize: 10 } },
+                  yAxis: { type: 'value', axisLabel: { fontSize: 9 } },
+                  series: [{ type: 'bar', data: [0, 0, 0], itemStyle: { borderRadius: [4, 4, 0, 0] } }],
+                  grid: { left: 40, right: 15, top: 15, bottom: 30 },
+                }} height={200} />
               </div>
             </div>
           )}
@@ -292,8 +316,32 @@ export default function StatsPage() {
               </div>
             ))}
           </div>
-          <div className="text-center py-8 text-text-faint">
-            <p className="text-[13px]">Overlay analytics will populate as the scoring pipeline processes jobs in your feed.</p>
+          <div className="text-center py-4 text-text-faint text-[12px]">
+            Overlay analytics populate as the scoring pipeline processes jobs in your feed.
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="border border-border rounded-xl bg-bg-card p-4">
+              <div className="text-[13px] font-bold text-text mb-2">Trust Score Distribution</div>
+              <ChartBox option={{
+                tooltip: {},
+                xAxis: { type: 'category', data: ['Safe', 'Caution', 'Suspicious', 'Unknown'], axisLabel: { fontSize: 10 } },
+                yAxis: { type: 'value', axisLabel: { fontSize: 9 } },
+                series: [{ type: 'bar', data: [0, 0, 0, 0], itemStyle: { borderRadius: [4, 4, 0, 0], color: (p: any) => ['#22c55e', '#f59e0b', '#ef4444', '#94a3b8'][p.dataIndex] } }],
+                grid: { left: 40, right: 15, top: 15, bottom: 35 },
+              }} height={220} />
+            </div>
+            <div className="border border-border rounded-xl bg-bg-card p-4">
+              <div className="text-[13px] font-bold text-text mb-2">AI Content Detection</div>
+              <ChartBox option={{
+                tooltip: { trigger: 'item' },
+                series: [{ type: 'pie', radius: ['40%', '70%'], data: [
+                  { value: 0, name: 'Human', itemStyle: { color: '#22c55e' } },
+                  { value: 0, name: 'Mixed', itemStyle: { color: '#f59e0b' } },
+                  { value: 0, name: 'AI Generated', itemStyle: { color: '#ef4444' } },
+                  { value: 0, name: 'Unscored', itemStyle: { color: '#94a3b8' } },
+                ], label: { fontSize: 10 } }],
+              }} height={220} />
+            </div>
           </div>
         </div>
       )}

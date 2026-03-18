@@ -218,20 +218,32 @@ export default function GetStartedPage() {
           Authorize read-only access so Brilliant Jobs can help track your application pipeline —
           detecting responses, scheduling interviews, and flagging companies that go silent.
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
           {[
-            { name: 'Gmail', desc: 'Track application responses', color: '#EA4335', scope: 'gmail' },
-            { name: 'Google Calendar', desc: 'Interview scheduling', color: '#4285F4', scope: 'calendar' },
-            { name: 'Google Drive', desc: 'Resume sync', color: '#0066DA', scope: 'drive' },
+            { name: 'Gmail', desc: 'Tracks your job applications automatically — detecting responses, interview requests, and rejections so your pipeline stays current.', color: '#EA4335', scope: 'gmail', sub: 'Your application pipeline, mostly on autopilot' },
+            { name: 'Google Calendar', desc: 'Picks up interview schedules and follow-up timelines. Paired with Gmail, gives you a complete picture of every application.', color: '#4285F4', scope: 'calendar', sub: 'Never miss an interview or follow-up window' },
+            { name: 'Google Drive', desc: 'Syncs your resumes to Drive so your latest version is always accessible when auto-applying or during interviews.', color: '#0066DA', scope: 'drive', sub: 'Resume sync and document storage' },
           ].map(svc => (
-            <div key={svc.name} className="bg-bg-main border border-border rounded-[10px] px-3.5 py-[18px] text-center hover:border-border-hover hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all">
-              <div className="text-[13px] font-semibold text-text mb-0.5">{svc.name}</div>
-              <div className="text-[10px] text-text-faint mb-2">{svc.desc}</div>
-              <button onClick={() => {
-                window.location.href = `https://brilliantjobs.app/api/auth/gmail/callback?scope=${svc.scope}`;
-              }} className="text-[11px] font-semibold px-3 py-1 rounded-md bg-accent text-white">
-                Connect
-              </button>
+            <div key={svc.name} className="bg-bg-card border border-border rounded-[14px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] hover:border-border-hover hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all">
+              <div className="flex items-center gap-3 px-[22px] py-5 border-b border-border">
+                <div className="w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: `${svc.color}12` }}>
+                  <span className="text-[16px] font-bold" style={{ color: svc.color }}>{svc.name.charAt(0)}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[14px] font-bold text-text">{svc.name}</div>
+                  <div className="text-[11px] text-text-faint">{svc.sub}</div>
+                </div>
+                <StatusDot status="disconnected" />
+              </div>
+              <div className="px-[22px] py-5">
+                <div className="text-[13px] text-text-dim leading-relaxed mb-3">{svc.desc}</div>
+                <button onClick={() => {
+                  window.location.href = `https://brilliantjobs.app/api/auth/gmail/callback?scope=${svc.scope}`;
+                }} className="px-3.5 py-[7px] rounded-lg bg-accent text-white text-[12px] font-semibold">
+                  Connect {svc.name.split(' ')[0]}
+                </button>
+                <span className="text-[10px] text-text-faint ml-2">Read-only access</span>
+              </div>
             </div>
           ))}
         </div>
@@ -277,7 +289,7 @@ export default function GetStartedPage() {
             { label: 'Where', desc: 'Locations and arrangements', hint: '"Remote", "Seattle"', color: 'var(--warm)' },
             { label: 'Who', desc: 'Target or exclude companies', hint: '"Stripe", "Not: Amazon"', color: 'var(--pink)' },
           ].map(f => (
-            <div key={f.label} className="rounded-lg p-3 border border-border" style={{ background: `color-mix(in srgb, ${f.color} 5%, transparent)` }}>
+            <div key={f.label} className="rounded-[10px] px-5 py-[18px] border border-border" style={{ background: `color-mix(in srgb, ${f.color} 5%, transparent)` }}>
               <div className="text-[13px] font-bold flex items-center gap-1.5 mb-1" style={{ color: f.color }}>
                 <span className="w-2 h-2 rounded-full inline-block" style={{ background: f.color }} />
                 {f.label}
