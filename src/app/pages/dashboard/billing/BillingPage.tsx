@@ -148,7 +148,7 @@ export default function BillingPage() {
             { amount: 150, price: '$20', badge: 'Best Value' },
           ].map(pack => (
             <div key={pack.amount} className="border border-border rounded-xl p-5 text-center hover:border-accent transition-all">
-              <div className="text-[20px] font-bold text-text">{pack.amount}</div>
+              <div className="font-mono text-[28px] font-bold text-text">{pack.amount}</div>
               <div className="text-[11px] text-text-faint">credits</div>
               <div className="font-mono text-[18px] font-semibold text-accent mt-1 mb-0.5">{pack.price}</div>
               {pack.badge && <div className="text-[9px] font-semibold text-accent bg-accent/10 px-2 py-0.5 rounded-full mt-1 inline-block">{pack.badge}</div>}

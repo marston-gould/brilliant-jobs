@@ -215,19 +215,19 @@ export function AppShell() {
       {/* ── Sidebar ── */}
       <nav aria-label="Main navigation" className="flex flex-col h-full w-[var(--nav-w,240px)] bg-[var(--nav-bg)] flex-shrink-0 overflow-y-auto overflow-x-hidden">
 
-        {/* Brand — matches legacy: B mark + "Brilliant Jobs" + "Dashboard v10.73" */}
-        <div className="px-4 pt-5 pb-4">
+        {/* Brand — matches legacy: B mark + "Brilliant Jobs" + "Dashboard v10.74" */}
+        <div className="px-6 py-[22px] border-b border-white/[0.08]">
           <div className="flex items-center gap-3">
             <div className="w-[30px] h-[30px] rounded-lg bg-white flex items-center justify-center text-[var(--nav-bg)] font-extrabold text-sm flex-shrink-0">B</div>
             <div>
               <div className="font-bold text-[16px] text-white leading-tight">Brilliant Jobs</div>
-              <div className="text-[11px] text-[var(--nav-text)]">Dashboard <span className="text-[9px]">v10.73</span></div>
+              <div className="text-[11px] text-[var(--nav-text)]">Dashboard <span className="text-[9px]">v10.74</span></div>
             </div>
           </div>
         </div>
 
         {/* Nav items */}
-        <div className="flex-1 px-2 space-y-0.5">
+        <div className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           {(isAdminSection ? [{ label: 'ADMIN', items: ADMIN_ITEMS }] : SECTIONS).map((section, si) => (
             <div key={section.label || si}>
               {section.label && (
@@ -288,7 +288,7 @@ export function AppShell() {
         <div className="p-4 mt-auto border-t border-white/[0.08] space-y-2.5">
           {/* User row */}
           {user && (
-            <div className="flex items-center gap-2.5 px-1 py-2">
+            <div className="flex items-center gap-2.5 py-1">
               <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[13px] font-bold flex-shrink-0"
                 style={{ backgroundColor: avatarColor(user.email) }}>
                 {avatarInitial(user.email, user.display_name)}
@@ -304,7 +304,7 @@ export function AppShell() {
           )}
 
           {/* Credits — legacy: .credit-balance { padding:6px 10px; margin:8px 12px; bg:bg-input; border:1px; radius:8px } */}
-          <div className="flex items-center gap-1.5 mx-3 my-2 px-2.5 py-1.5 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] cursor-pointer hover:border-[var(--border-hover)] transition-colors"
+          <div className="flex items-center gap-1.5 mx-3 my-2 px-2.5 py-1.5 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] cursor-pointer hover:bg-[var(--bg-hover)] hover:border-[var(--border-hover)] transition-colors"
             onClick={() => navigate('/app/billing')} title="Credits">
             <span className="text-[9px] font-bold text-white/40 bg-white/10 px-1 py-0.5 rounded tracking-wide leading-none">CR</span>
               <span className={`text-[13px] font-semibold tabular-nums ${credits > 0 ? 'text-[var(--green)]' : 'text-white/70'}`}>{credits}</span>

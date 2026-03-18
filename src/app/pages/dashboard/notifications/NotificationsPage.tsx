@@ -203,11 +203,11 @@ export default function NotificationsPage() {
           <table className="w-full text-[12px]">
             <thead>
               <tr className="bg-bg-input/50 border-b border-border">
-                <th className="text-left px-4 py-2 font-medium text-text-dim">Type</th>
-                <th className="text-left px-2 py-2 font-medium text-text-dim">Message</th>
-                <th className="text-left px-2 py-2 font-medium text-text-dim w-20">Channel</th>
-                <th className="text-left px-2 py-2 font-medium text-text-dim w-24">Sent</th>
-                <th className="text-left px-2 py-2 font-medium text-text-dim w-16">Status</th>
+                <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-text-faint uppercase tracking-[0.5px]">Type</th>
+                <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-text-faint uppercase tracking-[0.5px]">Message</th>
+                <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-text-faint uppercase tracking-[0.5px] w-20">Channel</th>
+                <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-text-faint uppercase tracking-[0.5px] w-24">Sent</th>
+                <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-text-faint uppercase tracking-[0.5px] w-16">Status</th>
               </tr>
             </thead>
             <tbody>

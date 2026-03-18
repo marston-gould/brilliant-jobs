@@ -63,7 +63,7 @@ export function StageSection({
       <button
         type="button"
         onClick={onToggleCollapse}
-        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-bg-hover/50 transition-colors"
+        className="w-full flex items-center gap-2.5 px-4 py-3 hover:bg-bg-hover/50 transition-colors select-none"
       >
         {/* Collapse chevron */}
         <span className={`text-[10px] text-text-faint transition-transform ${collapsed ? '' : 'rotate-90'}`}>
@@ -77,7 +77,7 @@ export function StageSection({
         />
 
         {/* Stage label */}
-        <span className="text-xs font-semibold text-text">
+        <span className="text-[13px] font-bold text-text">
           {PL_STAGE_LABELS[data.stage]}
         </span>
 
@@ -114,16 +114,16 @@ export function StageSection({
                 <thead>
                   <tr className="border-b border-border bg-bg-input/50">
                     <th className="w-4 py-1.5 px-1" />
-                    <th className="py-1.5 px-2 text-[10px] font-medium text-text-faint uppercase tracking-wider">Title</th>
-                    <th className="py-1.5 px-2 text-[10px] font-medium text-text-faint uppercase tracking-wider">Company</th>
-                    <th className="py-1.5 px-2 text-[10px] font-medium text-text-faint uppercase tracking-wider">Resume</th>
-                    <th className="py-1.5 px-2 text-[10px] font-medium text-text-faint uppercase tracking-wider">Filters</th>
-                    <th className="py-1.5 px-2 text-[10px] font-medium text-text-faint uppercase tracking-wider">Discovered</th>
-                    <th className="py-1.5 px-2 text-[10px] font-medium text-text-faint uppercase tracking-wider">Applied</th>
-                    <th className="py-1.5 px-2 text-[10px] font-medium text-text-faint uppercase tracking-wider">Days</th>
-                    <th className="py-1.5 px-2 text-[10px] font-medium text-text-faint uppercase tracking-wider">Activity</th>
-                    <th className="py-1.5 px-2 text-[10px] font-medium text-text-faint uppercase tracking-wider">Match</th>
-                    <th className="py-1.5 px-2 text-[10px] font-medium text-text-faint uppercase tracking-wider">Move</th>
+                    <th className="py-1.5 px-3 text-[10px] font-semibold text-text-faint uppercase tracking-[0.5px]">Title</th>
+                    <th className="py-1.5 px-3 text-[10px] font-semibold text-text-faint uppercase tracking-[0.5px]">Company</th>
+                    <th className="py-1.5 px-3 text-[10px] font-semibold text-text-faint uppercase tracking-[0.5px]">Resume</th>
+                    <th className="py-1.5 px-3 text-[10px] font-semibold text-text-faint uppercase tracking-[0.5px]">Filters</th>
+                    <th className="py-1.5 px-3 text-[10px] font-semibold text-text-faint uppercase tracking-[0.5px]">Discovered</th>
+                    <th className="py-1.5 px-3 text-[10px] font-semibold text-text-faint uppercase tracking-[0.5px]">Applied</th>
+                    <th className="py-1.5 px-3 text-[10px] font-semibold text-text-faint uppercase tracking-[0.5px]">Days</th>
+                    <th className="py-1.5 px-3 text-[10px] font-semibold text-text-faint uppercase tracking-[0.5px]">Activity</th>
+                    <th className="py-1.5 px-3 text-[10px] font-semibold text-text-faint uppercase tracking-[0.5px]">Match</th>
+                    <th className="py-1.5 px-3 text-[10px] font-semibold text-text-faint uppercase tracking-[0.5px]">Move</th>
                     <th className="w-8 py-1.5 px-1" />
                   </tr>
                 </thead>
