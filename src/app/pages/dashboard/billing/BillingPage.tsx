@@ -61,7 +61,7 @@ export default function BillingPage() {
       {/* Summary grid: Plan + Balance + Usage */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
         {/* Current Plan */}
-        <div className={cardCls}>
+        <div className="border border-border rounded-xl bg-bg-card p-5">
           <div className="text-[12px] font-semibold text-text-dim mb-1">Current Plan</div>
           <div className="text-[24px] font-bold text-text">{tier === 'active_pro' ? 'Pro' : tier.charAt(0).toUpperCase() + tier.slice(1)}</div>
           <div className="text-[14px] text-accent font-semibold">{plans.find(p => p.highlight)?.price || '$0'}/mo</div>
@@ -71,7 +71,7 @@ export default function BillingPage() {
         </div>
 
         {/* Credit Balance */}
-        <div className={cardCls}>
+        <div className="border border-border rounded-xl bg-bg-card p-5">
           <div className="text-[12px] font-semibold text-text-dim mb-1">Credit Balance</div>
           <div className="flex items-baseline gap-1.5 mt-2">
             <span className={`text-[36px] font-bold tabular-nums font-mono tracking-tight ${credits > 0 ? 'text-green' : 'text-text'}`}>{credits}</span>
@@ -81,7 +81,7 @@ export default function BillingPage() {
         </div>
 
         {/* Credit Usage (30d) */}
-        <div className={cardCls}>
+        <div className="border border-border rounded-xl bg-bg-card p-5">
           <div className="text-[12px] font-semibold text-text-dim mb-1">Credit Usage (30d)</div>
           <div className="h-[100px] bg-bg-input rounded-lg flex items-center justify-center text-text-faint text-[11px] mt-2">
             Chart loads with usage data

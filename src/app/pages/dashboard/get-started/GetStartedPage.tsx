@@ -33,18 +33,18 @@ function Step({ num, title, icon: Icon, iconBg, iconColor, children, badge }: {
   badge?: React.ReactNode;
 }) {
   return (
-    <div className="border border-border rounded-[14px] bg-bg-card p-7 space-y-3 shadow-[0_1px_3px_rgba(0,0,0,0.02)] mb-3.5">
-      <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: iconBg }}>
+    <div className="border border-border rounded-[14px] bg-bg-card p-7 space-y-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] mb-3.5 hover:border-border-hover hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all">
+      <div className="flex items-start gap-3.5">
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: iconBg }}>
           <Icon className="w-5 h-5" style={{ color: iconColor }} strokeWidth={1.75} />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-text-faint">{num}</div>
-          <div className="text-[15px] font-bold text-text">{title}</div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.5px] text-text-faint mb-0.5">{num}</div>
+          <div className="text-[17px] font-bold text-text leading-tight">{title}</div>
         </div>
         {badge}
       </div>
-      <div className="text-[13px] text-text-dim leading-relaxed">{children}</div>
+      <div className="text-[14px] text-text-dim" style={{ lineHeight: 1.75 }}>{children}</div>
     </div>
   );
 }
@@ -208,7 +208,7 @@ export default function GetStartedPage() {
             { name: 'Google Calendar', desc: 'Interview scheduling', color: '#4285F4', scope: 'calendar' },
             { name: 'Google Drive', desc: 'Resume sync', color: '#0066DA', scope: 'drive' },
           ].map(svc => (
-            <div key={svc.name} className="border border-border rounded-lg p-3 text-center">
+            <div key={svc.name} className="bg-bg-main border border-border rounded-[10px] px-3.5 py-[18px] text-center hover:border-border-hover hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all">
               <div className="text-[13px] font-semibold text-text mb-0.5">{svc.name}</div>
               <div className="text-[10px] text-text-faint mb-2">{svc.desc}</div>
               <button onClick={() => {
