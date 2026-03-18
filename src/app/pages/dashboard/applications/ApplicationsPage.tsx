@@ -164,9 +164,29 @@ export function ApplicationsPage() {
 
       {/* Review Queue tab */}
       {appTab === 'review-queue' && (
-        <div className="text-center py-12 text-text-faint">
-          <p className="text-sm font-medium">No items pending review</p>
-          <p className="text-xs mt-1">Applications requiring your approval will appear here</p>
+        <div className="space-y-3">
+          {(state as any).pendingApps?.length > 0 ? (
+            ((state as any).pendingApps as any[]).map((app: any) => (
+              <div key={app.id} className="flex items-center gap-4 px-4 py-3 border border-border rounded-[10px] bg-bg-card hover:border-accent transition-all">
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-semibold text-text truncate">{app.job_title || 'Untitled'}</div>
+                  <div className="text-[11px] text-text-dim">{app.company_name || 'Unknown'}</div>
+                </div>
+                {app.score != null && (
+                  <div className={`text-[12px] font-bold px-2 py-0.5 rounded-md ${app.score >= 70 ? 'bg-green/10 text-green' : app.score >= 40 ? 'bg-warm/10 text-warm' : 'bg-red/10 text-red'}`}>{app.score}</div>
+                )}
+                <div className="flex gap-1.5 flex-shrink-0">
+                  <button onClick={() => (actions as any).approveApp?.(app.id)} className="px-3 py-1 rounded-md bg-accent text-white text-[11px] font-semibold">Approve</button>
+                  <button onClick={() => (actions as any).skipApp?.(app.id)} className="px-3 py-1 rounded-md bg-bg-input text-text-dim border border-border text-[11px] font-semibold">Skip</button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-12 text-text-faint">
+              <p className="text-sm font-medium">No items pending review</p>
+              <p className="text-xs mt-1">Applications requiring your approval will appear here</p>
+            </div>
+          )}
         </div>
       )}
 

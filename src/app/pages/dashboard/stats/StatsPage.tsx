@@ -121,7 +121,7 @@ export default function StatsPage() {
           <div className="grid gap-4 mb-6 grid-cols-[repeat(auto-fit,minmax(160px,1fr))]">
             {statCards.map(c => (
               <div key={c.label} className="border border-border rounded-xl bg-bg-card p-[18px_20px] text-center">
-                <div className="text-[22px] font-bold text-text tabular-nums font-mono leading-none">
+                <div className="font-bold text-text tabular-nums font-mono leading-none" style={{ fontSize: 'clamp(20px, 2.2vw + 0.5rem, 28px)', letterSpacing: '-1px' }}>
                   {typeof c.value === 'number' ? c.value.toLocaleString() : c.value}
                 </div>
                 <div className="text-[11px] font-semibold text-text-faint uppercase tracking-wide mt-1">{c.label}</div>

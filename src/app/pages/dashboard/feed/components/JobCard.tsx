@@ -19,6 +19,7 @@ interface JobCardProps {
   onSave: (id: string) => void;
   onHide: (id: string) => void;
   onApply: (id: string, url: string) => void;
+  onOpenModal?: (id: string) => void;
   showPreview?: boolean;
 }
 
@@ -47,7 +48,7 @@ function formatLocation(loc: string | null | undefined): string {
   return loc;
 }
 
-export function JobCard({ job, isSaved, isApplied, matchScore, levelInfo, onSave, onHide, onApply, showPreview }: JobCardProps) {
+export function JobCard({ job, isSaved, isApplied, matchScore, levelInfo, onSave, onHide, onApply, onOpenModal, showPreview }: JobCardProps) {
   const days = useMemo(() => formatDays(job.first_seen_at || job.updated_at), [job]);
   const salary = useMemo(() => formatSalary(job.salary_min, job.salary_max), [job]);
   const location = useMemo(() => formatLocation(job.location), [job]);
@@ -69,7 +70,8 @@ export function JobCard({ job, isSaved, isApplied, matchScore, levelInfo, onSave
         {/* Title + meta */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[13px] font-semibold text-text leading-tight truncate">{job.title}</span>
+            <span className="text-[13px] font-semibold text-text leading-tight truncate cursor-pointer hover:text-accent transition-colors"
+              onClick={() => onOpenModal?.(job.greenhouse_id)}>{job.title}</span>
             {levelInfo && (
               <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ color: levelInfo.color, border: `1px solid ${levelInfo.color}40` }}>
                 {levelInfo.label}

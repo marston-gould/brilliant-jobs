@@ -18,6 +18,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@app/components';
+import { JobDetailModal } from '@app/components/JobDetailModal';
 import { useProviders } from '@providers';
 import {
   FeedHero,
@@ -112,6 +113,7 @@ export function FeedPage() {
   // Local UI state
   const [filterBuilderCollapsed, setFilterBuilderCollapsed] = useState(false);
   const [savedSearchesCollapsed, setSavedSearchesCollapsed] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [savedSearchItems, setSavedSearchItems] = useState<SavedSearchItem[]>([]);
   const [filterValues, setFilterValues] = useState<FilterValues>({
     what: '',
@@ -445,6 +447,7 @@ export function FeedPage() {
         onHide={handleHide}
         onApply={handleApply}
         onPageChange={(p) => actions.setPage(p)}
+        onOpenModal={(id: string) => setSelectedJobId(id)}
         savedJobIds={savedJobIds}
         appliedJobIds={appliedJobIds}
         matchScores={matchScores}
@@ -452,6 +455,9 @@ export function FeedPage() {
         aiCache={aiCache}
         levelHierarchy={DEFAULT_LEVEL_HIERARCHY}
       />
+
+      {/* Job Detail Modal — legacy: openJobModal() */}
+      <JobDetailModal jobId={selectedJobId} onClose={() => setSelectedJobId(null)} />
     </div>
   );
 }

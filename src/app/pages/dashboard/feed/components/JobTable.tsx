@@ -16,6 +16,7 @@ interface JobTableProps {
   onHide: (jobId: string) => void;
   onApply: (jobId: string, url: string) => void;
   onPageChange: (page: number) => void;
+  onOpenModal?: (jobId: string) => void;
   onSort?: (field: string) => void;
   savedJobIds: Set<string>;
   appliedJobIds: Set<string>;
@@ -122,6 +123,7 @@ export function JobTable({
   onHide,
   onApply,
   onPageChange,
+  onOpenModal,
   onSort,
   savedJobIds,
   appliedJobIds,
@@ -209,6 +211,7 @@ export function JobTable({
               onSave={onSave}
               onHide={onHide}
               onApply={onApply}
+              onOpenModal={onOpenModal}
               showPreview={showPreview}
             />
           ))}
