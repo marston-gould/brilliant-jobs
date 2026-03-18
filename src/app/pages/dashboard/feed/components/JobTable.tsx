@@ -6,7 +6,7 @@
 // ============================================================
 
 import { useState, useMemo } from 'react';
-import { JobRow } from './JobRow';
+import { JobCard } from './JobCard';
 import { PaginationControls } from './PaginationControls';
 import type { FeedJob, FeedSearchState, TrustLabel, AiLabel } from '../hooks/useFeedSearch';
 
