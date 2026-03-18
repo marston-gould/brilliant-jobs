@@ -215,13 +215,13 @@ export function AppShell() {
       {/* ── Sidebar ── */}
       <nav aria-label="Main navigation" className="flex flex-col h-full w-[var(--nav-w,240px)] bg-[var(--nav-bg)] flex-shrink-0 overflow-y-auto overflow-x-hidden">
 
-        {/* Brand — matches legacy: B mark + "Brilliant Jobs" + "Dashboard v10.71" */}
+        {/* Brand — matches legacy: B mark + "Brilliant Jobs" + "Dashboard v10.72" */}
         <div className="px-4 pt-5 pb-4">
           <div className="flex items-center gap-3">
             <div className="w-[30px] h-[30px] rounded-lg bg-white flex items-center justify-center text-[var(--nav-bg)] font-extrabold text-sm flex-shrink-0">B</div>
             <div>
               <div className="font-bold text-[16px] text-white leading-tight">Brilliant Jobs</div>
-              <div className="text-[11px] text-[var(--nav-text)]">Dashboard <span className="text-[9px]">v10.71</span></div>
+              <div className="text-[11px] text-[var(--nav-text)]">Dashboard <span className="text-[9px]">v10.72</span></div>
             </div>
           </div>
         </div>
@@ -284,8 +284,8 @@ export function AppShell() {
           )}
         </div>
 
-        {/* ── Footer ── */}
-        <div className="px-3 pb-3 mt-auto space-y-2">
+        {/* ── Footer — legacy: .nav-footer { padding:16px; border-top:1px solid hsla(0,0%,100%,0.08) } ── */}
+        <div className="p-4 mt-auto border-t border-white/[0.08] space-y-2.5">
           {/* User row */}
           {user && (
             <div className="flex items-center gap-2.5 px-1 py-2">
@@ -303,14 +303,14 @@ export function AppShell() {
             </div>
           )}
 
-          {/* Credits + Theme — legacy: .credit-balance { padding:6px 10px; bg:bg-input; border:1px solid border; radius:8px } */}
-          <div className="flex items-center gap-1 mx-3 my-2">
-            <div className="flex-1 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] cursor-pointer hover:border-accent transition-colors"
-              onClick={() => navigate('/app/billing')} title="Click to purchase credits">
-              <span className="text-[9px] font-bold text-white/40 bg-white/10 px-1 py-0.5 rounded tracking-wide leading-none">CR</span>
+          {/* Credits — legacy: .credit-balance { padding:6px 10px; margin:8px 12px; bg:bg-input; border:1px; radius:8px } */}
+          <div className="flex items-center gap-1.5 mx-3 my-2 px-2.5 py-1.5 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] cursor-pointer hover:border-[var(--border-hover)] transition-colors"
+            onClick={() => navigate('/app/billing')} title="Credits">
+            <span className="text-[9px] font-bold text-white/40 bg-white/10 px-1 py-0.5 rounded tracking-wide leading-none">CR</span>
               <span className={`text-[13px] font-semibold tabular-nums ${credits > 0 ? 'text-[var(--green)]' : 'text-white/70'}`}>{credits}</span>
               <span className="text-[10px] text-white/40">credits</span>
-            </div>
+          </div>
+          <div className="flex items-center gap-2 mx-3">
             <button onClick={cycleTheme} className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg hover:bg-white/10 transition-colors"
               aria-label={`Theme: ${theme}`} title={`Theme: ${themeLabels[theme]}`}>
               <ThemeIcon className="w-3.5 h-3.5 text-white/50" strokeWidth={1.75} />
@@ -320,7 +320,7 @@ export function AppShell() {
 
           {/* Logout */}
           <button onClick={handleLogout}
-            className="w-full py-2 rounded-md text-[12px] font-medium text-white/60 hover:text-white hover:bg-white/10 transition-colors border border-white/10">
+            className="w-full mt-2.5 py-[7px] rounded-lg text-[11px] font-medium text-white/50 hover:text-white/80 hover:border-white/30 transition-colors border border-white/[0.12]">
             Log Out
           </button>
 

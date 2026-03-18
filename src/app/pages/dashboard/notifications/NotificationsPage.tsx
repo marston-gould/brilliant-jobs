@@ -149,10 +149,10 @@ export default function NotificationsPage() {
               <table className="w-full text-[12px]">
                 <thead>
                   <tr className="border-b border-border bg-bg-input/50">
-                    <th className="text-left px-4 py-2 font-medium text-text-dim min-w-[200px]">Type</th>
-                    <th className="text-center px-2 py-2 font-medium text-text-dim w-16">Email</th>
-                    <th className="text-center px-2 py-2 font-medium text-text-dim w-16">SMS</th>
-                    <th className="text-left px-2 py-2 font-medium text-text-dim w-[120px]">Frequency</th>
+                    <th className="text-left px-2 py-2.5 text-[11px] font-semibold text-text-faint uppercase tracking-[0.5px] border-b-2 border-border min-w-[200px]">Type</th>
+                    <th className="text-center px-2 py-2.5 text-[11px] font-semibold text-text-faint uppercase tracking-[0.5px] border-b-2 border-border w-16">Email</th>
+                    <th className="text-center px-2 py-2.5 text-[11px] font-semibold text-text-faint uppercase tracking-[0.5px] border-b-2 border-border w-16">SMS</th>
+                    <th className="text-left px-2 py-2.5 text-[11px] font-semibold text-text-faint uppercase tracking-[0.5px] border-b-2 border-border w-[120px]">Frequency</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -165,9 +165,9 @@ export default function NotificationsPage() {
                         const p = prefs[row.key] || { email: true, sms: false, freq: row.freq || 'daily' };
                         return (
                         <tr key={row.key} className="border-t border-border/50 hover:bg-bg-input/20">
-                          <td className="px-4 py-2 text-text">{row.label}</td>
-                          <td className="text-center px-2 py-2"><Toggle on={p.email} onClick={() => togglePref(row.key, 'email')} /></td>
-                          <td className="text-center px-2 py-2"><Toggle on={p.sms} disabled={!phoneVerified} onClick={() => phoneVerified && togglePref(row.key, 'sms')} /></td>
+                          <td className="px-2 py-2.5 text-[13px] text-text-dim border-b border-border align-middle">{row.label}</td>
+                          <td className="text-center px-2 py-2.5 border-b border-border align-middle"><Toggle on={p.email} onClick={() => togglePref(row.key, 'email')} /></td>
+                          <td className="text-center px-2 py-2.5 border-b border-border align-middle"><Toggle on={p.sms} disabled={!phoneVerified} onClick={() => phoneVerified && togglePref(row.key, 'sms')} /></td>
                           <td className="px-2 py-2">
                             {row.freq === 'Real-time' ? (
                               <span className="text-[10px] text-text-faint">Real-time</span>
@@ -215,7 +215,7 @@ export default function NotificationsPage() {
                 <tr><td colSpan={5} className="text-center py-8 text-text-faint">No notifications sent yet</td></tr>
               ) : log.map((entry: any, i: number) => (
                 <tr key={entry.id || i} className="border-t border-border/50 hover:bg-bg-input/20">
-                  <td className="px-4 py-2 text-text">{entry.notification_type || entry.type || '—'}</td>
+                  <td className="px-2 py-2.5 text-[13px] text-text-dim border-b border-border align-middle">{entry.notification_type || entry.type || '—'}</td>
                   <td className="px-2 py-2 text-text-dim truncate max-w-[200px]">{entry.message || entry.subject || '—'}</td>
                   <td className="px-2 py-2 text-text-faint">{entry.channel || 'email'}</td>
                   <td className="px-2 py-2 text-text-faint">{entry.created_at ? new Date(entry.created_at).toLocaleDateString() : '—'}</td>

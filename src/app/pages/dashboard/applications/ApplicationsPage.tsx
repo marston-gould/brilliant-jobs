@@ -196,13 +196,13 @@ export function ApplicationsPage() {
             </div>
           </div>
 
-          {/* Score Gate */}
+          {/* Score Gate — legacy .fas-panel { padding:16px; bg:bg-input; radius:10px } */}
           <div className="border border-border rounded-xl bg-bg-card p-6">
             <div className="text-[14px] font-bold text-text mb-1">Score Gate</div>
             <div className="text-[12px] text-text-dim mb-4">Minimum AI match score before applications are submitted</div>
-            <div className="space-y-3">
+            <div className="p-4 bg-bg-input border border-border rounded-[10px] mt-3 space-y-2.5">
               <div className="flex items-center gap-3">
-                <span className="text-[12px] text-text-dim w-28 flex-shrink-0">Score threshold</span>
+                <span className="text-[11px] text-text-dim min-w-[140px] flex-shrink-0">Score threshold</span>
                 <input type="range" min={0} max={100} defaultValue={70} className="flex-1 accent-accent"
                   onChange={e => {
                     const val = e.target.value;
@@ -217,7 +217,7 @@ export function ApplicationsPage() {
                 <span className="text-[13px] font-bold text-text min-w-[28px]">70</span>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-[12px] text-text-dim w-28 flex-shrink-0">Unscored jobs</span>
+                <span className="text-[11px] text-text-dim min-w-[140px] flex-shrink-0">Unscored jobs</span>
                 <select className="px-2 py-1 rounded-md border border-border bg-bg-input text-[11px] text-text"
                   onChange={e => {
                     import('@app/providers/bridge').then(({ providers }) => {
@@ -230,13 +230,13 @@ export function ApplicationsPage() {
             </div>
           </div>
 
-          {/* Approval Settings */}
+          {/* Approval Settings — legacy .notify-config { padding:20px; radius:12px } */}
           <div className="border border-border rounded-xl bg-bg-card p-6">
             <div className="text-[14px] font-bold text-text mb-1">Approval Settings</div>
             <div className="text-[12px] text-text-dim mb-4">When auto-applying, do you want to review before submission?</div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between p-3 rounded-lg bg-bg-input border border-border">
-                <span className="text-[13px] text-text">Require my approval</span>
+            <div className="bg-bg-card border border-border rounded-xl p-5">
+              <div className="flex items-center gap-3 py-2.5 border-b border-border text-[13px]">
+                <span className="text-text flex-1">Require my approval</span>
                 <button onClick={() => {
                   setRequireApproval(!requireApproval);
                   import('@app/providers/bridge').then(({ providers }) => {
@@ -246,8 +246,8 @@ export function ApplicationsPage() {
                   <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${requireApproval ? 'left-[20px]' : 'left-0.5'}`} />
                 </button>
               </div>
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-bg-input border border-border">
-                <span className="text-[13px] text-text flex-1">Auto-expire after</span>
+              <div className="flex items-center gap-3 py-2.5 text-[13px]">
+                <span className="text-text flex-1">Auto-expire after</span>
                 <select className="px-2 py-1 rounded-md border border-border bg-bg-main text-[11px] text-text"
                   defaultValue="48"
                   onChange={e => {
@@ -271,7 +271,7 @@ export function ApplicationsPage() {
                 { key: 'saved-search', label: 'Saved search matches', desc: 'Auto-apply to new jobs matching any of your saved search filters' },
                 { key: 'repost-ghost', label: 'Re-posts from ghosting companies', desc: 'Auto-apply when a company you previously applied to re-posts a role' },
               ].map(rule => (
-                <div key={rule.key} className="flex items-center justify-between p-3 rounded-lg bg-bg-input border border-border">
+                <div key={rule.key} className="flex items-center justify-between px-4 py-3.5 rounded-lg bg-bg-main border border-border mb-2.5">
                   <div><div className="text-[13px] font-semibold text-text">{rule.label}</div><div className="text-[11px] text-text-faint mt-0.5">{rule.desc}</div></div>
                   <button onClick={() => toggleRule(rule.key)} className={`w-10 h-[22px] rounded-full relative transition-colors ${rules[rule.key] ? 'bg-accent' : 'bg-border-hover'}`}>
                     <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${rules[rule.key] ? 'left-[20px]' : 'left-0.5'}`} />
@@ -286,13 +286,13 @@ export function ApplicationsPage() {
           <div className="border border-border rounded-xl bg-bg-card p-6">
             <div className="text-[14px] font-bold text-text mb-1">Resume Assignment</div>
             <div className="text-[12px] text-text-dim mb-4">Which resume gets sent for each application type.</div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between p-3 rounded-lg bg-bg-input border border-border">
-                <span className="text-[13px] text-text">Default resume for all applications</span>
-                <select className="px-2 py-1 rounded-md border border-border bg-bg-main text-[11px] text-text-dim"><option>— Upload a resume first —</option></select>
+            <div className="bg-bg-card border border-border rounded-xl p-5">
+              <div className="flex items-center gap-3 py-2.5 border-b border-border text-[13px]">
+                <span className="text-text flex-1">Default resume for all applications</span>
+                <select className="px-2 py-1 rounded-md border border-border bg-bg-input text-[11px] text-text"><option>— Upload a resume first —</option></select>
               </div>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-bg-input border border-border">
-                <span className="text-[13px] text-text">Auto-select best-match resume per job</span>
+              <div className="flex items-center gap-3 py-2.5 text-[13px]">
+                <span className="text-text flex-1">Auto-select best-match resume per job</span>
                 <button onClick={() => { setAutoMatchResume(!autoMatchResume); persistPref('autoMatchResume', !autoMatchResume); }}
                   className={`w-10 h-[22px] rounded-full relative transition-colors ${autoMatchResume ? 'bg-accent' : 'bg-border-hover'}`}>
                   <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${autoMatchResume ? 'left-[20px]' : 'left-0.5'}`} />
@@ -305,16 +305,16 @@ export function ApplicationsPage() {
           <div className="border border-border rounded-xl bg-bg-card p-6">
             <div className="text-[14px] font-bold text-text mb-1">Pipeline Intelligence</div>
             <div className="text-[12px] text-text-dim mb-4">Automated tracking and smart prompts for your job applications.</div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between p-3 rounded-lg bg-bg-input border border-border">
-                <span className="text-[13px] text-text">Smart Prompts — time-based check-in reminders</span>
+            <div className="bg-bg-card border border-border rounded-xl p-5">
+              <div className="flex items-center gap-3 py-2.5 border-b border-border text-[13px]">
+                <span className="text-text flex-1">Smart Prompts — time-based check-in reminders</span>
                 <button onClick={() => { setSmartPrompts(!smartPrompts); persistPref('smartPrompts', !smartPrompts); }}
                   className={`w-10 h-[22px] rounded-full relative transition-colors ${smartPrompts ? 'bg-accent' : 'bg-border-hover'}`}>
                   <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${smartPrompts ? 'left-[20px]' : 'left-0.5'}`} />
                 </button>
               </div>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-bg-input border border-border">
-                <span className="text-[13px] text-text">Signal Detection — auto-detect via Gmail & Calendar</span>
+              <div className="flex items-center gap-3 py-2.5 text-[13px]">
+                <span className="text-text flex-1">Signal Detection — auto-detect via Gmail & Calendar</span>
                 <button onClick={() => { setSignalDetection(!signalDetection); persistPref('signalDetection', !signalDetection); }}
                   className={`w-10 h-[22px] rounded-full relative transition-colors ${signalDetection ? 'bg-accent' : 'bg-border-hover'}`}>
                   <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${signalDetection ? 'left-[20px]' : 'left-0.5'}`} />
