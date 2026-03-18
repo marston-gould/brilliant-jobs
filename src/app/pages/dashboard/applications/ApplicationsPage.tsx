@@ -126,6 +126,21 @@ export function ApplicationsPage() {
       {/* Pipeline tab — stat cards + stage list */}
       {appTab === 'pipeline' && (
         <>
+          {/* Stat cards — legacy lines 2020-2025 */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+            {[
+              { label: 'Queued', value: state.queue.filter(q => q.status === 'queued').length },
+              { label: 'Pending Approval', value: state.queue.filter(q => q.status === 'pending').length },
+              { label: 'Submitted', value: state.history.filter(h => h.status === 'submitted').length },
+              { label: 'Failed', value: state.history.filter(h => h.status === 'failed').length },
+            ].map(s => (
+              <div key={s.label} className="border border-border rounded-xl bg-bg-card p-[18px_20px]">
+                <div className="text-[20px] font-bold text-text tabular-nums">{s.value}</div>
+                <div className="text-[11px] text-text-faint uppercase tracking-wide mt-1">{s.label}</div>
+              </div>
+            ))}
+          </div>
+
           <ApplicationsHero queue={state.queue} history={state.history} />
 
           {/* Sub-tabs: Queue | History */}

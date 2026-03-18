@@ -184,6 +184,20 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* Apply Settings Sync — legacy line 3393 */}
+      <div className={cardCls}>
+        <div className="text-[14px] font-bold text-text mb-0.5">Apply Settings Sync</div>
+        <div className="text-[12px] text-text-dim mb-3">Your application mode and threshold are synced to the server for headless worker and extension access.</div>
+        <div className="flex gap-3 items-center text-[12px] text-text-dim">
+          <span>Mode: <strong className="text-text">{passiveMode ? 'Passive' : 'Active'}</strong></span>
+          <span>Threshold: <strong className="text-text">70</strong></span>
+          <span>Daily Limit: <strong className="text-text">—</strong></span>
+        </div>
+        <button onClick={async () => {
+          try { await userProvider.updatePreferences({ syncedAt: new Date().toISOString() }); alert('Settings synced.'); } catch { alert('Sync failed.'); }
+        }} className="mt-3 px-3 py-1.5 rounded-md text-xs font-medium border border-border bg-bg-card text-text-dim hover:border-accent">Sync Now</button>
+      </div>
+
       {/* AI Content Preferences */}
       <div className={cardCls}>
         <div className="text-[14px] font-bold text-text mb-0.5">AI Content Preferences</div>

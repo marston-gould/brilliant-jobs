@@ -40,6 +40,7 @@ export default function StatsPage() {
   const [salaryDist, setSalaryDist] = useState<{ range: string; cnt: number }[]>([]);
   const [resumeList, setResumeList] = useState<{ id: string; name: string }[]>([]);
   const [selectedResumeId, setSelectedResumeId] = useState('');
+  const [savedFilters, setSavedFilters] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
     statsProvider.getJobCounts().then((d: any) => {
@@ -63,6 +64,10 @@ export default function StatsPage() {
         supabase.from('resumes').select('id, original_filename').eq('user_id', user.id).eq('archived', false).order('created_at', { ascending: false })
           .then(({ data }: any) => {
             if (data?.length) setResumeList(data.map((r: any) => ({ id: r.id, name: r.original_filename || 'Resume' })));
+          });
+        supabase.from('saved_filters').select('id, name').eq('user_id', user.id).order('created_at', { ascending: false })
+          .then(({ data }: any) => {
+            if (data?.length) setSavedFilters(data.map((f: any) => ({ id: f.id, name: f.name || 'Untitled' })));
           });
       });
     }).catch(() => {});
@@ -127,6 +132,23 @@ export default function StatsPage() {
                 <div className="text-[11px] font-semibold text-text-faint uppercase tracking-wide mt-1">{c.label}</div>
               </div>
             ))}
+          </div>
+
+          {/* Filter selector — legacy: stats-filter-bar with pills + Aggregate/Compare toggle */}
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <div className="flex items-center gap-1 flex-wrap">
+              <button className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-accent text-white">All Filters</button>
+              {savedFilters.map(f => (
+                <button key={f.id} className="px-2.5 py-1 rounded-full text-[11px] font-medium border border-border bg-bg-card text-text-dim hover:border-accent"
+                  onClick={() => {/* filter by saved search */}}>
+                  {f.name}
+                </button>
+              ))}
+            </div>
+            <select className="ml-auto text-[11px] bg-bg-input border border-border rounded px-2 py-1 text-text-dim" title="Compare mode">
+              <option value="aggregate">Aggregate</option>
+              <option value="compare">Compare</option>
+            </select>
           </div>
 
           {/* Charts powered by ECharts */}
