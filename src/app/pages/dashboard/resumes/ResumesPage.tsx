@@ -279,7 +279,7 @@ export function ResumesPage() {
                 <svg viewBox="0 0 24 24" width={32} height={32} fill="none" stroke="currentColor" strokeWidth={1.5} className="mx-auto mb-2 text-text-faint"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                 <div className="text-[13px] font-semibold text-text mb-0.5">Drop your resume here</div>
                 <div className="text-[11px] text-text-faint">PDF or DOCX · Max 5MB</div>
-                <button className="mt-3 px-3 py-1.5 rounded-md text-xs font-medium border border-border text-text-dim hover:border-accent">Browse files</button>
+                <button onClick={() => { const i = document.createElement("input"); i.type = "file"; i.accept = ".pdf,.doc,.docx"; i.onchange = (e) => { const f = (e.target as HTMLInputElement).files?.[0]; if (f) handleParseResume(f); }; i.click(); }} className="mt-3 px-3 py-1.5 rounded-md text-xs font-medium border border-border text-text-dim hover:border-accent">Browse files</button>
               </div>
 
               {/* Label input */}

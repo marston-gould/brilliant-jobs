@@ -22,6 +22,15 @@ export default function BillingPage() {
     if (url) window.open(url, '_blank');
   }, [billing]);
 
+  const startCheckout = useCallback(async (type: string, item: string) => {
+    try {
+      const { callGateway } = await import('@app/lib/supabase');
+      const result = await callGateway<{ url?: string }>('create-checkout-session', { type, item });
+      if (result?.url) window.location.href = result.url;
+      else alert('Checkout session created. Check your email for the payment link.');
+    } catch { alert('Unable to start checkout. Please try again.'); }
+  }, []);
+
   useEffect(() => {
     userProvider.getCurrentUser().then(u => {
       if (u) setTier(u.tier || 'Free');
@@ -68,7 +77,7 @@ export default function BillingPage() {
             <span className={`text-[32px] font-bold tabular-nums font-mono ${credits > 0 ? 'text-green' : 'text-text'}`}>{credits}</span>
             <span className="text-[12px] text-text-faint">credits available</span>
           </div>
-          <button className="mt-3 px-3 py-1.5 rounded-md text-xs font-semibold bg-accent text-white">Buy Credits</button>
+          <button onClick={() => document.getElementById("credit-packs")?.scrollIntoView({ behavior: "smooth" })} className="mt-3 px-3 py-1.5 rounded-md text-xs font-semibold bg-accent text-white">Buy Credits</button>
         </div>
 
         {/* Credit Usage (30d) */}
@@ -121,7 +130,7 @@ export default function BillingPage() {
               {p.highlight ? (
                 <div className="mt-3 px-3 py-1.5 rounded-md text-xs font-semibold bg-bg-input text-text-faint">Current Plan</div>
               ) : (
-                <button className="mt-3 px-3 py-1.5 rounded-md text-xs font-semibold bg-accent text-white">Upgrade</button>
+                <button onClick={() => startCheckout("subscription", p.name.toLowerCase())} className="mt-3 px-3 py-1.5 rounded-md text-xs font-semibold bg-accent text-white">Upgrade</button>
               )}
             </div>
           ))}
@@ -130,7 +139,7 @@ export default function BillingPage() {
 
       {/* Credit Packs */}
       <div className={cardCls}>
-        <div className="text-[14px] font-bold text-text mb-1">Buy Credit Packs</div>
+        <div id="credit-packs" className="text-[14px] font-bold text-text mb-1">Buy Credit Packs</div>
         <div className="text-[12px] text-text-dim mb-3">One-time purchase at your plan's rate. Credits never expire.</div>
         <div className="grid grid-cols-3 gap-3">
           {[
@@ -143,7 +152,7 @@ export default function BillingPage() {
               <div className="text-[11px] text-text-faint">credits</div>
               <div className="text-[16px] font-bold text-accent mt-1">{pack.price}</div>
               {pack.badge && <div className="text-[9px] font-semibold text-accent bg-accent/10 px-2 py-0.5 rounded-full mt-1 inline-block">{pack.badge}</div>}
-              <button className="mt-2 px-3 py-1 rounded-md text-xs font-semibold bg-accent text-white w-full">Buy</button>
+              <button onClick={() => startCheckout("credits", String(pack.amount))} className="mt-2 px-3 py-1 rounded-md text-xs font-semibold bg-accent text-white w-full">Buy</button>
             </div>
           ))}
         </div>
@@ -175,7 +184,7 @@ export default function BillingPage() {
             <div className="text-[13px] font-semibold text-text">No payment method on file</div>
             <div className="text-[11px] text-text-faint mt-0.5">Add a card to enable pay-when-hired.</div>
           </div>
-          <button className="px-3 py-1.5 rounded-md text-xs font-semibold bg-accent text-white">Authorize Card</button>
+          <button onClick={() => startCheckout("setup", "hire_fee")} className="px-3 py-1.5 rounded-md text-xs font-semibold bg-accent text-white">Authorize Card</button>
         </div>
         <div className="text-[11px] text-text-faint mt-3">Success fee: 5% of first-year base salary (min $500, max $5,000). Only charged when you confirm.</div>
       </div>

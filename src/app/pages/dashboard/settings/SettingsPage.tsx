@@ -95,8 +95,23 @@ export default function SettingsPage() {
         <div className="text-[14px] font-bold text-text mb-0.5">Account</div>
         <div className="text-[12px] text-text-dim mb-3">Manage your account</div>
         <div className="flex gap-2 flex-wrap">
-          <button className="px-3 py-1.5 rounded-md text-xs font-medium border border-border bg-bg-card text-text-dim hover:border-accent">Change Password</button>
-          <button className="px-3 py-1.5 rounded-md text-xs font-medium border border-border bg-bg-card text-text-dim hover:border-accent">Export Data</button>
+          <button onClick={async () => {
+            try {
+              const { supabase } = await import('@app/lib/supabase');
+              await supabase.auth.resetPasswordForEmail(email || '', { redirectTo: window.location.origin + '/app/settings' });
+              alert('Password reset email sent. Check your inbox.');
+            } catch { alert('Failed to send reset email.'); }
+          }} className="px-3 py-1.5 rounded-md text-xs font-medium border border-border bg-bg-card text-text-dim hover:border-accent">Change Password</button>
+          <button onClick={async () => {
+            try {
+              const u = await userProvider.getCurrentUser();
+              if (!u) return;
+              const blob = new Blob([JSON.stringify(u, null, 2)], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a'); a.href = url; a.download = 'brilliant-jobs-data.json'; a.click();
+              URL.revokeObjectURL(url);
+            } catch { alert('Export failed.'); }
+          }} className="px-3 py-1.5 rounded-md text-xs font-medium border border-border bg-bg-card text-text-dim hover:border-accent">Export Data</button>
         </div>
       </div>
 
@@ -195,7 +210,16 @@ export default function SettingsPage() {
       <div className={cardCls}>
         <div className="text-[14px] font-bold text-text mb-0.5">Privacy & Data</div>
         <div className="text-[12px] text-text-dim mb-3">Manage your data rights under GDPR and privacy regulations</div>
-        <button className="px-3 py-1.5 rounded-md text-xs font-medium border border-border bg-bg-card text-text-dim hover:border-accent flex items-center gap-1.5">
+        <button onClick={async () => {
+          try {
+            const { callGateway } = await import('@app/lib/supabase');
+            const data = await callGateway('account-lifecycle', { action: 'export' });
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = 'brilliant-jobs-full-export.json'; a.click();
+            URL.revokeObjectURL(url);
+          } catch { alert('Export failed. Try again later.'); }
+        }} className="px-3 py-1.5 rounded-md text-xs font-medium border border-border bg-bg-card text-text-dim hover:border-accent flex items-center gap-1.5">
           <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Download All My Data (JSON)
         </button>
@@ -203,11 +227,18 @@ export default function SettingsPage() {
       </div>
 
       {/* Danger Zone */}
-      <div className="border border-red rounded-xl bg-bg-card p-5 mb-4">
+      <div className="border border-red rounded-xl bg-bg-card p-6 mb-5">
         <div className="text-[14px] font-bold text-red mb-0.5">Danger Zone</div>
         <div className="text-[12px] text-text-dim mb-3">Irreversible actions — proceed with caution</div>
         <p className="text-[12px] text-text-faint mb-3">Deleting your account will remove all your data after a 30-day grace period. During the grace period you can log in and cancel the deletion.</p>
-        <button className="px-3 py-1.5 rounded-md text-xs font-semibold bg-red text-white">Delete My Account</button>
+        <button onClick={async () => {
+          if (!confirm('Are you sure you want to delete your account? This action will take effect after 30 days.')) return;
+          try {
+            const { callGateway } = await import('@app/lib/supabase');
+            await callGateway('account-delete', { action: 'request' });
+            alert('Account deletion requested. You have 30 days to cancel by logging in.');
+          } catch { alert('Failed to request deletion. Try again later.'); }
+        }} className="px-3 py-1.5 rounded-md text-xs font-semibold bg-red text-white">Delete My Account</button>
       </div>
     </div>
   );
