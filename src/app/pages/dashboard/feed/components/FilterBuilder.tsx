@@ -117,7 +117,7 @@ export function FilterBuilder({
         >
           <polyline points="6 9 12 15 18 9" />
         </svg>
-        <span className="text-xs font-semibold text-text-dim">Job Filter Builder</span>
+        <span className="text-[13px] font-semibold text-text-dim">Job Filter Builder</span>
       </button>
 
       {/* Filter rows */}

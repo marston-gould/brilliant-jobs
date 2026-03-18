@@ -81,7 +81,7 @@ export function FilterSection({
       </button>
 
       {!collapsed && (
-        <div className="flex flex-col gap-2 ml-5">
+        <div className="flex flex-col gap-4 ml-5">
           {resumes.map(r => {
             const globalIdx = allResumes.indexOf(r);
             return (

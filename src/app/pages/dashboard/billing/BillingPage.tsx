@@ -55,7 +55,7 @@ export default function BillingPage() {
   const cardCls = "border border-border rounded-xl bg-bg-card p-6 mb-5";
 
   return (
-    <div className="max-w-[860px]">
+    <div className="">
       <PageHeader title="Subscription" subtitle="Manage your plan, credits, and billing" helpLink="subscription" onHelp={() => {}} />
 
       {/* Summary grid: Plan + Balance + Usage */}

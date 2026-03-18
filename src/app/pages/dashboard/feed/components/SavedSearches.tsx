@@ -66,7 +66,7 @@ export function SavedSearches({
       {/* Header */}
       <button
         type="button"
-        className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-bg-hover/50 transition-colors"
+        className="flex items-center gap-2 w-full px-3 py-2.5 text-left text-[13px] font-semibold text-text-dim select-none hover:bg-bg-hover/50 transition-colors"
         onClick={onToggleCollapse}
       >
         <svg

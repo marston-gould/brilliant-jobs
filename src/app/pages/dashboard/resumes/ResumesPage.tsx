@@ -159,7 +159,7 @@ export function ResumesPage() {
             pipelineMeta={pipelineMeta}
           />
 
-          <div className="mb-6">
+          <div className="mb-5">
             <ResumeUpload onUpload={actions.uploadResume} />
           </div>
 
