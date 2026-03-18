@@ -2,6 +2,7 @@
 // StageSection — Collapsible Pipeline Stage (SA-015)
 // ============================================================
 
+import { useState } from 'react';
 import { Badge, Card } from '@app/components';
 import type { PipelineStage, StageData } from '../hooks/usePipeline';
 import { PL_STAGE_LABELS, PL_STAGE_COLORS } from '../hooks/usePipeline';
@@ -22,12 +23,42 @@ export function StageSection({
   data, collapsed, onToggleCollapse,
   onMoveStage, onConfirmSignal, onUnsave, onSetTrackingMode, onOpenModal,
 }: StageSectionProps) {
+  const [dragOver, setDragOver] = useState(false);
+
   const matchText = data.minMatch != null && data.maxMatch != null && data.medianMatch != null
     ? `Match: ${data.minMatch}% – ${data.medianMatch}% – ${data.maxMatch}%`
     : null;
 
+  // ── Drag-and-drop handlers ──
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const entryId = e.dataTransfer.getData('text/pipeline-entry-id');
+    const fromStage = e.dataTransfer.getData('text/pipeline-from-stage');
+    if (entryId && fromStage !== data.stage) {
+      onMoveStage(entryId, data.stage);
+    }
+  };
+
   return (
-    <Card variant="outline" padding="none" className="overflow-hidden">
+    <Card
+      variant="outline"
+      padding="none"
+      className={`overflow-hidden transition-all ${dragOver ? 'ring-2 ring-accent/50 bg-accent/5' : ''}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       {/* Stage header */}
       <button
         type="button"

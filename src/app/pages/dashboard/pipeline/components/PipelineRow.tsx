@@ -208,7 +208,24 @@ export function PipelineRow({
 
   return (
     <>
-      <tr className="border-b border-border/50 hover:bg-bg-hover/50 transition-colors">
+      <tr
+        className="border-b border-border/50 hover:bg-bg-hover/50 transition-colors cursor-grab active:cursor-grabbing"
+        draggable
+        onDragStart={(e) => {
+          e.dataTransfer.setData('text/pipeline-entry-id', item.id);
+          e.dataTransfer.setData('text/pipeline-from-stage', stage);
+          e.dataTransfer.effectAllowed = 'move';
+          // Reduce opacity of dragged row
+          if (e.currentTarget instanceof HTMLElement) {
+            e.currentTarget.style.opacity = '0.5';
+          }
+        }}
+        onDragEnd={(e) => {
+          if (e.currentTarget instanceof HTMLElement) {
+            e.currentTarget.style.opacity = '1';
+          }
+        }}
+      >
         {/* Stale dot */}
         <td className="w-4 text-center py-2 px-1">
           <StaleDot

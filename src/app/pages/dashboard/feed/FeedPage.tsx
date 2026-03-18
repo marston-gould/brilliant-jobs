@@ -27,6 +27,8 @@ import {
   SortControls,
   SearchBar,
   JobTable,
+  IntelCards,
+  ChatPanel,
 } from './components';
 import type { FilterValues } from './components';
 import { useFeedSearch } from './hooks/useFeedSearch';
@@ -336,20 +338,9 @@ export function FeedPage() {
         </div>
       )}
 
-      {/* Chat panel placeholder (visible in Chat mode) */}
+      {/* Chat panel (visible in Chat mode) */}
       {state.searchMode === 'chat' && (
-        <div className="border border-border rounded-lg p-6 text-center">
-          <div className="text-text-faint mb-2">
-            <svg viewBox="0 0 24 24" width={28} height={28} fill="none" stroke="currentColor" strokeWidth={1.5} className="inline-block opacity-40" aria-hidden="true">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
-          </div>
-          <div className="text-sm font-semibold text-text-dim mb-1">Describe your ideal role</div>
-          <p className="text-xs text-text-faint max-w-sm mx-auto">
-            Try: "Senior product manager roles in Austin, TX paying over $150K" or "Remote React developer positions at mid-size companies"
-          </p>
-          {/* Chat input will be migrated in a follow-up or remain as legacy bridge */}
-        </div>
+        <ChatPanel />
       )}
 
       {/* Filter results count */}
@@ -359,20 +350,38 @@ export function FeedPage() {
         </div>
       )}
 
-      {/* Job results table */}
-      <JobTable
-        state={state}
-        onSave={handleSave}
-        onHide={handleHide}
-        onApply={handleApply}
-        onPageChange={(p) => actions.setPage(p)}
-        savedJobIds={savedJobIds}
-        appliedJobIds={appliedJobIds}
-        matchScores={matchScores}
-        fraudCache={fraudCache}
-        aiCache={aiCache}
-        levelHierarchy={DEFAULT_LEVEL_HIERARCHY}
-      />
+      {/* Main content: Job table + Intel sidebar */}
+      <div className="flex gap-4">
+        {/* Job results table */}
+        <div className="flex-1 min-w-0">
+          <JobTable
+            state={state}
+            onSave={handleSave}
+            onHide={handleHide}
+            onApply={handleApply}
+            onPageChange={(p) => actions.setPage(p)}
+            savedJobIds={savedJobIds}
+            appliedJobIds={appliedJobIds}
+            matchScores={matchScores}
+            fraudCache={fraudCache}
+            aiCache={aiCache}
+            levelHierarchy={DEFAULT_LEVEL_HIERARCHY}
+          />
+        </div>
+
+        {/* Intel sidebar (hidden on small screens) */}
+        <div className="hidden lg:block w-[260px] flex-shrink-0">
+          <IntelCards
+            searchQuery={filterValues.what || state.searchMode === 'chat' ? undefined : undefined}
+            visibleCompanies={
+              state.jobs
+                .map(j => j.company_name)
+                .filter((v, i, a) => a.indexOf(v) === i)
+                .slice(0, 20)
+            }
+          />
+        </div>
+      </div>
     </div>
   );
 }

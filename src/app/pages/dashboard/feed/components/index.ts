@@ -10,3 +10,5 @@ export { SearchBar } from './SearchBar';
 export { JobTable } from './JobTable';
 export { JobRow } from './JobRow';
 export { PaginationControls } from './PaginationControls';
+export { IntelCards } from './IntelCards';
+export { ChatPanel } from './ChatPanel';
