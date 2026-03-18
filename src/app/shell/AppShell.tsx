@@ -176,6 +176,10 @@ export function AppShell() {
         if (stats) counts['/app/feed'] = stats.total_open ?? 0;
         const resumes = await providers.resumes.getAll();
         counts['/app/resumes'] = Array.isArray(resumes) ? resumes.length : 0;
+        // Sync to localStorage for Keywords page bridge
+        if (Array.isArray(resumes) && resumes.length > 0) {
+          try { localStorage.setItem('bj_resumes', JSON.stringify(resumes)); } catch {}
+        }
         const queue = await providers.applications.getQueue();
         counts['/app/applications'] = Array.isArray(queue) ? queue.length : 0;
         setBadgeCounts(counts);

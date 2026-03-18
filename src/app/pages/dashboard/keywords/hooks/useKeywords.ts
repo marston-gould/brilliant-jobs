@@ -7,7 +7,7 @@
 // ============================================================
 
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
-import { safeReadLS, safeWriteLS, callGateway } from '@lib/supabase';
+import { safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -159,17 +159,32 @@ export function useKeywords(): [KeywordsState, KeywordsActions] {
   const [state, dispatch] = useReducer(reducer, initialState);
   const mountedRef = useRef(true);
 
-  const loadResumes = useCallback(() => {
+  const loadResumes = useCallback(async () => {
+    // Try Supabase first, fall back to localStorage
+    try {
+      const { providers } = await import('@app/providers/bridge');
+      const sbResumes = await providers.resumes.getAll();
+      if (sbResumes && sbResumes.length > 0) {
+        const mapped: ResumeInfo[] = sbResumes.map((r: any, i: number) => ({
+          index: i,
+          name: r.name || r.filename || `Resume ${i + 1}`,
+          archived: !!r.archived,
+          textStatus: r.text_status || r.textStatus || 'ready',
+          hasKeywords: true,
+          filterIds: r.filter_ids || [],
+          selected: !r.archived,
+        }));
+        dispatch({ type: 'SET_RESUMES', payload: mapped });
+        const cache = getReadinessCache();
+        if (cache?.scores) dispatch({ type: 'SET_SCORES', payload: { scores: cache.scores, lastRun: cache.lastRun || '' } });
+        return;
+      }
+    } catch {}
+    // Fallback to localStorage
     const resumes = getResumes();
     dispatch({ type: 'SET_RESUMES', payload: resumes });
-
     const cache = getReadinessCache();
-    if (cache?.scores) {
-      dispatch({
-        type: 'SET_SCORES',
-        payload: { scores: cache.scores, lastRun: cache.lastRun || '' },
-      });
-    }
+    if (cache?.scores) dispatch({ type: 'SET_SCORES', payload: { scores: cache.scores, lastRun: cache.lastRun || '' } });
   }, []);
 
   // SPA-CUT-1: Standalone analysis via score-resume gateway
