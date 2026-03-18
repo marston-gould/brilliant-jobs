@@ -158,8 +158,8 @@ export default function NotificationsPage() {
                 <tbody>
                   {MATRIX.map(section => (
                     <>
-                      <tr key={`s-${section.label}`} className="bg-bg-input/30">
-                        <td colSpan={4} className="px-4 py-1.5 text-[10px] font-semibold text-text-dim uppercase tracking-wider">{section.label}</td>
+                      <tr key={`s-${section.label}`} className="">
+                        <td colSpan={4} className="px-2 pt-4 pb-1.5 text-[11px] font-bold text-text-faint uppercase tracking-[0.5px] border-b border-border">{section.label}</td>
                       </tr>
                       {section.rows.map(row => {
                         const p = prefs[row.key] || { email: true, sms: false, freq: row.freq || 'daily' };
