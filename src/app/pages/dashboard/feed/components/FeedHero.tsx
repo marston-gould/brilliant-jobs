@@ -30,7 +30,7 @@ const statItems: Array<{
 
 export function FeedHero({ stats, onPipelineClick }: FeedHeroProps) {
   return (
-    <div className="rounded-[14px] p-[24px_28px] mb-4 overflow-hidden"
+    <div className="rounded-[14px] p-[24px_28px] mb-4 hero-gradient"
          style={{ background: '#1b3e6f', color: '#fff', boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
       <div style={{ fontSize: '18px', fontWeight: 800, marginBottom: '4px' }}>
         Your market.{' '}

@@ -189,10 +189,55 @@ export default function NotificationsPage() {
               </table>
             </div>
           </div>
+
+          {/* Escalation Rules — legacy lines 2831-2900 */}
+          <div className="border border-border rounded-xl bg-bg-card p-6">
+            <div className="text-[14px] font-bold text-text mb-1">Escalation Rules</div>
+            <div className="text-[12px] text-text-dim mb-4">Controls how apply-on-notification alerts escalate when you don't respond</div>
+
+            {/* Timeline visualization */}
+            <div className="flex items-center py-4 overflow-x-auto">
+              {[
+                { icon: '✉', label: 'Email sent', color: 'bg-accent/10 text-accent' },
+                null,
+                { icon: '⏱', label: 'Wait 4h', color: 'bg-bg-input text-text-faint' },
+                null,
+                { icon: '💬', label: 'SMS reminder', color: 'bg-green/10 text-green' },
+                null,
+                { icon: '⏱', label: 'Wait 2h', color: 'bg-bg-input text-text-faint' },
+                null,
+                { icon: '✕', label: 'Marked missed', color: 'bg-red/10 text-red' },
+              ].map((node, i) => node === null ? (
+                <div key={i} className="flex-1 min-w-6 h-0.5 bg-border" />
+              ) : (
+                <div key={i} className="flex flex-col items-center gap-1.5 min-w-[80px] text-center">
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[14px] ${node.color}`}>{node.icon}</div>
+                  <div className="text-[11px] text-text-faint leading-tight">{node.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Config rows */}
+            <div className="bg-bg-card border border-border rounded-xl p-5 mt-2">
+              <div className="flex items-center gap-3 py-2.5 border-b border-border text-[13px]">
+                <span className="text-text-dim flex-1">Email-to-SMS escalation timeout</span>
+                <input type="range" min={1} max={12} defaultValue={4} className="w-40 accent-accent"
+                  onChange={e => { const s = e.target.nextElementSibling; if (s) s.textContent = e.target.value + ' hours'; }} />
+                <span className="text-[14px] font-semibold text-accent min-w-[56px]">4 hours</span>
+              </div>
+              <div className="flex items-center gap-3 py-2.5 border-b border-border text-[13px]">
+                <span className="text-text-dim flex-1">Quiet hours</span>
+                <div className="flex items-center gap-2">
+                  <input type="time" defaultValue="22:00" className="px-2 py-1 rounded-lg border border-border bg-bg-input text-[13px] text-text" />
+                  <span className="text-[12px] text-text-faint">to</span>
+                  <input type="time" defaultValue="07:00" className="px-2 py-1 rounded-lg border border-border bg-bg-input text-[13px] text-text" />
+                </div>
+              </div>
+              <div className="text-[11px] text-text-faint mt-2">Notifications held until quiet hours end. Escalation timers pause.</div>
+            </div>
+          </div>
         </div>
       )}
-
-      {/* Log tab */}
       {tab === 'log' && (
         <div className="border border-border rounded-xl bg-bg-card overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">

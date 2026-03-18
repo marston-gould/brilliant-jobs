@@ -137,7 +137,7 @@ export default function GetStartedPage() {
       </div>
 
       {/* Hero — legacy: .gs-hero */}
-      <div className="rounded-[14px] px-9 py-9 overflow-hidden mb-6"
+      <div className="rounded-[14px] px-9 py-9 mb-6 hero-gradient"
            style={{ background: '#1b3e6f', color: '#fff', boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
         <div className="text-[22px] font-extrabold leading-tight mb-2">
           This is not another job board.<br />

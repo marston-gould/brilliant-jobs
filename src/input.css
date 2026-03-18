@@ -304,3 +304,19 @@
     }
 
 }
+
+/* Hero gradient overlay — matches legacy ::before on all navy heroes */
+.hero-gradient {
+  position: relative;
+  overflow: hidden;
+}
+.hero-gradient::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 60% at 10% 100%, rgba(61,135,255,0.15), transparent),
+    radial-gradient(ellipse 50% 50% at 90% 0, rgba(137,90,246,0.1), transparent);
+}
+.hero-gradient > * { position: relative; }

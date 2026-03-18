@@ -32,7 +32,7 @@ export function ResumesHero({ resumes, archivedCount, readinessCache, pipelineMe
   ];
 
   return (
-    <div className="rounded-[14px] px-9 py-8 mb-5 overflow-hidden"
+    <div className="rounded-[14px] px-9 py-8 mb-5 hero-gradient"
       style={{ background: '#1b3e6f', color: '#fff', boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
       <div className="text-[18px] font-extrabold mb-1">
         One role, one resume. <span className="text-warm">Built to compete.</span>

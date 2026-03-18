@@ -82,7 +82,7 @@ export default function TuningPage() {
       <PageHeader title="Search Tuning" subtitle="Global rules that sharpen every search at once" helpLink="tuning" onHelp={() => {}} />
 
       {/* Hero — legacy .tuning-hero */}
-      <div className="rounded-[14px] px-9 py-8 mb-5 overflow-hidden" style={{ background: '#1b3e6f', color: '#fff', boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
+      <div className="rounded-[14px] px-9 py-8 mb-5 hero-gradient" style={{ background: '#1b3e6f', color: '#fff', boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
         <div className="text-[18px] font-extrabold mb-1.5">Less noise. <span className="text-warm">Better matches.</span></div>
         <div className="text-[13px] leading-relaxed max-w-[540px]" style={{ color: 'rgba(255,255,255,0.88)' }}>
           Rules you set here apply across every saved search — block entire companies, restrict locations, set seniority levels, and let poor-match analysis suggest what to exclude next.
