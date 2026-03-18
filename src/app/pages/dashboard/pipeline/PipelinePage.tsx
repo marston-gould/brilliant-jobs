@@ -35,11 +35,26 @@ export function PipelinePage() {
 
   if (state.loading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <div className="text-center">
-          <div className="inline-block w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs text-text-faint mt-2">Loading pipeline…</p>
-        </div>
+      <div className="space-y-3">
+        {/* Skeleton stage sections */}
+        {[1, 2, 3, 4].map(i => (
+          <div key={i} className="border border-border rounded-xl bg-bg-card overflow-hidden animate-pulse">
+            <div className="px-4 py-3 flex items-center gap-2.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-bg-input" />
+              <div className="h-3.5 w-24 bg-bg-input rounded" />
+              <div className="h-3 w-8 bg-bg-input rounded-lg ml-2" />
+            </div>
+            <div className="px-4 pb-3 space-y-2">
+              {[1, 2].map(j => (
+                <div key={j} className="flex items-center gap-3 py-2">
+                  <div className="h-3 w-40 bg-bg-input rounded" />
+                  <div className="h-3 w-24 bg-bg-input rounded" />
+                  <div className="h-3 w-16 bg-bg-input rounded ml-auto" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     );
   }

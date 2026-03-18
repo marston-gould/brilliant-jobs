@@ -240,13 +240,19 @@ export function FeedPage() {
   }, [filterValues]);
 
   const handleAiGenerate = useCallback(async () => {
+    (window as any).__bjToast?.('Analyzing your resume…', 'info');
     try {
       const { callGateway } = await import('@app/lib/supabase');
       const result = await callGateway<any>('admin-filter-prompt', { action: 'suggest' }, { timeout: 20000 });
       if (result?.filters) {
         setFilterValues(prev => ({ ...prev, ...result.filters }));
+        (window as any).__bjToast?.('AI filters applied to your search', 'success');
+      } else {
+        (window as any).__bjToast?.('No filter suggestions generated. Upload a resume first.', 'info');
       }
-    } catch { /* Bridge to legacy fallback */ const bj = (window as any); if (typeof bj.bjAiSuggestFilters === 'function') bj.bjAiSuggestFilters(); }
+    } catch {
+      (window as any).__bjToast?.('Filter generation failed', 'info');
+    }
   }, []);
 
   const handleClearAll = useCallback(() => {
