@@ -35,6 +35,7 @@ import {
   Monitor,
   LogOut,
   ExternalLink,
+  MessageSquare,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -145,6 +146,8 @@ export function AppShell() {
   const location = useLocation();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [theme, setTheme] = useState<Theme>(getStoredTheme);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [fbType, setFbType] = useState('Bug Report');
   const [credits, setCredits] = useState(0);
   const [badgeCounts, setBadgeCounts] = useState<Record<string, number>>({});
 
@@ -215,13 +218,13 @@ export function AppShell() {
       {/* ── Sidebar ── */}
       <nav aria-label="Main navigation" className="flex flex-col h-full w-[var(--nav-w,240px)] bg-[var(--nav-bg)] flex-shrink-0 overflow-y-auto overflow-x-hidden">
 
-        {/* Brand — matches legacy: B mark + "Brilliant Jobs" + "Dashboard v10.86" */}
+        {/* Brand — matches legacy: B mark + "Brilliant Jobs" + "Dashboard v10.87" */}
         <div className="px-6 py-[22px] border-b border-white/[0.08]">
           <div className="flex items-center gap-3 max-md:justify-center">
             <div className="w-[30px] h-[30px] rounded-lg bg-white flex items-center justify-center text-[var(--nav-bg)] font-extrabold text-sm flex-shrink-0">B</div>
             <div className="max-md:hidden">
               <div className="font-bold text-[16px] text-white leading-tight">Brilliant Jobs</div>
-              <div className="text-[11px] text-[var(--nav-text)]">Dashboard <span className="text-[9px]">v10.86</span></div>
+              <div className="text-[11px] text-[var(--nav-text)]">Dashboard <span className="text-[9px]">v10.87</span></div>
             </div>
           </div>
         </div>
@@ -329,10 +332,56 @@ export function AppShell() {
         </div>
       </nav>
 
-      {/* ── Main content — legacy: .main { padding: 24px 28px } ── */}
+      {/* ── Main content ── */}
       <main id="main-content" role="main" className="flex-1 overflow-y-auto bg-[var(--bg-main)]" style={{ padding: 'var(--page-py, 28px) var(--page-px, 40px)' }}>
         <Outlet />
       </main>
+
+      {/* Floating feedback button — legacy: .feedback-btn (fixed top-right) */}
+      <button onClick={() => { setFeedbackOpen(o => !o); }}
+        className="fixed top-4 right-5 z-[200] h-[34px] px-3.5 rounded-lg bg-bg-card border border-border flex items-center gap-1.5 cursor-pointer text-text-faint hover:text-accent hover:border-accent shadow-[0_2px_8px_rgba(0,0,0,0.15)] transition-all"
+        title="Squash a bug or pitch an idea!">
+        <MessageSquare className="w-3.5 h-3.5" strokeWidth={1.75} />
+        <span className="text-[11px] font-semibold tracking-wide">Feedback</span>
+      </button>
+
+      {/* Feedback modal overlay */}
+      {feedbackOpen && (
+        <div className="fixed inset-0 z-[500] bg-black/50 backdrop-blur-sm flex items-center justify-center"
+          onClick={e => { if (e.target === e.currentTarget) setFeedbackOpen(false); }}>
+          <div className="bg-bg-card border border-border rounded-xl p-7 w-[460px] max-w-[92vw] shadow-[0_16px_48px_rgba(0,0,0,0.4)] flex flex-col min-h-[500px]">
+            <h3 className="text-[18px] font-bold text-text mb-1">Report a Bug</h3>
+            <div className="text-[12px] text-text-dim mb-4">Found something off? Help us fix it.</div>
+
+            {/* Type toggle */}
+            <div className="flex gap-0 rounded-lg overflow-hidden border border-border mb-3.5">
+              {['Bug Report', 'Feature Request'].map(t => (
+                <button key={t} onClick={() => setFbType(t)}
+                  className={`flex-1 py-2 px-3.5 text-[13px] font-semibold text-center transition-all ${fbType === t ? (t === 'Bug Report' ? 'bg-red text-white' : 'bg-accent text-white') : 'bg-bg-input text-text-dim'}`}>
+                  {t}
+                </button>
+              ))}
+            </div>
+
+            <label className="block text-[11px] font-semibold text-text-faint uppercase tracking-[0.5px] mb-1">Title</label>
+            <input type="text" placeholder="Short description…" className="w-full px-3 py-2 rounded-lg border border-border bg-bg-input text-[13px] text-text mb-3.5 focus:border-accent focus:outline-none" />
+
+            <label className="block text-[11px] font-semibold text-text-faint uppercase tracking-[0.5px] mb-1">Details</label>
+            <textarea rows={5} placeholder="Steps to reproduce, expected vs actual…" className="w-full px-3 py-2 rounded-lg border border-border bg-bg-input text-[13px] text-text mb-3.5 resize-y focus:border-accent focus:outline-none" />
+
+            <label className="block text-[11px] font-semibold text-text-faint uppercase tracking-[0.5px] mb-1">Page</label>
+            <select className="w-full px-3 py-2 rounded-lg border border-border bg-bg-input text-[13px] text-text mb-3.5 cursor-pointer">
+              <option>Feed</option><option>Pipeline</option><option>Resumes</option><option>Applications</option><option>Stats</option><option>Settings</option><option>Billing</option><option>Other</option>
+            </select>
+
+            <div className="flex gap-2.5 justify-end mt-auto pt-2.5">
+              <button onClick={() => setFeedbackOpen(false)} className="px-4 py-2 rounded-lg bg-bg-input text-text-dim border border-border text-[13px] font-semibold">Cancel</button>
+              <button onClick={() => { setFeedbackOpen(false); (window as any).__bjToast?.('Feedback submitted — thank you!', 'success'); }}
+                className="px-5 py-2 rounded-lg bg-accent text-white text-[13px] font-semibold">Submit</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
     </ToastProvider>
   );
