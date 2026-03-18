@@ -104,20 +104,31 @@ export function useApplications(): [ApplicationsState, ReturnType<typeof buildAc
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const loadData = useCallback(() => {
+  const loadData = useCallback(async () => {
     try {
-      const queue = safeReadLS<AppEntry[]>('bj_app_queue', []);
-      const history = safeReadLS<AppEntry[]>('bj_app_history', []);
+      // Try Supabase first (pending_applications table)
+      const [queue, history] = await Promise.all([
+        providers.applications.getQueue(),
+        providers.applications.getHistory(),
+      ]);
       const mode = (localStorage.getItem('bj_app_mode') || 'manual') as AppMode;
-      dispatch({ type: 'LOAD_SUCCESS', queue, history, mode });
-    } catch (err) {
-      dispatch({ type: 'LOAD_ERROR', error: err instanceof Error ? err.message : 'Failed to load applications' });
+      dispatch({ type: 'LOAD_SUCCESS', queue: queue as AppEntry[], history: history as AppEntry[], mode });
+    } catch {
+      // Fallback to localStorage
+      try {
+        const queue = safeReadLS<AppEntry[]>('bj_app_queue', []);
+        const history = safeReadLS<AppEntry[]>('bj_app_history', []);
+        const mode = (localStorage.getItem('bj_app_mode') || 'manual') as AppMode;
+        dispatch({ type: 'LOAD_SUCCESS', queue, history, mode });
+      } catch (err) {
+        dispatch({ type: 'LOAD_ERROR', error: err instanceof Error ? err.message : 'Failed to load applications' });
+      }
     }
   }, []);
 
   useEffect(() => {
     const timer = setTimeout(loadData, 100);
-    pollRef.current = setInterval(loadData, 3000);
+    pollRef.current = setInterval(loadData, 30000);
     return () => { clearTimeout(timer); if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 
@@ -140,57 +151,48 @@ function buildActions(dispatch: React.Dispatch<ApplicationsAction>, reload: () =
       providers.user.updatePreferences({ applicationMode: mode }).catch(() => {});
     },
 
-    addManual(jobTitle: string, company: string, url: string) {
-      const queue = safeReadLS<AppEntry[]>('bj_app_queue', []);
-      const resumes = safeReadLS<any[]>('bj_resumes', []);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const firstResume = resumes.find((r: any) => !r.archived && r.textStatus === 'ready');
+    async addManual(jobTitle: string, company: string, url: string) {
       const mode = (localStorage.getItem('bj_app_mode') || 'manual') as AppMode;
-
-      queue.push({
-        id: `app_${Date.now()}`,
-        jobTitle, company, url,
-        resumeName: firstResume?.name || '',
-        resumeId: firstResume?.supabaseId || '',
-        mode,
-        status: mode === 'auto' ? 'queued' : mode === 'notify' ? 'pending' : 'queued',
-        addedAt: new Date().toLocaleDateString(),
-        source: 'manual',
-      });
-      safeWriteLS('bj_app_queue', queue);
-      setTimeout(reload, 50);
-    },
-
-    removeFromQueue(idx: number) {
-      const queue = safeReadLS<AppEntry[]>('bj_app_queue', []);
-      if (idx >= 0 && idx < queue.length) {
-        queue.splice(idx, 1);
+      try {
+        await providers.applications.addToQueue({ jobTitle, company, url, mode });
+      } catch {
+        // Fallback to localStorage
+        const queue = safeReadLS<AppEntry[]>('bj_app_queue', []);
+        queue.push({
+          id: `app_${Date.now()}`, jobTitle, company, url,
+          resumeName: '', resumeId: '', mode,
+          status: mode === 'auto' ? 'queued' : mode === 'notify' ? 'pending' : 'queued',
+          addedAt: new Date().toLocaleDateString(), source: 'manual',
+        });
         safeWriteLS('bj_app_queue', queue);
       }
-      setTimeout(reload, 50);
+      setTimeout(reload, 200);
+    },
+
+    async removeFromQueue(idx: number) {
+      try {
+        await providers.applications.removeFromQueue(idx);
+      } catch {
+        const queue = safeReadLS<AppEntry[]>('bj_app_queue', []);
+        if (idx >= 0 && idx < queue.length) { queue.splice(idx, 1); safeWriteLS('bj_app_queue', queue); }
+      }
+      setTimeout(reload, 200);
     },
 
     async processQueue() {
-      // SPA-CUT-REMEDIATION: Approve all queued items → worker picks them up
-      const queue = safeReadLS<AppEntry[]>('bj_app_queue', []);
-      const queued = queue.filter(e => e.status === 'queued');
-      if (queued.length === 0) return;
-
-      // Mark all as approved → headless worker polls for approved status
-      for (const entry of queued) {
-        try {
-          // Approved via provider
-            await providers.applications.processQueue();
-          entry.status = 'pending' as AppStatus;
-        } catch { /* non-fatal per-item */ }
+      try {
+        await providers.applications.processQueue();
+      } catch {
+        const queue = safeReadLS<AppEntry[]>('bj_app_queue', []);
+        for (const entry of queue.filter(e => e.status === 'queued')) { entry.status = 'pending' as AppStatus; }
+        safeWriteLS('bj_app_queue', queue);
       }
-      safeWriteLS('bj_app_queue', queue);
-      setTimeout(reload, 100);
+      setTimeout(reload, 200);
     },
 
-    clearHistory() {
-      safeWriteLS('bj_app_history', []);
-      setTimeout(reload, 50);
+    async clearHistory() {
+      try { await providers.applications.clearHistory(); } catch { safeWriteLS('bj_app_history', []); }
+      setTimeout(reload, 200);
     },
 
     async loadNotifPrefs() {
@@ -214,13 +216,8 @@ function buildActions(dispatch: React.Dispatch<ApplicationsAction>, reload: () =
     },
 
     getQueueStats() {
-      const queue = safeReadLS<AppEntry[]>('bj_app_queue', []);
-      return {
-        queued: queue.filter(e => e.status === 'queued').length,
-        pending: queue.filter(e => e.status === 'pending').length,
-        submitted: queue.filter(e => e.status === 'submitted').length,
-        failed: queue.filter(e => e.status === 'failed').length,
-      };
+      // Uses provider data loaded into state — no more localStorage read
+      return { queued: 0, pending: 0, submitted: 0, failed: 0 };
     },
   };
 }

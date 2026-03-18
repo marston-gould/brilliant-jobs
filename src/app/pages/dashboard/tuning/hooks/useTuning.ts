@@ -72,46 +72,33 @@ export function useTuning(): [TuningState, {
   const [state, dispatch] = useReducer(reducer, initialState);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const loadData = useCallback(() => {
+  const loadData = useCallback(async () => {
     try {
-      // SPA-CUT-3: Data loaded from localStorage/Supabase (no window bridge)
-      const savedFilters = Array.isArray(null) ? null : [];
-      const filterColors = safeReadLS('bj_filterColors', {});
-      const levelHierarchy = Array.isArray(null) ? null : [];
+      const user = await getUser();
+      if (!user) { dispatch({ type: 'LOADED', data: { filters: [], levels: [], hiddenJobCount: 0, statusDirty: false } }); return; }
+      const sb = supabase;
 
-      // @ts-ignore SPA-CUT-3
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const filters: TuningFilter[] = savedFilters.map((f: any, i: number) => ({
-        name: f.name || f.label || `Filter ${i + 1}`,
+      // Load saved filters from Supabase
+      const { data: sfData } = await sb.from('saved_filters').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+      const filters: TuningFilter[] = (sfData || []).map((f: any, i: number) => ({
+        name: f.name || `Filter ${i + 1}`,
         idx: i,
-        // @ts-ignore SPA-CUT-3
-        color: filterColors[i] || '#6366f1',
-        keywords: Array.isArray(f.keywords) ? f.keywords : (f.keywords || '').split(',').filter(Boolean),
-        excludedTerms: Array.isArray(f.excludedTerms) ? f.excludedTerms : [],
-        location: f.location || '',
-        radius: f.radius || 0,
-        minSalary: f.minSalary || 0,
-        levels: Array.isArray(f.levels) ? f.levels : [],
+        color: f.config?.color || ['#6366f1', '#f59e0b', '#ec4899', '#10b981', '#8b5cf6'][i % 5],
+        keywords: f.config?.what ? f.config.what.split(',').map((k: string) => k.trim()).filter(Boolean) : [],
+        excludedTerms: f.config?.whatNot ? f.config.whatNot.split(',').map((k: string) => k.trim()).filter(Boolean) : [],
+        location: f.config?.where || '',
+        radius: 0,
+        minSalary: f.config?.payMin ? parseInt(f.config.payMin) : 0,
+        levels: [],
         collapsed: false,
       }));
 
-      // @ts-ignore SPA-CUT-3
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const levels: LevelConfig[] = levelHierarchy.map((l: any) => ({
-        label: l.label || '',
-        keywords: l.keywords || '',
-        enabled: l.enabled !== false,
-      }));
+      // Load hidden job count
+      const { count } = await sb.from('hidden_jobs').select('*', { count: 'exact', head: true }).eq('user_id', user.id);
 
       dispatch({
         type: 'LOADED',
-        data: {
-          filters,
-          levels,
-          hiddenJobCount: safeReadLS('bj__hiddenJobCount', 0),
-          // @ts-ignore SPA-CUT-3
-          statusDirty: !!null,
-        },
+        data: { filters, levels: [], hiddenJobCount: count || 0, statusDirty: false },
       });
     } catch (e) {
       dispatch({ type: 'ERROR', error: String(e) });
