@@ -387,7 +387,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const CACHE_TTL = 60 * 60 * 1e3;
     function applyStats(stats) {
       if (stats.jobs != null) {
-        document.getElementById("lp-active-jobs").textContent = stats.jobs.toLocaleString();
+        document.getElementById("lp-active-jobs").textContent = Math.floor(stats.jobs / 1e3).toLocaleString() + "K+";
         const heroJobs = document.getElementById("lp-hero-jobs");
         if (heroJobs) heroJobs.textContent = (Math.floor(stats.jobs / 1e3) * 1e3).toLocaleString() + "+";
       }
@@ -423,7 +423,7 @@ document.addEventListener("DOMContentLoaded", function() {
       var miJobs = document.getElementById("lp-mi-jobs");
       if (miJobs) miJobs.textContent = Math.floor(stats.jobs / 1e3).toLocaleString() + "K+";
       if (stats.metros != null) {
-        document.getElementById("lp-metros").textContent = stats.metros.toLocaleString();
+        document.getElementById("lp-metros").textContent = (Math.ceil(stats.metros / 10) * 10).toLocaleString();
       }
       var tcDisplay = stats.totalCompanies != null ? (Math.floor(stats.totalCompanies / 1e3) * 1e3).toLocaleString() + "+" : "39,000+";
       try {
@@ -516,13 +516,13 @@ document.addEventListener("DOMContentLoaded", function() {
         bjError("stats_fetch_error", e, { attempt: statsRetryCount + 1 });
         reportError("landing_app", e);
         console.log("[BJ] Stats fetch error:", e.message);
-        document.getElementById("lp-active-jobs").textContent = "400,000+";
+        document.getElementById("lp-active-jobs").textContent = "400K+";
         document.getElementById("lp-companies").textContent = "39,000+";
         var hiringFallback = document.getElementById("lp-companies-hiring-stat");
         if (hiringFallback) hiringFallback.textContent = "8,700+";
         var hiringHeroFallback = document.getElementById("lp-companies-hiring");
         if (hiringHeroFallback) hiringHeroFallback.textContent = "8,700+";
-        document.getElementById("lp-metros").textContent = "199";
+        document.getElementById("lp-metros").textContent = "200";
         document.querySelectorAll(".stat-num").forEach((el) => {
           el.classList.remove("loading");
           el.classList.add("loaded");
