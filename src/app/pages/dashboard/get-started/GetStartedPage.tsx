@@ -10,7 +10,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FileText, Upload, CirclePlus, Link, Filter, SlidersHorizontal,
-  LayoutGrid, TrendingUp, Check, ExternalLink, ChevronDown,
+  LayoutGrid, TrendingUp, Check, ExternalLink, ChevronDown, User,
 } from 'lucide-react';
 import { useStatsProvider, useResumesProvider } from '@providers';
 
@@ -161,6 +161,22 @@ export default function GetStartedPage() {
         </div>
       </div>
 
+      {/* Resume-first CTA — legacy .gs-resume-drop (line 368) */}
+      <div className="border-2 border-dashed rounded-[14px] p-8 text-center mb-6 bg-bg-card cursor-pointer shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:border-green/50 hover:bg-green/[0.02] hover:shadow-[0_2px_12px_rgba(0,0,0,0.05)] transition-all"
+        style={{ borderColor: 'hsla(var(--green-hsl), 0.3)' }}
+        onClick={() => { const i = document.createElement('input'); i.type = 'file'; i.accept = '.pdf,.doc,.docx'; i.onchange = (e) => { const f = (e.target as HTMLInputElement).files?.[0]; if (f) handleResumeUpload({ target: { files: [f] } } as any); }; i.click(); }}>
+        <div className="w-14 h-14 rounded-[14px] flex items-center justify-center mx-auto mb-3.5" style={{ background: 'var(--green-dim)' }}>
+          <FileText className="w-6 h-6 text-green" strokeWidth={1.75} />
+        </div>
+        <div className="text-[17px] font-bold text-text mb-1">Want to skip the manual setup?</div>
+        <div className="text-[13px] text-text-dim mb-4 max-w-[420px] mx-auto">Drop your resume and we'll extract titles, locations, and seniority to build your first search automatically.</div>
+        <button className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-accent text-white text-[13px] font-semibold"
+          onClick={e => { e.stopPropagation(); const i = document.createElement('input'); i.type = 'file'; i.accept = '.pdf,.doc,.docx'; i.onchange = (ev) => { const f = (ev.target as HTMLInputElement).files?.[0]; if (f) handleResumeUpload({ target: { files: [f] } } as any); }; i.click(); }}>
+          <Upload className="w-4 h-4" strokeWidth={2} /> Upload Resume
+        </button>
+        <div className="text-[11px] text-text-faint mt-2.5">PDF or DOCX · Or keep scrolling to set up manually</div>
+      </div>
+
       {/* Step 1: Chrome Extension — legacy lines 438-537 */}
       <Step num="Step 1" title="Install the Chrome Extension" icon={CirclePlus}
         iconBg="var(--indigo-dim)" iconColor="var(--indigo)"
@@ -218,6 +234,31 @@ export default function GetStartedPage() {
               </button>
             </div>
           ))}
+        </div>
+        {/* gs-tip — legacy line 652 */}
+        <div className="flex items-start gap-2.5 mt-3.5 px-4 py-3.5 rounded-lg text-[13px] text-text-dim leading-relaxed"
+          style={{ background: 'hsla(var(--warm-hsl), 0.04)', border: '1px solid hsla(var(--warm-hsl), 0.12)' }}>
+          <span className="text-[10px] font-bold text-warm uppercase tracking-[0.5px] whitespace-nowrap pt-0.5">Why?</span>
+          <span>Gmail and Calendar are the backbone of your application pipeline — they detect confirmations, rejections, interview invites, and ghosting patterns so your dashboard stays current without you updating it manually.</span>
+        </div>
+      </Step>
+      <Step num="Optional" title="Import LinkedIn Profile" icon={User}
+        iconBg="hsla(210,85%,56%,0.10)" iconColor="#0A66C2">
+        <div className="mb-3">
+          Upload your LinkedIn PDF export to auto-fill your profile, get personalized filter
+          suggestions, and give AI form answering better context. One upload, no re-entry.
+        </div>
+        <div className="border-2 border-dashed border-border rounded-[10px] p-6 text-center cursor-pointer hover:border-accent transition-colors"
+          onClick={() => { const i = document.createElement('input'); i.type = 'file'; i.accept = '.pdf'; i.click(); }}>
+          <div className="text-[13px] font-semibold text-text">Drop your LinkedIn PDF here</div>
+          <div className="text-[11px] text-text-faint mt-1">or click to browse — max 10MB</div>
+          <div className="text-[10px] text-text-faint mt-2">Export from LinkedIn: Me → Settings & Privacy → Data Privacy → Get a copy</div>
+        </div>
+        {/* gs-tip */}
+        <div className="flex items-start gap-2.5 mt-3.5 px-4 py-3.5 rounded-lg text-[13px] text-text-dim leading-relaxed"
+          style={{ background: 'hsla(var(--warm-hsl), 0.04)', border: '1px solid hsla(var(--warm-hsl), 0.12)' }}>
+          <span className="text-[10px] font-bold text-warm uppercase tracking-[0.5px] whitespace-nowrap pt-0.5">Why?</span>
+          <span>Your LinkedIn data lets us pre-fill application forms, generate a tailored resume summary, and suggest filters based on your actual experience — not guesswork.</span>
         </div>
       </Step>
 
