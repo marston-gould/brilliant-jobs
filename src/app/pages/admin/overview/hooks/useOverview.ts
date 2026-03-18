@@ -5,7 +5,7 @@
 // ============================================================
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
-import { supabase, safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
+import { callGateway } from '@lib/supabase';
 
 
 interface OverviewState {
@@ -34,37 +34,27 @@ export function useOverview(): [OverviewState, OverviewActions] {
   const [state, dispatch] = useReducer(reducer, initialState);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const loadData = useCallback(() => {
+  const loadData = useCallback(async () => {
     try {
-      // SPA-CUT-3: Data loaded from localStorage/Supabase (no window bridge)
+      const result = await callGateway('admin-analytics', { action: 'board_health' }).catch(() => null) as any;
       dispatch({ type: 'LOADED', data: {
-        totalJobs: safeReadLS('bj__adminTotalJobs', 0),
-        activeUsers: safeReadLS('bj__adminActiveUsers', 0),
-        // @ts-ignore SPA-CUT-3
-        efHealth: null ?? 100,
-        // @ts-ignore SPA-CUT-3
-        cronHealth: null ?? 100,
-        feedHealthy: null !== false,
-        // @ts-ignore SPA-CUT-3
-        discoveryActive: !!null,
+        totalJobs: result?.total_jobs ?? 0,
+        activeUsers: result?.active_users ?? 0,
+        efHealth: result?.ef_health ?? 100,
+        cronHealth: result?.cron_health ?? 100,
+        feedHealthy: result?.feed_healthy !== false,
+        discoveryActive: !!result?.discovery_active,
       }});
-    } catch (e) {
-      dispatch({ type: 'ERROR', error: String(e) });
-    }
+    } catch (e) { dispatch({ type: 'ERROR', error: String(e) }); }
   }, []);
 
   useEffect(() => {
-    // Init admin panel
-    // SPA-CUT-3: Admin init handled by React component mount
     loadData();
-    pollRef.current = setInterval(loadData, 30000) // 30s poll;
+    pollRef.current = setInterval(loadData, 30000); // 30s poll
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 
-  const refresh = useCallback(() => {
-    // @ts-ignore SPA-CUT-3: fire-and-forget
-        callGateway('admin-analytics', { action: 'board_health' }).catch(() => { /* non-fatal */ });
-  }, []);
+  const refresh = useCallback(() => { loadData(); }, [loadData]);
 
   return [state, { refresh }];
 }

@@ -6,7 +6,7 @@
 // ============================================================
 
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
-import { supabase, safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
+import { safeReadLS, safeWriteLS, callGateway } from '@lib/supabase';
 import { providers } from '@app/providers/bridge';
 
 // ── Types ────────────────────────────────────────────────────

@@ -6,7 +6,6 @@
 // ============================================================
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
-import { supabase } from '@lib/supabase';
 import { providers } from '@app/providers/bridge';
 
 interface NotificationsState {

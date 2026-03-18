@@ -5,7 +5,7 @@
 // ============================================================
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
-import { supabase, safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
+import { callGateway } from '@lib/supabase';
 
 
 interface ComplianceState { loading: boolean; error: string | null; piiFieldCount: number; pendingDeletions: number; completedDeletions: number; lastAudit: string; }
@@ -25,45 +25,41 @@ export function useCompliance(): [ComplianceState, ComplianceActions] {
   const [state, dispatch] = useReducer(reducer, initialState);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const loadData = useCallback(() => {
+  const loadData = useCallback(async () => {
     try {
-      // SPA-CUT-3: Data loaded from localStorage/Supabase (no window bridge)
+      const result = await callGateway('admin-analytics', { action: 'compliance' }).catch(() => null) as any;
       dispatch({ type: 'LOADED', data: {
-        piiFieldCount: safeReadLS('bj__compPiiFields', 0),
-        pendingDeletions: safeReadLS('bj__compPendingDeletions', 0),
-        completedDeletions: safeReadLS('bj__compCompletedDeletions', 0),
-        lastAudit: safeReadLS('bj__compLastAudit', ''),
+        piiFieldCount: result?.pii_fields ?? 0,
+        pendingDeletions: result?.pending_deletions ?? 0,
+        completedDeletions: result?.completed_deletions ?? 0,
+        lastAudit: result?.last_audit ?? '',
       }});
-    } catch (e) {
-      dispatch({ type: 'ERROR', error: String(e) });
-    }
+    } catch (e) { dispatch({ type: 'ERROR', error: String(e) }); }
   }, []);
 
   useEffect(() => {
-    // Init admin panel
-    // @ts-ignore SPA-CUT-3: fire-and-forget
-        callGateway('admin-analytics', { action: 'compliance' }).catch(() => { /* non-fatal */ });
     loadData();
-    pollRef.current = setInterval(loadData, 30000) // 30s poll;
+    pollRef.current = setInterval(loadData, 30000); // 30s poll
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 
-  const refresh = useCallback(() => {
-    // @ts-ignore SPA-CUT-3: fire-and-forget
-        callGateway('admin-analytics', { action: 'compliance' }).catch(() => { /* non-fatal */ });
-  }, []);
-  const initiateDeletion = useCallback((userId: string) => {
-    // SPA-CUT-REMEDIATION: Via admin-user-manager gateway
-    async (userId: string) => {
+  const refresh = useCallback(() => { loadData(); }, [loadData]);
+
+  const initiateDeletion = useCallback(async (userId: string) => {
+    try {
       await callGateway('admin-user-manager', { action: 'delete_account', user_id: userId, reason: 'admin_initiated' });
-    }
-  }, []);
-  const cancelDeletion = useCallback((userId: string) => {
-    // SPA-CUT-REMEDIATION: Via admin-user-manager gateway
-    async (userId: string) => {
+      (window as any).__bjToast?.('Deletion initiated', 'success');
+      loadData();
+    } catch { (window as any).__bjToast?.('Failed to initiate deletion', 'error'); }
+  }, [loadData]);
+
+  const cancelDeletion = useCallback(async (userId: string) => {
+    try {
       await callGateway('admin-user-manager', { action: 'cancel_delete', user_id: userId });
-    }
-  }, []);
+      (window as any).__bjToast?.('Deletion cancelled', 'success');
+      loadData();
+    } catch { (window as any).__bjToast?.('Failed to cancel deletion', 'error'); }
+  }, [loadData]);
 
   return [state, { refresh, initiateDeletion, cancelDeletion }];
 }

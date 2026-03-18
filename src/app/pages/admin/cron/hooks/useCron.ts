@@ -5,7 +5,7 @@
 // ============================================================
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
-import { supabase, safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
+import { callGateway } from '@lib/supabase';
 import { providers } from '@app/providers/bridge';
 
 
@@ -48,19 +48,17 @@ export function useCron(): [CronState, CronActions] {
     loadData();
     pollRef.current = setInterval(loadData, 30000); // 30s poll
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 
-  const refresh = useCallback(() => {
-    // @ts-ignore SPA-CUT-3: fire-and-forget
-        providers.admin.getCronJobs();
-  }, []);
-  const toggleJob = useCallback((name: string, enabled: boolean) => {
-    // SPA-CUT-REMEDIATION: Direct Supabase update
-    async (name: string, enabled: boolean) => {
+  const refresh = useCallback(() => { loadData(); }, [loadData]);
+
+  const toggleJob = useCallback(async (name: string, enabled: boolean) => {
+    try {
       await providers.admin.toggleCronJob(name, enabled);
-    }
-  }, []);
+      (window as any).__bjToast?.(`Job ${name} ${enabled ? 'enabled' : 'disabled'}`, 'success');
+      loadData();
+    } catch { (window as any).__bjToast?.('Failed to toggle job', 'error'); }
+  }, [loadData]);
 
   return [state, { refresh, toggleJob }];
 }

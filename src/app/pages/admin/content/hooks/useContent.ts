@@ -5,7 +5,7 @@
 // ============================================================
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
-import { supabase, safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
+import { callGateway } from '@lib/supabase';
 
 
 interface ContentState { loading: boolean; error: string | null; storyCount: number; pendingCount: number; publishedCount: number; }
@@ -25,36 +25,24 @@ export function useContent(): [ContentState, ContentActions] {
   const [state, dispatch] = useReducer(reducer, initialState);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const loadData = useCallback(() => {
+  const loadData = useCallback(async () => {
     try {
-      // SPA-CUT-3: Data loaded from localStorage/Supabase (no window bridge)
-      const stories = safeReadLS('bj__contentStories', {});
-      const all = Object.values(stories);
+      const result = await callGateway('admin-analytics', { action: 'content' }).catch(() => null) as any;
       dispatch({ type: 'LOADED', data: {
-        storyCount: all.length,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        pendingCount: all.filter((s: any) => s.status === 'pending').length,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        publishedCount: all.filter((s: any) => s.status === 'published').length,
+        storyCount: result?.stories ?? 0,
+        pendingCount: result?.pending ?? 0,
+        publishedCount: result?.published ?? 0,
       }});
-    } catch (e) {
-      dispatch({ type: 'ERROR', error: String(e) });
-    }
+    } catch (e) { dispatch({ type: 'ERROR', error: String(e) }); }
   }, []);
 
   useEffect(() => {
-    // Init admin panel
-    // @ts-ignore SPA-CUT-3: fire-and-forget
-        callGateway('admin-analytics', { action: 'content' }).catch(() => { /* non-fatal */ });
     loadData();
-    pollRef.current = setInterval(loadData, 30000) // 30s poll;
+    pollRef.current = setInterval(loadData, 30000); // 30s poll
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 
-  const refresh = useCallback(() => {
-    // @ts-ignore SPA-CUT-3: fire-and-forget
-        callGateway('admin-analytics', { action: 'content' }).catch(() => { /* non-fatal */ });
-  }, []);
+  const refresh = useCallback(() => { loadData(); }, [loadData]);
 
   return [state, { refresh }];
 }

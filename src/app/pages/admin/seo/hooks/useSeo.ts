@@ -5,7 +5,7 @@
 // ============================================================
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
-import { supabase, safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
+import { callGateway } from '@lib/supabase';
 
 
 interface SeoState { loading: boolean; error: string | null; pageViews: number; impressions: number; clickRate: number; avgPosition: number; }
@@ -25,36 +25,31 @@ export function useSeo(): [SeoState, SeoActions] {
   const [state, dispatch] = useReducer(reducer, initialState);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const loadData = useCallback(() => {
+  const loadData = useCallback(async () => {
     try {
-      // SPA-CUT-3: Data loaded from localStorage/Supabase (no window bridge)
+      const result = await callGateway('admin-analytics', { action: 'seo' }).catch(() => null) as any;
       dispatch({ type: 'LOADED', data: {
-        pageViews: safeReadLS('bj__seoPageViews', 0),
-        impressions: safeReadLS('bj__seoImpressions', 0),
-        clickRate: safeReadLS('bj__seoClickRate', 0),
-        avgPosition: safeReadLS('bj__seoAvgPosition', 0),
+        pageViews: result?.page_views ?? 0,
+        impressions: result?.impressions ?? 0,
+        clickRate: result?.click_rate ?? 0,
+        avgPosition: result?.avg_position ?? 0,
       }});
-    } catch (e) {
-      dispatch({ type: 'ERROR', error: String(e) });
-    }
+    } catch (e) { dispatch({ type: 'ERROR', error: String(e) }); }
   }, []);
 
   useEffect(() => {
-    // Init admin panel
-    // @ts-ignore SPA-CUT-3: fire-and-forget
-        callGateway('admin-analytics', { action: 'seo' }).catch(() => { /* non-fatal */ });
     loadData();
-    pollRef.current = setInterval(loadData, 30000) // 30s poll;
+    pollRef.current = setInterval(loadData, 30000); // 30s poll
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 
-  const refresh = useCallback(() => {
-    // @ts-ignore SPA-CUT-3: fire-and-forget
-        callGateway('admin-analytics', { action: 'seo' }).catch(() => { /* non-fatal */ });
-  }, []);
-  const generateReport = useCallback(() => {
-    // @ts-ignore SPA-CUT-3: fire-and-forget
-        callGateway('seo-sync', {}).catch(() => { /* non-fatal */ });
+  const refresh = useCallback(() => { loadData(); }, [loadData]);
+
+  const generateReport = useCallback(async () => {
+    try {
+      await callGateway('seo-sync', {});
+      (window as any).__bjToast?.('SEO report generation started', 'success');
+    } catch { (window as any).__bjToast?.('Failed to generate report', 'error'); }
   }, []);
 
   return [state, { refresh, generateReport }];

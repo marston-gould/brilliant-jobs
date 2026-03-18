@@ -5,7 +5,7 @@
 // ============================================================
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
-import { supabase, safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
+
 import { providers } from '@app/providers/bridge';
 
 
@@ -26,39 +26,39 @@ export function useKillswitch(): [KillswitchState, KillswitchActions] {
   const [state, dispatch] = useReducer(reducer, initialState);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const loadData = useCallback(() => {
+  const loadData = useCallback(async () => {
     try {
-      // SPA-CUT-3: Data loaded from localStorage/Supabase (no window bridge)
+      const flags = await providers.admin.getFeatureFlags().catch(() => []) as any[];
+      const get = (key: string) => flags.find((f: any) => f.key === key)?.enabled !== false;
       dispatch({ type: 'LOADED', data: {
-        extensionEnabled: null !== false,
-        dashboardEnabled: null !== false,
-        landingEnabled: null !== false,
-        lastToggled: safeReadLS('bj__ksLastToggled', ''),
+        extensionEnabled: get('extension'),
+        dashboardEnabled: get('dashboard'),
+        landingEnabled: get('landing'),
+        lastToggled: new Date().toISOString(),
       }});
-    } catch (e) {
-      dispatch({ type: 'ERROR', error: String(e) });
-    }
+    } catch (e) { dispatch({ type: 'ERROR', error: String(e) }); }
   }, []);
 
   useEffect(() => {
-    // Init admin panel
-    // @ts-ignore SPA-CUT-3: fire-and-forget
-        providers.admin.getFeatureFlags();
     loadData();
-    pollRef.current = setInterval(loadData, 30000) // 30s poll;
+    pollRef.current = setInterval(loadData, 30000); // 30s poll
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 
-  const refresh = useCallback(() => {
-    // @ts-ignore SPA-CUT-3: fire-and-forget
-        providers.admin.getFeatureFlags();
-  }, []);
-  const toggle = useCallback((surface: string, enabled: boolean) => {
-    // SPA-CUT-REMEDIATION: Direct Supabase update
-    async (surface: string, enabled: boolean) => {
+  const refresh = useCallback(() => { loadData(); }, [loadData]);
+
+  const toggle = useCallback(async (surface: string, enabled: boolean) => {
+    try {
       await providers.admin.toggleFeatureFlag(surface, enabled);
-    }
-  }, []);
+      dispatch({ type: 'LOADED', data: {
+        extensionEnabled: surface === 'extension' ? enabled : state.extensionEnabled,
+        dashboardEnabled: surface === 'dashboard' ? enabled : state.dashboardEnabled,
+        landingEnabled: surface === 'landing' ? enabled : state.landingEnabled,
+        lastToggled: new Date().toISOString(),
+      }});
+      (window as any).__bjToast?.(`${surface} ${enabled ? 'enabled' : 'disabled'}`, 'success');
+    } catch { (window as any).__bjToast?.('Failed to toggle', 'error'); }
+  }, [loadData, state]);
 
   return [state, { refresh, toggle }];
 }

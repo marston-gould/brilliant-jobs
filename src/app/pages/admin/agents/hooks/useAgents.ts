@@ -5,7 +5,7 @@
 // ============================================================
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
-import { supabase, safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
+import { callGateway } from '@lib/supabase';
 
 
 interface AgentsState { loading: boolean; error: string | null; agentCount: number; activeCount: number; actionCount: number; errorRate: number; }
@@ -25,33 +25,25 @@ export function useAgents(): [AgentsState, AgentsActions] {
   const [state, dispatch] = useReducer(reducer, initialState);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const loadData = useCallback(() => {
+  const loadData = useCallback(async () => {
     try {
-      // SPA-CUT-3: Data loaded from localStorage/Supabase (no window bridge)
+      const result = await callGateway('crewai-orchestrator', { action: 'status' }).catch(() => null) as any;
       dispatch({ type: 'LOADED', data: {
-        agentCount: safeReadLS('bj__crewaiAgentCount', 0),
-        activeCount: safeReadLS('bj__crewaiActiveCount', 0),
-        actionCount: safeReadLS('bj__crewaiActionCount', 0),
-        errorRate: safeReadLS('bj__crewaiErrorRate', 0),
+        agentCount: result?.agents?.length ?? 0,
+        activeCount: result?.active ?? 0,
+        actionCount: result?.actions ?? 0,
+        errorRate: result?.error_rate ?? 0,
       }});
-    } catch (e) {
-      dispatch({ type: 'ERROR', error: String(e) });
-    }
+    } catch (e) { dispatch({ type: 'ERROR', error: String(e) }); }
   }, []);
 
   useEffect(() => {
-    // Init admin panel
-    // @ts-ignore SPA-CUT-3: fire-and-forget
-        callGateway('crewai-orchestrator', { action: 'status' }).catch(() => { /* non-fatal */ });
     loadData();
-    pollRef.current = setInterval(loadData, 30000) // 30s poll;
+    pollRef.current = setInterval(loadData, 30000); // 30s poll
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 
-  const refresh = useCallback(() => {
-    // @ts-ignore SPA-CUT-3: fire-and-forget
-        callGateway('crewai-orchestrator', { action: 'status' }).catch(() => { /* non-fatal */ });
-  }, []);
+  const refresh = useCallback(() => { loadData(); }, [loadData]);
 
   return [state, { refresh }];
 }

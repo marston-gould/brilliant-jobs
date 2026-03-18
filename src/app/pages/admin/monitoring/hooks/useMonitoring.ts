@@ -5,7 +5,7 @@
 // ============================================================
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
-import { supabase, safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
+import { callGateway } from '@lib/supabase';
 
 
 interface MonitoringState { loading: boolean; error: string | null; alertCount: number; activeAlerts: number; resolvedToday: number; avgResponseTime: number; }
@@ -25,33 +25,25 @@ export function useMonitoring(): [MonitoringState, MonitoringActions] {
   const [state, dispatch] = useReducer(reducer, initialState);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const loadData = useCallback(() => {
+  const loadData = useCallback(async () => {
     try {
-      // SPA-CUT-3: Data loaded from localStorage/Supabase (no window bridge)
+      const result = await callGateway('deploy-tracker', { action: 'deploy-health-score' }).catch(() => null) as any;
       dispatch({ type: 'LOADED', data: {
-        alertCount: safeReadLS('bj__monAlertCount', 0),
-        activeAlerts: safeReadLS('bj__monActiveAlerts', 0),
-        resolvedToday: safeReadLS('bj__monResolvedToday', 0),
-        avgResponseTime: safeReadLS('bj__monAvgResponseTime', 0),
+        alertCount: result?.alerts ?? 0,
+        activeAlerts: result?.active_alerts ?? 0,
+        resolvedToday: result?.resolved_today ?? 0,
+        avgResponseTime: result?.avg_response_ms ?? 0,
       }});
-    } catch (e) {
-      dispatch({ type: 'ERROR', error: String(e) });
-    }
+    } catch (e) { dispatch({ type: 'ERROR', error: String(e) }); }
   }, []);
 
   useEffect(() => {
-    // Init admin panel
-    // @ts-ignore SPA-CUT-3: fire-and-forget
-        callGateway('deploy-tracker', { action: 'deploy-health-score' }).catch(() => { /* non-fatal */ });
     loadData();
-    pollRef.current = setInterval(loadData, 30000) // 30s poll;
+    pollRef.current = setInterval(loadData, 30000); // 30s poll
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 
-  const refresh = useCallback(() => {
-    // @ts-ignore SPA-CUT-3: fire-and-forget
-        callGateway('deploy-tracker', { action: 'deploy-health-score' }).catch(() => { /* non-fatal */ });
-  }, []);
+  const refresh = useCallback(() => { loadData(); }, [loadData]);
 
   return [state, { refresh }];
 }
