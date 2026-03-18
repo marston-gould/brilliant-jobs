@@ -19,6 +19,10 @@ export interface FilterValues {
   when: string;
   payMin: string;
   payMax: string;
+  skills: string;
+  dept: string;
+  level: string;
+  jd: string;
   includeRemote: boolean;
   includeNoSalary: boolean;
 }
@@ -237,6 +241,54 @@ export function FilterBuilder({
               />
             </div>
           </FilterRow>
+
+          {/* Skills / Dept — legacy lines 1048-1063 */}
+          <div className="grid grid-cols-2 gap-2">
+            <FilterRow label="Skills" onBrowse={onBrowse ? () => onBrowse('skills', 'include') : undefined}>
+              <input
+                type="text"
+                className="w-full px-2 py-1.5 text-xs bg-bg-input border border-border rounded-md text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
+                placeholder="python, react, sql…"
+                value={values.skills}
+                onChange={(e) => update('skills', e.target.value)}
+                onKeyDown={handleKeyDown}
+              />
+            </FilterRow>
+            <FilterRow label="Dept" onBrowse={onBrowse ? () => onBrowse('dept', 'include') : undefined}>
+              <input
+                type="text"
+                className="w-full px-2 py-1.5 text-xs bg-bg-input border border-border rounded-md text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
+                placeholder="engineering, marketing, sales…"
+                value={values.dept}
+                onChange={(e) => update('dept', e.target.value)}
+                onKeyDown={handleKeyDown}
+              />
+            </FilterRow>
+          </div>
+
+          {/* Level / JD Contains — legacy lines 1064-1080 */}
+          <div className="grid grid-cols-2 gap-2">
+            <FilterRow label="Level" onBrowse={onBrowse ? () => onBrowse('level', 'include') : undefined}>
+              <input
+                type="text"
+                className="w-full px-2 py-1.5 text-xs bg-bg-input border border-border rounded-md text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
+                placeholder="senior, junior, executive…"
+                value={values.level}
+                onChange={(e) => update('level', e.target.value)}
+                onKeyDown={handleKeyDown}
+              />
+            </FilterRow>
+            <FilterRow label="JD Contains" onBrowse={onBrowse ? () => onBrowse('jd', 'include') : undefined}>
+              <input
+                type="text"
+                className="w-full px-2 py-1.5 text-xs bg-bg-input border border-border rounded-md text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
+                placeholder="search descriptions… e.g. 'series B'"
+                value={values.jd}
+                onChange={(e) => update('jd', e.target.value)}
+                onKeyDown={handleKeyDown}
+              />
+            </FilterRow>
+          </div>
 
           {/* Options row */}
           <div className="flex items-center gap-4 pl-12 pt-1">

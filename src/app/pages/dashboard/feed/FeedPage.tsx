@@ -103,6 +103,10 @@ export function FeedPage() {
     when: '',
     payMin: '',
     payMax: '',
+    skills: '',
+    dept: '',
+    level: '',
+    jd: '',
     includeRemote: false,
     includeNoSalary: true,
   });
@@ -195,6 +199,7 @@ export function FeedPage() {
     setFilterValues({
       what: '', whatNot: '', where: '', whereNot: '',
       who: '', whoNot: '', when: '', payMin: '', payMax: '',
+      skills: '', dept: '', level: '', jd: '',
       includeRemote: false, includeNoSalary: true,
     });
   }, []);
