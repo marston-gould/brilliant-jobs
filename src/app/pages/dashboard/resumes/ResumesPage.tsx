@@ -197,7 +197,7 @@ export function ResumesPage() {
                   <div className="flex-1 min-w-[160px]"><label className="text-[10px] text-text-dim block mb-0.5">Resume</label><select className="w-full px-2.5 py-1.5 rounded-md border border-border bg-bg-input text-[11px] text-text"><option>Select a resume…</option></select></div>
                   <div className="min-w-[120px]"><label className="text-[10px] text-text-dim block mb-0.5">Tone</label><select className="w-full px-2.5 py-1.5 rounded-md border border-border bg-bg-input text-[11px] text-text"><option>Professional</option><option>Executive</option><option>Technical</option></select></div>
                   <div className="min-w-[160px]"><label className="text-[10px] text-text-dim block mb-0.5">Target Job (optional)</label><select className="w-full px-2.5 py-1.5 rounded-md border border-border bg-bg-input text-[11px] text-text"><option>No target job</option></select></div>
-                  <button className="px-3 py-1.5 rounded-md bg-accent text-white text-[11px] font-semibold">Generate Summary</button>
+                  <button onClick={async () => { setBulletStatus("Generating summary..."); try { await (resumeProvider as any).generateSummary?.("", "professional"); setBulletStatus("Summary generated"); } catch(e:any) { setBulletStatus("Error: " + e.message); }}} className="px-3 py-1.5 rounded-md bg-accent text-white text-[11px] font-semibold">Generate Summary</button>
                 </div>
               </div>
             </div>
@@ -354,7 +354,7 @@ export function ResumesPage() {
                     <option>— Select a saved job from your Pipeline —</option>
                   </select>
                 </div>
-                <button className="px-4 py-2 rounded-md bg-accent text-white text-sm font-semibold">Analyze</button>
+                <button onClick={async () => { setBuilderStatus("Analyzing..."); try { await (resumeProvider as any).optimizeForJob?.("", ""); setBuilderStatus("Analysis complete"); } catch(e:any) { setBuilderStatus("Error: " + e.message); }}} className="px-4 py-2 rounded-md bg-accent text-white text-sm font-semibold">Analyze</button>
               </div>
             </div>
           </div>
@@ -387,7 +387,7 @@ export function ResumesPage() {
                   </label>
                 ))}
               </div>
-              <button className="px-4 py-2 rounded-md bg-accent text-white text-sm font-semibold">Generate Resume</button>
+              <button onClick={async () => { setBuilderStatus("Generating..."); try { await (resumeProvider as any).generateDocx?.("", "classic"); setBuilderStatus("Resume generated"); } catch(e:any) { setBuilderStatus("Error: " + e.message); }}} className="px-4 py-2 rounded-md bg-accent text-white text-sm font-semibold">Generate Resume</button>
             </div>
           </div>
         </div>

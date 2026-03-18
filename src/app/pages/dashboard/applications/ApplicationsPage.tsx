@@ -37,6 +37,26 @@ export function ApplicationsPage() {
     actions.addManual(title, company, url);
   }, [actions]);
 
+  const [rules, setRules] = useState<Record<string, boolean>>({});
+  const toggleRule = useCallback((key: string) => {
+    setRules(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      // Persist to user preferences
+      import('@app/providers/bridge').then(({ providers }) => {
+        providers.user.updatePreferences({ autoApplyRules: next }).catch(() => {});
+      });
+      return next;
+    });
+  }, []);
+
+  const savePipelineSettings = useCallback(async () => {
+    try {
+      const { providers } = await import('@app/providers/bridge');
+      await providers.user.updatePreferences({ applicationMode: state.mode, autoApplyRules: rules });
+      alert('Pipeline settings saved.');
+    } catch { alert('Failed to save settings.'); }
+  }, [state.mode, rules]);
+
   if (state.loading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -207,13 +227,15 @@ export function ApplicationsPage() {
             <div className="text-[12px] text-text-dim mb-3">When in Auto mode, jobs matching these rules are submitted without approval.</div>
             <div className="space-y-2">
               {[
-                { label: 'High-match jobs at network companies', desc: 'Auto-apply when resume match score is 80%+ AND you have a 1st-degree connection' },
-                { label: 'Saved search matches', desc: 'Auto-apply to new jobs matching any of your saved search filters' },
-                { label: 'Re-posts from ghosting companies', desc: 'Auto-apply when a company you previously applied to re-posts a role' },
+                { key: 'high-match', label: 'High-match jobs at network companies', desc: 'Auto-apply when resume match score is 80%+ AND you have a 1st-degree connection' },
+                { key: 'saved-search', label: 'Saved search matches', desc: 'Auto-apply to new jobs matching any of your saved search filters' },
+                { key: 'repost-ghost', label: 'Re-posts from ghosting companies', desc: 'Auto-apply when a company you previously applied to re-posts a role' },
               ].map(rule => (
-                <div key={rule.label} className="flex items-center justify-between p-3 rounded-lg bg-bg-input border border-border">
+                <div key={rule.key} className="flex items-center justify-between p-3 rounded-lg bg-bg-input border border-border">
                   <div><div className="text-[13px] font-semibold text-text">{rule.label}</div><div className="text-[11px] text-text-faint mt-0.5">{rule.desc}</div></div>
-                  <button className="w-10 h-[22px] rounded-full bg-border-hover relative"><span className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow" /></button>
+                  <button onClick={() => toggleRule(rule.key)} className={`w-10 h-[22px] rounded-full relative transition-colors ${rules[rule.key] ? 'bg-accent' : 'bg-border-hover'}`}>
+                    <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${rules[rule.key] ? 'left-[20px]' : 'left-0.5'}`} />
+                  </button>
                 </div>
               ))}
             </div>
@@ -271,7 +293,7 @@ export function ApplicationsPage() {
           </div>
 
           {/* Save button */}
-          <button className="px-4 py-2 rounded-md bg-accent text-white text-sm font-semibold">Save Pipeline Settings</button>
+          <button onClick={savePipelineSettings} className="px-4 py-2 rounded-md bg-accent text-white text-sm font-semibold">Save Pipeline Settings</button>
         </div>
       )}
     </div>

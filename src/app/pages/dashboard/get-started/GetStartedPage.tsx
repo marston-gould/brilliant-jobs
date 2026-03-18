@@ -172,7 +172,7 @@ export default function GetStartedPage() {
         </div>
         {extStatus !== 'connected' && (
           <>
-            <button className="px-3 py-1.5 rounded-md text-xs font-semibold bg-accent text-white mb-3">Download Extension</button>
+            <button onClick={() => { window.open("/api/extension/download", "_blank"); }} className="px-3 py-1.5 rounded-md text-xs font-semibold bg-accent text-white mb-3">Download Extension</button>
             <div className="border border-border rounded-lg bg-bg-card p-4 space-y-3">
               <div className="text-[12px] font-bold text-text mb-0.5">Installation Guide</div>
               <div className="text-[11px] text-text-faint mb-2">Follow these 4 steps to get the extension running</div>
@@ -204,14 +204,16 @@ export default function GetStartedPage() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
-            { name: 'Gmail', desc: 'Track application responses', color: '#EA4335' },
-            { name: 'Google Calendar', desc: 'Interview scheduling', color: '#4285F4' },
-            { name: 'Google Drive', desc: 'Resume sync', color: '#0066DA' },
+            { name: 'Gmail', desc: 'Track application responses', color: '#EA4335', scope: 'gmail' },
+            { name: 'Google Calendar', desc: 'Interview scheduling', color: '#4285F4', scope: 'calendar' },
+            { name: 'Google Drive', desc: 'Resume sync', color: '#0066DA', scope: 'drive' },
           ].map(svc => (
             <div key={svc.name} className="border border-border rounded-lg p-3 text-center">
               <div className="text-[13px] font-semibold text-text mb-0.5">{svc.name}</div>
               <div className="text-[10px] text-text-faint mb-2">{svc.desc}</div>
-              <button className="text-[11px] font-semibold px-3 py-1 rounded-md bg-accent text-white">
+              <button onClick={() => {
+                window.location.href = `https://brilliantjobs.app/api/auth/gmail/callback?scope=${svc.scope}`;
+              }} className="text-[11px] font-semibold px-3 py-1 rounded-md bg-accent text-white">
                 Connect
               </button>
             </div>

@@ -132,7 +132,7 @@ export default function NotificationsPage() {
               <div className="flex items-center gap-2">
                 <input type="tel" placeholder="+1 (555) 123-4567"
                   className="px-3 py-1.5 rounded-md border border-border bg-bg-input text-[12px] text-text w-48" />
-                <button className="px-3 py-1.5 rounded-md text-xs font-semibold bg-accent text-white">Send Code</button>
+                <button onClick={async () => { const phone = (document.querySelector("input[type=tel]") as HTMLInputElement)?.value; if (!phone) { alert("Enter a phone number first"); return; } try { const { callGateway } = await import("@app/lib/supabase"); await callGateway("send-verification-code", { phone }); alert("Verification code sent to " + phone); } catch { alert("Failed to send code"); } }} className="px-3 py-1.5 rounded-md text-xs font-semibold bg-accent text-white">Send Code</button>
               </div>
             ) : (
               <div className="flex items-center gap-2 text-green text-[12px] font-semibold">✓ Phone verified</div>
