@@ -16,6 +16,7 @@ import {
   Activity,
   BarChart3,
   BookMarked,
+  GraduationCap,
   Settings as SettingsIcon,
   CreditCard,
   Bell,
@@ -43,6 +44,8 @@ interface NavItem {
   label: string;
   Icon: LucideIcon;
   indent?: boolean;
+  dot?: boolean;   // show status dot (green/yellow/red per legacy ext-status-dot)
+  badge?: boolean;  // show count badge (legacy nav-badge)
 }
 
 interface NavSection {
@@ -50,28 +53,28 @@ interface NavSection {
   items: NavItem[];
 }
 
-// ── Nav structure — matches legacy dashboard.html exactly ──
+// ── Nav structure — matches legacy dashboard.html lines 146-216 exactly ──
 
 const SECTIONS: NavSection[] = [
   {
     label: '',
     items: [
-      { path: '/app/get-started', label: 'Get Started', Icon: Star },
+      { path: '/app/get-started', label: 'Get Started', Icon: Star, dot: true },
     ],
   },
   {
     label: 'SEARCH',
     items: [
-      { path: '/app/feed', label: 'Jobs Feed', Icon: Briefcase },
-      { path: '/app/tuning', label: 'Search Tuning', Icon: SlidersHorizontal, indent: true },
-      { path: '/app/resumes', label: 'Resumes', Icon: FileText },
+      { path: '/app/feed', label: 'Jobs Feed', Icon: Briefcase, dot: true, badge: true },
+      { path: '/app/tuning', label: 'Search Tuning', Icon: SlidersHorizontal, indent: true, dot: true },
+      { path: '/app/resumes', label: 'Resumes', Icon: FileText, dot: true, badge: true },
     ],
   },
   {
     label: 'APPLICATIONS',
     items: [
-      { path: '/app/applications', label: 'My Applications', Icon: Activity },
-      { path: '/app/interview-prep', label: 'Interview Prep', Icon: BookMarked },
+      { path: '/app/applications', label: 'My Applications', Icon: Activity, dot: true, badge: true },
+      { path: '/app/interview-prep', label: 'Interview Prep', Icon: GraduationCap },
     ],
   },
   {
@@ -184,13 +187,13 @@ export function AppShell() {
       {/* ── Sidebar ── */}
       <nav aria-label="Main navigation" className="flex flex-col h-full w-[var(--nav-w,240px)] bg-[var(--nav-bg)] flex-shrink-0 overflow-y-auto overflow-x-hidden">
 
-        {/* Brand — matches legacy: B mark + "Brilliant Jobs" + "Dashboard v10.58" */}
+        {/* Brand — matches legacy: B mark + "Brilliant Jobs" + "Dashboard v10.59" */}
         <div className="px-4 pt-5 pb-4">
           <div className="flex items-center gap-3">
             <div className="w-[30px] h-[30px] rounded-lg bg-white flex items-center justify-center text-[var(--nav-bg)] font-extrabold text-sm flex-shrink-0">B</div>
             <div>
               <div className="font-bold text-[16px] text-white leading-tight">Brilliant Jobs</div>
-              <div className="text-[11px] text-[var(--nav-text)]">Dashboard <span className="text-[9px]">v10.58</span></div>
+              <div className="text-[11px] text-[var(--nav-text)]">Dashboard <span className="text-[9px]">v10.59</span></div>
             </div>
           </div>
         </div>
@@ -215,7 +218,12 @@ export function AppShell() {
                   `}
                 >
                   <item.Icon className="w-[18px] h-[18px] flex-shrink-0 opacity-80" strokeWidth={1.75} />
-                  <span>{item.label}</span>
+                  <span className="flex-1">{item.label}</span>
+                  {/* Legacy: ext-status-dot — green/yellow/red status indicators */}
+                  {item.dot && (
+                    <span className="w-[7px] h-[7px] rounded-full flex-shrink-0"
+                      style={{ background: 'var(--green, #22c55e)' }} />
+                  )}
                 </NavLink>
               ))}
               {/* Insights external link — inside Intelligence section per legacy line 191 */}
