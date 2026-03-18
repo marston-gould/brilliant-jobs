@@ -91,7 +91,6 @@ export default function BillingPage() {
         <div className="border border-border rounded-xl bg-bg-card p-5">
           <div className="text-[12px] font-semibold text-text-dim mb-1">Credit Usage (30d)</div>
           <div className="mt-2" style={{ height: 100 }}>
-            {(() => { try { const ChartBox = require('./../../stats/StatsPage').default; } catch {} return null; })()}
             <div className="w-full h-full" ref={(el) => {
               if (!el || el.dataset.charted) return;
               el.dataset.charted = '1';
