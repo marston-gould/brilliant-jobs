@@ -303,15 +303,7 @@ export function ResumesPage() {
           </div>
 
           {/* Parsed Data Editor — legacy lines 1656-1724 */}
-          <div className="border border-border rounded-xl bg-bg-card overflow-hidden">
-            <div className="flex items-center gap-2 px-5 py-3 border-b border-border bg-bg-input/50">
-              <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} className="text-text-dim"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-              <span className="text-[13px] font-bold text-text">Edit Your Resume</span>
-            </div>
-            <div className="p-5">
-              <ResumeEditor onSave={() => setBuilderStatus('Saved')} onReset={() => setBuilderStatus('Reset')} status={builderStatus} />
-            </div>
-          </div>
+          <ResumeEditor onSave={() => setBuilderStatus('Saved')} onReset={() => setBuilderStatus('Reset')} />
 
           {/* Keyword Optimization section */}
           <div className="border border-border rounded-xl bg-bg-card overflow-hidden">
