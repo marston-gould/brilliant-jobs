@@ -84,7 +84,7 @@ export default function StatsPage() {
           {/* Stat cards */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-5">
             {statCards.map(c => (
-              <div key={c.label} className="border border-border rounded-lg bg-bg-card p-3 text-center">
+              <div key={c.label} className="border border-border rounded-xl bg-bg-card p-[18px_20px] text-center">
                 <div className="text-[22px] font-bold text-text tabular-nums font-mono leading-none">
                   {typeof c.value === 'number' ? c.value.toLocaleString() : c.value}
                 </div>

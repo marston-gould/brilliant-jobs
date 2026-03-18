@@ -209,13 +209,13 @@ export function AppShell() {
       {/* ── Sidebar ── */}
       <nav aria-label="Main navigation" className="flex flex-col h-full w-[var(--nav-w,240px)] bg-[var(--nav-bg)] flex-shrink-0 overflow-y-auto overflow-x-hidden">
 
-        {/* Brand — matches legacy: B mark + "Brilliant Jobs" + "Dashboard v10.64" */}
+        {/* Brand — matches legacy: B mark + "Brilliant Jobs" + "Dashboard v10.65" */}
         <div className="px-4 pt-5 pb-4">
           <div className="flex items-center gap-3">
             <div className="w-[30px] h-[30px] rounded-lg bg-white flex items-center justify-center text-[var(--nav-bg)] font-extrabold text-sm flex-shrink-0">B</div>
             <div>
               <div className="font-bold text-[16px] text-white leading-tight">Brilliant Jobs</div>
-              <div className="text-[11px] text-[var(--nav-text)]">Dashboard <span className="text-[9px]">v10.64</span></div>
+              <div className="text-[11px] text-[var(--nav-text)]">Dashboard <span className="text-[9px]">v10.65</span></div>
             </div>
           </div>
         </div>
@@ -225,7 +225,7 @@ export function AppShell() {
           {(isAdminSection ? [{ label: 'ADMIN', items: ADMIN_ITEMS }] : SECTIONS).map((section, si) => (
             <div key={section.label || si}>
               {section.label && (
-                <div className="px-3 pt-5 pb-1.5 text-[10px] font-semibold tracking-[1.5px] text-white/30 uppercase select-none">
+                <div className="px-3.5 pt-3 pb-1.5 mt-2 text-[10px] font-bold tracking-[1.5px] text-white/30 uppercase select-none">
                   {section.label}
                 </div>
               )}
@@ -234,21 +234,21 @@ export function AppShell() {
                   key={item.path + item.label}
                   to={item.path}
                   className={({ isActive }) => `
-                    flex items-center gap-2.5 py-[7px] rounded-md transition-colors text-[13px] font-medium
+                    flex items-center gap-3 py-2.5 rounded-lg transition-colors text-[13.5px] font-medium mb-0.5
                     ${isActive ? 'bg-[var(--nav-bg-active)] text-white' : 'text-[var(--nav-text)] hover:bg-[var(--nav-bg-active)]'}
-                    ${item.indent ? 'pl-[34px] pr-3 text-[12px]' : 'px-3'}
+                    ${item.indent ? 'pl-[34px] pr-3.5 text-[12px]' : 'px-3.5'}
                   `}
                 >
                   <item.Icon className="w-[18px] h-[18px] flex-shrink-0 opacity-80" strokeWidth={1.75} />
                   <span className="flex-1">{item.label}</span>
                   {/* Badge count — legacy: nav-jobs-count, nav-resume-count, nav-app-count */}
                   {item.badge && (badgeCounts[item.path] ?? 0) > 0 && (
-                    <span className="text-[9px] font-bold bg-white/15 px-1.5 py-0.5 rounded-full tabular-nums leading-none">
+                    <span className="text-[11px] font-semibold bg-white/15 text-white px-2 py-0.5 rounded-lg tabular-nums leading-none ml-auto">
                       {(badgeCounts[item.path] ?? 0) > 999 ? '999+' : badgeCounts[item.path]}
                     </span>
                   )}
                   {item.dot && (
-                    <span className="w-[7px] h-[7px] rounded-full flex-shrink-0"
+                    <span className="w-2 h-2 rounded-full flex-shrink-0 ml-auto"
                       style={{ background:
                         item.badge && badgeCounts[item.path] !== undefined
                           ? (badgeCounts[item.path] ?? 0) > 0 ? 'var(--green, #22c55e)' : '#ef4444'
@@ -260,7 +260,7 @@ export function AppShell() {
               {/* Insights external link — inside Intelligence section per legacy line 191 */}
               {section.label === 'INTELLIGENCE' && !isAdminSection && (
                 <a href="/blog" target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-2.5 px-3 py-[7px] rounded-md transition-colors text-[13px] font-medium text-[var(--nav-text)] hover:bg-[var(--nav-bg-active)]">
+                  className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-colors text-[13.5px] font-medium text-[var(--nav-text)] hover:bg-[var(--nav-bg-active)] mb-0.5">
                   <BookMarked className="w-[18px] h-[18px] flex-shrink-0 opacity-80" strokeWidth={1.75} />
                   <span>Insights</span>
                   <ExternalLink className="w-[10px] h-[10px] opacity-40 ml-0.5" strokeWidth={1.75} />
@@ -271,7 +271,7 @@ export function AppShell() {
 
           {/* Admin link (admin only — per legacy: hidden unless role=admin) */}
           {isAdmin && !isAdminSection && (
-            <NavLink to="/app/admin" className="flex items-center gap-2.5 px-3 py-[7px] rounded-md transition-colors text-[13px] font-medium text-[var(--nav-text)] hover:bg-[var(--nav-bg-active)]">
+            <NavLink to="/app/admin" className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-colors text-[13.5px] font-medium text-[var(--nav-text)] hover:bg-[var(--nav-bg-active)] mb-0.5">
               <Lock className="w-[18px] h-[18px] flex-shrink-0 opacity-80" strokeWidth={1.75} />
               <span>Admin</span>
             </NavLink>
@@ -283,13 +283,13 @@ export function AppShell() {
           {/* User row */}
           {user && (
             <div className="flex items-center gap-2.5 px-1 py-2">
-              <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[13px] font-bold flex-shrink-0"
                 style={{ backgroundColor: avatarColor(user.email) }}>
                 {avatarInitial(user.email, user.display_name)}
               </div>
               <div className="min-w-0">
-                <div className="text-[11px] text-white/80 truncate">{user.email}</div>
-                <div className="text-[10px] font-bold tracking-wide uppercase"
+                <div className="text-[12px] text-white/70 truncate">{user.email}</div>
+                <div className="text-[10px] font-semibold tracking-wide uppercase"
                   style={{ color: user.role === 'admin' ? '#f97316' : 'rgba(255,255,255,0.4)' }}>
                   {user.role === 'admin' ? 'ADMIN' : user.tier.toUpperCase()}
                 </div>
@@ -324,7 +324,7 @@ export function AppShell() {
       </nav>
 
       {/* ── Main content — legacy: .main { padding: 24px 28px } ── */}
-      <main id="main-content" role="main" className="flex-1 overflow-y-auto bg-[var(--bg-main)] px-7 py-6">
+      <main id="main-content" role="main" className="flex-1 overflow-y-auto bg-[var(--bg-main)] px-10 py-7">
         <Outlet />
       </main>
     </div>

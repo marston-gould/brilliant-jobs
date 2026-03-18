@@ -33,7 +33,7 @@ function Step({ num, title, icon: Icon, iconBg, iconColor, children, badge }: {
   badge?: React.ReactNode;
 }) {
   return (
-    <div className="border border-border rounded-xl bg-bg-card p-5 space-y-3">
+    <div className="border border-border rounded-[14px] bg-bg-card p-7 space-y-3 shadow-[0_1px_3px_rgba(0,0,0,0.02)] mb-3.5">
       <div className="flex items-start gap-3">
         <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: iconBg }}>
           <Icon className="w-5 h-5" style={{ color: iconColor }} strokeWidth={1.75} />
