@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useUser, useProviders } from '@providers';
 import type { UserProfile } from '@providers';
+import { ToastProvider } from '@app/components/Toast';
 import {
   Star,
   Briefcase,
@@ -205,6 +206,7 @@ export function AppShell() {
   const ThemeIcon = themeIcons[theme];
 
   return (
+    <ToastProvider>
     <div className="flex h-screen">
       {/* ── Sidebar ── */}
       <nav aria-label="Main navigation" className="flex flex-col h-full w-[var(--nav-w,240px)] bg-[var(--nav-bg)] flex-shrink-0 overflow-y-auto overflow-x-hidden">
@@ -328,6 +330,7 @@ export function AppShell() {
         <Outlet />
       </main>
     </div>
+    </ToastProvider>
   );
 }
 

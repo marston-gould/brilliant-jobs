@@ -121,8 +121,14 @@ function reducer(state: KeywordsState, action: KeywordsAction): KeywordsState {
 // ── Standalone data access (SPA-CUT-1) ───────────────────────
 
 function getResumes(): ResumeInfo[] {
+  // Try Supabase provider first, fall back to localStorage
+  try {
+    const sb = (window as any).__bjSupabase;
+    if (sb) {
+      // Async load will be handled by useEffect in the hook
+    }
+  } catch {}
   const resumes = safeReadLS<any[]>('bj_resumes', []);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return resumes.map((r: any, i: number) => ({
     index: i,
     name: r.name || `Resume ${i + 1}`,

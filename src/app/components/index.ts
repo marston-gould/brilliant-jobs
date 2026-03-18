@@ -16,7 +16,6 @@ export { Input } from './Input';
 export { Select } from './Select';
 export { Modal } from './Modal';
 export { ToastProvider, useToast } from './Toast';
-export type { Toast, ToastType } from './Toast';
 export {
   Skeleton, SkeletonHeader, SkeletonMetricRow,
   SkeletonCardList, SkeletonTable, SkeletonPage,

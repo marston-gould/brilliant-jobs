@@ -38,6 +38,16 @@ export function ApplicationsPage() {
   }, [actions]);
 
   const [rules, setRules] = useState<Record<string, boolean>>({});
+  const [requireApproval, setRequireApproval] = useState(true);
+  const [smartPrompts, setSmartPrompts] = useState(true);
+  const [signalDetection, setSignalDetection] = useState(false);
+  const [autoMatchResume, setAutoMatchResume] = useState(true);
+
+  const persistPref = useCallback((key: string, value: any) => {
+    import('@app/providers/bridge').then(({ providers }) => {
+      providers.user.updatePreferences({ [key]: value }).catch(() => {});
+    });
+  }, []);
   const toggleRule = useCallback((key: string) => {
     setRules(prev => {
       const next = { ...prev, [key]: !prev[key] };
@@ -193,13 +203,28 @@ export function ApplicationsPage() {
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 <span className="text-[12px] text-text-dim w-28 flex-shrink-0">Score threshold</span>
-                <input type="range" min={0} max={100} defaultValue={70} className="flex-1 accent-accent" />
+                <input type="range" min={0} max={100} defaultValue={70} className="flex-1 accent-accent"
+                  onChange={e => {
+                    const val = e.target.value;
+                    const label = e.target.nextElementSibling;
+                    if (label) label.textContent = val;
+                  }}
+                  onMouseUp={e => {
+                    import('@app/providers/bridge').then(({ providers }) => {
+                      providers.user.updatePreferences({ scoreThreshold: Number((e.target as HTMLInputElement).value) }).catch(() => {});
+                    });
+                  }} />
                 <span className="text-[13px] font-bold text-text min-w-[28px]">70</span>
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-[12px] text-text-dim w-28 flex-shrink-0">Unscored jobs</span>
-                <select className="px-2 py-1 rounded-md border border-border bg-bg-input text-[11px] text-text">
-                  <option>Hold for manual review</option><option>Skip (do not apply)</option><option>Allow (apply anyway)</option>
+                <select className="px-2 py-1 rounded-md border border-border bg-bg-input text-[11px] text-text"
+                  onChange={e => {
+                    import('@app/providers/bridge').then(({ providers }) => {
+                      providers.user.updatePreferences({ unscoredBehavior: e.target.value }).catch(() => {});
+                    });
+                  }}>
+                  <option value="hold">Hold for manual review</option><option value="skip">Skip (do not apply)</option><option value="allow">Allow (apply anyway)</option>
                 </select>
               </div>
             </div>
@@ -212,11 +237,26 @@ export function ApplicationsPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between p-3 rounded-lg bg-bg-input border border-border">
                 <span className="text-[13px] text-text">Require my approval</span>
-                <button className="w-10 h-[22px] rounded-full bg-accent relative"><span className="absolute top-0.5 left-[20px] w-4 h-4 bg-white rounded-full shadow" /></button>
+                <button onClick={() => {
+                  setRequireApproval(!requireApproval);
+                  import('@app/providers/bridge').then(({ providers }) => {
+                    providers.user.updatePreferences({ requireApproval: !requireApproval }).catch(() => {});
+                  });
+                }} className={`w-10 h-[22px] rounded-full relative transition-colors ${requireApproval ? 'bg-accent' : 'bg-border-hover'}`}>
+                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${requireApproval ? 'left-[20px]' : 'left-0.5'}`} />
+                </button>
               </div>
               <div className="flex items-center gap-3 p-3 rounded-lg bg-bg-input border border-border">
                 <span className="text-[13px] text-text flex-1">Auto-expire after</span>
-                <select className="px-2 py-1 rounded-md border border-border bg-bg-main text-[11px] text-text"><option>12 hours</option><option>24 hours</option><option selected>48 hours</option><option>72 hours</option><option>1 week</option></select>
+                <select className="px-2 py-1 rounded-md border border-border bg-bg-main text-[11px] text-text"
+                  defaultValue="48"
+                  onChange={e => {
+                    import('@app/providers/bridge').then(({ providers }) => {
+                      providers.user.updatePreferences({ approvalExpireHours: Number(e.target.value) }).catch(() => {});
+                    });
+                  }}>
+                  <option value="12">12 hours</option><option value="24">24 hours</option><option value="48">48 hours</option><option value="72">72 hours</option><option value="168">1 week</option>
+                </select>
               </div>
             </div>
           </div>
@@ -253,7 +293,10 @@ export function ApplicationsPage() {
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-bg-input border border-border">
                 <span className="text-[13px] text-text">Auto-select best-match resume per job</span>
-                <button className="w-10 h-[22px] rounded-full bg-accent relative"><span className="absolute top-0.5 left-[20px] w-4 h-4 bg-white rounded-full shadow" /></button>
+                <button onClick={() => { setAutoMatchResume(!autoMatchResume); persistPref('autoMatchResume', !autoMatchResume); }}
+                  className={`w-10 h-[22px] rounded-full relative transition-colors ${autoMatchResume ? 'bg-accent' : 'bg-border-hover'}`}>
+                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${autoMatchResume ? 'left-[20px]' : 'left-0.5'}`} />
+                </button>
               </div>
             </div>
           </div>
@@ -265,11 +308,17 @@ export function ApplicationsPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between p-3 rounded-lg bg-bg-input border border-border">
                 <span className="text-[13px] text-text">Smart Prompts — time-based check-in reminders</span>
-                <button className="w-10 h-[22px] rounded-full bg-accent relative"><span className="absolute top-0.5 left-[20px] w-4 h-4 bg-white rounded-full shadow" /></button>
+                <button onClick={() => { setSmartPrompts(!smartPrompts); persistPref('smartPrompts', !smartPrompts); }}
+                  className={`w-10 h-[22px] rounded-full relative transition-colors ${smartPrompts ? 'bg-accent' : 'bg-border-hover'}`}>
+                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${smartPrompts ? 'left-[20px]' : 'left-0.5'}`} />
+                </button>
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-bg-input border border-border">
                 <span className="text-[13px] text-text">Signal Detection — auto-detect via Gmail & Calendar</span>
-                <button className="w-10 h-[22px] rounded-full bg-border-hover relative"><span className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow" /></button>
+                <button onClick={() => { setSignalDetection(!signalDetection); persistPref('signalDetection', !signalDetection); }}
+                  className={`w-10 h-[22px] rounded-full relative transition-colors ${signalDetection ? 'bg-accent' : 'bg-border-hover'}`}>
+                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${signalDetection ? 'left-[20px]' : 'left-0.5'}`} />
+                </button>
               </div>
             </div>
             {/* Prompt Cadences — legacy lines 2383-2401 */}
@@ -277,14 +326,16 @@ export function ApplicationsPage() {
               <summary className="text-[12px] font-semibold text-text-dim cursor-pointer">Prompt cadences</summary>
               <div className="space-y-2 mt-2">
                 {[
-                  { label: 'Saved → Applied', val: 3 },
-                  { label: 'Applied → Response', val: 7 },
-                  { label: 'Responded → Interview', val: 5 },
-                  { label: 'Interview → Follow-up', val: 3 },
+                  { key: 'cadence_saved', label: 'Saved → Applied', val: 3 },
+                  { key: 'cadence_applied', label: 'Applied → Response', val: 7 },
+                  { key: 'cadence_responded', label: 'Responded → Interview', val: 5 },
+                  { key: 'cadence_interview', label: 'Interview → Follow-up', val: 3 },
                 ].map(c => (
-                  <div key={c.label} className="flex items-center gap-3 p-2 rounded-lg bg-bg-input border border-border">
+                  <div key={c.key} className="flex items-center gap-3 p-2 rounded-lg bg-bg-input border border-border">
                     <span className="text-[12px] text-text flex-1">{c.label}</span>
-                    <input type="number" defaultValue={c.val} min={1} max={30} className="w-14 px-2 py-1 rounded-md border border-border bg-bg-main text-[12px] text-text text-center" />
+                    <input type="number" defaultValue={c.val} min={1} max={30}
+                      onBlur={e => persistPref(c.key, Number(e.target.value))}
+                      className="w-14 px-2 py-1 rounded-md border border-border bg-bg-main text-[12px] text-text text-center" />
                     <span className="text-[11px] text-text-faint">days</span>
                   </div>
                 ))}
