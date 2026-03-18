@@ -140,7 +140,7 @@ export default function BillingPage() {
       {/* Credit Packs */}
       <div className={cardCls}>
         <div id="credit-packs" className="text-[14px] font-bold text-text mb-1">Buy Credit Packs</div>
-        <div className="text-[12px] text-text-dim mb-3">One-time purchase at your plan's rate. Credits never expire.</div>
+        <div className="text-[12px] text-text-dim mb-4">One-time purchase at your plan's rate. Credits never expire.</div>
         <div className="grid grid-cols-3 gap-3">
           {[
             { amount: 25, price: '$5' },
@@ -161,7 +161,7 @@ export default function BillingPage() {
       {/* Auto-Refill */}
       <div className={cardCls}>
         <div className="text-[14px] font-bold text-text mb-1">Auto-Refill</div>
-        <div className="text-[12px] text-text-dim mb-3">Never run out — automatically top up when your balance gets low</div>
+        <div className="text-[12px] text-text-dim mb-4">Never run out — automatically top up when your balance gets low</div>
         <label className="flex items-center gap-2 text-[13px] text-text cursor-pointer mb-3">
           <input type="checkbox" className="accent-accent" /> Enable auto-refill
         </label>
@@ -170,14 +170,14 @@ export default function BillingPage() {
       {/* Earn Free Credits (Referrals) */}
       <div className={cardCls}>
         <div className="text-[14px] font-bold text-text mb-1">Earn Free Credits</div>
-        <div className="text-[12px] text-text-dim mb-3">Refer a friend — you both get 7 days Pro + 25 credits when they activate</div>
+        <div className="text-[12px] text-text-dim mb-4">Refer a friend — you both get 7 days Pro + 25 credits when they activate</div>
         <div className="text-center py-4 text-text-faint text-[12px]">Referral program details loading...</div>
       </div>
 
       {/* Pay-When-Hired */}
       <div className={cardCls}>
         <div className="text-[14px] font-bold text-text mb-1">Pay When You're Hired</div>
-        <div className="text-[12px] text-text-dim mb-3">Only pay a success fee when Brilliant Jobs helps you land a job.</div>
+        <div className="text-[12px] text-text-dim mb-4">Only pay a success fee when Brilliant Jobs helps you land a job.</div>
         <div className="flex items-center gap-3 p-4 rounded-lg bg-bg-input">
           <div className="text-2xl">💳</div>
           <div className="flex-1">

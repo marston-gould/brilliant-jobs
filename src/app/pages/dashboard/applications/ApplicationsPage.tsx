@@ -176,7 +176,7 @@ export function ApplicationsPage() {
           {/* Application Mode — 6 cards per legacy lines 2206-2248 */}
           <div className="border border-border rounded-xl bg-bg-card p-6">
             <div className="text-[14px] font-bold text-text mb-1">Application Mode</div>
-            <div className="text-[12px] text-text-dim mb-3">Controls how saved/matched jobs get processed. Can be overridden per filter.</div>
+            <div className="text-[12px] text-text-dim mb-4">Controls how saved/matched jobs get processed. Can be overridden per filter.</div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {[
                 { key: 'manual', label: 'Manual', desc: 'I review each job and click Apply' },
@@ -199,7 +199,7 @@ export function ApplicationsPage() {
           {/* Score Gate */}
           <div className="border border-border rounded-xl bg-bg-card p-6">
             <div className="text-[14px] font-bold text-text mb-1">Score Gate</div>
-            <div className="text-[12px] text-text-dim mb-3">Minimum AI match score before applications are submitted</div>
+            <div className="text-[12px] text-text-dim mb-4">Minimum AI match score before applications are submitted</div>
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 <span className="text-[12px] text-text-dim w-28 flex-shrink-0">Score threshold</span>
@@ -233,7 +233,7 @@ export function ApplicationsPage() {
           {/* Approval Settings */}
           <div className="border border-border rounded-xl bg-bg-card p-6">
             <div className="text-[14px] font-bold text-text mb-1">Approval Settings</div>
-            <div className="text-[12px] text-text-dim mb-3">When auto-applying, do you want to review before submission?</div>
+            <div className="text-[12px] text-text-dim mb-4">When auto-applying, do you want to review before submission?</div>
             <div className="space-y-2">
               <div className="flex items-center justify-between p-3 rounded-lg bg-bg-input border border-border">
                 <span className="text-[13px] text-text">Require my approval</span>
@@ -264,7 +264,7 @@ export function ApplicationsPage() {
           {/* Auto-Apply Rules */}
           <div className="border border-border rounded-xl bg-bg-card p-6">
             <div className="text-[14px] font-bold text-text mb-1">Auto-Apply Rules</div>
-            <div className="text-[12px] text-text-dim mb-3">When in Auto mode, jobs matching these rules are submitted without approval.</div>
+            <div className="text-[12px] text-text-dim mb-4">When in Auto mode, jobs matching these rules are submitted without approval.</div>
             <div className="space-y-2">
               {[
                 { key: 'high-match', label: 'High-match jobs at network companies', desc: 'Auto-apply when resume match score is 80%+ AND you have a 1st-degree connection' },
@@ -285,7 +285,7 @@ export function ApplicationsPage() {
           {/* Resume Assignment */}
           <div className="border border-border rounded-xl bg-bg-card p-6">
             <div className="text-[14px] font-bold text-text mb-1">Resume Assignment</div>
-            <div className="text-[12px] text-text-dim mb-3">Which resume gets sent for each application type.</div>
+            <div className="text-[12px] text-text-dim mb-4">Which resume gets sent for each application type.</div>
             <div className="space-y-2">
               <div className="flex items-center justify-between p-3 rounded-lg bg-bg-input border border-border">
                 <span className="text-[13px] text-text">Default resume for all applications</span>
@@ -304,7 +304,7 @@ export function ApplicationsPage() {
           {/* Pipeline Intelligence */}
           <div className="border border-border rounded-xl bg-bg-card p-6">
             <div className="text-[14px] font-bold text-text mb-1">Pipeline Intelligence</div>
-            <div className="text-[12px] text-text-dim mb-3">Automated tracking and smart prompts for your job applications.</div>
+            <div className="text-[12px] text-text-dim mb-4">Automated tracking and smart prompts for your job applications.</div>
             <div className="space-y-2">
               <div className="flex items-center justify-between p-3 rounded-lg bg-bg-input border border-border">
                 <span className="text-[13px] text-text">Smart Prompts — time-based check-in reminders</span>

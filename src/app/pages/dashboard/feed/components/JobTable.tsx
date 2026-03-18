@@ -122,6 +122,7 @@ export function JobTable({
   onHide,
   onApply,
   onPageChange,
+  onSort,
   savedJobIds,
   appliedJobIds,
   matchScores,

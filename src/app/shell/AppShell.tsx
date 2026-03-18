@@ -303,15 +303,15 @@ export function AppShell() {
             </div>
           )}
 
-          {/* Credits + Theme (same row, matching legacy) */}
-          <div className="flex items-center gap-0">
-            <div className="flex-1 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-white/[0.06] cursor-pointer hover:bg-white/10 transition-colors"
+          {/* Credits + Theme — legacy: .credit-balance { padding:6px 10px; bg:bg-input; border:1px solid border; radius:8px } */}
+          <div className="flex items-center gap-1 mx-3 my-2">
+            <div className="flex-1 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--bg-input)] border border-[var(--border)] cursor-pointer hover:border-accent transition-colors"
               onClick={() => navigate('/app/billing')} title="Click to purchase credits">
               <span className="text-[9px] font-bold text-white/40 bg-white/10 px-1 py-0.5 rounded tracking-wide leading-none">CR</span>
               <span className={`text-[13px] font-semibold tabular-nums ${credits > 0 ? 'text-[var(--green)]' : 'text-white/70'}`}>{credits}</span>
               <span className="text-[10px] text-white/40">credits</span>
             </div>
-            <button onClick={cycleTheme} className="flex items-center gap-1.5 px-2.5 py-2 rounded-md hover:bg-white/10 transition-colors"
+            <button onClick={cycleTheme} className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg hover:bg-white/10 transition-colors"
               aria-label={`Theme: ${theme}`} title={`Theme: ${themeLabels[theme]}`}>
               <ThemeIcon className="w-3.5 h-3.5 text-white/50" strokeWidth={1.75} />
               <span className="text-[10px] text-white/50">{themeLabels[theme]}</span>

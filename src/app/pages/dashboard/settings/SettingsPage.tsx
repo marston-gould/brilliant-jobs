@@ -77,7 +77,7 @@ export default function SettingsPage() {
       {/* Appearance */}
       <div className={cardCls}>
         <div className="text-[14px] font-bold text-text mb-0.5">Appearance</div>
-        <div className="text-[12px] text-text-dim mb-3">Choose your theme preference</div>
+        <div className="text-[12px] text-text-dim mb-4">Choose your theme preference</div>
         <div className="flex gap-2 flex-wrap">
           {[
             { key: 'light', label: '☀️ Light' },
@@ -95,7 +95,7 @@ export default function SettingsPage() {
       {/* Account */}
       <div className={cardCls}>
         <div className="text-[14px] font-bold text-text mb-0.5">Account</div>
-        <div className="text-[12px] text-text-dim mb-3">Manage your account</div>
+        <div className="text-[12px] text-text-dim mb-4">Manage your account</div>
         <div className="flex gap-2 flex-wrap">
           <button onClick={async () => {
             try {
@@ -177,7 +177,7 @@ export default function SettingsPage() {
       {/* AI Content Preferences */}
       <div className={cardCls}>
         <div className="text-[14px] font-bold text-text mb-0.5">AI Content Preferences</div>
-        <div className="text-[12px] text-text-dim mb-3">Control how AI-generated content affects your job match scores.</div>
+        <div className="text-[12px] text-text-dim mb-4">Control how AI-generated content affects your job match scores.</div>
         {[
           { key: 'mixed' as const, label: 'Exclude Mixed Content', desc: "Jobs with partially AI-written descriptions won't affect your match scores", active: excludeMixed, toggle: () => { setExcludeMixed(!excludeMixed); userProvider.updatePreferences({ excludeMixed: !excludeMixed }).catch(() => {}); } },
           { key: 'ai' as const, label: 'Exclude AI-Generated', desc: "Jobs with fully AI-written descriptions won't affect your match scores", active: excludeAI, toggle: () => { setExcludeAI(!excludeAI); userProvider.updatePreferences({ excludeAI: !excludeAI }).catch(() => {}); } },
@@ -199,7 +199,7 @@ export default function SettingsPage() {
             {passiveMode ? 'Passive' : 'Active'}
           </span>
         </div>
-        <div className="text-[12px] text-text-dim mb-3">Active mode shows all matching jobs. Passive mode only alerts on exceptional matches.</div>
+        <div className="text-[12px] text-text-dim mb-4">Active mode shows all matching jobs. Passive mode only alerts on exceptional matches.</div>
         <div className={toggleRow}>
           <div><div className="text-[13px] font-semibold text-text">Passive Mode</div><div className="text-[11px] text-text-faint">Only notify me on high-bar matches</div></div>
           <button onClick={() => setPassiveMode(!passiveMode)} className={`w-10 h-[22px] rounded-full relative transition-colors ${passiveMode ? 'bg-accent' : 'bg-border-hover'}`}>
@@ -211,7 +211,7 @@ export default function SettingsPage() {
       {/* Privacy & Data */}
       <div className={cardCls}>
         <div className="text-[14px] font-bold text-text mb-0.5">Privacy & Data</div>
-        <div className="text-[12px] text-text-dim mb-3">Manage your data rights under GDPR and privacy regulations</div>
+        <div className="text-[12px] text-text-dim mb-4">Manage your data rights under GDPR and privacy regulations</div>
         <button onClick={async () => {
           try {
             const { callGateway } = await import('@app/lib/supabase');
@@ -231,7 +231,7 @@ export default function SettingsPage() {
       {/* Danger Zone */}
       <div className="border border-red rounded-xl bg-bg-card p-6 mb-5">
         <div className="text-[14px] font-bold text-red mb-0.5">Danger Zone</div>
-        <div className="text-[12px] text-text-dim mb-3">Irreversible actions — proceed with caution</div>
+        <div className="text-[12px] text-text-dim mb-4">Irreversible actions — proceed with caution</div>
         <p className="text-[12px] text-text-faint mb-3">Deleting your account will remove all your data after a 30-day grace period. During the grace period you can log in and cancel the deletion.</p>
         <button onClick={async () => {
           if (!confirm('Are you sure you want to delete your account? This action will take effect after 30 days.')) return;
