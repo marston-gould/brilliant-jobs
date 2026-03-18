@@ -211,7 +211,17 @@ export default function NotificationsPage() {
               </tr>
             </thead>
             <tbody>
-              <tr><td colSpan={5} className="text-center py-8 text-text-faint">No notifications sent yet</td></tr>
+              {log.length === 0 ? (
+                <tr><td colSpan={5} className="text-center py-8 text-text-faint">No notifications sent yet</td></tr>
+              ) : log.map((entry: any, i: number) => (
+                <tr key={entry.id || i} className="border-t border-border/50 hover:bg-bg-input/20">
+                  <td className="px-4 py-2 text-text">{entry.notification_type || entry.type || '—'}</td>
+                  <td className="px-2 py-2 text-text-dim truncate max-w-[200px]">{entry.message || entry.subject || '—'}</td>
+                  <td className="px-2 py-2 text-text-faint">{entry.channel || 'email'}</td>
+                  <td className="px-2 py-2 text-text-faint">{entry.created_at ? new Date(entry.created_at).toLocaleDateString() : '—'}</td>
+                  <td className="px-2 py-2"><span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${entry.status === 'sent' ? 'bg-green/10 text-green' : entry.status === 'failed' ? 'bg-red/10 text-red' : 'bg-bg-input text-text-faint'}`}>{entry.status || '—'}</span></td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

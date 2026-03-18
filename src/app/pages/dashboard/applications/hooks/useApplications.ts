@@ -136,6 +136,8 @@ function buildActions(dispatch: React.Dispatch<ApplicationsAction>, reload: () =
     setMode(mode: AppMode) {
       localStorage.setItem('bj_app_mode', mode);
       dispatch({ type: 'UPDATE_MODE', mode });
+      // Persist to Supabase profiles.user_data
+      providers.user.updatePreferences({ applicationMode: mode }).catch(() => {});
     },
 
     addManual(jobTitle: string, company: string, url: string) {

@@ -172,13 +172,19 @@ export function ResumesPage() {
               <div>
                 <div className="text-[12px] font-bold text-text mb-2.5">Generate Bullet Points</div>
                 <div className="grid grid-cols-2 gap-2 mb-2">
-                  <div><label className="text-[10px] text-text-dim block mb-0.5">Role Title *</label><input type="text" placeholder="e.g. Senior Product Manager" className="w-full px-2.5 py-1.5 rounded-md border border-border bg-bg-input text-[12px] text-text" /></div>
-                  <div><label className="text-[10px] text-text-dim block mb-0.5">Company (optional)</label><input type="text" placeholder="e.g. Google" className="w-full px-2.5 py-1.5 rounded-md border border-border bg-bg-input text-[12px] text-text" /></div>
+                  <div><label className="text-[10px] text-text-dim block mb-0.5">Role Title *</label><input id="bg-role" type="text" placeholder="e.g. Senior Product Manager" className="w-full px-2.5 py-1.5 rounded-md border border-border bg-bg-input text-[12px] text-text" /></div>
+                  <div><label className="text-[10px] text-text-dim block mb-0.5">Company (optional)</label><input id="bg-company" type="text" placeholder="e.g. Google" className="w-full px-2.5 py-1.5 rounded-md border border-border bg-bg-input text-[12px] text-text" /></div>
                 </div>
-                <div className="mb-2"><label className="text-[10px] text-text-dim block mb-0.5">Context / Achievements (optional)</label><textarea placeholder="e.g. managed $3M/mo paid budget, grew team from 4 to 12" rows={2} className="w-full px-2.5 py-1.5 rounded-md border border-border bg-bg-input text-[12px] text-text resize-y" /></div>
+                <div className="mb-2"><label className="text-[10px] text-text-dim block mb-0.5">Context / Achievements (optional)</label><textarea id="bg-context" placeholder="e.g. managed $3M/mo paid budget, grew team from 4 to 12" rows={2} className="w-full px-2.5 py-1.5 rounded-md border border-border bg-bg-input text-[12px] text-text resize-y" /></div>
                 <div className="flex items-center gap-2">
                   <select className="flex-1 max-w-[260px] px-2.5 py-1.5 rounded-md border border-border bg-bg-input text-[11px] text-text"><option>No target job (general)</option></select>
-                  <button className="px-3 py-1.5 rounded-md bg-accent text-white text-[11px] font-semibold">Generate Bullets</button>
+                  <button onClick={() => {
+                    const role = (document.getElementById('bg-role') as HTMLInputElement)?.value;
+                    const company = (document.getElementById('bg-company') as HTMLInputElement)?.value;
+                    const context = (document.getElementById('bg-context') as HTMLTextAreaElement)?.value;
+                    if (role) handleGenerateBullets(role, company || undefined, context || undefined);
+                  }} className="px-3 py-1.5 rounded-md bg-accent text-white text-[11px] font-semibold">Generate Bullets</button>
+                  {bulletStatus && <span className="text-[10px] text-text-dim">{bulletStatus}</span>}
                 </div>
               </div>
               <hr className="border-border" />

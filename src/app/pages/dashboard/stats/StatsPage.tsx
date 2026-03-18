@@ -20,17 +20,23 @@ export default function StatsPage() {
   const [sources, setSources] = useState<any[]>([]);
 
   useEffect(() => {
-    statsProvider.getJobCounts().then(d => {
-      if (d) setCounts({ total: d.total_open ?? 0, companies: d.total_companies ?? 0, newToday: d.new_today ?? 0 });
+    statsProvider.getJobCounts().then((d: any) => {
+      if (d) setCounts({
+        total: d.total_open ?? 0,
+        companies: d.total_companies ?? 0,
+        newToday: d.new_today ?? 0,
+        withSalary: d.with_salary ?? 0,
+        remote: d.remote ?? 0,
+      });
     }).catch(() => {});
     statsProvider.getSourceBreakdown().then(d => setSources(d || [])).catch(() => {});
   }, [statsProvider]);
 
   const statCards = [
     { label: 'Matching Jobs', value: counts.total ?? '—' },
-    { label: 'Median Salary', value: '—' },
+    { label: 'With Salary', value: counts.withSalary ?? '—' },
     { label: 'Senior+ Level', value: '—' },
-    { label: 'Remote Jobs', value: '—' },
+    { label: 'Remote Jobs', value: counts.remote ?? '—' },
     { label: 'Companies', value: counts.companies ?? '—' },
   ];
 

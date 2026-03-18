@@ -6,7 +6,7 @@
 // Auto-Refill, Earn Free Credits (Referrals), Pay-When-Hired
 // ============================================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { PageHeader } from '@app/components';
 import { useUser, useProviders } from '@providers';
 import { FileText, PenLine, Bell, Search, XCircle } from 'lucide-react';
@@ -16,6 +16,11 @@ export default function BillingPage() {
   const { billing } = useProviders();
   const [credits, setCredits] = useState(0);
   const [tier, setTier] = useState('Free');
+
+  const openPortal = useCallback(async () => {
+    const url = await billing.openBillingPortal();
+    if (url) window.open(url, '_blank');
+  }, [billing]);
 
   useEffect(() => {
     userProvider.getCurrentUser().then(u => {
@@ -53,7 +58,7 @@ export default function BillingPage() {
           <div className="text-[14px] text-accent font-semibold">{plans.find(p => p.highlight)?.price || '$0'}/mo</div>
           <div className="text-[11px] text-text-faint mt-1">{plans.find(p => p.highlight)?.credits || '0'} credits included/month</div>
           <div className="text-[11px] text-text-faint">PAYG rate: {plans.find(p => p.highlight)?.payg || '$0.25'}/credit</div>
-          <button className="mt-3 px-3 py-1.5 rounded-md text-xs font-medium border border-border text-text-dim hover:border-accent">Manage Billing</button>
+          <button onClick={openPortal} className="mt-3 px-3 py-1.5 rounded-md text-xs font-medium border border-border text-text-dim hover:border-accent">Manage Billing</button>
         </div>
 
         {/* Credit Balance */}
