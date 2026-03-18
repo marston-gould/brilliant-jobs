@@ -24,7 +24,7 @@ const variantClasses: Record<BadgeVariant, string> = {
 };
 
 const sizeClasses: Record<BadgeSize, string> = {
-  sm: 'px-1.5 py-0.5 text-[10px]',
+  sm: 'px-2.5 py-[3px] text-[11px]',
   md: 'px-2 py-0.5 text-xs',
 };
 
@@ -38,7 +38,7 @@ export function Badge({
 }: BadgeProps) {
   return (
     <span
-      className={`inline-flex items-center gap-1 font-medium rounded-full border ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
+      className={`inline-flex items-center gap-1 font-semibold rounded-lg border ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
       {...props}
     >
       {dot && (

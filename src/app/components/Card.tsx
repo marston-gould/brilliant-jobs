@@ -25,7 +25,7 @@ const variantClasses: Record<CardVariant, string> = {
 const paddingClasses: Record<string, string> = {
   none: '',
   sm: 'p-3',
-  md: 'p-4',
+  md: 'p-6',
   lg: 'p-6',
 };
 
@@ -39,7 +39,7 @@ export function Card({
 }: CardProps) {
   return (
     <Component
-      className={`rounded-lg ${variantClasses[variant]} ${paddingClasses[padding]} ${className}`}
+      className={`rounded-xl ${variantClasses[variant]} ${paddingClasses[padding]} ${className}`}
       {...props}
     >
       {children}
