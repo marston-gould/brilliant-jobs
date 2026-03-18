@@ -138,7 +138,12 @@ export function JobTable({
   const getMatchScore = (jobId: string): number | null => {
     const raw = matchScores[jobId];
     if (raw === undefined || raw === null) return null;
-    return typeof raw === 'number' ? raw : raw.score;
+    if (typeof raw === 'number') return raw;
+    if (typeof raw === 'object' && raw !== null) {
+      const s = (raw as Record<string, unknown>).score;
+      return typeof s === 'number' ? s : null;
+    }
+    return null;
   };
 
   const JOBS_PER_PAGE = 50;
@@ -146,83 +151,67 @@ export function JobTable({
   const pageJobCount = state.jobs.length;
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-xs">
-        <thead>
-          <tr className="border-b border-border">
-            {COLUMNS.map((col) => (
-              <th
-                key={col.key || 'hide'}
-                className={`text-left py-2 px-1.5 text-text-faint font-medium ${col.width} ${
-                  col.sortable ? 'cursor-pointer hover:text-text-dim transition-colors' : 'cursor-default'
-                }`}
-              >
-                {col.key === 'actions' ? (
-                  <label className="flex items-center gap-1 cursor-pointer text-[10px] font-medium text-text-faint whitespace-nowrap">
-                    <input
-                      type="checkbox"
-                      checked={showPreview}
-                      onChange={(e) => setShowPreview(e.target.checked)}
-                      className="cursor-pointer"
-                    />
-                    Preview Job Spec
-                  </label>
-                ) : (
-                  <>
-                    {col.label}
-                    {col.sortable && <span className="ml-0.5 opacity-40">↕</span>}
-                  </>
-                )}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {/* Loading state */}
-          {state.loading && state.jobs.length === 0 && (
-            <>
-              {Array.from({ length: 8 }).map((_, i) => (
-                <SkeletonRow key={i} />
-              ))}
-            </>
-          )}
+    <div>
+      {/* Sort bar + Preview toggle — legacy: sort controls above card grid */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1">
+          {COLUMNS.filter(c => c.sortable).map(col => (
+            <button key={col.key} className="px-2 py-1 rounded text-[10px] font-medium text-text-faint border border-border hover:border-accent transition-colors">
+              {col.label} ↕
+            </button>
+          ))}
+        </div>
+        <label className="flex items-center gap-1 cursor-pointer text-[10px] font-medium text-text-faint">
+          <input type="checkbox" checked={showPreview} onChange={(e) => setShowPreview(e.target.checked)} className="cursor-pointer" />
+          Preview JD
+        </label>
+      </div>
 
-          {/* Error state */}
-          {state.error && <ErrorState message={state.error} />}
+      {/* Loading state */}
+      {state.loading && state.jobs.length === 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="border border-border rounded-xl bg-bg-card p-4 animate-pulse">
+              <div className="h-4 w-2/3 bg-bg-input rounded mb-2" />
+              <div className="h-3 w-1/2 bg-bg-input rounded mb-3" />
+              <div className="h-3 w-1/4 bg-bg-input rounded" />
+            </div>
+          ))}
+        </div>
+      )}
 
-          {/* Empty state */}
-          {!state.loading && !state.error && state.jobs.length === 0 && (
-            <EmptyState hasFilters={state.total > 0} />
-          )}
+      {/* Error state */}
+      {state.error && (
+        <div className="text-center py-12 text-red text-sm">{state.error}</div>
+      )}
 
-          {/* Job rows */}
-          {state.jobs.map((job) => {
-            const isNew = !!(
-              lastFeedView &&
-              job.first_seen_at &&
-              new Date(job.first_seen_at) > lastFeedView
-            );
+      {/* Empty state */}
+      {!state.loading && !state.error && state.jobs.length === 0 && (
+        <div className="text-center py-12 text-text-faint">
+          <p className="text-sm font-semibold">No jobs found</p>
+          <p className="text-xs mt-1">Try adjusting your filters or search criteria</p>
+        </div>
+      )}
 
-            return (
-              <JobRow
-                key={job.greenhouse_id}
-                job={job}
-                isSaved={savedJobIds.has(job.greenhouse_id)}
-                isApplied={appliedJobIds.has(job.greenhouse_id)}
-                isNew={isNew}
-                matchScore={getMatchScore(job.greenhouse_id)}
-                fraudInfo={fraudCache[job.greenhouse_id] || null}
-                aiInfo={aiCache[job.greenhouse_id] || null}
-                levelInfo={getJobLevel(job.title, levelHierarchy)}
-                onSave={onSave}
-                onHide={onHide}
-                onApply={onApply}
-                showPreview={showPreview}
-              />
-            );
-          })}
-        </tbody>
-      </table>
+      {/* Job card grid — 2 columns per legacy */}
+      {state.jobs.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {state.jobs.map((job) => (
+            <JobCard
+              key={job.greenhouse_id}
+              job={job}
+              isSaved={savedJobIds.has(job.greenhouse_id)}
+              isApplied={appliedJobIds.has(job.greenhouse_id)}
+              matchScore={getMatchScore(job.greenhouse_id)}
+              levelInfo={getJobLevel(job.title, levelHierarchy)}
+              onSave={onSave}
+              onHide={onHide}
+              onApply={onApply}
+              showPreview={showPreview}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Pagination */}
       {state.jobs.length > 0 && (

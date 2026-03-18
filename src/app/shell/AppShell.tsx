@@ -44,8 +44,9 @@ interface NavItem {
   label: string;
   Icon: LucideIcon;
   indent?: boolean;
-  dot?: boolean;   // show status dot (green/yellow/red per legacy ext-status-dot)
-  badge?: boolean;  // show count badge (legacy nav-badge)
+  dot?: boolean;
+  dotColor?: string;  // green/yellow/red per legacy ext-status-dot
+  badge?: boolean;
 }
 
 interface NavSection {
@@ -59,21 +60,21 @@ const SECTIONS: NavSection[] = [
   {
     label: '',
     items: [
-      { path: '/app/get-started', label: 'Get Started', Icon: Star, dot: true },
+      { path: '/app/get-started', label: 'Get Started', Icon: Star, dot: true, dotColor: 'var(--green)' },
     ],
   },
   {
     label: 'SEARCH',
     items: [
-      { path: '/app/feed', label: 'Jobs Feed', Icon: Briefcase, dot: true, badge: true },
-      { path: '/app/tuning', label: 'Search Tuning', Icon: SlidersHorizontal, indent: true, dot: true },
-      { path: '/app/resumes', label: 'Resumes', Icon: FileText, dot: true, badge: true },
+      { path: '/app/feed', label: 'Jobs Feed', Icon: Briefcase, dot: true, dotColor: 'var(--green)', badge: true },
+      { path: '/app/tuning', label: 'Search Tuning', Icon: SlidersHorizontal, indent: true, dot: true, dotColor: 'var(--warm)' },
+      { path: '/app/resumes', label: 'Resumes', Icon: FileText, dot: true, dotColor: '#ef4444', badge: true },
     ],
   },
   {
     label: 'APPLICATIONS',
     items: [
-      { path: '/app/applications', label: 'My Applications', Icon: Activity, dot: true, badge: true },
+      { path: '/app/applications', label: 'My Applications', Icon: Activity, dot: true, dotColor: '#ef4444', badge: true },
       { path: '/app/interview-prep', label: 'Interview Prep', Icon: GraduationCap },
     ],
   },
@@ -219,10 +220,9 @@ export function AppShell() {
                 >
                   <item.Icon className="w-[18px] h-[18px] flex-shrink-0 opacity-80" strokeWidth={1.75} />
                   <span className="flex-1">{item.label}</span>
-                  {/* Legacy: ext-status-dot — green/yellow/red status indicators */}
                   {item.dot && (
                     <span className="w-[7px] h-[7px] rounded-full flex-shrink-0"
-                      style={{ background: 'var(--green, #22c55e)' }} />
+                      style={{ background: item.dotColor || 'var(--green, #22c55e)' }} />
                   )}
                 </NavLink>
               ))}
