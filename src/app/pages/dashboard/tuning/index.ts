@@ -1,1 +1,1 @@
-export { TuningPage } from './TuningPage';
+export { default } from "./TuningPage";

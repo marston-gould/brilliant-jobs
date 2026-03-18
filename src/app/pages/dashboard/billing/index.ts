@@ -1,1 +1,1 @@
-export { BillingPage } from './BillingPage';
+export { default } from "./BillingPage";
