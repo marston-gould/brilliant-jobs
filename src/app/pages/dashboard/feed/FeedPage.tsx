@@ -405,6 +405,27 @@ export function FeedPage() {
             onToggle={actions.toggleSort}
             onRemove={actions.removeSort}
           />
+
+          {/* Improve Filters — legacy bjImproveFiltersFromHidden */}
+          {state.total > 0 && (
+            <button onClick={async () => {
+              (window as any).__bjToast?.('Analyzing hidden jobs for filter suggestions...', 'info');
+              try {
+                const { callGateway } = await import('@app/lib/supabase');
+                const result = await callGateway('improve-filters', {});
+                if (result?.suggestions?.length) {
+                  (window as any).__bjToast?.(`${result.suggestions.length} filter suggestions found`, 'success');
+                } else {
+                  (window as any).__bjToast?.('No new suggestions — hide more poor matches first', 'info');
+                }
+              } catch { (window as any).__bjToast?.('Could not analyze hidden jobs', 'info'); }
+            }}
+              className="ml-auto px-2.5 py-[3px] text-[10px] font-semibold rounded-md border border-warm/30 text-warm hover:bg-warm/10 transition-all"
+              style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.15), rgba(239,68,68,0.1))' }}
+              title="Analyze hidden jobs to suggest NOT filters">
+              🔧 Improve Filters
+            </button>
+          )}
         </div>
       )}
 

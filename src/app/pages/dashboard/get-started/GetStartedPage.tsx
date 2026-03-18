@@ -90,9 +90,16 @@ export default function GetStartedPage() {
     if (!file) return;
     try {
       await resumeProvider.upload(file);
-      navigate('/app/resumes');
+      // Auto-generate filters from uploaded resume (legacy createFilterFromProfile)
+      try {
+        const { callGateway } = await import('@app/lib/supabase');
+        await callGateway('generate-filters-from-resume', { auto: true });
+        (window as any).__bjToast?.('Resume uploaded — filters generated from your experience', 'success');
+      } catch { /* filter generation optional */ }
+      navigate('/app/feed');
     } catch (err) {
       console.error('Resume upload failed:', err);
+      (window as any).__bjToast?.('Resume upload failed', 'info');
     }
   };
 
