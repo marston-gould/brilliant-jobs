@@ -387,7 +387,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const CACHE_TTL = 60 * 60 * 1e3;
     function applyStats(stats) {
       if (stats.jobs != null) {
-        document.getElementById("lp-active-jobs").textContent = Math.floor(stats.jobs / 1e3).toLocaleString() + "K+";
+        document.getElementById("lp-active-jobs").textContent = (Math.floor(stats.jobs / 1e3) * 1e3).toLocaleString() + "+";
         const heroJobs = document.getElementById("lp-hero-jobs");
         if (heroJobs) heroJobs.textContent = (Math.floor(stats.jobs / 1e3) * 1e3).toLocaleString() + "+";
       }
@@ -516,7 +516,7 @@ document.addEventListener("DOMContentLoaded", function() {
         bjError("stats_fetch_error", e, { attempt: statsRetryCount + 1 });
         reportError("landing_app", e);
         console.log("[BJ] Stats fetch error:", e.message);
-        document.getElementById("lp-active-jobs").textContent = "400K+";
+        document.getElementById("lp-active-jobs").textContent = "400,000+";
         document.getElementById("lp-companies").textContent = "39,000+";
         var hiringFallback = document.getElementById("lp-companies-hiring-stat");
         if (hiringFallback) hiringFallback.textContent = "8,700+";
