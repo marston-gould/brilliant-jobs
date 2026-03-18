@@ -6,8 +6,65 @@
 // Uses design system Input component. Zero inline styles.
 // ============================================================
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Input, Button } from '@components';
+import { supabase } from '@lib/supabase';
+
+// ── Company autocomplete — legacy .company-dropdown ──────────
+function CompanyAutocomplete({ value, onChange, placeholder, onKeyDown }: {
+  value: string; onChange: (v: string) => void; placeholder: string;
+  onKeyDown?: (e: React.KeyboardEvent) => void;
+}) {
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const search = useCallback((q: string) => {
+    if (q.length < 2) { setSuggestions([]); setOpen(false); return; }
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const { data } = await supabase.from('ats_jobs')
+          .select('company_name').ilike('company_name', `${q}%`).limit(8) as any;
+        if (data?.length) {
+          const unique = Array.from(new Set(data.map((r: any) => String(r.company_name)))) as string[];
+          setSuggestions(unique.slice(0, 7));
+          setOpen(true);
+        } else { setSuggestions([]); setOpen(false); }
+      } catch { setSuggestions([]); }
+    }, 200);
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div className="relative" ref={ref}>
+      <input type="text"
+        className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
+        placeholder={placeholder} value={value}
+        onChange={e => { onChange(e.target.value); search(e.target.value); }}
+        onFocus={() => { if (suggestions.length) setOpen(true); }}
+        onKeyDown={onKeyDown} />
+      {open && suggestions.length > 0 && (
+        <div className="absolute z-[100] left-0 right-0 top-full mt-0.5 bg-bg-card border border-border rounded-lg shadow-[0_8px_24px_rgba(0,0,0,0.3)] max-h-[220px] overflow-y-auto">
+          {suggestions.map(s => (
+            <div key={s} className="px-3 py-2 text-[12px] text-text-dim cursor-pointer hover:bg-bg-hover hover:text-text transition-colors border-b border-border/30 last:border-0"
+              onClick={() => { onChange(s); setOpen(false); }}>
+              {s}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export interface FilterValues {
   what: string;
@@ -187,12 +244,10 @@ export function FilterBuilder({
           {/* Who / Not */}
           <div className="grid grid-cols-2 gap-2">
             <FilterRow label="Who" labelClass="text-pink" onBrowse={onBrowse ? () => onBrowse('company', 'include') : undefined}>
-              <input
-                type="text"
-                className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
-                placeholder="company name…"
+              <CompanyAutocomplete
                 value={values.who}
-                onChange={(e) => update('who', e.target.value)}
+                onChange={(v) => update('who', v)}
+                placeholder="company name…"
                 onKeyDown={handleKeyDown}
               />
             </FilterRow>

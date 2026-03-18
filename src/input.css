@@ -340,3 +340,16 @@
   background-clip: text;
   animation: shimmerSweep 1.2s ease-in-out;
 }
+
+/* D8. Page-specific responsive overrides — legacy @media breakpoints */
+@media (max-width: 720px) {
+  .resume-row { flex-direction: column; }
+  .resume-row > .resume-card { flex: 1 1 auto; }
+}
+@media (max-width: 600px) {
+  .hero-gradient { padding: 20px 18px !important; margin-bottom: 14px !important; }
+  .stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
+@media (max-width: 900px) {
+  .stats-chart-grid { grid-template-columns: 1fr !important; }
+}
