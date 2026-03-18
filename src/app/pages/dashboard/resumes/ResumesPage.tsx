@@ -13,8 +13,9 @@
 // Zero inline styles. Design tokens via Tailwind.
 // ============================================================
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { PageHeader } from '@app/components';
+import { useProviders } from '@providers';
 import {
   ResumesHero,
   ResumeCard,
@@ -29,6 +30,25 @@ type ResumeTab = 'my-resumes' | 'builder' | 'linkedin';
 export function ResumesPage() {
   const [state, actions] = useResumes();
   const [activeTab, setActiveTab] = useState<ResumeTab>('my-resumes');
+  const { resumes: resumeProvider } = useProviders();
+  const [builderStatus, setBuilderStatus] = useState('');
+  const [bulletStatus, setBulletStatus] = useState('');
+
+  const handleParseResume = useCallback(async (file: File) => {
+    setBuilderStatus('Parsing...');
+    try {
+      const result = await (resumeProvider as any).parseResume(file);
+      setBuilderStatus(result ? 'Parsed successfully' : 'Parse complete');
+    } catch (e: any) { setBuilderStatus(`Error: ${e.message}`); }
+  }, [resumeProvider]);
+
+  const handleGenerateBullets = useCallback(async (roleTitle: string, company?: string, context?: string) => {
+    setBulletStatus('Generating...');
+    try {
+      await (resumeProvider as any).generateBullets(roleTitle, company, context);
+      setBulletStatus('Generated');
+    } catch (e: any) { setBulletStatus(`Error: ${e.message}`); }
+  }, [resumeProvider]);
 
   const pipelineMeta = useMemo(() => actions.getPipelineMeta(), [actions]);
   const levels = useMemo(() => actions.getLevels(), [actions]);
@@ -261,8 +281,14 @@ export function ResumesPage() {
                   className="w-full px-3 py-2 rounded-md border border-border bg-bg-main text-sm text-text placeholder:text-text-faint focus:outline-none focus:ring-2 focus:ring-accent/40" />
               </div>
 
-              <div className="mt-4">
-                <button className="px-4 py-2 rounded-md bg-accent text-white text-sm font-semibold">Parse Resume</button>
+              <div className="mt-4 flex items-center gap-2">
+                <button onClick={() => {
+                  const input = document.createElement('input');
+                  input.type = 'file'; input.accept = '.pdf,.doc,.docx';
+                  input.onchange = (e) => { const f = (e.target as HTMLInputElement).files?.[0]; if (f) handleParseResume(f); };
+                  input.click();
+                }} className="px-4 py-2 rounded-md bg-accent text-white text-sm font-semibold">Parse Resume</button>
+                {builderStatus && <span className="text-[11px] text-text-dim">{builderStatus}</span>}
               </div>
             </div>
           </div>

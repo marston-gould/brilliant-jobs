@@ -282,7 +282,7 @@ import type {
   InterviewQuestion, InterviewQuestionFilters, InterviewClusterMeta,
   InterviewSession, SimulationMessage, InterviewScorecard, UserNotification,
 } from './types';
-import { safeReadLS, safeWriteLS, callGateway } from '@lib/supabase';
+import { safeReadLS, safeWriteLS, callGateway, GATEWAY_URL, getAccessToken } from '@lib/supabase';
 
 export class SupabaseResumeProvider implements ResumeProvider {
   async getAll() {
@@ -361,6 +361,31 @@ export class SupabaseResumeProvider implements ResumeProvider {
   async scoreAI(resumeText: string) {
     const result = await callGateway<any>('score-resume', { mode: 'single', resume_text: resumeText }, { timeout: 30000 });
     return { score: result?.score ?? 0, summary: result?.summary };
+  }
+  async parseResume(file: File) {
+    const token = await getAccessToken();
+    if (!token) throw new ProviderError('Not authenticated', 'AUTH_REQUIRED');
+    const formData = new FormData();
+    formData.append('file', file);
+    const resp = await fetch(`${GATEWAY_URL}/resume-parse`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData,
+    });
+    if (!resp.ok) throw new ProviderError(`Parse failed: ${resp.status}`, 'PARSE_FAILED');
+    return resp.json();
+  }
+  async generateBullets(roleTitle: string, company?: string, context?: string, targetJobId?: string) {
+    return callGateway<any>('resume-rewrite-bullet', { role_title: roleTitle, company, context, target_job_id: targetJobId }, { timeout: 20000 });
+  }
+  async generateSummary(resumeId: string, tone: string, targetJobId?: string) {
+    return callGateway<any>('resume-generate', { resume_id: resumeId, section: 'summary', tone, target_job_id: targetJobId }, { timeout: 20000 });
+  }
+  async optimizeForJob(resumeId: string, jobId: string) {
+    return callGateway<any>('resume-optimize', { resume_id: resumeId, job_id: jobId }, { timeout: 30000 });
+  }
+  async generateDocx(resumeId: string, template: string) {
+    return callGateway<any>('export-resume-docx', { resume_id: resumeId, template }, { timeout: 20000 });
   }
 }
 
