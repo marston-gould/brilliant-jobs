@@ -81,7 +81,7 @@ export function SavedSearches({
         >
           <polyline points="6 9 12 15 18 9" />
         </svg>
-        <span className="text-xs font-semibold text-text-dim">Saved Searches</span>
+        <span className="text-[13px] font-semibold text-text-dim">Saved Searches</span>
         {checkedCount > 0 && (
           <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-accent/10 text-accent">
             {checkedCount}

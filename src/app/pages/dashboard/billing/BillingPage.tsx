@@ -120,7 +120,7 @@ export default function BillingPage() {
       <div className={cardCls}>
         <div className="text-[14px] font-bold text-text mb-1">Plans</div>
         <div className="text-[12px] text-text-dim mb-4">Upgrade for more credits and lower PAYG rates</div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-4">
           {plans.map(p => (
             <div key={p.name} className={`border rounded-xl p-4 text-center transition-all ${p.highlight ? 'border-accent bg-accent/5' : 'border-border hover:border-accent'}`}>
               <div className="text-[15px] font-bold text-text">{p.name}</div>
@@ -141,7 +141,7 @@ export default function BillingPage() {
       <div className={cardCls}>
         <div id="credit-packs" className="text-[14px] font-bold text-text mb-1">Buy Credit Packs</div>
         <div className="text-[12px] text-text-dim mb-4">One-time purchase at your plan's rate. Credits never expire.</div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-3.5">
           {[
             { amount: 25, price: '$5' },
             { amount: 60, price: '$10', badge: 'Most Popular' },

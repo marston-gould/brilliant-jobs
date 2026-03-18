@@ -17,15 +17,15 @@ const modes: Array<{ key: 'filters' | 'chat' | 'guided'; label: string; icon: st
 
 export function SearchModeToggle({ mode, onModeChange }: SearchModeToggleProps) {
   return (
-    <div className="flex items-center py-2" style={{ marginBottom: 0 }}>
-      <div className="inline-flex rounded-lg bg-bg-input border border-border p-0.5">
+    <div className="flex items-center mb-4">
+      <div className="inline-flex gap-1 rounded-lg bg-[var(--bg-hover)] p-[3px]">
         {modes.map(m => (
           <button
             key={m.key}
             type="button"
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+            className={`flex items-center gap-1 px-3.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
               mode === m.key
-                ? 'bg-bg-card text-text shadow-sm'
+                ? 'bg-accent text-white'
                 : 'text-text-faint hover:text-text'
             }`}
             onClick={() => onModeChange(m.key)}

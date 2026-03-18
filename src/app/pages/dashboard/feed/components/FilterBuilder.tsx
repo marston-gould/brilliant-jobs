@@ -99,10 +99,10 @@ export function FilterBuilder({
 
   return (
     <div className="border border-border rounded-lg overflow-hidden">
-      {/* Collapse header */}
+      {/* Collapse header — legacy .qb-collapse-header */}
       <button
         type="button"
-        className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-bg-hover/50 transition-colors"
+        className="flex items-center gap-2 w-full px-3 py-2.5 text-left text-[13px] font-semibold text-text-dim hover:bg-bg-hover/50 transition-colors select-none"
         onClick={onToggleCollapse}
       >
         <svg

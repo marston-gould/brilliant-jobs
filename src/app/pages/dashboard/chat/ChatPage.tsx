@@ -35,12 +35,12 @@ export function ChatPage() {
     <div className="max-w-3xl mx-auto flex flex-col h-[calc(100vh-120px)]">
       {/* Mode toggle + clear */}
       <div className="flex items-center justify-between py-3">
-        <div className="flex gap-1">
+        <div className="flex gap-1 p-[3px] rounded-lg bg-[var(--bg-hover)] w-fit">
           {(['filters', 'chat'] as const).map(mode => (
             <button
               key={mode}
-              className={`px-3 py-1 text-xs font-medium rounded-full ${
-                state.mode === mode ? 'bg-accent text-white' : 'bg-bg-elevated text-text-faint hover:text-text'
+              className={`px-3.5 py-1 text-[11px] font-semibold rounded-md transition-all border ${
+                state.mode === mode ? 'bg-accent text-white border-accent' : 'bg-bg-card text-text-dim border-transparent hover:border-accent'
               }`}
               onClick={() => actions.setMode(mode)}
             >

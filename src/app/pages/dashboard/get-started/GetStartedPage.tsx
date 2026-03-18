@@ -181,9 +181,9 @@ export default function GetStartedPage() {
                 { n: 2, title: 'Open Chrome Extensions', desc: 'Go to chrome://extensions and turn on Developer mode (top right toggle).' },
                 { n: 3, title: 'Load the extension', desc: 'Click Load unpacked and select the unzipped folder from step 1.' },
                 { n: 4, title: 'Pin and open', desc: 'Click the puzzle icon in Chrome\'s toolbar and pin the Brilliant Jobs extension.' },
-              ].map(s => (
-                <div key={s.n} className="flex gap-3 items-start">
-                  <div className="w-6 h-6 rounded-full bg-accent/10 text-accent flex items-center justify-center text-[11px] font-bold flex-shrink-0">{s.n}</div>
+              ].map((s, i, arr) => (
+                <div key={s.n} className={`flex gap-4 items-start py-4 ${i < arr.length - 1 ? 'border-b border-border' : ''}`}>
+                  <div className="w-7 h-7 rounded-full bg-accent/10 text-accent flex items-center justify-center text-[12px] font-bold flex-shrink-0">{s.n}</div>
                   <div>
                     <div className="text-[12px] font-semibold text-text">{s.title}</div>
                     <div className="text-[11px] text-text-faint">{s.desc}</div>
@@ -271,8 +271,8 @@ export default function GetStartedPage() {
         </div>
       </Step>
 
-      {/* Data advantage — legacy: .gs-advantage */}
-      <div className="border border-border rounded-xl bg-bg-card p-6">
+      {/* Data advantage — legacy: .gs-advantage { radius:14px; padding:28px; shadow; mt:24px } */}
+      <div className="border border-border rounded-[14px] bg-bg-card p-7 mt-6 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
         <div className="text-[15px] font-bold flex items-center gap-2 mb-2">
           <TrendingUp className="w-5 h-5 text-green" strokeWidth={1.75} />
           Your data advantage
