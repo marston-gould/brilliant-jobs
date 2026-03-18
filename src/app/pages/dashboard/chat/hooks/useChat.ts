@@ -1,11 +1,13 @@
 // ============================================================
-// useChat — Chat data hook (SA-017)
+// useChat — Chat data hook (SA-017 → SPA-PHASE-A rewrite)
 // ============================================================
-// Standalone hook — zero window.* dependencies (SPA-CUT-3).
+// Loads history from localStorage (provider-synced).
+// sendMessage wired to callGateway('chat-job-search').
+// No polling — chat updates only on user action.
 // ============================================================
 
-import { useCallback, useEffect, useReducer, useRef } from 'react';
-import { safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
+import { useCallback, useEffect, useReducer } from 'react';
+import { safeReadLS, safeWriteLS, callGateway } from '@lib/supabase';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -26,10 +28,11 @@ interface ChatState {
 type Action =
   | { type: 'LOADED'; data: Partial<ChatState> }
   | { type: 'ERROR'; error: string }
-  | { type: 'ADD_MESSAGE'; message: any };
+  | { type: 'ADD_MESSAGE'; message: ChatMessage }
+  | { type: 'SET_STREAMING'; streaming: boolean };
 
 const initialState: ChatState = {
-  loading: true,
+  loading: false,
   error: null,
   messages: [],
   mode: 'filters',
@@ -42,6 +45,7 @@ function reducer(state: ChatState, action: Action): ChatState {
     case 'LOADED': return { ...state, loading: false, error: null, ...action.data };
     case 'ERROR': return { ...state, loading: false, error: action.error };
     case 'ADD_MESSAGE': return { ...state, messages: [...state.messages, action.message] };
+    case 'SET_STREAMING': return { ...state, streaming: action.streaming };
     default: return state;
   }
 }
@@ -53,46 +57,23 @@ export function useChat(): [ChatState, {
   clearChat: () => void;
 }] {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const loadData = useCallback(() => {
-    try {
-      // SPA-CUT-3: Data loaded from localStorage/Supabase (no window bridge)
-      const sessions = Array.isArray(null) ? null : [];
-      // @ts-ignore SPA-CUT-3
-      const currentSession = sessions[sessions.length - 1];
-      // @ts-ignore SPA-CUT-3
-      const messages: ChatMessage[] = currentSession?.messages || [];
-
-      dispatch({
-        type: 'LOADED',
-        data: {
-          messages,
-          mode: null === 'chat' ? 'chat' : 'filters',
-          // @ts-ignore SPA-CUT-3
-          streaming: !!null,
-          filterOverride: safeReadLS('bj__chatFilterOverride', null),
-        },
-      });
-    } catch (e) {
-      dispatch({ type: 'ERROR', error: String(e) });
-    }
-  }, []);
-
+  // Load chat history from localStorage on mount — no polling needed
   useEffect(() => {
-    // SPA-CUT-3: Chat init handled by React component mount
-    loadData();
-    pollRef.current = setInterval(loadData, 1000); // faster poll for chat
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [loadData]);
+    const history = safeReadLS<ChatMessage[]>('bj_chat_history', []);
+    const storedMode = (localStorage.getItem('bj_search_mode') || 'filters') as 'filters' | 'chat';
+    const filterOverride = safeReadLS<Record<string, any> | null>('bj__chatFilterOverride', null);
+    dispatch({ type: 'LOADED', data: { messages: history, mode: storedMode, filterOverride } });
+  }, []);
 
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim()) return;
-    const userMsg = { role: 'user' as const, content: text, timestamp: new Date().toISOString() };
+    const userMsg: ChatMessage = { role: 'user', content: text, timestamp: new Date().toISOString() };
     dispatch({ type: 'ADD_MESSAGE', message: userMsg });
+    dispatch({ type: 'SET_STREAMING', streaming: true });
 
     try {
-      const history = safeReadLS<any[]>('bj_chat_history', []);
+      const history = safeReadLS<ChatMessage[]>('bj_chat_history', []);
       history.push(userMsg);
       const sessionId = localStorage.getItem('bj_chat_session') || crypto.randomUUID();
       localStorage.setItem('bj_chat_session', sessionId);
@@ -104,12 +85,12 @@ export function useChat(): [ChatState, {
         session_id: sessionId,
         mode,
         filters: derivedFilters,
-        history: history.slice(-10).map((m: any) => ({ role: m.role, content: m.content })),
+        history: history.slice(-10).map((m) => ({ role: m.role, content: m.content })),
       }, { timeout: 30000 });
 
-      const assistantMsg = {
-        role: 'assistant' as const,
-        content: result?.reply || 'Sorry, I couldn\'t process that.',
+      const assistantMsg: ChatMessage = {
+        role: 'assistant',
+        content: result?.reply || "Sorry, I couldn't process that.",
         timestamp: new Date().toISOString(),
       };
       history.push(assistantMsg);
@@ -117,30 +98,40 @@ export function useChat(): [ChatState, {
       dispatch({ type: 'ADD_MESSAGE', message: assistantMsg });
 
       if (result?.filters) {
-        localStorage.setItem('bj_chat_derived_filters', JSON.stringify(result.filters));
+        const existing = JSON.parse(localStorage.getItem('bj_chat_derived_filters') || '{}');
+        localStorage.setItem('bj_chat_derived_filters', JSON.stringify({ ...existing, ...result.filters, _appliedAt: Date.now() }));
       }
     } catch (e: any) {
-      dispatch({ type: 'ADD_MESSAGE', message: { role: 'assistant', content: 'Error: ' + (e.message || 'Failed to connect'), timestamp: new Date().toISOString() } });
+      const errMsg: ChatMessage = {
+        role: 'assistant',
+        content: 'Sorry, something went wrong. Please try again.',
+        timestamp: new Date().toISOString(),
+      };
+      dispatch({ type: 'ADD_MESSAGE', message: errMsg });
+    } finally {
+      dispatch({ type: 'SET_STREAMING', streaming: false });
     }
   }, []);
 
   const setMode = useCallback((mode: 'filters' | 'chat') => {
-    // SPA-CUT-REMEDIATION: Persist mode choice to localStorage
     try { localStorage.setItem('bj_search_mode', mode); } catch { /* non-fatal */ }
+    dispatch({ type: 'LOADED', data: { mode } });
   }, []);
 
   const applyFilters = useCallback((filters: Record<string, any>) => {
-    // SPA-CUT-REMEDIATION: Save derived filters from chat to localStorage for Feed pickup
     try {
       const existing = JSON.parse(localStorage.getItem('bj_chat_derived_filters') || '{}');
-      const merged = { ...existing, ...filters, _appliedAt: Date.now() };
-      localStorage.setItem('bj_chat_derived_filters', JSON.stringify(merged));
+      localStorage.setItem('bj_chat_derived_filters', JSON.stringify({ ...existing, ...filters, _appliedAt: Date.now() }));
     } catch { /* non-fatal */ }
   }, []);
 
   const clearChat = useCallback(() => {
-    // SPA-CUT-REMEDIATION: Clear chat state from localStorage
-    try { localStorage.removeItem('bj_chat_history'); localStorage.removeItem('bj_chat_session'); } catch { /* non-fatal */ }
+    try {
+      localStorage.removeItem('bj_chat_history');
+      localStorage.removeItem('bj_chat_session');
+      localStorage.removeItem('bj_chat_derived_filters');
+    } catch { /* non-fatal */ }
+    dispatch({ type: 'LOADED', data: { messages: [], filterOverride: null } });
   }, []);
 
   return [state, { sendMessage, setMode, applyFilters, clearChat }];

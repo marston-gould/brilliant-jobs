@@ -57,7 +57,7 @@ export function useOverview(): [OverviewState, OverviewActions] {
     // Init admin panel
     // SPA-CUT-3: Admin init handled by React component mount
     loadData();
-    pollRef.current = setInterval(loadData, 3000);
+    pollRef.current = setInterval(loadData, 30000) // 30s poll;
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 

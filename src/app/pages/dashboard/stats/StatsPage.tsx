@@ -8,7 +8,7 @@
 // ============================================================
 
 import { useState, useEffect, useRef } from 'react';
-import { PageHeader } from '@app/components';
+import { PageHeader, SkeletonHeader, SkeletonMetricRow, SkeletonTable } from '@app/components';
 import { useStatsProvider } from '@providers';
 
 // Lazy-loaded ECharts chart box
@@ -40,18 +40,22 @@ export default function StatsPage() {
   const [salaryDist, setSalaryDist] = useState<{ range: string; cnt: number }[]>([]);
   const [resumeList, setResumeList] = useState<{ id: string; name: string }[]>([]);
   const [selectedResumeId, setSelectedResumeId] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    statsProvider.getJobCounts().then((d: any) => {
-      if (d) setCounts({
-        total: d.total_open ?? 0,
-        companies: d.total_companies ?? 0,
-        newToday: d.new_today ?? 0,
-        withSalary: d.with_salary ?? 0,
-        remote: d.remote ?? 0,
-      });
-    }).catch(() => {});
-    statsProvider.getSourceBreakdown().then(d => setSources(d || [])).catch(() => {});
+    setLoading(true);
+    Promise.all([
+      statsProvider.getJobCounts().then((d: any) => {
+        if (d) setCounts({
+          total: d.total_open ?? 0,
+          companies: d.total_companies ?? 0,
+          newToday: d.new_today ?? 0,
+          withSalary: d.with_salary ?? 0,
+          remote: d.remote ?? 0,
+        });
+      }).catch(() => {}),
+      statsProvider.getSourceBreakdown().then(d => setSources(d || [])).catch(() => {}),
+    ]).finally(() => setLoading(false));
     // Load salary distribution from RPC
     import('@app/lib/supabase').then(({ supabase, getUser }) => {
       supabase.rpc('get_salary_distribution').then(({ data }: any) => {

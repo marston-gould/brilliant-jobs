@@ -44,7 +44,7 @@ export function useSeo(): [SeoState, SeoActions] {
     // @ts-ignore SPA-CUT-3: fire-and-forget
         callGateway('admin-analytics', { action: 'seo' }).catch(() => { /* non-fatal */ });
     loadData();
-    pollRef.current = setInterval(loadData, 3000);
+    pollRef.current = setInterval(loadData, 30000) // 30s poll;
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 

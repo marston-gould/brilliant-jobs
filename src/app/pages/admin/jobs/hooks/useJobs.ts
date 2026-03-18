@@ -27,34 +27,27 @@ export function useJobs(): [JobsState, JobsActions] {
   const [state, dispatch] = useReducer(reducer, initialState);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const loadData = useCallback(() => {
+  const loadData = useCallback(async (page = 1) => {
     try {
-      // SPA-CUT-3: Data loaded from localStorage/Supabase (no window bridge)
-      dispatch({ type: 'LOADED', data: {
-        // @ts-ignore SPA-CUT-3
-        jobs: Array.isArray(null) ? null : [],
-        total: safeReadLS('bj__adminJobsTotal', 0),
-        page: 1,
-      }});
+      const rawJobs = await providers.admin.getJobs(page - 1);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const jobs = (rawJobs as any[]) || [];
+      dispatch({ type: 'LOADED', data: { jobs, total: jobs.length, page } });
     } catch (e) {
       dispatch({ type: 'ERROR', error: String(e) });
     }
   }, []);
 
   useEffect(() => {
-    // Init admin panel
-    // @ts-ignore SPA-CUT-3: fire-and-forget
-        providers.admin.getJobs();
     loadData();
-    pollRef.current = setInterval(loadData, 3000);
+    pollRef.current = setInterval(() => loadData(), 30000); // 30s poll
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 
   const loadPage = useCallback((page: number) => {
-    // @ts-ignore SPA-CUT-3: fire-and-forget
-        providers.admin.getJobs();
-  }, []);
-  const refresh = useCallback(() => loadPage(1), [loadPage]);
+    loadData(page);
+  }, [loadData]);
+  const refresh = useCallback(() => loadData(1), [loadData]);
 
   return [state, { loadPage, refresh }];
 }

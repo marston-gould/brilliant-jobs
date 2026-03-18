@@ -44,7 +44,7 @@ export function useCompliance(): [ComplianceState, ComplianceActions] {
     // @ts-ignore SPA-CUT-3: fire-and-forget
         callGateway('admin-analytics', { action: 'compliance' }).catch(() => { /* non-fatal */ });
     loadData();
-    pollRef.current = setInterval(loadData, 3000);
+    pollRef.current = setInterval(loadData, 30000) // 30s poll;
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 

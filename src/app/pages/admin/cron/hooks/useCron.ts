@@ -27,17 +27,15 @@ export function useCron(): [CronState, CronActions] {
   const [state, dispatch] = useReducer(reducer, initialState);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const loadData = useCallback(() => {
+  const loadData = useCallback(async () => {
     try {
-      // SPA-CUT-3: Data loaded from localStorage/Supabase (no window bridge)
-      const jobs = Array.isArray(null) ? null : [];
+      const rawJobs = await providers.admin.getCronJobs();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const jobs = (rawJobs as any[]) || [];
       dispatch({ type: 'LOADED', data: {
-        // @ts-ignore SPA-CUT-3
         jobs,
-        // @ts-ignore SPA-CUT-3
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        activeCount: jobs.filter((j: any) => j.status === 'active').length,
-        // @ts-ignore SPA-CUT-3
+        activeCount: jobs.filter((j: any) => j.enabled !== false).length,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         failedCount: jobs.filter((j: any) => j.status === 'failed').length,
       }});
@@ -47,11 +45,9 @@ export function useCron(): [CronState, CronActions] {
   }, []);
 
   useEffect(() => {
-    // Init admin panel
-    // @ts-ignore SPA-CUT-3: fire-and-forget
-        providers.admin.getCronJobs();
     loadData();
-    pollRef.current = setInterval(loadData, 3000);
+    pollRef.current = setInterval(loadData, 30000); // 30s poll
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 

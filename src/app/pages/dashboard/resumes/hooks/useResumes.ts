@@ -157,7 +157,7 @@ export function useResumes(): [ResumesState, ReturnType<typeof buildActions>] {
 
   useEffect(() => {
     const timer = setTimeout(loadData, 100);
-    pollRef.current = setInterval(loadData, 3000);
+    pollRef.current = setInterval(loadData, 30000); // 30s — resumes don't change frequently
     return () => {
       clearTimeout(timer);
       if (pollRef.current) clearInterval(pollRef.current);

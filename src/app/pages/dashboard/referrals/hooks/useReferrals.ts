@@ -1,9 +1,12 @@
 // ============================================================
-// useReferrals — Referrals data hook (SA-017)
+// useReferrals — Referrals data hook (SPA-PHASE-A rewrite)
+// ============================================================
+// Loads referral stats/leaderboard/code from providers.referrals
+// (Supabase-backed). All actions are real implementations.
 // ============================================================
 
-import { useCallback, useEffect, useReducer, useRef } from 'react';
-import { safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
+import { useCallback, useEffect, useReducer } from 'react';
+import { providers } from '@app/providers/bridge';
 
 export interface ReferralStats {
   totalReferred: number;
@@ -64,23 +67,39 @@ export function useReferrals(): [ReferralsState, {
   openShareModal: (context?: string) => void;
 }] {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const loadData = useCallback(() => {
+  const loadData = useCallback(async () => {
     try {
-      // SPA-CUT-3: Data loaded from localStorage/Supabase (no window bridge)
+      const [rawStats, rawLeaderboard, code] = await Promise.all([
+        providers.referrals.getStats(),
+        providers.referrals.getLeaderboard(),
+        providers.referrals.getCode(),
+      ]);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const s = rawStats as any;
+      const stats: ReferralStats = {
+        totalReferred: s?.totalReferred ?? 0,
+        activeUsers: s?.converted ?? 0,
+        creditsEarned: s?.creditsEarned ?? 0,
+        conversionRate: s?.totalReferred > 0
+          ? Math.round(((s?.converted ?? 0) / s.totalReferred) * 100)
+          : 0,
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const leaderboard: LeaderboardEntry[] = (rawLeaderboard as any[]).map((e: any) => ({
+        rank: e.rank ?? 0,
+        name: e.displayName ?? e.userId?.substring(0, 8) ?? '—',
+        referrals: e.referralCount ?? 0,
+        credits: e.creditsEarned ?? 0,
+      }));
+
+      const link = code ? `${window.location.origin}?ref=${code}` : '';
+
       dispatch({
         type: 'LOADED',
-        data: {
-          link: safeReadLS('bj__refLink', ''),
-          code: safeReadLS('bj__refCode', ''),
-          stats: initialState.stats,
-          // @ts-ignore SPA-CUT-3
-          leaderboard: Array.isArray(null) ? null : [],
-          // @ts-ignore SPA-CUT-3
-          leaderboardEnabled: !!null,
-          period: 'month',
-        },
+        data: { code, link, stats, leaderboard, leaderboardEnabled: leaderboard.length > 0 },
       });
     } catch (e) {
       dispatch({ type: 'ERROR', error: String(e) });
@@ -88,26 +107,36 @@ export function useReferrals(): [ReferralsState, {
   }, []);
 
   useEffect(() => {
-    // Init referral hub
-    // SPA-CUT-3: Referral init handled by React component mount
     loadData();
-    pollRef.current = setInterval(loadData, 3000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const call = (name: string, ...args: any[]) => {
-    // SPA-CUT-3: Dynamic dispatch removed — actions handled by hook methods directly
-  };
+  const copyToClipboard = useCallback((text: string, label: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      (window as any).__bjToast?.(`${label} copied!`, 'success');
+    }).catch(() => {
+      (window as any).__bjToast?.('Copy failed — try manually', 'error');
+    });
+  }, []);
 
   return [state, {
-    copyLink: () => call('_refCopyLink'),
-    copyCode: () => call('_refCopyCode'),
-    shareLinkedIn: () => call('_refShareLinkedIn'),
-    shareEmail: () => call('_refShareEmail'),
-    shareSMS: () => call('_refShareSMS'),
-    switchPeriod: (p) => call('_refSwitchPeriod', p),
-    toggleLeaderboard: (e) => call('_refToggleLeaderboard', e),
-    openShareModal: (ctx) => call('showReferralShareModal', ctx),
+    copyLink: () => copyToClipboard(state.link, 'Referral link'),
+    copyCode: () => copyToClipboard(state.code, 'Referral code'),
+    shareLinkedIn: () => {
+      const url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(state.link)}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+    },
+    shareEmail: () => {
+      const subject = encodeURIComponent('Join me on Brilliant Jobs');
+      const body = encodeURIComponent(`I've been using Brilliant Jobs to find great opportunities. Sign up with my link: ${state.link}`);
+      window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    },
+    shareSMS: () => {
+      window.location.href = `sms:?body=${encodeURIComponent(`Join Brilliant Jobs: ${state.link}`)}`;
+    },
+    switchPeriod: (period) => dispatch({ type: 'LOADED', data: { period } }),
+    toggleLeaderboard: (enabled) => dispatch({ type: 'LOADED', data: { leaderboardEnabled: enabled } }),
+    openShareModal: () => {
+      copyToClipboard(state.link, 'Referral link');
+    },
   }];
 }

@@ -6,13 +6,14 @@
 // ============================================================
 
 import { useState, useEffect, useCallback } from 'react';
-import { PageHeader } from '@app/components';
+import { PageHeader, SkeletonHeader, SkeletonCardList } from '@app/components';
 import { useUser } from '@providers';
 import type { UserProfile } from '@providers/types';
 
 export default function SettingsPage() {
   const userProvider = useUser();
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
   const [theme, setThemeState] = useState(() => {
     try { return localStorage.getItem('bj-theme') || 'auto'; } catch { return 'auto'; }
   });
@@ -33,6 +34,7 @@ export default function SettingsPage() {
   const [eeocData, setEeocData] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    setLoading(true);
     userProvider.getCurrentUser().then(u => {
       if (u) {
         setUser(u);
@@ -49,7 +51,7 @@ export default function SettingsPage() {
         const ud = (u as any).user_data || {};
         setEeocData(ud.eeoc || {});
       }
-    });
+    }).finally(() => setLoading(false));
   }, [userProvider]);
 
   const setTheme = useCallback((t: string) => {
@@ -72,6 +74,15 @@ export default function SettingsPage() {
   const labelCls = "text-[11px] font-medium text-text-dim uppercase tracking-wide block mb-1";
   const cardCls = "border border-border rounded-xl bg-bg-card p-6 mb-5";
   const toggleRow = "flex items-center justify-between gap-3 py-2.5 border-b border-border text-[13px]";
+
+  if (loading) {
+    return (
+      <div className="max-w-[760px]">
+        <SkeletonHeader />
+        <SkeletonCardList count={4} />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-[760px]">

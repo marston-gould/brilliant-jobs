@@ -7,7 +7,7 @@
 // ============================================================
 
 import { useState, useEffect, useCallback } from 'react';
-import { PageHeader } from '@app/components';
+import { PageHeader, SkeletonHeader, SkeletonMetricRow, SkeletonCardList } from '@app/components';
 import { useUser, useProviders } from '@providers';
 import { FileText, PenLine, Bell, Search, XCircle } from 'lucide-react';
 
@@ -18,6 +18,7 @@ export default function BillingPage() {
   const [tier, setTier] = useState('Free');
   const [referralCode, setReferralCode] = useState('');
   const [referralStats, setReferralStats] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(true);
 
   const openPortal = useCallback(async () => {
     const url = await billing.openBillingPortal();
@@ -34,15 +35,15 @@ export default function BillingPage() {
   }, []);
 
   useEffect(() => {
-    userProvider.getCurrentUser().then(u => {
-      if (u) setTier(u.tier || 'Free');
-    });
-    billing.getBalance().then(bal => setCredits(bal || 0)).catch(() => {});
-    // Load referral data
-    import('@app/providers/bridge').then(({ providers }) => {
-      providers.referrals.getCode().then((c: string) => setReferralCode(c)).catch(() => {});
-      providers.referrals.getStats().then((s: any) => setReferralStats(s || {})).catch(() => {});
-    });
+    setLoading(true);
+    Promise.all([
+      userProvider.getCurrentUser().then(u => { if (u) setTier(u.tier || 'Free'); }),
+      billing.getBalance().then(bal => setCredits(bal || 0)).catch(() => {}),
+      import('@app/providers/bridge').then(({ providers }) => Promise.all([
+        providers.referrals.getCode().then((c: string) => setReferralCode(c)).catch(() => {}),
+        providers.referrals.getStats().then((s: any) => setReferralStats(s || {})).catch(() => {}),
+      ])),
+    ]).finally(() => setLoading(false));
   }, [userProvider, billing]);
 
   const creditCosts = [
@@ -60,6 +61,16 @@ export default function BillingPage() {
   ];
 
   const cardCls = "border border-border rounded-xl bg-bg-card p-6 mb-5";
+
+  if (loading) {
+    return (
+      <div>
+        <SkeletonHeader />
+        <SkeletonMetricRow count={3} />
+        <SkeletonCardList count={3} />
+      </div>
+    );
+  }
 
   return (
     <div className="">

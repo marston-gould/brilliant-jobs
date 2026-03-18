@@ -45,7 +45,7 @@ export function useKillswitch(): [KillswitchState, KillswitchActions] {
     // @ts-ignore SPA-CUT-3: fire-and-forget
         providers.admin.getFeatureFlags();
     loadData();
-    pollRef.current = setInterval(loadData, 3000);
+    pollRef.current = setInterval(loadData, 30000) // 30s poll;
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 

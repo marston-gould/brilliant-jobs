@@ -5,8 +5,9 @@
 // Components consume integration data through this hook only.
 // ============================================================
 
-import { useCallback, useEffect, useReducer, useRef } from 'react';
+import { useCallback, useEffect, useReducer } from 'react';
 import { safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
+import { providers } from '@app/providers/bridge';
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -68,16 +69,22 @@ export function useIntegrations(): [IntegrationsState, {
   importAsResume: (idx: number) => void;
 }] {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const loadData = useCallback(() => {
+  const loadData = useCallback(async () => {
     try {
-      // SPA-CUT-3: Data loaded from localStorage/Supabase (no window bridge)
-      // @ts-ignore SPA-CUT-3
-      const gdriveFiles: GDriveFile[] = Array.isArray(null) ? null : [];
-      const gdriveConnected = !!(gdriveFiles.length > 0);
-      const gmailConnected = !!(null === 'connected' || null);
-      const extensionInstalled = !!(null === 'connected');
+      // Load GDrive files from provider (returns [] when not connected)
+      const rawFiles = await providers.integrations.getGDriveFiles().catch(() => []);
+      const gdriveFiles: GDriveFile[] = (rawFiles || []).map((f: any) => ({
+        id: f.id || '',
+        name: f.name || '',
+        url: f.url || '',
+        mimeType: f.mimeType || '',
+      }));
+      const gdriveConnected = gdriveFiles.length > 0;
+
+      // Gmail/extension status from localStorage (set by OAuth callback / extension handshake)
+      const gmailConnected = localStorage.getItem('bj_gmail_connected') === 'true';
+      const extensionInstalled = localStorage.getItem('bj_ext_installed') === 'true';
 
       dispatch({
         type: 'LOADED',
@@ -93,49 +100,60 @@ export function useIntegrations(): [IntegrationsState, {
 
   useEffect(() => {
     loadData();
-    pollRef.current = setInterval(loadData, 3000);
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
+    // No polling needed — integrations change only on explicit user action
+    return () => {};
   }, [loadData]);
 
-  const connectGDrive = useCallback(() => {
+  const connectGDrive = useCallback(async () => {
     try {
-      // SPA-CUT-3: connectGoogleDrive bridge removed
-    } catch (e) {
-      console.warn('[useIntegrations] connectGDrive failed:', e);
+      await providers.integrations.connectGDrive();
+      (window as any).__bjToast?.('Google Drive connected', 'success');
+      loadData();
+    } catch (e: any) {
+      const msg = e?.message || 'Google Drive integration is not yet available.';
+      (window as any).__bjToast?.(msg, 'info');
     }
-  }, []);
+  }, [loadData]);
 
-  const disconnectGDrive = useCallback(() => {
+  const disconnectGDrive = useCallback(async () => {
     try {
-      // SPA-CUT-3: disconnectGoogleDrive bridge removed
-    } catch (e) {
-      console.warn('[useIntegrations] disconnectGDrive failed:', e);
+      await providers.integrations.disconnectGDrive();
+      (window as any).__bjToast?.('Google Drive disconnected', 'info');
+      loadData();
+    } catch (e: any) {
+      const msg = e?.message || 'Could not disconnect Google Drive.';
+      (window as any).__bjToast?.(msg, 'info');
     }
-  }, []);
+  }, [loadData]);
 
-  const addFile = useCallback(() => {
+  const addFile = useCallback(async () => {
     try {
-      // SPA-CUT-3: addGdriveFile bridge removed
-    } catch (e) {
-      console.warn('[useIntegrations] addFile failed:', e);
+      await providers.integrations.addGDriveFile('');
+      (window as any).__bjToast?.('File linked from Google Drive', 'success');
+      loadData();
+    } catch (e: any) {
+      const msg = e?.message || 'Google Drive integration is not yet available.';
+      (window as any).__bjToast?.(msg, 'info');
     }
-  }, []);
+  }, [loadData]);
 
-  const unlinkFile = useCallback((idx: number) => {
+  const unlinkFile = useCallback(async (idx: number) => {
     try {
-      // SPA-CUT-3: unlinkGdriveFile bridge removed
-    } catch (e) {
-      console.warn('[useIntegrations] unlinkFile failed:', e);
+      await providers.integrations.unlinkGDriveFile(String(idx));
+      (window as any).__bjToast?.('File unlinked', 'info');
+      loadData();
+    } catch (e: any) {
+      (window as any).__bjToast?.(e?.message || 'Could not unlink file.', 'error');
     }
-  }, []);
+  }, [loadData]);
 
-  const importAsResume = useCallback((idx: number) => {
+  const importAsResume = useCallback(async (idx: number) => {
     try {
-      // SPA-CUT-3: importGdriveAsResume bridge removed
-    } catch (e) {
-      console.warn('[useIntegrations] importAsResume failed:', e);
+      await providers.integrations.importGDriveAsResume(String(idx));
+      (window as any).__bjToast?.('Imported as resume', 'success');
+    } catch (e: any) {
+      const msg = e?.message || 'Google Drive integration is not yet available.';
+      (window as any).__bjToast?.(msg, 'info');
     }
   }, []);
 
