@@ -25,6 +25,7 @@ import {
   ResumeUpload,
 } from './components';
 import { ResumeEditor } from './components/ResumeEditor';
+import { CoverLetterSection } from './components/CoverLetterSection';
 import { useResumes } from './hooks/useResumes';
 
 type ResumeTab = 'my-resumes' | 'builder' | 'linkedin';
@@ -384,10 +385,11 @@ export function ResumesPage() {
               <button onClick={async () => { setBuilderStatus("Generating..."); try { await (resumeProvider as any).generateDocx?.("", "classic"); setBuilderStatus("Resume generated"); } catch(e:any) { setBuilderStatus("Error: " + e.message); }}} className="px-4 py-2 rounded-md bg-accent text-white text-sm font-semibold">Generate Resume</button>
             </div>
           </div>
+
+          {/* Cover Letter Generator — legacy _clGenerate, _clExportDocx, _clSetTone, _clCopyToClipboard */}
+          <CoverLetterSection />
         </div>
       )}
-
-      {/* Tab 3: LinkedIn — legacy lines 1881-1948 */}
       {activeTab === 'linkedin' && (
         <div className="space-y-5">
           {/* No profile CTA */}

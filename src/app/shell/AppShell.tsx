@@ -376,7 +376,19 @@ export function AppShell() {
 
             <div className="flex gap-2.5 justify-end mt-auto pt-2.5">
               <button onClick={() => setFeedbackOpen(false)} className="px-4 py-2 rounded-lg bg-bg-input text-text-dim border border-border text-[13px] font-semibold">Cancel</button>
-              <button onClick={() => { setFeedbackOpen(false); (window as any).__bjToast?.('Feedback submitted — thank you!', 'success'); }}
+              <button onClick={async () => {
+                const form = document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('.bg-bg-card input, .bg-bg-card textarea, .bg-bg-card select');
+                const title = (form[0] as HTMLInputElement)?.value || '';
+                const details = (form[1] as HTMLTextAreaElement)?.value || '';
+                const page = (form[2] as HTMLSelectElement)?.value || '';
+                if (!title.trim()) { (window as any).__bjToast?.('Please add a title', 'info'); return; }
+                try {
+                  const { callGateway } = await import('@app/lib/supabase');
+                  await callGateway('submit-feedback', { type: fbType === 'Bug Report' ? 'bug' : 'feature', title, details, page });
+                } catch { /* silent — toast below */ }
+                setFeedbackOpen(false);
+                (window as any).__bjToast?.('Feedback submitted — thank you!', 'success');
+              }}
                 className="px-5 py-2 rounded-lg bg-accent text-white text-[13px] font-semibold">Submit</button>
             </div>
           </div>
