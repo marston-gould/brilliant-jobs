@@ -965,6 +965,7 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
 
   const setSearchMode = useCallback((mode: 'filters' | 'chat' | 'guided') => {
     setState(prev => ({ ...prev, searchMode: mode }));
+    try { localStorage.setItem('bj_search_mode', mode); } catch {}
   }, []);
 
   const setStats = useCallback((stats: FeedStats) => {
