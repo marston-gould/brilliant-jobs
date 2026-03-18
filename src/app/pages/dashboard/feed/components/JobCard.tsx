@@ -84,6 +84,16 @@ export function JobCard({ job, isSaved, isApplied, matchScore, levelInfo, onSave
             {salary && <><span>·</span><span>{salary}</span></>}
             {days && <><span>·</span><span>{days}</span></>}
             {matchScore !== null && <><span>·</span><span className="font-semibold text-accent">{matchScore}%</span></>}
+            {job.ats_source && (() => {
+              const src = (job.ats_source || '').toLowerCase();
+              const colors: Record<string, string> = {
+                greenhouse: 'bg-[#dcfce7] text-[#166534]', lever: 'bg-[#ede9fe] text-[#5b21b6]',
+                workday: 'bg-[#ccfbf1] text-[#115e59]', linkedin: 'bg-[#dbeafe] text-[#1e40af]',
+                indeed: 'bg-[#fef3c7] text-[#92400e]', ashby: 'bg-[#fce7f3] text-[#9d174d]',
+              };
+              const cls = colors[src] || 'bg-[#e5e7eb] text-[#374151]';
+              return <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-[0.3px] ${cls}`}>{src}</span>;
+            })()}
           </div>
         </div>
 

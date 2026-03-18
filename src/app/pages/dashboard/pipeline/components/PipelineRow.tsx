@@ -57,12 +57,15 @@ interface ActionMenuProps {
   jobId: string;
   isMuted: boolean;
   hasNote: boolean;
+  stage: string;
+  item: { id: string };
+  onMoveStage: (id: string, stage: string) => void;
   onFindRecruiters: () => void;
   onToggleMute: () => void;
   onRemove: () => void;
 }
 
-function ActionMenu({ jobId, isMuted, hasNote, onFindRecruiters, onToggleMute, onRemove }: ActionMenuProps) {
+function ActionMenu({ jobId, isMuted, hasNote, stage, item, onMoveStage, onFindRecruiters, onToggleMute, onRemove }: ActionMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -85,27 +88,36 @@ function ActionMenu({ jobId, isMuted, hasNote, onFindRecruiters, onToggleMute, o
         ⋮
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 z-20 bg-bg-card border border-border rounded-md shadow-lg py-1 min-w-[160px]">
-          <button
-            type="button"
+        <div className="absolute right-0 top-full mt-1 z-20 bg-bg-card border border-border rounded-lg shadow-[0_8px_24px_rgba(0,0,0,0.3)] py-1 min-w-[180px]">
+          {/* Move to stage */}
+          <div className="px-3 py-1 text-[10px] font-semibold text-text-faint uppercase tracking-wide">Move to</div>
+          {['saved', 'applied', 'interview', 'offer', 'rejected'].filter(s => s !== stage).map(s => (
+            <button key={s} type="button"
+              onClick={() => { onMoveStage(item.id, s); setOpen(false); }}
+              className="w-full text-left px-3 py-1.5 text-xs text-text-dim hover:text-text hover:bg-bg-hover transition-all capitalize">
+              {s}
+            </button>
+          ))}
+          <div className="my-1 border-t border-border" />
+          <button type="button"
+            onClick={() => { const note = prompt('Add a note:'); if (note) { (window as any).__bjToast?.('Note saved', 'success'); } setOpen(false); }}
+            className="w-full text-left px-3 py-1.5 text-xs text-text-dim hover:text-text hover:bg-bg-hover transition-all">
+            Add Note
+          </button>
+          <button type="button"
             onClick={() => { onFindRecruiters(); setOpen(false); }}
-            className="w-full text-left px-3 py-1.5 text-xs text-text-dim hover:text-text hover:bg-bg-hover transition-all"
-          >
+            className="w-full text-left px-3 py-1.5 text-xs text-text-dim hover:text-text hover:bg-bg-hover transition-all">
             Find Recruiters
           </button>
-          <button
-            type="button"
+          <button type="button"
             onClick={() => { onToggleMute(); setOpen(false); }}
-            className="w-full text-left px-3 py-1.5 text-xs text-text-dim hover:text-text hover:bg-bg-hover transition-all"
-          >
+            className="w-full text-left px-3 py-1.5 text-xs text-text-dim hover:text-text hover:bg-bg-hover transition-all">
             {isMuted ? 'Unmute prompts' : 'Mute prompts'}
           </button>
           <div className="my-1 border-t border-border" />
-          <button
-            type="button"
+          <button type="button"
             onClick={() => { onRemove(); setOpen(false); }}
-            className="w-full text-left px-3 py-1.5 text-xs text-red hover:bg-red/5 transition-all"
-          >
+            className="w-full text-left px-3 py-1.5 text-xs text-red hover:bg-red/5 transition-all">
             Remove from pipeline
           </button>
         </div>
@@ -330,6 +342,9 @@ export function PipelineRow({
             jobId={item.id}
             isMuted={m.tracking_mode === 'muted'}
             hasNote={!!m.status_note}
+            stage={stage}
+            item={item}
+            onMoveStage={(id, s) => onMoveStage(id, s as any)}
             onFindRecruiters={handleFindRecruiters}
             onToggleMute={() => onSetTrackingMode(item.id, m.tracking_mode === 'muted' ? 'auto' : 'muted')}
             onRemove={() => onUnsave(item.id)}

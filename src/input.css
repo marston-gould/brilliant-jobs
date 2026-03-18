@@ -320,3 +320,23 @@
     radial-gradient(ellipse 50% 50% at 90% 0, rgba(137,90,246,0.1), transparent);
 }
 .hero-gradient > * { position: relative; }
+
+/* Nav brand sparkle animation — legacy .sparkle, .sparkle-star, shimmerSweep */
+@keyframes sparkPop {
+  0% { opacity: 0; transform: scale(0); }
+  30% { opacity: 1; transform: scale(1.8); }
+  60% { opacity: 0.8; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.3); }
+}
+@keyframes shimmerSweep {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.nav-brand-shimmer:hover .nav-brand-title {
+  background: linear-gradient(90deg, #fff, #fff 40%, #a7d8ff 50%, #fff 60%, #fff);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmerSweep 1.2s ease-in-out;
+}
