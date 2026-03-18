@@ -31,7 +31,7 @@ export function IntelCards({ searchQuery, visibleCompanies }: IntelCardsProps) {
 
   const [resumeScore, setResumeScore] = useState<number | null>(null);
   const [resumeName, setResumeName] = useState<string>('');
-  const [sourceBreakdown, setSourceBreakdown] = useState<Array<{ source_name: string; job_count: number }>>([]);
+  const [sourceBreakdown, setSourceBreakdown] = useState<Array<Record<string, any>>>([]);
   const [expanded, setExpanded] = useState(true);
   const [loading, setLoading] = useState(true);
 
@@ -174,14 +174,17 @@ export function IntelCards({ searchQuery, visibleCompanies }: IntelCardsProps) {
             </div>
             {sourceBreakdown.length > 0 ? (
               <div className="space-y-1.5">
-                {sourceBreakdown.map(s => {
-                  const maxCount = sourceBreakdown[0]?.job_count || 1;
-                  const pct = Math.round((s.job_count / maxCount) * 100);
+                {sourceBreakdown.map((s, i) => {
+                  const name = s.source_name || s.source || 'Unknown';
+                  const count = typeof s.job_count === 'number' ? s.job_count : 0;
+                  const firstCount = sourceBreakdown[0]?.job_count;
+                  const maxCount = (typeof firstCount === 'number' && firstCount > 0) ? firstCount : 1;
+                  const pct = Math.round((count / maxCount) * 100);
                   return (
-                    <div key={s.source_name}>
+                    <div key={name + '-' + i}>
                       <div className="flex justify-between text-[11px] mb-0.5">
-                        <span className="text-text-secondary truncate">{s.source_name}</span>
-                        <span className="text-text-faint tabular-nums">{s.job_count.toLocaleString()}</span>
+                        <span className="text-text-secondary truncate">{name}</span>
+                        <span className="text-text-faint tabular-nums">{count.toLocaleString()}</span>
                       </div>
                       <div className="w-full h-1 bg-bg-main rounded-full overflow-hidden">
                         <div className="h-full bg-blue-500/60 rounded-full" style={{ width: `${pct}%` }} />

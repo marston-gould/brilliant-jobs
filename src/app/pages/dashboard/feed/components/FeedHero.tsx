@@ -59,7 +59,7 @@ export function FeedHero({ stats, onPipelineClick }: FeedHeroProps) {
                       : 'text-text'
                 }`}
               >
-                {value.toLocaleString()}
+                {(value ?? 0).toLocaleString()}
               </span>
               <span className="text-xs text-text-faint mt-0.5">{label}</span>
             </div>

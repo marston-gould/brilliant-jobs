@@ -688,7 +688,7 @@ document.addEventListener("DOMContentLoaded", function() {
 (function initLpBenefitSections() {
   "use strict";
   var SUPABASE_URL = window.SUPABASE_URL || "https://qojhagupdnbtomfoxnsf.supabase.co";
-  var SUPABASE_ANON_KEY = window.SUPABASE_KEY || window.SUPABASE_ANON_KEY || "";
+  var SUPABASE_ANON_KEY = SUPABASE_KEY;
   function getVisitorSegment() {
     if (typeof window._bjSegment === "string") return window._bjSegment;
     try {
