@@ -472,6 +472,7 @@ export function FeedPage() {
         onHide={handleHide}
         onApply={handleApply}
         onPageChange={(p) => actions.setPage(p)}
+        onSort={actions.toggleSort}
         onOpenModal={(id: string) => setSelectedJobId(id)}
         savedJobIds={savedJobIds}
         appliedJobIds={appliedJobIds}

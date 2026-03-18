@@ -159,11 +159,17 @@ export function JobTable({
       {/* Sort bar + Preview toggle — legacy: sort controls above card grid */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1">
-          {COLUMNS.filter(c => c.sortable).map(col => (
-            <button key={col.key} onClick={() => onSort?.(col.key)} className="px-2 py-1 rounded text-[10px] font-medium text-text-faint border border-border hover:border-accent transition-colors">
-              {col.label} ↕
-            </button>
-          ))}
+          {COLUMNS.filter(c => c.sortable).map(col => {
+            const active = state.sortStack?.find((s: any) => s.field === col.key);
+            return (
+              <button key={col.key} onClick={() => onSort?.(col.key)}
+                className={`px-2 py-1 rounded text-[10px] font-medium border transition-colors ${
+                  active ? 'border-accent text-accent bg-accent/5' : 'text-text-faint border-border hover:border-accent'
+                }`}>
+                {col.label} {active ? (active.asc ? '↑' : '↓') : '↕'}
+              </button>
+            );
+          })}
         </div>
         <label className="flex items-center gap-1 cursor-pointer text-[10px] font-medium text-text-faint">
           <input type="checkbox" checked={showPreview} onChange={(e) => setShowPreview(e.target.checked)} className="cursor-pointer" />

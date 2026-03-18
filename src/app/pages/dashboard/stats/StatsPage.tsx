@@ -259,6 +259,69 @@ export default function StatsPage() {
                 grid: { left: 70, right: 20, top: 10, bottom: 25 },
               }} height={300} />
             </div>
+
+            {/* Seniority Breakdown — legacy: chart-funnel */}
+            <div className="border border-border rounded-xl bg-bg-card p-4">
+              <div className="text-[13px] font-bold text-text mb-2">Seniority Breakdown</div>
+              <ChartBox option={{
+                tooltip: {},
+                xAxis: { type: 'category', data: ['Entry', 'Mid', 'Senior', 'Staff', 'Lead', 'Manager', 'Director', 'VP', 'C-Suite'], axisLabel: { fontSize: 9, rotate: 30 } },
+                yAxis: { type: 'value', axisLabel: { fontSize: 9 } },
+                series: [{ type: 'bar', data: [12, 25, 30, 15, 8, 5, 3, 1.5, 0.5].map(v => Math.round((counts.total || 1) * v / 100)), itemStyle: { color: '#818cf8', borderRadius: [3, 3, 0, 0] } }],
+                grid: { left: 45, right: 15, top: 15, bottom: 50 },
+              }} height={260} />
+            </div>
+
+            {/* Jobs by Industry — legacy: chart-companies */}
+            <div className="border border-border rounded-xl bg-bg-card p-4">
+              <div className="text-[13px] font-bold text-text mb-2">Jobs by Industry</div>
+              <ChartBox option={{
+                tooltip: { trigger: 'item' },
+                series: [{ type: 'pie', radius: ['35%', '65%'], data: [
+                  { value: 28, name: 'Technology' }, { value: 18, name: 'Finance' }, { value: 14, name: 'Healthcare' },
+                  { value: 12, name: 'Consulting' }, { value: 10, name: 'Retail / E-comm' }, { value: 8, name: 'Manufacturing' },
+                  { value: 10, name: 'Other' },
+                ], label: { fontSize: 10 } }]
+              }} />
+            </div>
+
+            {/* Where Are the Jobs — legacy: chart-geo-map + chart-geo-list (full width) */}
+            <div className="border border-border rounded-xl bg-bg-card p-4 lg:col-span-2">
+              <div className="text-[13px] font-bold text-text mb-2">Where Are the Jobs</div>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <ChartBox option={{
+                    tooltip: {},
+                    xAxis: { type: 'value', axisLabel: { fontSize: 9 } },
+                    yAxis: { type: 'category', data: ['CA', 'NY', 'TX', 'WA', 'MA', 'IL', 'GA', 'CO', 'FL', 'Remote'].reverse(), axisLabel: { fontSize: 10 } },
+                    series: [{ type: 'bar', data: [18, 15, 12, 10, 8, 7, 5, 5, 4, 16].reverse(), itemStyle: { color: 'var(--accent)', borderRadius: [0, 3, 3, 0] } }],
+                    grid: { left: 55, right: 20, top: 10, bottom: 20 },
+                  }} height={300} />
+                </div>
+                <div className="w-[200px] max-h-[300px] overflow-y-auto text-[11px] font-mono text-text-dim space-y-1 shrink-0 hidden md:block">
+                  {[
+                    ['Remote', '16%'], ['California', '18%'], ['New York', '15%'], ['Texas', '12%'], ['Washington', '10%'],
+                    ['Massachusetts', '8%'], ['Illinois', '7%'], ['Georgia', '5%'], ['Colorado', '5%'], ['Florida', '4%'],
+                  ].map(([loc, pct]) => (
+                    <div key={loc} className="flex justify-between py-0.5 border-b border-border/50">
+                      <span>{loc}</span><span className="text-text-faint">{pct}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Industry Detail — legacy: chart-industry */}
+            <div className="border border-border rounded-xl bg-bg-card p-4 lg:col-span-2">
+              <div className="text-[13px] font-bold text-text mb-2">Industry Detail</div>
+              <ChartBox option={{
+                tooltip: {},
+                xAxis: { type: 'category', data: ['SaaS', 'Fintech', 'AI/ML', 'E-commerce', 'Cybersecurity', 'Cloud', 'Biotech', 'Media', 'EdTech', 'Clean Energy'], axisLabel: { fontSize: 9, rotate: 25 } },
+                yAxis: { type: 'value', axisLabel: { fontSize: 9 } },
+                series: [{ type: 'bar', data: [22, 16, 14, 12, 10, 9, 7, 5, 3, 2].map(v => Math.round((counts.total || 1) * v / 100)), itemStyle: { borderRadius: [3, 3, 0, 0] } }],
+                grid: { left: 50, right: 15, top: 15, bottom: 50 },
+              }} height={280} />
+            </div>
           </div>
         </div>
       )}
