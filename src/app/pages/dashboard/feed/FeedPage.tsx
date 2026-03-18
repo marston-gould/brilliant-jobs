@@ -84,6 +84,25 @@ function getLegacySavedSearchItems(): SavedSearchItem[] {
   }));
 }
 
+const FILTER_COLORS = ['#6366f1', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+
+async function loadSavedFiltersFromSupabase(): Promise<SavedSearchItem[]> {
+  try {
+    const { supabase, getUser } = await import('@app/lib/supabase');
+    const user = await getUser();
+    if (!user) return getLegacySavedSearchItems();
+    const { data } = await supabase.from('saved_filters').select('*').eq('user_id', user.id).order('created_at');
+    if (!data?.length) return getLegacySavedSearchItems();
+    return data.map((f: any, i: number) => ({
+      id: f.id,
+      name: f.name || `Search ${i + 1}`,
+      color: FILTER_COLORS[i % FILTER_COLORS.length] || '#3b82f6',
+      checked: true,
+      filterNum: String(i + 1),
+    }));
+  } catch { return getLegacySavedSearchItems(); }
+}
+
 // ── Page Component ────────────────────────────────────────
 
 export function FeedPage() {
@@ -135,9 +154,9 @@ export function FeedPage() {
     }).catch(() => {});
   }, [statsProvider]);
 
-  // Load saved searches from legacy on mount
+  // Load saved searches from Supabase
   useEffect(() => {
-    setSavedSearchItems(getLegacySavedSearchItems());
+    loadSavedFiltersFromSupabase().then(setSavedSearchItems);
   }, []);
 
   // Trigger initial search on mount
@@ -147,18 +166,20 @@ export function FeedPage() {
 
   // ── Saved search handlers ─────────────────────────────
 
-  const handleToggleSavedSearch = useCallback((id: string) => {
+  const handleToggleSavedSearch = useCallback(async (id: string) => {
     setSavedSearchItems(prev =>
       prev.map(item =>
         item.id === id ? { ...item, checked: !item.checked } : item
       )
     );
-    // Sync to legacy and re-search
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const legacyFilters: any[] = (window as any).savedFilters || [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const target = legacyFilters.find((f: any) => f.id === id);
-    if (target) target.checked = !target.checked;
+    // Load saved filter config from Supabase and apply to filter builder
+    try {
+      const { supabase } = await import('@app/lib/supabase');
+      const { data } = await supabase.from('saved_filters').select('config').eq('id', id).single();
+      if (data?.config) {
+        setFilterValues(prev => ({ ...prev, ...data.config }));
+      }
+    } catch {}
     actions.search(0);
   }, [actions]);
 
@@ -173,14 +194,15 @@ export function FeedPage() {
     actions.search(0);
   }, [actions]);
 
-  const handleDeleteSavedSearches = useCallback((ids: string[]) => {
+  const handleDeleteSavedSearches = useCallback(async (ids: string[]) => {
     const idSet = new Set(ids);
     setSavedSearchItems(prev => prev.filter(item => !idSet.has(item.id)));
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).savedFilters = ((window as any).savedFilters || []).filter(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (f: any) => !idSet.has(f.id)
-    );
+    try {
+      const { supabase } = await import('@app/lib/supabase');
+      for (const id of ids) {
+        await supabase.from('saved_filters').delete().eq('id', id);
+      }
+    } catch {}
   }, []);
 
   // ── Filter builder handlers ───────────────────────────
@@ -196,20 +218,31 @@ export function FeedPage() {
     }
   }, [actions]);
 
-  const handleSaveFilter = useCallback(() => {
-    // Bridge to legacy save dialog
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const saveDialog = document.getElementById('chat-save-dialog');
-    if (saveDialog) saveDialog.classList.remove('u-hidden');
-  }, []);
+  const handleSaveFilter = useCallback(async () => {
+    const name = prompt('Name this filter:');
+    if (!name) return;
+    try {
+      const { supabase, getUser } = await import('@app/lib/supabase');
+      const user = await getUser();
+      if (!user) return;
+      await supabase.from('saved_filters').insert({
+        user_id: user.id,
+        name,
+        config: filterValues,
+      });
+      const updated = await loadSavedFiltersFromSupabase();
+      setSavedSearchItems(updated);
+    } catch (e) { console.error('Save filter failed:', e); }
+  }, [filterValues]);
 
-  const handleAiGenerate = useCallback(() => {
-    // Bridge to legacy AI filter generation
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const bj = (window as any);
-    if (typeof bj.bjAiSuggestFilters === 'function') {
-      bj.bjAiSuggestFilters();
-    }
+  const handleAiGenerate = useCallback(async () => {
+    try {
+      const { callGateway } = await import('@app/lib/supabase');
+      const result = await callGateway<any>('admin-filter-prompt', { action: 'suggest' }, { timeout: 20000 });
+      if (result?.filters) {
+        setFilterValues(prev => ({ ...prev, ...result.filters }));
+      }
+    } catch { /* Bridge to legacy fallback */ const bj = (window as any); if (typeof bj.bjAiSuggestFilters === 'function') bj.bjAiSuggestFilters(); }
   }, []);
 
   const handleClearAll = useCallback(() => {

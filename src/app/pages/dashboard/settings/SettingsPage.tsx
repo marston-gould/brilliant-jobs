@@ -27,6 +27,8 @@ export default function SettingsPage() {
   const [workAuth, setWorkAuth] = useState(true);
   const [sponsorship, setSponsorship] = useState(false);
   const [passiveMode, setPassiveMode] = useState(false);
+  const [excludeMixed, setExcludeMixed] = useState(false);
+  const [excludeAI, setExcludeAI] = useState(false);
   const [saveStatus, setSaveStatus] = useState('');
 
   useEffect(() => {
@@ -177,13 +179,13 @@ export default function SettingsPage() {
         <div className="text-[14px] font-bold text-text mb-0.5">AI Content Preferences</div>
         <div className="text-[12px] text-text-dim mb-3">Control how AI-generated content affects your job match scores.</div>
         {[
-          { label: 'Exclude Mixed Content', desc: "Jobs with partially AI-written descriptions won't affect your match scores" },
-          { label: 'Exclude AI-Generated', desc: "Jobs with fully AI-written descriptions won't affect your match scores" },
+          { key: 'mixed' as const, label: 'Exclude Mixed Content', desc: "Jobs with partially AI-written descriptions won't affect your match scores", active: excludeMixed, toggle: () => { setExcludeMixed(!excludeMixed); userProvider.updatePreferences({ excludeMixed: !excludeMixed }).catch(() => {}); } },
+          { key: 'ai' as const, label: 'Exclude AI-Generated', desc: "Jobs with fully AI-written descriptions won't affect your match scores", active: excludeAI, toggle: () => { setExcludeAI(!excludeAI); userProvider.updatePreferences({ excludeAI: !excludeAI }).catch(() => {}); } },
         ].map(pref => (
-          <div key={pref.label} className={toggleRow}>
+          <div key={pref.key} className={toggleRow}>
             <div><div className="text-[13px] font-semibold text-text">{pref.label}</div><div className="text-[11px] text-text-faint">{pref.desc}</div></div>
-            <button className="w-10 h-[22px] rounded-full bg-border-hover relative transition-colors">
-              <span className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow" />
+            <button onClick={pref.toggle} className={`w-10 h-[22px] rounded-full relative transition-colors ${pref.active ? 'bg-accent' : 'bg-border-hover'}`}>
+              <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${pref.active ? 'left-[20px]' : 'left-0.5'}`} />
             </button>
           </div>
         ))}

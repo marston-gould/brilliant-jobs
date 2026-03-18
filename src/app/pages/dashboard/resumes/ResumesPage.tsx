@@ -24,6 +24,7 @@ import {
   ResumeArchive,
   ResumeUpload,
 } from './components';
+import { ResumeEditor } from './components/ResumeEditor';
 import { useResumes } from './hooks/useResumes';
 
 type ResumeTab = 'my-resumes' | 'builder' | 'linkedin';
@@ -308,33 +309,7 @@ export function ResumesPage() {
               <span className="text-[13px] font-bold text-text">Edit Your Resume</span>
             </div>
             <div className="p-5">
-              {/* Editor tabs */}
-              {(() => {
-                const tabs = ['Contact', 'Summary', 'Experience', 'Education', 'Skills', 'Certs'];
-                const inputCls = "w-full px-2.5 py-1.5 rounded-md border border-border bg-bg-input text-[12px] text-text";
-                return (
-                  <>
-                    <div className="flex gap-1 mb-4 border-b border-border">
-                      {tabs.map((t, i) => (
-                        <button key={t} className={`px-3 py-1.5 text-[11px] font-medium border-b-2 -mb-px transition-colors ${i === 0 ? 'border-accent text-accent' : 'border-transparent text-text-faint hover:text-text'}`}>{t}</button>
-                      ))}
-                    </div>
-                    {/* Contact tab (default visible) */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div><label className="text-[10px] text-text-dim block mb-0.5">Full Name</label><input type="text" placeholder="Jane Smith" className={inputCls} /></div>
-                      <div><label className="text-[10px] text-text-dim block mb-0.5">Email</label><input type="email" placeholder="jane@example.com" className={inputCls} /></div>
-                      <div><label className="text-[10px] text-text-dim block mb-0.5">Phone</label><input type="tel" placeholder="+1 555 000 0000" className={inputCls} /></div>
-                      <div><label className="text-[10px] text-text-dim block mb-0.5">LinkedIn URL</label><input type="url" placeholder="linkedin.com/in/janesmith" className={inputCls} /></div>
-                      <div><label className="text-[10px] text-text-dim block mb-0.5">Location</label><input type="text" placeholder="San Francisco, CA" className={inputCls} /></div>
-                      <div><label className="text-[10px] text-text-dim block mb-0.5">Website</label><input type="url" placeholder="janesmith.dev" className={inputCls} /></div>
-                    </div>
-                    <div className="flex gap-2 mt-4">
-                      <button className="px-4 py-2 rounded-md bg-accent text-white text-sm font-semibold">Save Changes</button>
-                      <button className="px-4 py-2 rounded-md border border-border text-sm font-medium text-text-dim hover:border-accent">Start Over</button>
-                    </div>
-                  </>
-                );
-              })()}
+              <ResumeEditor onSave={() => setBuilderStatus('Saved')} onReset={() => setBuilderStatus('Reset')} status={builderStatus} />
             </div>
           </div>
 
