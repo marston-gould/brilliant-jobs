@@ -40,7 +40,8 @@ type Action =
   | { type: 'LOADED'; data: Partial<TuningState> }
   | { type: 'ERROR'; error: string }
   | { type: 'SET_EDITING_FILTER'; filterIdx: number }
-  | { type: 'CLOSE_EDITING_FILTER' };
+  | { type: 'CLOSE_EDITING_FILTER' }
+  | { type: 'TOGGLE_CARD'; idx: number };
 
 const initialState: TuningState = {
   loading: true,
@@ -58,6 +59,7 @@ function reducer(state: TuningState, action: Action): TuningState {
     case 'ERROR': return { ...state, loading: false, error: action.error };
     case 'SET_EDITING_FILTER': return { ...state, editingFilterIdx: action.filterIdx };
     case 'CLOSE_EDITING_FILTER': return { ...state, editingFilterIdx: null };
+    case 'TOGGLE_CARD': return { ...state, filters: state.filters.map((f, i) => i === action.idx ? { ...f, collapsed: !f.collapsed } : f) };
     default: return state;
   }
 }
@@ -107,35 +109,33 @@ export function useTuning(): [TuningState, {
 
   useEffect(() => {
     loadData();
-    pollRef.current = setInterval(loadData, 3000);
+    pollRef.current = setInterval(loadData, 30000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 
   const saveTuning = useCallback(() => {
-    safeWriteLS('bj_tuning', safeReadLS('bj_tuning', {}));
+    // Tuning auto-saves via individual card toggles — this is a no-op placeholder
   }, []);
   const saveLevels = useCallback(() => {
-    // SPA-CUT-3: Level save handled by tuning page component
+    // Level save handled by tuning page component
   }, []);
   const toggleCard = useCallback((idx: number) => {
-    // SPA-CUT-REMEDIATION: Toggle collapse state in localStorage
-    (idx: number) => {
-      const states = safeReadLS<Record<string, boolean>>('bj_pl_collapse', {});
-      states[String(idx)] = !states[String(idx)];
-      safeWriteLS('bj_pl_collapse', states);
-    }
+    dispatch({ type: 'TOGGLE_CARD', idx });
   }, []);
-  const unhideJob = useCallback((jobId: string) => {
-    // SPA-CUT-REMEDIATION: Remove from hidden jobs in localStorage
-    (jobId: string) => {
+  const unhideJob = useCallback(async (jobId: string) => {
+    try {
+      const user = await getUser();
+      if (!user) return;
+      await supabase.from('hidden_jobs').delete().eq('user_id', user.id).eq('job_id', jobId);
+      loadData();
+    } catch {
+      // Fallback: remove from localStorage
       const hidden = safeReadLS<any[]>('bj_hidden_jobs', []);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const filtered = hidden.filter((h: any) => (typeof h === 'string' ? h : h.id) !== jobId);
       safeWriteLS('bj_hidden_jobs', filtered);
     }
-  }, []);
+  }, [loadData]);
   const editLevelHierarchy = useCallback((filterIdx: number) => {
-    // SPA-CUT-FINAL: Set editingFilterIdx → TuningPage shows level editor
     dispatch({ type: 'SET_EDITING_FILTER', filterIdx });
   }, []);
 

@@ -137,7 +137,7 @@ const ALL_AI: Set<AiLabel> = new Set(['human', 'mixed', 'ai_generated', 'unscore
 
 // ── Helper: standalone Supabase client (SPA-CUT-1) ────────
 
-import { supabase as _sb, isFeatureEnabled as _isFlagEnabled, safeReadLS } from '@lib/supabase';
+import { supabase as _sb, isFeatureEnabled as _isFlagEnabled, safeReadLS, getUser } from '@lib/supabase';
 
 function getSupabase() {
   return _sb;
@@ -158,9 +158,25 @@ function getLegacyAppliedJobIds(): string[] {
 
 function getLegacyHiddenJobIds(): Array<{ id: string }> {
   const raw = safeReadLS<any[]>('bj_hidden_jobs', []);
-  // Legacy format: array of strings OR array of {id, reason, ...}
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return raw.map((item: any) => typeof item === 'string' ? { id: item } : item);
+}
+
+// Supabase hidden jobs cache (loaded once per session)
+let _supabaseHiddenIds: string[] | null = null;
+async function getHiddenJobIds(): Promise<string[]> {
+  // Merge localStorage + Supabase hidden IDs
+  const localIds = getLegacyHiddenJobIds().map(h => h.id);
+  if (_supabaseHiddenIds === null) {
+    try {
+      const user = await getUser();
+      if (user) {
+        const sb = getSupabase();
+        const { data } = await sb.from('hidden_jobs').select('job_id').eq('user_id', user.id);
+        _supabaseHiddenIds = (data || []).map((r: any) => r.job_id);
+      } else { _supabaseHiddenIds = []; }
+    } catch { _supabaseHiddenIds = []; }
+  }
+  return Array.from(new Set([...localIds, ..._supabaseHiddenIds]));
 }
 
 // Match scores are session-only (not persisted) — use module-level cache
@@ -660,7 +676,7 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
     try {
       const sb = getSupabase();
       const tuning = safeReadLS('bj_tuning', {});
-      const hiddenIds = getLegacyHiddenJobIds().map(h => h.id);
+      const hiddenIds = await getHiddenJobIds();
 
       // Get active filters — SPA-CUT-1: read from localStorage
       const legacySavedFilters: SavedFilter[] = safeReadLS<SavedFilter[]>('bj_saved_filters', []);
@@ -1004,25 +1020,43 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
   }, []);
 
   const hideJob = useCallback(async (jobId: string) => {
-    // SPA-CUT-1: Direct localStorage write + optimistic UI
-    const hidden = safeReadLS<any[]>('bj_hidden_jobs', []);
-    hidden.push({ id: jobId, reason: 'dismissed', hiddenAt: new Date().toISOString() });
-    try { localStorage.setItem('bj_hidden_jobs', JSON.stringify(hidden)); } catch { /* non-fatal */ }
+    // Optimistic UI removal
     setState(prev => ({
       ...prev,
       jobs: prev.jobs.filter(j => j.greenhouse_id !== jobId),
       total: prev.total - 1,
       stats: { ...prev.stats, total: prev.stats.total - 1 },
     }));
+    // Persist to Supabase hidden_jobs table
+    try {
+      const user = await getUser();
+      if (user) {
+        await getSupabase().from('hidden_jobs').upsert({ user_id: user.id, job_id: jobId, reason: 'dismissed' }, { onConflict: 'user_id,job_id' });
+      }
+    } catch { /* non-fatal */ }
+    // Also keep localStorage as fallback
+    const hidden = safeReadLS<any[]>('bj_hidden_jobs', []);
+    hidden.push({ id: jobId, reason: 'dismissed', hiddenAt: new Date().toISOString() });
+    try { localStorage.setItem('bj_hidden_jobs', JSON.stringify(hidden)); } catch { /* non-fatal */ }
+    // Invalidate Supabase hidden IDs cache so next search excludes this job
+    _supabaseHiddenIds = null;
   }, []);
 
   const markApplied = useCallback(async (jobId: string) => {
-    // SPA-CUT-1: Direct localStorage write
+    // Persist to localStorage as fallback
     const applied = safeReadLS<string[]>('bj_applied_jobs', []);
     if (!applied.includes(jobId)) {
       applied.push(jobId);
       try { localStorage.setItem('bj_applied_jobs', JSON.stringify(applied)); } catch { /* non-fatal */ }
     }
+    // Also update pipeline_entries stage to 'applied' if exists
+    try {
+      const user = await getUser();
+      if (user) {
+        await getSupabase().from('pipeline_entries').update({ stage: 'applied', applied_at: new Date().toISOString() })
+          .eq('user_id', user.id).eq('job_id', jobId);
+      }
+    } catch { /* non-fatal */ }
   }, []);
 
   // ── Cleanup on unmount ──────────────────────────────────
