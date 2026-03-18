@@ -195,7 +195,7 @@ export function FilterBuilder({
           </div>
           {/* What / Not */}
           <div className="grid grid-cols-2 gap-2">
-            <FilterRow label="What" labelClass="text-accent" onBrowse={onBrowse ? () => onBrowse('title', 'include') : undefined}>
+            <FilterRow label="What" labelClass="text-text-faint" onBrowse={onBrowse ? () => onBrowse('title', 'include') : undefined}>
               <input
                 type="text"
                 className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
@@ -219,7 +219,7 @@ export function FilterBuilder({
 
           {/* Where / Not */}
           <div className="grid grid-cols-2 gap-2">
-            <FilterRow label="Where" labelClass="text-warm">
+            <FilterRow label="Where" labelClass="text-text-faint">
               <input
                 type="text"
                 className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
@@ -243,7 +243,7 @@ export function FilterBuilder({
 
           {/* Who / Not */}
           <div className="grid grid-cols-2 gap-2">
-            <FilterRow label="Who" labelClass="text-pink" onBrowse={onBrowse ? () => onBrowse('company', 'include') : undefined}>
+            <FilterRow label="Who" labelClass="text-text-faint" onBrowse={onBrowse ? () => onBrowse('company', 'include') : undefined}>
               <CompanyAutocomplete
                 value={values.who}
                 onChange={(v) => update('who', v)}
@@ -265,7 +265,7 @@ export function FilterBuilder({
 
           {/* When */}
           <div className="grid grid-cols-2 gap-2">
-            <FilterRow label="When" labelClass="text-purple">
+            <FilterRow label="When" labelClass="text-text-faint">
               <input
                 type="text"
                 className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
@@ -279,7 +279,7 @@ export function FilterBuilder({
           </div>
 
           {/* How Much */}
-          <FilterRow label="Pay" labelClass="text-green">
+          <FilterRow label="HOW MUCH" labelClass="text-text-faint">
             <div className="flex items-center gap-1">
               <span className="text-xs text-text-faint">$</span>
               <input
