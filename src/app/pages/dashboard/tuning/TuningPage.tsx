@@ -69,7 +69,11 @@ export default function TuningPage() {
     try {
       const current = await tuningProvider.getTuning() || {};
       await tuningProvider.saveTuning({ ...current, ...patch } as any);
-    } catch (e) { console.error('[BJ:Tuning] save error:', e); }
+      (window as any).__bjToast?.('Tuning saved', 'success');
+    } catch (e) {
+      console.error('[BJ:Tuning] save error:', e);
+      (window as any).__bjToast?.('Failed to save tuning', 'error');
+    }
     setSaving(false);
   }, [tuningProvider]);
 

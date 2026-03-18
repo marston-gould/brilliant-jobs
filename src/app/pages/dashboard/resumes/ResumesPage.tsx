@@ -15,7 +15,7 @@
 
 import { useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PageHeader } from '@app/components';
+import { PageHeader, SkeletonHeader, SkeletonCardList } from '@app/components';
 import { useProviders } from '@providers';
 import {
   ResumesHero,
@@ -62,11 +62,9 @@ export function ResumesPage() {
 
   if (state.loading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <div className="text-center">
-          <div className="inline-block w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs text-text-faint mt-2">Loading resumes…</p>
-        </div>
+      <div>
+        <SkeletonHeader />
+        <SkeletonCardList count={4} />
       </div>
     );
   }

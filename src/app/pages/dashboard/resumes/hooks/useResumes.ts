@@ -195,12 +195,14 @@ function buildActions(dispatch: React.Dispatch<ResumesAction>, reload: () => voi
     archiveResume(idx: number) {
       const all = loadResumesFromLS();
       if (all[idx]) { all[idx].archived = true; saveResumesToLS(all); }
+      (window as any).__bjToast?.('Resume archived', 'info');
       setTimeout(reload, 100);
     },
 
     unarchiveResume(idx: number) {
       const all = loadResumesFromLS();
       if (all[idx]) { all[idx].archived = false; saveResumesToLS(all); }
+      (window as any).__bjToast?.('Resume restored', 'success');
       setTimeout(reload, 100);
     },
 
@@ -210,6 +212,7 @@ function buildActions(dispatch: React.Dispatch<ResumesAction>, reload: () => voi
         all.splice(idx, 1);
         saveResumesToLS(all);
       }
+      (window as any).__bjToast?.('Resume deleted', 'info');
       setTimeout(reload, 100);
     },
 
@@ -225,8 +228,9 @@ function buildActions(dispatch: React.Dispatch<ResumesAction>, reload: () => voi
             const a = document.createElement('a');
             a.href = url; a.download = r.name || 'resume.pdf';
             a.click(); URL.revokeObjectURL(url);
+            (window as any).__bjToast?.('Download started', 'success');
           }
-        }).catch(() => { /* non-fatal */ });
+        }).catch(() => { (window as any).__bjToast?.('Download failed', 'error'); });
     },
 
     renameResume(idx: number) {
@@ -237,6 +241,7 @@ function buildActions(dispatch: React.Dispatch<ResumesAction>, reload: () => voi
       if (newName && newName.trim()) {
         r.name = newName.trim();
         saveResumesToLS(all);
+        (window as any).__bjToast?.('Resume renamed', 'success');
         setTimeout(reload, 100);
       }
     },
@@ -294,8 +299,10 @@ function buildActions(dispatch: React.Dispatch<ResumesAction>, reload: () => voi
 
         // Trigger text extraction via gateway (fire-and-forget)
         callGateway('extract-resume-profile', { storage_path: path }).catch(() => { /* non-fatal */ });
+        (window as any).__bjToast?.(`Resume uploaded — extracting text…`, 'success');
       } catch (err) {
         console.error('[SPA] uploadResume error:', err);
+        (window as any).__bjToast?.('Resume upload failed. Please try again.', 'error');
       }
       setTimeout(reload, 300);
     },

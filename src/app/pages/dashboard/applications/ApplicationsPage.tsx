@@ -13,7 +13,7 @@
 // ============================================================
 
 import { useState, useCallback } from 'react';
-import { PageHeader } from '@app/components';
+import { PageHeader, SkeletonHeader, SkeletonTable, SkeletonMetricRow } from '@app/components';
 import {
   ApplicationsHero,
   ModeSelector,
@@ -28,13 +28,18 @@ export function ApplicationsPage() {
   const [state, actions] = useApplications();
   const [appTab, setAppTab] = useState<AppTab>('pipeline');
 
-  const handleAddManual = useCallback(() => {
+  const handleAddManual = useCallback(async () => {
     const title = prompt('Job title:');
     if (!title) return;
     const company = prompt('Company:');
     if (!company) return;
     const url = prompt('Application URL (optional):') || '';
-    actions.addManual(title, company, url);
+    try {
+      await actions.addManual(title, company, url);
+      (window as any).__bjToast?.('Added to queue', 'success');
+    } catch {
+      (window as any).__bjToast?.('Failed to add to queue', 'error');
+    }
   }, [actions]);
 
   const [rules, setRules] = useState<Record<string, boolean>>({});
@@ -69,8 +74,10 @@ export function ApplicationsPage() {
 
   if (state.loading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <div className="inline-block w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+      <div>
+        <SkeletonHeader />
+        <SkeletonMetricRow count={4} />
+        <SkeletonTable rows={6} cols={5} />
       </div>
     );
   }

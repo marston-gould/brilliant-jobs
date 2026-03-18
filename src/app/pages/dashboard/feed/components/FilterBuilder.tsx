@@ -200,6 +200,7 @@ export function FilterBuilder({
                 type="text"
                 className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
                 placeholder="title, keyword, dept…" aria-label="Job title or keyword"
+                data-search-input
                 value={values.what}
                 onChange={(e) => update('what', e.target.value)}
                 onKeyDown={handleKeyDown}

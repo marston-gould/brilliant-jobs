@@ -63,9 +63,10 @@ interface ActionMenuProps {
   onFindRecruiters: () => void;
   onToggleMute: () => void;
   onRemove: () => void;
+  onSaveNote?: (note: string) => void;
 }
 
-function ActionMenu({ jobId, isMuted, hasNote, stage, item, onMoveStage, onFindRecruiters, onToggleMute, onRemove }: ActionMenuProps) {
+function ActionMenu({ jobId, isMuted, hasNote, stage, item, onMoveStage, onFindRecruiters, onToggleMute, onRemove, onSaveNote }: ActionMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -100,7 +101,14 @@ function ActionMenu({ jobId, isMuted, hasNote, stage, item, onMoveStage, onFindR
           ))}
           <div className="my-1 border-t border-border" />
           <button type="button"
-            onClick={() => { const note = prompt('Add a note:'); if (note) { (window as any).__bjToast?.('Note saved', 'success'); } setOpen(false); }}
+            onClick={() => {
+              const note = prompt('Add a note:');
+              if (note && note.trim()) {
+                onSaveNote?.(note.trim());
+                (window as any).__bjToast?.('Note saved', 'success');
+              }
+              setOpen(false);
+            }}
             className="w-full text-left px-3 py-1.5 text-xs text-text-dim hover:text-text hover:bg-bg-hover transition-all">
             Add Note
           </button>
@@ -155,10 +163,11 @@ interface PipelineRowProps {
   onUnsave: (jobId: string) => void;
   onSetTrackingMode: (jobId: string, mode: string) => void;
   onOpenModal: (jobId: string) => void;
+  onSaveNote?: (jobId: string, note: string) => void;
 }
 
 export function PipelineRow({
-  item, stage, onMoveStage, onConfirmSignal, onUnsave, onSetTrackingMode, onOpenModal,
+  item, stage, onMoveStage, onConfirmSignal, onUnsave, onSetTrackingMode, onOpenModal, onSaveNote,
 }: PipelineRowProps) {
   const [signalExpanded, setSignalExpanded] = useState(false);
 
@@ -353,6 +362,7 @@ export function PipelineRow({
             onFindRecruiters={handleFindRecruiters}
             onToggleMute={() => onSetTrackingMode(item.id, m.tracking_mode === 'muted' ? 'auto' : 'muted')}
             onRemove={() => onUnsave(item.id)}
+            onSaveNote={(note) => onSaveNote?.(item.id, note)}
           />
         </td>
       </tr>

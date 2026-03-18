@@ -17,11 +17,12 @@ interface StageSectionProps {
   onUnsave: (jobId: string) => void;
   onSetTrackingMode: (jobId: string, mode: string) => void;
   onOpenModal: (jobId: string) => void;
+  onSaveNote?: (jobId: string, note: string) => void;
 }
 
 export function StageSection({
   data, collapsed, onToggleCollapse,
-  onMoveStage, onConfirmSignal, onUnsave, onSetTrackingMode, onOpenModal,
+  onMoveStage, onConfirmSignal, onUnsave, onSetTrackingMode, onOpenModal, onSaveNote,
 }: StageSectionProps) {
   const [dragOver, setDragOver] = useState(false);
 
@@ -138,6 +139,7 @@ export function StageSection({
                       onUnsave={onUnsave}
                       onSetTrackingMode={onSetTrackingMode}
                       onOpenModal={onOpenModal}
+                      onSaveNote={onSaveNote}
                     />
                   ))}
                 </tbody>

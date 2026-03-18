@@ -80,8 +80,14 @@ export function useStats(): [StatsState, StatsActions] {
         if (topSource) cards.push({ label: 'Top Source', value: topSource.source_name, sub: `${topSource.job_count} jobs` });
       }
 
-      // Saved filters for comparison
-      const savedFilters = safeReadLS<any[]>('bj_saved_filters', []);
+      // Saved filters for comparison — load from Supabase tuning data
+      let savedFilters: any[] = [];
+      try {
+        const tuningData = await providers.tuning.getTuning() as any;
+        savedFilters = Array.isArray(tuningData?.filters) ? tuningData.filters : [];
+      } catch {
+        savedFilters = safeReadLS<any[]>('bj_saved_filters', []);
+      }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const filters: FilterPill[] = savedFilters.map((f: any, i: number) => ({
         label: f.name || `Filter ${i + 1}`,

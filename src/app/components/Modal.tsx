@@ -73,6 +73,7 @@ export function Modal({
     <div
       className="fixed inset-0 z-40 flex items-center justify-center p-4 animate-modal-fade"
       role="presentation"
+      data-modal-overlay
       onClick={handleBackdropClick}
     >
       {/* Backdrop */}

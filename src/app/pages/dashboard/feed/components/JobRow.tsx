@@ -179,6 +179,8 @@ export function JobRow({
       <tr
         className="border-b border-border hover:bg-bg-hover/50 transition-colors group"
         data-jobid={job.greenhouse_id}
+        data-job-row
+        tabIndex={0}
       >
         {/* Hide button */}
         <td className="p-1.5 w-[30px]">

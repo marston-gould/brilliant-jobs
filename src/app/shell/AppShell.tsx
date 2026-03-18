@@ -9,6 +9,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useUser, useProviders } from '@providers';
 import type { UserProfile } from '@providers';
 import { ToastProvider } from '@app/components/Toast';
+import { useKeyboardShortcuts } from '@app/hooks/useKeyboardShortcuts';
 import {
   Star,
   Briefcase,
@@ -157,6 +158,9 @@ export function AppShell() {
 
   const isAdminSection = location.pathname.startsWith('/app/admin');
   const isAdmin = user?.role === 'admin';
+
+  // Global keyboard shortcuts — / (search), j/k (nav), g+key (goto), Escape
+  useKeyboardShortcuts();
 
   // PostHog
   useEffect(() => {
@@ -352,6 +356,7 @@ export function AppShell() {
       {/* Feedback modal overlay */}
       {feedbackOpen && (
         <div className="fixed inset-0 z-[500] bg-black/50 backdrop-blur-sm flex items-center justify-center"
+          data-modal-overlay
           onClick={e => { if (e.target === e.currentTarget) setFeedbackOpen(false); }}>
           <div className="bg-bg-card border border-border rounded-xl p-7 w-[460px] max-w-[92vw] shadow-[0_16px_48px_rgba(0,0,0,0.4)] flex flex-col min-h-[500px]">
             <h3 className="text-[18px] font-bold text-text mb-1">Report a Bug</h3>

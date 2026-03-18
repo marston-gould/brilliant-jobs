@@ -237,12 +237,6 @@ let _pipelineLoaded = false;
 
 function getPipelineCache(): Record<string, PipelineMeta> { return _pipelineCache; }
 function getPendingSignals(): Record<string, PipelineSignal> { return _pendingSignalsCache; }
-function getSavedFilters(): Array<{ name: string; _filterColor?: string }> {
-  try {
-    const ls = localStorage.getItem('bj_saved_filters');
-    return ls ? JSON.parse(ls) : [];
-  } catch { return []; }
-}
 function getCollapseStates(): Record<string, boolean> {
   try {
     const ls = localStorage.getItem('bj_pl_collapse');
@@ -297,6 +291,7 @@ export interface PipelineActions {
   moveStage: (jobId: string, newStage: PipelineStage) => void;
   confirmSignal: (signalId: string, action: string, correctedStage?: string) => void;
   unsave: (jobId: string) => void;
+  updateNotes: (jobId: string, note: string) => Promise<void>;
   setFilter: (tag: string) => void;
   toggleCollapse: (stage: string) => void;
   setView: (view: 'pipeline' | 'ghost') => void;
@@ -540,6 +535,9 @@ export function usePipeline(): [PipelineState, PipelineActions] {
       _pipelineCache[jobId].stage = newStage;
       _pipelineCache[jobId].stageChangedAt = now;
     }
+    // Toast feedback
+    const label = PL_STAGE_LABELS[newStage] || newStage;
+    (window as any).__bjToast?.(`Moved to ${label}`, 'success');
     setTimeout(() => refresh(), 200);
   }, [refresh]);
 
@@ -578,8 +576,22 @@ export function usePipeline(): [PipelineState, PipelineActions] {
     if (!uid) return;
     await sb.from('user_pipeline').delete().eq('job_id', jobId).eq('user_id', uid);
     delete _pipelineCache[jobId];
+    (window as any).__bjToast?.('Removed from pipeline', 'info');
     setTimeout(() => refresh(), 200);
   }, [refresh]);
+
+  const updateNotes = useCallback(async (jobId: string, note: string) => {
+    const sb = getSb();
+    const uid = await getUserId();
+    if (!uid) return;
+    await sb.from('user_pipeline')
+      .update({ status_note: note })
+      .eq('job_id', jobId)
+      .eq('user_id', uid);
+    if (_pipelineCache[jobId]) {
+      _pipelineCache[jobId].status_note = note;
+    }
+  }, []);
 
   const setTrackingMode = useCallback(async (jobId: string, mode: string) => {
     const sb = getSb();
@@ -634,6 +646,7 @@ export function usePipeline(): [PipelineState, PipelineActions] {
     moveStage,
     confirmSignal,
     unsave,
+    updateNotes,
     setFilter,
     toggleCollapse,
     setView,
@@ -641,7 +654,7 @@ export function usePipeline(): [PipelineState, PipelineActions] {
     setTrackingMode,
     openJobModal,
     closeJobModal,
-  }), [refresh, moveStage, confirmSignal, unsave, setFilter, toggleCollapse, setView, loadGhostMonitor, setTrackingMode, openJobModal, closeJobModal]);
+  }), [refresh, moveStage, confirmSignal, unsave, updateNotes, setFilter, toggleCollapse, setView, loadGhostMonitor, setTrackingMode, openJobModal, closeJobModal]);
 
   return [state, actions];
 }

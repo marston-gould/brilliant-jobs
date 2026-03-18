@@ -120,6 +120,7 @@ export function PipelinePage() {
               onUnsave={actions.unsave}
               onSetTrackingMode={actions.setTrackingMode}
               onOpenModal={actions.openJobModal}
+              onSaveNote={actions.updateNotes}
             />
           ))}
         </div>

@@ -6,7 +6,7 @@
 // ============================================================
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
-import { supabase, safeReadLS, callGateway, getUser } from '@lib/supabase';
+import { safeReadLS, callGateway, getUser } from '@lib/supabase';
 import { providers } from '@app/providers/bridge';
 
 export interface PricingTier { name: string; price: number; credits: number; features: string[]; current: boolean; }

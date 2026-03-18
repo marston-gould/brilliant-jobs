@@ -3,7 +3,7 @@
 // ============================================================
 
 import { useState, useEffect, useCallback } from 'react';
-import { PageHeader } from '@app/components';
+import { PageHeader, SkeletonCardList } from '@app/components';
 import { Play, Bookmark, BookmarkCheck } from 'lucide-react';
 import { useProviders } from '@providers';
 
@@ -113,7 +113,7 @@ export default function InterviewPrepPage() {
 
           {/* Question cards */}
           {loading ? (
-            <div className="text-center py-10 text-text-faint text-[13px]">Loading questions...</div>
+            <SkeletonCardList count={5} />
           ) : questions.length === 0 ? (
             <div className="text-center py-10 text-text-faint">
               <p className="text-[13px] font-medium">No questions found</p>

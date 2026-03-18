@@ -11,7 +11,7 @@
 // ============================================================
 
 import { useCallback, useMemo } from 'react';
-import { Button, Card } from '@app/components';
+import { Button, Card, SkeletonHeader, SkeletonCardList, SkeletonMetricRow } from '@app/components';
 import { JobDetailModal } from '@app/components/JobDetailModal';
 import { ResumeSelector, ResumeScoreCard } from './components';
 import { useKeywords } from './hooks/useKeywords';
@@ -52,11 +52,10 @@ export function KeywordsPage() {
 
   if (state.loading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <div className="text-center">
-          <div className="inline-block w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs text-text-faint mt-2">Loading resumes…</p>
-        </div>
+      <div>
+        <SkeletonHeader />
+        <SkeletonMetricRow count={3} />
+        <SkeletonCardList count={3} />
       </div>
     );
   }
