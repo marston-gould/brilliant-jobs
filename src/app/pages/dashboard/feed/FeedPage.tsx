@@ -19,6 +19,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@app/components';
 import { JobDetailModal } from '@app/components/JobDetailModal';
+import { CompanyBrowseModal } from '@app/components/CompanyBrowseModal';
 import { useProviders } from '@providers';
 import {
   FeedHero,
@@ -114,6 +115,7 @@ export function FeedPage() {
   const [filterBuilderCollapsed, setFilterBuilderCollapsed] = useState(false);
   const [savedSearchesCollapsed, setSavedSearchesCollapsed] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [companyBrowseOpen, setCompanyBrowseOpen] = useState(false);
   const [savedSearchItems, setSavedSearchItems] = useState<SavedSearchItem[]>([]);
   const [filterValues, setFilterValues] = useState<FilterValues>({
     what: '',
@@ -257,13 +259,9 @@ export function FeedPage() {
   }, []);
 
   // REM-S13: Bridge to legacy openFilterBrowser for browse buttons
-  const handleBrowse = useCallback((dimension: string, mode: 'include' | 'exclude') => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const w = window as any;
-    if (typeof w.openFilterBrowser === 'function') {
-      w.openFilterBrowser(dimension, mode);
-    } else if (typeof w.openCompanyBrowser === 'function' && (dimension === 'company')) {
-      w.openCompanyBrowser(mode);
+  const handleBrowse = useCallback((dimension: string, _mode: 'include' | 'exclude') => {
+    if (dimension === 'company') {
+      setCompanyBrowseOpen(true);
     }
   }, []);
 
@@ -458,6 +456,9 @@ export function FeedPage() {
 
       {/* Job Detail Modal — legacy: openJobModal() */}
       <JobDetailModal jobId={selectedJobId} onClose={() => setSelectedJobId(null)} />
+
+      {/* Company Browse Modal — legacy: openCompanyBrowser() (58 refs) */}
+      <CompanyBrowseModal open={companyBrowseOpen} onClose={() => setCompanyBrowseOpen(false)} />
     </div>
   );
 }
