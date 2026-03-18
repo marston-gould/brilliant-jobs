@@ -6,7 +6,7 @@
 // ============================================================
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
-import { supabase, safeReadLS } from '@lib/supabase';
+import { safeReadLS } from '@lib/supabase';
 import { providers } from '@app/providers/bridge';
 
 export interface StatCard {

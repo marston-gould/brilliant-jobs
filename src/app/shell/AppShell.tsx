@@ -36,6 +36,8 @@ import {
   LogOut,
   ExternalLink,
   MessageSquare,
+  Kanban,
+  Tags,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -69,6 +71,8 @@ const SECTIONS: NavSection[] = [
     label: 'SEARCH',
     items: [
       { path: '/app/feed', label: 'Jobs Feed', Icon: Briefcase, dot: true, dotColor: 'var(--green)', badge: true },
+      { path: '/app/pipeline', label: 'Pipeline', Icon: Kanban, dot: true, dotColor: 'var(--accent)', badge: false },
+      { path: '/app/keywords', label: 'Readiness', Icon: Tags, indent: true },
       { path: '/app/tuning', label: 'Search Tuning', Icon: SlidersHorizontal, indent: true, dot: true, dotColor: 'var(--warm)' },
       { path: '/app/resumes', label: 'Resumes', Icon: FileText, dot: true, dotColor: '#ef4444', badge: true },
     ],
