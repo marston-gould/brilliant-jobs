@@ -49,7 +49,7 @@ export function ResumeUpload({ onUpload }: ResumeUploadProps) {
 
   return (
     <div
-      className={`rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
+      className={`rounded-xl border-2 border-dashed py-10 px-5 text-center transition-colors ${
         isDragging ? 'border-accent bg-accent/5' : 'border-border hover:border-accent/40'
       }`}
       onDrop={handleDrop}

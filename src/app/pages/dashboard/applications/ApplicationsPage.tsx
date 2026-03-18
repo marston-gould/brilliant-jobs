@@ -192,7 +192,7 @@ export function ApplicationsPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between p-3 rounded-lg bg-bg-input border border-border">
                 <span className="text-[13px] text-text">Require my approval</span>
-                <button className="w-9 h-5 rounded-full bg-accent relative"><span className="absolute top-0.5 left-[18px] w-4 h-4 bg-white rounded-full shadow" /></button>
+                <button className="w-10 h-[22px] rounded-full bg-accent relative"><span className="absolute top-0.5 left-[20px] w-4 h-4 bg-white rounded-full shadow" /></button>
               </div>
               <div className="flex items-center gap-3 p-3 rounded-lg bg-bg-input border border-border">
                 <span className="text-[13px] text-text flex-1">Auto-expire after</span>
@@ -213,7 +213,7 @@ export function ApplicationsPage() {
               ].map(rule => (
                 <div key={rule.label} className="flex items-center justify-between p-3 rounded-lg bg-bg-input border border-border">
                   <div><div className="text-[13px] font-semibold text-text">{rule.label}</div><div className="text-[11px] text-text-faint mt-0.5">{rule.desc}</div></div>
-                  <button className="w-9 h-5 rounded-full bg-border-hover relative"><span className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow" /></button>
+                  <button className="w-10 h-[22px] rounded-full bg-border-hover relative"><span className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow" /></button>
                 </div>
               ))}
             </div>
@@ -231,7 +231,7 @@ export function ApplicationsPage() {
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-bg-input border border-border">
                 <span className="text-[13px] text-text">Auto-select best-match resume per job</span>
-                <button className="w-9 h-5 rounded-full bg-accent relative"><span className="absolute top-0.5 left-[18px] w-4 h-4 bg-white rounded-full shadow" /></button>
+                <button className="w-10 h-[22px] rounded-full bg-accent relative"><span className="absolute top-0.5 left-[20px] w-4 h-4 bg-white rounded-full shadow" /></button>
               </div>
             </div>
           </div>
@@ -243,11 +243,11 @@ export function ApplicationsPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between p-3 rounded-lg bg-bg-input border border-border">
                 <span className="text-[13px] text-text">Smart Prompts — time-based check-in reminders</span>
-                <button className="w-9 h-5 rounded-full bg-accent relative"><span className="absolute top-0.5 left-[18px] w-4 h-4 bg-white rounded-full shadow" /></button>
+                <button className="w-10 h-[22px] rounded-full bg-accent relative"><span className="absolute top-0.5 left-[20px] w-4 h-4 bg-white rounded-full shadow" /></button>
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-bg-input border border-border">
                 <span className="text-[13px] text-text">Signal Detection — auto-detect via Gmail & Calendar</span>
-                <button className="w-9 h-5 rounded-full bg-border-hover relative"><span className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow" /></button>
+                <button className="w-10 h-[22px] rounded-full bg-border-hover relative"><span className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow" /></button>
               </div>
             </div>
             {/* Prompt Cadences — legacy lines 2383-2401 */}

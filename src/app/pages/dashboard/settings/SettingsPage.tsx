@@ -116,14 +116,14 @@ export default function SettingsPage() {
 
           <div className={toggleRow}>
             <div><div className="text-[13px] font-semibold text-text">Work Authorization (US)</div><div className="text-[11px] text-text-faint">Legally authorized to work in the United States</div></div>
-            <button onClick={() => setWorkAuth(!workAuth)} className={`w-9 h-5 rounded-full relative transition-colors ${workAuth ? 'bg-accent' : 'bg-border-hover'}`}>
-              <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${workAuth ? 'left-[18px]' : 'left-0.5'}`} />
+            <button onClick={() => setWorkAuth(!workAuth)} className={`w-10 h-[22px] rounded-full relative transition-colors ${workAuth ? 'bg-accent' : 'bg-border-hover'}`}>
+              <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${workAuth ? 'left-[20px]' : 'left-0.5'}`} />
             </button>
           </div>
           <div className={toggleRow}>
             <div><div className="text-[13px] font-semibold text-text">Requires Visa Sponsorship</div><div className="text-[11px] text-text-faint">Will need employer sponsorship for work visa</div></div>
-            <button onClick={() => setSponsorship(!sponsorship)} className={`w-9 h-5 rounded-full relative transition-colors ${sponsorship ? 'bg-accent' : 'bg-border-hover'}`}>
-              <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${sponsorship ? 'left-[18px]' : 'left-0.5'}`} />
+            <button onClick={() => setSponsorship(!sponsorship)} className={`w-10 h-[22px] rounded-full relative transition-colors ${sponsorship ? 'bg-accent' : 'bg-border-hover'}`}>
+              <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${sponsorship ? 'left-[20px]' : 'left-0.5'}`} />
             </button>
           </div>
 
@@ -167,7 +167,7 @@ export default function SettingsPage() {
         ].map(pref => (
           <div key={pref.label} className={toggleRow}>
             <div><div className="text-[13px] font-semibold text-text">{pref.label}</div><div className="text-[11px] text-text-faint">{pref.desc}</div></div>
-            <button className="w-9 h-5 rounded-full bg-border-hover relative transition-colors">
+            <button className="w-10 h-[22px] rounded-full bg-border-hover relative transition-colors">
               <span className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow" />
             </button>
           </div>
@@ -185,8 +185,8 @@ export default function SettingsPage() {
         <div className="text-[12px] text-text-dim mb-3">Active mode shows all matching jobs. Passive mode only alerts on exceptional matches.</div>
         <div className={toggleRow}>
           <div><div className="text-[13px] font-semibold text-text">Passive Mode</div><div className="text-[11px] text-text-faint">Only notify me on high-bar matches</div></div>
-          <button onClick={() => setPassiveMode(!passiveMode)} className={`w-9 h-5 rounded-full relative transition-colors ${passiveMode ? 'bg-accent' : 'bg-border-hover'}`}>
-            <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${passiveMode ? 'left-[18px]' : 'left-0.5'}`} />
+          <button onClick={() => setPassiveMode(!passiveMode)} className={`w-10 h-[22px] rounded-full relative transition-colors ${passiveMode ? 'bg-accent' : 'bg-border-hover'}`}>
+            <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${passiveMode ? 'left-[20px]' : 'left-0.5'}`} />
           </button>
         </div>
       </div>

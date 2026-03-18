@@ -64,12 +64,12 @@ function Toggle({ on = true, disabled = false, onClick }: { on?: boolean; disabl
   return (
     <button
       onClick={() => !disabled && onClick?.()}
-      className={`w-8 h-[18px] rounded-full relative transition-colors ${disabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}
+      className={`w-10 h-[22px] rounded-full relative transition-colors ${disabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}
         ${on ? 'bg-accent' : 'bg-border-hover'}`}
       disabled={disabled}
       title={disabled ? 'Verify phone to enable SMS' : undefined}
     >
-      <span className={`absolute top-[2px] w-[14px] h-[14px] bg-white rounded-full shadow transition-transform ${on ? 'left-[14px]' : 'left-[2px]'}`} />
+      <span className={`absolute top-[2px] w-[18px] h-[18px] bg-white rounded-full shadow transition-transform ${on ? 'left-[20px]' : 'left-[2px]'}`} />
     </button>
   );
 }

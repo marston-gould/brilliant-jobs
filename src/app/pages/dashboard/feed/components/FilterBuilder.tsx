@@ -50,8 +50,8 @@ interface FilterRowProps {
 
 function FilterRow({ label, labelClass, children, onBrowse }: FilterRowProps) {
   return (
-    <div className="flex items-start gap-2">
-      <span className={`text-xs font-semibold w-10 pt-2 flex-shrink-0 text-right ${labelClass || 'text-text-dim'}`}>
+    <div className="flex items-start gap-2.5">
+      <span className={`text-[11px] font-bold uppercase tracking-[0.5px] w-16 min-w-[64px] pt-3 flex-shrink-0 text-right ${labelClass || 'text-text-dim'}`}>
         {label}
       </span>
       <div className="flex-1 relative">
@@ -60,7 +60,7 @@ function FilterRow({ label, labelClass, children, onBrowse }: FilterRowProps) {
           <button
             type="button"
             onClick={onBrowse}
-            className="absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-accent hover:text-accent/80 font-medium px-1.5 py-0.5 rounded hover:bg-accent/10 transition-colors"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-accent hover:text-accent/80 font-semibold px-1.5 py-0.5 rounded hover:bg-accent/10 transition-colors"
           >
             Browse
           </button>
@@ -135,7 +135,7 @@ export function FilterBuilder({
             <FilterRow label="What" onBrowse={onBrowse ? () => onBrowse('title', 'include') : undefined}>
               <input
                 type="text"
-                className="w-full px-2 py-1.5 text-xs bg-bg-input border border-border rounded-md text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
+                className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
                 placeholder="title, keyword, dept…" aria-label="Job title or keyword"
                 value={values.what}
                 onChange={(e) => update('what', e.target.value)}
@@ -145,7 +145,7 @@ export function FilterBuilder({
             <FilterRow label="Not" labelClass="text-red-400/70" onBrowse={onBrowse ? () => onBrowse('title', 'exclude') : undefined}>
               <input
                 type="text"
-                className="w-full px-2 py-1.5 text-xs bg-bg-input border border-border rounded-md text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
+                className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
                 placeholder="exclude titles…"
                 value={values.whatNot}
                 onChange={(e) => update('whatNot', e.target.value)}
@@ -159,7 +159,7 @@ export function FilterBuilder({
             <FilterRow label="Where">
               <input
                 type="text"
-                className="w-full px-2 py-1.5 text-xs bg-bg-input border border-border rounded-md text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
+                className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
                 placeholder="city, state, remote…"
                 value={values.where}
                 onChange={(e) => update('where', e.target.value)}
@@ -169,7 +169,7 @@ export function FilterBuilder({
             <FilterRow label="Not" labelClass="text-red-400/70">
               <input
                 type="text"
-                className="w-full px-2 py-1.5 text-xs bg-bg-input border border-border rounded-md text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
+                className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
                 placeholder="exclude locations…"
                 value={values.whereNot}
                 onChange={(e) => update('whereNot', e.target.value)}
@@ -183,7 +183,7 @@ export function FilterBuilder({
             <FilterRow label="Who" onBrowse={onBrowse ? () => onBrowse('company', 'include') : undefined}>
               <input
                 type="text"
-                className="w-full px-2 py-1.5 text-xs bg-bg-input border border-border rounded-md text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
+                className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
                 placeholder="company name…"
                 value={values.who}
                 onChange={(e) => update('who', e.target.value)}
@@ -193,7 +193,7 @@ export function FilterBuilder({
             <FilterRow label="Not" labelClass="text-red-400/70" onBrowse={onBrowse ? () => onBrowse('company', 'exclude') : undefined}>
               <input
                 type="text"
-                className="w-full px-2 py-1.5 text-xs bg-bg-input border border-border rounded-md text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
+                className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
                 placeholder="exclude companies…"
                 value={values.whoNot}
                 onChange={(e) => update('whoNot', e.target.value)}
@@ -207,7 +207,7 @@ export function FilterBuilder({
             <FilterRow label="When">
               <input
                 type="text"
-                className="w-full px-2 py-1.5 text-xs bg-bg-input border border-border rounded-md text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
+                className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
                 placeholder="today, 7 days, month…"
                 value={values.when}
                 onChange={(e) => update('when', e.target.value)}
@@ -247,7 +247,7 @@ export function FilterBuilder({
             <FilterRow label="Skills" onBrowse={onBrowse ? () => onBrowse('skills', 'include') : undefined}>
               <input
                 type="text"
-                className="w-full px-2 py-1.5 text-xs bg-bg-input border border-border rounded-md text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
+                className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
                 placeholder="python, react, sql…"
                 value={values.skills}
                 onChange={(e) => update('skills', e.target.value)}
@@ -257,7 +257,7 @@ export function FilterBuilder({
             <FilterRow label="Dept" onBrowse={onBrowse ? () => onBrowse('dept', 'include') : undefined}>
               <input
                 type="text"
-                className="w-full px-2 py-1.5 text-xs bg-bg-input border border-border rounded-md text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
+                className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
                 placeholder="engineering, marketing, sales…"
                 value={values.dept}
                 onChange={(e) => update('dept', e.target.value)}
@@ -271,7 +271,7 @@ export function FilterBuilder({
             <FilterRow label="Level" onBrowse={onBrowse ? () => onBrowse('level', 'include') : undefined}>
               <input
                 type="text"
-                className="w-full px-2 py-1.5 text-xs bg-bg-input border border-border rounded-md text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
+                className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
                 placeholder="senior, junior, executive…"
                 value={values.level}
                 onChange={(e) => update('level', e.target.value)}
@@ -281,7 +281,7 @@ export function FilterBuilder({
             <FilterRow label="JD Contains" onBrowse={onBrowse ? () => onBrowse('jd', 'include') : undefined}>
               <input
                 type="text"
-                className="w-full px-2 py-1.5 text-xs bg-bg-input border border-border rounded-md text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
+                className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
                 placeholder="search descriptions… e.g. 'series B'"
                 value={values.jd}
                 onChange={(e) => update('jd', e.target.value)}

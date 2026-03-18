@@ -1,8 +1,9 @@
 // ============================================================
-// ResumesHero — Stats banner for Resumes page (SA-016)
+// ResumesHero — Navy banner matching legacy .resume-hero
 // ============================================================
+// Legacy: #1b3e6f bg, 32px 36px padding, 14px radius
+// Stats: hero-stat cards inside with white/7% bg
 
-import { Card } from '@app/components';
 import type { Resume, ReadinessScore, PipelineMeta } from '../hooks/useResumes';
 
 interface ResumesHeroProps {
@@ -14,38 +15,40 @@ interface ResumesHeroProps {
 
 export function ResumesHero({ resumes, archivedCount, readinessCache, pipelineMeta }: ResumesHeroProps) {
   const totalActive = resumes.filter(r => !r.needsUpload).length;
-  const placeholders = resumes.filter(r => r.needsUpload).length;
+  const levels = new Set(resumes.map(r => r.level).filter(Boolean)).size;
+  const assigned = resumes.filter(r => (r.filterIds || []).length > 0).length;
 
-  // Avg readiness across scored resumes
   const scores = Object.values(readinessCache).filter(s => s.overallScore > 0);
-  const avgReadiness = scores.length > 0
-    ? Math.round(scores.reduce((sum, s) => sum + s.overallScore, 0) / scores.length)
-    : 0;
-
-  // Total applied and response rate from pipeline meta
-  const metaEntries = Object.values(pipelineMeta);
-  const totalApplied = metaEntries.filter(m => m.stage !== 'saved').length;
-  const totalResponded = metaEntries.filter(m => ['responded', 'interview', 'offer'].includes(m.stage)).length;
-  const responseRate = totalApplied > 0 ? Math.round((totalResponded / totalApplied) * 100) : 0;
+  const coverage = scores.length > 0 && resumes.length > 0
+    ? Math.round((scores.length / resumes.length) * 100) + '%'
+    : '—';
 
   const stats = [
-    { label: 'Active Resumes', value: totalActive, sublabel: placeholders > 0 ? `+${placeholders} placeholder${placeholders !== 1 ? 's' : ''}` : undefined },
-    { label: 'Avg Readiness', value: avgReadiness > 0 ? `${avgReadiness}%` : '—', sublabel: scores.length > 0 ? `${scores.length} scored` : 'No scores yet' },
-    { label: 'Total Applied', value: totalApplied, sublabel: totalResponded > 0 ? `${totalResponded} responded` : undefined },
-    { label: 'Response Rate', value: totalApplied > 0 ? `${responseRate}%` : '—', sublabel: totalApplied > 0 ? `across all resumes` : 'No applications yet' },
+    { label: 'Active', value: totalActive },
+    { label: 'Levels', value: levels },
+    { label: 'Assigned', value: assigned, color: 'text-green' },
+    { label: 'Coverage', value: coverage, color: 'text-accent' },
+    { label: 'Archived', value: archivedCount, color: 'text-white/50' },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 mb-6 sm:grid-cols-4">
-      {stats.map((s) => (
-        <Card key={s.label} variant="default" padding="md">
-          <p className="text-xs font-semibold text-text-faint uppercase tracking-wider mb-1">{s.label}</p>
-          <p className="text-2xl font-bold text-text">{s.value}</p>
-          {s.sublabel && (
-            <p className="text-xs text-text-dim mt-0.5">{s.sublabel}</p>
-          )}
-        </Card>
-      ))}
+    <div className="rounded-[14px] px-9 py-8 mb-5 overflow-hidden"
+      style={{ background: '#1b3e6f', color: '#fff', boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
+      <div className="text-[18px] font-extrabold mb-1">
+        One role, one resume. <span className="text-warm">Built to compete.</span>
+      </div>
+      <div className="text-[12px] leading-relaxed max-w-[480px]" style={{ color: 'rgba(255,255,255,0.8)' }}>
+        Every saved search gets its own resume. We score each version against live job postings so you know where you stand — and what to fix — before you apply.
+      </div>
+      <div className="flex gap-2 flex-wrap mt-3.5">
+        {stats.map(s => (
+          <div key={s.label} className="flex-1 min-w-0 text-center px-3.5 py-2.5 rounded-lg"
+            style={{ background: 'hsla(0,0%,100%,0.07)', border: '1px solid hsla(0,0%,100%,0.08)' }}>
+            <div className={`text-[18px] font-bold tabular-nums ${s.color || 'text-white'}`}>{s.value}</div>
+            <div className="text-[10px] text-white/50 uppercase tracking-wide">{s.label}</div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
