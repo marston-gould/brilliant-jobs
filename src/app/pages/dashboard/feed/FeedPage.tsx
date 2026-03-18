@@ -279,7 +279,7 @@ export function FeedPage() {
       {/* Hero stats */}
       <FeedHero stats={state.stats} onPipelineClick={handlePipelineClick} />
 
-      {/* Intel cards — above toggle, persists across Filters/Chat modes (legacy: feed-intel section) */}
+      {/* Intel cards — side by side, above toggle (legacy: feed-intel section, line 833) */}
       <IntelCards
         searchQuery={filterValues.what}
         visibleCompanies={
@@ -290,22 +290,22 @@ export function FeedPage() {
         }
       />
 
-      {/* Search mode toggle */}
+      {/* AI Generation CTA — above toggle per legacy line 866 */}
+      <SearchBar
+        value=""
+        onChange={() => {}}
+        onSearch={handleSearch}
+        onAiGenerate={handleAiGenerate}
+        activeFilterCount={activeFilterCount}
+        onClearAll={handleClearAll}
+      />
+
+      {/* Search mode toggle — Filters / Chat / Guided per legacy line 874-888 */}
       <SearchModeToggle mode={state.searchMode} onModeChange={actions.setSearchMode} />
 
       {/* Filter panel (visible in Filters mode) */}
       {state.searchMode === 'filters' && (
         <div className="space-y-2">
-          {/* AI filter CTA + builder header */}
-          <SearchBar
-            value=""
-            onChange={() => {}}
-            onSearch={handleSearch}
-            onAiGenerate={handleAiGenerate}
-            activeFilterCount={activeFilterCount}
-            onClearAll={handleClearAll}
-          />
-
           {/* Filter builder */}
           <FilterBuilder
             values={filterValues}

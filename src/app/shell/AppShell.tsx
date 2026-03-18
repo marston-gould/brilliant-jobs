@@ -184,13 +184,13 @@ export function AppShell() {
       {/* ── Sidebar ── */}
       <nav aria-label="Main navigation" className="flex flex-col h-full w-[var(--nav-w,240px)] bg-[var(--nav-bg)] flex-shrink-0 overflow-y-auto overflow-x-hidden">
 
-        {/* Brand — matches legacy: B mark + "Brilliant Jobs" + "Dashboard v10.54" */}
+        {/* Brand — matches legacy: B mark + "Brilliant Jobs" + "Dashboard v10.55" */}
         <div className="px-4 pt-5 pb-4">
           <div className="flex items-center gap-3">
             <div className="w-[30px] h-[30px] rounded-lg bg-white flex items-center justify-center text-[var(--nav-bg)] font-extrabold text-sm flex-shrink-0">B</div>
             <div>
               <div className="font-bold text-[16px] text-white leading-tight">Brilliant Jobs</div>
-              <div className="text-[11px] text-[var(--nav-text)]">Dashboard <span className="text-[9px]">v10.54</span></div>
+              <div className="text-[11px] text-[var(--nav-text)]">Dashboard <span className="text-[9px]">v10.55</span></div>
             </div>
           </div>
         </div>
@@ -218,18 +218,17 @@ export function AppShell() {
                   <span>{item.label}</span>
                 </NavLink>
               ))}
+              {/* Insights external link — inside Intelligence section per legacy line 191 */}
+              {section.label === 'INTELLIGENCE' && !isAdminSection && (
+                <a href="/blog" target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2.5 px-3 py-[7px] rounded-md transition-colors text-[13px] font-medium text-[var(--nav-text)] hover:bg-[var(--nav-bg-active)]">
+                  <BookMarked className="w-[18px] h-[18px] flex-shrink-0 opacity-80" strokeWidth={1.75} />
+                  <span>Insights</span>
+                  <ExternalLink className="w-[10px] h-[10px] opacity-40 ml-0.5" strokeWidth={1.75} />
+                </a>
+              )}
             </div>
           ))}
-
-          {/* Insights (external link — in Intelligence section per legacy) */}
-          {!isAdminSection && (
-            <a href="/blog" target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-2.5 px-3 py-[7px] rounded-md transition-colors text-[13px] font-medium text-[var(--nav-text)] hover:bg-[var(--nav-bg-active)]">
-              <BookMarked className="w-[18px] h-[18px] flex-shrink-0 opacity-80" strokeWidth={1.75} />
-              <span>Insights</span>
-              <ExternalLink className="w-[10px] h-[10px] opacity-40 ml-0.5" strokeWidth={1.75} />
-            </a>
-          )}
 
           {/* Admin link (admin only — per legacy: hidden unless role=admin) */}
           {isAdmin && !isAdminSection && (
@@ -285,8 +284,8 @@ export function AppShell() {
         </div>
       </nav>
 
-      {/* ── Main content ── */}
-      <main id="main-content" role="main" className="flex-1 overflow-y-auto bg-[var(--bg-main)]">
+      {/* ── Main content — legacy: .main { padding: 24px 28px } ── */}
+      <main id="main-content" role="main" className="flex-1 overflow-y-auto bg-[var(--bg-main)] px-7 py-6">
         <Outlet />
       </main>
     </div>

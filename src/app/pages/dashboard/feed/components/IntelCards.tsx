@@ -60,7 +60,7 @@ export function IntelCards({ searchQuery }: IntelCardsProps) {
   if (!showInsight && !showMerch) return null;
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
       {showInsight && (
         <div className="flex items-start gap-3 p-[14px_16px] rounded-[10px] border border-border bg-bg-card hover:border-border-hover transition-colors">
           <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 text-lg"

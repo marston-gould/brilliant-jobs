@@ -111,7 +111,7 @@ export interface FeedSearchState {
   sortStack: SortEntry[];
   trustFilters: Set<TrustLabel>;
   aiFilters: Set<AiLabel>;
-  searchMode: 'filters' | 'chat';
+  searchMode: 'filters' | 'chat' | 'guided';
 }
 
 export interface FeedSearchActions {
@@ -121,7 +121,7 @@ export interface FeedSearchActions {
   removeSort: (field: string) => void;
   setTrustFilters: (labels: Set<TrustLabel>) => void;
   setAiFilters: (labels: Set<AiLabel>) => void;
-  setSearchMode: (mode: 'filters' | 'chat') => void;
+  setSearchMode: (mode: 'filters' | 'chat' | 'guided') => void;
   saveJob: (jobId: string) => Promise<void>;
   unsaveJob: (jobId: string) => Promise<void>;
   hideJob: (jobId: string) => Promise<void>;
@@ -962,7 +962,7 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
     setState(prev => ({ ...prev, aiFilters: labels }));
   }, []);
 
-  const setSearchMode = useCallback((mode: 'filters' | 'chat') => {
+  const setSearchMode = useCallback((mode: 'filters' | 'chat' | 'guided') => {
     setState(prev => ({ ...prev, searchMode: mode }));
   }, []);
 
