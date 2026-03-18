@@ -673,9 +673,40 @@ export class SupabaseIntegrationProvider implements IntegrationProvider {
 }
 
 export class SupabaseReferralProvider implements ReferralProvider {
-  async getStats() { return {}; /* loaded from localStorage */ }
-  async getLeaderboard() { return []; }
-  async getCode() { return ''; }
+  async getStats() {
+    const user = await getUser(); if (!user) return {};
+    const sb = getSupabase();
+    const { data } = await sb.from('referrals').select('*').eq('referrer_id', user.id);
+    const referrals = data || [];
+    return {
+      totalReferred: referrals.length,
+      converted: referrals.filter((r: any) => r.status === 'converted').length,
+      creditsEarned: referrals.reduce((sum: number, r: any) => sum + (r.credits_earned || 0), 0),
+    };
+  }
+  async getLeaderboard() {
+    const sb = getSupabase();
+    const { data } = await sb.from('referrals').select('referrer_id').limit(200);
+    const map = new Map<string, number>();
+    (data || []).forEach((r: any) => {
+      map.set(r.referrer_id, (map.get(r.referrer_id) || 0) + 1);
+    });
+    return Array.from(map.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([userId, count], i) => ({
+        userId,
+        displayName: userId.substring(0, 8) + '…',
+        referralCount: count,
+        rank: i + 1,
+      }));
+  }
+  async getCode() {
+    const user = await getUser(); if (!user) return '';
+    const sb = getSupabase();
+    const { data } = await sb.from('profiles').select('referral_code').eq('id', user.id).single();
+    return data?.referral_code || '';
+  }
 }
 
 export class SupabaseAdminProvider implements AdminProvider {

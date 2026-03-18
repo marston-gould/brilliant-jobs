@@ -368,10 +368,35 @@ export function ResumesPage() {
             <svg viewBox="0 0 24 24" width={48} height={48} fill="none" stroke="currentColor" strokeWidth={1.5} className="mx-auto mb-3 text-text-dim"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/></svg>
             <h3 className="text-[15px] font-bold text-text mb-2">No LinkedIn profile uploaded</h3>
             <p className="text-[12px] text-text-dim mb-4">Upload your LinkedIn PDF to get a section-by-section scorecard with actionable recommendations.</p>
-            <button className="px-4 py-2 rounded-md bg-accent text-white text-sm font-semibold"
-              onClick={() => navigate('/app/get-started')}>
-              Upload on Get Started →
-            </button>
+            <div className="flex gap-2">
+              <button className="px-4 py-2 rounded-md bg-accent text-white text-sm font-semibold"
+                onClick={() => {
+                  const input = document.createElement('input');
+                  input.type = 'file'; input.accept = '.pdf';
+                  input.onchange = async (e) => {
+                    const file = (e.target as HTMLInputElement).files?.[0];
+                    if (!file) return;
+                    setBulletStatus('Parsing LinkedIn PDF...');
+                    try {
+                      const { callGateway } = await import('@app/lib/supabase');
+                      // FormData upload to parse-linkedin-pdf
+                      const formData = new FormData(); formData.append('file', file);
+                      const { getAccessToken, GATEWAY_URL } = await import('@app/lib/supabase');
+                      const token = await getAccessToken();
+                      const resp = await fetch(`${GATEWAY_URL}/parse-linkedin-pdf`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData });
+                      if (resp.ok) setBulletStatus('LinkedIn profile parsed!');
+                      else setBulletStatus('Parse failed: ' + resp.status);
+                    } catch (err: any) { setBulletStatus('Error: ' + err.message); }
+                  };
+                  input.click();
+                }}>
+                Upload LinkedIn PDF
+              </button>
+              <button className="px-4 py-2 rounded-md border border-border text-sm font-medium text-text-dim hover:border-accent"
+                onClick={() => navigate('/app/get-started')}>
+                Or connect on Get Started →
+              </button>
+            </div>
           </div>
 
           {/* Score Section — legacy lines 1894-1913 (shown after upload) */}
@@ -383,7 +408,7 @@ export function ResumesPage() {
               <div>
                 <div className="text-[20px] font-extrabold text-text">Profile Score</div>
                 <div className="text-[11px] text-text-faint mt-1">Upload your LinkedIn PDF to get scored</div>
-                <button className="mt-2 px-3 py-1 rounded-md text-xs font-medium border border-border text-text-dim hover:border-accent">Re-Analyze (2 credits)</button>
+                <button onClick={async () => { setBulletStatus("Analyzing profile..."); try { const { callGateway } = await import("@app/lib/supabase"); await callGateway("optimize-linkedin-profile", { action: "analyze" }, { timeout: 30000 }); setBulletStatus("Analysis complete"); } catch(e: any) { setBulletStatus("Error: " + e.message); } }} className="mt-2 px-3 py-1 rounded-md text-xs font-medium border border-border text-text-dim hover:border-accent">Re-Analyze (2 credits)</button>
               </div>
             </div>
             <div className="text-[11px] text-text-faint text-center">Section-by-section scorecard will appear here after analysis</div>
@@ -403,7 +428,7 @@ export function ResumesPage() {
                 <label className="text-[10px] text-text-dim block mb-0.5">Target Role (optional)</label>
                 <input type="text" placeholder="e.g. VP of Engineering" className="w-full px-2 py-1.5 rounded-md border border-border bg-bg-main text-[11px] text-text" />
               </div>
-              <button className="px-3 py-1.5 rounded-md bg-accent text-white text-[11px] font-semibold">Generate (1 credit)</button>
+              <button onClick={async () => { setBulletStatus("Generating LinkedIn summary..."); try { const { callGateway } = await import("@app/lib/supabase"); await callGateway("optimize-linkedin-profile", { section: "about" }, { timeout: 25000 }); setBulletStatus("Summary generated"); } catch(e: any) { setBulletStatus("Error: " + e.message); } }} className="px-3 py-1.5 rounded-md bg-accent text-white text-[11px] font-semibold">Generate (1 credit)</button>
             </div>
           </div>
         </div>
