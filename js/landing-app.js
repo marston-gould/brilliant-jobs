@@ -400,7 +400,7 @@ document.addEventListener("DOMContentLoaded", function() {
         var stepComp = document.getElementById("lp-step-companies");
         if (stepComp) stepComp.textContent = hiringDisplay;
       }
-      var totalDisplay = stats.totalCompanies != null ? (Math.floor(stats.totalCompanies / 1e3) * 1e3).toLocaleString() + "+" : null;
+      var totalDisplay = stats.totalCompanies != null ? (Math.floor(stats.totalCompanies / 1e3) * 1e3).toLocaleString() + "+" : "39,000+";
       if (totalDisplay) {
         var lpCompEl = document.getElementById("lp-companies");
         if (lpCompEl) lpCompEl.textContent = totalDisplay;
@@ -425,7 +425,7 @@ document.addEventListener("DOMContentLoaded", function() {
       if (stats.metros != null) {
         document.getElementById("lp-metros").textContent = stats.metros.toLocaleString();
       }
-      var tcDisplay = stats.totalCompanies != null ? (Math.floor(stats.totalCompanies / 1e3) * 1e3).toLocaleString() + "+" : null;
+      var tcDisplay = stats.totalCompanies != null ? (Math.floor(stats.totalCompanies / 1e3) * 1e3).toLocaleString() + "+" : "39,000+";
       try {
         var ldScripts = document.querySelectorAll('script[type="application/ld+json"]');
         ldScripts.forEach(function(script) {
@@ -688,7 +688,7 @@ document.addEventListener("DOMContentLoaded", function() {
 (function initLpBenefitSections() {
   "use strict";
   var SUPABASE_URL = window.SUPABASE_URL || "https://qojhagupdnbtomfoxnsf.supabase.co";
-  var SUPABASE_ANON_KEY = SUPABASE_KEY;
+  var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg";
   function getVisitorSegment() {
     if (typeof window._bjSegment === "string") return window._bjSegment;
     try {
