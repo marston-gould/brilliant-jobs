@@ -279,7 +279,7 @@ export function ApplicationsPage() {
                 </div>
               ))}
             </div>
-            <button className="mt-3 px-3 py-1 rounded-md text-xs font-medium text-accent border border-accent hover:bg-accent/5">+ Add Custom Rule</button>
+            <button onClick={() => { const name = prompt("Rule name:"); if (name) { toggleRule(name.toLowerCase().replace(/\s+/g, "-")); alert("Rule added: " + name); } }} className="mt-3 px-3 py-1 rounded-md text-xs font-medium text-accent border border-accent hover:bg-accent/5">+ Add Custom Rule</button>
           </div>
 
           {/* Resume Assignment */}

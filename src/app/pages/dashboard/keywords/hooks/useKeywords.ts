@@ -121,13 +121,7 @@ function reducer(state: KeywordsState, action: KeywordsAction): KeywordsState {
 // ── Standalone data access (SPA-CUT-1) ───────────────────────
 
 function getResumes(): ResumeInfo[] {
-  // Try Supabase provider first, fall back to localStorage
-  try {
-    const sb = (window as any).__bjSupabase;
-    if (sb) {
-      // Async load will be handled by useEffect in the hook
-    }
-  } catch {}
+  // SPA-CUT-1: Falls back to localStorage. Async Supabase load handled by useEffect.
   const resumes = safeReadLS<any[]>('bj_resumes', []);
   return resumes.map((r: any, i: number) => ({
     index: i,
@@ -138,6 +132,21 @@ function getResumes(): ResumeInfo[] {
     filterIds: r.filterIds || [],
     selected: !r.archived && r.textStatus === 'ready' && !!(r.keywords && r.keywords.length > 0),
   }));
+}
+
+async function getResumesFromSupabase(): Promise<ResumeInfo[]> {
+  try {
+    const { supabase } = await import('@app/lib/supabase');
+    const user = await getUser();
+    if (!user) return getResumes();
+    const { data } = await supabase.from('resumes').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+    if (!data?.length) return getResumes();
+    return data.map((r: any, i: number) => ({
+      index: i, name: r.name || r.file_name || `Resume ${i + 1}`,
+      archived: !!r.archived, textStatus: r.text_status || 'ready',
+      hasKeywords: true, filterIds: r.filter_ids || [], selected: !r.archived,
+    }));
+  } catch { return getResumes(); }
 }
 
 function getReadinessCache(): { scores: Record<number, ResumeScore>; lastRun: string } | null {
@@ -193,7 +202,15 @@ export function useKeywords(): [KeywordsState, KeywordsActions] {
     dispatch({ type: 'SET_STATUS', payload: 'Starting analysis…' });
 
     try {
-      const allResumes = safeReadLS<any[]>('bj_resumes', []);
+      // Try Supabase resumes first
+      let allResumes: any[] = [];
+      try {
+        const { providers } = await import('@app/providers/bridge');
+        const sbResumes = await providers.resumes.getAll();
+        if (sbResumes?.length) allResumes = sbResumes;
+      } catch {}
+      if (!allResumes.length) allResumes = safeReadLS<any[]>('bj_resumes', []);
+
       const selectedIndices = state.resumes
         .filter(r => r.selected)
         .map(r => r.index);

@@ -16,6 +16,7 @@ interface JobTableProps {
   onHide: (jobId: string) => void;
   onApply: (jobId: string, url: string) => void;
   onPageChange: (page: number) => void;
+  onSort?: (field: string) => void;
   savedJobIds: Set<string>;
   appliedJobIds: Set<string>;
   matchScores: Record<string, number | { score: number }>;
@@ -156,7 +157,7 @@ export function JobTable({
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1">
           {COLUMNS.filter(c => c.sortable).map(col => (
-            <button key={col.key} className="px-2 py-1 rounded text-[10px] font-medium text-text-faint border border-border hover:border-accent transition-colors">
+            <button key={col.key} onClick={() => onSort?.(col.key)} className="px-2 py-1 rounded text-[10px] font-medium text-text-faint border border-border hover:border-accent transition-colors">
               {col.label} ↕
             </button>
           ))}

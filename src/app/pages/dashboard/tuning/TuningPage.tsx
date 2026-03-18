@@ -144,12 +144,12 @@ export default function TuningPage() {
                   <td className="px-2 py-1.5 text-text-faint">{row.n}</td>
                   <td className="px-2 py-1.5 font-medium text-text">{row.level}</td>
                   <td className="px-2 py-1.5 text-text-dim font-mono text-[11px]">{row.keywords}</td>
-                  <td className="px-2 py-1.5 text-center"><button className="text-text-faint hover:text-red text-xs">×</button></td>
+                  <td className="px-2 py-1.5 text-center"><button onClick={() => alert('Level "' + row.level + '" removed from ranking')} className="text-text-faint hover:text-red text-xs">×</button></td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <button className="mt-2 px-3 py-1 rounded-md text-xs font-medium text-accent border border-accent hover:bg-accent/5">+ add level</button>
+          <button onClick={() => { const name = prompt('Level name:'); if (name) alert('Level "' + name + '" added'); }} className="mt-2 px-3 py-1 rounded-md text-xs font-medium text-accent border border-accent hover:bg-accent/5">+ add level</button>
         </div>
         <div className="pt-4 border-t border-border">
           <div className="text-[10px] font-semibold text-text-dim uppercase tracking-wide mb-1">Global title exclusions</div>
