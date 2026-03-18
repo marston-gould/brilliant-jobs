@@ -230,7 +230,7 @@ export function JobRow({
         </td>
 
         {/* Company */}
-        <td className="py-2 px-1.5 text-xs text-text-dim truncate max-w-[120px]" title={job.company_name}>
+        <td className="py-2 px-1.5 text-[13px] font-medium text-text lowercase truncate max-w-[120px]" title={job.company_name}>
           {truncate(job.company_name, 30)}
         </td>
 

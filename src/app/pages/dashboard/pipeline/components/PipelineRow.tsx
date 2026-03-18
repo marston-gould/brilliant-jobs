@@ -236,7 +236,7 @@ export function PipelineRow({
         </td>
 
         {/* Title */}
-        <td className="py-2 px-2 max-w-[180px]">
+        <td className="py-2 px-3 max-w-[180px]">
           <button
             type="button"
             onClick={() => onOpenModal(item.id)}
@@ -248,14 +248,14 @@ export function PipelineRow({
         </td>
 
         {/* Company */}
-        <td className="py-2 px-2 max-w-[130px]">
+        <td className="py-2 px-3 max-w-[130px]">
           <span className="text-xs text-text-dim truncate block" title={company}>
             {company.length > 20 ? company.slice(0, 20) + '…' : company || '—'}
           </span>
         </td>
 
         {/* Resume */}
-        <td className="py-2 px-2">
+        <td className="py-2 px-3">
           {resumeName !== '—' ? (
             <Badge variant="info" size="sm">{resumeName}</Badge>
           ) : (
@@ -264,7 +264,7 @@ export function PipelineRow({
         </td>
 
         {/* Filter tags */}
-        <td className="py-2 px-2">
+        <td className="py-2 px-3">
           {filterBadges ? (
             <div className="flex gap-0.5 flex-wrap">
               {filterBadges.map(fb => (
@@ -287,13 +287,13 @@ export function PipelineRow({
         </td>
 
         {/* Discovered */}
-        <td className="py-2 px-2 text-xs text-text-dim whitespace-nowrap">{discovered}</td>
+        <td className="py-2 px-3 text-xs text-text-dim whitespace-nowrap">{discovered}</td>
 
         {/* Day Applied */}
-        <td className="py-2 px-2 text-xs text-text-dim whitespace-nowrap">{dayApplied}</td>
+        <td className="py-2 px-3 text-xs text-text-dim whitespace-nowrap">{dayApplied}</td>
 
         {/* Days in Stage */}
-        <td className="py-2 px-2 text-xs text-text-dim whitespace-nowrap">
+        <td className="py-2 px-3 text-xs text-text-dim whitespace-nowrap">
           {daysInStage != null ? `${daysInStage}d` : '—'}
         </td>
 
@@ -301,12 +301,12 @@ export function PipelineRow({
         <td className="py-2 px-2 text-[11px] text-text-dim whitespace-nowrap">{lastActivity}</td>
 
         {/* Match */}
-        <td className={`py-2 px-2 text-xs font-medium whitespace-nowrap ${matchClass}`}>
+        <td className={`py-2 px-3 text-xs font-medium whitespace-nowrap ${matchClass}`}>
           {matchScore != null ? `${matchScore}%` : '—'}
         </td>
 
         {/* Move */}
-        <td className="py-2 px-2">
+        <td className="py-2 px-3">
           <select
             className="text-[11px] bg-bg-input text-text border border-border rounded px-1.5 py-0.5 appearance-none cursor-pointer focus:outline-none focus:border-accent"
             defaultValue=""

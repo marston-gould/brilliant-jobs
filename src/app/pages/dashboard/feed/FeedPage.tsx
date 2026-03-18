@@ -411,6 +411,24 @@ export function FeedPage() {
         <ChatPanel />
       )}
 
+      {/* Guided mode — 3 analysis panels */}
+      {state.searchMode === 'guided' && (
+        <div className="border border-border rounded-xl bg-bg-card p-6 space-y-4">
+          <div className="text-[14px] font-bold text-text">Guided Search</div>
+          <div className="text-[12px] text-text-dim mb-2">Step-by-step search builder that walks you through building the perfect filter.</div>
+          <div className="flex gap-1 p-[3px] rounded-lg bg-[var(--bg-hover)] w-fit">
+            {['Resume Match', 'Company Match', 'Market Analysis'].map((label, i) => (
+              <button key={label} className={`px-3.5 py-1 rounded-md text-[11px] font-semibold transition-all border ${i === 0 ? 'bg-accent text-white border-accent' : 'bg-bg-card text-text-dim border-border hover:border-accent'}`}>{label}</button>
+            ))}
+          </div>
+          <div className="bg-bg-input rounded-lg p-5 text-center">
+            <div className="text-[13px] font-semibold text-text mb-1">Upload a resume to start</div>
+            <div className="text-[11px] text-text-faint mb-3">We'll analyze your experience and suggest matching jobs, companies, and market positions.</div>
+            <button onClick={() => navigate('/app/resumes')} className="px-3.5 py-[7px] rounded-lg bg-accent text-white text-[12px] font-semibold">Go to Resumes →</button>
+          </div>
+        </div>
+      )}
+
       {/* Filter results count */}
       {state.total > 0 && (
         <div className="px-1 text-xs text-text-dim">

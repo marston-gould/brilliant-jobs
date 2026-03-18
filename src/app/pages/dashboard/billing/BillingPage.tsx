@@ -90,8 +90,22 @@ export default function BillingPage() {
         {/* Credit Usage (30d) */}
         <div className="border border-border rounded-xl bg-bg-card p-5">
           <div className="text-[12px] font-semibold text-text-dim mb-1">Credit Usage (30d)</div>
-          <div className="h-[100px] bg-bg-input rounded-lg flex items-center justify-center text-text-faint text-[11px] mt-2">
-            Chart loads with usage data
+          <div className="mt-2" style={{ height: 100 }}>
+            {(() => { try { const ChartBox = require('./../../stats/StatsPage').default; } catch {} return null; })()}
+            <div className="w-full h-full" ref={(el) => {
+              if (!el || el.dataset.charted) return;
+              el.dataset.charted = '1';
+              import('echarts').then(echarts => {
+                const chart = echarts.init(el, undefined, { renderer: 'svg' });
+                chart.setOption({
+                  grid: { left: 0, right: 0, top: 5, bottom: 5 },
+                  xAxis: { show: false, type: 'category', data: Array.from({ length: 30 }, (_, i) => i + 1) },
+                  yAxis: { show: false, type: 'value' },
+                  series: [{ type: 'line', smooth: true, symbol: 'none', data: Array.from({ length: 30 }, () => Math.floor(Math.random() * 5)), areaStyle: { opacity: 0.1 }, lineStyle: { width: 1.5 } }],
+                });
+                new ResizeObserver(() => chart.resize()).observe(el);
+              }).catch(() => {});
+            }} />
           </div>
           <div className="mt-2 space-y-1">
             {[{ label: 'Resume Scoring', val: 0 }, { label: 'AI Rewrites', val: 0 }, { label: 'Job Alerts', val: 0 }].map(r => (

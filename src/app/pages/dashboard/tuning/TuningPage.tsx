@@ -124,9 +124,9 @@ export default function TuningPage() {
           <table className="w-full text-[12px] border border-border rounded-lg overflow-hidden">
             <thead>
               <tr className="bg-bg-input text-left">
-                <th className="px-2 py-1.5 font-medium text-text-dim w-9">#</th>
-                <th className="px-2 py-1.5 font-medium text-text-dim w-[140px]">Level</th>
-                <th className="px-2 py-1.5 font-medium text-text-dim">Match Keywords</th>
+                <th className="px-2 py-1.5 text-[10px] font-semibold text-text-faint uppercase tracking-[0.5px] w-9">#</th>
+                <th className="px-2 py-1.5 text-[10px] font-semibold text-text-faint uppercase tracking-[0.5px] w-[140px]">Level</th>
+                <th className="px-2 py-1.5 text-[10px] font-semibold text-text-faint uppercase tracking-[0.5px]">Match Keywords</th>
                 <th className="px-2 py-1.5 w-12"></th>
               </tr>
             </thead>

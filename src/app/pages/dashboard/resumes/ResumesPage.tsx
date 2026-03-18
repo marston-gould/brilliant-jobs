@@ -35,6 +35,7 @@ export function ResumesPage() {
   const navigate = useNavigate();
   const { resumes: resumeProvider } = useProviders();
   const [builderStatus, setBuilderStatus] = useState('');
+  const [builderInputMethod, setBuilderInputMethod] = useState<string>('Upload File');
   const [bulletStatus, setBulletStatus] = useState('');
 
   const handleParseResume = useCallback(async (file: File) => {
@@ -267,21 +268,47 @@ export function ResumesPage() {
             </div>
             <div className="p-5">
               {/* Input method tabs */}
-              <div className="flex gap-1 mb-4">
-                {['Upload File', 'Paste Text', 'Build from Scratch'].map((label, i) => (
-                  <button key={label} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all
-                    ${i === 0 ? 'bg-accent text-white' : 'bg-bg-input text-text-dim border border-border hover:border-accent'}
-                  `}>{label}</button>
-                ))}
-              </div>
+              {(() => {
+                const methods = ['Upload File', 'Paste Text', 'Build from Scratch'] as const;
+                const [inputMethod, setInputMethod] = [builderInputMethod, setBuilderInputMethod];
+                return (
+                  <>
+                    <div className="flex gap-1 mb-4">
+                      {methods.map(label => (
+                        <button key={label} onClick={() => setInputMethod(label)}
+                          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${inputMethod === label ? 'bg-accent text-white' : 'bg-bg-input text-text-dim border border-border hover:border-accent'}`}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
 
-              {/* Upload drop zone */}
-              <div className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-accent transition-colors">
-                <svg viewBox="0 0 24 24" width={32} height={32} fill="none" stroke="currentColor" strokeWidth={1.5} className="mx-auto mb-2 text-text-faint"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                <div className="text-[13px] font-semibold text-text mb-0.5">Drop your resume here</div>
-                <div className="text-[11px] text-text-faint">PDF or DOCX · Max 5MB</div>
-                <button onClick={() => { const i = document.createElement("input"); i.type = "file"; i.accept = ".pdf,.doc,.docx"; i.onchange = (e) => { const f = (e.target as HTMLInputElement).files?.[0]; if (f) handleParseResume(f); }; i.click(); }} className="mt-3 px-3 py-1.5 rounded-md text-xs font-medium border border-border text-text-dim hover:border-accent">Browse files</button>
-              </div>
+                    {inputMethod === 'Upload File' && (
+                      <div className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-accent transition-colors"
+                        onClick={() => { const i = document.createElement("input"); i.type = "file"; i.accept = ".pdf,.doc,.docx"; i.onchange = (e) => { const f = (e.target as HTMLInputElement).files?.[0]; if (f) handleParseResume(f); }; i.click(); }}>
+                        <svg viewBox="0 0 24 24" width={32} height={32} fill="none" stroke="currentColor" strokeWidth={1.5} className="mx-auto mb-2 text-text-faint"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <div className="text-[13px] font-semibold text-text mb-0.5">Drop your resume here</div>
+                        <div className="text-[11px] text-text-faint">PDF or DOCX · Max 5MB</div>
+                        <button onClick={e => { e.stopPropagation(); const i = document.createElement("input"); i.type = "file"; i.accept = ".pdf,.doc,.docx"; i.onchange = (ev) => { const f = (ev.target as HTMLInputElement).files?.[0]; if (f) handleParseResume(f); }; i.click(); }} className="mt-3 px-3 py-1.5 rounded-md text-xs font-medium border border-border text-text-dim hover:border-accent">Browse files</button>
+                      </div>
+                    )}
+
+                    {inputMethod === 'Paste Text' && (
+                      <div>
+                        <textarea rows={8} placeholder="Paste your resume text here..." className="w-full px-3 py-2.5 rounded-lg border border-border bg-bg-input text-[13px] text-text placeholder:text-text-faint resize-y focus:outline-none focus:border-accent" />
+                        <button onClick={() => { setBuilderStatus('Parsing pasted text...'); }} className="mt-3 px-4 py-2 rounded-md bg-accent text-white text-sm font-semibold">Parse Text</button>
+                      </div>
+                    )}
+
+                    {inputMethod === 'Build from Scratch' && (
+                      <div className="text-center py-6">
+                        <div className="text-[13px] font-semibold text-text mb-1">Start with a blank resume</div>
+                        <div className="text-[11px] text-text-faint mb-3">Fill in each section manually using the editor below.</div>
+                        <button className="px-4 py-2 rounded-md bg-accent text-white text-sm font-semibold">Start Building</button>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
 
               {/* Label input */}
               <div className="mt-4">

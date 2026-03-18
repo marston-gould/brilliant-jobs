@@ -30,6 +30,7 @@ export default function SettingsPage() {
   const [excludeMixed, setExcludeMixed] = useState(false);
   const [excludeAI, setExcludeAI] = useState(false);
   const [saveStatus, setSaveStatus] = useState('');
+  const [eeocData, setEeocData] = useState<Record<string, string>>({});
 
   useEffect(() => {
     userProvider.getCurrentUser().then(u => {
@@ -45,6 +46,8 @@ export default function SettingsPage() {
         setWorkAuth(prefs.workAuth !== false);
         setSponsorship(!!prefs.sponsorship);
         setPassiveMode(!!prefs.passiveMode);
+        const ud = (u as any).user_data || {};
+        setEeocData(ud.eeoc || {});
       }
     });
   }, [userProvider]);
@@ -158,7 +161,14 @@ export default function SettingsPage() {
               ].map(field => (
                 <div key={field.id}>
                   <label className={labelCls}>{field.label}</label>
-                  <select className={inputCls}>
+                  <select className={inputCls}
+                    defaultValue={eeocData[field.id] || ''}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setEeocData(prev => ({ ...prev, [field.id]: val }));
+                      // Persist EEOC via user preferences
+                      userProvider.updatePreferences({ eeoc: { ...eeocData, [field.id]: val } } as any).catch(() => {});
+                    }}>
                     <option value="">— Not set —</option>
                     {field.options.map(o => <option key={o} value={o}>{o}</option>)}
                   </select>

@@ -116,7 +116,7 @@ export function ResumeCard({
 
   return (
     <div
-      className={`rounded-lg border transition-all cursor-pointer ${
+      className={`rounded-[10px] border transition-all cursor-pointer ${
         isExpanded ? 'border-accent bg-bg-card shadow-md' : 'border-border bg-bg-card hover:border-accent/40'
       } ${isPlaceholder ? 'opacity-60 border-dashed' : ''}`}
       onClick={() => onToggleExpand(i)}
@@ -126,7 +126,7 @@ export function ResumeCard({
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggleExpand(i); } }}
     >
       {/* ── Compact Row ──────────────────────────────────────── */}
-      <div className="flex items-center gap-3 p-3">
+      <div className="flex items-center gap-3 px-4 py-3">
         {/* Icon */}
         <div className="flex-shrink-0 text-lg w-8 text-center" aria-hidden="true">
           {isPlaceholder ? '?' : icon.text}
