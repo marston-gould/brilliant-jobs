@@ -23,17 +23,17 @@ interface TuningCardProps {
 function TuningCard({ icon: Icon, iconColor, iconBg, borderColor, title, subtitle, badge, children }: TuningCardProps) {
   const [open, setOpen] = useState(true);
   return (
-    <div className="border border-border rounded-xl bg-bg-card overflow-hidden" style={{ borderLeft: `3px solid ${borderColor}` }}>
-      <button className="w-full flex items-center gap-3 p-4 text-left hover:bg-bg-input/30 transition-colors" onClick={() => setOpen(!open)}>
-        <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: iconBg }}>
+    <div className="border border-border rounded-xl bg-bg-card overflow-hidden mb-3 shadow-[0_1px_3px_rgba(0,0,0,0.02)]" style={{ borderLeft: `3px solid ${borderColor}` }}>
+      <button className="w-full flex items-center gap-2.5 px-5 py-4 text-left hover:bg-bg-input/30 transition-colors select-none" onClick={() => setOpen(!open)}>
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: iconBg }}>
           <Icon className="w-[18px] h-[18px]" style={{ color: iconColor }} strokeWidth={1.75} />
         </div>
         <ChevronDown className={`w-3.5 h-3.5 text-text-faint transition-transform ${open ? 'rotate-0' : '-rotate-90'}`} strokeWidth={2} />
         <span className="text-[14px] font-bold text-text flex-1">{title}</span>
         {badge && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-bg-input text-text-faint">{badge}</span>}
       </button>
-      <div className="px-4 -mt-1 mb-1 text-[11px] text-text-faint">{subtitle}</div>
-      {open && <div className="px-4 pb-4 pt-2 space-y-3">{children}</div>}
+      <div className="text-[12px] text-text-dim leading-relaxed" style={{ padding: '0 20px 4px 62px', marginTop: '-4px' }}>{subtitle}</div>
+      {open && <div className="px-5 pb-5 pt-3.5 space-y-3">{children}</div>}
     </div>
   );
 }
@@ -82,7 +82,7 @@ export default function TuningPage() {
       <PageHeader title="Search Tuning" subtitle="Global rules that sharpen every search at once" helpLink="tuning" onHelp={() => {}} />
 
       {/* Hero — legacy .tuning-hero */}
-      <div className="rounded-[14px] p-6" style={{ background: '#1b3e6f', color: '#fff' }}>
+      <div className="rounded-[14px] px-9 py-8" style={{ background: '#1b3e6f', color: '#fff' }}>
         <div className="text-[18px] font-extrabold mb-1.5">Less noise. <span className="text-warm">Better matches.</span></div>
         <div className="text-[13px] leading-relaxed max-w-[540px]" style={{ color: 'rgba(255,255,255,0.88)' }}>
           Rules you set here apply across every saved search — block entire companies, restrict locations, set seniority levels, and let poor-match analysis suggest what to exclude next.

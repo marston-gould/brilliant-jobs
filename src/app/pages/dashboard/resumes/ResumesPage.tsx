@@ -130,11 +130,11 @@ export function ResumesPage() {
     <div className="max-w-5xl mx-auto">
       {/* Page header with tab bar — legacy lines 1334-1343 */}
       <PageHeader title="Resumes" subtitle="Manage, version, and score your resumes." helpLink="resumes" onHelp={() => {}}>
-        <div className="flex gap-1.5 mt-3">
+        <div className="flex gap-1 p-[3px] rounded-lg bg-[var(--bg-hover)] w-fit mt-3">
           {(['my-resumes', 'builder', 'linkedin'] as ResumeTab[]).map(tab => (
             <button
               key={tab}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all border
+              className={`px-3.5 py-1 rounded-md text-[11px] font-semibold transition-all border
                 ${activeTab === tab
                   ? 'bg-accent text-white border-accent'
                   : 'bg-bg-card text-text-dim border-border hover:border-accent hover:text-text'

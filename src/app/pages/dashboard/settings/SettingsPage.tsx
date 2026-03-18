@@ -65,7 +65,7 @@ export default function SettingsPage() {
 
   const inputCls = "w-full px-3 py-2 rounded-md border border-border bg-bg-input text-[13px] text-text placeholder:text-text-faint focus:outline-none focus:ring-2 focus:ring-accent/40";
   const labelCls = "text-[11px] font-medium text-text-dim uppercase tracking-wide block mb-1";
-  const cardCls = "border border-border rounded-xl bg-bg-card p-5 mb-4";
+  const cardCls = "border border-border rounded-xl bg-bg-card p-6 mb-5";
   const toggleRow = "flex items-center justify-between py-2.5 border-t border-border";
 
   return (

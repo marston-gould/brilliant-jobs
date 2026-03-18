@@ -72,7 +72,7 @@ export function ApplicationsPage() {
       </div>
 
       {/* Top-level tabs — legacy: Pipeline | Review Queue | Settings */}
-      <div className="flex gap-1.5 mb-4">
+      <div className="flex gap-1 p-[3px] rounded-lg bg-[var(--bg-hover)] w-fit mb-4">
         {([
           { key: 'pipeline' as AppTab, label: 'Pipeline' },
           { key: 'review-queue' as AppTab, label: 'Review Queue' },
@@ -80,7 +80,7 @@ export function ApplicationsPage() {
         ]).map(t => (
           <button
             key={t.key}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all border
+            className={`px-3.5 py-1 rounded-md text-[11px] font-semibold transition-all border
               ${appTab === t.key
                 ? 'bg-accent text-white border-accent'
                 : 'bg-bg-card text-text-dim border-border hover:border-accent'
@@ -144,7 +144,7 @@ export function ApplicationsPage() {
       {appTab === 'settings' && (
         <div className="space-y-5">
           {/* Application Mode — 6 cards per legacy lines 2206-2248 */}
-          <div className="border border-border rounded-xl bg-bg-card p-5">
+          <div className="border border-border rounded-xl bg-bg-card p-6">
             <div className="text-[14px] font-bold text-text mb-1">Application Mode</div>
             <div className="text-[12px] text-text-dim mb-3">Controls how saved/matched jobs get processed. Can be overridden per filter.</div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -167,7 +167,7 @@ export function ApplicationsPage() {
           </div>
 
           {/* Score Gate */}
-          <div className="border border-border rounded-xl bg-bg-card p-5">
+          <div className="border border-border rounded-xl bg-bg-card p-6">
             <div className="text-[14px] font-bold text-text mb-1">Score Gate</div>
             <div className="text-[12px] text-text-dim mb-3">Minimum AI match score before applications are submitted</div>
             <div className="space-y-3">
@@ -186,7 +186,7 @@ export function ApplicationsPage() {
           </div>
 
           {/* Approval Settings */}
-          <div className="border border-border rounded-xl bg-bg-card p-5">
+          <div className="border border-border rounded-xl bg-bg-card p-6">
             <div className="text-[14px] font-bold text-text mb-1">Approval Settings</div>
             <div className="text-[12px] text-text-dim mb-3">When auto-applying, do you want to review before submission?</div>
             <div className="space-y-2">
@@ -202,7 +202,7 @@ export function ApplicationsPage() {
           </div>
 
           {/* Auto-Apply Rules */}
-          <div className="border border-border rounded-xl bg-bg-card p-5">
+          <div className="border border-border rounded-xl bg-bg-card p-6">
             <div className="text-[14px] font-bold text-text mb-1">Auto-Apply Rules</div>
             <div className="text-[12px] text-text-dim mb-3">When in Auto mode, jobs matching these rules are submitted without approval.</div>
             <div className="space-y-2">
@@ -221,7 +221,7 @@ export function ApplicationsPage() {
           </div>
 
           {/* Resume Assignment */}
-          <div className="border border-border rounded-xl bg-bg-card p-5">
+          <div className="border border-border rounded-xl bg-bg-card p-6">
             <div className="text-[14px] font-bold text-text mb-1">Resume Assignment</div>
             <div className="text-[12px] text-text-dim mb-3">Which resume gets sent for each application type.</div>
             <div className="space-y-2">
@@ -237,7 +237,7 @@ export function ApplicationsPage() {
           </div>
 
           {/* Pipeline Intelligence */}
-          <div className="border border-border rounded-xl bg-bg-card p-5">
+          <div className="border border-border rounded-xl bg-bg-card p-6">
             <div className="text-[14px] font-bold text-text mb-1">Pipeline Intelligence</div>
             <div className="text-[12px] text-text-dim mb-3">Automated tracking and smart prompts for your job applications.</div>
             <div className="space-y-2">

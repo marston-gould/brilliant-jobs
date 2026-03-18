@@ -85,23 +85,23 @@ export function JobCard({ job, isSaved, isApplied, matchScore, levelInfo, onSave
           </div>
         </div>
 
-        {/* Action buttons */}
+        {/* Action buttons — legacy: .job-action-btn + .apply-btn */}
         <div className="flex gap-1.5 flex-shrink-0">
           {isApplied ? (
-            <span className="text-[10px] font-semibold text-green px-2.5 py-1 rounded bg-green/10">
+            <span className="text-[10px] font-semibold text-green px-2.5 py-1 rounded-lg bg-green/10">
               Applied ✓
             </span>
           ) : (
             <>
               <button
                 onClick={() => onSave(job.greenhouse_id)}
-                className="text-[10px] font-medium px-2.5 py-1 rounded border border-border text-text-dim hover:border-accent hover:text-accent transition-colors"
+                className="text-[10px] font-semibold px-2.5 py-1 rounded-lg border-[1.5px] border-accent text-accent bg-transparent hover:bg-accent/5 transition-colors whitespace-nowrap"
               >
                 Pipeline
               </button>
               <button
                 onClick={() => onApply(job.greenhouse_id, applyUrl)}
-                className="text-[10px] font-semibold px-2.5 py-1 rounded bg-accent text-white hover:opacity-90 transition-opacity"
+                className="text-[11px] font-bold px-3.5 py-[5px] rounded-lg bg-accent text-white hover:opacity-90 transition-opacity whitespace-nowrap inline-flex items-center gap-1"
               >
                 Apply →
               </button>

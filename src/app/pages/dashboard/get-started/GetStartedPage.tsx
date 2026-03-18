@@ -137,7 +137,7 @@ export default function GetStartedPage() {
       </div>
 
       {/* Hero — legacy: .gs-hero */}
-      <div className="rounded-[14px] p-6 overflow-hidden"
+      <div className="rounded-[14px] px-9 py-9 overflow-hidden mb-6"
            style={{ background: '#1b3e6f', color: '#fff', boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
         <div className="text-[22px] font-extrabold leading-tight mb-2">
           This is not another job board.<br />
@@ -150,8 +150,8 @@ export default function GetStartedPage() {
         </div>
       </div>
 
-      {/* Connections status bar — legacy: .setup-status-bar */}
-      <div className="flex items-center gap-6 flex-wrap p-3 px-4 rounded-lg border border-border bg-bg-card">
+      {/* Connections status bar — legacy: .setup-status-bar { radius 14px, padding 16px 24px, gap 20px } */}
+      <div className="flex items-center gap-5 flex-wrap py-4 px-6 rounded-[14px] border border-border bg-bg-card mb-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
         <div className="text-[13px] font-semibold text-text">Connections</div>
         <div className="flex gap-4 flex-wrap text-[12px] text-text-dim">
           <span className="flex items-center gap-1.5"><StatusDot status={extStatus} /> Extension</span>
@@ -270,7 +270,7 @@ export default function GetStartedPage() {
       </Step>
 
       {/* Data advantage — legacy: .gs-advantage */}
-      <div className="border border-border rounded-xl bg-bg-card p-5">
+      <div className="border border-border rounded-xl bg-bg-card p-6">
         <div className="text-[15px] font-bold flex items-center gap-2 mb-2">
           <TrendingUp className="w-5 h-5 text-green" strokeWidth={1.75} />
           Your data advantage

@@ -43,7 +43,7 @@ export default function BillingPage() {
     { name: 'Pro', price: '$29', period: '/mo', credits: '300', payg: '$0.10', highlight: tier === 'pro' || tier === 'active_pro' },
   ];
 
-  const cardCls = "border border-border rounded-xl bg-bg-card p-5 mb-4";
+  const cardCls = "border border-border rounded-xl bg-bg-card p-6 mb-5";
 
   return (
     <div className="max-w-[860px]">
@@ -91,9 +91,9 @@ export default function BillingPage() {
       {/* What Uses Credits */}
       <div className={cardCls}>
         <div className="text-[14px] font-bold text-text mb-3">What Uses Credits</div>
-        <div className="space-y-3">
+        <div className="divide-y divide-border">
           {creditCosts.map(c => (
-            <div key={c.name} className="flex items-center gap-3">
+            <div key={c.name} className="flex items-center gap-3 py-3">
               <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
                 <c.icon className="w-[18px] h-[18px] text-accent" strokeWidth={1.75} />
               </div>

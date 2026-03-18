@@ -62,14 +62,14 @@ export default function StatsPage() {
       </PageHeader>
 
       {/* Tab bar — Market Stats | Resume Metrics | Overlay Analytics */}
-      <div className="flex gap-1.5 mb-5">
+      <div className="flex gap-1 p-[3px] rounded-lg bg-[var(--bg-hover)] w-fit mb-5">
         {([
           { key: 'market' as StatsTab, label: 'Market Stats' },
           { key: 'resume' as StatsTab, label: 'Resume Metrics' },
           { key: 'overlay' as StatsTab, label: 'Overlay Analytics' },
         ]).map(t => (
           <button key={t.key}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all border
+            className={`px-3.5 py-1 rounded-md text-[11px] font-semibold transition-all border
               ${tab === t.key ? 'bg-accent text-white border-accent' : 'bg-bg-card text-text-dim border-border hover:border-accent'}
             `}
             onClick={() => setTab(t.key)}>
