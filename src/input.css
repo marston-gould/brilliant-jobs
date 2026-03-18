@@ -293,4 +293,14 @@
     body { font-family: var(--sans); background: var(--bg-main); color: var(--text); -webkit-font-smoothing: antialiased; }
     .app { display: flex; min-height: 100vh; }
 
+    /* Responsive nav collapse — legacy @media (max-width:768px) */
+    @media (max-width: 768px) {
+      :root { --nav-w: 60px; }
+    }
+
+    /* Responsive page body padding — legacy @media (max-width:600px) */
+    @media (max-width: 600px) {
+      :root { --page-px: 20px; }
+    }
+
 }

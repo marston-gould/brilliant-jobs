@@ -215,13 +215,13 @@ export function AppShell() {
       {/* ── Sidebar ── */}
       <nav aria-label="Main navigation" className="flex flex-col h-full w-[var(--nav-w,240px)] bg-[var(--nav-bg)] flex-shrink-0 overflow-y-auto overflow-x-hidden">
 
-        {/* Brand — matches legacy: B mark + "Brilliant Jobs" + "Dashboard v10.74" */}
+        {/* Brand — matches legacy: B mark + "Brilliant Jobs" + "Dashboard v10.75" */}
         <div className="px-6 py-[22px] border-b border-white/[0.08]">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 max-md:justify-center">
             <div className="w-[30px] h-[30px] rounded-lg bg-white flex items-center justify-center text-[var(--nav-bg)] font-extrabold text-sm flex-shrink-0">B</div>
-            <div>
+            <div className="max-md:hidden">
               <div className="font-bold text-[16px] text-white leading-tight">Brilliant Jobs</div>
-              <div className="text-[11px] text-[var(--nav-text)]">Dashboard <span className="text-[9px]">v10.74</span></div>
+              <div className="text-[11px] text-[var(--nav-text)]">Dashboard <span className="text-[9px]">v10.75</span></div>
             </div>
           </div>
         </div>
@@ -231,7 +231,7 @@ export function AppShell() {
           {(isAdminSection ? [{ label: 'ADMIN', items: ADMIN_ITEMS }] : SECTIONS).map((section, si) => (
             <div key={section.label || si}>
               {section.label && (
-                <div className="px-3.5 pt-3 pb-1.5 mt-2 text-[10px] font-bold tracking-[1.5px] text-white/30 uppercase select-none">
+                <div className="px-3.5 pt-3 pb-1.5 mt-2 text-[10px] font-bold tracking-[1.5px] text-white/30 uppercase select-none max-md:hidden">
                   {section.label}
                 </div>
               )}
@@ -240,16 +240,16 @@ export function AppShell() {
                   key={item.path + item.label}
                   to={item.path}
                   className={({ isActive }) => `
-                    flex items-center gap-3 py-2.5 rounded-lg transition-colors text-[13.5px] font-medium mb-0.5
+                    flex items-center gap-3 py-2.5 rounded-lg transition-colors text-[13.5px] font-medium mb-0.5 max-md:justify-center max-md:px-2.5
                     ${isActive ? 'bg-[var(--nav-bg-active)] text-white' : 'text-[var(--nav-text)] hover:bg-[var(--nav-bg-active)]'}
-                    ${item.indent ? 'pl-[34px] pr-3.5 text-[12px]' : 'px-3.5'}
+                    ${item.indent ? 'pl-[34px] pr-3.5 text-[12px] max-md:pl-2.5' : 'px-3.5'}
                   `}
                 >
                   <item.Icon className="w-[18px] h-[18px] flex-shrink-0 opacity-80" strokeWidth={1.75} />
-                  <span className="flex-1">{item.label}</span>
-                  {/* Badge count — legacy: nav-jobs-count, nav-resume-count, nav-app-count */}
+                  <span className="flex-1 max-md:hidden">{item.label}</span>
+                  {/* Badge count */}
                   {item.badge && (badgeCounts[item.path] ?? 0) > 0 && (
-                    <span className="text-[11px] font-semibold bg-white/15 text-white px-2 py-0.5 rounded-lg tabular-nums leading-none ml-auto">
+                    <span className="text-[11px] font-semibold bg-white/15 text-white px-2 py-0.5 rounded-lg tabular-nums leading-none ml-auto max-md:hidden">
                       {(badgeCounts[item.path] ?? 0) > 999 ? '999+' : badgeCounts[item.path]}
                     </span>
                   )}
@@ -293,7 +293,7 @@ export function AppShell() {
                 style={{ backgroundColor: avatarColor(user.email) }}>
                 {avatarInitial(user.email, user.display_name)}
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 max-md:hidden">
                 <div className="text-[12px] text-white/70 truncate">{user.email}</div>
                 <div className="text-[10px] font-semibold tracking-wide uppercase"
                   style={{ color: user.role === 'admin' ? '#f97316' : 'rgba(255,255,255,0.4)' }}>
