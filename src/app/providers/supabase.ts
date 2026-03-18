@@ -531,9 +531,9 @@ export class SupabaseStatsProvider implements StatsProvider {
       const { data, error } = await sb.from('mv_source_breakdown').select('*');
       if (!error && data?.length) return data;
     } catch { /* view may not exist */ }
-    // Fallback: group by source via RPC or raw query
-    const { data } = await sb.rpc('get_source_breakdown').select('*');
-    if (data?.length) return data;
+    // Fallback: group by source via RPC
+    const { data: rpcData } = await sb.rpc('get_source_breakdown');
+    if (rpcData?.length) return rpcData;
     // Last resort: fetch sources and count client-side (not ideal but works)
     const { data: jobs } = await sb.from('ats_jobs').select('source').limit(10000);
     const counts: Record<string, number> = {};

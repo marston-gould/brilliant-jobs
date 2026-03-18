@@ -1,11 +1,13 @@
 // ============================================================
-// useSettings — Settings data hook (SA-017)
+// useSettings — Settings data hook (SA-017 → SPA-PHASE-A)
 // ============================================================
-// Standalone hook — zero window.* dependencies (SPA-CUT-3).
+// Loads profile from Supabase auth + profiles table.
+// Zero window.* dependencies. No polling needed — settings
+// change only on explicit user action.
 // ============================================================
 
-import { useCallback, useEffect, useReducer, useRef } from 'react';
-import { supabase, safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
+import { useCallback, useEffect, useReducer } from 'react';
+import { safeReadLS, callGateway, getUser, supabase } from '@lib/supabase';
 
 export interface ProfileData {
   email: string;
@@ -71,38 +73,54 @@ export function useSettings(): [SettingsState, {
   exportData: () => void;
 }] {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const loadData = useCallback(() => {
+  const loadData = useCallback(async () => {
     try {
-      // SPA-CUT-3: Data loaded from localStorage/Supabase (no window bridge)
-      const profile: ProfileData = {
-        email: safeReadLS('bj__userEmail', ''),
-        name: safeReadLS('bj__userName', ''),
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        phone: safeReadLS('bj__userPhone', ''),
-        linkedIn: safeReadLS('bj__userLinkedIn', ''),
-        joinedAt: safeReadLS('bj__userJoinedAt', ''),
-      };
-      const aiScoring: AiScoringPrefs = initialState.aiScoring;
-      const dangerZone: DangerZoneState = {
-        // @ts-ignore SPA-CUT-3
-        deleteRequested: !!null,
-        graceExpiresAt: safeReadLS('bj__graceExpiresAt', null),
-        // @ts-ignore SPA-CUT-3
-        exportReady: !!null,
-      };
+      const user = await getUser();
+      if (!user) {
+        dispatch({ type: 'ERROR', error: 'Not authenticated' });
+        return;
+      }
+
+      // Load profile from Supabase profiles table
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, phone, user_data, created_at, plan')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const userData = (profile?.user_data as Record<string, unknown>) || {};
+
+      // Count user resources in parallel
+      const [resumesResult] = await Promise.allSettled([
+        supabase.from('resumes').select('*', { count: 'exact', head: true }).eq('user_id', user.id).is('deleted_at', null),
+      ]);
+
+      const resumeCount = resumesResult.status === 'fulfilled' ? (resumesResult.value.count || 0) : safeReadLS('bj__resumeCount', 0);
+      const jobCount = safeReadLS<number>('bj__totalJobCount', 0);
+
+      const deleteGrace = (userData.deleteGracePeriodEnd as string) || null;
+
       dispatch({
         type: 'LOADED',
         data: {
-          profile,
-          aiScoring,
-          dangerZone,
-          jobCount: safeReadLS('bj__totalJobCount', 0),
-          // @ts-ignore SPA-CUT-3
-          filterCount: Array.isArray(null) ? null.length : 0,
-          // @ts-ignore SPA-CUT-3
-          resumeCount: Array.isArray(null) ? null.length : 0,
+          profile: {
+            email: user.email || '',
+            name: profile?.full_name || (userData.name as string) || '',
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            phone: profile?.phone || (userData.phone as string) || '',
+            linkedIn: (userData.linkedIn as string) || '',
+            joinedAt: user.created_at || '',
+          },
+          aiScoring: initialState.aiScoring,
+          dangerZone: {
+            deleteRequested: !!deleteGrace,
+            graceExpiresAt: deleteGrace,
+            exportReady: !!(userData.exportReady),
+          },
+          jobCount,
+          filterCount: safeReadLS<number>('bj__filterCount', 0),
+          resumeCount,
         },
       });
     } catch (e) {
@@ -112,30 +130,35 @@ export function useSettings(): [SettingsState, {
 
   useEffect(() => {
     loadData();
-    pollRef.current = setInterval(loadData, 3000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 
   const openFeedback = useCallback(() => {
     try { window.open('https://brilliantjobs.canny.io', '_blank'); } catch { /* non-fatal */ }
   }, []);
-  const requestDelete = useCallback(() => {
-    // SPA-CUT-REMEDIATION: Via admin-user-manager gateway
-    async () => {
-      if (!confirm('Are you sure you want to delete your account? This cannot be undone.')) return;
+
+  const requestDelete = useCallback(async () => {
+    if (!confirm('Are you sure you want to delete your account? This cannot be undone.')) return;
+    try {
       await callGateway('admin-user-manager', { action: 'request_deletion' });
-    }
-  }, []);
-  const cancelDelete = useCallback(() => {
-    // SPA-CUT-REMEDIATION: Via admin-user-manager gateway
-    async () => { await callGateway('admin-user-manager', { action: 'cancel_deletion' }); }
-  }, []);
-  const exportData = useCallback(() => {
-    // SPA-CUT-REMEDIATION: Via admin-user-manager gateway (returns download URL)
-    async () => {
-      const result = await callGateway('admin-user-manager', { action: 'export_data' });
+      (window as any).__bjToast?.('Account deletion requested. You have 30 days to cancel.', 'info');
+      loadData();
+    } catch { (window as any).__bjToast?.('Failed to request deletion. Please contact support.', 'error'); }
+  }, [loadData]);
+
+  const cancelDelete = useCallback(async () => {
+    try {
+      await callGateway('admin-user-manager', { action: 'cancel_deletion' });
+      (window as any).__bjToast?.('Account deletion cancelled.', 'success');
+      loadData();
+    } catch { (window as any).__bjToast?.('Failed to cancel deletion. Please contact support.', 'error'); }
+  }, [loadData]);
+
+  const exportData = useCallback(async () => {
+    try {
+      const result = await callGateway<{ url: string }>('admin-user-manager', { action: 'export_data' });
       if (result?.url) window.open(result.url, '_blank');
-    }
+      else (window as any).__bjToast?.("Export started — you'll receive an email when ready.", 'info');
+    } catch { (window as any).__bjToast?.('Export failed. Please try again.', 'error'); }
   }, []);
 
   return [state, { openFeedback, requestDelete, cancelDelete, exportData }];

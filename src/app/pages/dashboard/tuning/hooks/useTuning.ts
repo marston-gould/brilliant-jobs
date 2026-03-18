@@ -1,11 +1,14 @@
 // ============================================================
-// useTuning — Tuning data hook (SA-017)
+// useTuning — Tuning data hook (SA-017 → SPA-PHASE-A)
 // ============================================================
-// Standalone hook — zero window.* dependencies (SPA-CUT-3).
+// Reads/writes tuning data via SupabaseTuningProvider.
+// Falls back to localStorage for collapse states (UI-only).
+// Zero window.* dependencies.
 // ============================================================
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
-import { supabase, safeReadLS, safeWriteLS, callGateway, getUser } from '@lib/supabase';
+import { safeReadLS, safeWriteLS } from '@lib/supabase';
+import { providers } from '@app/providers/bridge';
 
 export interface TuningFilter {
   name: string;
@@ -72,20 +75,22 @@ export function useTuning(): [TuningState, {
   const [state, dispatch] = useReducer(reducer, initialState);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const loadData = useCallback(() => {
+  const loadData = useCallback(async () => {
     try {
-      // SPA-CUT-3: Data loaded from localStorage/Supabase (no window bridge)
-      const savedFilters = Array.isArray(null) ? null : [];
-      const filterColors = safeReadLS('bj_filterColors', {});
-      const levelHierarchy = Array.isArray(null) ? null : [];
+      // Load tuning data from Supabase via provider
+      const tuningData = await providers.tuning.getTuning();
+      const filterColors = safeReadLS<Record<string, string>>('bj_filterColors', {});
 
-      // @ts-ignore SPA-CUT-3
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const savedFilters: any[] = Array.isArray((tuningData as any)?.filters) ? (tuningData as any).filters : [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const levelHierarchy: any[] = Array.isArray((tuningData as any)?.levels) ? (tuningData as any).levels : [];
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const filters: TuningFilter[] = savedFilters.map((f: any, i: number) => ({
         name: f.name || f.label || `Filter ${i + 1}`,
         idx: i,
-        // @ts-ignore SPA-CUT-3
-        color: filterColors[i] || '#6366f1',
+        color: filterColors[String(i)] || '#6366f1',
         keywords: Array.isArray(f.keywords) ? f.keywords : (f.keywords || '').split(',').filter(Boolean),
         excludedTerms: Array.isArray(f.excludedTerms) ? f.excludedTerms : [],
         location: f.location || '',
@@ -95,7 +100,6 @@ export function useTuning(): [TuningState, {
         collapsed: false,
       }));
 
-      // @ts-ignore SPA-CUT-3
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const levels: LevelConfig[] = levelHierarchy.map((l: any) => ({
         label: l.label || '',
@@ -108,9 +112,8 @@ export function useTuning(): [TuningState, {
         data: {
           filters,
           levels,
-          hiddenJobCount: safeReadLS('bj__hiddenJobCount', 0),
-          // @ts-ignore SPA-CUT-3
-          statusDirty: !!null,
+          hiddenJobCount: (tuningData as any)?.hiddenJobCount ?? safeReadLS('bj__hiddenJobCount', 0),
+          statusDirty: false,
         },
       });
     } catch (e) {
@@ -120,35 +123,47 @@ export function useTuning(): [TuningState, {
 
   useEffect(() => {
     loadData();
-    pollRef.current = setInterval(loadData, 3000);
+    pollRef.current = setInterval(() => { loadData(); }, 30000); // 30s poll — no need for 3s
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 
-  const saveTuning = useCallback(() => {
-    safeWriteLS('bj_tuning', safeReadLS('bj_tuning', {}));
+  const saveTuning = useCallback(async () => {
+    try {
+      const currentFilters = (await providers.tuning.getTuning() as any)?.filters || [];
+      await providers.tuning.saveTuning({ filters: currentFilters } as any);
+    } catch { /* non-fatal */ }
   }, []);
-  const saveLevels = useCallback(() => {
-    // SPA-CUT-3: Level save handled by tuning page component
+
+  const saveLevels = useCallback(async () => {
+    try {
+      const current = await providers.tuning.getTuning() as any;
+      await providers.tuning.saveTuning({ ...current } as any);
+    } catch { /* non-fatal */ }
   }, []);
+
   const toggleCard = useCallback((idx: number) => {
-    // SPA-CUT-REMEDIATION: Toggle collapse state in localStorage
-    (idx: number) => {
+    providers.tuning.getCollapsedStates().then(states => {
+      states[String(idx)] = !states[String(idx)];
+      providers.tuning.setCollapsedState(String(idx), !!states[String(idx)]);
+    }).catch(() => {
+      // Fallback localStorage
       const states = safeReadLS<Record<string, boolean>>('bj_pl_collapse', {});
       states[String(idx)] = !states[String(idx)];
       safeWriteLS('bj_pl_collapse', states);
-    }
+    });
   }, []);
+
   const unhideJob = useCallback((jobId: string) => {
-    // SPA-CUT-REMEDIATION: Remove from hidden jobs in localStorage
-    (jobId: string) => {
+    providers.tuning.unhideJob(jobId).catch(() => {
+      // Fallback localStorage
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const hidden = safeReadLS<any[]>('bj_hidden_jobs', []);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const filtered = hidden.filter((h: any) => (typeof h === 'string' ? h : h.id) !== jobId);
-      safeWriteLS('bj_hidden_jobs', filtered);
-    }
+      safeWriteLS('bj_hidden_jobs', hidden.filter((h: any) => (typeof h === 'string' ? h : h.id) !== jobId));
+    });
   }, []);
+
   const editLevelHierarchy = useCallback((filterIdx: number) => {
-    // SPA-CUT-FINAL: Set editingFilterIdx → TuningPage shows level editor
     dispatch({ type: 'SET_EDITING_FILTER', filterIdx });
   }, []);
 

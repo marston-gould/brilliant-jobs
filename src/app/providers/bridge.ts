@@ -48,4 +48,6 @@ export const providers = {
   get referrals() { return getProviders().referrals; },
   get admin() { return getProviders().admin; },
   get notifications() { return getProviders().notifications; },
+  get interviewPrep() { return getProviders().interviewPrep; },
+  get dashboardNotifications() { return getProviders().dashboardNotifications; },
 };

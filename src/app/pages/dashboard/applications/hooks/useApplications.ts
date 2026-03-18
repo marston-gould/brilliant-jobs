@@ -1,12 +1,13 @@
 // ============================================================
-// useApplications — Applications data hook (SA-016 → SPA-CUT-2)
+// useApplications — Applications data hook (SA-016 → SPA-PHASE-A)
 // ============================================================
-// Standalone hook — reads from localStorage + Supabase.
+// Reads from providers.applications (Supabase-backed).
+// Falls back to localStorage only when unauthenticated.
 // Zero window.* dependencies.
 // ============================================================
 
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
-import { supabase, safeReadLS, safeWriteLS, getUser } from '@lib/supabase';
+import { safeReadLS, safeWriteLS, getUser } from '@lib/supabase';
 import { providers } from '@app/providers/bridge';
 
 // ── Types ────────────────────────────────────────────────────
@@ -104,21 +105,50 @@ export function useApplications(): [ApplicationsState, ReturnType<typeof buildAc
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const loadData = useCallback(() => {
+  const loadData = useCallback(async () => {
     try {
-      const queue = safeReadLS<AppEntry[]>('bj_app_queue', []);
-      const history = safeReadLS<AppEntry[]>('bj_app_history', []);
-      const mode = (localStorage.getItem('bj_app_mode') || 'manual') as AppMode;
-      dispatch({ type: 'LOAD_SUCCESS', queue, history, mode });
+      dispatch({ type: 'LOAD_START' });
+      const user = await getUser();
+
+      if (user) {
+        // Primary: load from Supabase via provider
+        const [queueRaw, historyRaw] = await Promise.all([
+          providers.applications.getQueue(),
+          providers.applications.getHistory(),
+        ]);
+        const mode = (localStorage.getItem('bj_app_mode') || 'manual') as AppMode;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const queue = queueRaw as any as AppEntry[];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const history = historyRaw as any as AppEntry[];
+        // Keep localStorage in sync for legacy bridge compatibility
+        safeWriteLS('bj_app_queue', queue);
+        safeWriteLS('bj_app_history', history);
+        dispatch({ type: 'LOAD_SUCCESS', queue, history, mode });
+      } else {
+        // Fallback: localStorage when unauthenticated
+        const queue = safeReadLS<AppEntry[]>('bj_app_queue', []);
+        const history = safeReadLS<AppEntry[]>('bj_app_history', []);
+        const mode = (localStorage.getItem('bj_app_mode') || 'manual') as AppMode;
+        dispatch({ type: 'LOAD_SUCCESS', queue, history, mode });
+      }
     } catch (err) {
-      dispatch({ type: 'LOAD_ERROR', error: err instanceof Error ? err.message : 'Failed to load applications' });
+      // On Supabase error, fall back to localStorage
+      try {
+        const queue = safeReadLS<AppEntry[]>('bj_app_queue', []);
+        const history = safeReadLS<AppEntry[]>('bj_app_history', []);
+        const mode = (localStorage.getItem('bj_app_mode') || 'manual') as AppMode;
+        dispatch({ type: 'LOAD_SUCCESS', queue, history, mode });
+      } catch {
+        dispatch({ type: 'LOAD_ERROR', error: err instanceof Error ? err.message : 'Failed to load applications' });
+      }
     }
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(loadData, 100);
-    pollRef.current = setInterval(loadData, 3000);
-    return () => { clearTimeout(timer); if (pollRef.current) clearInterval(pollRef.current); };
+    loadData();
+    pollRef.current = setInterval(() => { loadData(); }, 30000); // 30s poll
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadData]);
 
   const actions = useMemo(() => buildActions(dispatch, loadData), [dispatch, loadData]);
@@ -140,34 +170,52 @@ function buildActions(dispatch: React.Dispatch<ApplicationsAction>, reload: () =
       providers.user.updatePreferences({ applicationMode: mode }).catch(() => {});
     },
 
-    addManual(jobTitle: string, company: string, url: string) {
-      const queue = safeReadLS<AppEntry[]>('bj_app_queue', []);
+    async addManual(jobTitle: string, company: string, url: string) {
+      const mode = (localStorage.getItem('bj_app_mode') || 'manual') as AppMode;
       const resumes = safeReadLS<any[]>('bj_resumes', []);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const firstResume = resumes.find((r: any) => !r.archived && r.textStatus === 'ready');
-      const mode = (localStorage.getItem('bj_app_mode') || 'manual') as AppMode;
 
-      queue.push({
-        id: `app_${Date.now()}`,
-        jobTitle, company, url,
-        resumeName: firstResume?.name || '',
-        resumeId: firstResume?.supabaseId || '',
-        mode,
-        status: mode === 'auto' ? 'queued' : mode === 'notify' ? 'pending' : 'queued',
-        addedAt: new Date().toLocaleDateString(),
-        source: 'manual',
-      });
-      safeWriteLS('bj_app_queue', queue);
-      setTimeout(reload, 50);
-    },
-
-    removeFromQueue(idx: number) {
-      const queue = safeReadLS<AppEntry[]>('bj_app_queue', []);
-      if (idx >= 0 && idx < queue.length) {
-        queue.splice(idx, 1);
+      try {
+        // Primary: write to Supabase
+        await providers.applications.addToQueue({
+          jobTitle, company, url,
+          resumeName: firstResume?.name || '',
+          resumeId: firstResume?.supabaseId || firstResume?.id || '',
+          mode,
+          status: 'queued',
+          source: 'manual',
+        });
+      } catch {
+        // Fallback: localStorage
+        const queue = safeReadLS<AppEntry[]>('bj_app_queue', []);
+        queue.push({
+          id: `app_${Date.now()}`,
+          jobTitle, company, url,
+          resumeName: firstResume?.name || '',
+          resumeId: firstResume?.supabaseId || '',
+          mode,
+          status: mode === 'auto' ? 'queued' : 'queued',
+          addedAt: new Date().toLocaleDateString(),
+          source: 'manual',
+        });
         safeWriteLS('bj_app_queue', queue);
       }
-      setTimeout(reload, 50);
+      setTimeout(reload, 100);
+    },
+
+    async removeFromQueue(idx: number) {
+      try {
+        await providers.applications.removeFromQueue(idx);
+      } catch {
+        // Fallback localStorage
+        const queue = safeReadLS<AppEntry[]>('bj_app_queue', []);
+        if (idx >= 0 && idx < queue.length) {
+          queue.splice(idx, 1);
+          safeWriteLS('bj_app_queue', queue);
+        }
+      }
+      setTimeout(reload, 100);
     },
 
     async processQueue() {
@@ -188,9 +236,13 @@ function buildActions(dispatch: React.Dispatch<ApplicationsAction>, reload: () =
       setTimeout(reload, 100);
     },
 
-    clearHistory() {
-      safeWriteLS('bj_app_history', []);
-      setTimeout(reload, 50);
+    async clearHistory() {
+      try {
+        await providers.applications.clearHistory();
+      } catch {
+        safeWriteLS('bj_app_history', []);
+      }
+      setTimeout(reload, 100);
     },
 
     async loadNotifPrefs() {
