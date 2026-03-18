@@ -18,6 +18,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@app/components';
+import { useProviders } from '@providers';
 import {
   FeedHero,
   SearchModeToggle,
@@ -117,6 +118,22 @@ export function FeedPage() {
   const matchScores = useMemo(() => getLegacyObj('jobMatchScores', {}), [state.jobs]);
   const fraudCache = useMemo(() => getLegacyObj('_fraudScoreCache', {}), [state.jobs]);
   const aiCache = useMemo(() => getLegacyObj('_aiJdCache', {}), [state.jobs]);
+
+  // Preload global stats from RPC so hero shows real numbers immediately
+  const { stats: statsProvider } = useProviders();
+  useEffect(() => {
+    statsProvider.getJobCounts().then((data: any) => {
+      if (data && state.stats.total === 0) {
+        actions.setStats({
+          total: data.total_open ?? 0,
+          companies: data.total_companies ?? 0,
+          newToday: data.new_today ?? 0,
+          newSinceLogin: 0,
+          pipeline: state.stats.pipeline,
+        });
+      }
+    }).catch(() => {});
+  }, [statsProvider]);
 
   // Load saved searches from legacy on mount
   useEffect(() => {
@@ -287,15 +304,25 @@ export function FeedPage() {
         }
       />
 
-      {/* AI Generation CTA — above toggle per legacy line 866 */}
-      <SearchBar
-        value=""
-        onChange={() => {}}
-        onSearch={handleSearch}
-        onAiGenerate={handleAiGenerate}
-        activeFilterCount={activeFilterCount}
-        onClearAll={handleClearAll}
-      />
+      {/* Global Rules + AI Generation CTAs — legacy lines 856-873 */}
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-accent/15"
+          style={{ background: 'linear-gradient(135deg, rgba(77,142,255,0.05), rgba(167,139,250,0.05))' }}>
+          <div className="flex-1 min-w-0">
+            <span className="text-[11px] font-bold text-accent">Adjust Global Rules</span>
+          </div>
+          <button onClick={() => navigate('/app/tuning')}
+            className="px-3.5 py-1 rounded-md text-[10px] font-semibold bg-accent text-white whitespace-nowrap">Edit Rules</button>
+        </div>
+        <SearchBar
+          value=""
+          onChange={() => {}}
+          onSearch={handleSearch}
+          onAiGenerate={handleAiGenerate}
+          activeFilterCount={activeFilterCount}
+          onClearAll={handleClearAll}
+        />
+      </div>
 
       {/* Search mode toggle — Filters / Chat / Guided per legacy line 874-888 */}
       <SearchModeToggle mode={state.searchMode} onModeChange={actions.setSearchMode} />

@@ -140,6 +140,41 @@ export function ResumesPage() {
             <ResumeUpload onUpload={actions.uploadResume} />
           </div>
 
+          {/* AI Writing Tools — legacy lines 1401-1467 */}
+          <details className="mb-5">
+            <summary className="flex items-center gap-2.5 px-4 py-3 border border-border rounded-xl bg-bg-card cursor-pointer list-none hover:border-accent transition-colors">
+              <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} className="text-accent"><path d="M12 3l1.912 5.813a2 2 0 001.272 1.272L21 12l-5.813 1.912a2 2 0 00-1.272 1.272L12 21l-1.912-5.813a2 2 0 00-1.272-1.272L3 12l5.813-1.912a2 2 0 001.272-1.272L12 3z"/></svg>
+              <span className="text-[13px] font-bold text-text">AI Writing Tools</span>
+              <span className="text-[10px] text-text-faint ml-auto">Bullet Generator · Summary Generator</span>
+            </summary>
+            <div className="border border-border border-t-0 rounded-b-xl bg-bg-card p-5 -mt-px space-y-5">
+              {/* Bullet Point Generator */}
+              <div>
+                <div className="text-[12px] font-bold text-text mb-2.5">Generate Bullet Points</div>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <div><label className="text-[10px] text-text-dim block mb-0.5">Role Title *</label><input type="text" placeholder="e.g. Senior Product Manager" className="w-full px-2.5 py-1.5 rounded-md border border-border bg-bg-input text-[12px] text-text" /></div>
+                  <div><label className="text-[10px] text-text-dim block mb-0.5">Company (optional)</label><input type="text" placeholder="e.g. Google" className="w-full px-2.5 py-1.5 rounded-md border border-border bg-bg-input text-[12px] text-text" /></div>
+                </div>
+                <div className="mb-2"><label className="text-[10px] text-text-dim block mb-0.5">Context / Achievements (optional)</label><textarea placeholder="e.g. managed $3M/mo paid budget, grew team from 4 to 12" rows={2} className="w-full px-2.5 py-1.5 rounded-md border border-border bg-bg-input text-[12px] text-text resize-y" /></div>
+                <div className="flex items-center gap-2">
+                  <select className="flex-1 max-w-[260px] px-2.5 py-1.5 rounded-md border border-border bg-bg-input text-[11px] text-text"><option>No target job (general)</option></select>
+                  <button className="px-3 py-1.5 rounded-md bg-accent text-white text-[11px] font-semibold">Generate Bullets</button>
+                </div>
+              </div>
+              <hr className="border-border" />
+              {/* Summary Generator */}
+              <div>
+                <div className="text-[12px] font-bold text-text mb-2.5">Generate Professional Summary</div>
+                <div className="flex gap-2 items-end flex-wrap">
+                  <div className="flex-1 min-w-[160px]"><label className="text-[10px] text-text-dim block mb-0.5">Resume</label><select className="w-full px-2.5 py-1.5 rounded-md border border-border bg-bg-input text-[11px] text-text"><option>Select a resume…</option></select></div>
+                  <div className="min-w-[120px]"><label className="text-[10px] text-text-dim block mb-0.5">Tone</label><select className="w-full px-2.5 py-1.5 rounded-md border border-border bg-bg-input text-[11px] text-text"><option>Professional</option><option>Executive</option><option>Technical</option></select></div>
+                  <div className="min-w-[160px]"><label className="text-[10px] text-text-dim block mb-0.5">Target Job (optional)</label><select className="w-full px-2.5 py-1.5 rounded-md border border-border bg-bg-input text-[11px] text-text"><option>No target job</option></select></div>
+                  <button className="px-3 py-1.5 rounded-md bg-accent text-white text-[11px] font-semibold">Generate Summary</button>
+                </div>
+              </div>
+            </div>
+          </details>
+
           {isEmpty && (
             <div className="text-center py-12">
               <p className="text-lg font-semibold text-text-dim">No resumes yet</p>

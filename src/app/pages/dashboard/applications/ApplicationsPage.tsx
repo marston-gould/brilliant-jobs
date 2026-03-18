@@ -140,14 +140,65 @@ export function ApplicationsPage() {
         </div>
       )}
 
-      {/* Settings tab — legacy: Application Mode, Auto-Apply Rules, Resume Assignment, Pipeline Intelligence */}
+      {/* Settings tab */}
       {appTab === 'settings' && (
         <div className="space-y-5">
-          {/* Application Mode */}
+          {/* Application Mode — 6 cards per legacy lines 2206-2248 */}
           <div className="border border-border rounded-xl bg-bg-card p-5">
             <div className="text-[14px] font-bold text-text mb-1">Application Mode</div>
             <div className="text-[12px] text-text-dim mb-3">Controls how saved/matched jobs get processed. Can be overridden per filter.</div>
-            <ModeSelector mode={state.mode} onSetMode={actions.setMode} />
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {[
+                { key: 'manual', label: 'Manual', desc: 'I review each job and click Apply' },
+                { key: 'score-gated', label: 'Score-Gated', desc: '1 click Apply, but low scores get a check first' },
+                { key: 'auto-apply', label: 'Auto-Apply', desc: 'Submit my resume automatically' },
+                { key: 'auto-score', label: 'Auto + Score Gate', desc: 'Auto-apply only if score meets threshold' },
+                { key: 'auto-rewrite', label: 'Auto + Rewrite', desc: 'Auto-rewrite weak resumes, then submit' },
+                { key: 'full-auto', label: 'Full Autopilot', desc: 'Score, rewrite + submit everything automatically' },
+              ].map(m => (
+                <button key={m.key}
+                  className={`p-3 rounded-lg border text-left transition-all ${state.mode === m.key ? 'border-accent bg-accent/5' : 'border-border hover:border-accent'}`}
+                  onClick={() => actions.setMode(m.key as any)}>
+                  <div className="text-[12px] font-bold text-text">{m.label}</div>
+                  <div className="text-[10px] text-text-dim mt-0.5">{m.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Score Gate */}
+          <div className="border border-border rounded-xl bg-bg-card p-5">
+            <div className="text-[14px] font-bold text-text mb-1">Score Gate</div>
+            <div className="text-[12px] text-text-dim mb-3">Minimum AI match score before applications are submitted</div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <span className="text-[12px] text-text-dim w-28 flex-shrink-0">Score threshold</span>
+                <input type="range" min={0} max={100} defaultValue={70} className="flex-1 accent-accent" />
+                <span className="text-[13px] font-bold text-text min-w-[28px]">70</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-[12px] text-text-dim w-28 flex-shrink-0">Unscored jobs</span>
+                <select className="px-2 py-1 rounded-md border border-border bg-bg-input text-[11px] text-text">
+                  <option>Hold for manual review</option><option>Skip (do not apply)</option><option>Allow (apply anyway)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Approval Settings */}
+          <div className="border border-border rounded-xl bg-bg-card p-5">
+            <div className="text-[14px] font-bold text-text mb-1">Approval Settings</div>
+            <div className="text-[12px] text-text-dim mb-3">When auto-applying, do you want to review before submission?</div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-bg-input border border-border">
+                <span className="text-[13px] text-text">Require my approval</span>
+                <button className="w-9 h-5 rounded-full bg-accent relative"><span className="absolute top-0.5 left-[18px] w-4 h-4 bg-white rounded-full shadow" /></button>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-bg-input border border-border">
+                <span className="text-[13px] text-text flex-1">Auto-expire after</span>
+                <select className="px-2 py-1 rounded-md border border-border bg-bg-main text-[11px] text-text"><option>12 hours</option><option>24 hours</option><option selected>48 hours</option><option>72 hours</option><option>1 week</option></select>
+              </div>
+            </div>
           </div>
 
           {/* Auto-Apply Rules */}
@@ -156,21 +207,17 @@ export function ApplicationsPage() {
             <div className="text-[12px] text-text-dim mb-3">When in Auto mode, jobs matching these rules are submitted without approval.</div>
             <div className="space-y-2">
               {[
-                { label: 'High-match jobs at network companies', desc: 'Auto-apply when resume match score is 80%+ AND you have a 1st-degree connection at the company' },
+                { label: 'High-match jobs at network companies', desc: 'Auto-apply when resume match score is 80%+ AND you have a 1st-degree connection' },
                 { label: 'Saved search matches', desc: 'Auto-apply to new jobs matching any of your saved search filters' },
                 { label: 'Re-posts from ghosting companies', desc: 'Auto-apply when a company you previously applied to re-posts a role' },
               ].map(rule => (
                 <div key={rule.label} className="flex items-center justify-between p-3 rounded-lg bg-bg-input border border-border">
-                  <div>
-                    <div className="text-[13px] font-semibold text-text">{rule.label}</div>
-                    <div className="text-[11px] text-text-faint mt-0.5">{rule.desc}</div>
-                  </div>
-                  <button className="w-9 h-5 rounded-full bg-border-hover relative transition-colors">
-                    <span className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform" />
-                  </button>
+                  <div><div className="text-[13px] font-semibold text-text">{rule.label}</div><div className="text-[11px] text-text-faint mt-0.5">{rule.desc}</div></div>
+                  <button className="w-9 h-5 rounded-full bg-border-hover relative"><span className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow" /></button>
                 </div>
               ))}
             </div>
+            <button className="mt-3 px-3 py-1 rounded-md text-xs font-medium text-accent border border-accent hover:bg-accent/5">+ Add Custom Rule</button>
           </div>
 
           {/* Resume Assignment */}
@@ -180,15 +227,11 @@ export function ApplicationsPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between p-3 rounded-lg bg-bg-input border border-border">
                 <span className="text-[13px] text-text">Default resume for all applications</span>
-                <select className="px-2 py-1 rounded-md border border-border bg-bg-main text-[11px] text-text-dim">
-                  <option>— Upload a resume first —</option>
-                </select>
+                <select className="px-2 py-1 rounded-md border border-border bg-bg-main text-[11px] text-text-dim"><option>— Upload a resume first —</option></select>
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-bg-input border border-border">
                 <span className="text-[13px] text-text">Auto-select best-match resume per job</span>
-                <button className="w-9 h-5 rounded-full bg-accent relative transition-colors">
-                  <span className="absolute top-0.5 left-[18px] w-4 h-4 bg-white rounded-full shadow transition-transform" />
-                </button>
+                <button className="w-9 h-5 rounded-full bg-accent relative"><span className="absolute top-0.5 left-[18px] w-4 h-4 bg-white rounded-full shadow" /></button>
               </div>
             </div>
           </div>
@@ -200,18 +243,35 @@ export function ApplicationsPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between p-3 rounded-lg bg-bg-input border border-border">
                 <span className="text-[13px] text-text">Smart Prompts — time-based check-in reminders</span>
-                <button className="w-9 h-5 rounded-full bg-accent relative transition-colors">
-                  <span className="absolute top-0.5 left-[18px] w-4 h-4 bg-white rounded-full shadow transition-transform" />
-                </button>
+                <button className="w-9 h-5 rounded-full bg-accent relative"><span className="absolute top-0.5 left-[18px] w-4 h-4 bg-white rounded-full shadow" /></button>
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-bg-input border border-border">
-                <span className="text-[13px] text-text">Signal Detection — auto-detect pipeline changes via Gmail & Calendar</span>
-                <button className="w-9 h-5 rounded-full bg-border-hover relative transition-colors">
-                  <span className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform" />
-                </button>
+                <span className="text-[13px] text-text">Signal Detection — auto-detect via Gmail & Calendar</span>
+                <button className="w-9 h-5 rounded-full bg-border-hover relative"><span className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow" /></button>
               </div>
             </div>
+            {/* Prompt Cadences — legacy lines 2383-2401 */}
+            <details className="mt-3">
+              <summary className="text-[12px] font-semibold text-text-dim cursor-pointer">Prompt cadences</summary>
+              <div className="space-y-2 mt-2">
+                {[
+                  { label: 'Saved → Applied', val: 3 },
+                  { label: 'Applied → Response', val: 7 },
+                  { label: 'Responded → Interview', val: 5 },
+                  { label: 'Interview → Follow-up', val: 3 },
+                ].map(c => (
+                  <div key={c.label} className="flex items-center gap-3 p-2 rounded-lg bg-bg-input border border-border">
+                    <span className="text-[12px] text-text flex-1">{c.label}</span>
+                    <input type="number" defaultValue={c.val} min={1} max={30} className="w-14 px-2 py-1 rounded-md border border-border bg-bg-main text-[12px] text-text text-center" />
+                    <span className="text-[11px] text-text-faint">days</span>
+                  </div>
+                ))}
+              </div>
+            </details>
           </div>
+
+          {/* Save button */}
+          <button className="px-4 py-2 rounded-md bg-accent text-white text-sm font-semibold">Save Pipeline Settings</button>
         </div>
       )}
     </div>

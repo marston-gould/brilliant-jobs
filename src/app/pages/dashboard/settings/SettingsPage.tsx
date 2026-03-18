@@ -127,6 +127,29 @@ export default function SettingsPage() {
             </button>
           </div>
 
+          {/* EEOC Voluntary Self-Identification — legacy lines 3320-3384 */}
+          <div className="pt-3 border-t border-border">
+            <div className="text-[13px] font-semibold text-text mb-0.5">Voluntary Self-Identification (EEOC/OFCCP)</div>
+            <div className="text-[11px] text-text-faint mb-3">Many employers collect this for federal compliance. Responses are optional and only used to auto-fill voluntary self-ID forms.</div>
+            <div className="space-y-2.5">
+              {[
+                { id: 'gender', label: 'Gender', options: ['Male', 'Female', 'Non-binary', 'Prefer not to say', 'Decline to self-identify'] },
+                { id: 'ethnicity', label: 'Race / Ethnicity', options: ['American Indian or Alaska Native', 'Asian', 'Black or African American', 'Hispanic or Latino', 'Native Hawaiian or Other Pacific Islander', 'White', 'Two or more races', 'Prefer not to say', 'Decline to self-identify'] },
+                { id: 'veteran', label: 'Veteran Status', options: ['I am a protected veteran', 'I am not a protected veteran', 'Prefer not to say', 'Decline to self-identify'] },
+                { id: 'disability', label: 'Disability Status', options: ['Yes, I have a disability', 'No, I do not have a disability', 'Prefer not to say', 'Decline to self-identify'] },
+                { id: 'citizenship', label: 'Citizenship Status', options: ['US Citizen', 'Permanent Resident', 'Non-citizen authorized to work', 'Require sponsorship', 'Prefer not to say', 'Decline to self-identify'] },
+              ].map(field => (
+                <div key={field.id}>
+                  <label className={labelCls}>{field.label}</label>
+                  <select className={inputCls}>
+                    <option value="">— Not set —</option>
+                    {field.options.map(o => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="flex items-center gap-2 pt-2">
             <button onClick={saveProfile} className="px-4 py-2 rounded-md bg-accent text-white text-sm font-semibold">Save Profile</button>
             {saveStatus && <span className="text-[11px] text-green font-medium">{saveStatus}</span>}

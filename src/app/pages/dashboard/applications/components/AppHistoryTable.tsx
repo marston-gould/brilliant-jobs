@@ -11,13 +11,13 @@ interface AppHistoryTableProps {
 }
 
 function modeBadge(mode: AppMode) {
-  const variants: Record<AppMode, 'default' | 'info' | 'warning'> = {
-    manual: 'default',
-    auto: 'info',
-    notify: 'warning',
+  const variants: Record<string, 'default' | 'info' | 'warning'> = {
+    manual: 'default', 'score-gated': 'default', 'auto-apply': 'info', 'auto-score': 'info', 'auto-rewrite': 'info', 'full-auto': 'info', auto: 'info', notify: 'warning',
   };
-  const labels: Record<AppMode, string> = { manual: 'Manual', auto: 'Auto', notify: 'Notify' };
-  return <Badge variant={variants[mode]} size="sm">{labels[mode]}</Badge>;
+  const labels: Record<string, string> = {
+    manual: 'Manual', 'score-gated': 'Score-Gated', 'auto-apply': 'Auto-Apply', 'auto-score': 'Auto+Score', 'auto-rewrite': 'Auto+Rewrite', 'full-auto': 'Full Auto', auto: 'Auto', notify: 'Notify',
+  };
+  return <Badge variant={variants[mode] || 'default'} size="sm">{labels[mode] || mode}</Badge>;
 }
 
 function statusBadge(status: AppStatus) {

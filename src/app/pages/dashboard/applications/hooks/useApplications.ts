@@ -11,7 +11,7 @@ import { providers } from '@app/providers/bridge';
 
 // ── Types ────────────────────────────────────────────────────
 
-export type AppMode = 'manual' | 'auto' | 'notify';
+export type AppMode = 'manual' | 'score-gated' | 'auto-apply' | 'auto-score' | 'auto-rewrite' | 'full-auto' | 'auto' | 'notify';
 export type AppStatus = 'queued' | 'pending' | 'sent' | 'submitted' | 'failed';
 
 export interface AppEntry {

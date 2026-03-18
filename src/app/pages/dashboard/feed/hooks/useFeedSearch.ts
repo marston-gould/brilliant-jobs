@@ -122,6 +122,7 @@ export interface FeedSearchActions {
   setTrustFilters: (labels: Set<TrustLabel>) => void;
   setAiFilters: (labels: Set<AiLabel>) => void;
   setSearchMode: (mode: 'filters' | 'chat' | 'guided') => void;
+  setStats: (stats: FeedStats) => void;
   saveJob: (jobId: string) => Promise<void>;
   unsaveJob: (jobId: string) => Promise<void>;
   hideJob: (jobId: string) => Promise<void>;
@@ -966,6 +967,10 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
     setState(prev => ({ ...prev, searchMode: mode }));
   }, []);
 
+  const setStats = useCallback((stats: FeedStats) => {
+    setState(prev => ({ ...prev, stats }));
+  }, []);
+
   const setPage = useCallback((page: number) => {
     search(page);
   }, [search]);
@@ -1037,6 +1042,7 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
       setTrustFilters,
       setAiFilters,
       setSearchMode,
+      setStats,
       saveJob,
       unsaveJob,
       hideJob,

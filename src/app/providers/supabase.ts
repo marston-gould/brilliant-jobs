@@ -479,18 +479,25 @@ function mapPendingToQueueEntry(row: Record<string, unknown>): import('./types')
 export class SupabaseStatsProvider implements StatsProvider {
   async getJobCounts() {
     const sb = getSupabase();
-    // Try materialized view first, fallback to direct count
+    // Use the reliable get_landing_stats RPC
     try {
-      const { data, error } = await sb.from('mv_job_feed_counts').select('*').limit(1).single();
-      if (!error && data) return data;
-    } catch { /* view may not exist */ }
+      const { data, error } = await sb.rpc('get_landing_stats');
+      if (!error && data) {
+        return {
+          total_open: data.jobs ?? 0,
+          new_today: 0, // RPC doesn't return this, will get from feed
+          total_companies: data.companies ?? 0,
+          with_salary: data.with_salary ?? 0,
+          remote: data.remote ?? 0,
+          metros: data.metros ?? 0,
+        };
+      }
+    } catch { /* RPC may not exist */ }
     // Fallback: direct count from ats_jobs
     const { count: total } = await sb.from('ats_jobs').select('*', { count: 'exact', head: true });
-    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-    const { count: newToday } = await sb.from('ats_jobs').select('*', { count: 'exact', head: true }).gte('scraped_at', todayStart.toISOString());
     const { data: companiesData } = await sb.from('ats_jobs').select('company_name').limit(10000);
     const uniqueCompanies = new Set((companiesData || []).map((r: { company_name: string }) => r.company_name)).size;
-    return { total_open: total || 0, new_today: newToday || 0, total_companies: uniqueCompanies };
+    return { total_open: total || 0, new_today: 0, total_companies: uniqueCompanies };
   }
   async getSourceBreakdown() {
     const sb = getSupabase();
