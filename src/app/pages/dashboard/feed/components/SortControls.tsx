@@ -51,7 +51,7 @@ export function SortControls({ sortStack, onToggle, onRemove }: SortControlsProp
   }
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1 flex-wrap">
+    <div className="flex items-center gap-2 px-3 py-2 bg-bg-card border border-border rounded-lg mb-2 flex-wrap">
       {/* Active sort pills */}
       {sortStack.map((s) => (
         <div

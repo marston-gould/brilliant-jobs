@@ -74,7 +74,7 @@ export default function BillingPage() {
         <div className={cardCls}>
           <div className="text-[12px] font-semibold text-text-dim mb-1">Credit Balance</div>
           <div className="flex items-baseline gap-1.5 mt-2">
-            <span className={`text-[32px] font-bold tabular-nums font-mono ${credits > 0 ? 'text-green' : 'text-text'}`}>{credits}</span>
+            <span className={`text-[36px] font-bold tabular-nums font-mono tracking-tight ${credits > 0 ? 'text-green' : 'text-text'}`}>{credits}</span>
             <span className="text-[12px] text-text-faint">credits available</span>
           </div>
           <button onClick={() => document.getElementById("credit-packs")?.scrollIntoView({ behavior: "smooth" })} className="mt-3 px-3 py-1.5 rounded-md text-xs font-semibold bg-accent text-white">Buy Credits</button>
@@ -158,20 +158,44 @@ export default function BillingPage() {
         </div>
       </div>
 
-      {/* Auto-Refill */}
+      {/* Auto-Refill — legacy .sub-refill-toggle + .sub-refill-level */}
       <div className={cardCls}>
         <div className="text-[14px] font-bold text-text mb-1">Auto-Refill</div>
         <div className="text-[12px] text-text-dim mb-4">Never run out — automatically top up when your balance gets low</div>
-        <label className="flex items-center gap-2 text-[13px] text-text cursor-pointer mb-3">
+        <label className="flex items-center gap-2 text-[13px] font-semibold text-text cursor-pointer mb-3">
           <input type="checkbox" className="accent-accent" /> Enable auto-refill
         </label>
+        <div className="flex gap-3 mt-2">
+          {[
+            { amount: 25, price: '$5', label: 'Small' },
+            { amount: 60, price: '$10', label: 'Medium', discount: 'Best value' },
+            { amount: 150, price: '$20', label: 'Large' },
+          ].map(level => (
+            <label key={level.amount} className="flex-1 border border-border rounded-[10px] p-3.5 cursor-pointer hover:border-accent transition-colors text-center">
+              <input type="radio" name="refill-level" className="hidden" />
+              <div className="text-[16px] font-bold text-text">{level.amount}</div>
+              <div className="text-[11px] text-text-faint">credits for {level.price}</div>
+              {level.discount && <div className="text-[9px] font-bold text-green bg-green/10 px-1.5 py-0.5 rounded mt-1 inline-block">{level.discount}</div>}
+            </label>
+          ))}
+        </div>
+        <div className="text-[11px] text-text-faint mt-2">Refills when balance drops below 5 credits</div>
       </div>
 
-      {/* Earn Free Credits (Referrals) */}
+      {/* Earn Free Credits (Referrals) — legacy sub-referral-section */}
       <div className={cardCls}>
         <div className="text-[14px] font-bold text-text mb-1">Earn Free Credits</div>
         <div className="text-[12px] text-text-dim mb-4">Refer a friend — you both get 7 days Pro + 25 credits when they activate</div>
-        <div className="text-center py-4 text-text-faint text-[12px]">Referral program details loading...</div>
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-bg-input border border-border mb-3">
+          <span className="text-[11px] text-text-faint">Your referral link:</span>
+          <code className="text-[12px] font-mono text-accent flex-1 truncate">https://brilliantjobs.app/r/...</code>
+          <button onClick={() => { navigator.clipboard.writeText('https://brilliantjobs.app/r/'); }} className="text-[10px] font-semibold text-accent hover:text-accent/80">Copy</button>
+        </div>
+        <div className="grid grid-cols-3 gap-3 text-center">
+          <div><div className="text-[20px] font-bold text-text">0</div><div className="text-[10px] text-text-faint uppercase">Referred</div></div>
+          <div><div className="text-[20px] font-bold text-green">0</div><div className="text-[10px] text-text-faint uppercase">Converted</div></div>
+          <div><div className="text-[20px] font-bold text-accent">0</div><div className="text-[10px] text-text-faint uppercase">Credits Earned</div></div>
+        </div>
       </div>
 
       {/* Pay-When-Hired */}
