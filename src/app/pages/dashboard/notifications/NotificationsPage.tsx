@@ -252,8 +252,37 @@ export default function NotificationsPage() {
         <div className="border border-border rounded-xl bg-bg-card overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <div className="text-[13px] font-bold text-text">Notification Log</div>
-            <input type="text" placeholder="Filter…"
-              className="px-2.5 py-1 rounded-md border border-border bg-bg-input text-[11px] text-text w-32" />
+            <div className="flex items-center gap-2">
+              <button onClick={() => {
+                const csv = ['Type,Message,Channel,Sent,Status', ...log.map((e: any) => `"${e.notification_type || ''}","${(e.message || '').replace(/"/g, '""')}","${e.channel || ''}","${e.sent_at || ''}","${e.status || ''}"`
+                )].join('\n');
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = 'notification-log.csv'; a.click();
+                (window as any).__bjToast?.('CSV exported', 'success');
+              }} className="px-2.5 py-1 rounded-md border border-border bg-bg-input text-[11px] font-semibold text-text-dim hover:border-accent">Export CSV</button>
+            </div>
+          </div>
+          {/* Log filters — legacy .notif-log-filters */}
+          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border flex-wrap">
+            <select className="px-2 py-1 rounded-md border border-border bg-bg-input text-[11px] text-text">
+              <option value="">All types</option>
+              <option value="auto_apply_confirm">Auto-apply confirm</option>
+              <option value="apply_alert">Apply alert</option>
+              <option value="pipeline_response">Pipeline change</option>
+              <option value="new_jobs_daily">New job matches</option>
+              <option value="weekly_summary">Weekly summary</option>
+              <option value="credit_low">Credit balance low</option>
+            </select>
+            <select className="px-2 py-1 rounded-md border border-border bg-bg-input text-[11px] text-text">
+              <option value="">All statuses</option>
+              <option value="delivered">Delivered</option>
+              <option value="opened">Opened</option>
+              <option value="failed">Failed</option>
+              <option value="expired">Expired</option>
+            </select>
+            <input type="text" placeholder="Search…"
+              className="px-2.5 py-1 rounded-md border border-border bg-bg-input text-[11px] text-text w-32 ml-auto" />
           </div>
           <table className="w-full text-[12px]">
             <thead>

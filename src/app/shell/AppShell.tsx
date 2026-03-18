@@ -218,13 +218,13 @@ export function AppShell() {
       {/* ── Sidebar ── */}
       <nav aria-label="Main navigation" className="flex flex-col h-full w-[var(--nav-w,240px)] bg-[var(--nav-bg)] flex-shrink-0 overflow-y-auto overflow-x-hidden">
 
-        {/* Brand — matches legacy: B mark + "Brilliant Jobs" + "Dashboard v10.87" */}
+        {/* Brand — matches legacy: B mark + "Brilliant Jobs" + "Dashboard v10.88" */}
         <div className="px-6 py-[22px] border-b border-white/[0.08]">
           <div className="flex items-center gap-3 max-md:justify-center">
             <div className="w-[30px] h-[30px] rounded-lg bg-white flex items-center justify-center text-[var(--nav-bg)] font-extrabold text-sm flex-shrink-0">B</div>
             <div className="max-md:hidden">
               <div className="font-bold text-[16px] text-white leading-tight">Brilliant Jobs</div>
-              <div className="text-[11px] text-[var(--nav-text)]">Dashboard <span className="text-[9px]">v10.87</span></div>
+              <div className="text-[11px] text-[var(--nav-text)]">Dashboard <span className="text-[9px]">v10.88</span></div>
             </div>
           </div>
         </div>
@@ -244,7 +244,7 @@ export function AppShell() {
                   to={item.path}
                   className={({ isActive }) => `
                     flex items-center gap-3 py-2.5 rounded-lg transition-colors text-[13.5px] font-medium mb-0.5 max-md:justify-center max-md:px-2.5
-                    ${isActive ? 'bg-[var(--nav-bg-active)] text-white' : 'text-[var(--nav-text)] hover:bg-[var(--nav-bg-active)]'}
+                    ${isActive ? 'bg-[var(--nav-bg-active)] text-white font-semibold' : 'text-[var(--nav-text)] hover:bg-[var(--nav-bg-active)]'}
                     ${item.indent ? 'pl-[34px] pr-3.5 text-[12px] max-md:pl-2.5' : 'px-3.5'}
                   `}
                 >

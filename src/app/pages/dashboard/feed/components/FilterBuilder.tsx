@@ -130,6 +130,12 @@ export function FilterBuilder({
               <span>US-Only filter active — browse results show US-based data only</span>
             </div>
           )}
+
+          {/* qb-hint — legacy keyboard shortcut hints */}
+          <div className="text-[11px] text-text-faint leading-relaxed">
+            Separate terms with commas. Use <kbd className="inline-block px-1 py-0.5 bg-bg-input border border-border rounded text-[10px] font-mono text-text-dim">OR</kbd> between alternatives.
+            Prefix with <kbd className="inline-block px-1 py-0.5 bg-bg-input border border-border rounded text-[10px] font-mono text-text-dim">!</kbd> to exclude.
+          </div>
           {/* What / Not */}
           <div className="grid grid-cols-2 gap-2">
             <FilterRow label="What" onBrowse={onBrowse ? () => onBrowse('title', 'include') : undefined}>
