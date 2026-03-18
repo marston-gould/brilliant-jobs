@@ -13,17 +13,13 @@ import {
   Briefcase,
   SlidersHorizontal,
   FileText,
-  PenTool,
-  Linkedin,
   Activity,
-  MessageCircle,
   BarChart3,
   BookMarked,
   Settings as SettingsIcon,
   CreditCard,
   Bell,
   Lock,
-  Home,
   LayoutDashboard,
   Clock,
   PenLine,
@@ -69,15 +65,13 @@ const SECTIONS: NavSection[] = [
       { path: '/app/feed', label: 'Jobs Feed', Icon: Briefcase },
       { path: '/app/tuning', label: 'Search Tuning', Icon: SlidersHorizontal, indent: true },
       { path: '/app/resumes', label: 'Resumes', Icon: FileText },
-      { path: '/app/keywords', label: 'Resume Builder', Icon: PenTool },
-      { path: '/app/integrations', label: 'LinkedIn', Icon: Linkedin },
     ],
   },
   {
     label: 'APPLICATIONS',
     items: [
       { path: '/app/applications', label: 'My Applications', Icon: Activity },
-      { path: '/app/interview-prep', label: 'Interview Prep', Icon: MessageCircle },
+      { path: '/app/interview-prep', label: 'Interview Prep', Icon: BookMarked },
     ],
   },
   {
@@ -227,7 +221,7 @@ export function AppShell() {
             </div>
           ))}
 
-          {/* Insights (external) */}
+          {/* Insights (external link — in Intelligence section per legacy) */}
           {!isAdminSection && (
             <a href="/blog" target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-2.5 px-3 py-[7px] rounded-md transition-colors text-[13px] font-medium text-[var(--nav-text)] hover:bg-[var(--nav-bg-active)]">
@@ -237,18 +231,12 @@ export function AppShell() {
             </a>
           )}
 
-          {/* Admin + Landing Page (admin only) */}
+          {/* Admin link (admin only — per legacy: hidden unless role=admin) */}
           {isAdmin && !isAdminSection && (
-            <>
-              <NavLink to="/app/admin" className="flex items-center gap-2.5 px-3 py-[7px] rounded-md transition-colors text-[13px] font-medium text-[var(--nav-text)] hover:bg-[var(--nav-bg-active)]">
-                <Lock className="w-[18px] h-[18px] flex-shrink-0 opacity-80" strokeWidth={1.75} />
-                <span>Admin</span>
-              </NavLink>
-              <a href="/" className="flex items-center gap-2.5 px-3 py-[7px] rounded-md transition-colors text-[13px] font-medium text-[var(--nav-text)] hover:bg-[var(--nav-bg-active)]">
-                <Home className="w-[18px] h-[18px] flex-shrink-0 opacity-80" strokeWidth={1.75} />
-                <span>Landing Page</span>
-              </a>
-            </>
+            <NavLink to="/app/admin" className="flex items-center gap-2.5 px-3 py-[7px] rounded-md transition-colors text-[13px] font-medium text-[var(--nav-text)] hover:bg-[var(--nav-bg-active)]">
+              <Lock className="w-[18px] h-[18px] flex-shrink-0 opacity-80" strokeWidth={1.75} />
+              <span>Admin</span>
+            </NavLink>
           )}
         </div>
 
