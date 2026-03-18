@@ -278,19 +278,21 @@ export function FeedPage() {
     const isSaved = savedJobIds.has(jobId);
     if (isSaved) {
       actions.unsaveJob(jobId);
+      (window as any).__bjToast?.('Removed from pipeline', 'info');
     } else {
       actions.saveJob(jobId);
+      (window as any).__bjToast?.('Saved to pipeline', 'success');
     }
   }, [actions, savedJobIds]);
 
   const handleHide = useCallback((jobId: string) => {
     actions.hideJob(jobId);
+    (window as any).__bjToast?.('Job hidden', 'info');
   }, [actions]);
 
   const handleApply = useCallback((jobId: string, url: string) => {
-    // Track application
     actions.markApplied(jobId);
-    // Open in new tab
+    (window as any).__bjToast?.('Marked as applied', 'success');
     if (url && url !== '#') {
       window.open(url, '_blank', 'noopener,noreferrer');
     }

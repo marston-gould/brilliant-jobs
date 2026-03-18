@@ -222,15 +222,25 @@ export default function NotificationsPage() {
               <div className="flex items-center gap-3 py-2.5 border-b border-border text-[13px]">
                 <span className="text-text-dim flex-1">Email-to-SMS escalation timeout</span>
                 <input type="range" min={1} max={12} defaultValue={4} className="w-40 accent-accent"
-                  onChange={e => { const s = e.target.nextElementSibling; if (s) s.textContent = e.target.value + ' hours'; }} />
+                  onChange={e => {
+                    const s = e.target.nextElementSibling;
+                    if (s) s.textContent = e.target.value + ' hours';
+                  }}
+                  onMouseUp={e => {
+                    const val = (e.target as HTMLInputElement).value;
+                    (notifProvider as any).saveNotifPref?.("__escalation", "escalation_timeout_hours", parseInt(val)).catch(() => {});
+                    (window as any).__bjToast?.(`Escalation timeout set to ${val} hours`, 'success');
+                  }} />
                 <span className="text-[14px] font-semibold text-accent min-w-[56px]">4 hours</span>
               </div>
               <div className="flex items-center gap-3 py-2.5 border-b border-border text-[13px]">
                 <span className="text-text-dim flex-1">Quiet hours</span>
                 <div className="flex items-center gap-2">
-                  <input type="time" defaultValue="22:00" className="px-2 py-1 rounded-lg border border-border bg-bg-input text-[13px] text-text" />
+                  <input type="time" defaultValue="22:00" className="px-2 py-1 rounded-lg border border-border bg-bg-input text-[13px] text-text"
+                    onBlur={e => { (notifProvider as any).saveNotifPref?.("__quiet", "quiet_start", e.target.value).catch(() => {}); }} />
                   <span className="text-[12px] text-text-faint">to</span>
-                  <input type="time" defaultValue="07:00" className="px-2 py-1 rounded-lg border border-border bg-bg-input text-[13px] text-text" />
+                  <input type="time" defaultValue="07:00" className="px-2 py-1 rounded-lg border border-border bg-bg-input text-[13px] text-text"
+                    onBlur={e => { (notifProvider as any).saveNotifPref?.("__quiet", "quiet_end", e.target.value).catch(() => {}); }} />
                 </div>
               </div>
               <div className="text-[11px] text-text-faint mt-2">Notifications held until quiet hours end. Escalation timers pause.</div>
