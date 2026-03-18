@@ -316,22 +316,70 @@ export class SupabaseResumeProvider implements ResumeProvider {
 }
 
 export class SupabaseApplicationProvider implements ApplicationProvider {
-  async getQueue() { return safeReadLS<any[]>('bj_app_queue', []); }
-  async getHistory() { return safeReadLS<any[]>('bj_app_history', []); }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async addToQueue(entry: any) { const q = safeReadLS<any[]>('bj_app_queue', []); q.push(entry); safeWriteLS('bj_app_queue', q); }
-  async removeFromQueue(idx: number) { const q = safeReadLS<any[]>('bj_app_queue', []); if (idx >= 0 && idx < q.length) { q.splice(idx, 1); safeWriteLS('bj_app_queue', q); } }
-  async processQueue() {
+  async getQueue() {
+    const user = await getUser(); if (!user) return [];
     const sb = getSupabase();
-    const q = safeReadLS<any[]>('bj_app_queue', []);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const entry of q.filter((e: any) => e.status === 'queued')) {
-      await sb.from('pending_applications').update({ status: 'approved' }).eq('id', entry.id);
-      entry.status = 'pending';
-    }
-    safeWriteLS('bj_app_queue', q);
+    const { data } = await sb
+      .from('pending_applications')
+      .select('*')
+      .eq('user_id', user.id)
+      .in('status', ['pending', 'queued', 'approved'])
+      .order('created_at', { ascending: false });
+    return (data || []).map(mapPendingToQueueEntry);
   }
-  async clearHistory() { safeWriteLS('bj_app_history', []); }
+  async getHistory() {
+    const user = await getUser(); if (!user) return [];
+    const sb = getSupabase();
+    const { data } = await sb
+      .from('pending_applications')
+      .select('*')
+      .eq('user_id', user.id)
+      .in('status', ['submitted', 'rejected', 'expired', 'cancelled'])
+      .order('created_at', { ascending: false })
+      .limit(100);
+    return (data || []).map(mapPendingToQueueEntry);
+  }
+  async addToQueue(entry: Partial<import('./types').AppQueueEntry>) {
+    const user = await getUser();
+    if (!user) throw new ProviderError('Not authenticated', 'AUTH_REQUIRED');
+    const sb = getSupabase();
+    const { error } = await sb.from('pending_applications').insert({
+      user_id: user.id,
+      job_id: entry.resumeId || '',
+      job_title: entry.jobTitle,
+      company_name: entry.company,
+      job_url: entry.url,
+      status: 'queued',
+      approval_mode: entry.mode || 'manual',
+    });
+    if (error) throw new ProviderError(error.message, 'QUEUE_ADD_FAILED', undefined, error);
+  }
+  async removeFromQueue(idx: number) {
+    // idx-based removal for backward compat — fetch queue then delete by ID
+    const queue = await this.getQueue();
+    const entry = queue[idx];
+    if (!entry?.id) return;
+    const sb = getSupabase();
+    await sb.from('pending_applications').delete().eq('id', entry.id);
+  }
+  async processQueue() {
+    const user = await getUser(); if (!user) return;
+    const sb = getSupabase();
+    await sb
+      .from('pending_applications')
+      .update({ status: 'approved' })
+      .eq('user_id', user.id)
+      .eq('status', 'queued');
+  }
+  async clearHistory() {
+    const user = await getUser(); if (!user) return;
+    const sb = getSupabase();
+    await sb
+      .from('pending_applications')
+      .delete()
+      .eq('user_id', user.id)
+      .in('status', ['submitted', 'rejected', 'expired', 'cancelled']);
+  }
   async getNotifPrefs() {
     const user = await getUser(); if (!user) return null;
     const sb = getSupabase();
@@ -344,6 +392,23 @@ export class SupabaseApplicationProvider implements ApplicationProvider {
     const { data } = await sb.from('notification_log').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50);
     return data || [];
   }
+}
+
+// Helper to map Supabase pending_applications row to AppQueueEntry
+function mapPendingToQueueEntry(row: Record<string, unknown>): import('./types').AppQueueEntry {
+  return {
+    id: row.id as string,
+    jobTitle: (row.job_title as string) || '',
+    company: (row.company_name as string) || '',
+    url: (row.job_url as string) || '',
+    resumeName: '',
+    resumeId: (row.resume_id as string) || '',
+    mode: (row.approval_mode as string) || 'manual',
+    status: (row.status as string) || 'pending',
+    addedAt: (row.created_at as string) || '',
+    submittedAt: (row.submitted_at as string) || undefined,
+    source: 'dashboard',
+  };
 }
 
 export class SupabaseStatsProvider implements StatsProvider {
@@ -401,14 +466,30 @@ export class SupabaseBillingProvider implements BillingProvider {
 }
 
 export class SupabaseTuningProvider implements TuningProvider {
-  async getTuning() { return safeReadLS<any>('bj_tuning', {}); }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async saveTuning(data: any) { safeWriteLS('bj_tuning', data); }
-  async unhideJob(jobId: string) {
-    const hidden = safeReadLS<any[]>('bj_hidden_jobs', []);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    safeWriteLS('bj_hidden_jobs', hidden.filter((h: any) => (typeof h === 'string' ? h : h.id) !== jobId));
+  async getTuning(): Promise<import('./types').TuningData> {
+    const user = await getUser(); if (!user) return {} as import('./types').TuningData;
+    const sb = getSupabase();
+    const { data } = await sb.from('profiles').select('user_data').eq('id', user.id).single();
+    return ((data?.user_data as Record<string, unknown>)?.tuning || {}) as import('./types').TuningData;
   }
+  async saveTuning(tuningData: import('./types').TuningData) {
+    const user = await getUser();
+    if (!user) throw new ProviderError('Not authenticated', 'AUTH_REQUIRED');
+    const sb = getSupabase();
+    // Read current user_data, merge tuning into it
+    const { data: profile } = await sb.from('profiles').select('user_data').eq('id', user.id).single();
+    const existingData = (profile?.user_data as Record<string, unknown>) || {};
+    const { error } = await sb.from('profiles').update({
+      user_data: { ...existingData, tuning: tuningData },
+    }).eq('id', user.id);
+    if (error) throw new ProviderError(error.message, 'TUNING_SAVE_FAILED', undefined, error);
+  }
+  async unhideJob(jobId: string) {
+    // Use the hidden_jobs table (same as JobProvider.unhide)
+    const sb = getSupabase();
+    await sb.from('hidden_jobs').delete().eq('job_id', jobId);
+  }
+  // Collapse states are UI-only — localStorage is fine here
   async getCollapsedStates() { return safeReadLS<Record<string, boolean>>('bj_pl_collapse', {}); }
   async setCollapsedState(idx: string, collapsed: boolean) {
     const states = safeReadLS<Record<string, boolean>>('bj_pl_collapse', {});
