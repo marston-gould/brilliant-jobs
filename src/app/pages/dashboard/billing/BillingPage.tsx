@@ -122,11 +122,11 @@ export default function BillingPage() {
         <div className="text-[12px] text-text-dim mb-4">Upgrade for more credits and lower PAYG rates</div>
         <div className="grid grid-cols-3 gap-4">
           {plans.map(p => (
-            <div key={p.name} className={`border rounded-xl p-4 text-center transition-all ${p.highlight ? 'border-accent bg-accent/5' : 'border-border hover:border-accent'}`}>
-              <div className="text-[15px] font-bold text-text">{p.name}</div>
-              <div className="text-[24px] font-bold text-accent mt-1">{p.price}<span className="text-[12px] font-normal text-text-faint">{p.period}</span></div>
-              <div className="text-[11px] text-text-faint mt-2">{p.credits} credits/mo</div>
-              <div className="text-[11px] text-text-faint">PAYG: {p.payg}/credit</div>
+            <div key={p.name} className={`border rounded-xl px-4 py-6 text-center transition-all ${p.highlight ? 'border-accent bg-accent/5' : 'border-border hover:border-accent'}`}>
+              <div className="text-[18px] font-bold text-text mb-2">{p.name}</div>
+              <div className="font-mono text-[32px] font-bold text-accent mb-0.5">{p.price}<span className="text-[12px] font-normal text-text-faint">{p.period}</span></div>
+              <div className="text-[12px] text-text-dim mt-2">{p.credits} credits/mo</div>
+              <div className="text-[12px] text-text-dim mb-4">PAYG: {p.payg}/credit</div>
               {p.highlight ? (
                 <div className="mt-3 px-3 py-1.5 rounded-md text-xs font-semibold bg-bg-input text-text-faint">Current Plan</div>
               ) : (
@@ -147,10 +147,10 @@ export default function BillingPage() {
             { amount: 60, price: '$10', badge: 'Most Popular' },
             { amount: 150, price: '$20', badge: 'Best Value' },
           ].map(pack => (
-            <div key={pack.amount} className="border border-border rounded-xl p-4 text-center hover:border-accent transition-all">
+            <div key={pack.amount} className="border border-border rounded-xl p-5 text-center hover:border-accent transition-all">
               <div className="text-[20px] font-bold text-text">{pack.amount}</div>
               <div className="text-[11px] text-text-faint">credits</div>
-              <div className="text-[16px] font-bold text-accent mt-1">{pack.price}</div>
+              <div className="font-mono text-[18px] font-semibold text-accent mt-1 mb-0.5">{pack.price}</div>
               {pack.badge && <div className="text-[9px] font-semibold text-accent bg-accent/10 px-2 py-0.5 rounded-full mt-1 inline-block">{pack.badge}</div>}
               <button onClick={() => startCheckout("credits", String(pack.amount))} className="mt-2 px-3 py-1 rounded-md text-xs font-semibold bg-accent text-white w-full">Buy</button>
             </div>

@@ -400,7 +400,7 @@ export function ResumesPage() {
           </div>
 
           {/* Score Section — legacy lines 1894-1913 (shown after upload) */}
-          <div className="border border-border rounded-xl bg-bg-card p-5">
+          <div className="border border-border rounded-xl bg-bg-card p-6">
             <div className="flex items-center gap-5 mb-4">
               <div className="w-[100px] h-[100px] rounded-full border-4 border-bg-input flex items-center justify-center flex-shrink-0">
                 <span className="text-[28px] font-bold text-text-faint">—</span>
@@ -415,7 +415,7 @@ export function ResumesPage() {
           </div>
 
           {/* LinkedIn Summary Generator */}
-          <div className="border border-border rounded-xl bg-bg-card p-5">
+          <div className="border border-border rounded-xl bg-bg-card p-6">
             <div className="text-[13px] font-bold text-text mb-1">Generate LinkedIn About Section</div>
             <div className="flex gap-2 items-end flex-wrap mb-3">
               <div className="min-w-[140px]">

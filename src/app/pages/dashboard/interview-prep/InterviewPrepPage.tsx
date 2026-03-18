@@ -94,7 +94,7 @@ export default function InterviewPrepPage() {
               {DIFFICULTIES.map(d => <button key={d} className={pill(activeDiff === d)} onClick={() => setActiveDiff(d)}>{d}</button>)}
             </div>
             <input type="text" placeholder="Search questions or skills..." value={search} onChange={e => setSearch(e.target.value)}
-              className="flex-1 min-w-[200px] px-3 py-1.5 rounded-md border border-border bg-bg-input text-[12px] text-text placeholder:text-text-faint" />
+              className="flex-1 min-w-[200px] px-3 py-[7px] rounded-md border border-border bg-bg-input text-[12px] text-text placeholder:text-text-faint" />
           </div>
 
           {/* Bookmarked section */}
