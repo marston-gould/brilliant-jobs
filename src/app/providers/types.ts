@@ -192,8 +192,8 @@ export interface ApplicationProvider {
   removeFromQueue(idx: number): Promise<void>;
   processQueue(): Promise<void>;
   clearHistory(): Promise<void>;
-  getNotifPrefs(): Promise<NotificationPref | null>;
-  getNotifLog(): Promise<NotificationLogItem[]>;
+  getNotifPrefs(): Promise<any>;
+  getNotifLog(): Promise<any[]>;
 }
 
 /**

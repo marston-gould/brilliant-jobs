@@ -9,9 +9,10 @@
 // 5. Jobs You've Dismissed (green)
 // ============================================================
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { PageHeader } from '@app/components';
 import { MapPin, Building2, Globe, Hash, KeyRound, ChevronDown } from 'lucide-react';
+import { useProviders } from '@providers';
 import type { LucideIcon } from 'lucide-react';
 
 interface TuningCardProps {
@@ -40,6 +41,42 @@ function TuningCard({ icon: Icon, iconColor, iconBg, borderColor, title, subtitl
 const inputCls = "w-full px-3 py-2 rounded-md border border-border bg-bg-input text-[12px] text-text placeholder:text-text-faint focus:outline-none focus:ring-2 focus:ring-accent/40";
 
 export default function TuningPage() {
+  const { tuning: tuningProvider } = useProviders();
+  const [usOnly, setUsOnly] = useState(false);
+  const [excludeHourly, setExcludeHourly] = useState(false);
+  const [excludeStaffing, setExcludeStaffing] = useState(false);
+  const [locationExcl, setLocationExcl] = useState('');
+  const [companyExcl, setCompanyExcl] = useState('');
+  const [industryExcl, setIndustryExcl] = useState('');
+  const [titleExcl, setTitleExcl] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    tuningProvider.getTuning().then((data: any) => {
+      if (!data) return;
+      setUsOnly(!!data.usOnly);
+      setExcludeHourly(!!data.excludeHourly);
+      setExcludeStaffing(!!data.excludeStaffing);
+      setLocationExcl(data.locationExclusions || '');
+      setCompanyExcl(data.companyExclusions || '');
+      setIndustryExcl(data.industryExclusions || '');
+      setTitleExcl(data.titleExclusions || '');
+    }).catch(() => {});
+  }, [tuningProvider]);
+
+  const save = useCallback(async (patch: Record<string, unknown>) => {
+    setSaving(true);
+    try {
+      const current = await tuningProvider.getTuning() || {};
+      await tuningProvider.saveTuning({ ...current, ...patch } as any);
+    } catch (e) { console.error('[BJ:Tuning] save error:', e); }
+    setSaving(false);
+  }, [tuningProvider]);
+
+  const toggleAndSave = (setter: (v: boolean) => void, key: string, current: boolean) => {
+    setter(!current);
+    save({ [key]: !current });
+  };
   return (
     <div className="max-w-[760px] space-y-4">
       <PageHeader title="Search Tuning" subtitle="Global rules that sharpen every search at once" helpLink="tuning" onHelp={() => {}} />
@@ -55,25 +92,25 @@ export default function TuningPage() {
       {/* 1. Location Rules */}
       <TuningCard icon={MapPin} iconColor="var(--warm)" iconBg="var(--warm-dim)" borderColor="var(--warm)"
         title="Location Rules" subtitle="Restrict where jobs can be located — applied globally to every search">
-        <label className="flex items-center gap-2 text-[12px] text-text-dim cursor-pointer"><input type="checkbox" className="accent-accent" /> only show jobs in the United States</label>
-        <label className="flex items-center gap-2 text-[12px] text-text-dim cursor-pointer"><input type="checkbox" className="accent-accent" /> exclude hourly-rate jobs</label>
-        <label className="flex items-center gap-2 text-[12px] text-text-dim cursor-pointer"><input type="checkbox" className="accent-accent" /> exclude staffing agency jobs</label>
+        <label className="flex items-center gap-2 text-[12px] text-text-dim cursor-pointer"><input type="checkbox" className="accent-accent" checked={usOnly} onChange={() => toggleAndSave(setUsOnly, 'usOnly', usOnly)} /> only show jobs in the United States</label>
+        <label className="flex items-center gap-2 text-[12px] text-text-dim cursor-pointer"><input type="checkbox" className="accent-accent" checked={excludeHourly} onChange={() => toggleAndSave(setExcludeHourly, 'excludeHourly', excludeHourly)} /> exclude hourly-rate jobs</label>
+        <label className="flex items-center gap-2 text-[12px] text-text-dim cursor-pointer"><input type="checkbox" className="accent-accent" checked={excludeStaffing} onChange={() => toggleAndSave(setExcludeStaffing, 'excludeStaffing', excludeStaffing)} /> exclude staffing agency jobs</label>
         <div>
           <div className="text-[10px] font-semibold text-text-dim uppercase tracking-wide mb-1">Global location exclusions</div>
-          <input type="text" placeholder="add locations to always exclude… e.g. india, philippines" className={inputCls} />
+          <input type="text" placeholder="add locations to always exclude… e.g. india, philippines" className={inputCls} value={locationExcl} onChange={e => setLocationExcl(e.target.value)} onBlur={() => save({ locationExclusions: locationExcl })} />
         </div>
       </TuningCard>
 
       {/* 2. Company Exclusions */}
       <TuningCard icon={Building2} iconColor="var(--pink)" iconBg="var(--pink-dim)" borderColor="var(--pink)"
         title="Company Exclusions" subtitle="Jobs from these companies will be hidden from all filters">
-        <input type="text" placeholder="add companies to always exclude… e.g. staffing corp, recruiting agency" className={inputCls} />
+        <input type="text" placeholder="add companies to always exclude… e.g. staffing corp, recruiting agency" className={inputCls} value={companyExcl} onChange={e => setCompanyExcl(e.target.value)} onBlur={() => save({ companyExclusions: companyExcl })} />
       </TuningCard>
 
       {/* 3. Industry Exclusions */}
       <TuningCard icon={Globe} iconColor="var(--indigo)" iconBg="var(--indigo-dim)" borderColor="var(--indigo)"
         title="Industry Exclusions" subtitle="Jobs from companies in these industries will be hidden from all filters">
-        <input type="text" placeholder="type to search industries… e.g. staffing, insurance, military" className={inputCls} />
+        <input type="text" placeholder="type to search industries… e.g. staffing, insurance, military" className={inputCls} value={industryExcl} onChange={e => setIndustryExcl(e.target.value)} onBlur={() => save({ industryExclusions: industryExcl })} />
       </TuningCard>
 
       {/* 4. Title Rules */}
@@ -117,7 +154,7 @@ export default function TuningPage() {
         <div className="pt-4 border-t border-border">
           <div className="text-[10px] font-semibold text-text-dim uppercase tracking-wide mb-1">Global title exclusions</div>
           <div className="text-[11px] text-text-faint mb-2">titles containing these terms will be hidden from all filters</div>
-          <input type="text" placeholder="add title keywords to always exclude… e.g. intern, volunteer, part-time" className={inputCls} />
+          <input type="text" placeholder="add title keywords to always exclude… e.g. intern, volunteer, part-time" className={inputCls} value={titleExcl} onChange={e => setTitleExcl(e.target.value)} onBlur={() => save({ titleExclusions: titleExcl })} />
         </div>
       </TuningCard>
 

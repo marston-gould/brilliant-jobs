@@ -165,14 +165,15 @@ export class SupabaseUserProvider implements UserProvider {
       .eq('id', user.id)
       .maybeSingle();
 
+    const userData = (profile?.user_data as Record<string, unknown>) || {};
     return {
       id: user.id,
       email: user.email || '',
-      display_name: profile?.display_name || null,
-      tier: profile?.tier || 'free',
+      display_name: profile?.full_name || null,
+      tier: profile?.plan || 'free',
       role: (user.app_metadata?.role === 'admin' || profile?.role === 'admin') ? 'admin' : 'user',
       created_at: user.created_at,
-      preferences: profile?.preferences || {},
+      preferences: (userData.preferences as Record<string, unknown>) || {},
     };
   }
 
@@ -181,9 +182,12 @@ export class SupabaseUserProvider implements UserProvider {
     const { data: { user } } = await sb.auth.getUser();
     if (!user) throw new ProviderError('Not authenticated', 'AUTH_REQUIRED', 401);
 
+    // Read existing user_data, merge preferences into it
+    const { data: profile } = await sb.from('profiles').select('user_data').eq('id', user.id).single();
+    const existing = (profile?.user_data as Record<string, unknown>) || {};
     const { error } = await sb
       .from('profiles')
-      .update({ preferences: prefs })
+      .update({ user_data: { ...existing, preferences: { ...(existing.preferences as Record<string, unknown> || {}), ...prefs } } })
       .eq('id', user.id);
     if (error) throw new ProviderError(error.message, 'PREFS_UPDATE_FAILED', undefined, error);
   }
@@ -281,15 +285,32 @@ import type {
 import { safeReadLS, safeWriteLS, callGateway } from '@lib/supabase';
 
 export class SupabaseResumeProvider implements ResumeProvider {
-  async getAll() { return safeReadLS<any[]>('bj_resumes', []); }
+  async getAll() {
+    const user = await getUser();
+    if (!user) return [];
+    const sb = getSupabase();
+    const { data, error } = await sb.from('resumes').select('*').eq('user_id', user.id).is('deleted_at', null).order('created_at', { ascending: false });
+    if (error) { console.error('[BJ:Resumes] getAll error:', error.message); return safeReadLS<any[]>('bj_resumes', []); }
+    return (data || []).map(r => ({
+      id: r.id, name: r.name || r.file_name, file_name: r.file_name, file_path: r.file_path,
+      file_size: r.file_size, level: r.level_label, levelColor: r.level_color,
+      is_default: r.is_default, source: r.source, created_at: r.created_at,
+      archived: false, filterIds: [],
+    }));
+  }
   async upload(file: File) {
     const user = await getUser();
     if (!user) throw new ProviderError('Not authenticated', 'AUTH_REQUIRED');
     const ext = file.name.split('.').pop() || 'pdf';
     const path = `${user.id}/${Date.now()}.${ext}`;
     const sb = getSupabase();
-    const { error } = await sb.storage.from('resumes').upload(path, file);
-    if (error) throw new ProviderError(error.message, 'UPLOAD_FAILED', undefined, error);
+    const { error: uploadErr } = await sb.storage.from('resumes').upload(path, file);
+    if (uploadErr) throw new ProviderError(uploadErr.message, 'UPLOAD_FAILED', undefined, uploadErr);
+    const { error: insertErr } = await sb.from('resumes').insert({
+      user_id: user.id, name: file.name.replace(/\.[^.]+$/, ''), file_name: file.name,
+      file_path: path, file_size: String(file.size), source: 'upload',
+    });
+    if (insertErr) console.error('[BJ:Resumes] insert error:', insertErr.message);
     return { storagePath: path };
   }
   async download(storagePath: string) {
@@ -297,17 +318,45 @@ export class SupabaseResumeProvider implements ResumeProvider {
     const { data } = await sb.storage.from('resumes').download(storagePath);
     return data;
   }
-  async remove(idx: number) { const all = safeReadLS<any[]>('bj_resumes', []); if (idx >= 0 && idx < all.length) { all.splice(idx, 1); safeWriteLS('bj_resumes', all); } }
-  async archive(idx: number) { const all = safeReadLS<any[]>('bj_resumes', []); if (all[idx]) { all[idx].archived = true; safeWriteLS('bj_resumes', all); } }
-  async unarchive(idx: number) { const all = safeReadLS<any[]>('bj_resumes', []); if (all[idx]) { all[idx].archived = false; safeWriteLS('bj_resumes', all); } }
-  async rename(idx: number, name: string) { const all = safeReadLS<any[]>('bj_resumes', []); if (all[idx]) { all[idx].name = name; safeWriteLS('bj_resumes', all); } }
-  async setLevel(idx: number, level: string) { const all = safeReadLS<any[]>('bj_resumes', []); if (all[idx]) { all[idx].level = level; safeWriteLS('bj_resumes', all); } }
+  async remove(idx: number) {
+    const all = await this.getAll();
+    const r = all[idx]; if (!r?.id) return;
+    const sb = getSupabase();
+    await sb.from('resumes').update({ deleted_at: new Date().toISOString() }).eq('id', r.id);
+  }
+  async archive(idx: number) {
+    // Soft delete — resumes table uses deleted_at for archive
+    const all = await this.getAll();
+    const r = all[idx]; if (!r?.id) return;
+    const sb = getSupabase();
+    await sb.from('resumes').update({ deleted_at: new Date().toISOString() }).eq('id', r.id);
+  }
+  async unarchive(idx: number) {
+    const all = await this.getAll();
+    const r = all[idx]; if (!r?.id) return;
+    const sb = getSupabase();
+    await sb.from('resumes').update({ deleted_at: null }).eq('id', r.id);
+  }
+  async rename(idx: number, name: string) {
+    const all = await this.getAll();
+    const r = all[idx]; if (!r?.id) return;
+    const sb = getSupabase();
+    await sb.from('resumes').update({ name }).eq('id', r.id);
+  }
+  async setLevel(idx: number, level: string) {
+    const all = await this.getAll();
+    const r = all[idx]; if (!r?.id) return;
+    const sb = getSupabase();
+    await sb.from('resumes').update({ level_label: level }).eq('id', r.id);
+  }
   async toggleFilter(idx: number, filterName: string) {
-    const all = safeReadLS<any[]>('bj_resumes', []);
-    const r = all[idx]; if (!r) return;
+    // Filter assignment not in resumes table — keep localStorage for now
+    const all = safeReadLS<any[]>('bj_resume_filters', []);
+    const r = all[idx] || { filterIds: [] };
     const ids = r.filterIds || [];
     r.filterIds = ids.includes(filterName) ? ids.filter((id: string) => id !== filterName) : [...ids, filterName];
-    safeWriteLS('bj_resumes', all);
+    all[idx] = r;
+    safeWriteLS('bj_resume_filters', all);
   }
   async scoreAI(resumeText: string) {
     const result = await callGateway<any>('score-resume', { mode: 'single', resume_text: resumeText }, { timeout: 30000 });
@@ -381,10 +430,26 @@ export class SupabaseApplicationProvider implements ApplicationProvider {
       .in('status', ['submitted', 'rejected', 'expired', 'cancelled']);
   }
   async getNotifPrefs() {
-    const user = await getUser(); if (!user) return null;
+    const user = await getUser(); if (!user) return [];
     const sb = getSupabase();
-    const { data } = await sb.from('notification_preferences').select('*').eq('user_id', user.id).single();
-    return data;
+    const { data } = await sb.from('user_notification_preferences').select('*').eq('user_id', user.id);
+    return data || [];
+  }
+  async saveNotifPref(notifType: string, field: string, value: boolean | string) {
+    const user = await getUser(); if (!user) return;
+    const sb = getSupabase();
+    const { data: existing } = await sb.from('user_notification_preferences')
+      .select('id').eq('user_id', user.id).eq('notification_type', notifType).single();
+    if (existing) {
+      await sb.from('user_notification_preferences').update({ [field]: value, updated_at: new Date().toISOString() }).eq('id', existing.id);
+    } else {
+      await sb.from('user_notification_preferences').insert({
+        user_id: user.id, notification_type: notifType, [field]: value,
+        email_enabled: field === 'email_enabled' ? value : true,
+        sms_enabled: field === 'sms_enabled' ? value : false,
+        frequency: field === 'frequency' ? value : 'daily',
+      });
+    }
   }
   async getNotifLog() {
     const user = await getUser(); if (!user) return [];
@@ -447,7 +512,18 @@ export class SupabaseStatsProvider implements StatsProvider {
 
 export class SupabaseBillingProvider implements BillingProvider {
   async getBalance() {
-    try { const bal = await callGateway<any>('get-user-balance', undefined, { method: 'GET', timeout: 10000 }); return bal?.total || 0; } catch { return 0; }
+    try {
+      const bal = await callGateway<any>('get-user-balance', undefined, { method: 'GET', timeout: 10000 });
+      return bal?.total || 0;
+    } catch {
+      // Fallback: sum credit ledger directly
+      try {
+        const user = await getUser(); if (!user) return 0;
+        const sb = getSupabase();
+        const { data } = await sb.from('bj_credit_ledger').select('amount').eq('user_id', user.id).eq('voided', false);
+        return (data || []).reduce((sum: number, r: { amount: number }) => sum + (r.amount || 0), 0);
+      } catch { return 0; }
+    }
   }
   async getPricing() {
     const sb = getSupabase();

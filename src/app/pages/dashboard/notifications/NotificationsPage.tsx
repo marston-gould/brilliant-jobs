@@ -9,8 +9,9 @@
 // Surveys: user surveys section
 // ============================================================
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { PageHeader } from '@app/components';
+import { useProviders } from '@providers';
 
 type NcTab = 'preferences' | 'log' | 'surveys';
 
@@ -59,17 +60,16 @@ const MATRIX: NotifSection[] = [
   ]},
 ];
 
-function Toggle({ on = true, disabled = false }: { on?: boolean; disabled?: boolean }) {
-  const [checked, setChecked] = useState(on);
+function Toggle({ on = true, disabled = false, onClick }: { on?: boolean; disabled?: boolean; onClick?: () => void }) {
   return (
     <button
-      onClick={() => !disabled && setChecked(!checked)}
+      onClick={() => !disabled && onClick?.()}
       className={`w-8 h-[18px] rounded-full relative transition-colors ${disabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}
-        ${checked ? 'bg-accent' : 'bg-border-hover'}`}
+        ${on ? 'bg-accent' : 'bg-border-hover'}`}
       disabled={disabled}
       title={disabled ? 'Verify phone to enable SMS' : undefined}
     >
-      <span className={`absolute top-[2px] w-[14px] h-[14px] bg-white rounded-full shadow transition-transform ${checked ? 'left-[14px]' : 'left-[2px]'}`} />
+      <span className={`absolute top-[2px] w-[14px] h-[14px] bg-white rounded-full shadow transition-transform ${on ? 'left-[14px]' : 'left-[2px]'}`} />
     </button>
   );
 }
@@ -77,6 +77,28 @@ function Toggle({ on = true, disabled = false }: { on?: boolean; disabled?: bool
 export default function NotificationsPage() {
   const [tab, setTab] = useState<NcTab>('preferences');
   const [phoneVerified] = useState(false);
+  const { applications: notifProvider } = useProviders();
+  const [prefs, setPrefs] = useState<Record<string, { email: boolean; sms: boolean; freq: string }>>({});
+  const [log, setLog] = useState<any[]>([]);
+
+  useEffect(() => {
+    notifProvider.getNotifPrefs().then((data: any[]) => {
+      const map: Record<string, { email: boolean; sms: boolean; freq: string }> = {};
+      (data || []).forEach((r: any) => {
+        map[r.notification_type] = { email: !!r.email_enabled, sms: !!r.sms_enabled, freq: r.frequency || 'daily' };
+      });
+      setPrefs(map);
+    }).catch(() => {});
+    notifProvider.getNotifLog().then((data: any[]) => setLog(data || [])).catch(() => {});
+  }, [notifProvider]);
+
+  const togglePref = useCallback((notifType: string, field: 'email' | 'sms') => {
+    const current = prefs[notifType] || { email: true, sms: false, freq: 'daily' };
+    const newVal = field === 'email' ? !current.email : !current.sms;
+    setPrefs(prev => ({ ...prev, [notifType]: { ...current, [field]: newVal } }));
+    const dbField = field === 'email' ? 'email_enabled' : 'sms_enabled';
+    (notifProvider as any).saveNotifPref?.(notifType, dbField, newVal);
+  }, [prefs, notifProvider]);
 
   return (
     <div className="max-w-[860px]">
@@ -139,25 +161,28 @@ export default function NotificationsPage() {
                       <tr key={`s-${section.label}`} className="bg-bg-input/30">
                         <td colSpan={4} className="px-4 py-1.5 text-[10px] font-semibold text-text-dim uppercase tracking-wider">{section.label}</td>
                       </tr>
-                      {section.rows.map(row => (
+                      {section.rows.map(row => {
+                        const p = prefs[row.key] || { email: true, sms: false, freq: row.freq || 'daily' };
+                        return (
                         <tr key={row.key} className="border-t border-border/50 hover:bg-bg-input/20">
                           <td className="px-4 py-2 text-text">{row.label}</td>
-                          <td className="text-center px-2 py-2"><Toggle on={true} /></td>
-                          <td className="text-center px-2 py-2"><Toggle on={false} disabled={!phoneVerified} /></td>
+                          <td className="text-center px-2 py-2"><Toggle on={p.email} onClick={() => togglePref(row.key, 'email')} /></td>
+                          <td className="text-center px-2 py-2"><Toggle on={p.sms} disabled={!phoneVerified} onClick={() => phoneVerified && togglePref(row.key, 'sms')} /></td>
                           <td className="px-2 py-2">
                             {row.freq === 'Real-time' ? (
                               <span className="text-[10px] text-text-faint">Real-time</span>
                             ) : row.freq ? (
-                              <select className="px-1.5 py-0.5 rounded border border-border bg-bg-main text-[10px] text-text">
-                                <option>Real-time</option>
-                                <option selected={row.freq === 'Daily'}>Daily</option>
-                                <option selected={row.freq === 'Weekly'}>Weekly</option>
-                                <option selected={row.freq === 'Monthly'}>Monthly</option>
+                              <select className="px-1.5 py-0.5 rounded border border-border bg-bg-main text-[10px] text-text" defaultValue={p.freq}>
+                                <option value="realtime">Real-time</option>
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
                               </select>
                             ) : null}
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </>
                   ))}
                 </tbody>

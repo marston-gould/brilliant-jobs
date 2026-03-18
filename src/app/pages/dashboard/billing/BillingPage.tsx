@@ -8,22 +8,21 @@
 
 import { useState, useEffect } from 'react';
 import { PageHeader } from '@app/components';
-import { useUser } from '@providers';
+import { useUser, useProviders } from '@providers';
 import { FileText, PenLine, Bell, Search, XCircle } from 'lucide-react';
 
 export default function BillingPage() {
   const userProvider = useUser();
+  const { billing } = useProviders();
   const [credits, setCredits] = useState(0);
   const [tier, setTier] = useState('Free');
 
   useEffect(() => {
     userProvider.getCurrentUser().then(u => {
-      if (u) {
-        setCredits(0);
-        setTier(u.tier || "Free");
-      }
+      if (u) setTier(u.tier || 'Free');
     });
-  }, [userProvider]);
+    billing.getBalance().then(bal => setCredits(bal || 0)).catch(() => {});
+  }, [userProvider, billing]);
 
   const creditCosts = [
     { icon: FileText, name: 'Resume Score', desc: 'AI analysis of your resume against a job description', cost: '3 credits' },
