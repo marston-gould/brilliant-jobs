@@ -27,6 +27,7 @@ import {
   SortControls,
   SearchBar,
   JobTable,
+  IntelCards,
   ChatPanel,
 } from './components';
 import type { FilterValues } from './components';

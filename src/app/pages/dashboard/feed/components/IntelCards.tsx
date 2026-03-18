@@ -1,203 +1,107 @@
 // ============================================================
-// IntelCards — Feed Intelligence Sidebar Cards
+// IntelCards — Feed Intelligence Cards (Phase D — Legacy Parity)
 // ============================================================
-// Phase D: Feed feature gap — legacy had intel cards showing:
-// - Resume match score against current search
-// - Ghost rate for top companies in results
-// - Market signals (salary trends, demand indicators)
+// Matches legacy dashboard.html #intel-section exactly:
+// - Horizontal card layout (not sidebar)
+// - Two cards: "Your Market" insight + "Pro Tip" merch
+// - Each has: icon, type badge, title, subtitle, CTA, dismiss
+// - Positioned above search mode toggle, persists across modes
+//
+// Legacy CSS reference (dist/styles.css):
+//   .intel-card: bg-card, border, 10px radius, 14px 16px pad,
+//                flex row, gap-12, hover border-hover
+//   .intel-icon: 36x36, rounded-lg, centered emoji
+//   .intel-card-type: 8px, 700, uppercase, pill badge
+//   .intel-card-title: 12px, 600, text color
+//   .intel-card-sub: 11px, text-dim
+//   .intel-card-cta: 10px, 600, accent
 // ============================================================
 
 import { useState, useEffect } from 'react';
-import {
-  FileText,
-  Ghost,
-  TrendingUp,
-  ChevronDown,
-  ChevronUp,
-  AlertTriangle,
-} from 'lucide-react';
-import { useResumesProvider, useStatsProvider } from '@providers';
+import { X } from 'lucide-react';
+import { useStatsProvider } from '@providers';
 
 interface IntelCardsProps {
-  /** Current search query for contextual scoring */
   searchQuery?: string;
-  /** Company names from visible results for ghost rate */
   visibleCompanies?: string[];
 }
 
-export function IntelCards({ searchQuery, visibleCompanies }: IntelCardsProps) {
-  const resumeProvider = useResumesProvider();
+export function IntelCards({ searchQuery }: IntelCardsProps) {
   const statsProvider = useStatsProvider();
-
-  const [resumeScore, setResumeScore] = useState<number | null>(null);
-  const [resumeName, setResumeName] = useState<string>('');
-  const [sourceBreakdown, setSourceBreakdown] = useState<Array<Record<string, any>>>([]);
-  const [expanded, setExpanded] = useState(true);
-  const [loading, setLoading] = useState(true);
+  const [insightTitle, setInsightTitle] = useState('Loading market data\u2026');
+  const [insightSub, setInsightSub] = useState('');
+  const [showInsight, setShowInsight] = useState(true);
+  const [showMerch, setShowMerch] = useState(true);
 
   useEffect(() => {
-    async function loadIntel() {
-      setLoading(true);
+    async function loadInsight() {
       try {
-        const [resumes, sources] = await Promise.allSettled([
-          resumeProvider.getAll(),
-          statsProvider.getSourceBreakdown(),
-        ]);
-
-        // Get primary resume score
-        if (resumes.status === 'fulfilled' && resumes.value.length > 0) {
-          const primary = resumes.value.find(r => !r.archived) ?? resumes.value[0];
-          if (primary) {
-            setResumeName(primary.name || 'Primary Resume');
-            // If we have extracted text, try to score against search query
-            if (primary.extractedText && searchQuery) {
-              try {
-                const result = await resumeProvider.scoreAI(primary.extractedText);
-                setResumeScore(result.score);
-              } catch {
-                setResumeScore(null);
-              }
-            }
+        const counts = await statsProvider.getJobCounts();
+        if (counts) {
+          const total = counts.total_open ?? 0;
+          const newToday = counts.new_today ?? 0;
+          const companies = counts.total_companies ?? 0;
+          if (total > 0) {
+            setInsightTitle(`${total.toLocaleString()} active jobs across ${companies.toLocaleString()} companies`);
+            setInsightSub(newToday > 0 ? `${newToday} new today` : 'Updated daily from direct career pages');
+          } else {
+            setInsightTitle('Market data loading\u2026');
+            setInsightSub('Stats will appear once your search runs');
           }
         }
-
-        if (sources.status === 'fulfilled') {
-          setSourceBreakdown(sources.value.slice(0, 6));
-        }
       } catch {
-        // Non-fatal — cards just won't show data
-      } finally {
-        setLoading(false);
+        setInsightTitle('Market data temporarily unavailable');
+        setInsightSub('');
       }
     }
-    loadIntel();
-  }, [resumeProvider, statsProvider, searchQuery]);
+    loadInsight();
+  }, [statsProvider, searchQuery]);
 
-  if (loading) {
-    return (
-      <div className="space-y-3">
-        {[1, 2, 3].map(i => (
-          <div key={i} className="p-4 rounded-lg border border-border-subtle bg-bg-surface">
-            <div className="animate-pulse space-y-2">
-              <div className="h-3 w-20 rounded bg-border-subtle/50" />
-              <div className="h-6 w-16 rounded bg-border-subtle/50" />
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
+  if (!showInsight && !showMerch) return null;
 
   return (
-    <div className="space-y-3">
-      {/* Section header */}
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="flex items-center justify-between w-full text-left"
-      >
-        <span className="text-xs font-semibold uppercase tracking-wider text-text-faint">
-          Intelligence
-        </span>
-        {expanded
-          ? <ChevronUp className="w-3.5 h-3.5 text-text-faint" />
-          : <ChevronDown className="w-3.5 h-3.5 text-text-faint" />
-        }
-      </button>
-
-      {expanded && (
-        <>
-          {/* Resume Match Score */}
-          <div className="p-4 rounded-lg border border-border-subtle bg-bg-surface">
-            <div className="flex items-center gap-2 mb-2">
-              <FileText className="w-4 h-4 text-accent" />
-              <span className="text-xs font-semibold text-text-secondary">Resume Match</span>
-            </div>
-            {resumeScore !== null ? (
-              <>
-                <div className="flex items-baseline gap-1">
-                  <span className={`text-2xl font-bold ${
-                    resumeScore >= 75 ? 'text-emerald-500'
-                    : resumeScore >= 50 ? 'text-amber-500'
-                    : 'text-red-500'
-                  }`}>
-                    {resumeScore}
-                  </span>
-                  <span className="text-xs text-text-faint">/100</span>
-                </div>
-                <div className="w-full h-1.5 bg-bg-main rounded-full overflow-hidden mt-2">
-                  <div
-                    className={`h-full rounded-full transition-all ${
-                      resumeScore >= 75 ? 'bg-emerald-500'
-                      : resumeScore >= 50 ? 'bg-amber-500'
-                      : 'bg-red-500'
-                    }`}
-                    style={{ width: `${resumeScore}%` }}
-                  />
-                </div>
-                <p className="text-[11px] text-text-faint mt-1.5 truncate">{resumeName}</p>
-              </>
-            ) : (
-              <p className="text-xs text-text-faint">
-                {resumeName ? 'Score unavailable for current search' : 'Upload a resume to see match scores'}
-              </p>
-            )}
+    <div className="flex flex-col gap-2">
+      {showInsight && (
+        <div className="flex items-start gap-3 p-[14px_16px] rounded-[10px] border border-border bg-bg-card hover:border-border-hover transition-colors">
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 text-lg"
+               style={{ background: 'rgba(34,197,94,0.08)' }}>
+            💰
           </div>
-
-          {/* Ghost Rate Indicator */}
-          <div className="p-4 rounded-lg border border-border-subtle bg-bg-surface">
-            <div className="flex items-center gap-2 mb-2">
-              <Ghost className="w-4 h-4 text-purple-500" />
-              <span className="text-xs font-semibold text-text-secondary">Ghost Risk</span>
-            </div>
-            {visibleCompanies && visibleCompanies.length > 0 ? (
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                  <span className="text-xs text-text-secondary">
-                    {visibleCompanies.length} compan{visibleCompanies.length === 1 ? 'y' : 'ies'} in view
-                  </span>
-                </div>
-                <p className="text-[11px] text-text-faint">
-                  Ghost rates are shown per-job via trust badges. Companies with high ghost rates are flagged in the Pipeline.
-                </p>
-              </div>
-            ) : (
-              <p className="text-xs text-text-faint">Run a search to see ghost risk indicators</p>
-            )}
+          <div className="flex-1 min-w-0">
+            <span className="inline-block text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-sm mb-0.5"
+                  style={{ background: 'rgba(34,197,94,0.1)', color: 'var(--green)' }}>
+              Your Market
+            </span>
+            <div className="text-xs font-semibold text-text leading-snug">{insightTitle}</div>
+            {insightSub && <div className="text-[11px] text-text-dim mt-0.5">{insightSub}</div>}
           </div>
+          <button onClick={() => setShowInsight(false)}
+            className="p-0.5 text-text-faint hover:text-text-dim transition-colors flex-shrink-0" aria-label="Dismiss">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
-          {/* Market Signals */}
-          <div className="p-4 rounded-lg border border-border-subtle bg-bg-surface">
-            <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="w-4 h-4 text-blue-500" />
-              <span className="text-xs font-semibold text-text-secondary">Source Mix</span>
-            </div>
-            {sourceBreakdown.length > 0 ? (
-              <div className="space-y-1.5">
-                {sourceBreakdown.map((s, i) => {
-                  const name = s.source_name || s.source || 'Unknown';
-                  const count = typeof s.job_count === 'number' ? s.job_count : 0;
-                  const firstCount = sourceBreakdown[0]?.job_count;
-                  const maxCount = (typeof firstCount === 'number' && firstCount > 0) ? firstCount : 1;
-                  const pct = Math.round((count / maxCount) * 100);
-                  return (
-                    <div key={name + '-' + i}>
-                      <div className="flex justify-between text-[11px] mb-0.5">
-                        <span className="text-text-secondary truncate">{name}</span>
-                        <span className="text-text-faint tabular-nums">{count.toLocaleString()}</span>
-                      </div>
-                      <div className="w-full h-1 bg-bg-main rounded-full overflow-hidden">
-                        <div className="h-full bg-blue-500/60 rounded-full" style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="text-xs text-text-faint">No source data available</p>
-            )}
+      {showMerch && (
+        <div className="flex items-start gap-3 p-[14px_16px] rounded-[10px] border border-border bg-bg-card hover:border-border-hover transition-colors">
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 text-lg bg-accent-dim">
+            ⚡
           </div>
-        </>
+          <div className="flex-1 min-w-0">
+            <span className="inline-block text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-sm mb-0.5 bg-accent-dim text-accent">
+              Pro Tip
+            </span>
+            <div className="text-xs font-semibold text-text leading-snug">Score your resume against these jobs</div>
+            <div className="text-[11px] text-text-dim mt-0.5">See how well your resume matches before you apply</div>
+            <a href="/app/resumes" className="text-[10px] font-semibold text-accent mt-1 inline-block hover:underline">
+              Score my resume →
+            </a>
+          </div>
+          <button onClick={() => setShowMerch(false)}
+            className="p-0.5 text-text-faint hover:text-text-dim transition-colors flex-shrink-0" aria-label="Dismiss">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
       )}
     </div>
   );

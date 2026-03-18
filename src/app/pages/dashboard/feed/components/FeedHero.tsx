@@ -1,8 +1,12 @@
 // ============================================================
-// FeedHero — Feed Stats Banner (SA-014)
+// FeedHero — Feed Stats Banner (SA-014 → Legacy Parity)
 // ============================================================
-// Displays aggregate feed statistics in a hero-style card.
-// Design tokens only — zero inline styles.
+// Matches legacy dashboard.html .feed-hero exactly:
+//   bg: #1b3e6f (navy), white text, 14px radius, 24px 28px pad
+//   Stats: frosted glass cards (white 7% bg, white 8% border)
+//   Values: mono font, 20px/700, -.5px letter-spacing
+//   Labels: 9px, white 55%, uppercase, .3px tracking
+//   New Today: green (#22c55e), Pipeline: blue (accent), clickable
 // ============================================================
 
 import type { FeedStats } from '../hooks/useFeedSearch';
@@ -15,53 +19,60 @@ interface FeedHeroProps {
 const statItems: Array<{
   key: keyof FeedStats;
   label: string;
-  accent?: boolean;
+  colorClass?: string;
   clickable?: boolean;
 }> = [
   { key: 'total', label: 'Total Jobs' },
   { key: 'companies', label: 'Companies' },
-  { key: 'newToday', label: 'New Today', accent: true },
-  { key: 'pipeline', label: 'Pipeline', clickable: true },
+  { key: 'newToday', label: 'New Today', colorClass: 'text-green' },
+  { key: 'pipeline', label: 'Pipeline', colorClass: 'text-accent', clickable: true },
 ];
 
 export function FeedHero({ stats, onPipelineClick }: FeedHeroProps) {
   return (
-    <div className="rounded-xl bg-gradient-to-br from-bg-card to-bg-input border border-border p-5 mb-3">
-      <div className="text-lg font-extrabold mb-1 text-text">
+    <div className="rounded-[14px] p-[24px_28px] mb-4 overflow-hidden"
+         style={{ background: '#1b3e6f', color: '#fff', boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
+      <div style={{ fontSize: '18px', fontWeight: 800, marginBottom: '4px' }}>
         Your market.{' '}
-        <span className="text-amber-400">Your numbers.</span>
+        <span className="text-warm">Your numbers.</span>
       </div>
-      <p className="text-xs text-text-faint leading-relaxed max-w-md mb-4">
-        Every job below comes direct from company career pages — not recycled
+      <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, maxWidth: '480px' }}>
+        Every job below comes direct from company career pages &mdash; not recycled
         posts, not ghost listings. Scored against your resume and filtered by
         your rules.
-      </p>
-      <div className="flex gap-6 flex-wrap">
-        {statItems.map(({ key, label, accent, clickable }) => {
-          const value = stats[key];
+      </div>
+      <div className="flex gap-2 flex-wrap mt-3.5">
+        {statItems.map(({ key, label, colorClass, clickable }) => {
+          const value = stats[key] ?? 0;
           const isClickable = clickable && onPipelineClick;
 
           return (
             <div
               key={key}
-              className={`flex flex-col items-center min-w-[64px] ${
-                isClickable ? 'cursor-pointer group' : ''
-              }`}
+              className={`text-center flex-1 min-w-0 rounded-lg ${isClickable ? 'cursor-pointer' : ''}`}
+              style={{
+                padding: '10px 14px',
+                background: 'rgba(255,255,255,0.07)',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}
               onClick={isClickable ? onPipelineClick : undefined}
               title={isClickable ? 'View in Pipeline' : undefined}
             >
-              <span
-                className={`text-2xl font-bold tabular-nums ${
-                  accent
-                    ? 'text-accent'
-                    : key === 'pipeline'
-                      ? 'text-green-400 group-hover:text-green-300'
-                      : 'text-text'
-                }`}
-              >
-                {(value ?? 0).toLocaleString()}
-              </span>
-              <span className="text-xs text-text-faint mt-0.5">{label}</span>
+              <div className={`font-mono font-bold leading-none whitespace-nowrap ${colorClass || ''}`}
+                   style={{ fontSize: '20px', letterSpacing: '-0.5px' }}>
+                {value.toLocaleString()}
+              </div>
+              <div style={{
+                fontSize: '9px',
+                color: 'rgba(255,255,255,0.55)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.3px',
+                marginTop: '4px',
+                lineHeight: 1,
+                whiteSpace: 'nowrap',
+              }}>
+                {label}
+              </div>
             </div>
           );
         })}
