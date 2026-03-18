@@ -17,6 +17,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { PageHeader } from '@app/components';
 import {
   FeedHero,
   SearchModeToggle,
@@ -265,16 +266,7 @@ export function FeedPage() {
 
   return (
     <div className="space-y-3">
-      {/* Page header */}
-      <div>
-        <h2 className="text-xl font-bold text-text">Jobs Feed</h2>
-        <p className="text-xs text-text-faint mt-0.5">
-          Openings aggregated from multiple sources{' '}
-          <button type="button" className="text-accent hover:underline">
-            How this works →
-          </button>
-        </p>
-      </div>
+      <PageHeader title="Jobs Feed" subtitle="Openings aggregated from multiple sources" helpLink="feed" onHelp={() => {}} />
 
       {/* Hero stats */}
       <FeedHero stats={state.stats} onPipelineClick={handlePipelineClick} />

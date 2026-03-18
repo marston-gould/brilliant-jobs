@@ -24,6 +24,7 @@ import { lazy, Suspense } from 'react';
 
 // Dashboard pages (SA-014 → SA-017)
 const FeedPage = lazy(() => import('@app/pages/dashboard/feed/FeedPage'));
+const GetStartedPage = lazy(() => import('@app/pages/dashboard/get-started/GetStartedPage'));
 const PipelinePage = lazy(() => import('@app/pages/dashboard/pipeline/PipelinePage'));
 const KeywordsPage = lazy(() => import('@app/pages/dashboard/keywords/KeywordsPage'));
 const ResumesPage = lazy(() => import('@app/pages/dashboard/resumes/ResumesPage'));
@@ -85,6 +86,7 @@ function Loader({ label }: { label: string }) {
 
 // Dashboard route wrappers
 function FeedPageRoute() { return <Suspense fallback={<Loader label="feed" />}><FeedPage /></Suspense>; }
+function GetStartedPageRoute() { return <Suspense fallback={<Loader label="get started" />}><GetStartedPage /></Suspense>; }
 function PipelinePageRoute() { return <Suspense fallback={<Loader label="pipeline" />}><PipelinePage /></Suspense>; }
 function KeywordsPageRoute() { return <Suspense fallback={<Loader label="readiness" />}><KeywordsPage /></Suspense>; }
 function ResumesPageRoute() { return <Suspense fallback={<Loader label="resumes" />}><ResumesPage /></Suspense>; }
@@ -122,7 +124,8 @@ export const routes: RouteObject[] = [
         element: <AppShell />,
         children: [
           // ── Dashboard Routes ──
-          { index: true, element: <Navigate to="feed" replace /> },
+          { index: true, element: <Navigate to="get-started" replace /> },
+          { path: 'get-started', element: <GetStartedPageRoute /> },
           { path: 'feed', element: <FeedPageRoute /> },
           { path: 'pipeline', element: <PipelinePageRoute /> },
           { path: 'keywords', element: <KeywordsPageRoute /> },

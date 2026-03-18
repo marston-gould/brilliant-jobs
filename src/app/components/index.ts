@@ -21,3 +21,4 @@ export {
   Skeleton, SkeletonHeader, SkeletonMetricRow,
   SkeletonCardList, SkeletonTable, SkeletonPage,
 } from './Skeleton';
+export { PageHeader } from './PageHeader';
