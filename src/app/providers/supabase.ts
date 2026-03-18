@@ -170,7 +170,7 @@ export class SupabaseUserProvider implements UserProvider {
       email: user.email || '',
       display_name: profile?.display_name || null,
       tier: profile?.tier || 'free',
-      role: user.app_metadata?.role === 'admin' ? 'admin' : 'user',
+      role: (user.app_metadata?.role === 'admin' || profile?.role === 'admin') ? 'admin' : 'user',
       created_at: user.created_at,
       preferences: profile?.preferences || {},
     };

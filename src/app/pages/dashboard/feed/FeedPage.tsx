@@ -27,7 +27,6 @@ import {
   SortControls,
   SearchBar,
   JobTable,
-  IntelCards,
   ChatPanel,
 } from './components';
 import type { FilterValues } from './components';
@@ -279,6 +278,17 @@ export function FeedPage() {
       {/* Hero stats */}
       <FeedHero stats={state.stats} onPipelineClick={handlePipelineClick} />
 
+      {/* Intel cards — above toggle, persists across Filters/Chat modes (legacy: feed-intel section) */}
+      <IntelCards
+        searchQuery={filterValues.what}
+        visibleCompanies={
+          state.jobs
+            .map(j => j.company_name)
+            .filter((v, i, a) => a.indexOf(v) === i)
+            .slice(0, 20)
+        }
+      />
+
       {/* Search mode toggle */}
       <SearchModeToggle mode={state.searchMode} onModeChange={actions.setSearchMode} />
 
@@ -350,38 +360,20 @@ export function FeedPage() {
         </div>
       )}
 
-      {/* Main content: Job table + Intel sidebar */}
-      <div className="flex gap-4">
-        {/* Job results table */}
-        <div className="flex-1 min-w-0">
-          <JobTable
-            state={state}
-            onSave={handleSave}
-            onHide={handleHide}
-            onApply={handleApply}
-            onPageChange={(p) => actions.setPage(p)}
-            savedJobIds={savedJobIds}
-            appliedJobIds={appliedJobIds}
-            matchScores={matchScores}
-            fraudCache={fraudCache}
-            aiCache={aiCache}
-            levelHierarchy={DEFAULT_LEVEL_HIERARCHY}
-          />
-        </div>
-
-        {/* Intel sidebar (hidden on small screens) */}
-        <div className="hidden lg:block w-[260px] flex-shrink-0">
-          <IntelCards
-            searchQuery={filterValues.what || state.searchMode === 'chat' ? undefined : undefined}
-            visibleCompanies={
-              state.jobs
-                .map(j => j.company_name)
-                .filter((v, i, a) => a.indexOf(v) === i)
-                .slice(0, 20)
-            }
-          />
-        </div>
-      </div>
+      {/* Job results table */}
+      <JobTable
+        state={state}
+        onSave={handleSave}
+        onHide={handleHide}
+        onApply={handleApply}
+        onPageChange={(p) => actions.setPage(p)}
+        savedJobIds={savedJobIds}
+        appliedJobIds={appliedJobIds}
+        matchScores={matchScores}
+        fraudCache={fraudCache}
+        aiCache={aiCache}
+        levelHierarchy={DEFAULT_LEVEL_HIERARCHY}
+      />
     </div>
   );
 }
