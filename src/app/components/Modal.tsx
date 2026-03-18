@@ -76,7 +76,7 @@ export function Modal({
       onClick={handleBackdropClick}
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" aria-hidden="true" />
+      <div className="absolute inset-0 bg-black/50" aria-hidden="true" onClick={onClose} />
 
       {/* Dialog */}
       <dialog

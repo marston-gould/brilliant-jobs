@@ -89,7 +89,7 @@ export function CompanyBrowseModal({ open, onClose, onSelect }: CompanyBrowseMod
   if (!open) return null;
 
   return (
-    <Modal open={open} onClose={onClose}>
+    <Modal open={open} onClose={onClose} title="Browse Companies" size="lg">
       <div className="w-[90vw] max-w-[600px] max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="px-5 py-4 border-b border-border flex-shrink-0">
