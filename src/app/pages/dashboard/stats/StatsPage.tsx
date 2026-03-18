@@ -130,7 +130,7 @@ export default function StatsPage() {
           </div>
 
           {/* Charts powered by ECharts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Work Arrangement — pie chart from counts */}
             <div className="border border-border rounded-xl bg-bg-card p-4">
               <div className="text-[13px] font-bold text-text mb-2">Work Arrangement</div>
@@ -258,7 +258,7 @@ export default function StatsPage() {
               <p className="text-[12px]">Score history, level fit analysis, and pipeline data will appear here.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="border border-border rounded-xl bg-bg-card p-[18px_20px] text-center">
                 <div className="text-[24px] font-bold text-accent">—</div>
                 <div className="text-[11px] text-text-faint uppercase tracking-wide mt-1">Readiness Score</div>
@@ -319,7 +319,7 @@ export default function StatsPage() {
           <div className="text-center py-4 text-text-faint text-[12px]">
             Overlay analytics populate as the scoring pipeline processes jobs in your feed.
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="border border-border rounded-xl bg-bg-card p-4">
               <div className="text-[13px] font-bold text-text mb-2">Trust Score Distribution</div>
               <ChartBox option={{

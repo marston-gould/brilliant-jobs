@@ -246,6 +246,21 @@ export default function NotificationsPage() {
               <div className="text-[11px] text-text-faint mt-2">Notifications held until quiet hours end. Escalation timers pause.</div>
             </div>
           </div>
+
+          {/* Per-Search Overrides — legacy lines 2906-2937 */}
+          <div className="border border-border rounded-xl bg-bg-card p-6">
+            <div className="text-[14px] font-bold text-text mb-1">Per-Search Overrides</div>
+            <div className="text-[12px] text-text-dim mb-4">Customize notification settings for individual saved searches</div>
+            <div className="flex items-center gap-3 mb-4">
+              <label className="text-[12px] font-semibold text-text-dim">Saved search:</label>
+              <select className="flex-1 px-3 py-1.5 rounded-lg border border-border bg-bg-input text-[12px] text-text min-w-[200px]">
+                <option value="">— Select a saved search —</option>
+              </select>
+            </div>
+            <div className="text-center py-6 text-text-faint text-[13px]">
+              Select a saved search above to customize its notification settings.
+            </div>
+          </div>
         </div>
       )}
       {tab === 'log' && (

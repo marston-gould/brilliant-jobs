@@ -138,7 +138,7 @@ export function FilterBuilder({
           </div>
           {/* What / Not */}
           <div className="grid grid-cols-2 gap-2">
-            <FilterRow label="What" onBrowse={onBrowse ? () => onBrowse('title', 'include') : undefined}>
+            <FilterRow label="What" labelClass="text-accent" onBrowse={onBrowse ? () => onBrowse('title', 'include') : undefined}>
               <input
                 type="text"
                 className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
@@ -148,7 +148,7 @@ export function FilterBuilder({
                 onKeyDown={handleKeyDown}
               />
             </FilterRow>
-            <FilterRow label="Not" labelClass="text-red-400/70" onBrowse={onBrowse ? () => onBrowse('title', 'exclude') : undefined}>
+            <FilterRow label="Not" labelClass="text-text-faint" onBrowse={onBrowse ? () => onBrowse('title', 'exclude') : undefined}>
               <input
                 type="text"
                 className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
@@ -162,7 +162,7 @@ export function FilterBuilder({
 
           {/* Where / Not */}
           <div className="grid grid-cols-2 gap-2">
-            <FilterRow label="Where">
+            <FilterRow label="Where" labelClass="text-warm">
               <input
                 type="text"
                 className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
@@ -172,7 +172,7 @@ export function FilterBuilder({
                 onKeyDown={handleKeyDown}
               />
             </FilterRow>
-            <FilterRow label="Not" labelClass="text-red-400/70">
+            <FilterRow label="Not" labelClass="text-text-faint">
               <input
                 type="text"
                 className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
@@ -186,7 +186,7 @@ export function FilterBuilder({
 
           {/* Who / Not */}
           <div className="grid grid-cols-2 gap-2">
-            <FilterRow label="Who" onBrowse={onBrowse ? () => onBrowse('company', 'include') : undefined}>
+            <FilterRow label="Who" labelClass="text-pink" onBrowse={onBrowse ? () => onBrowse('company', 'include') : undefined}>
               <input
                 type="text"
                 className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
@@ -196,7 +196,7 @@ export function FilterBuilder({
                 onKeyDown={handleKeyDown}
               />
             </FilterRow>
-            <FilterRow label="Not" labelClass="text-red-400/70" onBrowse={onBrowse ? () => onBrowse('company', 'exclude') : undefined}>
+            <FilterRow label="Not" labelClass="text-text-faint" onBrowse={onBrowse ? () => onBrowse('company', 'exclude') : undefined}>
               <input
                 type="text"
                 className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
@@ -210,7 +210,7 @@ export function FilterBuilder({
 
           {/* When */}
           <div className="grid grid-cols-2 gap-2">
-            <FilterRow label="When">
+            <FilterRow label="When" labelClass="text-purple">
               <input
                 type="text"
                 className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
@@ -224,7 +224,7 @@ export function FilterBuilder({
           </div>
 
           {/* How Much */}
-          <FilterRow label="Pay">
+          <FilterRow label="Pay" labelClass="text-green">
             <div className="flex items-center gap-1">
               <span className="text-xs text-text-faint">$</span>
               <input
