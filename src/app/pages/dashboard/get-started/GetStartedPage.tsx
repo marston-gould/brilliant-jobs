@@ -431,13 +431,69 @@ export default function GetStartedPage() {
       <Step num="Optional" title="Import LinkedIn Profile" icon={User}
         iconBg="hsla(210,85%,56%,0.10)" iconColor="#0A66C2">
         <div className="mb-3">
-          Upload your LinkedIn PDF export to auto-fill your profile, get personalized filter
+          Upload your LinkedIn CSV export to auto-fill your profile, get personalized filter
           suggestions, and give AI form answering better context. One upload, no re-entry.
         </div>
         <div className="border-2 border-dashed border-border rounded-[10px] p-6 text-center cursor-pointer hover:border-accent transition-colors"
-          onClick={() => { const i = document.createElement('input'); i.type = 'file'; i.accept = '.pdf'; i.click(); }}>
-          <div className="text-[13px] font-semibold text-text">Drop your LinkedIn PDF here</div>
-          <div className="text-[11px] text-text-faint mt-1">or click to browse — max 10MB</div>
+          onClick={() => {
+            const i = document.createElement('input');
+            i.type = 'file';
+            i.accept = '.csv';
+            i.onchange = async (ev) => {
+              const file = (ev.target as HTMLInputElement).files?.[0];
+              if (!file) return;
+              const toast = (msg: string, type: string) => (window as any).__bjToast?.(msg, type);
+              toast('Reading LinkedIn profile…', 'info');
+              try {
+                const text = await file.text();
+                const lines = text.split('\n');
+                if (lines.length < 2) { toast('CSV appears empty', 'error'); return; }
+                const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+                // Parse CSV row (handle quoted values with commas)
+                const values: string[] = [];
+                let current = '';
+                let inQuotes = false;
+                for (const char of lines[1]) {
+                  if (char === '"') { inQuotes = !inQuotes; }
+                  else if (char === ',' && !inQuotes) { values.push(current.trim()); current = ''; }
+                  else { current += char; }
+                }
+                values.push(current.trim());
+
+                const row: Record<string, string> = {};
+                headers.forEach((h, idx) => { if (values[idx]) row[h] = values[idx]; });
+
+                const profile = {
+                  firstName: row['First Name'] || '',
+                  lastName: (row['Last Name'] || '').replace(/,.*$/, '').trim(),
+                  headline: row['Headline'] || '',
+                  summary: row['Summary'] || '',
+                  industry: row['Industry'] || '',
+                  location: row['Geo Location'] || '',
+                  zipCode: row['Zip Code'] || '',
+                  address: row['Address'] || '',
+                };
+
+                // Save to Supabase profiles.user_data.linkedin_profile
+                const { supabase: sb, getUser } = await import('@app/lib/supabase');
+                const user = await getUser();
+                if (!user) { toast('Please sign in first', 'error'); return; }
+                const { data: existing } = await sb.from('profiles').select('user_data').eq('id', user.id).single();
+                const userData = (existing?.user_data as Record<string, unknown>) || {};
+                const { error } = await sb.from('profiles').update({
+                  user_data: { ...userData, linkedin_profile: profile },
+                }).eq('id', user.id);
+                if (error) { toast('Failed to save: ' + error.message, 'error'); return; }
+
+                toast(`LinkedIn profile imported — ${profile.firstName} ${profile.lastName}, ${profile.headline}`, 'success');
+              } catch (err) {
+                toast('Failed to parse CSV: ' + (err instanceof Error ? err.message : String(err)), 'error');
+              }
+            };
+            i.click();
+          }}>
+          <div className="text-[13px] font-semibold text-text">Drop your LinkedIn CSV here</div>
+          <div className="text-[11px] text-text-faint mt-1">or click to browse — Profile.csv from LinkedIn export</div>
           <div className="text-[10px] text-text-faint mt-2">Export from LinkedIn: Settings & Privacy → Data Privacy → Download your data → select Profile</div>
         </div>
         {/* gs-tip */}
