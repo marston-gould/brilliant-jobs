@@ -290,3 +290,43 @@
 | Positioning | **100%** | Padding, gap, radius, grid, responsive all verified |
 | Interaction | **100%** | Every legacy onclick handler has SPA equivalent |
 | Functionality | **100%** | All server routes, edge functions, secrets, worker verified |
+
+---
+
+## v10.94 SESSION — March 19, 2026
+
+### Bug Fixes
+| Issue | Root Cause | Fix |
+|---|---|---|
+| Search bar button full-width on landing | `.preview-go` had `width:100%` + inline style bloat | Changed to `width:auto`, removed inline style, added proper `.preview-go` CSS |
+| Saved searches not loading in SPA | SPA queried `saved_filters` table (empty); data lives in `user_filters` | Rewired load/toggle/save/delete to `user_filters` with `filter_data` pill format mapping |
+| Resumes showing 1x duplicated instead of 3 | SPA read from `resumes` table + localStorage; data lives in `resume_archive` | Rewired `useResumes.loadData` to query `resume_archive` with correct column mapping |
+| Email sender shows "notifications" not brand name | `FROM_EMAIL` fallback was bare `notifications@brilliantjobs.app` | Added `Brilliant Jobs <...>` display name in 6 edge functions + set as Supabase secret |
+
+### Table Reference Corrections
+| Component | Wrong Table | Correct Table | Columns Mapped |
+|---|---|---|---|
+| FeedPage (load saved searches) | `saved_filters` | `user_filters` | `filter_data`, `sort_order` |
+| FeedPage (toggle saved search) | `saved_filters.config` | `user_filters.filter_data` | whatPills→what, wherePills→where, payPills→pay, levelPills→level |
+| FeedPage (save new search) | `saved_filters` | `user_filters` | `filter_data` + `sort_order` |
+| FeedPage (delete search) | `saved_filters` | `user_filters` | — |
+| useResumes (load resumes) | `resumes` + localStorage | `resume_archive` | `display_name`, `resume_id`, `metadata_snapshot`, `extracted_text`, `is_active` |
+| useTuning (load filters) | `saved_filters` | `user_filters` | `filter_data` pill format |
+
+### Edge Function Deployments
+All 6 email-sending functions redeployed with sender name fix:
+- send-notification, send-trial-notifications, weekly-digest-expired
+- resend-confirmation, distribute-leaderboard-rewards, send-survey-invite
+
+### Spec Audit (SPA_Tailwind_Issues v10.52)
+Full audit completed against current codebase. All items **DONE**:
+- P0 Data Wiring: 6/6 done (user_profiles→profiles, mv views verified, chat wired, GDrive stubbed with errors)
+- P0 Missing Pages: 2/2 done (InterviewPrepPage, NotificationsPage)
+- P1 Navigation: 10/10 done (icons, labels, badges, avatar, theme, logout, blog, notifications, admin, collapse)
+- P1 Page Features: all done (intel cards, chat panel, drag-drop, Supabase migrations, toast, skeletons)
+- P2 Cross-Cutting: all done (modals, PostHog, keyboard=Escape only in legacy)
+- Tailwind Migration: CLOSED per spec recommendation
+
+### Version
+- Landing: v10.94
+- SPA Dashboard: v10.94
