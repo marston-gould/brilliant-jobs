@@ -73,25 +73,11 @@ function detectAtsWarnings(rawText: string): string[] {
 // ─── Text extraction from DOCX (server-side, no LibreOffice available) ───────
 
 async function extractTextFromDocx(bytes: Uint8Array): Promise<string | null> {
-  // DOCX is a ZIP containing word/document.xml. Use JSZip to decompress.
-  try {
-    const zip = new JSZip();
-    await zip.loadAsync(bytes);
-    const docFile = zip.file('word/document.xml');
-    if (!docFile) {
-      console.error('[resume-parse] No word/document.xml found in DOCX');
-      return null;
-    }
-    const xmlStr = await docFile.async('string');
+  console.log(`[resume-parse] extractTextFromDocx called, ${bytes.length} bytes`);
 
-    // Extract text from w:t elements within w:body
-    const bodyMatch = xmlStr.match(/<w:body>([\s\S]*?)<\/w:body>/);
-    if (!bodyMatch) {
-      console.error('[resume-parse] No w:body found in document.xml');
-      return null;
-    }
-
-    // Parse paragraphs: each w:p contains w:t text nodes
+  function parseDocXml(xmlStr: string): string | null {
+    const bodyMatch = xmlStr.match(/<w:body>([\s\S]*)<\/w:body>/);
+    if (!bodyMatch) { console.error('[resume-parse] No w:body in xml'); return null; }
     const paragraphs: string[] = [];
     const pRegex = /<w:p[ >][\s\S]*?<\/w:p>/g;
     let m;
@@ -99,19 +85,46 @@ async function extractTextFromDocx(bytes: Uint8Array): Promise<string | null> {
       const pText: string[] = [];
       const tRegex = /<w:t[^>]*>([^<]*)<\/w:t>/g;
       let tm;
-      while ((tm = tRegex.exec(m[0])) !== null) {
-        if (tm[1]) pText.push(tm[1]);
-      }
+      while ((tm = tRegex.exec(m[0])) !== null) { if (tm[1]) pText.push(tm[1]); }
       if (pText.length) paragraphs.push(pText.join(''));
     }
-
     const text = paragraphs.join('\n').replace(/\n{3,}/g, '\n\n').trim();
-    console.log(`[resume-parse] Extracted ${text.length} chars from DOCX`);
+    console.log(`[resume-parse] parseDocXml: ${paragraphs.length} paragraphs, ${text.length} chars`);
     return text.length > 50 ? text : null;
-  } catch (e) {
-    console.error('[resume-parse] extractTextFromDocx error:', e);
-    return null;
   }
+
+  // Approach 1: JSZip
+  try {
+    console.log('[resume-parse] Trying JSZip...');
+    const zip = new JSZip();
+    await zip.loadAsync(bytes);
+    const docFile = zip.file('word/document.xml');
+    if (docFile) {
+      const xmlStr = await docFile.async('string');
+      console.log(`[resume-parse] JSZip got document.xml: ${xmlStr.length} chars`);
+      const result = parseDocXml(xmlStr);
+      if (result) return result;
+    } else {
+      console.error('[resume-parse] JSZip: no word/document.xml');
+    }
+  } catch (e: any) {
+    console.error('[resume-parse] JSZip failed:', e?.message || String(e));
+  }
+
+  // Approach 2: Raw decode (works if STORED compression)
+  try {
+    console.log('[resume-parse] Trying raw decode...');
+    const raw = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+    if (raw.includes('<w:body>')) {
+      const result = parseDocXml(raw);
+      if (result) return result;
+    }
+  } catch (e: any) {
+    console.error('[resume-parse] Raw decode failed:', e?.message || String(e));
+  }
+
+  console.error('[resume-parse] All extraction approaches failed');
+  return null;
 }
 
 // ─── Anthropic parse prompt ───────────────────────────────────────────────────
@@ -228,10 +241,13 @@ serve(async (req) => {
         fileBytes = new Uint8Array(await file.arrayBuffer());
 
         if (fileType.includes('wordprocessingml') || fileName.endsWith('.docx')) {
+          console.log(`[resume-parse] Processing DOCX: ${fileName}, ${fileBytes.length} bytes, type=${fileType}`);
           const extracted = await extractTextFromDocx(fileBytes);
           if (!extracted) {
+            console.error(`[resume-parse] DOCX extraction returned null for ${fileName} (${fileBytes.length} bytes)`);
             return new Response(JSON.stringify({
               error: "We couldn't read your resume. Try .docx with standard formatting, or use the paste option.",
+              debug: { fileName, fileSize: fileBytes.length, fileType },
             }), { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
           }
           rawText = extracted;
