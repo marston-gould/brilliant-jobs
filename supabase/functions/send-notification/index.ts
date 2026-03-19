@@ -19,7 +19,7 @@ const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 const VONAGE_API_KEY = Deno.env.get("VONAGE_API_KEY") || "";
 const VONAGE_API_SECRET = Deno.env.get("VONAGE_API_SECRET") || "";
 const VONAGE_FROM = Deno.env.get("VONAGE_FROM") || "";
-const FROM_EMAIL = Deno.env.get("FROM_EMAIL") || "notifications@brilliantjobs.app";
+const FROM_EMAIL = Deno.env.get("FROM_EMAIL") || "Brilliant Jobs <notifications@brilliantjobs.app>";
 
 // Web Push VAPID credentials (Card 7)
 const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY") || "";

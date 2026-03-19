@@ -93,7 +93,14 @@
   display: flex; align-items: center; gap: 8px;
   font-size: 13px; color: var(--text-dim); cursor: pointer; white-space: nowrap;
 }
-.preview-go { width: 100%; margin-top: 4px; font-size: 14px; padding: 12px; }
+.preview-go {
+  width: auto; margin-top: 4px; font-size: 14px; padding: 12px 28px;
+  background: var(--accent); color: #fff; font-weight: 600; border: none;
+  border-radius: 10px; cursor: pointer; font-family: var(--sans);
+  transition: background 0.15s, box-shadow 0.15s;
+  box-shadow: 0 1px 4px rgba(99,102,241,0.18);
+}
+.preview-go:hover { background: var(--accent-hover); box-shadow: 0 2px 8px rgba(99,102,241,0.25); }
 .preview-stats {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
   margin: 24px 0 20px;

@@ -229,15 +229,28 @@ export function FeedPage() {
     try {
       const { supabase, getUser } = await import('@app/lib/supabase');
       const user = await getUser();
-      if (!user) return;
-      await supabase.from('saved_filters').insert({
+      if (!user) {
+        console.error('Save filter: No authenticated user');
+        (window as any).__bjToast?.('Please sign in to save searches', 'error');
+        return;
+      }
+      const { error } = await supabase.from('saved_filters').insert({
         user_id: user.id,
         name,
         config: filterValues,
       });
+      if (error) {
+        console.error('Save filter DB error:', error);
+        (window as any).__bjToast?.('Failed to save search — ' + error.message, 'error');
+        return;
+      }
       const updated = await loadSavedFiltersFromSupabase();
       setSavedSearchItems(updated);
-    } catch (e) { console.error('Save filter failed:', e); }
+      (window as any).__bjToast?.(`Saved "${name}"`, 'success');
+    } catch (e) {
+      console.error('Save filter failed:', e);
+      (window as any).__bjToast?.('Failed to save search', 'error');
+    }
   }, [filterValues]);
 
   const handleAiGenerate = useCallback(async () => {

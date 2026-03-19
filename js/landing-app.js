@@ -387,7 +387,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const CACHE_TTL = 60 * 60 * 1e3;
     function applyStats(stats) {
       if (stats.jobs != null) {
-        document.getElementById("lp-active-jobs").textContent = (Math.floor(stats.jobs / 1e3) * 1e3).toLocaleString() + "+";
+        document.getElementById("lp-active-jobs").textContent = stats.jobs.toLocaleString();
         const heroJobs = document.getElementById("lp-hero-jobs");
         if (heroJobs) heroJobs.textContent = (Math.floor(stats.jobs / 1e3) * 1e3).toLocaleString() + "+";
       }
@@ -400,7 +400,7 @@ document.addEventListener("DOMContentLoaded", function() {
         var stepComp = document.getElementById("lp-step-companies");
         if (stepComp) stepComp.textContent = hiringDisplay;
       }
-      var totalDisplay = stats.totalCompanies != null ? (Math.floor(stats.totalCompanies / 1e3) * 1e3).toLocaleString() + "+" : "39,000+";
+      var totalDisplay = stats.totalCompanies != null ? (Math.floor(stats.totalCompanies / 1e3) * 1e3).toLocaleString() + "+" : null;
       if (totalDisplay) {
         var lpCompEl = document.getElementById("lp-companies");
         if (lpCompEl) lpCompEl.textContent = totalDisplay;
@@ -423,9 +423,9 @@ document.addEventListener("DOMContentLoaded", function() {
       var miJobs = document.getElementById("lp-mi-jobs");
       if (miJobs) miJobs.textContent = Math.floor(stats.jobs / 1e3).toLocaleString() + "K+";
       if (stats.metros != null) {
-        document.getElementById("lp-metros").textContent = (Math.ceil(stats.metros / 10) * 10).toLocaleString();
+        document.getElementById("lp-metros").textContent = stats.metros.toLocaleString();
       }
-      var tcDisplay = stats.totalCompanies != null ? (Math.floor(stats.totalCompanies / 1e3) * 1e3).toLocaleString() + "+" : "39,000+";
+      var tcDisplay = stats.totalCompanies != null ? (Math.floor(stats.totalCompanies / 1e3) * 1e3).toLocaleString() + "+" : null;
       try {
         var ldScripts = document.querySelectorAll('script[type="application/ld+json"]');
         ldScripts.forEach(function(script) {
@@ -522,7 +522,7 @@ document.addEventListener("DOMContentLoaded", function() {
         if (hiringFallback) hiringFallback.textContent = "8,700+";
         var hiringHeroFallback = document.getElementById("lp-companies-hiring");
         if (hiringHeroFallback) hiringHeroFallback.textContent = "8,700+";
-        document.getElementById("lp-metros").textContent = "200";
+        document.getElementById("lp-metros").textContent = "199";
         document.querySelectorAll(".stat-num").forEach((el) => {
           el.classList.remove("loading");
           el.classList.add("loaded");
@@ -688,7 +688,7 @@ document.addEventListener("DOMContentLoaded", function() {
 (function initLpBenefitSections() {
   "use strict";
   var SUPABASE_URL = window.SUPABASE_URL || "https://qojhagupdnbtomfoxnsf.supabase.co";
-  var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg";
+  var SUPABASE_ANON_KEY = window.SUPABASE_KEY || window.SUPABASE_ANON_KEY || "";
   function getVisitorSegment() {
     if (typeof window._bjSegment === "string") return window._bjSegment;
     try {

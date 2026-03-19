@@ -138,10 +138,56 @@ export function useResumes(): [ResumesState, ReturnType<typeof buildActions>] {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // SPA-CUT-2: Load from localStorage directly
-  const loadData = useCallback(() => {
+  // Load from Supabase first, localStorage fallback
+  const loadData = useCallback(async () => {
     try {
-      const allResumes = loadResumesFromLS();
+      let allResumes: Resume[] = [];
+      let fromSupabase = false;
+
+      // Try Supabase first
+      try {
+        const user = await getUser();
+        if (user) {
+          const { data } = await supabase
+            .from('resumes')
+            .select('*')
+            .eq('user_id', user.id)
+            .is('deleted_at', null)
+            .order('created_at', { ascending: false });
+
+          if (data && data.length > 0) {
+            // Deduplicate by file_name — keep the newest
+            const seen = new Map<string, typeof data[0]>();
+            for (const row of data) {
+              const key = row.file_name || row.name || row.id;
+              if (!seen.has(key)) seen.set(key, row);
+            }
+            allResumes = Array.from(seen.values()).map((r: any) => ({
+              id: r.id,
+              supabaseId: r.id,
+              name: r.name || r.file_name || 'Untitled',
+              fileName: r.file_name,
+              archived: false,
+              textStatus: 'ready' as const,
+              storagePath: r.file_path,
+              size: r.file_size ? parseInt(r.file_size, 10) : 0,
+              uploadedAt: r.created_at,
+              source: (r.source || 'upload') as 'upload',
+              level: r.level_label || undefined,
+              levelLabel: r.level_label || undefined,
+              needsUpload: r.needs_upload || false,
+              filterIds: [],
+            }));
+            fromSupabase = true;
+          }
+        }
+      } catch { /* Supabase failed, fall through to localStorage */ }
+
+      // Fallback to localStorage if Supabase returned nothing
+      if (!fromSupabase) {
+        allResumes = loadResumesFromLS();
+      }
+
       const active = allResumes.filter(r => !r.archived);
       const archived = allResumes.filter(r => r.archived);
       const filters = safeReadLS<SavedFilter[]>('bj_saved_filters', []);
@@ -157,7 +203,7 @@ export function useResumes(): [ResumesState, ReturnType<typeof buildActions>] {
 
   useEffect(() => {
     const timer = setTimeout(loadData, 100);
-    pollRef.current = setInterval(loadData, 3000);
+    pollRef.current = setInterval(loadData, 30000);
     return () => {
       clearTimeout(timer);
       if (pollRef.current) clearInterval(pollRef.current);

@@ -12,7 +12,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
-const FROM_EMAIL = Deno.env.get("FROM_EMAIL") || "notifications@brilliantjobs.app";
+const FROM_EMAIL = Deno.env.get("FROM_EMAIL") || "Brilliant Jobs <notifications@brilliantjobs.app>";
 const DASHBOARD_URL = "https://brilliantjobs.app";
 const POSTHOG_KEY = Deno.env.get("POSTHOG_API_KEY") || "";
 const POSTHOG_HOST = Deno.env.get("POSTHOG_HOST") || "https://app.posthog.com";
