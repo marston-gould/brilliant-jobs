@@ -57,12 +57,13 @@ export default function GetStartedPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [stats, setStats] = useState({ jobs: 0, pages: 0, companies: 0 });
+  const [linkedinProfile, setLinkedinProfile] = useState<{ firstName: string; lastName: string; headline: string; summary: string; industry: string; location: string; importedAt?: string } | null>(null);
   const [extStatus, setExtStatus] = useState<DotStatus>('disconnected');
   const [gmailStatus, setGmailStatus] = useState<DotStatus>('disconnected');
   const [gcalStatus, setGcalStatus] = useState<DotStatus>('disconnected');
   const [gdriveStatus, setGdriveStatus] = useState<DotStatus>('disconnected');
 
-  // Check Google connection status from Supabase
+  // Check Google connection status + LinkedIn profile from Supabase
   useEffect(() => {
     (async () => {
       try {
@@ -77,6 +78,10 @@ export default function GetStartedPage() {
           setGmailStatus('connected');
           setGcalStatus('connected');
         }
+        // Load LinkedIn profile
+        const { data: profile } = await sb.from('profiles').select('user_data').eq('id', user.id).single();
+        const li = (profile?.user_data as Record<string, unknown>)?.linkedin_profile as Record<string, string> | undefined;
+        if (li?.firstName) setLinkedinProfile(li as any);
         // Check URL params for just-completed OAuth
         const params = new URLSearchParams(window.location.search);
         const gmailParam = params.get('gmail');
@@ -488,11 +493,47 @@ export default function GetStartedPage() {
         </div>
       </Step>
       <Step num="Optional" title="Import LinkedIn Profile" icon={User}
-        iconBg="hsla(210,85%,56%,0.10)" iconColor="#0A66C2">
+        iconBg="hsla(210,85%,56%,0.10)" iconColor="#0A66C2"
+        badge={linkedinProfile ? <span className="text-[10px] font-semibold text-green bg-green/10 px-2 py-0.5 rounded-full">✓ Imported</span> : undefined}>
         <div className="mb-3">
           Upload your LinkedIn CSV export to auto-fill your profile, get personalized filter
           suggestions, and give AI form answering better context. One upload, no re-entry.
         </div>
+        {linkedinProfile ? (
+          <div className="border border-green/30 bg-green/5 rounded-[10px] p-5 space-y-3">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-green text-[14px]">✓</span>
+              <span className="text-[13px] font-semibold text-text">LinkedIn Profile Imported</span>
+              {linkedinProfile.importedAt && (
+                <span className="text-[10px] text-text-faint ml-auto">
+                  {new Date(linkedinProfile.importedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+              {linkedinProfile.firstName && (
+                <div><span className="text-[10px] text-text-faint uppercase tracking-wide">Name</span><div className="text-[13px] text-text font-medium">{linkedinProfile.firstName} {linkedinProfile.lastName}</div></div>
+              )}
+              {linkedinProfile.location && (
+                <div><span className="text-[10px] text-text-faint uppercase tracking-wide">Location</span><div className="text-[13px] text-text font-medium">{linkedinProfile.location}</div></div>
+              )}
+              {linkedinProfile.industry && (
+                <div><span className="text-[10px] text-text-faint uppercase tracking-wide">Industry</span><div className="text-[13px] text-text font-medium">{linkedinProfile.industry}</div></div>
+              )}
+            </div>
+            {linkedinProfile.headline && (
+              <div><span className="text-[10px] text-text-faint uppercase tracking-wide">Headline</span><div className="text-[13px] text-text-dim leading-relaxed">{linkedinProfile.headline}</div></div>
+            )}
+            {linkedinProfile.summary && (
+              <div><span className="text-[10px] text-text-faint uppercase tracking-wide">Summary</span><div className="text-[12px] text-text-faint leading-relaxed line-clamp-3">{linkedinProfile.summary}</div></div>
+            )}
+            <button onClick={() => {
+              setLinkedinProfile(null);
+            }} className="text-[11px] text-text-faint hover:text-accent transition-colors mt-1">
+              Re-upload CSV
+            </button>
+          </div>
+        ) : (
         <div className="border-2 border-dashed border-border rounded-[10px] p-6 text-center cursor-pointer hover:border-accent transition-colors"
           onClick={() => {
             const i = document.createElement('input');
@@ -540,11 +581,12 @@ export default function GetStartedPage() {
                 const { data: existing } = await sb.from('profiles').select('user_data').eq('id', user.id).single();
                 const userData = (existing?.user_data as Record<string, unknown>) || {};
                 const { error } = await sb.from('profiles').update({
-                  user_data: { ...userData, linkedin_profile: profile },
+                  user_data: { ...userData, linkedin_profile: { ...profile, importedAt: new Date().toISOString() } },
                 }).eq('id', user.id);
                 if (error) { toast('Failed to save: ' + error.message, 'error'); return; }
 
-                toast(`LinkedIn profile imported — ${profile.firstName} ${profile.lastName}, ${profile.headline}`, 'success');
+                setLinkedinProfile({ ...profile, importedAt: new Date().toISOString() });
+                toast(`LinkedIn profile imported — ${profile.firstName} ${profile.lastName}`, 'success');
               } catch (err) {
                 toast('Failed to parse CSV: ' + (err instanceof Error ? err.message : String(err)), 'error');
               }
@@ -555,6 +597,7 @@ export default function GetStartedPage() {
           <div className="text-[11px] text-text-faint mt-1">or click to browse — Profile.csv from LinkedIn export</div>
           <div className="text-[10px] text-text-faint mt-2">Export from LinkedIn: Settings & Privacy → Data Privacy → Download your data → select Profile</div>
         </div>
+        )}
         {/* gs-tip */}
         <div className="flex items-start gap-2.5 mt-3.5 px-4 py-3.5 rounded-lg text-[13px] text-text-dim leading-relaxed"
           style={{ background: 'hsla(var(--warm-hsl), 0.04)', border: '1px solid hsla(var(--warm-hsl), 0.12)' }}>
