@@ -558,6 +558,41 @@ document.addEventListener("DOMContentLoaded", function() {
         remote_only: remote
       });
       try {
+        let pvGetLevel2 = function(title) {
+          var t = title.toLowerCase();
+          if (/\b(vp|vice president)\b/.test(t)) return { label: "VP", color: "#7c3aed" };
+          if (/\b(director)\b/.test(t)) return { label: "Director", color: "#7c3aed" };
+          if (/\b(manager|mgr)\b/.test(t)) return { label: "Manager", color: "#d97706" };
+          if (/\b(lead|principal)\b/.test(t)) return { label: "Lead", color: "#0891b2" };
+          if (/\b(senior|sr\.?)\b/.test(t)) return { label: "Senior", color: "#16a34a" };
+          if (/\b(junior|jr\.?|entry)\b/.test(t)) return { label: "Junior", color: "#6b7280" };
+          if (/\b(mid[-\s]?level|intermediate)\b/.test(t)) return { label: "Mid", color: "#4f6ef7" };
+          return null;
+        }, pvDays2 = function(dateStr) {
+          if (!dateStr) return "";
+          var d = Math.floor((Date.now() - new Date(dateStr).getTime()) / 864e5);
+          return d === 0 ? "today" : d + "d";
+        }, pvSalary2 = function(min, max) {
+          if (!min && !max) return "";
+          var fmt = function(n) {
+            return "$" + Math.round(n / 1e3) + "k";
+          };
+          if (min && max) return fmt(min) + "\u2013" + fmt(max);
+          if (min) return fmt(min) + "+";
+          return "up to " + fmt(max);
+        }, pvCard2 = function(job) {
+          var level = pvGetLevel2(job.title);
+          var badgeHtml = level ? '<span class="pv-level-badge" style="background:' + level.color + "20;color:" + level.color + '">' + level.label + "</span>" : "";
+          var meta = [];
+          if (job.company_name) meta.push('<span class="pv-company">' + DOMPurify.sanitize(job.company_name) + "</span>");
+          if (job.location) meta.push("<span>" + DOMPurify.sanitize(job.location.length > 35 ? job.location.slice(0, 33) + "\u2026" : job.location) + "</span>");
+          var sal = pvSalary2(job.salary_min, job.salary_max);
+          if (sal) meta.push("<span>" + sal + "</span>");
+          var days = pvDays2(job.first_seen_at);
+          if (days) meta.push("<span>" + days + "</span>");
+          return '<div class="pv-job-card"><div class="pv-card-body"><div class="pv-title-row"><span class="pv-job-title">' + DOMPurify.sanitize(job.title) + "</span>" + badgeHtml + '</div><div class="pv-meta-row">' + meta.join('<span class="pv-meta-dot">\xB7</span>') + '</div></div><div><button class="pv-signup-btn">Sign Up</button></div></div>';
+        };
+        var pvGetLevel = pvGetLevel2, pvDays = pvDays2, pvSalary = pvSalary2, pvCard = pvCard2;
         const res = await fetch(SUPABASE_URL + "/functions/v1/preview-jobs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -576,17 +611,21 @@ document.addEventListener("DOMContentLoaded", function() {
         document.getElementById("pv-salary").textContent = data.median_salary ? "$" + Math.round(data.median_salary / 1e3) + "K" : "N/A";
         document.getElementById("pv-remote").textContent = data.remote_pct + "%";
         document.getElementById("pv-companies").textContent = data.companies.toLocaleString();
-        const titlesEl = document.getElementById("pv-titles");
-        titlesEl.innerHTML = DOMPurify.sanitize(data.titles.map(
-          (t) => '<div class="preview-title-row"><span class="preview-title">' + t + '</span><span class="preview-company">Sign up to reveal</span></div>'
-        ).join(""));
-        document.getElementById("pv-cta-text").textContent = "Create your free account to see all " + data.total.toLocaleString() + " jobs";
+        var jobs = data.jobs || [];
+        var visibleCards = jobs.slice(0, 6).map(pvCard2).join("");
+        var blurredCards = jobs.slice(6, 8).map(pvCard2).join("");
+        document.getElementById("pv-card-grid").innerHTML = DOMPurify.sanitize(visibleCards, { ADD_ATTR: ["style"] });
+        if (blurredCards) {
+          document.getElementById("pv-card-blur").innerHTML = '<div class="pv-card-grid">' + DOMPurify.sanitize(blurredCards, { ADD_ATTR: ["style"] }) + "</div>";
+        }
+        document.getElementById("pv-banner-text").textContent = "Sign up free to see all " + data.total.toLocaleString() + " jobs";
         document.getElementById("preview-results").style.display = "";
         if (window.posthog) posthog.capture("preview_results_shown", {
           total_jobs: data.total,
+          jobs_returned: jobs.length,
           has_salary_data: !!data.median_salary,
           queries_remaining: data.queries_remaining,
-          content_search_enabled: !!data.content_search_enabled
+          format: "cards"
         });
         if (data.queries_remaining === 0) {
           previewGoBtn.textContent = "No queries remaining";
@@ -603,16 +642,26 @@ document.addEventListener("DOMContentLoaded", function() {
         previewGoBtn.textContent = "Retry Search";
         document.getElementById("preview-results").style.display = "";
         document.getElementById("pv-total").textContent = "\u2014";
-        document.getElementById("pv-titles").innerHTML = '<div class="preview-title-row"><span class="preview-title" style="color:var(--text-faint)">Preview temporarily unavailable. Try again shortly.</span></div>';
+        document.getElementById("pv-card-grid").innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-faint);font-size:13px">Preview temporarily unavailable. Try again shortly.</div>';
       }
     });
   }
-  ["pv-signup-btn", "pv-locked-signup"].forEach((id) => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener("click", () => {
-      openModal("signup");
-      if (window.posthog) posthog.capture("preview_signup_clicked");
+  var previewContainer = document.getElementById("preview-results");
+  if (previewContainer) {
+    previewContainer.addEventListener("click", function(e) {
+      var target = e.target;
+      if (target.classList.contains("pv-signup-btn") || target.id === "pv-banner-signup") {
+        openModal("signup");
+        if (window.posthog) posthog.capture("preview_card_signup_clicked", {
+          source: target.classList.contains("pv-signup-btn") ? "card" : "banner"
+        });
+      }
     });
+  }
+  var lockedBtn = document.getElementById("pv-locked-signup");
+  if (lockedBtn) lockedBtn.addEventListener("click", function() {
+    openModal("signup");
+    if (window.posthog) posthog.capture("preview_signup_clicked");
   });
   ["preview-keyword", "preview-location"].forEach((id) => {
     const el = document.getElementById(id);

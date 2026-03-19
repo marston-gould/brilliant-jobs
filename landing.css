@@ -1002,3 +1002,27 @@ html:not([data-segment]) footer.segment-new { display: block; }
 }
 
 
+
+/* ── Preview Cards (FB-PREVIEW-CARDS-001) ── */
+.pv-sort-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.pv-sort-pill { font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-dim); cursor: default; font-family: var(--sans); }
+.pv-card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pv-job-card { border: 0.5px solid var(--border); border-radius: 12px; background: var(--bg-card); padding: 14px 14px 14px 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.pv-card-body { min-width: 0; flex: 1; }
+.pv-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.pv-job-title { font-size: 13px; font-weight: 500; color: var(--text); }
+.pv-level-badge { display: inline-block; font-size: 10px; font-weight: 500; padding: 1px 7px; border-radius: 100px; margin-left: 4px; }
+.pv-meta-row { font-size: 11px; margin-top: 3px; display: flex; gap: 5px; flex-wrap: wrap; align-items: center; color: var(--text-faint); }
+.pv-meta-row .pv-company { font-weight: 500; color: var(--text-dim); }
+.pv-meta-dot { color: var(--border); }
+.pv-signup-btn { font-size: 12px; padding: 5px 14px; border: none; border-radius: 6px; background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; font-family: var(--sans); flex-shrink: 0; }
+.pv-signup-btn:hover { background: var(--accent-hover, #3b5ae0); }
+.pv-card-blur { position: relative; margin-top: 10px; }
+.pv-card-blur .pv-card-grid { filter: blur(4px); opacity: 0.45; pointer-events: none; user-select: none; }
+.pv-card-blur::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 0%, var(--bg-card) 80%); border-radius: 12px; pointer-events: none; }
+.pv-signup-banner { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 24px; background: var(--bg-input); border-radius: 12px; margin-top: -12px; border: 1px solid var(--border); }
+.pv-banner-text { font-size: 15px; font-weight: 600; color: var(--text); }
+.pv-banner-sub { font-size: 12px; color: var(--text-faint); margin-top: 2px; }
+.pv-banner-btn { font-size: 14px; padding: 10px 24px; border: none; border-radius: 10px; background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; font-family: var(--sans); white-space: nowrap; }
+.pv-banner-btn:hover { background: var(--accent-hover, #3b5ae0); }
+@media (max-width: 640px) { .pv-card-grid { grid-template-columns: 1fr; } .pv-signup-banner { flex-direction: column; text-align: center; } }

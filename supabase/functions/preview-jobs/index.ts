@@ -75,7 +75,7 @@ serve(async (req: Request) => {
     // Build query
     const sb = createClient(SB_URL, SB_KEY);
     let q = sb.from('ats_jobs')
-      .select('title, salary_min, salary_max, loc_type, location, company_name')
+      .select('title, company_name, location, loc_type, salary_min, salary_max, first_seen_at')
       .eq('status', 'open'); // FA-003: .eq('open') for consistency with dashboard + backfill
 
     // FA-003: Search title OR content_tsv (aligns with FA-001 dashboard pattern)
@@ -135,13 +135,24 @@ serve(async (req: Request) => {
     const companySet = new Set(allRows.filter(r => r.company_name).map(r => r.company_name));
     const companies = companySet.size;
 
-    // Title obfuscation: random sample, truncated, no company names
+    // Card-based preview: 8 random jobs with safe fields (no IDs, no apply URLs)
     const shuffled = allRows
-      .map(r => r.title)
-      .filter(Boolean)
+      .filter(r => r.title)
       .sort(() => Math.random() - 0.5)
-      .slice(0, 10)
-      .map(t => t.length > 35 ? t.slice(0, 35) + '…' : t);
+      .slice(0, 8);
+
+    const jobs = shuffled.map(r => ({
+      title: r.title,
+      company_name: r.company_name || null,
+      location: r.location || null,
+      loc_type: r.loc_type || null,
+      salary_min: r.salary_min || null,
+      salary_max: r.salary_max || null,
+      first_seen_at: r.first_seen_at || null,
+    }));
+
+    // Backward-compat: titles[] derived from jobs (truncated to 35 chars)
+    const titles = jobs.map(j => j.title.length > 35 ? j.title.slice(0, 35) + '…' : j.title);
 
     // Increment query count
     session.queries++;
@@ -151,10 +162,11 @@ serve(async (req: Request) => {
       median_salary,
       remote_pct,
       companies,
-      titles: shuffled,
+      jobs,
+      titles,
       queries_remaining: MAX_QUERIES - session.queries,
       session_token: token,
-      content_search_enabled: true, // FA-003b: analytics parity with FA-001
+      content_search_enabled: true,
     }), { status: 200, headers: CORS_HEADERS });
 
   } catch (e) {
