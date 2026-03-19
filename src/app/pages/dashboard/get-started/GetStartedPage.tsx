@@ -60,6 +60,7 @@ export default function GetStartedPage() {
   const [linkedinProfile, setLinkedinProfile] = useState<{ firstName: string; lastName: string; headline: string; summary: string; industry: string; location: string; importedAt?: string } | null>(null);
   const [existingResume, setExistingResume] = useState<{ name: string; uploadedAt: string } | null>(null);
   const [resumeExpanded, setResumeExpanded] = useState(false);
+  const [accountsExpanded, setAccountsExpanded] = useState(true);
   const [extStatus, setExtStatus] = useState<DotStatus>('disconnected');
   const [gmailStatus, setGmailStatus] = useState<DotStatus>('disconnected');
   const [gcalStatus, setGcalStatus] = useState<DotStatus>('disconnected');
@@ -141,6 +142,12 @@ export default function GetStartedPage() {
       } catch {}
     })();
   }, []);
+
+  const allAccountsConnected = gmailStatus === 'connected' && gcalStatus === 'connected' && gdriveStatus === 'connected';
+  // Auto-collapse when all connected (only on initial load)
+  useEffect(() => {
+    if (allAccountsConnected) setAccountsExpanded(false);
+  }, [allAccountsConnected]);
 
   // Load stats
   useEffect(() => {
@@ -470,7 +477,28 @@ export default function GetStartedPage() {
       {/* Step 2: Connect Accounts */}
       <Step num="Step 2" title="Connect Your Accounts" icon={Link}
         iconBg="var(--green-dim)" iconColor="var(--green)"
-        id="connect-accounts">
+        id="connect-accounts"
+        badge={allAccountsConnected ? <span className="text-[10px] font-semibold text-green bg-green/10 px-2 py-0.5 rounded-full">✓ All Connected</span> : undefined}>
+        {allAccountsConnected && !accountsExpanded ? (
+          <div className="flex items-center gap-4 cursor-pointer" onClick={() => setAccountsExpanded(true)}>
+            <div className="flex items-center gap-3 flex-1">
+              {[
+                { name: 'Gmail', color: '#EA4335' },
+                { name: 'Calendar', color: '#4285F4' },
+                { name: 'Drive', color: '#0066DA' },
+              ].map(svc => (
+                <span key={svc.name} className="flex items-center gap-1.5 text-[12px] text-text-dim">
+                  <span className="w-2 h-2 rounded-full bg-green flex-shrink-0" />
+                  {svc.name}
+                </span>
+              ))}
+            </div>
+            <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} className="text-text-faint">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </div>
+        ) : (
+        <>
         <div className="mb-3">
           Authorize read-only access so Brilliant Jobs can help track your application pipeline —
           detecting responses, scheduling interviews, and flagging companies that go silent.
@@ -539,6 +567,11 @@ export default function GetStartedPage() {
           <span className="text-[10px] font-bold text-warm uppercase tracking-[0.5px] whitespace-nowrap pt-0.5">Why?</span>
           <span>Gmail and Calendar are the backbone of your application pipeline — they detect confirmations, rejections, interview invites, and ghosting patterns so your dashboard stays current without you updating it manually.</span>
         </div>
+        {allAccountsConnected && (
+          <button onClick={() => setAccountsExpanded(false)} className="text-[11px] text-text-faint hover:text-accent transition-colors mt-1">Collapse</button>
+        )}
+        </>
+        )}
       </Step>
       <Step num="Optional" title="Import LinkedIn Profile" icon={User}
         iconBg="hsla(210,85%,56%,0.10)" iconColor="#0A66C2"
@@ -646,12 +679,14 @@ export default function GetStartedPage() {
           <div className="text-[10px] text-text-faint mt-2">Export from LinkedIn: Settings & Privacy → Data Privacy → Download your data → select Profile</div>
         </div>
         )}
-        {/* gs-tip */}
+        {/* gs-tip — only show when no profile imported */}
+        {!linkedinProfile && (
         <div className="flex items-start gap-2.5 mt-3.5 px-4 py-3.5 rounded-lg text-[13px] text-text-dim leading-relaxed"
           style={{ background: 'hsla(var(--warm-hsl), 0.04)', border: '1px solid hsla(var(--warm-hsl), 0.12)' }}>
           <span className="text-[10px] font-bold text-warm uppercase tracking-[0.5px] whitespace-nowrap pt-0.5">Why?</span>
           <span>Your LinkedIn data lets us pre-fill application forms, generate a tailored resume summary, and suggest filters based on your actual experience — not guesswork.</span>
         </div>
+        )}
       </Step>
 
       {/* Step 3: Build Filters */}
