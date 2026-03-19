@@ -96,149 +96,186 @@ export default function GetStartedPage() {
   const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    (window as any).__bjToast?.('Uploading and analyzing your resume…', 'info');
+    const toast = (msg: string, type: string) => (window as any).__bjToast?.(msg, type);
+    toast('Step 1/5: Reading your resume…', 'info');
 
     try {
-      const { supabase: sb, getUser } = await import('@app/lib/supabase');
+      const { supabase: sb, getUser, callGateway } = await import('@app/lib/supabase');
       const user = await getUser();
-      if (!user) { (window as any).__bjToast?.('Please sign in first', 'error'); return; }
+      if (!user) { toast('Please sign in first', 'error'); return; }
 
       const session = await sb.auth.getSession();
       const token = session?.data?.session?.access_token;
-      if (!token) { (window as any).__bjToast?.('Auth session expired — please refresh', 'error'); return; }
+      if (!token) { toast('Auth session expired — please refresh', 'error'); return; }
 
       const fileExt = file.name.split('.').pop()?.toLowerCase() || 'docx';
       const displayName = file.name.replace(/\.[^.]+$/, '');
 
-      // 1. Extract text CLIENT-SIDE (bypass broken server-side DOCX parsing)
+      // ── STEP 1: Extract text client-side ──
       let extractedText = '';
-      const arrayBuf = await file.arrayBuffer();
-      const bytes = new Uint8Array(arrayBuf);
-
-      if (fileExt === 'docx') {
-        const { unzipSync } = await import('fflate');
-        const unzipped = unzipSync(bytes);
-        const docXml = unzipped['word/document.xml'];
-        if (docXml) {
-          const xmlStr = new TextDecoder('utf-8').decode(docXml);
-          const bodyMatch = xmlStr.match(/<w:body>([\s\S]*)<\/w:body>/);
-          if (bodyMatch) {
-            const paragraphs: string[] = [];
-            const pRegex = /<w:p[ >][\s\S]*?<\/w:p>/g;
-            let m;
-            while ((m = pRegex.exec(bodyMatch[1])) !== null) {
-              const pText: string[] = [];
-              const tRegex = /<w:t[^>]*>([^<]*)<\/w:t>/g;
-              let tm;
-              while ((tm = tRegex.exec(m[0])) !== null) { if (tm[1]) pText.push(tm[1]); }
-              if (pText.length) paragraphs.push(pText.join(''));
+      try {
+        const arrayBuf = await file.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuf);
+        if (fileExt === 'docx') {
+          const { unzipSync } = await import('fflate');
+          const unzipped = unzipSync(bytes);
+          const docXml = unzipped['word/document.xml'];
+          if (docXml) {
+            const xmlStr = new TextDecoder('utf-8').decode(docXml);
+            const bodyMatch = xmlStr.match(/<w:body>([\s\S]*)<\/w:body>/);
+            if (bodyMatch) {
+              const paragraphs: string[] = [];
+              const pRegex = /<w:p[ >][\s\S]*?<\/w:p>/g;
+              let m;
+              while ((m = pRegex.exec(bodyMatch[1])) !== null) {
+                const pText: string[] = [];
+                const tRegex = /<w:t[^>]*>([^<]*)<\/w:t>/g;
+                let tm;
+                while ((tm = tRegex.exec(m[0])) !== null) { if (tm[1]) pText.push(tm[1]); }
+                if (pText.length) paragraphs.push(pText.join(''));
+              }
+              extractedText = paragraphs.join('\n').replace(/\n{3,}/g, '\n\n').trim();
             }
-            extractedText = paragraphs.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+          }
+        }
+      } catch (err) {
+        toast('Failed to read DOCX file: ' + (err instanceof Error ? err.message : String(err)), 'error');
+        return;
+      }
+
+      if (!extractedText || extractedText.length < 100) {
+        toast('Could not extract text from resume (' + extractedText.length + ' chars). Try a .docx with standard formatting.', 'error');
+        return;
+      }
+      toast('Step 2/5: Parsing resume with AI… (' + extractedText.length + ' chars extracted)', 'info');
+
+      // ── STEP 2: Send to resume-parse ──
+      let resumeId: string | null = null;
+      let parsedJson: Record<string, unknown> | null = null;
+      try {
+        const parseRes = await fetch(
+          'https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/resume-parse',
+          {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paste_text: extractedText, label: displayName }),
+          }
+        );
+        const parseData = await parseRes.json();
+        if (!parseRes.ok) {
+          toast('Resume parse failed: ' + (parseData?.error || parseRes.status), 'error');
+          return;
+        }
+        resumeId = parseData.resume_id;
+        parsedJson = parseData.parsed_json;
+      } catch (err) {
+        toast('Resume parse request failed: ' + (err instanceof Error ? err.message : String(err)), 'error');
+        return;
+      }
+      toast('Step 3/5: Storing resume…', 'info');
+
+      // ── STEP 3: Upload file to storage + insert into resume_archive ──
+      const storagePath = user.id + '/' + Date.now() + '_' + file.name;
+      try {
+        const { error: uploadErr } = await sb.storage.from('resumes').upload(storagePath, file);
+        if (uploadErr) toast('File storage warning: ' + uploadErr.message, 'info');
+      } catch (err) {
+        toast('File storage failed: ' + (err instanceof Error ? err.message : String(err)), 'error');
+        // Continue — text is already parsed, file storage is secondary
+      }
+
+      let archiveResumeId: string | null = null;
+      try {
+        const { data: archiveRow, error: archiveErr } = await sb.from('resume_archive').insert({
+          user_id: user.id,
+          display_name: displayName,
+          version_number: 1,
+          file_hash: Date.now() + '_' + file.size,
+          file_size_bytes: file.size,
+          file_type: fileExt,
+          storage_path: storagePath,
+          is_active: true,
+          is_archived: false,
+          metadata_snapshot: { source: 'upload', parsed_json: parsedJson },
+          extracted_text: extractedText,
+        }).select('resume_id').single();
+        if (archiveErr) {
+          toast('Resume save failed: ' + archiveErr.message, 'error');
+          // Don't return — try to still generate filter
+        } else {
+          archiveResumeId = archiveRow?.resume_id || null;
+        }
+      } catch (err) {
+        toast('Resume save error: ' + (err instanceof Error ? err.message : String(err)), 'error');
+      }
+      toast('Step 4/5: Generating search filter from your experience…', 'info');
+
+      // ── STEP 4: Generate filter from resume text ──
+      let filterResult: any = null;
+      try {
+        filterResult = await callGateway<any>('generate-filter', {
+          resume_text: extractedText,
+        }, { timeout: 30000 });
+        if (!filterResult?.filter_name) {
+          toast('AI filter generation returned empty result', 'info');
+        }
+      } catch (err) {
+        toast('Filter generation failed: ' + (err instanceof Error ? err.message : String(err)), 'error');
+        // Don't return — resume is saved, navigate to feed anyway
+      }
+
+      // ── STEP 5: Save filter + link to resume ──
+      if (filterResult?.filter_name) {
+        toast('Step 5/5: Saving "' + filterResult.filter_name + '" filter…', 'info');
+        try {
+          const filterData = {
+            name: filterResult.filter_name,
+            whatPills: (filterResult.what || []).map((v: string) => ({ type: 'keyword', values: [v] })),
+            whatNotPills: (filterResult.what_not || []).map((v: string) => ({ type: 'not', values: [v] })),
+            wherePills: (filterResult.where || []).map((v: string) => ({ type: 'where', values: [v] })),
+            whoNotPills: (filterResult.who_not || []).map((v: string) => ({ type: 'who_not', values: [v] })),
+            payPills: filterResult.salary_min ? [{ type: 'pay', min: String(filterResult.salary_min), max: '', values: ['$' + Math.round(filterResult.salary_min / 1000) + 'k+'] }] : [],
+            levelPills: filterResult.level ? [{ type: 'level', values: [filterResult.level] }] : [],
+            includeRemote: filterResult.include_remote || false,
+            createdAt: Date.now(),
+            lastUsed: Date.now(),
+            useCount: 0,
+          };
+          const { error: filterErr } = await sb.from('user_filters').insert({
+            user_id: user.id,
+            name: filterResult.filter_name,
+            filter_data: filterData,
+            sort_order: 0,
+          });
+          if (filterErr) toast('Filter save failed: ' + filterErr.message, 'error');
+        } catch (err) {
+          toast('Filter save error: ' + (err instanceof Error ? err.message : String(err)), 'error');
+        }
+
+        if (archiveResumeId) {
+          try {
+            const { error: linkErr } = await sb.from('resume_filter_assignments').insert({
+              user_id: user.id,
+              resume_id: archiveResumeId,
+              filter_name: filterResult.filter_name,
+            });
+            if (linkErr) toast('Resume-filter link failed: ' + linkErr.message, 'error');
+          } catch (err) {
+            toast('Resume-filter link error: ' + (err instanceof Error ? err.message : String(err)), 'error');
           }
         }
       }
 
-      if (!extractedText || extractedText.length < 100) {
-        (window as any).__bjToast?.('Could not read resume text — try a .docx with standard formatting', 'error');
-        return;
-      }
-
-      // 2. Call resume-parse with paste_text (text already extracted, skip server DOCX parsing)
-      const parseRes = await fetch(
-        `https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/resume-parse`,
-        {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ paste_text: extractedText, label: displayName }),
-        }
-      );
-      const parseData = await parseRes.json();
-      if (!parseRes.ok) {
-        (window as any).__bjToast?.(parseData?.error || 'Resume parsing failed', 'error');
-        return;
-      }
-      const { resume_id: resumeId, parsed_json: parsedJson } = parseData;
-
-      // 3. Upload the actual file to storage for later download
-      const storagePath = `${user.id}/${Date.now()}_${file.name}`;
-      await sb.storage.from('resumes').upload(storagePath, file);
-
-      // 4. Insert into resume_archive (where Resumes page reads from)
-      const { data: archiveRow, error: archiveErr } = await sb.from('resume_archive').insert({
-        user_id: user.id,
-        display_name: displayName,
-        version_number: 1,
-        file_hash: `${Date.now()}_${file.size}`,
-        file_size_bytes: file.size,
-        file_type: fileExt,
-        storage_path: storagePath,
-        is_active: true,
-        is_archived: false,
-        metadata_snapshot: { source: 'upload', parsed_json: parsedJson },
-        extracted_text: extractedText || null,
-      }).select('resume_id').single();
-
-      if (archiveErr) console.error('resume_archive insert error:', archiveErr.message);
-      const archiveResumeId = archiveRow?.resume_id || null;
-
-      // 5. Call generate-filter with the resume text
-      let filterResult: any = null;
-      if (extractedText && extractedText.length > 100) {
-        try {
-          const { callGateway } = await import('@app/lib/supabase');
-          filterResult = await callGateway<any>('generate-filter', {
-            resume_text: extractedText,
-          }, { timeout: 30000 });
-        } catch (err) {
-          console.error('Filter generation failed:', err);
-        }
-      }
-
-      // 6. Save generated filter to user_filters
-      let filterId: string | null = null;
-      if (filterResult?.filter_name) {
-        const filterData = {
-          name: filterResult.filter_name,
-          whatPills: (filterResult.what || []).map((v: string) => ({ type: 'keyword', values: [v] })),
-          whatNotPills: (filterResult.what_not || []).map((v: string) => ({ type: 'not', values: [v] })),
-          wherePills: (filterResult.where || []).map((v: string) => ({ type: 'where', values: [v] })),
-          whoNotPills: (filterResult.who_not || []).map((v: string) => ({ type: 'who_not', values: [v] })),
-          payPills: filterResult.salary_min ? [{ type: 'pay', min: String(filterResult.salary_min), max: '', values: [`$${Math.round(filterResult.salary_min / 1000)}k+`] }] : [],
-          levelPills: filterResult.level ? [{ type: 'level', values: [filterResult.level] }] : [],
-          includeRemote: filterResult.include_remote || false,
-          createdAt: Date.now(),
-          lastUsed: Date.now(),
-          useCount: 0,
-        };
-        const { data: filterRow, error: filterErr } = await sb.from('user_filters').insert({
-          user_id: user.id,
-          name: filterResult.filter_name,
-          filter_data: filterData,
-          sort_order: 0,
-        }).select('id').single();
-        if (filterErr) console.error('user_filters insert error:', filterErr.message);
-        filterId = filterRow?.id || null;
-      }
-
-      // 7. Link filter to resume in resume_filter_assignments
-      if (filterResult?.filter_name && archiveResumeId) {
-        await sb.from('resume_filter_assignments').insert({
-          user_id: user.id,
-          resume_id: archiveResumeId,
-          filter_name: filterResult.filter_name,
-        }).then(({ error }) => { if (error) console.error('resume_filter_assignments error:', error.message); });
-      }
-
-      (window as any).__bjToast?.(
+      // ── Done — navigate ──
+      toast(
         filterResult?.filter_name
-          ? `Resume uploaded — "${filterResult.filter_name}" filter created from your experience`
-          : 'Resume uploaded successfully',
+          ? 'Done! Resume saved + "' + filterResult.filter_name + '" filter created'
+          : 'Resume saved — navigate to Feed to set up your search',
         'success'
       );
       navigate('/app/feed');
     } catch (err) {
-      console.error('Resume upload failed:', err);
-      (window as any).__bjToast?.('Resume upload failed — please try again', 'error');
+      toast('Resume upload failed: ' + (err instanceof Error ? err.message : String(err)), 'error');
     }
   };
 
