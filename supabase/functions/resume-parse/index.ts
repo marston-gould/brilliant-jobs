@@ -87,7 +87,7 @@ async function extractTextFromDocx(bytes: Uint8Array): Promise<string | null> {
     } else if (docEntry.compressionMethod === 8) {
       // DEFLATE — use DecompressionStream
       const compressed = bytes.slice(docEntry.dataOffset, docEntry.dataOffset + docEntry.compressedSize);
-      const ds = new DecompressionStream('raw');
+      const ds = new DecompressionStream('deflate-raw');
       const writer = ds.writable.getWriter();
       writer.write(compressed);
       writer.close();
