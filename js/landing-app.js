@@ -613,7 +613,7 @@ document.addEventListener("DOMContentLoaded", function() {
         const data = await res.json();
         if (data.error === "rate_limited") {
           document.getElementById("preview-filters").style.display = "none";
-          document.getElementById("preview-results").style.display = "none";
+          document.getElementById("preview-results").classList.add("lp-hidden");
           document.getElementById("preview-locked").style.display = "";
           if (window.posthog) posthog.capture("preview_rate_limited", { queries_used: 2 });
           return;
@@ -631,7 +631,7 @@ document.addEventListener("DOMContentLoaded", function() {
           document.getElementById("pv-card-blur").innerHTML = '<div class="pv-card-grid">' + DOMPurify.sanitize(blurredCards, { ADD_ATTR: ["style"], FORCE_BODY: true }) + "</div>";
         }
         document.getElementById("pv-banner-text").textContent = "Sign up free to see all " + data.total.toLocaleString() + " jobs";
-        document.getElementById("preview-results").style.display = "";
+        document.getElementById("preview-results").classList.remove("lp-hidden");
         if (window.posthog) posthog.capture("preview_results_shown", {
           total_jobs: data.total,
           jobs_returned: jobs.length,
@@ -654,7 +654,7 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         previewGoBtn.disabled = false;
         previewGoBtn.textContent = "Retry Search";
-        document.getElementById("preview-results").style.display = "";
+        document.getElementById("preview-results").classList.remove("lp-hidden");
         document.getElementById("pv-total").textContent = "\u2014";
         document.getElementById("pv-card-grid").innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-faint);font-size:13px">Preview temporarily unavailable. Try again shortly.</div>';
       }
