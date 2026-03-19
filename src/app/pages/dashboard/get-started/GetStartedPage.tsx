@@ -426,16 +426,50 @@ export default function GetStartedPage() {
         </div>
       </div>
 
-      {/* Connections status bar — legacy: .setup-status-bar { radius 14px, padding 16px 24px, gap 20px } */}
-      <div className="flex items-center gap-5 flex-wrap py-4 px-6 rounded-[14px] border border-border bg-bg-card mb-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
-        <div className="text-[13px] font-semibold text-text">Connections</div>
-        <div className="flex gap-4 flex-wrap text-[12px] text-text-dim">
-          <span className="flex items-center gap-1.5"><StatusDot status={extStatus} /> Extension</span>
-          <span className="flex items-center gap-1.5"><StatusDot status={gmailStatus} /> Gmail</span>
-          <span className="flex items-center gap-1.5"><StatusDot status={gcalStatus} /> Calendar</span>
-          <span className="flex items-center gap-1.5"><StatusDot status={gdriveStatus} /> Drive</span>
-        </div>
-      </div>
+      {/* Onboarding Progress — tracks all Get Started steps */}
+      {(() => {
+        const steps = [
+          { label: 'Resume', done: !!existingResume },
+          { label: 'Extension', done: extStatus === 'connected' },
+          { label: 'Gmail', done: gmailStatus === 'connected' },
+          { label: 'Calendar', done: gcalStatus === 'connected' },
+          { label: 'Drive', done: gdriveStatus === 'connected' },
+          { label: 'LinkedIn', done: !!linkedinProfile },
+          { label: 'Notifications', done: notifSaved },
+          { label: 'Filters', done: false }, // done on Feed page
+        ];
+        const completedCount = steps.filter(s => s.done).length;
+        const allExceptFilters = steps.filter(s => s.label !== 'Filters').every(s => s.done);
+        return (
+          <div className="rounded-[14px] border border-border bg-bg-card mb-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] overflow-hidden">
+            <div className="flex items-center gap-5 flex-wrap py-4 px-6">
+              <div className="text-[13px] font-semibold text-text">Setup Progress</div>
+              <div className="text-[11px] text-text-faint">{completedCount}/{steps.length}</div>
+              <div className="flex gap-3 flex-wrap text-[12px] text-text-dim flex-1">
+                {steps.map(s => (
+                  <span key={s.label} className="flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${s.done ? 'bg-green' : 'bg-[#D1D5DB]'}`} />
+                    <span className={s.done ? 'text-text-dim' : 'text-text-faint'}>{s.label}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+            {/* Progress bar */}
+            <div className="h-[3px] bg-border">
+              <div className="h-full bg-green transition-all" style={{ width: `${(completedCount / steps.length) * 100}%` }} />
+            </div>
+            {allExceptFilters && (
+              <div className="flex items-center gap-3 px-6 py-3 border-t border-border bg-green/[0.03]">
+                <Check className="w-4 h-4 text-green flex-shrink-0" strokeWidth={2.5} />
+                <span className="text-[13px] text-text-dim flex-1">Setup complete — create your first search filter to start finding jobs</span>
+                <button onClick={() => navigate('/app/feed')} className="px-4 py-1.5 rounded-lg bg-accent text-white text-[12px] font-semibold whitespace-nowrap">
+                  Build a Filter →
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Resume-first CTA — legacy .gs-resume-drop (line 368) */}
       {existingResume ? (
