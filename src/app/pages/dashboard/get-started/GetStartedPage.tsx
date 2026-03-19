@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   FileText, Upload, CirclePlus, Link, Filter, SlidersHorizontal,
   LayoutGrid, TrendingUp, Check, ExternalLink, ChevronDown, User,
+  Bell, Shield, Smartphone,
 } from 'lucide-react';
 import { useStatsProvider, useResumesProvider } from '@providers';
 import { PageHeader } from '@app/components/PageHeader';
@@ -61,6 +62,23 @@ export default function GetStartedPage() {
   const [existingResume, setExistingResume] = useState<{ name: string; uploadedAt: string } | null>(null);
   const [resumeExpanded, setResumeExpanded] = useState(false);
   const [accountsExpanded, setAccountsExpanded] = useState(true);
+
+  // Notification & Security card state
+  const [notifPrefs, setNotifPrefs] = useState({
+    job_alerts: true,
+    account_billing: true,
+    weekly_digest: true,
+    job_intelligence: true,
+    product_tips: false,
+  });
+  const [doubleAuthEnabled, setDoubleAuthEnabled] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpCountdown, setOtpCountdown] = useState(0);
+  const [notifSaving, setNotifSaving] = useState(false);
+  const [notifSaved, setNotifSaved] = useState(false);
   const [extStatus, setExtStatus] = useState<DotStatus>('disconnected');
   const [gmailStatus, setGmailStatus] = useState<DotStatus>('disconnected');
   const [gcalStatus, setGcalStatus] = useState<DotStatus>('disconnected');
@@ -95,6 +113,28 @@ export default function GetStartedPage() {
           .limit(1);
         if (resumes?.length) {
           setExistingResume({ name: resumes[0].display_name, uploadedAt: resumes[0].created_at });
+        }
+
+        // Load notification channel prefs
+        const { data: channels } = await sb.from('notification_channels').select('notification_type, email').eq('user_id', user.id);
+        if (channels?.length) {
+          const map: Record<string, boolean> = {};
+          channels.forEach((c: any) => { map[c.notification_type] = c.email !== false; });
+          setNotifPrefs(prev => ({
+            ...prev,
+            weekly_digest: map['weekly_digest'] ?? true,
+            job_intelligence: map['job_intelligence'] ?? true,
+            product_tips: map['product_tips'] ?? false,
+          }));
+          setNotifSaved(true); // already has prefs saved
+        }
+
+        // Load double auth state
+        const { data: notifPref } = await sb.from('notification_preferences').select('sms_enabled, phone_number, phone_verified').eq('user_id', user.id).maybeSingle();
+        if (notifPref) {
+          if (notifPref.sms_enabled) setDoubleAuthEnabled(true);
+          if (notifPref.phone_verified) setPhoneVerified(true);
+          if (notifPref.phone_number) setPhoneNumber(notifPref.phone_number);
         }
         // Check URL params for just-completed OAuth
         const params = new URLSearchParams(window.location.search);
@@ -148,6 +188,13 @@ export default function GetStartedPage() {
   useEffect(() => {
     if (allAccountsConnected) setAccountsExpanded(false);
   }, [allAccountsConnected]);
+
+  // OTP countdown timer
+  useEffect(() => {
+    if (otpCountdown <= 0) return;
+    const t = setInterval(() => setOtpCountdown(c => c <= 1 ? 0 : c - 1), 1000);
+    return () => clearInterval(t);
+  }, [otpCountdown]);
 
   // Load stats
   useEffect(() => {
@@ -687,6 +734,223 @@ export default function GetStartedPage() {
           <span>Your LinkedIn data lets us pre-fill application forms, generate a tailored resume summary, and suggest filters based on your actual experience — not guesswork.</span>
         </div>
         )}
+      </Step>
+
+      {/* Notifications & Security Card — after integrations, before Build Filters */}
+      <Step num="Step 2b" title="Notifications & Security" icon={Bell}
+        iconBg="hsla(170,60%,40%,0.10)" iconColor="#1D9E75"
+        badge={notifSaved ? <span className="text-[10px] font-semibold text-green bg-green/10 px-2 py-0.5 rounded-full">✓ Saved</span> : undefined}>
+
+        {/* Section A: Email Preferences */}
+        <div className="text-[12px] font-bold text-text mb-2">Email Preferences</div>
+        <div className="border border-border rounded-lg divide-y divide-border">
+          {[
+            { key: 'job_alerts', label: 'Job alerts', desc: 'New matches, apply confirmations, pipeline updates', required: true },
+            { key: 'account_billing', label: 'Account & billing', desc: 'Password resets, subscription receipts, renewal reminders', required: true },
+            { key: 'weekly_digest', label: 'Weekly digest', desc: 'Stats summary, market pulse, ghost report', required: false },
+            { key: 'job_intelligence', label: 'Job intelligence', desc: 'Ghost alerts, company surges, salary changes', required: false },
+            { key: 'product_tips', label: 'Product tips & updates', desc: 'New features, how-to guides, platform news', required: false },
+          ].map(cat => (
+            <label key={cat.key} className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-bg-hover/30 transition-colors">
+              <input
+                type="checkbox"
+                checked={(notifPrefs as any)[cat.key]}
+                disabled={cat.required}
+                onChange={() => {
+                  if (cat.required) return;
+                  setNotifPrefs(prev => ({ ...prev, [cat.key]: !(prev as any)[cat.key] }));
+                  setNotifSaved(false);
+                  try { (window as any).posthog?.capture('gs_notif_toggle_changed', { type: cat.key, enabled: !(notifPrefs as any)[cat.key] }); } catch {}
+                }}
+                className="accent-[#1D9E75] cursor-pointer w-4 h-4 flex-shrink-0"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[13px] font-semibold text-text">{cat.label}</span>
+                  {cat.required && (
+                    <span className="text-[9px] font-bold text-accent bg-accent/10 px-1.5 py-0.5 rounded uppercase tracking-wide">required</span>
+                  )}
+                </div>
+                <div className="text-[11px] text-text-faint">{cat.desc}</div>
+              </div>
+            </label>
+          ))}
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-border my-4" />
+
+        {/* Section B: Double Authentication */}
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <div className="text-[12px] font-bold text-text flex items-center gap-1.5">
+              <Shield className="w-3.5 h-3.5 text-[#1D9E75]" strokeWidth={2} /> Double authentication
+            </div>
+            <div className="text-[11px] text-text-faint">Require a code via SMS on every sign-in</div>
+          </div>
+          <button
+            onClick={() => {
+              const next = !doubleAuthEnabled;
+              setDoubleAuthEnabled(next);
+              if (!next) { setOtpSent(false); setOtpCode(''); setPhoneNumber(''); }
+              setNotifSaved(false);
+              try { (window as any).posthog?.capture('gs_double_auth_toggled', { enabled: next }); } catch {}
+            }}
+            className={`relative w-[44px] h-[24px] rounded-full transition-colors ${doubleAuthEnabled ? 'bg-[#1D9E75]' : 'bg-[#D1D5DB]'}`}
+          >
+            <span className={`absolute top-[2px] w-[20px] h-[20px] rounded-full bg-white shadow-sm transition-transform ${doubleAuthEnabled ? 'left-[22px]' : 'left-[2px]'}`} />
+          </button>
+        </div>
+
+        {doubleAuthEnabled && (
+          <div className="bg-[#F2F4F7] rounded-lg p-4 mt-2 space-y-3">
+            {phoneVerified ? (
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-[#1D9E75]" strokeWidth={2.5} />
+                <span className="text-[13px] font-semibold text-[#1D9E75]">Verified</span>
+                <span className="text-[11px] text-text-faint ml-1">{phoneNumber}</span>
+              </div>
+            ) : otpSent ? (
+              <div className="space-y-2">
+                <div className="text-[12px] text-text-dim">Enter the 6-digit code sent to {phoneNumber}</div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={otpCode}
+                    onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="000000"
+                    className="w-[120px] px-3 py-2 text-[14px] font-mono text-center bg-white border border-border rounded-lg tracking-[4px] focus:border-[#1D9E75] focus:outline-none"
+                  />
+                  <button
+                    onClick={async () => {
+                      if (otpCode.length !== 6) return;
+                      try {
+                        const { supabase: sb } = await import('@app/lib/supabase');
+                        const { error } = await sb.auth.verifyOtp({ phone: phoneNumber, token: otpCode, type: 'sms' });
+                        if (error) {
+                          (window as any).__bjToast?.(error.message || 'Invalid code', 'error');
+                          try { (window as any).posthog?.capture('gs_phone_verify_failed', { error: error.message }); } catch {}
+                          return;
+                        }
+                        setPhoneVerified(true);
+                        (window as any).__bjToast?.('Phone verified!', 'success');
+                        try { (window as any).posthog?.capture('gs_phone_verify_success', { phone_masked: phoneNumber.slice(0, -4).replace(/\d/g, '*') + phoneNumber.slice(-4) }); } catch {}
+                      } catch (err) {
+                        (window as any).__bjToast?.('Verification failed', 'error');
+                      }
+                    }}
+                    className="px-3.5 py-2 rounded-lg bg-[#1D9E75] text-white text-[12px] font-semibold"
+                  >Verify</button>
+                </div>
+                {otpCountdown > 0 && <div className="text-[10px] text-text-faint">Resend in {otpCountdown}s</div>}
+                {otpCountdown === 0 && otpSent && (
+                  <button onClick={async () => {
+                    try {
+                      const { supabase: sb } = await import('@app/lib/supabase');
+                      await sb.auth.signInWithOtp({ phone: phoneNumber });
+                      setOtpCountdown(60);
+                      (window as any).__bjToast?.('Code resent', 'info');
+                    } catch {}
+                  }} className="text-[11px] text-accent hover:underline">Resend code</button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="text-[12px] text-text-dim flex items-center gap-1.5">
+                  <Smartphone className="w-3.5 h-3.5 text-text-faint" strokeWidth={2} /> Phone number
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={e => setPhoneNumber(e.target.value)}
+                    placeholder="+1 (555) 000-0000"
+                    className="flex-1 px-3 py-2 text-[13px] bg-white border border-border rounded-lg focus:border-[#1D9E75] focus:outline-none"
+                  />
+                  <button
+                    onClick={async () => {
+                      if (!phoneNumber.trim()) return;
+                      // Normalize to E.164
+                      let phone = phoneNumber.replace(/[\s\-\(\)]/g, '');
+                      if (!phone.startsWith('+')) phone = '+1' + phone;
+                      setPhoneNumber(phone);
+                      try {
+                        const { supabase: sb } = await import('@app/lib/supabase');
+                        const { error } = await sb.auth.signInWithOtp({ phone });
+                        if (error) {
+                          (window as any).__bjToast?.(error.message || 'Failed to send code', 'error');
+                          return;
+                        }
+                        setOtpSent(true);
+                        setOtpCountdown(60);
+                        (window as any).__bjToast?.('Verification code sent', 'info');
+                        try { (window as any).posthog?.capture('gs_phone_verify_initiated', { phone_masked: phone.slice(0, -4).replace(/\d/g, '*') + phone.slice(-4) }); } catch {}
+                      } catch (err) {
+                        (window as any).__bjToast?.('Failed to send verification', 'error');
+                      }
+                    }}
+                    className="px-3.5 py-2 rounded-lg bg-[#1D9E75] text-white text-[12px] font-semibold whitespace-nowrap"
+                  >Verify</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Save Preferences button */}
+        <button
+          disabled={notifSaving}
+          onClick={async () => {
+            setNotifSaving(true);
+            try {
+              const { supabase: sb, getUser } = await import('@app/lib/supabase');
+              const user = await getUser();
+              if (!user) { (window as any).__bjToast?.('Please sign in first', 'error'); setNotifSaving(false); return; }
+
+              // Upsert notification_channels for each category
+              const categories = [
+                { notification_type: 'job_alerts', email: notifPrefs.job_alerts },
+                { notification_type: 'account_billing', email: notifPrefs.account_billing },
+                { notification_type: 'weekly_digest', email: notifPrefs.weekly_digest },
+                { notification_type: 'job_intelligence', email: notifPrefs.job_intelligence },
+                { notification_type: 'product_tips', email: notifPrefs.product_tips },
+              ];
+              for (const cat of categories) {
+                await sb.from('notification_channels').upsert(
+                  { user_id: user.id, ...cat },
+                  { onConflict: 'user_id,notification_type' }
+                );
+              }
+
+              // Update notification_preferences for double auth
+              await sb.from('notification_preferences').upsert(
+                {
+                  user_id: user.id,
+                  sms_enabled: doubleAuthEnabled && phoneVerified,
+                  phone_number: phoneNumber || null,
+                  phone_verified: phoneVerified,
+                },
+                { onConflict: 'user_id' }
+              );
+
+              setNotifSaved(true);
+              (window as any).__bjToast?.('Preferences saved', 'success');
+              try {
+                (window as any).posthog?.capture('gs_notif_prefs_saved', {
+                  email_types: Object.entries(notifPrefs).filter(([, v]) => v).map(([k]) => k),
+                  double_auth: doubleAuthEnabled && phoneVerified,
+                });
+              } catch {}
+            } catch (err) {
+              (window as any).__bjToast?.('Failed to save preferences', 'error');
+            }
+            setNotifSaving(false);
+          }}
+          className="mt-4 px-5 py-2.5 rounded-lg bg-[#1D9E75] text-white text-[13px] font-semibold disabled:opacity-50 transition-opacity"
+        >
+          {notifSaving ? 'Saving…' : 'Save Preferences'}
+        </button>
       </Step>
 
       {/* Step 3: Build Filters */}
