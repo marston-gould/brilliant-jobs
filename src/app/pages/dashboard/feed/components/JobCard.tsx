@@ -72,11 +72,17 @@ export function JobCard({ job, isSaved, isApplied, matchScore, levelInfo, onSave
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-[13px] font-semibold text-text leading-tight truncate cursor-pointer hover:text-accent transition-colors"
               onClick={() => onOpenModal?.(job.greenhouse_id)}>{job.title}</span>
-            {levelInfo && (
-              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ color: levelInfo.color, border: `1px solid ${levelInfo.color}40` }}>
-                {levelInfo.label}
-              </span>
-            )}
+            {(levelInfo || job.extracted_seniority) && (() => {
+              const LEVEL_COLORS: Record<string, string> = {
+                intern: '#f97316', entry: '#eab308', junior: '#eab308', mid: '#84cc16', ic: '#84cc16',
+                senior: '#22c55e', lead: '#14b8a6', manager: '#06b6d4', director: '#3b82f6',
+                vp: '#6366f1', executive: '#8b5cf6', unknown: '#9ca3af',
+              };
+              const label = levelInfo?.label || (job.extracted_seniority ? job.extracted_seniority.charAt(0).toUpperCase() + job.extracted_seniority.slice(1) : '');
+              const color = levelInfo?.color || LEVEL_COLORS[job.extracted_seniority] || '#9ca3af';
+              if (!label) return null;
+              return <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ color, border: `1px solid ${color}40` }}>{label}</span>;
+            })()}
           </div>
           <div className="flex items-center gap-1.5 text-[11px] text-text-faint mt-0.5 flex-wrap">
             <span className="font-medium text-text-dim">{job.company_name}</span>
@@ -84,16 +90,7 @@ export function JobCard({ job, isSaved, isApplied, matchScore, levelInfo, onSave
             {salary && <><span>·</span><span>{salary}</span></>}
             {days && <><span>·</span><span>{days}</span></>}
             {matchScore !== null && <><span>·</span><span className="font-semibold text-accent">{matchScore}%</span></>}
-            {job.ats_source && (() => {
-              const src = (job.ats_source || '').toLowerCase();
-              const colors: Record<string, string> = {
-                greenhouse: 'bg-[#dcfce7] text-[#166534]', lever: 'bg-[#ede9fe] text-[#5b21b6]',
-                workday: 'bg-[#ccfbf1] text-[#115e59]', linkedin: 'bg-[#dbeafe] text-[#1e40af]',
-                indeed: 'bg-[#fef3c7] text-[#92400e]', ashby: 'bg-[#fce7f3] text-[#9d174d]',
-              };
-              const cls = colors[src] || 'bg-[#e5e7eb] text-[#374151]';
-              return <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-[0.3px] ${cls}`}>{src}</span>;
-            })()}
+
           </div>
         </div>
 
