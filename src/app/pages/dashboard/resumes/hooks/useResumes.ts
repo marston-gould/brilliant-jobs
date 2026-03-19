@@ -313,28 +313,46 @@ function buildActions(dispatch: React.Dispatch<ResumesAction>, reload: () => voi
     },
 
     async uploadResume(file: File) {
-      // SPA-CUT-REMEDIATION: Upload to Supabase Storage + add to localStorage
       try {
+        const user = await getUser();
+        if (!user) { console.error('[SPA] Not authenticated'); return; }
+
+        // Upload file to storage + insert into resumes table
         const uploadResult = await providers.resumes.upload(file);
         if (!uploadResult) { console.error('[SPA] Upload failed'); return; }
         const path = uploadResult.storagePath;
+        const fileExt = file.name.split('.').pop() || 'docx';
+        const displayName = file.name.replace(/\.[^.]+$/, '');
 
-        // Add to localStorage resume array
-        const all = loadResumesFromLS();
-        all.push({
-          name: file.name,
-          archived: false,
-          textStatus: 'pending' as const,
-          storagePath: path,
-          size: file.size,
-          uploadedAt: new Date().toISOString(),
-          source: 'upload' as const,
-          filterIds: [],
-        });
-        saveResumesToLS(all);
+        // Also insert into resume_archive (where the Resumes page reads from)
+        await supabase.from('resume_archive').insert({
+          user_id: user.id,
+          display_name: displayName,
+          version_number: 1,
+          file_hash: `${Date.now()}_${file.size}`,
+          file_size_bytes: file.size,
+          file_type: fileExt,
+          storage_path: path,
+          is_active: true,
+          is_archived: false,
+          metadata_snapshot: { source: 'upload' },
+        }).then(({ error }) => { if (error) console.error('[SPA] resume_archive insert:', error.message); });
 
-        // Trigger text extraction via gateway (fire-and-forget)
-        callGateway('extract-resume-profile', { storage_path: path }).catch(() => { /* non-fatal */ });
+        // Call resume-parse for text extraction (fire-and-forget)
+        try {
+          const session = await supabase.auth.getSession();
+          const token = session?.data?.session?.access_token;
+          if (token) {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('label', displayName);
+            fetch(`https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/resume-parse`, {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${token}` },
+              body: formData,
+            }).catch(() => { /* non-fatal */ });
+          }
+        } catch { /* non-fatal */ }
       } catch (err) {
         console.error('[SPA] uploadResume error:', err);
       }
