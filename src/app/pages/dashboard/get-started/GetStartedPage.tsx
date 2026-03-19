@@ -77,10 +77,17 @@ export default function GetStartedPage() {
 
   // Load stats
   useEffect(() => {
-    statsProvider.getJobCounts().then(data => {
+    statsProvider.getJobCounts().then(async data => {
+      // Get total career pages tracked (ats_companies) — not just ones with active jobs
+      let totalPages = 39000; // fallback
+      try {
+        const { supabase: sb } = await import('@app/lib/supabase');
+        const { count } = await sb.from('ats_companies').select('*', { count: 'exact', head: true });
+        if (count && count > 0) totalPages = count;
+      } catch { /* fallback */ }
       if (data) setStats({
         jobs: data.total_open ?? 0,
-        pages: data.total_companies ?? 39000,
+        pages: totalPages,
         companies: data.total_companies ?? 0,
       });
     }).catch(() => {});
@@ -325,11 +332,23 @@ export default function GetStartedPage() {
                 <div className="text-[13px] text-text-dim leading-relaxed mb-3">{svc.desc}</div>
                 <button onClick={async () => {
                   try {
-                    const { callGateway } = await import('@app/lib/supabase');
-                    const result = await callGateway('oauth-initiate', { provider: svc.scope });
-                    if (result?.url) window.location.href = result.url;
-                    else window.location.href = `/api/auth/${svc.scope}/initiate`;
-                  } catch { window.location.href = `/api/auth/${svc.scope}/initiate`; }
+                    const { supabase: sb } = await import('@app/lib/supabase');
+                    const session = await sb.auth.getSession();
+                    const token = session?.data?.session?.access_token;
+                    if (!token) { (window as any).__bjToast?.('Please sign in first', 'error'); return; }
+                    // Gmail-auth edge function handles all scopes via ?action=connect&scope=
+                    const scope = svc.scope === 'gmail' ? 'gmail' : svc.scope === 'calendar' ? 'calendar' : 'drive';
+                    const res = await fetch(
+                      `https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/gmail-auth?action=connect&scope=${scope}`,
+                      { headers: { 'Authorization': `Bearer ${token}` } }
+                    );
+                    const data = await res.json();
+                    if (data?.url) window.location.href = data.url;
+                    else (window as any).__bjToast?.(data?.error || 'Connection failed', 'error');
+                  } catch (err) {
+                    console.error('OAuth connect failed:', err);
+                    (window as any).__bjToast?.('Connection failed — please try again', 'error');
+                  }
                 }} className="px-3.5 py-[7px] rounded-lg bg-accent text-white text-[12px] font-semibold">
                   Connect {svc.name.split(' ')[0]}
                 </button>

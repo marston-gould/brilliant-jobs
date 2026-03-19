@@ -507,11 +507,14 @@ export class SupabaseStatsProvider implements StatsProvider {
     // Use the reliable get_landing_stats RPC
     try {
       const { data, error } = await sb.rpc('get_landing_stats');
+      // Also get total career pages tracked (all companies in ats_companies, not just with active jobs)
+      const { count: careerPages } = await sb.from('ats_companies').select('*', { count: 'exact', head: true });
       if (!error && data) {
         return {
           total_open: data.jobs ?? 0,
           new_today: 0, // RPC doesn't return this, will get from feed
           total_companies: data.companies ?? 0,
+          career_pages: careerPages ?? 0,
           with_salary: data.with_salary ?? 0,
           remote: data.remote ?? 0,
           metros: data.metros ?? 0,

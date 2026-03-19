@@ -328,5 +328,29 @@ Full audit completed against current codebase. All items **DONE**:
 - Tailwind Migration: CLOSED per spec recommendation
 
 ### Version
-- Landing: v10.94
-- SPA Dashboard: v10.94
+- Landing: v10.97
+- SPA Dashboard: v10.97
+
+---
+
+## v10.95–v10.97 SESSION (continued) — March 19, 2026
+
+### v10.95/v10.95b: PageHeader flush to top
+- Removed py-7 top padding from main element (now pt-0 pb-7)
+- PageHeader sticky top-0 with no negative margin hacks
+- Header background fills flush to top of scroll area — no gap
+
+### v10.96: HelpPanel popups
+- New HelpPanel component with all 11 page help contents from legacy js/app.ts
+- PageHeader manages HelpPanel state — "How this works →" toggles the floating panel
+- Panel: fixed bottom-right 340px, numbered steps, close on Escape/outside click
+
+### v10.97: Get Started resume upload pipeline
+- Complete rewrite of handleResumeUpload:
+  1. resume-parse (multipart) — DOCX/PDF text extraction server-side
+  2. resume_archive insert — resume shows up in Resumes page
+  3. generate-filter — AI filter generation from extracted text
+  4. user_filters insert — filter shows up in Feed saved searches
+  5. resume_filter_assignments — links filter to resume
+- Resumes page uploadResume also fixed to insert into resume_archive
+- Fixed: wrong function name, wrong payload, wrong tables, no filter creation
