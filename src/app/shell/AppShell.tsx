@@ -333,7 +333,7 @@ export function AppShell() {
       </nav>
 
       {/* ── Main content ── */}
-      <main id="main-content" role="main" className="flex-1 overflow-y-auto bg-[var(--bg-main)] px-10 py-7">
+      <main id="main-content" role="main" className="flex-1 overflow-y-auto bg-[var(--bg-main)] px-10 pb-7 pt-0">
         <Outlet />
       </main>
 

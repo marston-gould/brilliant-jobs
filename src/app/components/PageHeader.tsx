@@ -18,7 +18,7 @@ interface PageHeaderProps {
 export function PageHeader({ title, subtitle, helpLink, onHelp, children }: PageHeaderProps) {
   return (
     <div
-      className="sticky -top-7 z-10 border-b border-border -mx-10 -mt-7 mb-5"
+      className="sticky top-0 z-10 border-b border-border -mx-10 mb-5"
       style={{
         padding: '28px 40px 20px',
         background: 'var(--bg-white, var(--bg-main))',
