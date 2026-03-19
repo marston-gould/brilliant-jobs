@@ -387,7 +387,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const CACHE_TTL = 60 * 60 * 1e3;
     function applyStats(stats) {
       if (stats.jobs != null) {
-        document.getElementById("lp-active-jobs").textContent = stats.jobs.toLocaleString();
+        document.getElementById("lp-active-jobs").textContent = (Math.floor(stats.jobs / 1e3) * 1e3).toLocaleString() + "+";
         const heroJobs = document.getElementById("lp-hero-jobs");
         if (heroJobs) heroJobs.textContent = (Math.floor(stats.jobs / 1e3) * 1e3).toLocaleString() + "+";
       }
