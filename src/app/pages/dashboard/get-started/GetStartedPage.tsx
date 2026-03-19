@@ -97,7 +97,7 @@ export default function GetStartedPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     const toast = (msg: string, type: string) => (window as any).__bjToast?.(msg, type);
-    toast('Step 1/5: Reading your resume…', 'info');
+    toast('Step 1/4: Reading your resume…', 'info');
 
     try {
       const { supabase: sb, getUser, callGateway } = await import('@app/lib/supabase');
@@ -147,41 +147,17 @@ export default function GetStartedPage() {
         toast('Could not extract text from resume (' + extractedText.length + ' chars). Try a .docx with standard formatting.', 'error');
         return;
       }
-      toast('Step 2/5: Parsing resume with AI… (' + extractedText.length + ' chars extracted)', 'info');
+      toast('Step 2/4: Storing resume…', 'info');
 
-      // ── STEP 2: Send to resume-parse ──
-      let resumeId: string | null = null;
-      let parsedJson: Record<string, unknown> | null = null;
-      try {
-        const parseRes = await fetch(
-          'https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/resume-parse',
-          {
-            method: 'POST',
-            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paste_text: extractedText, label: displayName }),
-          }
-        );
-        const parseData = await parseRes.json();
-        if (!parseRes.ok) {
-          toast('Resume parse failed: ' + (parseData?.error || parseRes.status), 'error');
-          return;
-        }
-        resumeId = parseData.resume_id;
-        parsedJson = parseData.parsed_json;
-      } catch (err) {
-        toast('Resume parse request failed: ' + (err instanceof Error ? err.message : String(err)), 'error');
-        return;
-      }
-      toast('Step 3/5: Storing resume…', 'info');
-
-      // ── STEP 3: Upload file to storage + insert into resume_archive ──
+      // ── STEP 2: Upload file to storage + insert into resume_archive directly ──
+      // Skip resume-parse (times out on 11K+ char resumes). We already have the text.
       const storagePath = user.id + '/' + Date.now() + '_' + file.name;
       try {
         const { error: uploadErr } = await sb.storage.from('resumes').upload(storagePath, file);
         if (uploadErr) toast('File storage warning: ' + uploadErr.message, 'info');
       } catch (err) {
         toast('File storage failed: ' + (err instanceof Error ? err.message : String(err)), 'error');
-        // Continue — text is already parsed, file storage is secondary
+        // Continue — text extraction succeeded, storage is secondary
       }
 
       let archiveResumeId: string | null = null;
@@ -196,7 +172,7 @@ export default function GetStartedPage() {
           storage_path: storagePath,
           is_active: true,
           is_archived: false,
-          metadata_snapshot: { source: 'upload', parsed_json: parsedJson },
+          metadata_snapshot: { source: 'upload' },
           extracted_text: extractedText,
         }).select('resume_id').single();
         if (archiveErr) {
@@ -208,7 +184,7 @@ export default function GetStartedPage() {
       } catch (err) {
         toast('Resume save error: ' + (err instanceof Error ? err.message : String(err)), 'error');
       }
-      toast('Step 4/5: Generating search filter from your experience…', 'info');
+      toast('Step 3/4: Generating search filter from your experience…', 'info');
 
       // ── STEP 4: Generate filter from resume text ──
       let filterResult: any = null;
@@ -226,7 +202,7 @@ export default function GetStartedPage() {
 
       // ── STEP 5: Save filter + link to resume ──
       if (filterResult?.filter_name) {
-        toast('Step 5/5: Saving "' + filterResult.filter_name + '" filter…', 'info');
+        toast('Step 4/4: Saving "' + filterResult.filter_name + '" filter…', 'info');
         try {
           const filterData = {
             name: filterResult.filter_name,
