@@ -633,7 +633,7 @@ export default function GetStartedPage() {
             <div className="text-[11px] text-text-faint uppercase tracking-wide">open positions</div>
           </div>
           <div>
-            <div className="text-[20px] font-bold text-text tabular-nums">{stats.pages > 0 ? stats.pages.toLocaleString() + '+' : '—'}</div>
+            <div className="text-[20px] font-bold text-text tabular-nums">{stats.pages > 0 ? (Math.ceil(stats.pages / 1000) * 1000).toLocaleString() + '+' : '—'}</div>
             <div className="text-[11px] text-text-faint uppercase tracking-wide">career pages tracked</div>
           </div>
           <div>
