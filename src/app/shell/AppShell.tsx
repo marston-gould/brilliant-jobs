@@ -219,13 +219,13 @@ export function AppShell() {
       {/* ── Sidebar ── */}
       <nav aria-label="Main navigation" className="flex flex-col h-full w-[var(--nav-w,240px)] bg-[var(--nav-bg)] flex-shrink-0 overflow-y-auto overflow-x-hidden">
 
-        {/* Brand — matches legacy: B mark + "Brilliant Jobs" + "Dashboard v11.09" */}
+        {/* Brand — matches legacy: B mark + "Brilliant Jobs" + "Dashboard v11.10" */}
         <div className="px-6 py-[22px] border-b border-white/[0.08]">
           <div className="flex items-center gap-3 max-md:justify-center nav-brand-shimmer">
             <div className="w-[30px] h-[30px] rounded-lg bg-white flex items-center justify-center text-[var(--nav-bg)] font-extrabold text-sm flex-shrink-0">B</div>
             <div className="max-md:hidden">
               <div className="font-bold text-[16px] text-white leading-tight nav-brand-title">Brilliant Jobs</div>
-              <div className="text-[11px] text-[var(--nav-text)]">Dashboard <span className="text-[9px]">v11.09</span></div>
+              <div className="text-[11px] text-[var(--nav-text)]">Dashboard <span className="text-[9px]">v11.10</span></div>
             </div>
           </div>
         </div>

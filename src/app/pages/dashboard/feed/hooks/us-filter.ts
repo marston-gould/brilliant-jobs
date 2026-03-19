@@ -76,35 +76,19 @@ const BJ_NON_US_TEXT_EXCLUSIONS: string[] = [
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function buildUSOnlyQuery(query: any): any {
-  // ── Layer B: Tiered Inclusion OR clause ────────────────────────────────
+  // Simplified US-only filter: loc_country=US OR US state code OR bare Remote
   query = query.or([
-    // Tier 1: loc_country definitively resolved to US
     'loc_country.eq.US',
-
-    // Tier 2: loc_country NULL but US state code is known — strong signal
     `and(loc_country.is.null,loc_state.in.(${BJ_US_STATES}))`,
-
-    // Tier 3: loc_country NULL but explicit US text in location string
-    // IMPORTANT: Use * wildcard (not %) inside .or()/and() — PostgREST parser chokes on %
-    'and(loc_country.is.null,location.ilike.*United States*)',
-    'and(loc_country.is.null,location.ilike.* USA*)',
-    'and(loc_country.is.null,location.ilike.*- US)',
-    'and(loc_country.is.null,location.ilike.*- US *)',
-
-    // Tier 4: loc_country NULL, bare/generic Remote — benefit of doubt on a US platform
     'and(loc_country.is.null,location.eq.Remote)',
     'and(loc_country.is.null,location.eq.Anywhere)',
-    'and(loc_country.is.null,location.ilike.Work From Home*)',
-    'and(loc_country.is.null,location.ilike.Remote Work*)',
+    'and(loc_country.is.null,is_remote.eq.true)',
   ].join(','));
 
-  // ── Canada exclusion (preserving NULLs) ────────────────────────────────
+  // Canada exclusion
   query = query.or('loc_country.neq.CA,loc_country.is.null');
-  query = query.not('location', 'ilike', '%Canada%');
-  query = query.not('location', 'ilike', '%, BC%');
-  query = query.not('location', 'ilike', '%British Columbia%');
 
-  // ── Layer A: Explicit non-US text exclusions ───────────────────────────
+  // Non-US text exclusions (individual .not() calls are fine — they become separate params)
   for (const pattern of BJ_NON_US_TEXT_EXCLUSIONS) {
     query = query.not('location', 'ilike', pattern);
   }
@@ -119,16 +103,9 @@ export function buildUSRemoteClauses(): string[] {
   return [
     'and(loc_country.eq.US,is_remote.eq.true)',
     'and(loc_country.eq.US,loc_type.eq.remote)',
-    `and(loc_country.is.null,loc_state.in.(${BJ_US_STATES}),is_remote.eq.true)`,
-    'and(loc_country.is.null,location.ilike.Remote%United States%)',
-    'and(loc_country.is.null,location.ilike.Remote%USA%)',
-    'and(loc_country.is.null,location.ilike.Remote%, US %)',
-    'and(loc_country.is.null,location.ilike.Remote%- US)',
-    'and(loc_country.is.null,location.ilike.Remote%- US %)',
-    'and(loc_country.is.null,location.eq.Remote)',
-    'and(loc_country.is.null,location.eq.Anywhere)',
-    'and(loc_country.is.null,location.ilike.Work From Home%)',
-    'and(loc_country.is.null,location.ilike.Remote Work%)',
+    'is_remote.eq.true',
+    'location.eq.Remote',
+    'location.eq.Anywhere',
   ];
 }
 

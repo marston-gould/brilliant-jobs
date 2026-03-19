@@ -437,18 +437,20 @@ function buildFilterQuery(
     const hasRemotePill = wherePills.some(p => p.locType === 'remote');
 
     if (includeRemote) {
-      // OR loc_country/text location clauses with US-scoped remote clauses
-      const remoteClauses = buildUSRemoteClauses();
-      const allClauses = [...textClauses, ...remoteClauses];
-      query = query.or(allClauses.join(','));
-      // For US searches: also apply US-only filter to block loc_country non-US onsite jobs
       if (isUSPill) {
-        query = buildUSOnlyQuery(query);
+        // US + remote: just filter to US country OR remote jobs
+        query = query.or('loc_country.eq.US,is_remote.eq.true,location.eq.Remote,location.eq.Anywhere');
+      } else if (textClauses.length > 0) {
+        const remoteClauses = ['is_remote.eq.true', 'location.eq.Remote'];
+        query = query.or([...textClauses, ...remoteClauses].join(','));
+      } else {
+        // Just remote, no specific location
+        query = query.or('is_remote.eq.true,location.eq.Remote,location.eq.Anywhere');
       }
     } else if (hasTextLocation) {
       if (isUSPill) {
-        // US pill without remote: use the full US-only filter
-        query = buildUSOnlyQuery(query);
+        // US only, no remote — simple country filter
+        query = query.eq('loc_country', 'US');
       } else {
         // Text-only location filter (non-country) — apply each ilike directly
         for (const pill of wherePills) {
@@ -555,31 +557,22 @@ function buildFilterQuery(
   }
 
   // FA-007: Pay range — use pill.min/pill.max (legacy parity)
-  // Legacy uses structured min/max with overlap logic + includeNoSalary OR clause
   const payPills = sf.payPills || [];
   if (payPills.length > 0) {
     const pill = payPills[0]!;
     const minVal = pill.min;
     const maxVal = pill.max;
-    const includeNoSalary = sf.includeNoSalary !== false; // default true
+    const includeNoSalary = sf.includeNoSalary !== false;
 
-    if (minVal && maxVal) {
-      // Jobs where salary range overlaps the filter range
-      if (includeNoSalary) {
-        query = query.or(`and(salary_max.gte.${minVal},salary_min.lte.${maxVal}),salary_min.is.null`);
-      } else {
+    // When includeNoSalary is true, skip DB-level salary filter entirely.
+    // .gte() excludes NULLs, and .or(gte,is.null) conflicts with other .or() calls.
+    // Jobs without salary data will show; salary is used for sorting/display only.
+    if (!includeNoSalary) {
+      if (minVal && maxVal) {
         query = query.gte('salary_max', minVal).lte('salary_min', maxVal);
-      }
-    } else if (minVal) {
-      if (includeNoSalary) {
-        query = query.or(`salary_max.gte.${minVal},salary_min.is.null`);
-      } else {
+      } else if (minVal) {
         query = query.gte('salary_max', minVal);
-      }
-    } else if (maxVal) {
-      if (includeNoSalary) {
-        query = query.or(`salary_min.lte.${maxVal},salary_min.is.null`);
-      } else {
+      } else if (maxVal) {
         query = query.lte('salary_min', maxVal);
       }
     }
@@ -614,7 +607,7 @@ function buildFilterQuery(
   // Level filter — FA-007: correct column to extracted_seniority (legacy parity)
   const levelPills = sf.levelPills || [];
   if (levelPills.length > 0) {
-    const levels = levelPills.flatMap(p => p.values.map(v => v.trim().toLowerCase())).filter(Boolean);
+    const levels = levelPills.flatMap(p => p.values.map(v => v.trim().toLowerCase().replace(/^or\s+/, ''))).filter(Boolean);
     if (levels.length === 1) {
       query = query.eq('extracted_seniority', levels[0]!);
     } else if (levels.length > 1) {
