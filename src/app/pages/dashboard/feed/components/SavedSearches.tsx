@@ -137,14 +137,10 @@ export function SavedSearches({
                   onChange={() => onToggle(item.id)}
                   className="cursor-pointer"
                 />
-                <span
-                  className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: item.color }}
-                />
                 <span className="text-xs text-text-dim flex-1 truncate">{item.name}</span>
                 {item.filterNum && (
                   <span
-                    className="text-[9px] font-bold text-white px-1 rounded"
+                    className="text-[9px] font-bold text-white px-1.5 py-0.5 rounded"
                     style={{ backgroundColor: item.color }}
                   >
                     {item.filterNum}

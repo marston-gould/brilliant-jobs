@@ -160,30 +160,77 @@ export function FeedPage() {
     }).catch(() => {});
   }, [statsProvider]);
 
-  // Load saved searches from Supabase
+  // Load saved searches from Supabase and sync to localStorage for search engine
   useEffect(() => {
-    loadSavedFiltersFromSupabase().then(setSavedSearchItems);
-  }, []);
+    loadSavedFiltersFromSupabase().then(items => {
+      setSavedSearchItems(items);
+      // Sync checked items to localStorage so first search finds them
+      syncFiltersToLocalStorage(items);
+    });
+  }, [syncFiltersToLocalStorage]);
 
-  // Trigger initial search on mount
+  // Trigger initial search on mount (slight delay to let sync complete)
   useEffect(() => {
-    actions.search(0);
+    const t = setTimeout(() => actions.search(0), 300);
+    return () => clearTimeout(t);
   }, []);
 
   // ── Saved search handlers ─────────────────────────────
 
+  // Sync checked saved searches to localStorage for the search engine
+  const syncFiltersToLocalStorage = useCallback(async (items: SavedSearchItem[]) => {
+    try {
+      const { supabase: sb } = await import('@app/lib/supabase');
+      const checkedItems = items.filter(i => i.checked);
+      const filters: any[] = [];
+      for (const item of checkedItems) {
+        const { data } = await sb.from('user_filters').select('filter_data').eq('id', item.id).single();
+        if (data?.filter_data) {
+          const fd = data.filter_data;
+          filters.push({
+            id: item.id,
+            name: item.name,
+            color: item.color || '#6366f1',
+            checked: true,
+            whatPills: fd.whatPills || [],
+            whatNotPills: fd.whatNotPills || [],
+            wherePills: fd.wherePills || [],
+            whereNotPills: fd.whereNotPills || [],
+            whoPills: fd.whoPills || [],
+            whoNotPills: fd.whoNotPills || [],
+            whenPills: fd.whenPills || [],
+            payPills: fd.payPills || [],
+            jdPills: fd.jdPills || [],
+            levelPills: fd.levelPills || [],
+            typePills: fd.typePills || [],
+            scorePills: fd.scorePills || [],
+            skillsPills: fd.skillsPills || [],
+            deptPills: fd.deptPills || [],
+            includeRemote: fd.includeRemote || false,
+            includeNoSalary: fd.includeNoSalary !== false,
+            _filterNum: item.filterNum || String(filters.length + 1),
+            _filterColor: item.color || '#6366f1',
+          });
+        }
+      }
+      try { localStorage.setItem('bj_saved_filters', JSON.stringify(filters)); } catch {}
+    } catch {}
+  }, []);
+
   const handleToggleSavedSearch = useCallback(async (id: string) => {
-    setSavedSearchItems(prev =>
-      prev.map(item =>
-        item.id === id ? { ...item, checked: !item.checked } : item
-      )
+    const updated = savedSearchItems.map(item =>
+      item.id === id ? { ...item, checked: !item.checked } : item
     );
+    setSavedSearchItems(updated);
+
+    // Sync to localStorage so search engine picks up checked filters
+    await syncFiltersToLocalStorage(updated);
+
     // Load saved filter config from Supabase and apply to filter builder
     try {
       const { supabase } = await import('@app/lib/supabase');
       const { data } = await supabase.from('user_filters').select('filter_data').eq('id', id).single();
       if (data?.filter_data) {
-        // Map user_filters pill format to filter builder values
         const fd = data.filter_data;
         const mapped: Record<string, any> = {};
         if (fd.whatPills?.length) mapped.what = fd.whatPills.map((p: any) => p.values?.[0]).filter(Boolean).join(', ');
@@ -197,7 +244,7 @@ export function FeedPage() {
       }
     } catch {}
     actions.search(0);
-  }, [actions]);
+  }, [actions, savedSearchItems, syncFiltersToLocalStorage]);
 
   const handleSelectAllSavedSearches = useCallback((checked: boolean) => {
     setSavedSearchItems(prev =>
