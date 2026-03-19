@@ -208,53 +208,53 @@ export function FeedPage() {
 
   // ── Saved search handlers ─────────────────────────────
 
-  // Write checked filters to localStorage from cached _filterData (no DB calls)
-  const syncToLocalStorage = useCallback((items: SavedSearchItem[]) => {
-    const lsFilters = items.filter(i => i.checked).map((item, idx) => {
-      const fd = (item as any)._filterData || {};
-      return {
-        id: item.id, name: item.name, color: item.color, checked: true,
-        whatPills: fd.whatPills || [], whatNotPills: fd.whatNotPills || [],
-        wherePills: fd.wherePills || [], whereNotPills: fd.whereNotPills || [],
-        whoPills: fd.whoPills || [], whoNotPills: fd.whoNotPills || [],
-        whenPills: fd.whenPills || [], payPills: fd.payPills || [],
-        jdPills: fd.jdPills || [], levelPills: fd.levelPills || [],
-        typePills: fd.typePills || [], scorePills: fd.scorePills || [],
-        skillsPills: fd.skillsPills || [], deptPills: fd.deptPills || [],
-        includeRemote: fd.includeRemote || false,
-        includeNoSalary: fd.includeNoSalary !== false,
-        _filterNum: item.filterNum || String(idx + 1),
-        _filterColor: item.color,
-      };
-    });
-    try { localStorage.setItem('bj_saved_filters', JSON.stringify(lsFilters)); } catch {}
-  }, []);
+  const handleToggleSavedSearch = useCallback((id: string) => {
+    setSavedSearchItems(prev => {
+      const updated = prev.map(item =>
+        item.id === id ? { ...item, checked: !item.checked } : item
+      );
 
-  const handleToggleSavedSearch = useCallback(async (id: string) => {
-    const updated = savedSearchItems.map(item =>
-      item.id === id ? { ...item, checked: !item.checked } : item
-    );
-    setSavedSearchItems(updated);
-    syncToLocalStorage(updated);
+      // Sync to localStorage synchronously from cached _filterData
+      const lsFilters = updated.filter(i => i.checked).map((item, idx) => {
+        const fd = (item as any)._filterData || {};
+        return {
+          id: item.id, name: item.name, color: item.color, checked: true,
+          whatPills: fd.whatPills || [], whatNotPills: fd.whatNotPills || [],
+          wherePills: fd.wherePills || [], whereNotPills: fd.whereNotPills || [],
+          whoPills: fd.whoPills || [], whoNotPills: fd.whoNotPills || [],
+          whenPills: fd.whenPills || [], payPills: fd.payPills || [],
+          jdPills: fd.jdPills || [], levelPills: fd.levelPills || [],
+          typePills: fd.typePills || [], scorePills: fd.scorePills || [],
+          skillsPills: fd.skillsPills || [], deptPills: fd.deptPills || [],
+          includeRemote: fd.includeRemote || false,
+          includeNoSalary: fd.includeNoSalary !== false,
+          _filterNum: item.filterNum || String(idx + 1),
+          _filterColor: item.color,
+        };
+      });
+      try { localStorage.setItem('bj_saved_filters', JSON.stringify(lsFilters)); } catch {}
 
-    // Apply filter values to the filter builder UI
-    const toggled = updated.find(i => i.id === id);
-    if (toggled?.checked) {
-      const fd = (toggled as any)._filterData;
-      if (fd) {
-        const mapped: Record<string, any> = {};
-        if (fd.whatPills?.length) mapped.what = fd.whatPills.map((p: any) => p.values?.[0]).filter(Boolean).join(', ');
-        if (fd.whatNotPills?.length) mapped.whatNot = fd.whatNotPills.map((p: any) => p.values?.[0]).filter(Boolean).join(', ');
-        if (fd.wherePills?.length) mapped.where = fd.wherePills.map((p: any) => p.values?.[0]).filter(Boolean).join(', ');
-        if (fd.payPills?.length) { mapped.payMin = fd.payPills[0]?.min || ''; mapped.payMax = fd.payPills[0]?.max || ''; }
-        if (fd.levelPills?.length) mapped.level = fd.levelPills.map((p: any) => p.values?.[0]).filter(Boolean).join(', ');
-        if (fd.whenPills?.length) mapped.when = fd.whenPills[0]?.values?.[0] || '';
-        if (fd.includeRemote) mapped.remote = true;
-        setFilterValues(prev => ({ ...prev, ...mapped }));
+      // Apply toggled filter values to the filter builder UI
+      const toggled = updated.find(i => i.id === id);
+      if (toggled?.checked) {
+        const fd = (toggled as any)._filterData;
+        if (fd) {
+          const mapped: Record<string, any> = {};
+          if (fd.whatPills?.length) mapped.what = fd.whatPills.map((p: any) => p.values?.[0]).filter(Boolean).join(', ');
+          if (fd.whatNotPills?.length) mapped.whatNot = fd.whatNotPills.map((p: any) => p.values?.[0]).filter(Boolean).join(', ');
+          if (fd.wherePills?.length) mapped.where = fd.wherePills.map((p: any) => p.values?.[0]).filter(Boolean).join(', ');
+          if (fd.payPills?.length) { mapped.payMin = fd.payPills[0]?.min || ''; mapped.payMax = fd.payPills[0]?.max || ''; }
+          if (fd.levelPills?.length) mapped.level = fd.levelPills.map((p: any) => p.values?.[0]).filter(Boolean).join(', ');
+          if (fd.whenPills?.length) mapped.when = fd.whenPills[0]?.values?.[0] || '';
+          if (fd.includeRemote) mapped.remote = true;
+          setFilterValues(prev => ({ ...prev, ...mapped }));
+        }
       }
-    }
+
+      return updated;
+    });
     actions.search(0);
-  }, [actions, savedSearchItems, syncToLocalStorage]);
+  }, [actions]);
 
   const handleSelectAllSavedSearches = useCallback((checked: boolean) => {
     setSavedSearchItems(prev =>
