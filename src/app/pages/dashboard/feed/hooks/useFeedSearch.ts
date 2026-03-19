@@ -320,7 +320,8 @@ function parseWhenValue(raw: string): Date | null {
   const v = raw.trim().toLowerCase();
   const now = new Date();
   if (v === 'today') return new Date(now.setHours(0, 0, 0, 0));
-  const match = v.match(/^(\d+)\s*(d|day|days|w|week|weeks|m|month|months)$/);
+  // Match: "14 days", "last 14 days", "7d", "last 7 days", "1 month", etc.
+  const match = v.match(/(?:last\s+)?(\d+)\s*(d|day|days|w|week|weeks|m|month|months)/);
   if (!match) return null;
   const n = parseInt(match[1]!, 10);
   const unit = match[2]![0];
@@ -560,16 +561,23 @@ function buildFilterQuery(
     const maxVal = pill.max;
     const includeNoSalary = sf.includeNoSalary !== false;
 
-    // When includeNoSalary is true, skip DB-level salary filter entirely.
-    // .gte() excludes NULLs, and .or(gte,is.null) conflicts with other .or() calls.
-    // Jobs without salary data will show; salary is used for sorting/display only.
-    if (!includeNoSalary) {
-      if (minVal && maxVal) {
-        query = query.gte('salary_max', minVal).lte('salary_min', maxVal);
-      } else if (minVal) {
-        query = query.gte('salary_max', minVal);
-      } else if (maxVal) {
-        query = query.lte('salary_min', maxVal);
+    if (minVal || maxVal) {
+      if (includeNoSalary) {
+        // Include jobs meeting salary threshold OR jobs with no salary data
+        const clauses: string[] = [];
+        if (minVal) clauses.push(`salary_max.gte.${minVal}`);
+        if (maxVal) clauses.push(`salary_min.lte.${maxVal}`);
+        clauses.push('salary_max.is.null');
+        query = query.or(clauses.join(','));
+      } else {
+        // Strict: only jobs with salary data meeting threshold
+        if (minVal && maxVal) {
+          query = query.gte('salary_max', minVal).lte('salary_min', maxVal);
+        } else if (minVal) {
+          query = query.gte('salary_max', minVal);
+        } else if (maxVal) {
+          query = query.lte('salary_min', maxVal);
+        }
       }
     }
   }
