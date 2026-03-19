@@ -92,12 +92,26 @@ serve(async (req: Request) => {
     }
 
     if (location) {
-      // Parse "City, ST" pattern
-      const parts = location.split(',').map(s => s.trim());
-      if (parts.length >= 2) {
-        q = q.or(`loc_city.ilike.%${parts[0]}%,loc_state.ilike.%${parts[1]}%`);
+      // Map common country names to loc_country codes
+      const countryMap: Record<string, string> = {
+        'united states': 'US', 'usa': 'US', 'us': 'US', 'america': 'US',
+        'canada': 'CA', 'united kingdom': 'GB', 'uk': 'GB', 'england': 'GB',
+        'germany': 'DE', 'france': 'FR', 'australia': 'AU', 'india': 'IN',
+      };
+      const norm = location.toLowerCase().trim();
+      const countryCode = countryMap[norm];
+
+      if (countryCode) {
+        // Country-level search: match loc_country OR location text
+        q = q.or(`loc_country.eq.${countryCode},location.ilike.%${location}%`);
       } else {
-        q = q.or(`loc_city.ilike.%${parts[0]}%,loc_state.ilike.%${parts[0]}%`);
+        // City/state search
+        const parts = location.split(',').map(s => s.trim());
+        if (parts.length >= 2) {
+          q = q.or(`loc_city.ilike.%${parts[0]}%,loc_state.ilike.%${parts[1]}%,location.ilike.%${location}%`);
+        } else {
+          q = q.or(`loc_city.ilike.%${parts[0]}%,loc_state.ilike.%${parts[0]}%,location.ilike.%${parts[0]}%`);
+        }
       }
     }
 
