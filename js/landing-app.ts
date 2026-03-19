@@ -286,7 +286,7 @@ document.addEventListener('DOMContentLoaded', function() {
         signupStartedAt = null;
 
       } catch (e) {
-        bjError('signup_error', e);
+        console.error('[BJ] signup_error:', e);
         try { if (typeof reportError === 'function') reportError('landing_app', e); } catch(_) {}
         console.error('[BJ] Signup error:', e);
         $('#signup-btn').disabled = false;
@@ -308,7 +308,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const result = await res.json();
         console.log('[BJ] Signup validation:', result.approved ? 'approved' : 'provisional', result.reason);
       } catch (e) {
-        bjError('validation_call_failed', e);
+        console.error('[BJ] validation_call_failed:', e);
         try { if (typeof reportError === 'function') reportError('landing_app', e); } catch(_) {}
         console.log('[BJ] Validation call failed (will default to manual review):', e.message);
       }
@@ -324,7 +324,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         console.log('[BJ] Referral linked:', code, '→', userId);
       } catch (e) {
-        bjError('referral_link_failed', e);
+        console.error('[BJ] referral_link_failed:', e);
       }
     }
 
@@ -340,7 +340,7 @@ document.addEventListener('DOMContentLoaded', function() {
             created_at: user.created_at,
             surface: 'landing'
           });
-        } catch (e) { bjError('posthog_identify_landing', e); }
+        } catch (e) { console.error('[BJ] posthog_identify_landing:', e); }
       }
       document.cookie = 'bj_returning=1; max-age=31536000; path=/; SameSite=Lax; Secure';
       await loadSupabase();
@@ -363,7 +363,7 @@ document.addEventListener('DOMContentLoaded', function() {
           }
         } catch (e) {
           clearTimeout(timeout);
-          bjError('profile_check_error', e, { attempt: attempt });
+          console.error('[BJ] profile_check_error:', e);
           try { if (typeof reportError === 'function') reportError('landing_app', e); } catch(_) {}
           console.error('Profile check error (attempt ' + attempt + '):', e);
           if (attempt < 2) {
@@ -384,7 +384,7 @@ document.addEventListener('DOMContentLoaded', function() {
             email: user.email
           }, window.location.origin);
         }
-      } catch (e) { bjError('extension_auth_post', e); }
+      } catch (e) { console.error('[BJ] extension_auth_post:', e); }
     }
 
     // ============================================================
@@ -535,7 +535,7 @@ document.addEventListener('DOMContentLoaded', function() {
               if (changed) script.textContent = JSON.stringify(ld);
             } catch (e) { /* skip malformed JSON-LD blocks */ }
           });
-        } catch (e) { bjError('jsonld_sync_error', e); }
+        } catch (e) { console.error('[BJ] jsonld_sync_error:', e); }
         document.querySelectorAll('.stat-num').forEach(el => {
           el.classList.remove('loading'); el.classList.add('loaded');
         });
@@ -554,7 +554,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             return;
           }
-        } catch (e) { bjError('stats_cache_parse', e); }
+        } catch (e) { console.error('[BJ] stats_cache_parse:', e); }
         try {
           await loadSupabase();
           const { data, error } = await sb.rpc('get_landing_stats');
@@ -574,7 +574,7 @@ document.addEventListener('DOMContentLoaded', function() {
           var retryBtn = document.getElementById('stats-retry-btn');
           if (retryBtn) retryBtn.style.display = 'none';
         } catch (e) {
-          bjError('stats_fetch_error', e, { attempt: statsRetryCount + 1 });
+          console.error('[BJ] stats_fetch_error:', e);
           try { if (typeof reportError === 'function') reportError('landing_app', e); } catch(_) {}
           console.log('[BJ] Stats fetch error:', e.message);
           document.getElementById('lp-active-jobs').textContent = '400,000+';
@@ -684,9 +684,9 @@ document.addEventListener('DOMContentLoaded', function() {
           var visibleCards = jobs.slice(0, 6).map(pvCard).join('');
           var blurredCards = jobs.slice(6, 8).map(pvCard).join('');
 
-          document.getElementById('pv-card-grid').innerHTML = DOMPurify.sanitize(visibleCards, { ADD_ATTR: ['style'] });
+          document.getElementById('pv-card-grid').innerHTML = DOMPurify.sanitize(visibleCards, { ADD_ATTR: ['style'], FORCE_BODY: true });
           if (blurredCards) {
-            document.getElementById('pv-card-blur').innerHTML = '<div class="pv-card-grid">' + DOMPurify.sanitize(blurredCards, { ADD_ATTR: ['style'] }) + '</div>';
+            document.getElementById('pv-card-blur').innerHTML = '<div class="pv-card-grid">' + DOMPurify.sanitize(blurredCards, { ADD_ATTR: ['style'], FORCE_BODY: true }) + '</div>';
           }
           document.getElementById('pv-banner-text').textContent = 'Sign up free to see all ' + data.total.toLocaleString() + ' jobs';
           document.getElementById('preview-results').style.display = '';
@@ -705,9 +705,8 @@ document.addEventListener('DOMContentLoaded', function() {
             previewGoBtn.textContent = 'Search (' + data.queries_remaining + ' left)';
           }
         } catch (e) {
-          bjError('preview_error', e);
+          console.error('[BJ] Preview search error:', e);
           try { if (typeof reportError === 'function') reportError('landing_app', e); } catch(_) {}
-          console.error('[BJ] Preview error:', e);
           previewGoBtn.disabled = false;
           previewGoBtn.textContent = 'Retry Search';
           // Show error state
