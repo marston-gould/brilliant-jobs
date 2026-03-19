@@ -93,7 +93,7 @@ export async function isFeatureEnabled(flagKey: string, defaultValue = false): P
     const { data } = await supabase
       .from('feature_flags')
       .select('enabled, rollout_pct')
-      .eq('key', flagKey)
+      .eq('id', flagKey)
       .single();
     if (!data) return defaultValue;
     if (!data.enabled) return false;

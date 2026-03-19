@@ -668,7 +668,22 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
 
     try {
       const sb = getSupabase();
-      const tuning = safeReadLS('bj_tuning', {});
+
+      // Load tuning from Supabase (profiles.user_data.tuning), fallback to localStorage
+      let tuning: Record<string, unknown> = {};
+      try {
+        const user = await getUser();
+        if (user) {
+          const { data: profile } = await sb.from('profiles').select('user_data').eq('id', user.id).single();
+          const userData = (profile?.user_data as Record<string, unknown>) || {};
+          tuning = (userData.tuning as Record<string, unknown>) || {};
+          // Sync to localStorage so other code can read it
+          try { localStorage.setItem('bj_tuning', JSON.stringify(tuning)); } catch {}
+        }
+      } catch {
+        tuning = safeReadLS('bj_tuning', {});
+      }
+
       const hiddenIds = await getHiddenJobIds();
 
       // Get active filters — SPA-CUT-1: read from localStorage
