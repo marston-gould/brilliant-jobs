@@ -72,31 +72,97 @@ function detectAtsWarnings(rawText: string): string[] {
 // ─── Text extraction from DOCX (server-side, no LibreOffice available) ───────
 
 async function extractTextFromDocx(bytes: Uint8Array): Promise<string | null> {
-  // DOCX is a ZIP. We extract word/document.xml using a streaming XML parse.
-  // Use DecompressionStream (available in Deno) to unzip.
+  // DOCX is a ZIP containing word/document.xml. We must decompress it first.
   try {
-    // Find PK local file header for word/document.xml
-    const decoder = new TextDecoder('utf-8', { fatal: false });
-    const raw = decoder.decode(bytes);
+    // Find the local file entries in the ZIP
+    const entries = findZipEntries(bytes);
+    const docEntry = entries.find(e => e.name === 'word/document.xml');
+    if (!docEntry) return null;
 
-    // Grab content between XML tags — crude but works for ATS-clean docs
-    const xmlMatch = raw.match(/<w:body>([\s\S]*?)<\/w:body>/);
-    if (!xmlMatch) return null;
+    // Decompress the entry
+    let xmlBytes: Uint8Array;
+    if (docEntry.compressionMethod === 0) {
+      // STORED — no compression
+      xmlBytes = bytes.slice(docEntry.dataOffset, docEntry.dataOffset + docEntry.compressedSize);
+    } else if (docEntry.compressionMethod === 8) {
+      // DEFLATE — use DecompressionStream
+      const compressed = bytes.slice(docEntry.dataOffset, docEntry.dataOffset + docEntry.compressedSize);
+      const ds = new DecompressionStream('raw');
+      const writer = ds.writable.getWriter();
+      writer.write(compressed);
+      writer.close();
+      const reader = ds.readable.getReader();
+      const chunks: Uint8Array[] = [];
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+      }
+      const totalLen = chunks.reduce((s, c) => s + c.length, 0);
+      xmlBytes = new Uint8Array(totalLen);
+      let offset = 0;
+      for (const chunk of chunks) {
+        xmlBytes.set(chunk, offset);
+        offset += chunk.length;
+      }
+    } else {
+      return null; // unsupported compression
+    }
 
-    // Strip XML tags, collapse whitespace
-    const text = xmlMatch[1]
-      .replace(/<w:t[^>]*>/g, ' ')
-      .replace(/<\/w:t>/g, '')
-      .replace(/<w:p[^/]>/g, '\n')
-      .replace(/<[^>]+>/g, '')
-      .replace(/[ \t]+/g, ' ')
-      .replace(/\n{3,}/g, '\n\n')
-      .trim();
+    const xmlStr = new TextDecoder('utf-8').decode(xmlBytes);
 
+    // Extract text from w:t elements within w:body
+    const bodyMatch = xmlStr.match(/<w:body>([\s\S]*?)<\/w:body>/);
+    if (!bodyMatch) return null;
+
+    const body = bodyMatch[1];
+    // Extract all w:t text content
+    const textParts: string[] = [];
+    const tRegex = /<w:t[^>]*>([^<]*)<\/w:t>/g;
+    let m;
+    while ((m = tRegex.exec(body)) !== null) {
+      if (m[1]) textParts.push(m[1]);
+    }
+    // Join with paragraph breaks at w:p boundaries
+    const fullXml = body;
+    const paragraphs: string[] = [];
+    const pRegex = /<w:p[ >][\s\S]*?<\/w:p>/g;
+    while ((m = pRegex.exec(fullXml)) !== null) {
+      const pText: string[] = [];
+      const innerT = /<w:t[^>]*>([^<]*)<\/w:t>/g;
+      let tm;
+      while ((tm = innerT.exec(m[0])) !== null) {
+        if (tm[1]) pText.push(tm[1]);
+      }
+      if (pText.length) paragraphs.push(pText.join(''));
+    }
+
+    const text = paragraphs.join('\n').replace(/\n{3,}/g, '\n\n').trim();
     return text.length > 50 ? text : null;
-  } catch {
+  } catch (e) {
+    console.error('[resume-parse] extractTextFromDocx error:', e);
     return null;
   }
+}
+
+// Minimal ZIP local file header parser
+function findZipEntries(data: Uint8Array): Array<{ name: string; compressionMethod: number; compressedSize: number; dataOffset: number }> {
+  const entries: Array<{ name: string; compressionMethod: number; compressedSize: number; dataOffset: number }> = [];
+  let offset = 0;
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  while (offset < data.length - 30) {
+    const sig = view.getUint32(offset, true);
+    if (sig !== 0x04034b50) break; // PK\x03\x04
+    const compressionMethod = view.getUint16(offset + 8, true);
+    const compressedSize = view.getUint32(offset + 18, true);
+    const nameLen = view.getUint16(offset + 26, true);
+    const extraLen = view.getUint16(offset + 28, true);
+    const name = new TextDecoder().decode(data.slice(offset + 30, offset + 30 + nameLen));
+    const dataOffset = offset + 30 + nameLen + extraLen;
+    entries.push({ name, compressionMethod, compressedSize, dataOffset });
+    offset = dataOffset + compressedSize;
+  }
+  return entries;
 }
 
 // ─── Anthropic parse prompt ───────────────────────────────────────────────────
