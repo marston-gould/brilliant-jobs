@@ -400,7 +400,7 @@ document.addEventListener("DOMContentLoaded", function() {
         var stepComp = document.getElementById("lp-step-companies");
         if (stepComp) stepComp.textContent = hiringDisplay;
       }
-      var totalDisplay = stats.totalCompanies != null ? (Math.floor(stats.totalCompanies / 1e3) * 1e3).toLocaleString() + "+" : null;
+      var totalDisplay = stats.totalCompanies != null ? (Math.ceil(stats.totalCompanies / 1e3) * 1e3).toLocaleString() + "+" : null;
       if (totalDisplay) {
         var lpCompEl = document.getElementById("lp-companies");
         if (lpCompEl) lpCompEl.textContent = totalDisplay;
@@ -425,7 +425,7 @@ document.addEventListener("DOMContentLoaded", function() {
       if (stats.metros != null) {
         document.getElementById("lp-metros").textContent = stats.metros.toLocaleString();
       }
-      var tcDisplay = stats.totalCompanies != null ? (Math.floor(stats.totalCompanies / 1e3) * 1e3).toLocaleString() + "+" : null;
+      var tcDisplay = stats.totalCompanies != null ? (Math.ceil(stats.totalCompanies / 1e3) * 1e3).toLocaleString() + "+" : null;
       try {
         var ldScripts = document.querySelectorAll('script[type="application/ld+json"]');
         ldScripts.forEach(function(script) {

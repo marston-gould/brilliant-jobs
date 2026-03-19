@@ -406,9 +406,14 @@ export default function GetStartedPage() {
                       `${apiPath}?action=connect`,
                       { headers: { 'Authorization': `Bearer ${token}` } }
                     );
+                    if (!res.ok) {
+                      const errText = await res.text().catch(() => '');
+                      (window as any).__bjToast?.(`Connection failed (${res.status}): ${errText.slice(0, 100)}`, 'error');
+                      return;
+                    }
                     const data = await res.json();
                     if (data?.url) window.location.href = data.url;
-                    else (window as any).__bjToast?.(data?.error || 'Connection failed', 'error');
+                    else (window as any).__bjToast?.('Connection failed: ' + JSON.stringify(data).slice(0, 100), 'error');
                   } catch (err) {
                     console.error('OAuth connect failed:', err);
                     (window as any).__bjToast?.('Connection failed — please try again', 'error');

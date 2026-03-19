@@ -457,7 +457,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // "career pages monitored" = total companies in ats_companies (~39K)
         // Used in stats bar, hero sub, and all data-stat="total-pages" spans
         var totalDisplay = stats.totalCompanies != null
-          ? (Math.floor(stats.totalCompanies / 1000) * 1000).toLocaleString() + '+'
+          ? (Math.ceil(stats.totalCompanies / 1000) * 1000).toLocaleString() + '+'
           : null;
         if (totalDisplay) {
           // Stats bar: Career Pages Monitored
@@ -490,7 +490,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         // CS-P1-008 (LS1-10): Sync JSON-LD structured data with live counts
         // Uses totalCompanies for "career pages" references, jobs for job count references
-        var tcDisplay = stats.totalCompanies != null ? (Math.floor(stats.totalCompanies / 1000) * 1000).toLocaleString() + '+' : null;
+        var tcDisplay = stats.totalCompanies != null ? (Math.ceil(stats.totalCompanies / 1000) * 1000).toLocaleString() + '+' : null;
         try {
           var ldScripts = document.querySelectorAll('script[type="application/ld+json"]');
           ldScripts.forEach(function(script) {
