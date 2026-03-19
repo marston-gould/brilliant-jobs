@@ -61,10 +61,19 @@ serve(withCorrelation("gmail-auth", async (req, logger) => {
     authUrl.searchParams.set("client_id", GMAIL_CLIENT_ID);
     authUrl.searchParams.set("redirect_uri", GMAIL_REDIRECT_URI);
     authUrl.searchParams.set("response_type", "code");
-    authUrl.searchParams.set("scope", "https://www.googleapis.com/auth/gmail.metadata https://www.googleapis.com/auth/calendar.events.readonly");
+    // Build scope based on request — default Gmail+Calendar, add Drive if requested
+    const requestedScope = url.searchParams.get("scope") || "gmail";
+    const scopes = [
+      "https://www.googleapis.com/auth/gmail.metadata",
+      "https://www.googleapis.com/auth/calendar.events.readonly",
+    ];
+    if (requestedScope === "drive") {
+      scopes.push("https://www.googleapis.com/auth/drive.readonly");
+    }
+    authUrl.searchParams.set("scope", scopes.join(" "));
     authUrl.searchParams.set("access_type", "offline");
     authUrl.searchParams.set("prompt", "consent");
-    authUrl.searchParams.set("state", state);
+    authUrl.searchParams.set("state", `${state}:${requestedScope}`);
 
     return new Response(JSON.stringify({ url: authUrl.toString() }), {
       headers: { "Content-Type": "application/json" },
@@ -78,16 +87,16 @@ serve(withCorrelation("gmail-auth", async (req, logger) => {
 
   if (error) {
     logger.warn("Gmail OAuth denied", { error });
-    return Response.redirect("https://brilliantjobs.app/app/get-started?gmail=denied", 302);
+    return Response.redirect("https://brilliantjobs.app/app/get-started?gmail=denied#connect-accounts", 302);
   }
 
   if (!code || !state) {
-    return Response.redirect("https://brilliantjobs.app/app/get-started?gmail=error", 302);
+    return Response.redirect("https://brilliantjobs.app/app/get-started?gmail=error#connect-accounts", 302);
   }
 
   const [userId, csrf] = state.split(":");
   if (!userId || !csrf) {
-    return Response.redirect("https://brilliantjobs.app/app/get-started?gmail=error", 302);
+    return Response.redirect("https://brilliantjobs.app/app/get-started?gmail=error#connect-accounts", 302);
   }
 
   const { data: pending } = await sb
@@ -99,7 +108,7 @@ serve(withCorrelation("gmail-auth", async (req, logger) => {
 
   if (!pending || pending.refresh_token_enc !== csrf) {
     logger.warn("CSRF mismatch");
-    return Response.redirect("https://brilliantjobs.app/app/get-started?gmail=error", 302);
+    return Response.redirect("https://brilliantjobs.app/app/get-started?gmail=error#connect-accounts", 302);
   }
 
   try {
@@ -118,7 +127,7 @@ serve(withCorrelation("gmail-auth", async (req, logger) => {
     const tokens = await tokenRes.json();
     if (tokens.error) {
       logger.error("Token exchange failed", { error: tokens.error });
-      return Response.redirect("https://brilliantjobs.app/app/get-started?gmail=error", 302);
+      return Response.redirect("https://brilliantjobs.app/app/get-started?gmail=error#connect-accounts", 302);
     }
 
     const profileRes = await fetch("https://www.googleapis.com/gmail/v1/users/me/profile", {
@@ -141,10 +150,10 @@ serve(withCorrelation("gmail-auth", async (req, logger) => {
     await sb.from("profiles").update({ gmail_connected_at: new Date().toISOString() }).eq("id", userId);
 
     logger.info("Gmail connected", { userId, gmailAddress });
-    return Response.redirect("https://brilliantjobs.app/app/get-started?gmail=connected", 302);
+    return Response.redirect("https://brilliantjobs.app/app/get-started?gmail=connected#connect-accounts", 302);
 
   } catch (e) {
     logger.error("Gmail auth error", { error: (e as Error).message });
-    return Response.redirect("https://brilliantjobs.app/app/get-started?gmail=error", 302);
+    return Response.redirect("https://brilliantjobs.app/app/get-started?gmail=error#connect-accounts", 302);
   }
 }));

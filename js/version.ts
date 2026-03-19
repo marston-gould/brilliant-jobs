@@ -1,4 +1,4 @@
-var BJ_VERSION = 'v11.19';
+var BJ_VERSION = 'v11.20';
 // Populate version display elements after DOM is ready
 (function() {
   var el = document.getElementById('nav-version');

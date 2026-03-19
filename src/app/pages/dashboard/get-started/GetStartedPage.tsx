@@ -28,13 +28,13 @@ function StatusDot({ status }: { status: DotStatus }) {
 }
 
 // ── Step component ──
-function Step({ num, title, icon: Icon, iconBg, iconColor, children, badge }: {
+function Step({ num, title, icon: Icon, iconBg, iconColor, children, badge, id }: {
   num: string; title: string; icon: typeof Filter;
   iconBg: string; iconColor: string; children: React.ReactNode;
-  badge?: React.ReactNode;
+  badge?: React.ReactNode; id?: string;
 }) {
   return (
-    <div className="border border-border rounded-[14px] bg-bg-card p-7 space-y-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] mb-3.5 hover:border-border-hover hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all">
+    <div id={id} className="border border-border rounded-[14px] bg-bg-card p-7 space-y-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] mb-3.5 hover:border-border-hover hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all">
       <div className="flex items-start gap-3.5">
         <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: iconBg }}>
           <Icon className="w-5 h-5" style={{ color: iconColor }} strokeWidth={1.75} />
@@ -75,19 +75,29 @@ export default function GetStartedPage() {
           .maybeSingle();
         if (data && data.gmail_address && data.gmail_address !== 'pending') {
           setGmailStatus('connected');
-          // If gmail is connected, calendar comes with the same OAuth scope
           setGcalStatus('connected');
         }
         // Check URL params for just-completed OAuth
         const params = new URLSearchParams(window.location.search);
-        if (params.get('gmail') === 'connected') {
+        const gmailParam = params.get('gmail');
+        if (gmailParam === 'connected') {
           setGmailStatus('connected');
           setGcalStatus('connected');
-          (window as any).__bjToast?.('Gmail connected successfully!', 'success');
-        } else if (params.get('gmail') === 'denied') {
-          (window as any).__bjToast?.('Gmail connection was denied', 'error');
-        } else if (params.get('gmail') === 'error') {
-          (window as any).__bjToast?.('Gmail connection failed — please try again', 'error');
+          // If drive scope was requested, mark drive too
+          if (window.location.hash === '#connect-accounts' || params.get('scope') === 'drive') {
+            setGdriveStatus('connected');
+          }
+          (window as any).__bjToast?.('Google account connected successfully!', 'success');
+        } else if (gmailParam === 'denied') {
+          (window as any).__bjToast?.('Google connection was denied', 'error');
+        } else if (gmailParam === 'error') {
+          (window as any).__bjToast?.('Google connection failed — please try again', 'error');
+        }
+        // Scroll to connect section if returning from OAuth
+        if (gmailParam) {
+          setTimeout(() => {
+            document.getElementById('connect-accounts')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 300);
         }
       } catch {}
     })();
@@ -398,7 +408,8 @@ export default function GetStartedPage() {
 
       {/* Step 2: Connect Accounts */}
       <Step num="Step 2" title="Connect Your Accounts" icon={Link}
-        iconBg="var(--green-dim)" iconColor="var(--green)">
+        iconBg="var(--green-dim)" iconColor="var(--green)"
+        id="connect-accounts">
         <div className="mb-3">
           Authorize read-only access so Brilliant Jobs can help track your application pipeline —
           detecting responses, scheduling interviews, and flagging companies that go silent.
