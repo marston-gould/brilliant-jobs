@@ -150,6 +150,14 @@ export function SavedSearches({
                     {item.filterNum}
                   </span>
                 )}
+                <button
+                  type="button"
+                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-400/20 text-text-faint hover:text-red-400 transition-all"
+                  title="Delete this search"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete([item.id]); }}
+                >
+                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
               </label>
             ))}
           </div>

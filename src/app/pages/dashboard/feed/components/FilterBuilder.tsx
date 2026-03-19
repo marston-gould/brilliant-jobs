@@ -369,43 +369,35 @@ export function FilterBuilder({
             </label>
           </div>
 
-          {/* Action row — legacy save-filter-row: inline name + Save, Search separate */}
-          <div className="flex items-center gap-3 pl-12 pt-1">
-            <Button variant="primary" size="sm" onClick={onSearch}>
-              Search
-            </Button>
-            <div className="flex items-center gap-1.5 border-l border-border pl-3">
-              <span className="text-[10px] font-semibold text-text-faint uppercase tracking-wide whitespace-nowrap">Save:</span>
-              <input
-                type="text"
-                className="px-2 py-1 text-[12px] bg-bg-input border border-border rounded-md text-text placeholder:text-text-faint focus:border-accent focus:outline-none w-[140px]"
-                placeholder="name this filter…"
-                maxLength={40}
-                id="save-filter-inline-name"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    const input = e.currentTarget;
-                    if (input.value.trim()) {
-                      onSaveFilter(input.value.trim());
-                      input.value = '';
-                    }
-                  }
-                }}
-              />
-              <button
-                type="button"
-                className="px-2 py-1 text-[11px] font-semibold text-accent hover:bg-accent/10 rounded-md transition-colors"
-                onClick={() => {
-                  const input = document.getElementById('save-filter-inline-name') as HTMLInputElement;
-                  if (input?.value.trim()) {
+          {/* Action row — Save & Search (saves as named filter if name provided, always searches) */}
+          <div className="flex items-center gap-2 pl-12 pt-1">
+            <input
+              type="text"
+              className="px-2.5 py-1.5 text-[12px] bg-bg-input border border-border rounded-md text-text placeholder:text-text-faint focus:border-accent focus:outline-none w-[180px]"
+              placeholder="name this filter…"
+              maxLength={40}
+              id="save-filter-inline-name"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const input = e.currentTarget;
+                  if (input.value.trim()) {
                     onSaveFilter(input.value.trim());
                     input.value = '';
                   }
-                }}
-              >
-                Save
-              </button>
-            </div>
+                  onSearch();
+                }
+              }}
+            />
+            <Button variant="primary" size="sm" onClick={() => {
+              const input = document.getElementById('save-filter-inline-name') as HTMLInputElement;
+              if (input?.value.trim()) {
+                onSaveFilter(input.value.trim());
+                input.value = '';
+              }
+              onSearch();
+            }}>
+              Save & Search
+            </Button>
           </div>
         </div>
       )}
