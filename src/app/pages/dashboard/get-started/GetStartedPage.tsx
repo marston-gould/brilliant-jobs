@@ -58,9 +58,40 @@ export default function GetStartedPage() {
 
   const [stats, setStats] = useState({ jobs: 0, pages: 0, companies: 0 });
   const [extStatus, setExtStatus] = useState<DotStatus>('disconnected');
-  const [gmailStatus] = useState<DotStatus>('disconnected');
-  const [gcalStatus] = useState<DotStatus>('disconnected');
-  const [gdriveStatus] = useState<DotStatus>('disconnected');
+  const [gmailStatus, setGmailStatus] = useState<DotStatus>('disconnected');
+  const [gcalStatus, setGcalStatus] = useState<DotStatus>('disconnected');
+  const [gdriveStatus, setGdriveStatus] = useState<DotStatus>('disconnected');
+
+  // Check Google connection status from Supabase
+  useEffect(() => {
+    (async () => {
+      try {
+        const { supabase: sb, getUser } = await import('@app/lib/supabase');
+        const user = await getUser();
+        if (!user) return;
+        const { data } = await sb.from('gmail_connections')
+          .select('gmail_address, sync_status')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (data && data.gmail_address && data.gmail_address !== 'pending') {
+          setGmailStatus('connected');
+          // If gmail is connected, calendar comes with the same OAuth scope
+          setGcalStatus('connected');
+        }
+        // Check URL params for just-completed OAuth
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('gmail') === 'connected') {
+          setGmailStatus('connected');
+          setGcalStatus('connected');
+          (window as any).__bjToast?.('Gmail connected successfully!', 'success');
+        } else if (params.get('gmail') === 'denied') {
+          (window as any).__bjToast?.('Gmail connection was denied', 'error');
+        } else if (params.get('gmail') === 'error') {
+          (window as any).__bjToast?.('Gmail connection failed — please try again', 'error');
+        }
+      } catch {}
+    })();
+  }, []);
 
   // Check extension
   useEffect(() => {
@@ -374,9 +405,9 @@ export default function GetStartedPage() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
           {[
-            { name: 'Gmail', desc: 'Tracks your job applications automatically — detecting responses, interview requests, and rejections so your pipeline stays current.', color: '#EA4335', scope: 'gmail', sub: 'Your application pipeline, mostly on autopilot' },
-            { name: 'Google Calendar', desc: 'Picks up interview schedules and follow-up timelines. Paired with Gmail, gives you a complete picture of every application.', color: '#4285F4', scope: 'calendar', sub: 'Never miss an interview or follow-up window' },
-            { name: 'Google Drive', desc: 'Syncs your resumes to Drive so your latest version is always accessible when auto-applying or during interviews.', color: '#0066DA', scope: 'drive', sub: 'Resume sync and document storage' },
+            { name: 'Gmail', desc: 'Tracks your job applications automatically — detecting responses, interview requests, and rejections so your pipeline stays current.', color: '#EA4335', scope: 'gmail', sub: 'Your application pipeline, mostly on autopilot', status: gmailStatus },
+            { name: 'Google Calendar', desc: 'Picks up interview schedules and follow-up timelines. Paired with Gmail, gives you a complete picture of every application.', color: '#4285F4', scope: 'calendar', sub: 'Never miss an interview or follow-up window', status: gcalStatus },
+            { name: 'Google Drive', desc: 'Syncs your resumes to Drive so your latest version is always accessible when auto-applying or during interviews.', color: '#0066DA', scope: 'drive', sub: 'Resume sync and document storage', status: gdriveStatus },
           ].map(svc => (
             <div key={svc.name} className="bg-bg-card border border-border rounded-[14px] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.02)] hover:border-border-hover hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all">
               <div className="flex items-center gap-3 px-[22px] py-5 border-b border-border">
@@ -387,10 +418,13 @@ export default function GetStartedPage() {
                   <div className="text-[14px] font-bold text-text">{svc.name}</div>
                   <div className="text-[11px] text-text-faint">{svc.sub}</div>
                 </div>
-                <StatusDot status="disconnected" />
+                <StatusDot status={svc.status} />
               </div>
               <div className="px-[22px] py-5">
                 <div className="text-[13px] text-text-dim leading-relaxed mb-3">{svc.desc}</div>
+                {svc.status === 'connected' ? (
+                  <span className="text-[12px] font-semibold text-green">✓ Connected</span>
+                ) : (
                 <button onClick={async () => {
                   try {
                     const { supabase: sb } = await import('@app/lib/supabase');
@@ -421,7 +455,8 @@ export default function GetStartedPage() {
                 }} className="px-3.5 py-[7px] rounded-lg bg-accent text-white text-[12px] font-semibold">
                   Connect {svc.name.split(' ')[0]}
                 </button>
-                <span className="text-[10px] text-text-faint ml-2">Read-only access</span>
+                )}
+                {svc.status !== 'connected' && <span className="text-[10px] text-text-faint ml-2">Read-only access</span>}
               </div>
             </div>
           ))}

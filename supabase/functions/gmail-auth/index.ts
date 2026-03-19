@@ -78,16 +78,16 @@ serve(withCorrelation("gmail-auth", async (req, logger) => {
 
   if (error) {
     logger.warn("Gmail OAuth denied", { error });
-    return Response.redirect("https://brilliantjobs.app/dashboard?gmail=denied", 302);
+    return Response.redirect("https://brilliantjobs.app/app/get-started?gmail=denied", 302);
   }
 
   if (!code || !state) {
-    return Response.redirect("https://brilliantjobs.app/dashboard?gmail=error", 302);
+    return Response.redirect("https://brilliantjobs.app/app/get-started?gmail=error", 302);
   }
 
   const [userId, csrf] = state.split(":");
   if (!userId || !csrf) {
-    return Response.redirect("https://brilliantjobs.app/dashboard?gmail=error", 302);
+    return Response.redirect("https://brilliantjobs.app/app/get-started?gmail=error", 302);
   }
 
   const { data: pending } = await sb
@@ -99,7 +99,7 @@ serve(withCorrelation("gmail-auth", async (req, logger) => {
 
   if (!pending || pending.refresh_token_enc !== csrf) {
     logger.warn("CSRF mismatch");
-    return Response.redirect("https://brilliantjobs.app/dashboard?gmail=error", 302);
+    return Response.redirect("https://brilliantjobs.app/app/get-started?gmail=error", 302);
   }
 
   try {
@@ -118,7 +118,7 @@ serve(withCorrelation("gmail-auth", async (req, logger) => {
     const tokens = await tokenRes.json();
     if (tokens.error) {
       logger.error("Token exchange failed", { error: tokens.error });
-      return Response.redirect("https://brilliantjobs.app/dashboard?gmail=error", 302);
+      return Response.redirect("https://brilliantjobs.app/app/get-started?gmail=error", 302);
     }
 
     const profileRes = await fetch("https://www.googleapis.com/gmail/v1/users/me/profile", {
@@ -141,10 +141,10 @@ serve(withCorrelation("gmail-auth", async (req, logger) => {
     await sb.from("profiles").update({ gmail_connected_at: new Date().toISOString() }).eq("id", userId);
 
     logger.info("Gmail connected", { userId, gmailAddress });
-    return Response.redirect("https://brilliantjobs.app/dashboard?gmail=connected", 302);
+    return Response.redirect("https://brilliantjobs.app/app/get-started?gmail=connected", 302);
 
   } catch (e) {
     logger.error("Gmail auth error", { error: (e as Error).message });
-    return Response.redirect("https://brilliantjobs.app/dashboard?gmail=error", 302);
+    return Response.redirect("https://brilliantjobs.app/app/get-started?gmail=error", 302);
   }
 }));
