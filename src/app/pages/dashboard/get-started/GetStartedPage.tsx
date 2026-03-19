@@ -525,13 +525,13 @@ export default function GetStartedPage() {
       <Step num="Step 1" title="Install the Chrome Extension" icon={CirclePlus}
         iconBg="var(--indigo-dim)" iconColor="var(--indigo)"
         badge={extStatus === 'connected' ? <span className="text-[10px] font-semibold text-green bg-green/10 px-2 py-0.5 rounded-full">✓ Connected</span> : undefined}>
+        {extStatus !== 'connected' && (
+          <>
         <div className="mb-3">
           Your extension works quietly in the background, identifying opportunities at companies where you
           already have professional connections. It maps your network to active hiring — so when a company
           you're connected to posts a role, you'll know before most applicants do.
         </div>
-        {extStatus !== 'connected' && (
-          <>
             <button onClick={() => { window.open("/api/extension/download", "_blank"); }} className="px-3 py-1.5 rounded-md text-xs font-semibold bg-accent text-white mb-3">Download Extension</button>
             <div className="border border-border rounded-lg bg-bg-card p-4 space-y-3">
               <div className="text-[12px] font-bold text-text mb-0.5">Installation Guide</div>
@@ -657,45 +657,26 @@ export default function GetStartedPage() {
       <Step num="Optional" title="Import LinkedIn Profile" icon={User}
         iconBg="hsla(210,85%,56%,0.10)" iconColor="#0A66C2"
         badge={linkedinProfile ? <span className="text-[10px] font-semibold text-green bg-green/10 px-2 py-0.5 rounded-full">✓ Imported</span> : undefined}>
+        {linkedinProfile ? (
+          <div className="flex items-center gap-2 text-[12px] text-text-dim">
+            <span className="text-green">✓</span>
+            <span className="font-medium">{linkedinProfile.firstName} {linkedinProfile.lastName}</span>
+            <span className="text-text-faint">·</span>
+            <span className="text-text-faint">{linkedinProfile.industry || linkedinProfile.location}</span>
+            {linkedinProfile.importedAt && (
+              <>
+                <span className="text-text-faint">·</span>
+                <span className="text-text-faint">{new Date(linkedinProfile.importedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+              </>
+            )}
+            <button onClick={() => setLinkedinProfile(null)} className="text-[10px] text-text-faint hover:text-accent ml-auto">Re-upload</button>
+          </div>
+        ) : (
+        <>
         <div className="mb-3">
           Upload your LinkedIn CSV export to auto-fill your profile, get personalized filter
           suggestions, and give AI form answering better context. One upload, no re-entry.
         </div>
-        {linkedinProfile ? (
-          <div className="border border-green/30 bg-green/5 rounded-[10px] p-5 space-y-3">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-green text-[14px]">✓</span>
-              <span className="text-[13px] font-semibold text-text">LinkedIn Profile Imported</span>
-              {linkedinProfile.importedAt && (
-                <span className="text-[10px] text-text-faint ml-auto">
-                  {new Date(linkedinProfile.importedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                </span>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-              {linkedinProfile.firstName && (
-                <div><span className="text-[10px] text-text-faint uppercase tracking-wide">Name</span><div className="text-[13px] text-text font-medium">{linkedinProfile.firstName} {linkedinProfile.lastName}</div></div>
-              )}
-              {linkedinProfile.location && (
-                <div><span className="text-[10px] text-text-faint uppercase tracking-wide">Location</span><div className="text-[13px] text-text font-medium">{linkedinProfile.location}</div></div>
-              )}
-              {linkedinProfile.industry && (
-                <div><span className="text-[10px] text-text-faint uppercase tracking-wide">Industry</span><div className="text-[13px] text-text font-medium">{linkedinProfile.industry}</div></div>
-              )}
-            </div>
-            {linkedinProfile.headline && (
-              <div><span className="text-[10px] text-text-faint uppercase tracking-wide">Headline</span><div className="text-[13px] text-text-dim leading-relaxed">{linkedinProfile.headline}</div></div>
-            )}
-            {linkedinProfile.summary && (
-              <div><span className="text-[10px] text-text-faint uppercase tracking-wide">Summary</span><div className="text-[12px] text-text-faint leading-relaxed line-clamp-3">{linkedinProfile.summary}</div></div>
-            )}
-            <button onClick={() => {
-              setLinkedinProfile(null);
-            }} className="text-[11px] text-text-faint hover:text-accent transition-colors mt-1">
-              Re-upload CSV
-            </button>
-          </div>
-        ) : (
         <div className="border-2 border-dashed border-border rounded-[10px] p-6 text-center cursor-pointer hover:border-accent transition-colors"
           onClick={() => {
             const i = document.createElement('input');
@@ -759,14 +740,13 @@ export default function GetStartedPage() {
           <div className="text-[11px] text-text-faint mt-1">or click to browse — Profile.csv from LinkedIn export</div>
           <div className="text-[10px] text-text-faint mt-2">Export from LinkedIn: Settings & Privacy → Data Privacy → Download your data → select Profile</div>
         </div>
-        )}
         {/* gs-tip — only show when no profile imported */}
-        {!linkedinProfile && (
         <div className="flex items-start gap-2.5 mt-3.5 px-4 py-3.5 rounded-lg text-[13px] text-text-dim leading-relaxed"
           style={{ background: 'hsla(var(--warm-hsl), 0.04)', border: '1px solid hsla(var(--warm-hsl), 0.12)' }}>
           <span className="text-[10px] font-bold text-warm uppercase tracking-[0.5px] whitespace-nowrap pt-0.5">Why?</span>
           <span>Your LinkedIn data lets us pre-fill application forms, generate a tailored resume summary, and suggest filters based on your actual experience — not guesswork.</span>
         </div>
+        </>
         )}
       </Step>
 
@@ -775,6 +755,16 @@ export default function GetStartedPage() {
         iconBg="hsla(170,60%,40%,0.10)" iconColor="#1D9E75"
         badge={notifSaved ? <span className="text-[10px] font-semibold text-green bg-green/10 px-2 py-0.5 rounded-full">✓ Saved</span> : undefined}>
 
+        {notifSaved ? (
+          <div className="flex items-center gap-3 text-[12px] text-text-dim">
+            <span className="text-green">✓</span>
+            <span>Email alerts configured</span>
+            {doubleAuthEnabled && phoneVerified && (
+              <><span className="text-text-faint">·</span><span>2FA verified</span></>
+            )}
+          </div>
+        ) : (
+        <>
         {/* Section A: Email Preferences */}
         <div className="text-[12px] font-bold text-text mb-2">Email Preferences</div>
         <div className="border border-border rounded-lg divide-y divide-border">
@@ -985,6 +975,8 @@ export default function GetStartedPage() {
         >
           {notifSaving ? 'Saving…' : 'Save Preferences'}
         </button>
+        </>
+        )}
       </Step>
 
       {/* Step 3: Build Filters */}
@@ -1012,9 +1004,10 @@ export default function GetStartedPage() {
             </div>
           ))}
         </div>
+        <button onClick={() => navigate('/app/feed')} className="mt-4 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-accent text-white text-[13px] font-semibold">
+          Build a Filter on the Feed →
+        </button>
       </Step>
-
-      {/* Step 4: Tune Results */}
       <Step num="Step 4" title="Fine-Tune Your Results" icon={SlidersHorizontal}
         iconBg="var(--purple-dim)" iconColor="var(--purple)">
         Getting noise? <strong>Search Tuning</strong> gives you global rules that apply across every filter —
