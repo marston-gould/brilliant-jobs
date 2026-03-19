@@ -161,7 +161,9 @@ export default function GetStartedPage() {
       }
 
       let archiveResumeId: string | null = null;
+      let resumesTableId: string | null = null;
       try {
+        // Insert into resume_archive (where Resumes page reads from)
         const { data: archiveRow, error: archiveErr } = await sb.from('resume_archive').insert({
           user_id: user.id,
           display_name: displayName,
@@ -176,10 +178,24 @@ export default function GetStartedPage() {
           extracted_text: extractedText,
         }).select('resume_id').single();
         if (archiveErr) {
-          toast('Resume save failed: ' + archiveErr.message, 'error');
-          // Don't return — try to still generate filter
+          toast('Resume archive save failed: ' + archiveErr.message, 'error');
         } else {
           archiveResumeId = archiveRow?.resume_id || null;
+        }
+
+        // Also insert into resumes table (resume_filter_assignments FK references this)
+        const { data: resumeRow, error: resumeErr } = await sb.from('resumes').insert({
+          user_id: user.id,
+          name: displayName,
+          file_name: file.name,
+          file_path: storagePath,
+          file_size: String(file.size),
+          source: 'upload',
+        }).select('id').single();
+        if (resumeErr) {
+          toast('Resume record save failed: ' + resumeErr.message, 'error');
+        } else {
+          resumesTableId = resumeRow?.id || null;
         }
       } catch (err) {
         toast('Resume save error: ' + (err instanceof Error ? err.message : String(err)), 'error');
@@ -243,11 +259,11 @@ export default function GetStartedPage() {
           toast('Filter save error: ' + (err instanceof Error ? err.message : String(err)), 'error');
         }
 
-        if (archiveResumeId) {
+        if (resumesTableId) {
           try {
             const { error: linkErr } = await sb.from('resume_filter_assignments').insert({
               user_id: user.id,
-              resume_id: archiveResumeId,
+              resume_id: resumesTableId,
               filter_name: filterResult.filter_name,
             });
             if (linkErr) toast('Resume-filter link failed: ' + linkErr.message, 'error');
