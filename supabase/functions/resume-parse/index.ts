@@ -19,7 +19,7 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
-import { JSZip } from "https://deno.land/x/jszip@0.11.0/mod.ts";
+import { unzipSync } from "https://esm.sh/fflate@0.8.2";
 import { corsHeaders } from '../_shared/cors.ts';
 import { anthropicFetch } from '../_shared/anthropic.ts';
 
@@ -93,22 +93,21 @@ async function extractTextFromDocx(bytes: Uint8Array): Promise<string | null> {
     return text.length > 50 ? text : null;
   }
 
-  // Approach 1: JSZip
+  // Approach 1: fflate (pure JS synchronous unzip — no native deps)
   try {
-    console.log('[resume-parse] Trying JSZip...');
-    const zip = new JSZip();
-    await zip.loadAsync(bytes);
-    const docFile = zip.file('word/document.xml');
-    if (docFile) {
-      const xmlStr = await docFile.async('string');
-      console.log(`[resume-parse] JSZip got document.xml: ${xmlStr.length} chars`);
+    console.log('[resume-parse] Trying fflate unzipSync...');
+    const unzipped = unzipSync(bytes);
+    const docXmlBytes = unzipped['word/document.xml'];
+    if (docXmlBytes) {
+      const xmlStr = new TextDecoder('utf-8').decode(docXmlBytes);
+      console.log(`[resume-parse] fflate got document.xml: ${xmlStr.length} chars`);
       const result = parseDocXml(xmlStr);
       if (result) return result;
     } else {
-      console.error('[resume-parse] JSZip: no word/document.xml');
+      console.error('[resume-parse] fflate: no word/document.xml in zip. Keys:', Object.keys(unzipped).slice(0, 10).join(', '));
     }
   } catch (e: any) {
-    console.error('[resume-parse] JSZip failed:', e?.message || String(e));
+    console.error('[resume-parse] fflate failed:', e?.message || String(e));
   }
 
   // Approach 2: Raw decode (works if STORED compression)
