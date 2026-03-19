@@ -9,6 +9,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Input, Button } from '@components';
 import { supabase } from '@lib/supabase';
+import { TagInput } from './TagInput';
 
 // ── Company autocomplete — legacy .company-dropdown ──────────
 function CompanyAutocomplete({ value, onChange, placeholder, onKeyDown }: {
@@ -137,12 +138,10 @@ export function FilterBuilder({
   onBrowse,
   usOnly,
 }: FilterBuilderProps) {
-  const update = useCallback(
-    (field: keyof FilterValues, value: string | boolean) => {
-      onChange({ ...values, [field]: value });
-    },
-    [values, onChange]
-  );
+  // Direct update — no useCallback to avoid stale closure over `values`
+  const update = (field: keyof FilterValues, value: string | boolean) => {
+    onChange({ ...values, [field]: value });
+  };
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -196,22 +195,19 @@ export function FilterBuilder({
           {/* What / Not */}
           <div className="grid grid-cols-2 gap-2">
             <FilterRow label="What" labelClass="text-text-faint" onBrowse={onBrowse ? () => onBrowse('title', 'include') : undefined}>
-              <input
-                type="text"
-                className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
-                placeholder="title, keyword, dept…" aria-label="Job title or keyword"
+              <TagInput
                 value={values.what}
-                onChange={(e) => update('what', e.target.value)}
+                onChange={(v) => update('what', v)}
+                placeholder="title, keyword, dept…"
                 onKeyDown={handleKeyDown}
+                aria-label="Job title or keyword"
               />
             </FilterRow>
             <FilterRow label="Not" labelClass="text-text-faint" onBrowse={onBrowse ? () => onBrowse('title', 'exclude') : undefined}>
-              <input
-                type="text"
-                className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
-                placeholder="exclude titles…"
+              <TagInput
                 value={values.whatNot}
-                onChange={(e) => update('whatNot', e.target.value)}
+                onChange={(v) => update('whatNot', v)}
+                placeholder="exclude titles…"
                 onKeyDown={handleKeyDown}
               />
             </FilterRow>
@@ -220,22 +216,18 @@ export function FilterBuilder({
           {/* Where / Not */}
           <div className="grid grid-cols-2 gap-2">
             <FilterRow label="Where" labelClass="text-text-faint">
-              <input
-                type="text"
-                className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
-                placeholder="city, state, remote…"
+              <TagInput
                 value={values.where}
-                onChange={(e) => update('where', e.target.value)}
+                onChange={(v) => update('where', v)}
+                placeholder="city, state, remote…"
                 onKeyDown={handleKeyDown}
               />
             </FilterRow>
             <FilterRow label="Not" labelClass="text-text-faint">
-              <input
-                type="text"
-                className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
-                placeholder="exclude locations…"
+              <TagInput
                 value={values.whereNot}
-                onChange={(e) => update('whereNot', e.target.value)}
+                onChange={(v) => update('whereNot', v)}
+                placeholder="exclude locations…"
                 onKeyDown={handleKeyDown}
               />
             </FilterRow>
@@ -252,12 +244,10 @@ export function FilterBuilder({
               />
             </FilterRow>
             <FilterRow label="Not" labelClass="text-text-faint" onBrowse={onBrowse ? () => onBrowse('company', 'exclude') : undefined}>
-              <input
-                type="text"
-                className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
-                placeholder="exclude companies…"
+              <TagInput
                 value={values.whoNot}
-                onChange={(e) => update('whoNot', e.target.value)}
+                onChange={(v) => update('whoNot', v)}
+                placeholder="exclude companies…"
                 onKeyDown={handleKeyDown}
               />
             </FilterRow>
@@ -310,22 +300,18 @@ export function FilterBuilder({
           {/* Skills / Dept — legacy lines 1048-1063 */}
           <div className="grid grid-cols-2 gap-2">
             <FilterRow label="Skills" onBrowse={onBrowse ? () => onBrowse('skills', 'include') : undefined}>
-              <input
-                type="text"
-                className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
-                placeholder="python, react, sql…"
+              <TagInput
                 value={values.skills}
-                onChange={(e) => update('skills', e.target.value)}
+                onChange={(v) => update('skills', v)}
+                placeholder="python, react, sql…"
                 onKeyDown={handleKeyDown}
               />
             </FilterRow>
             <FilterRow label="Dept" onBrowse={onBrowse ? () => onBrowse('dept', 'include') : undefined}>
-              <input
-                type="text"
-                className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
-                placeholder="engineering, marketing, sales…"
+              <TagInput
                 value={values.dept}
-                onChange={(e) => update('dept', e.target.value)}
+                onChange={(v) => update('dept', v)}
+                placeholder="engineering, marketing, sales…"
                 onKeyDown={handleKeyDown}
               />
             </FilterRow>
@@ -334,22 +320,18 @@ export function FilterBuilder({
           {/* Level / JD Contains — legacy lines 1064-1080 */}
           <div className="grid grid-cols-2 gap-2">
             <FilterRow label="Level" onBrowse={onBrowse ? () => onBrowse('level', 'include') : undefined}>
-              <input
-                type="text"
-                className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
-                placeholder="senior, junior, executive…"
+              <TagInput
                 value={values.level}
-                onChange={(e) => update('level', e.target.value)}
+                onChange={(v) => update('level', v)}
+                placeholder="senior, junior, executive…"
                 onKeyDown={handleKeyDown}
               />
             </FilterRow>
             <FilterRow label="JD Contains" onBrowse={onBrowse ? () => onBrowse('jd', 'include') : undefined}>
-              <input
-                type="text"
-                className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
-                placeholder="search descriptions… e.g. 'series B'"
+              <TagInput
                 value={values.jd}
-                onChange={(e) => update('jd', e.target.value)}
+                onChange={(v) => update('jd', v)}
+                placeholder="search descriptions… e.g. 'series B'"
                 onKeyDown={handleKeyDown}
               />
             </FilterRow>
