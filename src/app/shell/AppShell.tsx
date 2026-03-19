@@ -224,7 +224,7 @@ export function AppShell() {
             <div className="w-[30px] h-[30px] rounded-lg bg-white flex items-center justify-center text-[var(--nav-bg)] font-extrabold text-sm flex-shrink-0">B</div>
             <div className="max-md:hidden">
               <div className="font-bold text-[16px] text-white leading-tight nav-brand-title">Brilliant Jobs</div>
-              <div className="text-[11px] text-[var(--nav-text)]">Dashboard <span className="text-[9px]">v10.92</span></div>
+              <div className="text-[11px] text-[var(--nav-text)]">Dashboard <span className="text-[9px]">v10.94</span></div>
             </div>
           </div>
         </div>

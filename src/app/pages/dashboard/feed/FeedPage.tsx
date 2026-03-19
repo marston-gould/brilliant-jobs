@@ -234,8 +234,7 @@ export function FeedPage() {
     }
   }, [actions]);
 
-  const handleSaveFilter = useCallback(async () => {
-    const name = prompt('Name this filter:');
+  const handleSaveFilter = useCallback(async (name: string) => {
     if (!name) return;
     try {
       const { supabase, getUser } = await import('@app/lib/supabase');
@@ -259,11 +258,13 @@ export function FeedPage() {
       const updated = await loadSavedFiltersFromSupabase();
       setSavedSearchItems(updated);
       (window as any).__bjToast?.(`Saved "${name}"`, 'success');
+      // Search immediately after saving — legacy behavior
+      actions.search(0);
     } catch (e) {
       console.error('Save filter failed:', e);
       (window as any).__bjToast?.('Failed to save search', 'error');
     }
-  }, [filterValues]);
+  }, [filterValues, savedSearchItems.length, actions]);
 
   const handleAiGenerate = useCallback(async () => {
     (window as any).__bjToast?.('Analyzing your resume…', 'info');

@@ -89,7 +89,7 @@ interface FilterBuilderProps {
   values: FilterValues;
   onChange: (values: FilterValues) => void;
   onSearch: () => void;
-  onSaveFilter: () => void;
+  onSaveFilter: (name: string) => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
   /** REM-S13: Browse button callback. Dimension is 'title'|'company'|'location'|'skill'|'dept'|'level'|'jd_keyword'. */
@@ -201,6 +201,7 @@ export function FilterBuilder({
                 placeholder="title, keyword, dept…"
                 onKeyDown={handleKeyDown}
                 aria-label="Job title or keyword"
+                colorScheme="accent"
               />
             </FilterRow>
             <FilterRow label="Not" labelClass="text-text-faint" onBrowse={onBrowse ? () => onBrowse('title', 'exclude') : undefined}>
@@ -209,6 +210,7 @@ export function FilterBuilder({
                 onChange={(v) => update('whatNot', v)}
                 placeholder="exclude titles…"
                 onKeyDown={handleKeyDown}
+                colorScheme="not"
               />
             </FilterRow>
           </div>
@@ -221,6 +223,7 @@ export function FilterBuilder({
                 onChange={(v) => update('where', v)}
                 placeholder="city, state, remote…"
                 onKeyDown={handleKeyDown}
+                colorScheme="location"
               />
             </FilterRow>
             <FilterRow label="Not" labelClass="text-text-faint">
@@ -229,6 +232,7 @@ export function FilterBuilder({
                 onChange={(v) => update('whereNot', v)}
                 placeholder="exclude locations…"
                 onKeyDown={handleKeyDown}
+                colorScheme="not"
               />
             </FilterRow>
           </div>
@@ -249,11 +253,12 @@ export function FilterBuilder({
                 onChange={(v) => update('whoNot', v)}
                 placeholder="exclude companies…"
                 onKeyDown={handleKeyDown}
+                colorScheme="not"
               />
             </FilterRow>
           </div>
 
-          {/* When */}
+          {/* When / (empty) */}
           <div className="grid grid-cols-2 gap-2">
             <FilterRow label="When" labelClass="text-text-faint">
               <input
@@ -265,14 +270,14 @@ export function FilterBuilder({
                 onKeyDown={handleKeyDown}
               />
             </FilterRow>
-            <div /> {/* Empty space for alignment */}
+            <div />
           </div>
 
-          {/* How Much */}
-          <FilterRow label="HOW MUCH" labelClass="text-text-faint">
-            <div className="flex items-center gap-2">
-              <div className="flex-1 flex items-center bg-bg-input border border-border rounded-lg px-3 py-2 min-h-[44px] focus-within:border-accent transition-colors">
-                <span className="text-[14px] font-semibold text-text-faint mr-1 flex-shrink-0">$</span>
+          {/* How Much — Min on left (positive column), Max on right (NOT column) */}
+          <div className="grid grid-cols-2 gap-2">
+            <FilterRow label="HOW MUCH" labelClass="text-text-faint">
+              <div className="flex items-center bg-bg-input border border-border rounded-lg px-2.5 py-2 focus-within:border-accent transition-colors">
+                <span className="text-[13px] text-text-faint mr-1 flex-shrink-0">$</span>
                 <input
                   type="text"
                   className="flex-1 min-w-0 bg-transparent border-none outline-none text-[13px] text-text placeholder:text-text-faint"
@@ -282,9 +287,10 @@ export function FilterBuilder({
                   onKeyDown={handleKeyDown}
                 />
               </div>
-              <span className="text-[16px] text-text-faint flex-shrink-0">–</span>
-              <div className="flex-1 flex items-center bg-bg-input border border-border rounded-lg px-3 py-2 min-h-[44px] focus-within:border-accent transition-colors">
-                <span className="text-[14px] font-semibold text-text-faint mr-1 flex-shrink-0">$</span>
+            </FilterRow>
+            <FilterRow label="–" labelClass="text-text-faint text-center">
+              <div className="flex items-center bg-bg-input border border-border rounded-lg px-2.5 py-2 focus-within:border-accent transition-colors">
+                <span className="text-[13px] text-text-faint mr-1 flex-shrink-0">$</span>
                 <input
                   type="text"
                   className="flex-1 min-w-0 bg-transparent border-none outline-none text-[13px] text-text placeholder:text-text-faint"
@@ -294,8 +300,8 @@ export function FilterBuilder({
                   onKeyDown={handleKeyDown}
                 />
               </div>
-            </div>
-          </FilterRow>
+            </FilterRow>
+          </div>
 
           {/* Skills / Dept — legacy lines 1048-1063 */}
           <div className="grid grid-cols-2 gap-2">
@@ -305,6 +311,7 @@ export function FilterBuilder({
                 onChange={(v) => update('skills', v)}
                 placeholder="python, react, sql…"
                 onKeyDown={handleKeyDown}
+                colorScheme="purple"
               />
             </FilterRow>
             <FilterRow label="Dept" onBrowse={onBrowse ? () => onBrowse('dept', 'include') : undefined}>
@@ -313,6 +320,7 @@ export function FilterBuilder({
                 onChange={(v) => update('dept', v)}
                 placeholder="engineering, marketing, sales…"
                 onKeyDown={handleKeyDown}
+                colorScheme="who"
               />
             </FilterRow>
           </div>
@@ -325,6 +333,7 @@ export function FilterBuilder({
                 onChange={(v) => update('level', v)}
                 placeholder="senior, junior, executive…"
                 onKeyDown={handleKeyDown}
+                colorScheme="when"
               />
             </FilterRow>
             <FilterRow label="JD Contains" onBrowse={onBrowse ? () => onBrowse('jd', 'include') : undefined}>
@@ -333,6 +342,7 @@ export function FilterBuilder({
                 onChange={(v) => update('jd', v)}
                 placeholder="search descriptions… e.g. 'series B'"
                 onKeyDown={handleKeyDown}
+                colorScheme="pay"
               />
             </FilterRow>
           </div>
@@ -359,14 +369,43 @@ export function FilterBuilder({
             </label>
           </div>
 
-          {/* Action buttons */}
-          <div className="flex items-center gap-2 pl-12 pt-1">
+          {/* Action row — legacy save-filter-row: inline name + Save, Search separate */}
+          <div className="flex items-center gap-3 pl-12 pt-1">
             <Button variant="primary" size="sm" onClick={onSearch}>
               Search
             </Button>
-            <Button variant="ghost" size="sm" onClick={onSaveFilter}>
-              Save Filter
-            </Button>
+            <div className="flex items-center gap-1.5 border-l border-border pl-3">
+              <span className="text-[10px] font-semibold text-text-faint uppercase tracking-wide whitespace-nowrap">Save:</span>
+              <input
+                type="text"
+                className="px-2 py-1 text-[12px] bg-bg-input border border-border rounded-md text-text placeholder:text-text-faint focus:border-accent focus:outline-none w-[140px]"
+                placeholder="name this filter…"
+                maxLength={40}
+                id="save-filter-inline-name"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const input = e.currentTarget;
+                    if (input.value.trim()) {
+                      onSaveFilter(input.value.trim());
+                      input.value = '';
+                    }
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="px-2 py-1 text-[11px] font-semibold text-accent hover:bg-accent/10 rounded-md transition-colors"
+                onClick={() => {
+                  const input = document.getElementById('save-filter-inline-name') as HTMLInputElement;
+                  if (input?.value.trim()) {
+                    onSaveFilter(input.value.trim());
+                    input.value = '';
+                  }
+                }}
+              >
+                Save
+              </button>
+            </div>
           </div>
         </div>
       )}

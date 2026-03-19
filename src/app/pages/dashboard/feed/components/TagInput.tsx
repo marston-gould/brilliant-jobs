@@ -15,7 +15,19 @@ interface TagInputProps {
   placeholder?: string;
   onKeyDown?: (e: KeyboardEvent) => void;
   'aria-label'?: string;
+  /** Color scheme for pills — matches legacy qb-pill variants */
+  colorScheme?: 'accent' | 'not' | 'location' | 'who' | 'when' | 'pay' | 'purple';
 }
+
+const PILL_COLORS: Record<string, { bg: string; text: string; border: string; remove: string; orText: string }> = {
+  accent:   { bg: 'bg-[hsla(217,100%,62%,0.1)]', text: 'text-accent',       border: 'border-accent/20',                  remove: 'text-accent/50 hover:text-accent',         orText: 'text-[var(--purple)]' },
+  not:      { bg: 'bg-[hsla(215,20%,65%,0.08)]',  text: 'text-text-faint',   border: 'border-[hsla(215,20%,65%,0.25)]',   remove: 'text-text-faint/50 hover:text-red',         orText: 'text-text-faint' },
+  location: { bg: 'bg-[hsla(38,92%,50%,0.08)]',   text: 'text-[var(--warm)]', border: 'border-[hsla(38,92%,50%,0.2)]',    remove: 'text-[hsla(38,92%,50%,0.4)] hover:text-red', orText: 'text-[var(--warm)]' },
+  who:      { bg: 'bg-[hsla(330,81%,60%,0.08)]',  text: 'text-[var(--pink)]', border: 'border-[hsla(330,81%,60%,0.2)]',   remove: 'text-[hsla(330,81%,60%,0.4)] hover:text-red', orText: 'text-[var(--pink)]' },
+  when:     { bg: 'bg-[hsla(271,91%,65%,0.08)]',  text: 'text-[var(--purple)]', border: 'border-[hsla(271,91%,65%,0.2)]', remove: 'text-[hsla(271,91%,65%,0.4)] hover:text-red', orText: 'text-[var(--purple)]' },
+  pay:      { bg: 'bg-[hsla(142,71%,45%,0.08)]',  text: 'text-[var(--green)]', border: 'border-[hsla(142,71%,45%,0.2)]', remove: 'text-[hsla(142,71%,45%,0.4)] hover:text-red', orText: 'text-[var(--green)]' },
+  purple:   { bg: 'bg-[hsla(258,90%,66%,0.08)]',  text: 'text-[var(--purple)]', border: 'border-[hsla(258,90%,66%,0.2)]', remove: 'text-[hsla(258,90%,66%,0.4)] hover:text-red', orText: 'text-[var(--purple)]' },
+};
 
 interface Tag {
   text: string;
@@ -34,10 +46,11 @@ function tagsToString(tags: Tag[]): string {
   return tags.map(t => t.isOr ? `or ${t.text}` : t.text).join(', ');
 }
 
-export function TagInput({ value, onChange, placeholder, onKeyDown, 'aria-label': ariaLabel }: TagInputProps) {
+export function TagInput({ value, onChange, placeholder, onKeyDown, 'aria-label': ariaLabel, colorScheme = 'accent' }: TagInputProps) {
   const [inputText, setInputText] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const tags = parseTags(value);
+  const c = PILL_COLORS[colorScheme] || PILL_COLORS.accent;
 
   const addTag = useCallback((raw: string) => {
     const text = raw.trim();
@@ -86,14 +99,14 @@ export function TagInput({ value, onChange, placeholder, onKeyDown, 'aria-label'
       {tags.map((tag, i) => (
         <span key={`${i}-${tag.text}`} className="inline-flex items-center gap-0.5">
           {tag.isOr && (
-            <span className="text-[9px] font-bold text-accent uppercase mr-0.5">or</span>
+            <span className={`text-[9px] font-bold uppercase mr-0.5 ${c.orText}`}>or</span>
           )}
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[12px] font-medium bg-accent/10 text-accent border border-accent/20">
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[12px] font-medium ${c.bg} ${c.text} border ${c.border}`}>
             {tag.text}
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); removeTag(i); }}
-              className="text-accent/50 hover:text-accent ml-0.5 text-[14px] leading-none"
+              className={`ml-0.5 text-[14px] leading-none ${c.remove}`}
               aria-label={`Remove ${tag.text}`}
             >
               ×
