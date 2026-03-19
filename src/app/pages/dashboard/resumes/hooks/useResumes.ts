@@ -144,39 +144,34 @@ export function useResumes(): [ResumesState, ReturnType<typeof buildActions>] {
       let allResumes: Resume[] = [];
       let fromSupabase = false;
 
-      // Try Supabase first
+      // Try Supabase first — resumes live in resume_archive table
       try {
         const user = await getUser();
         if (user) {
           const { data } = await supabase
-            .from('resumes')
+            .from('resume_archive')
             .select('*')
             .eq('user_id', user.id)
-            .is('deleted_at', null)
+            .eq('is_active', true)
             .order('created_at', { ascending: false });
 
           if (data && data.length > 0) {
-            // Deduplicate by file_name — keep the newest
-            const seen = new Map<string, typeof data[0]>();
-            for (const row of data) {
-              const key = row.file_name || row.name || row.id;
-              if (!seen.has(key)) seen.set(key, row);
-            }
-            allResumes = Array.from(seen.values()).map((r: any) => ({
-              id: r.id,
-              supabaseId: r.id,
-              name: r.name || r.file_name || 'Untitled',
-              fileName: r.file_name,
-              archived: false,
-              textStatus: 'ready' as const,
-              storagePath: r.file_path,
-              size: r.file_size ? parseInt(r.file_size, 10) : 0,
+            allResumes = data.map((r: any) => ({
+              id: r.resume_id,
+              supabaseId: r.resume_id,
+              name: r.display_name || 'Untitled',
+              fileName: r.display_name,
+              archived: r.is_archived || false,
+              textStatus: r.extracted_text ? 'ready' as const : 'pending' as const,
+              extractedText: r.extracted_text || undefined,
+              storagePath: r.storage_path,
+              size: r.file_size_bytes || 0,
               uploadedAt: r.created_at,
-              source: (r.source || 'upload') as 'upload',
-              level: r.level_label || undefined,
-              levelLabel: r.level_label || undefined,
-              needsUpload: r.needs_upload || false,
-              filterIds: [],
+              source: (r.metadata_snapshot?.source || 'upload') as 'upload',
+              level: r.metadata_snapshot?.level_label || undefined,
+              levelLabel: r.metadata_snapshot?.level_label || undefined,
+              filterIds: r.metadata_snapshot?.filterIds || [],
+              needsUpload: false,
             }));
             fromSupabase = true;
           }

@@ -94,14 +94,15 @@ async function loadSavedFiltersFromSupabase(): Promise<SavedSearchItem[]> {
     const { supabase, getUser } = await import('@app/lib/supabase');
     const user = await getUser();
     if (!user) return getLegacySavedSearchItems();
-    const { data } = await supabase.from('saved_filters').select('*').eq('user_id', user.id).order('created_at');
+    // Saved searches live in user_filters table, not saved_filters
+    const { data } = await supabase.from('user_filters').select('*').eq('user_id', user.id).order('sort_order', { ascending: true });
     if (!data?.length) return getLegacySavedSearchItems();
     return data.map((f: any, i: number) => ({
       id: f.id,
       name: f.name || `Search ${i + 1}`,
-      color: FILTER_COLORS[i % FILTER_COLORS.length] || '#3b82f6',
+      color: f.filter_data?._filterColor || FILTER_COLORS[i % FILTER_COLORS.length] || '#3b82f6',
       checked: true,
-      filterNum: String(i + 1),
+      filterNum: f.filter_data?._filterNum || String(i + 1),
     }));
   } catch { return getLegacySavedSearchItems(); }
 }
@@ -180,9 +181,19 @@ export function FeedPage() {
     // Load saved filter config from Supabase and apply to filter builder
     try {
       const { supabase } = await import('@app/lib/supabase');
-      const { data } = await supabase.from('saved_filters').select('config').eq('id', id).single();
-      if (data?.config) {
-        setFilterValues(prev => ({ ...prev, ...data.config }));
+      const { data } = await supabase.from('user_filters').select('filter_data').eq('id', id).single();
+      if (data?.filter_data) {
+        // Map user_filters pill format to filter builder values
+        const fd = data.filter_data;
+        const mapped: Record<string, any> = {};
+        if (fd.whatPills?.length) mapped.what = fd.whatPills.map((p: any) => p.values?.[0]).filter(Boolean).join(', ');
+        if (fd.whatNotPills?.length) mapped.whatNot = fd.whatNotPills.map((p: any) => p.values?.[0]).filter(Boolean).join(', ');
+        if (fd.wherePills?.length) mapped.where = fd.wherePills.map((p: any) => p.values?.[0]).filter(Boolean).join(', ');
+        if (fd.payPills?.length) { mapped.payMin = fd.payPills[0]?.min || ''; mapped.payMax = fd.payPills[0]?.max || ''; }
+        if (fd.levelPills?.length) mapped.level = fd.levelPills.map((p: any) => p.values?.[0]).filter(Boolean).join(', ');
+        if (fd.whenPills?.length) mapped.when = fd.whenPills[0]?.values?.[0] || '';
+        if (fd.includeRemote) mapped.remote = true;
+        setFilterValues(prev => ({ ...prev, ...mapped }));
       }
     } catch {}
     actions.search(0);
@@ -205,7 +216,7 @@ export function FeedPage() {
     try {
       const { supabase } = await import('@app/lib/supabase');
       for (const id of ids) {
-        await supabase.from('saved_filters').delete().eq('id', id);
+        await supabase.from('user_filters').delete().eq('id', id);
       }
     } catch {}
   }, []);
@@ -234,10 +245,11 @@ export function FeedPage() {
         (window as any).__bjToast?.('Please sign in to save searches', 'error');
         return;
       }
-      const { error } = await supabase.from('saved_filters').insert({
+      const { error } = await supabase.from('user_filters').insert({
         user_id: user.id,
         name,
-        config: filterValues,
+        filter_data: filterValues,
+        sort_order: savedSearchItems.length,
       });
       if (error) {
         console.error('Save filter DB error:', error);

@@ -80,18 +80,18 @@ export function useTuning(): [TuningState, {
       if (!user) { dispatch({ type: 'LOADED', data: { filters: [], levels: [], hiddenJobCount: 0, statusDirty: false } }); return; }
       const sb = supabase;
 
-      // Load saved filters from Supabase
-      const { data: sfData } = await sb.from('saved_filters').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+      // Load saved filters from user_filters table
+      const { data: sfData } = await sb.from('user_filters').select('*').eq('user_id', user.id).order('sort_order', { ascending: true });
       const filters: TuningFilter[] = (sfData || []).map((f: any, i: number) => ({
         name: f.name || `Filter ${i + 1}`,
         idx: i,
-        color: f.config?.color || ['#6366f1', '#f59e0b', '#ec4899', '#10b981', '#8b5cf6'][i % 5],
-        keywords: f.config?.what ? f.config.what.split(',').map((k: string) => k.trim()).filter(Boolean) : [],
-        excludedTerms: f.config?.whatNot ? f.config.whatNot.split(',').map((k: string) => k.trim()).filter(Boolean) : [],
-        location: f.config?.where || '',
+        color: f.filter_data?._filterColor || ['#6366f1', '#f59e0b', '#ec4899', '#10b981', '#8b5cf6'][i % 5],
+        keywords: f.filter_data?.whatPills ? f.filter_data.whatPills.map((p: any) => p.values?.[0]).filter(Boolean) : [],
+        excludedTerms: f.filter_data?.whatNotPills ? f.filter_data.whatNotPills.map((p: any) => p.values?.[0]).filter(Boolean) : [],
+        location: f.filter_data?.wherePills ? f.filter_data.wherePills.map((p: any) => p.values?.[0]).filter(Boolean).join(', ') : '',
         radius: 0,
-        minSalary: f.config?.payMin ? parseInt(f.config.payMin) : 0,
-        levels: [],
+        minSalary: f.filter_data?.payPills?.[0]?.min ? parseInt(f.filter_data.payPills[0].min) : 0,
+        levels: f.filter_data?.levelPills ? f.filter_data.levelPills.map((p: any) => p.values?.[0]).filter(Boolean) : [],
         collapsed: false,
       }));
 
