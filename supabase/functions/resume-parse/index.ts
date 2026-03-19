@@ -19,6 +19,7 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import { JSZip } from "https://deno.land/x/jszip@0.11.0/mod.ts";
 import { corsHeaders } from '../_shared/cors.ts';
 import { anthropicFetch } from '../_shared/anthropic.ts';
 
@@ -72,97 +73,45 @@ function detectAtsWarnings(rawText: string): string[] {
 // ─── Text extraction from DOCX (server-side, no LibreOffice available) ───────
 
 async function extractTextFromDocx(bytes: Uint8Array): Promise<string | null> {
-  // DOCX is a ZIP containing word/document.xml. We must decompress it first.
+  // DOCX is a ZIP containing word/document.xml. Use JSZip to decompress.
   try {
-    // Find the local file entries in the ZIP
-    const entries = findZipEntries(bytes);
-    const docEntry = entries.find(e => e.name === 'word/document.xml');
-    if (!docEntry) return null;
-
-    // Decompress the entry
-    let xmlBytes: Uint8Array;
-    if (docEntry.compressionMethod === 0) {
-      // STORED — no compression
-      xmlBytes = bytes.slice(docEntry.dataOffset, docEntry.dataOffset + docEntry.compressedSize);
-    } else if (docEntry.compressionMethod === 8) {
-      // DEFLATE — use DecompressionStream
-      const compressed = bytes.slice(docEntry.dataOffset, docEntry.dataOffset + docEntry.compressedSize);
-      const ds = new DecompressionStream('deflate-raw');
-      const writer = ds.writable.getWriter();
-      writer.write(compressed);
-      writer.close();
-      const reader = ds.readable.getReader();
-      const chunks: Uint8Array[] = [];
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-      }
-      const totalLen = chunks.reduce((s, c) => s + c.length, 0);
-      xmlBytes = new Uint8Array(totalLen);
-      let offset = 0;
-      for (const chunk of chunks) {
-        xmlBytes.set(chunk, offset);
-        offset += chunk.length;
-      }
-    } else {
-      return null; // unsupported compression
+    const zip = new JSZip();
+    await zip.loadAsync(bytes);
+    const docFile = zip.file('word/document.xml');
+    if (!docFile) {
+      console.error('[resume-parse] No word/document.xml found in DOCX');
+      return null;
     }
-
-    const xmlStr = new TextDecoder('utf-8').decode(xmlBytes);
+    const xmlStr = await docFile.async('string');
 
     // Extract text from w:t elements within w:body
     const bodyMatch = xmlStr.match(/<w:body>([\s\S]*?)<\/w:body>/);
-    if (!bodyMatch) return null;
-
-    const body = bodyMatch[1];
-    // Extract all w:t text content
-    const textParts: string[] = [];
-    const tRegex = /<w:t[^>]*>([^<]*)<\/w:t>/g;
-    let m;
-    while ((m = tRegex.exec(body)) !== null) {
-      if (m[1]) textParts.push(m[1]);
+    if (!bodyMatch) {
+      console.error('[resume-parse] No w:body found in document.xml');
+      return null;
     }
-    // Join with paragraph breaks at w:p boundaries
-    const fullXml = body;
+
+    // Parse paragraphs: each w:p contains w:t text nodes
     const paragraphs: string[] = [];
     const pRegex = /<w:p[ >][\s\S]*?<\/w:p>/g;
-    while ((m = pRegex.exec(fullXml)) !== null) {
+    let m;
+    while ((m = pRegex.exec(bodyMatch[1])) !== null) {
       const pText: string[] = [];
-      const innerT = /<w:t[^>]*>([^<]*)<\/w:t>/g;
+      const tRegex = /<w:t[^>]*>([^<]*)<\/w:t>/g;
       let tm;
-      while ((tm = innerT.exec(m[0])) !== null) {
+      while ((tm = tRegex.exec(m[0])) !== null) {
         if (tm[1]) pText.push(tm[1]);
       }
       if (pText.length) paragraphs.push(pText.join(''));
     }
 
     const text = paragraphs.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+    console.log(`[resume-parse] Extracted ${text.length} chars from DOCX`);
     return text.length > 50 ? text : null;
   } catch (e) {
     console.error('[resume-parse] extractTextFromDocx error:', e);
     return null;
   }
-}
-
-// Minimal ZIP local file header parser
-function findZipEntries(data: Uint8Array): Array<{ name: string; compressionMethod: number; compressedSize: number; dataOffset: number }> {
-  const entries: Array<{ name: string; compressionMethod: number; compressedSize: number; dataOffset: number }> = [];
-  let offset = 0;
-  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
-  while (offset < data.length - 30) {
-    const sig = view.getUint32(offset, true);
-    if (sig !== 0x04034b50) break; // PK\x03\x04
-    const compressionMethod = view.getUint16(offset + 8, true);
-    const compressedSize = view.getUint32(offset + 18, true);
-    const nameLen = view.getUint16(offset + 26, true);
-    const extraLen = view.getUint16(offset + 28, true);
-    const name = new TextDecoder().decode(data.slice(offset + 30, offset + 30 + nameLen));
-    const dataOffset = offset + 30 + nameLen + extraLen;
-    entries.push({ name, compressionMethod, compressedSize, dataOffset });
-    offset = dataOffset + compressedSize;
-  }
-  return entries;
 }
 
 // ─── Anthropic parse prompt ───────────────────────────────────────────────────
