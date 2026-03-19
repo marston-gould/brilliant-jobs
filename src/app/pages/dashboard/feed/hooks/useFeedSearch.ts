@@ -373,9 +373,7 @@ function buildFilterQuery(
       const term = v.trim().replace(/^nor\s+/i, '');
       if (term) {
         query = query.not('title', 'ilike', `%${term}%`);
-        if (contentSearchEnabled) {
-          query = query.or(`not.content_tsv.wfts(english).${term},content_tsv.is.null`);
-        }
+        // content_tsv negation removed — PostgREST can't negate inside or()
       }
     }
   }
@@ -386,9 +384,7 @@ function buildFilterQuery(
     for (const v of pill.values) {
       if (v.trim()) {
         query = query.not('title', 'ilike', `%${v.trim()}%`);
-        if (contentSearchEnabled) {
-          query = query.or(`not.content_tsv.wfts(english).${v.trim()},content_tsv.is.null`);
-        }
+        // content_tsv negation removed — PostgREST can't negate inside or()
       }
     }
   }
