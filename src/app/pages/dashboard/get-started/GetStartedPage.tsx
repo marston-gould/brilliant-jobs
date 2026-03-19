@@ -186,12 +186,27 @@ export default function GetStartedPage() {
       }
       toast('Step 3/4: Generating search filter from your experience…', 'info');
 
-      // ── STEP 4: Generate filter from resume text ──
+      // ── STEP 3: Generate filter from resume text (direct call, bypass gateway) ──
       let filterResult: any = null;
       try {
-        filterResult = await callGateway<any>('generate-filter', {
-          resume_text: extractedText,
-        }, { timeout: 30000 });
+        const filterRes = await fetch(
+          'https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/generate-filter',
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': 'Bearer ' + token,
+              'Content-Type': 'application/json',
+              'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg',
+            },
+            body: JSON.stringify({ resume_text: extractedText }),
+          }
+        );
+        const filterData = await filterRes.json();
+        if (!filterRes.ok) {
+          toast('Filter generation failed: ' + (filterData?.error || filterRes.status), 'error');
+        } else {
+          filterResult = filterData;
+        }
         if (!filterResult?.filter_name) {
           toast('AI filter generation returned empty result', 'info');
         }
