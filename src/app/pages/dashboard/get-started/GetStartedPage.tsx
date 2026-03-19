@@ -397,10 +397,13 @@ export default function GetStartedPage() {
                     const session = await sb.auth.getSession();
                     const token = session?.data?.session?.access_token;
                     if (!token) { (window as any).__bjToast?.('Please sign in first', 'error'); return; }
-                    // Gmail-auth edge function handles all scopes via ?action=connect&scope=
+                    // Use Vercel rewrites (same path as legacy) — direct Supabase calls have CORS issues
                     const scope = svc.scope === 'gmail' ? 'gmail' : svc.scope === 'calendar' ? 'calendar' : 'drive';
+                    const apiPath = scope === 'gmail' ? '/api/auth/gmail/callback'
+                      : scope === 'calendar' ? '/api/auth/calendar/callback'
+                      : '/api/auth/drive/callback';
                     const res = await fetch(
-                      `https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/gmail-auth?action=connect&scope=${scope}`,
+                      `${apiPath}?action=connect`,
                       { headers: { 'Authorization': `Bearer ${token}` } }
                     );
                     const data = await res.json();
