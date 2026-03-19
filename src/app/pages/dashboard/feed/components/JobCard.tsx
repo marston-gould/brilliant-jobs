@@ -120,11 +120,16 @@ export function JobCard({ job, isSaved, isApplied, matchScore, levelInfo, onSave
       </div>
 
       {/* Preview JD (when toggled) */}
-      {showPreview && (job.content || job.description) && (
-        <div className="text-[11px] text-text-faint leading-relaxed line-clamp-3 pt-1 border-t border-border/50">
-          {((job.content || job.description) as string).substring(0, 300)}{((job.content || job.description) as string).length > 300 ? '…' : ''}
-        </div>
-      )}
+      {showPreview && (job.content || job.description) && (() => {
+        const raw = (job.content || job.description) as string;
+        const text = raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        if (!text) return null;
+        return (
+          <div className="text-[11px] text-text-faint leading-relaxed line-clamp-3 pt-1 border-t border-border/50">
+            {text.substring(0, 300)}{text.length > 300 ? '…' : ''}
+          </div>
+        );
+      })()}
     </div>
   );
 }
