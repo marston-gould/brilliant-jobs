@@ -103,17 +103,25 @@ export default function GetStartedPage() {
     })();
   }, []);
 
-  // Check extension
+  // Check extension — looks for recent scan activity in profiles table (same as legacy)
   useEffect(() => {
-    const check = () => {
-      const w = window as Record<string, unknown>;
-      if (w._bjExtReady || w.BJ_EXT_VERSION) {
-        setExtStatus('connected');
-      }
-    };
-    check();
-    window.addEventListener('bj:ext-ready', check);
-    return () => window.removeEventListener('bj:ext-ready', check);
+    (async () => {
+      try {
+        const { supabase: sb, getUser } = await import('@app/lib/supabase');
+        const user = await getUser();
+        if (!user) return;
+        const { data: profile } = await sb.from('profiles')
+          .select('last_scan_at, scanner_running, extension_version')
+          .eq('id', user.id)
+          .single();
+        if (profile?.last_scan_at) {
+          const hoursSince = (Date.now() - new Date(profile.last_scan_at).getTime()) / 3600000;
+          if (profile.scanner_running || hoursSince < 12) {
+            setExtStatus('connected');
+          }
+        }
+      } catch {}
+    })();
   }, []);
 
   // Load stats
