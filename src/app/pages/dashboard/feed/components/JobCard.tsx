@@ -120,9 +120,9 @@ export function JobCard({ job, isSaved, isApplied, matchScore, levelInfo, onSave
       </div>
 
       {/* Preview JD (when toggled) */}
-      {showPreview && job.description && (
+      {showPreview && (job.content || job.description) && (
         <div className="text-[11px] text-text-faint leading-relaxed line-clamp-3 pt-1 border-t border-border/50">
-          {job.description.substring(0, 300)}{job.description.length > 300 ? '…' : ''}
+          {((job.content || job.description) as string).substring(0, 300)}{((job.content || job.description) as string).length > 300 ? '…' : ''}
         </div>
       )}
     </div>
