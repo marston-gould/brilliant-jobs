@@ -103,21 +103,53 @@ export default function GetStartedPage() {
       const user = await getUser();
       if (!user) { (window as any).__bjToast?.('Please sign in first', 'error'); return; }
 
-      // 1. Call resume-parse (multipart) — extracts text, stores file, inserts into resumes table
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('label', file.name.replace(/\.[^.]+$/, ''));
-
       const session = await sb.auth.getSession();
       const token = session?.data?.session?.access_token;
       if (!token) { (window as any).__bjToast?.('Auth session expired — please refresh', 'error'); return; }
 
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'docx';
+      const displayName = file.name.replace(/\.[^.]+$/, '');
+
+      // 1. Extract text CLIENT-SIDE (bypass broken server-side DOCX parsing)
+      let extractedText = '';
+      const arrayBuf = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuf);
+
+      if (fileExt === 'docx') {
+        const { unzipSync } = await import('fflate');
+        const unzipped = unzipSync(bytes);
+        const docXml = unzipped['word/document.xml'];
+        if (docXml) {
+          const xmlStr = new TextDecoder('utf-8').decode(docXml);
+          const bodyMatch = xmlStr.match(/<w:body>([\s\S]*)<\/w:body>/);
+          if (bodyMatch) {
+            const paragraphs: string[] = [];
+            const pRegex = /<w:p[ >][\s\S]*?<\/w:p>/g;
+            let m;
+            while ((m = pRegex.exec(bodyMatch[1])) !== null) {
+              const pText: string[] = [];
+              const tRegex = /<w:t[^>]*>([^<]*)<\/w:t>/g;
+              let tm;
+              while ((tm = tRegex.exec(m[0])) !== null) { if (tm[1]) pText.push(tm[1]); }
+              if (pText.length) paragraphs.push(pText.join(''));
+            }
+            extractedText = paragraphs.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+          }
+        }
+      }
+
+      if (!extractedText || extractedText.length < 100) {
+        (window as any).__bjToast?.('Could not read resume text — try a .docx with standard formatting', 'error');
+        return;
+      }
+
+      // 2. Call resume-parse with paste_text (text already extracted, skip server DOCX parsing)
       const parseRes = await fetch(
         `https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/resume-parse`,
         {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` },
-          body: formData,
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ paste_text: extractedText, label: displayName }),
         }
       );
       const parseData = await parseRes.json();
@@ -127,26 +159,11 @@ export default function GetStartedPage() {
       }
       const { resume_id: resumeId, parsed_json: parsedJson } = parseData;
 
-      // 2. Read back the resumes row to get file_path and extracted text
-      const { data: resumeRow } = await sb.from('resumes').select('*').eq('id', resumeId).single();
-      const filePath = resumeRow?.file_path || '';
-      const fileExt = file.name.split('.').pop() || 'docx';
-
-      // 3. Get extracted text — check if resume-parse stored it, or reconstruct from parsed_json
-      let extractedText = '';
-      // resume-parse doesn't store extracted_text in resumes table, but we need it
-      // The parsed_json has the structured data; for generate-filter we need raw text
-      // Re-read from resume_texts if available, otherwise use parsedJson summary
-      const { data: textRow } = await sb.from('resume_texts')
-        .select('extracted_text')
-        .eq('resume_id', resumeId)
-        .maybeSingle();
-      if (textRow?.extracted_text) {
-        extractedText = textRow.extracted_text;
-      }
+      // 3. Upload the actual file to storage for later download
+      const storagePath = `${user.id}/${Date.now()}_${file.name}`;
+      await sb.storage.from('resumes').upload(storagePath, file);
 
       // 4. Insert into resume_archive (where Resumes page reads from)
-      const displayName = file.name.replace(/\.[^.]+$/, '');
       const { data: archiveRow, error: archiveErr } = await sb.from('resume_archive').insert({
         user_id: user.id,
         display_name: displayName,
@@ -154,7 +171,7 @@ export default function GetStartedPage() {
         file_hash: `${Date.now()}_${file.size}`,
         file_size_bytes: file.size,
         file_type: fileExt,
-        storage_path: filePath,
+        storage_path: storagePath,
         is_active: true,
         is_archived: false,
         metadata_snapshot: { source: 'upload', parsed_json: parsedJson },
