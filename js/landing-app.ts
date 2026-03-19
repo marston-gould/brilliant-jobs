@@ -438,9 +438,9 @@ document.addEventListener('DOMContentLoaded', function() {
       const CACHE_TTL = 60 * 60 * 1000;
       function applyStats(stats) {
         if (stats.jobs != null) {
-          document.getElementById('lp-active-jobs').textContent = (Math.floor(stats.jobs / 1000) * 1000).toLocaleString() + '+';
+          document.getElementById('lp-active-jobs').textContent = (Math.ceil(stats.jobs / 1000) * 1000).toLocaleString() + '+';
           const heroJobs = document.getElementById('lp-hero-jobs');
-          if (heroJobs) heroJobs.textContent = (Math.floor(stats.jobs / 1000) * 1000).toLocaleString() + '+';
+          if (heroJobs) heroJobs.textContent = (Math.ceil(stats.jobs / 1000) * 1000).toLocaleString() + '+';
         }
         // "companies hiring now" = distinct companies with active jobs (~8.7K)
         if (stats.companies != null) {
@@ -472,14 +472,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         // Hydrate merchandising placeholders
         document.querySelectorAll('[data-merch-stat="jobs"]').forEach(function(el) {
-          el.textContent = (Math.floor(stats.jobs / 1000) * 1000).toLocaleString() + '+';
+          el.textContent = (Math.ceil(stats.jobs / 1000) * 1000).toLocaleString() + '+';
         });
         document.querySelectorAll('[data-merch-stat="companies"]').forEach(function(el) {
           el.textContent = totalDisplay || stats.companies.toLocaleString() + '+';
         });
         // Social proof bar (LP-RESTRUCTURE-S3) — sync live counts
         var spJobsEl = document.getElementById('lp-active-jobs-sp');
-        if (spJobsEl && stats.jobs != null) spJobsEl.textContent = (Math.floor(stats.jobs / 1000) * 1000).toLocaleString() + '+';
+        if (spJobsEl && stats.jobs != null) spJobsEl.textContent = (Math.ceil(stats.jobs / 1000) * 1000).toLocaleString() + '+';
         var spHiringEl = document.getElementById('lp-companies-hiring-sp');
         if (spHiringEl && stats.companies != null) spHiringEl.textContent = stats.companies.toLocaleString() + '+';
         // Market Intelligence cards
@@ -500,7 +500,7 @@ document.addEventListener('DOMContentLoaded', function() {
               if (ld['@graph']) {
                 ld['@graph'].forEach(function(node) {
                   if (node['@type'] === 'SoftwareApplication' && stats.jobs != null) {
-                    var rounded = (Math.floor(stats.jobs / 1000) * 1000).toLocaleString() + '+';
+                    var rounded = (Math.ceil(stats.jobs / 1000) * 1000).toLocaleString() + '+';
                     node.description = node.description.replace(/[\d,]+\+?\s*jobs/, rounded + ' jobs');
                     if (tcDisplay) {
                       node.description = node.description.replace(/[\d,]+\+?\s*company/, tcDisplay + ' company');
@@ -521,7 +521,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     node.mainEntity.forEach(function(q) {
                       if (q.acceptedAnswer && q.acceptedAnswer.text) {
                         if (stats.jobs != null) {
-                          q.acceptedAnswer.text = q.acceptedAnswer.text.replace(/[\d,]+\+?\s*open jobs/, (Math.floor(stats.jobs / 1000) * 1000).toLocaleString() + '+ open jobs');
+                          q.acceptedAnswer.text = q.acceptedAnswer.text.replace(/[\d,]+\+?\s*open jobs/, (Math.ceil(stats.jobs / 1000) * 1000).toLocaleString() + '+ open jobs');
                         }
                         if (tcDisplay) {
                           q.acceptedAnswer.text = q.acceptedAnswer.text.replace(/[\d,]+\+?\s*company career/, tcDisplay + ' company career');
