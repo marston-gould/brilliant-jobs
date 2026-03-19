@@ -287,7 +287,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       } catch (e) {
         bjError('signup_error', e);
-        reportError('landing_app', e);
+        try { if (typeof reportError === 'function') reportError('landing_app', e); } catch(_) {}
         console.error('[BJ] Signup error:', e);
         $('#signup-btn').disabled = false;
         $('#signup-btn').textContent = 'Create Account';
@@ -309,7 +309,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('[BJ] Signup validation:', result.approved ? 'approved' : 'provisional', result.reason);
       } catch (e) {
         bjError('validation_call_failed', e);
-        reportError('landing_app', e);
+        try { if (typeof reportError === 'function') reportError('landing_app', e); } catch(_) {}
         console.log('[BJ] Validation call failed (will default to manual review):', e.message);
       }
     }
@@ -364,7 +364,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (e) {
           clearTimeout(timeout);
           bjError('profile_check_error', e, { attempt: attempt });
-          reportError('landing_app', e);
+          try { if (typeof reportError === 'function') reportError('landing_app', e); } catch(_) {}
           console.error('Profile check error (attempt ' + attempt + '):', e);
           if (attempt < 2) {
             return profileCheckWithTimeout(userId, attempt + 1);
@@ -575,7 +575,7 @@ document.addEventListener('DOMContentLoaded', function() {
           if (retryBtn) retryBtn.style.display = 'none';
         } catch (e) {
           bjError('stats_fetch_error', e, { attempt: statsRetryCount + 1 });
-          reportError('landing_app', e);
+          try { if (typeof reportError === 'function') reportError('landing_app', e); } catch(_) {}
           console.log('[BJ] Stats fetch error:', e.message);
           document.getElementById('lp-active-jobs').textContent = '400,000+';
           document.getElementById('lp-companies').textContent = '39,000+';
@@ -706,7 +706,7 @@ document.addEventListener('DOMContentLoaded', function() {
           }
         } catch (e) {
           bjError('preview_error', e);
-          reportError('landing_app', e);
+          try { if (typeof reportError === 'function') reportError('landing_app', e); } catch(_) {}
           console.error('[BJ] Preview error:', e);
           previewGoBtn.disabled = false;
           previewGoBtn.textContent = 'Retry Search';
@@ -949,6 +949,7 @@ document.addEventListener('DOMContentLoaded', function() {
       var res = await fetch(url, {
         headers: {
           'apikey': SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
           'Accept': 'application/json'
         }
       });
@@ -979,7 +980,7 @@ document.addEventListener('DOMContentLoaded', function() {
       captureEvent('lp_sections_rendered', { count: sections.length, segment: getVisitorSegment() });
 
     } catch(e) {
-      reportError('lp_benefit_sections', e);
+      try { if (typeof reportError === 'function') reportError('lp_benefit_sections', e); } catch(_) {}
     }
   }
 
