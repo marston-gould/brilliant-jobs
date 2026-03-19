@@ -58,6 +58,8 @@ export default function GetStartedPage() {
 
   const [stats, setStats] = useState({ jobs: 0, pages: 0, companies: 0 });
   const [linkedinProfile, setLinkedinProfile] = useState<{ firstName: string; lastName: string; headline: string; summary: string; industry: string; location: string; importedAt?: string } | null>(null);
+  const [existingResume, setExistingResume] = useState<{ name: string; uploadedAt: string } | null>(null);
+  const [resumeExpanded, setResumeExpanded] = useState(false);
   const [extStatus, setExtStatus] = useState<DotStatus>('disconnected');
   const [gmailStatus, setGmailStatus] = useState<DotStatus>('disconnected');
   const [gcalStatus, setGcalStatus] = useState<DotStatus>('disconnected');
@@ -82,6 +84,17 @@ export default function GetStartedPage() {
         const { data: profile } = await sb.from('profiles').select('user_data').eq('id', user.id).single();
         const li = (profile?.user_data as Record<string, unknown>)?.linkedin_profile as Record<string, string> | undefined;
         if (li?.firstName) setLinkedinProfile(li as any);
+
+        // Load latest resume
+        const { data: resumes } = await sb.from('resume_archive')
+          .select('display_name, created_at')
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        if (resumes?.length) {
+          setExistingResume({ name: resumes[0].display_name, uploadedAt: resumes[0].created_at });
+        }
         // Check URL params for just-completed OAuth
         const params = new URLSearchParams(window.location.search);
         const gmailParam = params.get('gmail');
@@ -334,6 +347,7 @@ export default function GetStartedPage() {
           : 'Resume saved — navigate to Feed to set up your search',
         'success'
       );
+      setExistingResume({ name: file.name, uploadedAt: new Date().toISOString() });
       navigate('/app/feed');
     } catch (err) {
       toast('Resume upload failed: ' + (err instanceof Error ? err.message : String(err)), 'error');
@@ -370,6 +384,39 @@ export default function GetStartedPage() {
       </div>
 
       {/* Resume-first CTA — legacy .gs-resume-drop (line 368) */}
+      {existingResume ? (
+        <div className="border rounded-[14px] p-5 mb-6 bg-bg-card shadow-[0_1px_3px_rgba(0,0,0,0.03)] transition-all"
+          style={{ borderColor: 'hsla(var(--green-hsl), 0.3)' }}>
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setResumeExpanded(!resumeExpanded)}>
+            <div className="w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: 'var(--green-dim)' }}>
+              <FileText className="w-5 h-5 text-green" strokeWidth={1.75} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-[13px] font-semibold text-text">{existingResume.name}</span>
+                <span className="text-[10px] font-semibold text-green bg-green/10 px-2 py-0.5 rounded-full">✓ Uploaded</span>
+              </div>
+              <div className="text-[11px] text-text-faint">
+                Uploaded {new Date(existingResume.uploadedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </div>
+            </div>
+            <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2}
+              className={`text-text-faint transition-transform ${resumeExpanded ? 'rotate-180' : ''}`}>
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </div>
+          {resumeExpanded && (
+            <div className="mt-4 pt-4 border-t border-border">
+              <div className="text-[12px] text-text-dim mb-3">Upload a new resume to replace the current one and regenerate your search filters.</div>
+              <button className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent text-white text-[12px] font-semibold"
+                onClick={() => { const i = document.createElement('input'); i.type = 'file'; i.accept = '.pdf,.doc,.docx'; i.onchange = (ev) => { const f = (ev.target as HTMLInputElement).files?.[0]; if (f) handleResumeUpload({ target: { files: [f] } } as any); }; i.click(); }}>
+                <Upload className="w-4 h-4" strokeWidth={2} /> Upload New Resume
+              </button>
+              <span className="text-[10px] text-text-faint ml-2">PDF or DOCX</span>
+            </div>
+          )}
+        </div>
+      ) : (
       <div className="border-2 border-dashed rounded-[14px] p-8 text-center mb-6 bg-bg-card cursor-pointer shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:border-green/50 hover:bg-green/[0.02] hover:shadow-[0_2px_12px_rgba(0,0,0,0.05)] transition-all"
         style={{ borderColor: 'hsla(var(--green-hsl), 0.3)' }}
         onClick={() => { const i = document.createElement('input'); i.type = 'file'; i.accept = '.pdf,.doc,.docx'; i.onchange = (e) => { const f = (e.target as HTMLInputElement).files?.[0]; if (f) handleResumeUpload({ target: { files: [f] } } as any); }; i.click(); }}>
@@ -384,6 +431,7 @@ export default function GetStartedPage() {
         </button>
         <div className="text-[11px] text-text-faint mt-2.5">PDF or DOCX · Or keep scrolling to set up manually</div>
       </div>
+      )}
 
       {/* Step 1: Chrome Extension — legacy lines 438-537 */}
       <Step num="Step 1" title="Install the Chrome Extension" icon={CirclePlus}
