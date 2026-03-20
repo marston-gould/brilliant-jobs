@@ -45,7 +45,7 @@
       try {
         sessionStorage.setItem("bj_ref_username", usernameParam);
         sessionStorage.setItem(SOURCE_KEY, detectSource());
-      } catch (e2) {}
+      } catch (e2) { console.warn("[BJ:Referral] Non-fatal error:", e2.message); }
       if (window.posthog) {
         try { window.posthog.capture("referral_username_visit", { username: usernameParam }); } catch (e2) {}
       }
@@ -95,7 +95,7 @@
         "Authorization": "Bearer " + anonKey
       },
       body: JSON.stringify({ p_code: code, p_source: source })
-    }).catch(function() {
+    }).catch(function(err) { console.warn("[BJ:Referral] Fetch failed:", err.message);
     });
   }
   if (document.readyState === "loading") {
