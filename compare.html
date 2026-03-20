@@ -3,158 +3,139 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Brilliant Jobs vs LinkedIn, Indeed & 14 More — Feature Comparison</title>
-<meta name="description" content="Compare Brilliant Jobs to LinkedIn, Indeed, ZipRecruiter, Teal, Huntr, and 11 more job search tools. See which features only Brilliant Jobs offers.">
+<title>Brilliant Jobs vs Competitors — Feature Comparison</title>
+<meta name="description" content="Compare Brilliant Jobs to LinkedIn, Indeed, ZipRecruiter, Simplify, Jobscan and 11 more. See which features only Brilliant Jobs offers across 4 job search categories.">
 <meta property="og:title" content="Brilliant Jobs vs Competitors — Feature Comparison">
-<meta property="og:description" content="The only job search platform that sources directly from employer systems. Compare 20 features across 16 competitors.">
+<meta property="og:description" content="136 features. 103 only in Brilliant Jobs. See the full multi-competitor grid.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://brilliantjobs.app/compare">
 <link rel="icon" href="/img/favicon.ico" sizes="48x48">
 <link rel="apple-touch-icon" sizes="180x180" href="/img/apple-touch-icon.png">
 <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 <script src="/js/version.js"></script>
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Brilliant Jobs Feature Comparison","description":"Compare Brilliant Jobs to 16 competitors across 20 job search features.","url":"https://brilliantjobs.app/compare"}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Brilliant Jobs vs Competitors","description":"Compare Brilliant Jobs to 16 competitors across job search features.","url":"https://brilliantjobs.app/compare"}</script>
 <style>
 @font-face{font-family:'Outfit';src:url('/fonts/outfit-latin-var.woff2') format('woff2');font-weight:100 900;font-display:swap}
-:root{--bg:#f0f1f5;--bg-card:#ffffff;--bg-hover:#e8eaf0;--border:#e2e4ea;--text:#1a1d26;--dim:#4a4f5e;--faint:#8b91a3;--accent:#4f6ef7;--green:#1D9E75;--green-dim:rgba(29,158,117,0.12)}
+:root{
+  --bg:#f0f4f8;--bg-card:#fff;--border:#e2e5ed;--border-light:#eef0f5;
+  --text:#1b2a4a;--dim:#4a5568;--faint:#8b96a8;
+  --accent:#3b82f6;--accent-dim:rgba(59,130,246,0.08);
+  --green:#1D9E75;--green-dim:rgba(29,158,117,0.07);
+  --nav-bg:#1b3a6e;
+}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Outfit',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+body{font-family:'Outfit',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
 a{color:inherit;text-decoration:none}
-.nav{display:flex;align-items:center;justify-content:space-between;padding:16px 32px;max-width:1200px;margin:0 auto}
-.nav-logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;color:var(--text)}
-.nav-logo .m{width:28px;height:28px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:var(--text)}
-.nav-r{display:flex;align-items:center;gap:24px}
-.nav-r a{font-size:14px;color:var(--faint);font-weight:500;transition:color .15s}
-.nav-r a:hover,.nav-r a.on{color:var(--text)}
-.nav-cta{background:var(--accent);color:#fff!important;padding:8px 20px;border-radius:8px;font-weight:600;font-size:13px}
-.pg{max-width:640px;margin:0 auto;padding:60px 20px 80px}
-.pg h1{font-size:32px;font-weight:800;line-height:1.2;margin-bottom:8px}
-.pg .sub{font-size:15px;color:var(--dim);margin-bottom:32px;line-height:1.5}
-.dw{position:relative;margin-bottom:28px}
-.db{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:var(--text)}
-.db:hover{border-color:#3a3f50}
-.dd{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-.da{width:16px;height:16px;stroke:var(--dim);fill:none;stroke-width:2;transition:transform .15s}
-.db.open .da{transform:rotate(180deg)}
-.dm{position:absolute;top:calc(100% + 4px);left:0;z-index:20;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:6px;min-width:240px;box-shadow:0 12px 40px rgba(0,0,0,.12);display:none;max-height:400px;overflow-y:auto}
-.dm.open{display:block}
-.di{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;color:var(--dim)}
-.di:hover{background:var(--bg-hover);color:var(--text)}
-.di.on{color:var(--text);background:var(--bg-hover)}
-.sc{display:flex;gap:10px;margin-bottom:24px;align-items:stretch}
-.sc-c{flex:1;padding:16px;border-radius:10px;text-align:center}
-.sc-bj{background:var(--green-dim);border:1px solid rgba(29,158,117,.25)}
-.sc-cp{background:var(--bg-card);border:1px solid var(--border)}
-.sc-sh{background:var(--bg-card);border:1px solid var(--border);flex:.6}
-.sc-n{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums}
-.sc-bj .sc-n{color:var(--green)}
-.sc-cp .sc-n{color:var(--dim)}
-.sc-sh .sc-n{color:var(--faint);font-size:22px}
-.sc-l{font-size:11px;color:var(--dim);margin-top:4px;font-weight:500}
-.cat{margin-bottom:20px}
-.ch{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border);margin-bottom:2px}
-.ci{width:18px;height:18px;stroke:var(--green);fill:none;stroke-width:2;flex-shrink:0}
-.ct{font-size:14px;font-weight:700;flex:1}
-.cb{font-size:10px;font-weight:700;padding:2px 8px;border-radius:100px;background:var(--green-dim);color:var(--green)}
-.fr{display:flex;align-items:center;padding:8px 0;border-bottom:1px solid rgba(38,42,54,.5);font-size:13px}
-.fr.ex{background:rgba(29,158,117,.05);border-radius:6px;margin:0 -8px;padding:8px}
-.fb,.fc{width:32px;flex-shrink:0;display:flex;justify-content:center}
-.fl{flex:1;color:var(--dim);padding:0 10px}
-.cl{display:flex;justify-content:space-between;padding:4px 0 0;font-size:10px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:.5px}
-.ck{width:16px;height:16px}
-.ds{width:14px;height:2px;background:var(--faint);border-radius:1px;opacity:.4}
-.cta{text-align:center;margin-top:40px;padding-top:32px;border-top:1px solid var(--border)}
-.cta-b{display:inline-block;padding:14px 36px;background:var(--green);color:#fff;font-size:15px;font-weight:700;border-radius:10px;border:none;cursor:pointer;font-family:inherit}
-.cta-b:hover{opacity:.9}
-.ft{max-width:1200px;margin:0 auto;padding:32px;text-align:center;border-top:1px solid var(--border)}
-.ft-l{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;margin-bottom:8px}
-.ft-l a{font-size:13px;color:var(--dim)}
-.ft-c{font-size:12px;color:var(--faint)}
-@media(max-width:640px){.pg h1{font-size:24px}.sc{flex-direction:column}.sc-sh{flex:1}.nav{padding:12px 16px}.nav-r{gap:12px}.nav-r a:not(.nav-cta){display:none}}
+/* Nav */
+.nav{background:var(--nav-bg);padding:0 32px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.nav-logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;color:#fff}
+.nav-logo .m{width:28px;height:28px;background:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--nav-bg)}
+.nav-links{display:flex;align-items:center;gap:20px}
+.nav-links a{font-size:13px;font-weight:500;color:rgba(255,255,255,0.7);transition:color .15s}
+.nav-links a:hover,.nav-links a.on{color:#fff}
+.nav-cta{background:#fff;color:var(--nav-bg)!important;padding:7px 18px;border-radius:7px;font-weight:700;font-size:13px}
+/* Page layout */
+.pg{max-width:900px;margin:0 auto;padding:48px 20px 80px}
+.page-hero{margin-bottom:32px}
+.page-label{display:inline-block;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
+.page-hero h1{font-size:clamp(24px,3.5vw,36px);font-weight:700;line-height:1.2;margin-bottom:8px}
+.page-hero p{font-size:14px;color:var(--dim)}
+/* Competitor pills header */
+.comp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.comp-header span{font-size:13px;color:var(--faint)}
+.edit-btn{font-size:13px;font-weight:500;color:var(--accent);background:none;border:none;cursor:pointer;padding:0}
+.picker{display:none;flex-wrap:wrap;gap:6px;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;margin-bottom:12px}
+.picker.open{display:flex}
+.picker-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:16px;font-size:12px;font-weight:500;border:1px solid var(--border);background:var(--bg-card);color:var(--faint);cursor:pointer;transition:all .15s;white-space:nowrap}
+.picker-pill.active{border-width:1.5px}
+.picker-count{font-size:11px;color:var(--faint);align-self:center;margin-left:4px}
+.comp-pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:24px}
+.comp-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:12px;font-size:12px;font-weight:500}
+/* Category filter pills */
+.cat-filter{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:28px}
+.cat-pill{padding:6px 16px;border-radius:16px;border:none;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;background:var(--bg-card);color:var(--dim)}
+.cat-pill.active{background:var(--accent-dim);color:var(--accent)}
+/* Grid */
+.cat-block{margin-bottom:40px;scroll-margin-top:80px}
+.cat-block.highlighted .cat-block-inner{box-shadow:0 0 0 2px var(--accent)}
+.cat-block-inner{background:var(--bg-card);border-radius:12px;border:1px solid var(--border);overflow:hidden}
+.cat-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border-light)}
+.cat-head svg{flex-shrink:0;color:var(--faint)}
+.cat-name{font-size:15px;font-weight:600;flex:1}
+.cat-score-badge{font-size:12px;font-weight:600;color:var(--green);background:rgba(29,158,117,0.10);padding:3px 10px;border-radius:10px}
+/* Feature grid table */
+.feat-table{display:grid;width:100%;overflow-x:auto}
+.feat-row{display:contents}
+.feat-row > div{padding:9px 8px;border-top:1px solid var(--border-light);font-size:13px;display:flex;align-items:center;justify-content:center}
+.feat-row > div:first-child{justify-content:flex-start;padding-left:16px;font-size:13px;color:var(--dim)}
+.feat-row > div:first-child.excl-row{color:var(--text);font-weight:500}
+.feat-row.bj-excl > div{background:var(--green-dim)}
+.col-header{padding:8px 8px 8px 16px;font-size:10px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;display:flex;align-items:center;justify-content:center;background:var(--bg-card)}
+.col-header:first-child{justify-content:flex-start}
+.bj-col{color:var(--green)!important}
+/* Score row */
+.score-row{display:contents}
+.score-row > div{padding:8px 8px;border-top:1.5px solid var(--border);font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;background:#fafbfd}
+.score-row > div:first-child{justify-content:flex-start;padding-left:16px;font-size:12px;font-weight:600;color:var(--faint)}
+.score-bj{color:var(--green)!important}
+/* Check / miss icons */
+.chk{display:inline-flex;width:18px;height:18px;align-items:center;justify-content:center}
+.chk svg{width:14px;height:14px}
+.miss{display:inline-flex;width:18px;height:18px;align-items:center;justify-content:center;color:var(--border)}
+.miss svg{width:10px;height:10px}
+/* Bottom CTA */
+.bottom-cta{text-align:center;background:var(--bg-card);border-radius:16px;padding:48px 32px;margin-top:48px;border:1px solid var(--border)}
+.bottom-cta h2{font-size:28px;font-weight:700;margin-bottom:8px}
+.bottom-cta p{font-size:15px;color:var(--dim);margin-bottom:24px}
+.btn-primary{display:inline-block;background:var(--accent);color:#fff;padding:13px 32px;border-radius:10px;font-weight:700;font-size:15px;border:none;cursor:pointer;transition:background .15s}
+.btn-primary:hover{background:#2563eb}
+/* Footer */
+footer{text-align:center;padding:24px;font-size:12px;color:var(--faint);border-top:1px solid var(--border);margin-top:40px}
+@media(max-width:600px){
+  .pg{padding:32px 12px 60px}
+  .nav-links .hide-sm{display:none}
+}
 </style>
 </head>
 <body>
-<nav class="nav">
-<a href="/" class="nav-logo"><div class="m">B</div> Brilliant Jobs</a>
-<div class="nav-r">
-<a href="/#how-it-works">How It Works</a>
-<a href="/#pricing">Pricing</a>
-<a href="/compare" class="on">Compare</a>
-<a href="/dashboard" class="nav-cta">Log In</a>
-</div>
+
+<nav class="nav" aria-label="Main navigation">
+  <a href="/" class="nav-logo"><div class="m">B</div> Brilliant Jobs</a>
+  <div class="nav-links">
+    <a href="/benefits" class="hide-sm">Benefits</a>
+    <a href="/compare" class="on hide-sm">Compare</a>
+    <a href="/#pricing" class="hide-sm">Pricing</a>
+    <a href="/" class="nav-cta" onclick="event.preventDefault();window.location='/?signup=1'">Start free trial</a>
+  </div>
 </nav>
+
 <div class="pg">
-<h1>See how Brilliant Jobs compares</h1>
-<p class="sub">The only job search platform that sources directly from employer career pages. No recycled posts, no promoted listings, no ghost jobs.</p>
-<div class="dw">
-<div class="db" id="db"><span class="dd" id="ddt"></span><span id="dn">LinkedIn</span><svg class="da" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></div>
-<div class="dm" id="dm"></div>
+  <div class="page-hero">
+    <div class="page-label">Feature comparison</div>
+    <h1>Brilliant Jobs vs Competitors</h1>
+    <p>Select up to 6 competitors. BJ is always shown first.</p>
+  </div>
+
+  <div id="comp-ui"></div>
+  <div class="cat-filter" id="cat-filter"></div>
+  <div id="grid"></div>
+
+  <div class="bottom-cta">
+    <h2>136 features. 103 only in Brilliant Jobs.</h2>
+    <p>From ghost detection to AI resume tailoring to employer accountability.</p>
+    <a href="/" class="btn-primary" onclick="event.preventDefault();window.location='/?signup=1'">Start free trial</a>
+  </div>
 </div>
-<div class="sc">
-<div class="sc-c sc-bj"><div class="sc-n" id="sb">0</div><div class="sc-l">Only in Brilliant Jobs</div></div>
-<div class="sc-c sc-sh"><div class="sc-n" id="ss">0</div><div class="sc-l">Shared</div></div>
-<div class="sc-c sc-cp"><div class="sc-n" id="sn">0</div><div class="sc-l" id="sl">Only in LinkedIn</div></div>
-</div>
-<div id="ff"></div>
-<div class="cta"><a href="/dashboard" class="cta-b">Start your free search</a></div>
-</div>
-<footer class="ft">
-<div class="ft-l"><a href="/job-market-data">Market Data</a><a href="/salary-data">Salaries</a><a href="/hiring-trends">Hiring</a><a href="/compare">Compare</a><a href="/help">Help</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/contact">Contact</a></div>
-<div class="ft-c">&copy; Brilliant Jobs. All rights reserved.</div>
+
+<footer>
+  &copy; <span class="bj-year"></span> Brilliant Jobs &middot; <span class="bj-version"></span> &middot;
+  <a href="/privacy">Privacy</a> &middot; <a href="/terms">Terms</a>
 </footer>
+
+<script src="/js/version.js"></script>
 <script>
-!function(){var C=[
-{k:'linkedin',n:'LinkedIn',c:'#0A66C2'},{k:'indeed',n:'Indeed',c:'#2164F3'},{k:'ziprecruiter',n:'ZipRecruiter',c:'#1E8F54'},
-{k:'careerflow',n:'Careerflow',c:'#6366f1'},{k:'teal',n:'Teal',c:'#0891b2'},{k:'huntr',n:'Huntr',c:'#7c3aed'},
-{k:'simplify',n:'Simplify',c:'#3b82f6'},{k:'jobscan',n:'Jobscan',c:'#059669'},{k:'sonara',n:'Sonara',c:'#d97706'},
-{k:'lazyapply',n:'LazyApply',c:'#dc2626'},{k:'jobcopilot',n:'JobCopilot',c:'#8b5cf6'},{k:'loopcv',n:'LoopCV',c:'#0ea5e9'},
-{k:'resumeworded',n:'Resume Worded',c:'#f59e0b'},{k:'rezi',n:'Rezi',c:'#10b981'},{k:'kickresume',n:'Kickresume',c:'#ef4444'},
-{k:'jackandjill',n:'Jack & Jill',c:'#ec4899'}];
-var G=[
-{name:'Find real jobs, not ghost jobs',icon:'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',f:[
-{l:'Sources jobs directly from employer systems',b:1,linkedin:0,indeed:0,ziprecruiter:0,careerflow:0,teal:0,huntr:0,simplify:1,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0},
-{l:'Detects ghost jobs before you waste time',b:1,linkedin:0,indeed:0,ziprecruiter:0,careerflow:0,teal:0,huntr:0,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0},
-{l:'Shows company ghost rates and hiring reputation',b:1,linkedin:0,indeed:0,ziprecruiter:0,careerflow:0,teal:0,huntr:0,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0},
-{l:'Automatically removes dead listings',b:1,linkedin:0,indeed:0,ziprecruiter:0,careerflow:0,teal:0,huntr:0,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0},
-{l:'Flags scam and fraud postings',b:1,linkedin:0,indeed:0,ziprecruiter:0,careerflow:0,teal:0,huntr:0,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0}]},
-{name:'Filters that actually help',icon:'M22 3H2l8 9.46V19l4 2v-8.54L22 3z',f:[
-{l:'Salary filter using real posted salaries',b:1,linkedin:1,indeed:1,ziprecruiter:1,careerflow:0,teal:0,huntr:0,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0},
-{l:'Block specific companies or industries',b:1,linkedin:0,indeed:0,ziprecruiter:0,careerflow:0,teal:0,huntr:0,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0},
-{l:'Search inside job descriptions',b:1,linkedin:0,indeed:1,ziprecruiter:0,careerflow:0,teal:0,huntr:0,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0},
-{l:'Flags staffing agencies vs. direct employers',b:1,linkedin:0,indeed:0,ziprecruiter:0,careerflow:0,teal:0,huntr:0,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0},
-{l:'Daily new job alerts matching your saved filters',b:1,linkedin:1,indeed:1,ziprecruiter:1,careerflow:1,teal:1,huntr:1,simplify:1,jobscan:1,sonara:1,lazyapply:0,jobcopilot:0,loopcv:1,resumeworded:0,rezi:0,kickresume:0,jackandjill:0}]},
-{name:'Apply smarter, not harder',icon:'M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z',f:[
-{l:'AI resume score for every job you view',b:1,linkedin:0,indeed:0,ziprecruiter:0,careerflow:1,teal:1,huntr:0,simplify:0,jobscan:1,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:1,rezi:1,kickresume:1,jackandjill:0},
-{l:'One-click resume tailoring per job',b:1,linkedin:0,indeed:0,ziprecruiter:0,careerflow:1,teal:1,huntr:0,simplify:0,jobscan:1,sonara:0,lazyapply:0,jobcopilot:1,loopcv:0,resumeworded:1,rezi:1,kickresume:1,jackandjill:0},
-{l:'Auto-apply across multiple hiring platforms',b:1,linkedin:0,indeed:0,ziprecruiter:0,careerflow:0,teal:0,huntr:0,simplify:1,jobscan:0,sonara:1,lazyapply:1,jobcopilot:1,loopcv:1,resumeworded:0,rezi:0,kickresume:0,jackandjill:1},
-{l:'AI cover letter matched to each role',b:1,linkedin:0,indeed:0,ziprecruiter:0,careerflow:1,teal:1,huntr:0,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:1,loopcv:0,resumeworded:0,rezi:1,kickresume:1,jackandjill:0},
-{l:'AI interview practice for your specific job',b:1,linkedin:0,indeed:0,ziprecruiter:0,careerflow:1,teal:1,huntr:0,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0}]},
-{name:'Actually understand the market',icon:'M18 20V10 M12 20V4 M6 20v-6',f:[
-{l:'Real salary data from actual postings',b:1,linkedin:1,indeed:1,ziprecruiter:1,careerflow:0,teal:0,huntr:0,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0},
-{l:'See which companies are really hiring vs. just posting',b:1,linkedin:0,indeed:0,ziprecruiter:0,careerflow:0,teal:0,huntr:0,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0},
-{l:'Hiring trends by industry and location',b:1,linkedin:1,indeed:1,ziprecruiter:1,careerflow:0,teal:0,huntr:0,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0},
-{l:'Track your application performance over time',b:1,linkedin:0,indeed:0,ziprecruiter:0,careerflow:1,teal:1,huntr:1,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0},
-{l:'See who in your network works at a company',b:1,linkedin:1,indeed:0,ziprecruiter:0,careerflow:0,teal:0,huntr:0,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0}]}
-];
-var chk='<svg class="ck" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#1D9E75" stroke-width="1.5"/><path d="M6.5 10.5l2 2 5-5" stroke="#1D9E75" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-var chkG='<svg class="ck" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#8b91a3" stroke-width="1.5"/><path d="M6.5 10.5l2 2 5-5" stroke="#8b91a3" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-var dsh='<div class="ds"></div>';
-var sel='linkedin';
-function gc(){return C.find(function(c){return c.k===sel})}
-function bd(){var m=document.getElementById('dm');m.innerHTML=C.map(function(c){return'<div class="di'+(c.k===sel?' on':'')+'" data-k="'+c.k+'"><span class="dd" style="background:'+c.c+'"></span>'+c.n+'</div>'}).join('')}
-function render(){var co=gc();document.getElementById('dn').textContent=co.n;document.getElementById('ddt').style.background=co.c;
-var bo=0,so=0,sh=0;G.forEach(function(g){g.f.forEach(function(f){if(f.b&&!f[sel])bo++;else if(!f.b&&f[sel])so++;else if(f.b&&f[sel])sh++})});
-document.getElementById('sb').textContent=bo;document.getElementById('ss').textContent=sh;document.getElementById('sn').textContent=so;document.getElementById('sl').textContent='Only in '+co.n;
-var h='';G.forEach(function(g){var gb=0,gv=0;g.f.forEach(function(f){if(f.b)gb++;if(f[sel])gv++});
-h+='<div class="cat"><div class="ch"><svg class="ci" viewBox="0 0 24 24"><path d="'+g.icon+'" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="ct">'+g.name+'</span><span class="cb">'+gb+' vs '+gv+'</span></div>';
-g.f.forEach(function(f){var ex=f.b&&!f[sel];h+='<div class="fr'+(ex?' ex':'')+'"><div class="fb">'+(f.b?chk:dsh)+'</div><div class="fl">'+f.l+'</div><div class="fc">'+(f[sel]?chkG:dsh)+'</div></div>'});
-h+='<div class="cl"><span>BJ</span><span>'+co.n.split(' ')[0]+'</span></div></div>'});
-document.getElementById('ff').innerHTML=h;bd()}
-document.getElementById('db').addEventListener('click',function(e){e.stopPropagation();document.getElementById('dm').classList.toggle('open');document.getElementById('db').classList.toggle('open')});
-document.getElementById('dm').addEventListener('click',function(e){var i=e.target.closest('.di');if(!i)return;sel=i.dataset.k;document.getElementById('dm').classList.remove('open');document.getElementById('db').classList.remove('open');render();if(window.posthog)posthog.capture('competitor_selected',{competitor:sel})});
-document.addEventListener('click',function(){document.getElementById('dm').classList.remove('open');document.getElementById('db').classList.remove('open')});
-if(window.posthog)posthog.capture('compare_page_viewed');
-bd();render()}()
+document.querySelectorAll('.bj-year').forEach(function(el){el.textContent=new Date().getFullYear()});
 </script>
+<script src="/js/compare.js?v=v11.47" defer></script>
 </body>
 </html>
