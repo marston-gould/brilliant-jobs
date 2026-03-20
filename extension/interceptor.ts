@@ -30,8 +30,8 @@
     }
     
     try {
-      const url = typeof args[0] === 'string' ? args[0] : args[0]?.url || '';
-      
+      const url = typeof args[0] === 'string' ? args[0] : (args[0] as Request)?.url || '';
+      if (!url.startsWith('http')) return response;
       if (url.includes(PROFILE_CARDS_PATTERN) || url.includes(PROFILE_COMPONENTS_PATTERN)) {
         // Clone the response so we can read the body without consuming it
         const cloned = response.clone();
