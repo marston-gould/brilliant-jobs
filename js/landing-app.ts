@@ -31,14 +31,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // RETURNING USER DETECTION
     // ============================================================
     const isReturning = document.cookie.includes('bj_returning');
+    const _navLogin = $('#nav-login-btn');
+    const _heroSignup = $('#hero-signup-btn');
+    const _bottomSignup = $('#bottom-signup-btn');
     if (isReturning) {
-      $('#nav-login-btn').textContent = 'Log In';
-      $('#hero-signup-btn').textContent = 'Go to Dashboard';
-      $('#bottom-signup-btn').textContent = 'Go to Dashboard';
+      if (_navLogin) _navLogin.textContent = 'Log In';
+      if (_heroSignup) _heroSignup.textContent = 'Go to Dashboard';
+      if (_bottomSignup) _bottomSignup.textContent = 'Go to Dashboard';
     } else {
-      $('#nav-login-btn').textContent = 'Sign Up';
-      $('#hero-signup-btn').textContent = 'Start Free';
-      $('#bottom-signup-btn').textContent = 'Start Free';
+      if (_navLogin) _navLogin.textContent = 'Sign Up';
+      if (_heroSignup) _heroSignup.textContent = 'Start Free';
+      if (_bottomSignup) _bottomSignup.textContent = 'Start Free';
     }
 
     // ============================================================
