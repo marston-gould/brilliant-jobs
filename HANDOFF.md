@@ -52,7 +52,14 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**POD2_BUGFIX_HeroRotation** — P0 Hero Segment + Merch Rotation Fix ✅ (2026-03-20)
+**Admin Footer Link + MFA Gate** — /admin now serves standalone admin.html with TOTP double-auth ✅ (2026-03-20)
+- v11.48 → v11.49
+- **Root cause:** `/admin` Vercel rewrite sent traffic to the SPA. SPA `AdminGuard` checks role only — no MFA. `admin.html` was in `legacy/` (archived during SPA migration) and never restored.
+- **Fix:** Removed `/admin` + `/admin.html` rewrites from `vercel.json`. Restored `admin.html` to root. Flow: auth → role=admin → TOTP enrollment (if needed) → AAL2 challenge → admin console.
+- **Admin footer link** (`/admin` in index.html footer) now correctly reaches the MFA-gated admin page.
+- Files: `admin.html` (new at root), `vercel.json` (2 rewrites removed), `js/version.js`
+
+**Previous: POD2_BUGFIX_HeroRotation** — P0 Hero Segment + Merch Rotation Fix ✅ (2026-03-20) — P0 Hero Segment + Merch Rotation Fix ✅ (2026-03-20)
 - v11.47 → v11.48
 - **Spec:** POD2_BUGFIX_HeroRotation.docx (all 4 sections addressed)
 - **Bug 1 (CRITICAL):** Duplicate `landing-segment.js` + `purify.min.js` block removed from `index.html` `<head>`. Was at lines 158–161. Every first-time visitor was seeing returning-visitor hero due to double execution incrementing `bj_visits` before segment check. Fixed: single execution, correct segment detection, `bj_visits` +1/load.
@@ -4564,7 +4571,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v11.48`** | **P0 bugfix — hero segment detection + merch rotation. Duplicate landing-segment.js removed. 2026-03-20.** |
+| **Product (BJ_VERSION)** | **`v11.49`** | **Admin MFA gate restored — /admin now serves admin.html with TOTP double-auth. 2026-03-20.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
