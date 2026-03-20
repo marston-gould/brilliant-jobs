@@ -28,8 +28,28 @@
     if (ref.includes("t.co")) return "twitter";
     return "direct";
   }
+  // SUB-06: reserved paths that are NOT usernames
+  var RESERVED_PATHS = new Set(['billing','benefits','compare','dashboard','feed',
+    'help','jobs','login','market','notifications','pipeline','pricing','privacy',
+    'referral','referrals','settings','signup','stats','subscription','terms',
+    'tuning','admin','app','api','data-lab','hiring-trends','salary-data',
+    'ghost-report','college-major-outcomes','jobs-by-location','blog']);
+
   function captureReferral() {
     var code = getParam("ref") || getParam("referral_code") || "";
+    // SUB-06: handle ?u=username from /api/referral-lookup redirect
+    var usernameParam = getParam("u") || "";
+    if (usernameParam && !code) {
+      // Treat username param as a referral attribution signal
+      // The server already resolved username → code; store as bj_ref_username for analytics
+      try {
+        sessionStorage.setItem("bj_ref_username", usernameParam);
+        sessionStorage.setItem(SOURCE_KEY, detectSource());
+      } catch (e2) {}
+      if (window.posthog) {
+        try { window.posthog.capture("referral_username_visit", { username: usernameParam }); } catch (e2) {}
+      }
+    }
     if (code && /^BJ-[A-Z0-9]{6}$/i.test(code)) {
       code = code.toUpperCase();
       var source = detectSource();
