@@ -638,6 +638,10 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
           }
 
+          if (data.error) {
+            throw new Error(data.message || data.error);
+          }
+
           previewToken = data.session_token;
 
           // Populate stat cards
@@ -712,6 +716,7 @@ document.addEventListener('DOMContentLoaded', function() {
           try { if (typeof reportError === 'function') reportError('landing_app', e); } catch(_) {}
           previewGoBtn.disabled = false;
           previewGoBtn.textContent = 'Retry Search';
+          previewToken = null; // Reset token so retry gets a fresh session
           // Show error state
           document.getElementById('preview-results').classList.remove('lp-hidden');
           document.getElementById('pv-total').textContent = '—';

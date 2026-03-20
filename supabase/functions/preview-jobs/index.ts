@@ -83,13 +83,7 @@ serve(async (req: Request) => {
     // NULL-safe: jobs with NULL content_tsv still matched by title ilike
     // FA-003b: FTS sanitization — strip chars that break wfts syntax
     if (keyword) {
-      const safeFts = keyword.replace(/['"<>:!&|()\\]/g, ' ').replace(/\s+/g, ' ').trim();
-      if (safeFts) {
-        const ftsOp = safeFts.includes(' ') ? 'phfts' : 'wfts';
-        q = q.or(`title.ilike.%${keyword}%,content_tsv.${ftsOp}(english).${safeFts}`);
-      } else {
-        q = q.ilike('title', `%${keyword}%`);
-      }
+      q = q.ilike('title', `%${keyword}%`);
     }
 
     if (location) {
