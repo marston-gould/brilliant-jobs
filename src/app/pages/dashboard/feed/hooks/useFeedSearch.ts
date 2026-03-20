@@ -734,11 +734,24 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
       const legacySavedFilters: SavedFilter[] = safeReadLS<SavedFilter[]>('bj_saved_filters', []);
       const checkedFilters = legacySavedFilters.filter(f => f.checked);
 
+      // No saved filters — show default feed (open jobs, newest first)
       if (checkedFilters.length === 0) {
+        const from = page * JOBS_PER_PAGE;
+        const to = from + JOBS_PER_PAGE - 1;
+        let defQuery = sb
+          .from('ats_jobs')
+          .select('greenhouse_id, title, company_name, location, loc_country, loc_state, loc_city, loc_type, salary_min, salary_max, salary_currency, salary_rate, first_seen_at, updated_at, created_at, url, apply_url, ats_source, status, extracted_seniority, extracted_skills, is_remote, content', { count: 'planned' })
+          .eq('status', 'open')
+          .order('created_at', { ascending: false })
+          .range(from, to);
+        if (hiddenIds.length > 0) defQuery = defQuery.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
+        const { data: defData, error: defError, count: defCount } = await defQuery;
+        if (controller.signal.aborted) return;
+        if (defError) throw new ProviderError(defError.message, 'SEARCH_FAILED', undefined, defError);
         setState(prev => ({
           ...prev,
-          jobs: [],
-          total: 0,
+          jobs: (defData || []) as unknown as FeedJob[],
+          total: defCount || 0,
           loading: false,
           error: null,
         }));
