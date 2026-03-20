@@ -494,7 +494,15 @@ height="0" width="0" class="gtm-iframe"></iframe></noscript>
     <h2>Built for job seekers.<br>Not for employers.</h2>
     <p class="section-desc">136 features designed to give you the advantage. Scroll to see what makes us different.</p>
 
-    <div class="carousel-wrap" id="benefit-carousel-wrap">
+  
+  <div class="inline-cta-wrap">
+    <div class="inline-cta">
+      <h3>Stop applying to ghost jobs.</h3>
+      <button class="btn-ic" onclick="if(typeof openModal==='function')openModal('signup');if(window.posthog)posthog.capture('inline_cta_clicked',{page:'index',position:'after_ghost',cta_text:'Start free trial'});"
+        >Start free trial</button>
+    </div>
+  </div>
+  <div class="carousel-wrap" id="benefit-carousel-wrap">
       <button class="carousel-arrow carousel-arrow-left" id="carousel-prev" aria-label="Previous benefit cards">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
       </button>
@@ -516,6 +524,15 @@ height="0" width="0" class="gtm-iframe"></iframe></noscript>
     <button class="inline-cta-btn" onclick="openModal('signup');if(window.posthog)posthog.capture('inline_cta_clicked',{page:'index',position:'after_carousel',cta_text:this.previousElementSibling.textContent})">Start free trial</button>
   </div>
   <div class="inline-cta-secondary"><a href="/benefits" onclick="if(window.posthog)posthog.capture('inline_cta_clicked',{page:'index',position:'after_carousel_secondary',cta_text:'See all features'})">See all features</a></div>
+
+  <div class="inline-cta-wrap">
+    <div class="inline-cta">
+      <h3>136 features. See what you have been missing.</h3>
+      <button class="btn-ic" onclick="if(typeof openModal==='function')openModal('signup');if(window.posthog)posthog.capture('inline_cta_clicked',{page:'index',position:'after_carousel',cta_text:'Start free trial'});"
+        >Start free trial</button>
+      <a href="/benefits" class="btn-ic-secondary">See all features</a>
+    </div>
+  </div>
   <section class="section fade-up" id="how-it-works">
     <div class="section-label">How It Works</div>
     <h2>Set up once. It gets smarter<br>every time you use it.</h2>
@@ -578,6 +595,14 @@ height="0" width="0" class="gtm-iframe"></iframe></noscript>
   <div class="inline-cta-wrap">
     <p class="inline-cta-headline">Real data from real career pages. Not guesswork.</p>
     <button class="inline-cta-btn" onclick="openModal('signup');if(window.posthog)posthog.capture('inline_cta_clicked',{page:'index',position:'after_data',cta_text:this.previousElementSibling.textContent})">Start free trial</button>
+  </div>
+
+  <div class="inline-cta-wrap">
+    <div class="inline-cta">
+      <h3>Real data from real career pages. Not guesswork.</h3>
+      <button class="btn-ic" onclick="if(typeof openModal==='function')openModal('signup');if(window.posthog)posthog.capture('inline_cta_clicked',{page:'index',position:'after_data',cta_text:'Start free trial'});"
+        >Start free trial</button>
+    </div>
   </div>
   <section class="section fade-up" id="pricing" itemscope itemtype="https://schema.org/SoftwareApplication">
     <meta itemprop="name" content="Brilliant Jobs">
