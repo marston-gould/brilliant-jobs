@@ -348,7 +348,44 @@ function buildFilterQuery(
   // FA-007: Always filter to active/open jobs only (legacy parity)
   query = query.eq('status', 'open');
 
-  // What pills (title/keyword search) — FA-001/FA-007: OR title ilike + content_tsv wfts
+  // FLAT-STRING FALLBACK: if pills are empty but flat string fields exist (from Filter Builder save),
+  // convert them to pill format so the rest of the function works
+  const sfAny = sf as Record<string, unknown>;
+  if ((!sf.whatPills || sf.whatPills.length === 0) && typeof sfAny.what === 'string' && sfAny.what) {
+    sf.whatPills = (sfAny.what as string).split(',').map(v => ({ type: 'keyword', values: [v.trim()] }));
+  }
+  if ((!sf.whatNotPills || sf.whatNotPills.length === 0) && typeof sfAny.whatNot === 'string' && sfAny.whatNot) {
+    sf.whatNotPills = (sfAny.whatNot as string).split(',').map(v => ({ type: 'not', values: [v.trim()] }));
+  }
+  if ((!sf.wherePills || sf.wherePills.length === 0) && typeof sfAny.where === 'string' && sfAny.where) {
+    sf.wherePills = (sfAny.where as string).split(',').map(v => ({ type: 'where', values: [v.trim()] }));
+  }
+  if ((!sf.whereNotPills || sf.whereNotPills.length === 0) && typeof sfAny.whereNot === 'string' && sfAny.whereNot) {
+    sf.whereNotPills = (sfAny.whereNot as string).split(',').map(v => ({ type: 'not', values: [v.trim()] }));
+  }
+  if ((!sf.whoPills || sf.whoPills.length === 0) && typeof sfAny.who === 'string' && sfAny.who) {
+    sf.whoPills = (sfAny.who as string).split(',').map(v => ({ type: 'who', values: [v.trim()] }));
+  }
+  if ((!sf.whoNotPills || sf.whoNotPills.length === 0) && typeof sfAny.whoNot === 'string' && sfAny.whoNot) {
+    sf.whoNotPills = (sfAny.whoNot as string).split(',').map(v => ({ type: 'not', values: [v.trim()] }));
+  }
+  if ((!sf.whenPills || sf.whenPills.length === 0) && typeof sfAny.when === 'string' && sfAny.when) {
+    sf.whenPills = [{ type: 'when', values: [sfAny.when as string] }];
+  }
+  if ((!sf.payPills || sf.payPills.length === 0) && (sfAny.payMin || sfAny.payMax)) {
+    sf.payPills = [{ type: 'pay', values: [], min: sfAny.payMin as string || '', max: sfAny.payMax as string || '' } as any];
+  }
+  if ((!sf.levelPills || sf.levelPills.length === 0) && typeof sfAny.level === 'string' && sfAny.level) {
+    sf.levelPills = (sfAny.level as string).split(',').map(v => ({ type: 'level', values: [v.trim()] }));
+  }
+  if ((!sf.jdPills || sf.jdPills.length === 0) && typeof sfAny.jd === 'string' && sfAny.jd) {
+    sf.jdPills = (sfAny.jd as string).split(',').map(v => ({ type: 'jd', values: [v.trim()] }));
+  }
+  if (sfAny.remote === true || sfAny.includeRemote === true) {
+    sf.includeRemote = true;
+  }
+
+  // What pills (title/keyword search) — FA-001/FA-007: OR title ilike
   const whatPills = sf.whatPills || sf.pills || [];
   const allWhatClauses: string[] = whatPills.flatMap(pill => {
     return pill.values.flatMap(v => {
