@@ -1,5 +1,5 @@
 // ============================================================
-// admin-bug-review.js — Admin Bug Report Review Panel (FB-13)
+// admin-bug-review.js (v11.56) — Admin Bug Report Review Panel (FB-13)
 // POD2_HANDOFF_FeedbackSystem Section B.3 + FB-13
 // Injects a Bug Review section into the admin feedback panel.
 // Loads bug_reports from Supabase. Admin marks confirmed,
