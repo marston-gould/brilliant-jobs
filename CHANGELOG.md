@@ -1,3 +1,11 @@
+## v11.49 Bugfix — Admin Footer Link + MFA Gate Restored (2026-03-20)
+- **Root cause:** `/admin` Vercel rewrite was routing to the SPA (`/dist/spa/src/app/`), which uses React `AdminGuard` (role-check only, no MFA). The standalone `admin.html` with the full `admin-shell.ts` MFA gate had been archived to `legacy/admin.html` during SPA migration and never restored to root.
+- **Fix 1:** Removed `/admin` and `/admin.html` rewrites from `vercel.json`. With `cleanUrls: true`, Vercel now serves root `admin.html` directly.
+- **Fix 2:** Restored `admin.html` to repo root (from `legacy/admin.html`). Contains full auth flow: (1) Supabase auth check, (2) `profiles.role === 'admin'` check, (3) TOTP enrollment if no factor enrolled, (4) AAL2 challenge if enrolled but not verified this session, (5) admin console shown only after full MFA verification.
+- `dist/admin.min.js` bundles `globals.ts` (defines `sb` Supabase client), `admin-shell.ts` (MFA gate), and all admin modules — no missing dependencies.
+- Version strings in `admin.html` updated from `v10.41` → `v11.49`.
+- Files changed: `admin.html` (new), `vercel.json`, `js/version.js`
+
 ## v11.48 P0 Bugfix — Hero Segment + Merch Rotation (2026-03-20)
 - **Bug 1 (CRITICAL):** Removed duplicate `landing-segment.js` + `purify.min.js` script tags from index.html `<head>`. Duplicate block was at lines 158–161. First-time visitors were always seeing the returning-visitor hero because the second execution of landing-segment.js read `bj_visits=1` (already incremented by the first run) and switched segment to "returning", destroying the new-visitor hero. Fix: duplicate removed, `landing-segment.js` now executes exactly once. `bj_visits` increments by 1 per load (was 2).
 - **Bug 2:** `merch-client.js` DOMPurify fallback changed from `""` to `html`. When DOMPurify is unavailable, merch headline now renders from server-controlled content rather than going blank. Field-level injection log added: `[BJ:Merch] Injecting field: <field> into <tagName>`.
