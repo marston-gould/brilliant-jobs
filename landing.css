@@ -203,12 +203,18 @@ html:not([data-segment]) .carousel .carousel-dots {
 
 /* ======================== PRICING ======================== */
 .pricing-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+}
+@media (max-width: 900px) {
+  .pricing-grid { grid-template-columns: 1fr; max-width: 440px; margin: 0 auto; }
+}
+@media (max-width: 600px) {
+  .pricing-grid { gap: 14px; }
 }
 .price-card {
   background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: 14px; padding: 32px; position: relative;
-  transition: border-color 0.2s;
+  border-radius: 14px; padding: 28px 28px 24px; position: relative;
+  transition: border-color 0.2s, box-shadow 0.2s;
   display: flex; flex-direction: column;
 }
 .price-card:hover { border-color: var(--border-hover); }
@@ -216,31 +222,100 @@ html:not([data-segment]) .carousel .carousel-dots {
   border-color: var(--accent);
   box-shadow: 0 4px 24px rgba(61,126,255,0.12);
 }
-.price-card.featured::before {
-  content: 'Most Popular';
-  position: absolute; top: -12px; left: 24px;
-  background: var(--accent); color: #fff; font-size: 11px; font-weight: 600;
-  padding: 4px 12px; border-radius: 6px;
+.price-card-pro {
+  border: 2px solid var(--accent);
 }
+.price-card-pro:hover { border-color: var(--accent); }
+
+/* Badges */
+.price-badge {
+  display: inline-block; font-size: 11px; font-weight: 600;
+  padding: 3px 10px; border-radius: 5px; margin-bottom: 12px;
+  letter-spacing: 0.3px;
+}
+.price-badge-green { background: var(--green-dim); color: var(--green); }
+.price-badge-blue  { background: var(--accent-dim); color: var(--accent); }
+.price-badge-purple{ background: var(--purple-dim); color: var(--purple); }
+.price-badge-amber { background: var(--warm-dim);   color: var(--warm);   }
+
 .price-name { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
-.price-desc { font-size: 13px; color: var(--text-faint); margin-bottom: 20px; }
+.price-desc { font-size: 13px; color: var(--text-faint); margin-bottom: 16px; }
 .price-amount { font-family: var(--mono); font-size: 36px; font-weight: 600; margin-bottom: 4px; }
-.price-period { font-size: 13px; color: var(--text-faint); margin-bottom: 24px; }
-.price-features { list-style: none; margin-bottom: 24px; flex: 1; }
+.price-period { font-size: 13px; color: var(--text-faint); margin-bottom: 20px; }
+.price-features { list-style: none; margin-bottom: 20px; flex: 1; }
 .price-features li {
-  font-size: 14px; color: var(--text-dim); padding: 6px 0;
-  display: flex; align-items: center; gap: 8px;
+  font-size: 13.5px; color: var(--text-dim); padding: 5px 0;
+  display: flex; align-items: flex-start; gap: 8px; line-height: 1.4;
 }
-.price-features li::before { content: '✓'; color: var(--green); font-weight: 700; font-size: 13px; }
+.price-features li::before { content: '✓'; color: var(--green); font-weight: 700; font-size: 12px; flex-shrink: 0; margin-top: 2px; }
+.price-features-samples li { color: var(--text-faint); font-size: 13px; }
+.price-feature-highlight { color: var(--accent) !important; font-weight: 600; }
+.price-feature-highlight::before { color: var(--accent) !important; }
+
+.price-divider { height: 1px; background: var(--border); margin: 16px 0 12px; }
+.price-samples-label { font-size: 11px; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
+
+/* Credit pack table inside Pro card */
+.price-pack-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px; }
+.price-pack-table td { padding: 5px 4px; color: var(--text-dim); }
+.price-pack-table td:first-child { color: var(--text-faint); }
+.price-pack-table td:nth-child(2) { text-align: right; }
+.price-pack-table td:nth-child(3) { text-align: right; font-weight: 600; color: var(--accent); width: 52px; }
+.price-strike { text-decoration: line-through; color: var(--text-faint); font-family: var(--mono); }
+.price-pack-pro { font-family: var(--mono); }
+
 .price-btn {
   width: 100%; padding: 12px; border: none; border-radius: 8px;
   font-family: var(--sans); font-size: 14px; font-weight: 600;
-  cursor: pointer; transition: all 0.15s;
+  cursor: pointer; transition: all 0.15s; margin-top: auto;
 }
 .price-btn-primary { background: var(--accent); color: #fff; }
 .price-btn-primary:hover { background: var(--accent-hover); }
 .price-btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-dim); }
 .price-btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Referral callout card */
+.price-referral-card {
+  display: flex; align-items: center; gap: 20px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 24px 28px; margin-top: 16px;
+}
+.price-referral-icon {
+  flex-shrink: 0; width: 44px; height: 44px; border-radius: 10px;
+  background: var(--accent-dim); color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+}
+.price-referral-body { flex: 1; min-width: 0; }
+.price-referral-heading { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+.price-referral-text { font-size: 13px; color: var(--text-dim); line-height: 1.55; }
+.price-referral-btn { width: auto; white-space: nowrap; flex-shrink: 0; padding: 10px 20px; }
+@media (max-width: 680px) {
+  .price-referral-card { flex-direction: column; align-items: flex-start; }
+  .price-referral-btn { width: 100%; }
+}
+
+/* PAYL coming soon card */
+.price-payl-card {
+  border: 1.5px dashed var(--border-hover); border-radius: 14px;
+  padding: 28px; margin-top: 14px;
+}
+.price-payl-title { font-size: 16px; font-weight: 700; margin: 8px 0 6px; }
+.price-payl-desc { font-size: 13px; color: var(--text-dim); line-height: 1.55; margin-bottom: 18px; max-width: 560px; }
+.price-payl-form { display: flex; gap: 10px; max-width: 440px; }
+.price-payl-input {
+  flex: 1; padding: 10px 14px; border: 1px solid var(--border);
+  border-radius: 8px; font-family: var(--sans); font-size: 14px;
+  background: var(--bg-input); color: var(--text);
+  transition: border-color 0.15s;
+}
+.price-payl-input:focus { outline: none; border-color: var(--accent); }
+.price-payl-input::placeholder { color: var(--text-faint); }
+.price-payl-submit { width: auto; padding: 10px 20px; white-space: nowrap; }
+.price-payl-success { font-size: 14px; color: var(--green); font-weight: 500; padding: 8px 0; }
+@media (max-width: 520px) {
+  .price-payl-form { flex-direction: column; }
+  .price-payl-submit { width: 100%; }
+}
 
 /* ======================== FOOTER ======================== */
 /* TW-STD-002: Converted to Tailwind utilities in index.html */
@@ -349,7 +424,6 @@ html:not([data-segment]) .carousel .carousel-dots {
 @media (max-width: 768px) {
   .section { padding: 48px 20px; }
   .data-stats-grid { grid-template-columns: 1fr 1fr; }
-  .pricing-grid { grid-template-columns: 1fr; }
   .modal { margin: 16px; }
   .preview-stats { grid-template-columns: repeat(2, 1fr); }
   .preview-input-row { flex-direction: column; }
@@ -359,7 +433,6 @@ html:not([data-segment]) .carousel .carousel-dots {
   .compare-table td:first-child { width: 100px; }
 }
 @media (max-width: 480px) {
-  .pricing-grid { gap: 16px; }
 }
 
 /* ==================== SEGMENT VISIBILITY (v3.59 fix) ==================== */
