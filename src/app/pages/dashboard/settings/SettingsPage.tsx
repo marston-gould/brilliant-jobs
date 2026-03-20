@@ -128,15 +128,16 @@ export default function SettingsPage() {
         <div className="text-[14px] font-bold text-text mb-0.5">Appearance</div>
         <div className="text-[12px] text-text-dim mb-4">Choose your theme preference</div>
         <div className="flex gap-2 flex-wrap">
-          {[
-            { key: 'light', label: '☀️ Light' },
-            { key: 'dark', label: '🌙 Dark' },
-            { key: 'auto', label: '◐ Auto' },
-          ].map(t => (
+          {([
+            { key: 'light', label: 'Light',  Icon: Sun },
+            { key: 'dark',  label: 'Dark',   Icon: Moon },
+            { key: 'auto',  label: 'Auto',   Icon: Monitor },
+          ] as { key: string; label: string; Icon: React.ElementType }[]).map(t => (
             <button key={t.key} onClick={() => setTheme(t.key)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-all
-                ${theme === t.key ? 'bg-accent text-white border-accent' : 'bg-bg-card text-text-dim border-border hover:border-accent'}
-              `}>{t.label}</button>
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border transition-all
+                ${theme === t.key ? 'bg-accent text-white border-accent' : 'bg-bg-card text-text-dim border-border hover:border-accent'}`}>
+              <t.Icon className="w-3.5 h-3.5" strokeWidth={1.75} />{t.label}
+            </button>
           ))}
         </div>
       </div>
