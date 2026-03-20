@@ -1,3 +1,24 @@
+## v11.56 No-hardcoding + No-silent-errors audit (2026-03-20)
+
+Per new engineering rules: (1) No hardcoding, (2) No silent errors.
+
+### Hardcoding violations fixed
+- `js/referral-capture.js`: Supabase URL and anon key were hardcoded inline. Now reads from `SUPABASE_URL` / `SUPABASE_KEY` globals set by `globals.js` on every page. Guard added — logs warning and returns early if globals not present.
+- `js/admin-bug-review.js`: Supabase storage URL hardcoded in screenshot link. Now uses `SUPABASE_URL` global.
+- `src/app/shell/AppShell.tsx` (v11.55): `Dashboard v11.45` hardcoded version string. Now reads `(window as any).BJ_VERSION` at runtime.
+
+### Silent error violations fixed
+- `src/app/pages/dashboard/feedback/FeedbackPage.tsx`: 4 empty `} catch {}` blocks in Tab 1/2/3 DB operations. Now `console.error`.
+- `js/referral-capture.js`: 2 silent catches (sessionStorage write failure, fetch failure). Now `console.warn`.
+- `js/admin-bug-review.js`: Silent catch on `credit_transactions` insert. Now `console.warn`.
+- `src/app/providers/supabase.ts`: `/* RPC may not exist */`, `/* view may not exist */`, `} catch { return 0; }`, `} catch {}`. Now `console.warn` with context labels.
+
+### Accepted non-fatal silences (intentionally kept silent)
+- `localStorage` reads/writes: storage unavailable (private browsing, quota) is genuinely non-fatal.
+- PostHog capture: analytics failure must never break UX.
+- `signOut` failure: redirect still happens.
+- Theme reading from localStorage on init: falls back to default safely.
+
 ## v11.55 — Nav version display + sat-prompt modal (2026-03-20)
 - **Nav version hardcoded `v11.45`:** `AppShell.tsx` had `Dashboard v11.45` as a static string since the SPA was first scaffolded. It never updated with version bumps. Fixed to read from `(window as any).BJ_VERSION` at runtime — always shows the current live version.
 - **Satisfaction prompt was a sidebar widget, not a popup:** `sat-prompt-overlay` was rendering inline in the DOM with no positioning, appearing as a persistent card below the main content. Redesigned as a proper centered modal: fixed fullscreen overlay (`position:fixed; inset:0; background:rgba(0,0,0,0.5)`), centered card (`max-width:380px`, `border-radius:16px`), dismiss X, score labels, follow-up textarea on 1–3, Send/Skip actions. `sat-prompt.js` updated to `display:flex/none` toggling. CSS added to `src/input.css`.
