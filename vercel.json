@@ -109,14 +109,6 @@
       "destination": "/dist/spa/src/app/"
     },
     {
-      "source": "/admin.html",
-      "destination": "/dist/spa/src/app/"
-    },
-    {
-      "source": "/admin",
-      "destination": "/dist/spa/src/app/"
-    },
-    {
       "source": "/functions/v1/:path*",
       "destination": "https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/:path*"
     },
