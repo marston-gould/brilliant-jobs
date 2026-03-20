@@ -104,7 +104,7 @@ function HonestFeedbackTab() {
         .order('created_at', { ascending: false })
         .limit(10);
       setHistory(data || []);
-    } catch {}
+    } catch (e) { console.error("[BJ:Feedback] Failed:", e); }
   }
 
   async function handleSubmit() {
@@ -216,7 +216,7 @@ function BugReportTab({ lastPage }: { lastPage: string }) {
         if (settings.bug_reward_standard) setBugRewardStandard(parseInt(settings.bug_reward_standard, 10));
         if (settings.bug_reward_critical) setBugRewardCritical(parseInt(settings.bug_reward_critical, 10));
       }
-    } catch {}
+    } catch (e) { console.error("[BJ:Feedback] Failed:", e); }
   }
 
   async function loadHistory() {
@@ -226,7 +226,7 @@ function BugReportTab({ lastPage }: { lastPage: string }) {
         .order('created_at', { ascending: false })
         .limit(10);
       setHistory(data || []);
-    } catch {}
+    } catch (e) { console.error("[BJ:Feedback] Failed:", e); }
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -392,7 +392,7 @@ function FeatureSuggestionTab() {
         .order('created_at', { ascending: false })
         .limit(10);
       setHistory(data || []);
-    } catch {}
+    } catch (e) { console.error("[BJ:Feedback] Failed:", e); }
   }
 
   async function handleSubmit() {
