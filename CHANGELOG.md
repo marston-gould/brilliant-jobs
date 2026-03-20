@@ -1,3 +1,9 @@
+## v11.54 Bugfix — Empty Job Feed (2026-03-20)
+- **Root cause (CRITICAL):** `useFeedSearch.ts` line 737 — when `checkedFilters.length === 0` (no saved filters checked in localStorage), the hook immediately returned an empty jobs array. New users with no saved filters always saw a blank feed with zero results, even though 482,000+ open jobs exist in the database.
+- **Fix:** Replaced the early-exit with a default query: `status='open'` ordered by `created_at DESC`, paginated. Users with no filters now see the most recent open jobs on first load. Hidden jobs are still excluded.
+- **Related (v11.53):** Sort column `'score'` → `'created_at'` (ats_jobs has no score column). `textSearch('fts')` → `textSearch('search_vector')` (correct column name). These fixed the 500 errors but the feed was still blank due to this second bug.
+- **Files changed:** `src/app/pages/dashboard/feed/hooks/useFeedSearch.ts`
+
 ## v11.53 Bugfix — Job Feed 500 Errors (2026-03-20)
 - **Root cause 1 (CRITICAL):** `ats_jobs` table has no `score` column. `supabase.ts` sort logic defaulted to `ORDER BY score` when no `sort_by` param was set, causing a Postgres 500 on every initial feed load.
   - Fix: default sort changed from `'score'` to `'created_at'` (newest jobs first, which is the correct default UX anyway).
