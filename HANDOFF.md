@@ -4571,7 +4571,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority â€
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v11.51`** | **FB-13 admin bug review panel. All feedback system requirements complete. 2026-03-20.** |
+| **Product (BJ_VERSION)** | **`v11.52`** | **Subscription fixes â€” billing tiers, credit costs, username referral links, Lucide audit. 2026-03-20.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
