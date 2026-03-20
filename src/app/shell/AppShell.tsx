@@ -233,7 +233,7 @@ export function AppShell() {
             <div className="w-[30px] h-[30px] rounded-lg bg-white flex items-center justify-center text-[var(--nav-bg)] font-extrabold text-sm flex-shrink-0">B</div>
             <div className="max-md:hidden">
               <div className="font-bold text-[16px] text-white leading-tight nav-brand-title">Brilliant Jobs</div>
-              <div className="text-[11px] text-[var(--nav-text)]">Dashboard <span className="text-[9px]">v11.45</span></div>
+              <div className="text-[11px] text-[var(--nav-text)]">Dashboard <span className="text-[9px]">{(window as any).BJ_VERSION || ''}</span></div>
             </div>
           </div>
         </div>
@@ -347,32 +347,39 @@ export function AppShell() {
       </main>
 
 
-      {/* ── In-session satisfaction prompt (Part C) — floating card bottom-right ── */}
-      <div id="sat-prompt-card" className="sat-prompt-card" role="complementary" aria-label="Satisfaction check-in">
-        <div id="sat-prompt-main">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[12px] text-text-faint font-medium">Quick check-in</span>
-            <button id="sat-prompt-dismiss" className="text-text-faint hover:text-text-dim p-0.5" aria-label="Dismiss">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-          </div>
-          <p className="text-[14px] font-semibold text-text mb-3">How satisfied are you with Brilliant Jobs?</p>
-          <div className="flex gap-1.5 mb-2">
-            {[1,2,3,4,5].map(n => (
-              <button key={n} className="sat-score-btn w-9 h-9 rounded-full border-2 border-border bg-bg-input text-text-dim text-[13px] font-semibold hover:border-accent hover:text-accent transition-all" data-score={n} aria-label={`Score ${n}`}>{n}</button>
-            ))}
-          </div>
-          <div id="sat-prompt-follow-wrap" style={{display:'none'}} className="mt-2">
-            <textarea id="sat-prompt-text" rows={2} placeholder="What's not working?" className="w-full px-2.5 py-2 rounded-lg border border-border bg-bg-input text-[12px] text-text resize-none focus:border-accent focus:outline-none" />
-            <div className="flex gap-2 mt-1.5">
-              <button id="sat-prompt-send" className="px-3.5 py-1.5 rounded-lg bg-accent text-white text-[12px] font-semibold">Send</button>
-              <button id="sat-prompt-skip" className="text-[12px] text-text-faint hover:text-text-dim">Skip</button>
+      {/* ── In-session satisfaction prompt — centered modal overlay ── */}
+      <div id="sat-prompt-card" className="sat-prompt-overlay" role="dialog" aria-modal="true" aria-label="Satisfaction check-in">
+        <div className="sat-prompt-modal">
+          <div id="sat-prompt-main">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[17px] font-bold text-text">Quick check-in</h3>
+              <button id="sat-prompt-dismiss" className="w-7 h-7 rounded-md flex items-center justify-center text-text-faint hover:text-text hover:bg-bg-input transition-colors" aria-label="Dismiss">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <p className="text-[14px] text-text-dim mb-5">How satisfied are you with Brilliant Jobs?</p>
+            <div className="flex gap-2 justify-center mb-2">
+              {[1,2,3,4,5].map(n => (
+                <button key={n} className="sat-score-btn w-11 h-11 rounded-full border-2 border-border bg-bg-input text-text-dim text-[15px] font-semibold hover:border-accent hover:text-accent transition-all" data-score={n} aria-label={`Score ${n}`}>{n}</button>
+              ))}
+            </div>
+            <div className="flex justify-between text-[11px] text-text-faint px-1 mb-5">
+              <span>Not at all</span><span>Love it</span>
+            </div>
+            <div id="sat-prompt-follow-wrap" style={{display:'none'}}>
+              <textarea id="sat-prompt-text" rows={3} placeholder="What's not working? We want to fix it." className="w-full px-3 py-2.5 rounded-lg border border-border bg-bg-input text-[13px] text-text resize-none focus:border-accent focus:outline-none mb-3" />
+              <div className="flex gap-2">
+                <button id="sat-prompt-send" className="flex-1 py-2 rounded-lg bg-accent text-white text-[13px] font-semibold">Send feedback</button>
+                <button id="sat-prompt-skip" className="px-4 py-2 rounded-lg border border-border text-[13px] text-text-dim hover:text-text transition-colors">Skip</button>
+              </div>
             </div>
           </div>
+          <div id="sat-prompt-thanks" style={{display:'none'}} className="py-6 text-center">
+            <p className="text-[28px] mb-2">✓</p>
+            <p className="text-[15px] font-semibold text-text">Thanks for the feedback!</p>
+          </div>
         </div>
-        <div id="sat-prompt-thanks" style={{display:'none'}} className="text-[13px] font-semibold text-green text-center py-1">Thanks! ✓</div>
       </div>
-    </div>
     </ToastProvider>
   );
 }
