@@ -763,7 +763,7 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
         // FA-007: Check content search flag for parity with legacy What/What NOT pills
         const contentSearchEnabled = await isFeatureFlagEnabled('feed_content_search', false);
         const sf = checkedFilters[0]!;
-        let query = sb.from('ats_jobs').select('*', { count: 'planned' });
+        let query = sb.from('ats_jobs').select('greenhouse_id, title, company_name, location, loc_country, loc_state, loc_city, loc_type, salary_min, salary_max, salary_currency, salary_rate, first_seen_at, updated_at, created_at, url, apply_url, ats_source, status, extracted_seniority, extracted_skills, is_remote, content', { count: 'planned' });
         query = buildFilterQuery(sf, query, sf._locationIds || null, tuning, contentSearchEnabled);
 
         if (hiddenIds.length > 0) {
@@ -864,12 +864,12 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
 
         } else {
           // Client-side merge fallback (pre-FA-005)
-          const perFilter = Math.min(Math.ceil(2000 / checkedFilters.length), 500);
+          const perFilter = JOBS_PER_PAGE; // 50 per filter — fast first page, no 500-row fetches
           const seenIds = new Set<string>();
           const jobFilterMap = new Map<string, Array<{ num: string; color: string }>>();
 
           const promises = checkedFilters.map(sf => {
-            let q = sb.from('ats_jobs').select('*', { count: 'planned' });
+            let q = sb.from('ats_jobs').select('greenhouse_id, title, company_name, location, loc_country, loc_state, loc_city, loc_type, salary_min, salary_max, salary_currency, salary_rate, first_seen_at, updated_at, created_at, url, apply_url, ats_source, status, extracted_seniority, extracted_skills, is_remote, content', { count: 'planned' });
             q = buildFilterQuery(sf, q, sf._locationIds || null, tuning, contentSearchEnabled);
             if (hiddenIds.length > 0) {
               q = q.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
