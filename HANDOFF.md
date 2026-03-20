@@ -52,12 +52,19 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**Admin Footer Link + MFA Gate** — /admin now serves standalone admin.html with TOTP double-auth ✅ (2026-03-20)
-- v11.48 → v11.49
-- **Root cause:** `/admin` Vercel rewrite sent traffic to the SPA. SPA `AdminGuard` checks role only — no MFA. `admin.html` was in `legacy/` (archived during SPA migration) and never restored.
-- **Fix:** Removed `/admin` + `/admin.html` rewrites from `vercel.json`. Restored `admin.html` to root. Flow: auth → role=admin → TOTP enrollment (if needed) → AAL2 challenge → admin console.
-- **Admin footer link** (`/admin` in index.html footer) now correctly reaches the MFA-gated admin page.
-- Files: `admin.html` (new at root), `vercel.json` (2 rewrites removed), `js/version.js`
+**Pod 2 Sprint Arc: v11.46–v11.52** — Landing page, feedback system, subscription fixes, Lucide audit ✅ (2026-03-20)
+
+Full arc completed across multiple sessions. All sessions fully audited and passing.
+
+- **v11.46 (Pricing Module):** Free Trial / Starter / Pro cards, PAYL waitlist, PostHog events, payl_waitlist table.
+- **v11.47 (Landing Restructure):** Section reorder, benefit carousel (js/carousel.js), benefits.html, compare.html v2, 26 WebP cards.
+- **v11.48 (P0 Bugfix):** Duplicate landing-segment.js removed from index.html head — first-time visitor hero now correct. merch-client.js DOMPurify fallback fixed.
+- **v11.49 (Admin MFA):** /admin Vercel rewrite removed. admin.html restored to root with full TOTP/AAL2 gate.
+- **v11.50–v11.51 (Feedback System, FB-01–FB-16):** exit_surveys + bug_reports + feature_suggestions tables + RLS. js/exit-survey.js, js/sat-prompt.js, FeedbackPage.tsx (3 tabs), AppShell bubble removed, js/admin-bug-review.js admin panel.
+- **v11.52 (Subscription Fixes, SUB-01–SUB-10):** BillingPage correct tiers/credits/packs/Pro 50% off. All $ removed. 💳→CreditCard Lucide. handlePricingShare navigates to /billing#sub-referral-section. Username system (profiles.username, SettingsPage check, /:username Vercel rewrite, SharePanel). ATS brand names removed from carousel card 07, pricing bullets, schema.org JSON-LD. SettingsPage theme emoji → Lucide Sun/Moon/Monitor.
+- **ROADMAP.md + roadmap.html:** Both updated with v11.46–v11.52 entries. roadmap.html version bumped v10.52→v11.52. ATS brand names removed from roadmap.html footer.
+
+**Previous: TW-STD-002** — Landing Page CSS Standardization ✅
 
 **Previous: POD2_BUGFIX_HeroRotation** — P0 Hero Segment + Merch Rotation Fix ✅ (2026-03-20) — P0 Hero Segment + Merch Rotation Fix ✅ (2026-03-20)
 - v11.47 → v11.48
@@ -4571,7 +4578,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v11.52`** | **Subscription fixes — billing tiers, credit costs, username referral links, Lucide audit. 2026-03-20.** |
+| **Product (BJ_VERSION)** | **`v11.52`** | **Pod 2 arc complete: v11.46–v11.52. Landing page, feedback system, subscription fixes, Lucide audit, ROADMAP sync. 2026-03-20.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
