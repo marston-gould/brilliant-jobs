@@ -4587,7 +4587,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v11.55`** | **Nav version dynamic + sat-prompt modal overlay. 2026-03-20.** |: v11.46–v11.52. Landing page, feedback system, subscription fixes, Lucide audit, ROADMAP sync. 2026-03-20.** |
+| **Product (BJ_VERSION)** | **`v11.56`** | **No-hardcoding + no-silent-errors audit complete. 2026-03-20.** |: v11.46–v11.52. Landing page, feedback system, subscription fixes, Lucide audit, ROADMAP sync. 2026-03-20.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
