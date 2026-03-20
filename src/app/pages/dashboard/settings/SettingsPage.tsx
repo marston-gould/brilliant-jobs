@@ -31,6 +31,10 @@ export default function SettingsPage() {
   const [excludeAI, setExcludeAI] = useState(false);
   const [saveStatus, setSaveStatus] = useState('');
   const [eeocData, setEeocData] = useState<Record<string, string>>({});
+  // SUB-05: username state + availability check
+  const [username, setUsername] = useState('');
+  const [usernameStatus, setUsernameStatus] = useState<'idle'|'checking'|'available'|'taken'|'invalid'>('idle');
+  const [usernameTimer, setUsernameTimer] = useState<ReturnType<typeof setTimeout>|null>(null);
 
   useEffect(() => {
     userProvider.getCurrentUser().then(u => {
@@ -48,6 +52,12 @@ export default function SettingsPage() {
         setPassiveMode(!!prefs.passiveMode);
         const ud = (u as any).user_data || {};
         setEeocData(ud.eeoc || {});
+        // SUB-05: load username from profiles table
+        import('@app/lib/supabase').then(({ supabase }) => {
+          supabase.from('profiles').select('username').eq('id', u.id).single()
+            .then(({ data }) => { if (data?.username) setUsername(data.username); })
+            .catch(() => {});
+        });
       }
     });
   }, [userProvider]);
@@ -63,10 +73,45 @@ export default function SettingsPage() {
       await userProvider.updatePreferences({
         firstName, lastName, phone, linkedin, location, workAuth, sponsorship, passiveMode,
       });
+      // SUB-05: save username separately via supabase direct
+      if (username.trim() && usernameStatus !== 'taken' && usernameStatus !== 'invalid') {
+        const { supabase } = await import('@app/lib/supabase');
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (authUser) {
+          await supabase.from('profiles').update({ username: username.trim().toLowerCase() }).eq('id', authUser.id);
+        }
+      }
       setSaveStatus('Saved');
       setTimeout(() => setSaveStatus(''), 2000);
     } catch { setSaveStatus('Error'); }
   }, [userProvider, firstName, lastName, phone, linkedin, location, workAuth, sponsorship, passiveMode]);
+
+  // SUB-05: username availability check (debounced 300ms)
+  const RESERVED = new Set(['admin','app','api','billing','benefits','compare','dashboard',
+    'data-lab','feed','ghost-report','help','hiring-trends','index','install','jobs',
+    'login','market','notifications','pipeline','pricing','privacy','referral',
+    'referrals','roadmap','salary','settings','signup','stats','subscription',
+    'survey','terms','tuning','uninstall','r']);
+
+  const checkUsername = (val: string) => {
+    if (usernameTimer) clearTimeout(usernameTimer);
+    const clean = val.toLowerCase().replace(/[^a-z0-9-]/g, '');
+    if (clean !== val.toLowerCase()) { setUsernameStatus('invalid'); return; }
+    if (val.length < 3 || val.length > 30) { setUsernameStatus('invalid'); return; }
+    if (RESERVED.has(val.toLowerCase())) { setUsernameStatus('taken'); return; }
+    if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(val.toLowerCase()) && val.length > 1) {
+      setUsernameStatus('invalid'); return;
+    }
+    setUsernameStatus('checking');
+    const t = setTimeout(async () => {
+      try {
+        const { supabase } = await import('@app/lib/supabase');
+        const { data } = await supabase.from('profiles').select('username').eq('username', val.toLowerCase()).maybeSingle();
+        setUsernameStatus(data ? 'taken' : 'available');
+      } catch { setUsernameStatus('idle'); }
+    }, 300);
+    setUsernameTimer(t);
+  };
 
   const inputCls = "w-full px-3 py-2 rounded-md border border-border bg-bg-input text-[13px] text-text placeholder:text-text-faint focus:outline-none focus:ring-2 focus:ring-accent/40";
   const labelCls = "text-[11px] font-medium text-text-dim uppercase tracking-wide block mb-1";
@@ -133,6 +178,26 @@ export default function SettingsPage() {
           <div><label className={labelCls}>Phone</label><input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+1 (555) 123-4567" className={inputCls} /></div>
           <div><label className={labelCls}>LinkedIn URL</label><input type="url" value={linkedin} onChange={e => setLinkedin(e.target.value)} placeholder="https://linkedin.com/in/janedoe" className={inputCls} /></div>
           <div><label className={labelCls}>Location</label><input type="text" value={location} onChange={e => setLocation(e.target.value)} placeholder="San Francisco, CA" className={inputCls} /></div>
+
+          {/* SUB-05: Username / Referral URL */}
+          <div>
+            <label className={labelCls}>Referral Username</label>
+            <div className="text-[11px] text-text-faint mb-1.5">Your personal share link: <span className="font-mono text-accent">brilliantjobs.app/{username || 'yourusername'}</span></div>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={username}
+                onChange={e => { setUsername(e.target.value); checkUsername(e.target.value); }}
+                placeholder="yourusername"
+                maxLength={30}
+                className={`${inputCls} ${usernameStatus === 'taken' || usernameStatus === 'invalid' ? 'border-red' : usernameStatus === 'available' ? 'border-green' : ''}`}
+              />
+              {usernameStatus === 'checking' && <span className="text-[11px] text-text-faint">Checking…</span>}
+              {usernameStatus === 'available' && <span className="text-[11px] text-green font-semibold">Available</span>}
+              {usernameStatus === 'taken' && <span className="text-[11px] text-red font-semibold">Taken</span>}
+              {usernameStatus === 'invalid' && <span className="text-[11px] text-red font-semibold">3–30 chars, letters/numbers/hyphens</span>}
+            </div>
+          </div>
 
           <div className={toggleRow}>
             <div><div className="text-[13px] font-semibold text-text">Work Authorization (US)</div><div className="text-[11px] text-text-faint">Legally authorized to work in the United States</div></div>
