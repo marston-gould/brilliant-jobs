@@ -31,8 +31,8 @@
   <script src="/js/landing-ab.js?v=v11.32" defer></script>
   <script src="/js/structured-logger.js?v=v11.32" defer></script>
   <!-- REM-005 LS1-6: Ahrefs analytics removed — redundant with PostHog (all 4 surfaces) + GSC (organic search). Reduces 3rd-party script load and CSP surface area. -->
-  <link rel="stylesheet" href="/styles.css?v=v11.29">
-  <link rel="stylesheet" href="/landing.css?v=v11.29">
+  <link rel="stylesheet" href="/styles.css?v=v11.46">
+  <link rel="stylesheet" href="/landing.css?v=v11.46">
 
   <!-- Schema.org structured data -->
   <script type="application/ld+json">
@@ -133,7 +133,7 @@
             "name": "Is Brilliant Jobs free?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Brilliant Jobs has a free plan that includes one saved search, full job feed access, salary data, and ghost rates. No credit card required. Paid plans (Starter at $20/mo, Pro at $40/mo) unlock AI resume scoring, more saved searches, and credits for AI features."
+              "text": "Brilliant Jobs offers a free 7-day trial — no credit card required. The trial includes full access to all search, filtering, pipeline tracking, ghost detection, and company intelligence features, plus AI credit samples for resume scoring, cover letters, auto-apply, and interview practice. After 7 days, plans start at 20/mo (Starter, 100 AI credits) or 40/mo (Pro, 300 AI credits)."
             }
           },
           {
@@ -523,8 +523,8 @@ height="0" width="0" class="gtm-iframe"></iframe></noscript>
         <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><p class="faq-answer" itemprop="text">LinkedIn shows you the jobs that employers pay to promote. We show you every job posted on <span data-stat="total-pages">39,000+</span> company career pages — including the ones that never make it to LinkedIn. Plus salary data and ghost rate tracking that LinkedIn will never offer.</p></div>
       </details>
       <details class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
-        <summary itemprop="name">What does the free plan include?</summary>
-        <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><p class="faq-answer" itemprop="text">One saved search, full job feed access, salary data, and ghost rates. Paid plans unlock AI resume scoring, more saved searches, credits for AI features, and priority notifications.</p></div>
+        <summary itemprop="name">How does the free trial work?</summary>
+        <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><p class="faq-answer" itemprop="text">You get 7 days of full access — no credit card required. That includes all search and filter tools, pipeline tracking, ghost detection, and company intelligence. You also get AI credit samples: 2 resume tailorings, 2 cover letters, 2 auto-applies, and 1 interview practice session. After 7 days, choose Starter (20/mo, 100 credits) or Pro (40/mo, 300 credits) to keep going. Your pipeline and saved data stay accessible in read-only mode if you don't upgrade.</p></div>
       </details>
       <details class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
         <summary itemprop="name">How current are the job listings?</summary>
@@ -740,16 +740,20 @@ height="0" width="0" class="gtm-iframe"></iframe></noscript>
     <!-- PAY WHEN YOU GET A JOB — COMING SOON -->
     <div class="price-payl-card">
       <div class="price-payl-header">
+        <div class="price-payl-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/><path d="M19 3v4"/><path d="M21 5h-4"/></svg>
+        </div>
         <div>
           <div class="price-badge price-badge-amber">Coming soon</div>
           <div class="price-payl-title">Pay when you get a job</div>
-          <p class="price-payl-desc">Search for free and only pay when you land a role. We're building this next — be first to know when it launches.</p>
+          <p class="price-payl-desc">Use Brilliant Jobs for free and only pay when you land a role. We're building a deferred payment option so your job search doesn't have to cost you anything upfront. Get notified when it launches.</p>
         </div>
       </div>
       <div class="price-payl-form" id="payl-form-wrap">
-        <input type="email" id="payl-email" class="price-payl-input" placeholder="you@email.com" autocomplete="email" aria-label="Email for pay-when-hired waitlist">
-        <button class="price-btn price-btn-outline price-payl-submit" id="payl-submit-btn" onclick="handlePaylSignup()">Notify me</button>
+        <input type="email" id="payl-email" class="price-payl-input" placeholder="Enter your email" autocomplete="email" aria-label="Email for pay-when-hired waitlist">
+        <button class="price-btn price-btn-primary price-payl-submit" id="payl-submit-btn" onclick="handlePaylSignup()">Notify me</button>
       </div>
+      <p class="price-payl-fine-print" id="payl-fine-print">We'll only email you when this feature is ready. Nothing else.</p>
       <div class="price-payl-success lp-hidden" id="payl-success">You're on the list. We'll let you know.</div>
     </div>
 
@@ -920,6 +924,8 @@ height="0" width="0" class="gtm-iframe"></iframe></noscript>
       }
       // Silently succeed on duplicate — show success either way
       formWrap.classList.add('lp-hidden');
+      var finePrint = document.getElementById('payl-fine-print');
+      if (finePrint) finePrint.classList.add('lp-hidden');
       successEl.classList.remove('lp-hidden');
     } catch(e) {
       btn.disabled = false;
