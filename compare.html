@@ -1,1004 +1,160 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Competitor Comparison v10.52 -->
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <link rel="canonical" href="https://brilliantjobs.app/compare">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Brilliant Jobs vs LinkedIn, Indeed, ZipRecruiter &amp; Glassdoor | Best Job Search 2026</title>
-  <meta name="description" content="Compare Brilliant Jobs to LinkedIn, Indeed, ZipRecruiter, and Glassdoor. Jobs from real company career pages, ghost detection, and real salary data — no promoted jobs.">
-  <meta property="og:title" content="Brilliant Jobs vs LinkedIn, Indeed, ZipRecruiter & Glassdoor | Best Job Search 2026">
-  <meta property="og:description" content="Compare Brilliant Jobs to LinkedIn, Indeed, ZipRecruiter, and Glassdoor. Jobs from real company career pages, ghost detection, and real salary data — no promoted jobs.">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://brilliantjobs.app/compare">
-  <meta property="og:image" content="https://brilliantjobs.app/og-image.png">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Brilliant Jobs vs LinkedIn, Indeed, ZipRecruiter & Glassdoor">
-  <meta name="twitter:description" content="Jobs from real company career pages, ghost detection, and real salary data — no promoted jobs.">
-  <link rel="icon" href="/img/favicon.ico" sizes="48x48">
-  <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16x16.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="/img/apple-touch-icon.png">
-  <link rel="manifest" href="/site.webmanifest">
-  <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <script src="/js/version.js?v=v10.92"></script>
-  <!-- REM-005 LS1-6: Ahrefs analytics removed — redundant with PostHog+GSC. -->
-
-  <!-- FAQ Structured Data -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-      {
-        "@type": "Question",
-        "name": "What makes Brilliant Jobs different from LinkedIn, Indeed, and other job boards?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Brilliant Jobs pulls listings directly from company career pages and hiring systems — not scraped or aggregated from other job boards. This means fresher data, no duplicate listings, and no promoted or sponsored jobs polluting your results. We also offer ghost detection, resume match scoring, and built-in pipeline tracking."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Is Brilliant Jobs free to use?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Yes. Brilliant Jobs offers a free tier with full access to job search, filtering, and salary data. Pro features like AI resume scoring, advanced boolean filters, and unlimited saved searches are available on paid plans."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "What is ghost detection and why does it matter?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Ghost jobs are listings that remain posted long after the position has been filled or was never real. Brilliant Jobs tracks listing lifespan and repost patterns to flag likely ghost jobs, saving you from wasting time applying to positions that aren't actually open."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "How does Brilliant Jobs get salary data?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Unlike platforms that rely on crowd-sourced salary estimates, Brilliant Jobs extracts posted salary ranges directly from job descriptions. This gives you the actual compensation range the employer published, not a guess."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Can I use Brilliant Jobs alongside LinkedIn or Indeed?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Absolutely. Many users search on Brilliant Jobs for higher-quality, filtered results sourced directly from company career pages, while using LinkedIn for networking and Indeed for volume. Brilliant Jobs is designed to complement your existing workflow."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "How does Brilliant Jobs source its job listings?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "We pull job listings directly from company hiring systems (the same software companies use to manage applicants) rather than scraping other job boards. This gives you fresher, more accurate data and eliminates the duplicates and stale listings common on aggregator sites."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Does Brilliant Jobs have a browser extension?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Yes. The Brilliant Jobs Chrome extension helps you apply faster with auto-fill and application tracking directly in your browser. It works across major company hiring platforms to streamline your application process."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "How many jobs are available on Brilliant Jobs?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Brilliant Jobs currently indexes over 135,000 open positions from more than 7,500 company career pages across all major industries. Our inventory is refreshed daily directly from company hiring systems."
-        }
-      }
-    ]
-  }
-  </script>
-
-  <style>
-    @font-face {
-      font-family: 'Outfit';
-      src: url('/fonts/outfit-latin-var.woff2') format('woff2');
-      font-weight: 100 900;
-      font-style: normal;
-      font-display: swap;
-      unicode-range: U+0000-00FF, U+0100-024F, U+2000-206F, U+20AC, U+2212, U+FEFF, U+FFFD;
-    }
-    @font-face {
-      font-family: 'JetBrains Mono';
-      src: url('/fonts/jetbrains-mono-latin-var.woff2') format('woff2');
-      font-weight: 100 800;
-      font-style: normal;
-      font-display: swap;
-      unicode-range: U+0000-00FF, U+0100-024F, U+2000-206F, U+20AC, U+2212, U+FEFF, U+FFFD;
-    }
-
-    :root {
-      --bg-main: #0F172A;
-      --bg-card: #1E293B;
-      --bg-card-alt: #172033;
-      --border: #334155;
-      --text: #F1F5F9;
-      --text-dim: #94A3B8;
-      --text-faint: #64748B;
-      --accent: #3D7EFF;
-      --accent-hover: #2B6AEB;
-      --green: #22C55E;
-      --green-dim: rgba(34,197,94,0.15);
-      --warm: #F59E0B;
-      --warm-dim: rgba(245,158,11,0.12);
-      --red: #EF4444;
-      --red-dim: rgba(239,68,68,0.12);
-      --purple: #8B5CF6;
-      --nav-bg: #1a3a6e;
-      --sans: 'Outfit', -apple-system, sans-serif;
-      --mono: 'JetBrains Mono', monospace;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: var(--sans);
-      background: var(--bg-main);
-      color: var(--text);
-      -webkit-font-smoothing: antialiased;
-      overflow-x: hidden;
-      line-height: 1.6;
-    }
-    a { color: var(--accent); text-decoration: none; }
-    a:hover { color: var(--accent-hover); }
-
-    /* ======================== NAV ======================== */
-    .site-nav {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
-      padding: 0 32px; height: 64px;
-      display: flex; align-items: center; justify-content: space-between;
-      background: var(--nav-bg);
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-    }
-    .nav-logo {
-      font-weight: 700; font-size: 17px; color: #fff;
-      display: flex; align-items: center; gap: 10px;
-    }
-    .nav-logo .mark {
-      width: 30px; height: 30px; background: #fff; border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 14px; font-weight: 800; color: var(--nav-bg);
-    }
-    .nav-links { display: flex; align-items: center; gap: 24px; }
-    .nav-links a { font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.65); transition: color 0.15s; }
-    .nav-links a:hover { color: #fff; }
-    .nav-cta {
-      padding: 8px 20px; background: #fff; color: var(--nav-bg) !important;
-      border-radius: 8px; font-weight: 700; font-size: 13px; transition: all 0.15s;
-    }
-    .nav-cta:hover { background: rgba(255,255,255,0.9); }
-
-    /* ======================== HERO ======================== */
-    .hero {
-      padding: 140px 32px 72px;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-    }
-    .hero::after {
-      content: '';
-      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-      background-image:
-        radial-gradient(circle at 20% 50%, rgba(61,126,255,0.10) 0%, transparent 50%),
-        radial-gradient(circle at 80% 20%, rgba(139,92,246,0.06) 0%, transparent 40%);
-      pointer-events: none;
-    }
-    .hero h1 {
-      font-size: clamp(32px, 5vw, 56px);
-      font-weight: 800; line-height: 1.1;
-      margin-bottom: 20px; max-width: 780px;
-      margin-left: auto; margin-right: auto;
-      letter-spacing: -0.025em;
-      position: relative; z-index: 1;
-    }
-    .hero h1 .accent { color: var(--warm); }
-    .hero-sub {
-      font-size: 18px; color: var(--text-dim);
-      max-width: 600px; margin: 0 auto 32px;
-      line-height: 1.65; font-weight: 300;
-      position: relative; z-index: 1;
-    }
-    .hero-ctas {
-      display: flex; gap: 14px; justify-content: center;
-      flex-wrap: wrap; position: relative; z-index: 1;
-      margin-bottom: 40px;
-    }
-    .btn {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 14px 28px; border: none; border-radius: 10px;
-      font-family: var(--sans); font-size: 15px; font-weight: 600;
-      cursor: pointer; transition: all 0.15s; text-decoration: none;
-    }
-    .btn-primary {
-      background: #fff; color: var(--nav-bg);
-      box-shadow: 0 2px 16px rgba(0,0,0,0.2);
-    }
-    .btn-primary:hover { background: rgba(255,255,255,0.92); transform: translateY(-1px); color: var(--nav-bg); }
-    .btn-ghost { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,0.3); }
-    .btn-ghost:hover { border-color: rgba(255,255,255,0.6); color: #fff; }
-    .btn-accent {
-      background: var(--accent); color: #fff;
-      box-shadow: 0 2px 16px rgba(61,126,255,0.3);
-    }
-    .btn-accent:hover { background: var(--accent-hover); color: #fff; transform: translateY(-1px); }
-
-    /* Anchor pills */
-    .anchor-pills {
-      display: flex; gap: 10px; justify-content: center;
-      flex-wrap: wrap; position: relative; z-index: 1;
-    }
-    .anchor-pill {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 8px 18px; border-radius: 24px;
-      font-size: 13px; font-weight: 600;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.12);
-      color: var(--text-dim);
-      transition: all 0.15s; text-decoration: none;
-    }
-    .anchor-pill:hover {
-      background: rgba(255,255,255,0.10);
-      border-color: rgba(255,255,255,0.25);
-      color: #fff;
-    }
-
-    /* ======================== CONTENT CONTAINER ======================== */
-    .container { max-width: 1100px; margin: 0 auto; padding: 0 32px; }
-
-    /* ======================== SECTION HEADERS ======================== */
-    .section-header {
-      text-align: center; margin-bottom: 48px;
-    }
-    .section-label {
-      font-family: var(--mono); font-size: 12px; color: var(--accent);
-      text-transform: uppercase; letter-spacing: 2px; font-weight: 600;
-      margin-bottom: 12px;
-    }
-    .section-header h2 {
-      font-size: clamp(24px, 3.5vw, 38px);
-      font-weight: 700; line-height: 1.2;
-      letter-spacing: -0.02em;
-    }
-
-    /* ======================== FEATURE TABLE (Desktop) ======================== */
-    .table-section { padding: 80px 0; }
-    .feature-table-wrap {
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      border-radius: 16px;
-      border: 1px solid var(--border);
-      background: var(--bg-card);
-    }
-    .feature-table {
-      width: 100%; border-collapse: collapse;
-      font-size: 14px;
-    }
-    .feature-table thead th {
-      padding: 16px 14px;
-      font-weight: 700; font-size: 13px;
-      text-align: center;
-      background: rgba(255,255,255,0.03);
-      border-bottom: 1px solid var(--border);
-      white-space: nowrap;
-      color: var(--text-dim);
-    }
-    .feature-table thead th:first-child {
-      text-align: left; min-width: 200px; color: var(--text);
-    }
-    .feature-table thead th.bj-col {
-      color: var(--accent);
-      background: rgba(61,126,255,0.06);
-    }
-    .feature-table tbody td {
-      padding: 14px; text-align: center;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
-      color: var(--text-dim);
-    }
-    .feature-table tbody td:first-child {
-      text-align: left; font-weight: 500; color: var(--text);
-    }
-    .feature-table tbody td.bj-col {
-      background: rgba(61,126,255,0.03);
-    }
-    .feature-table tbody tr:last-child td { border-bottom: none; }
-    .feature-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
-    .feature-table tbody tr:hover td.bj-col { background: rgba(61,126,255,0.06); }
-
-    .check { color: var(--green); font-weight: 700; }
-    .cross { color: var(--red); opacity: 0.6; }
-    .partial { color: var(--warm); }
-
-    /* ======================== MOBILE CARDS (hidden on desktop) ======================== */
-    .mobile-cards { display: none; }
-
-    /* ======================== COMPETITOR SECTIONS ======================== */
-    .competitor-section {
-      padding: 80px 0;
-      border-top: 1px solid rgba(255,255,255,0.06);
-    }
-    .comp-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 40px;
-      margin-top: 40px;
-    }
-    .comp-col h3 {
-      font-size: 16px; font-weight: 700;
-      margin-bottom: 16px;
-      display: flex; align-items: center; gap: 8px;
-    }
-    .comp-col h3 .icon-pain { color: var(--red); }
-    .comp-col h3 .icon-win { color: var(--green); }
-    .comp-col ul {
-      list-style: none; padding: 0;
-    }
-    .comp-col ul li {
-      position: relative;
-      padding: 10px 0 10px 24px;
-      font-size: 15px; color: var(--text-dim);
-      line-height: 1.55;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
-    }
-    .comp-col ul li:last-child { border-bottom: none; }
-    .comp-col ul li::before {
-      position: absolute; left: 0; top: 12px;
-      font-size: 14px;
-    }
-    .pain-list li::before { content: '\2715'; color: var(--red); opacity: 0.7; }
-    .win-list li::before { content: '\2713'; color: var(--green); }
-
-    /* ======================== CTA BLOCKS ======================== */
-    .cta-block {
-      margin-top: 48px;
-      padding: 32px;
-      background: rgba(61,126,255,0.06);
-      border: 1px solid rgba(61,126,255,0.15);
-      border-radius: 16px;
-      text-align: center;
-    }
-    .cta-block p {
-      font-size: 18px; font-weight: 600; margin-bottom: 16px;
-      color: var(--text);
-    }
-
-    /* ======================== FAQ ======================== */
-    .faq-section { padding: 80px 0; border-top: 1px solid rgba(255,255,255,0.06); }
-    .faq-item {
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-    }
-    .faq-q {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 20px 0; cursor: pointer;
-      font-size: 16px; font-weight: 600; color: var(--text);
-      background: none; border: none; width: 100%;
-      font-family: var(--sans); text-align: left;
-    }
-    .faq-q:hover { color: var(--accent); }
-    .faq-chevron {
-      font-size: 18px; color: var(--text-faint);
-      transition: transform 0.2s;
-      flex-shrink: 0; margin-left: 16px;
-    }
-    .faq-item.open .faq-chevron { transform: rotate(180deg); }
-    .faq-a {
-      max-height: 0; overflow: hidden;
-      transition: max-height 0.3s ease, padding 0.3s ease;
-    }
-    .faq-item.open .faq-a {
-      max-height: 300px;
-    }
-    .faq-a-inner {
-      padding: 0 0 20px;
-      font-size: 15px; color: var(--text-dim);
-      line-height: 1.7;
-    }
-
-    /* ======================== BOTTOM CTA ======================== */
-    .bottom-cta {
-      padding: 100px 32px;
-      text-align: center;
-      background: linear-gradient(180deg, var(--bg-main) 0%, rgba(26,58,110,0.3) 100%);
-    }
-    .bottom-cta h2 {
-      font-size: clamp(28px, 4vw, 44px);
-      font-weight: 800; margin-bottom: 16px;
-      letter-spacing: -0.02em;
-    }
-    .bottom-cta .stat-line {
-      font-family: var(--mono); font-size: 14px;
-      color: var(--text-faint); margin-bottom: 32px;
-      letter-spacing: 0.5px;
-    }
-    .bottom-cta .stat-line strong { color: var(--accent); font-weight: 600; }
-
-    /* ======================== FOOTER ======================== */
-    .site-footer {
-      text-align: center; padding: 40px 32px;
-      border-top: 1px solid var(--border);
-    }
-    .footer-links {
-      display: flex; justify-content: center; gap: 24px;
-      margin-bottom: 12px; flex-wrap: wrap;
-    }
-    .footer-links a { font-size: 13px; color: var(--text-dim); }
-    .footer-links a:hover { color: var(--text); }
-    .footer-copy {
-      font-size: 12px; color: var(--text-faint);
-    }
-
-    /* ======================== SCROLL ANIMATION ======================== */
-    .fade-in {
-      opacity: 0; transform: translateY(20px);
-      transition: opacity 0.6s ease, transform 0.6s ease;
-    }
-    .fade-in.visible {
-      opacity: 1; transform: translateY(0);
-    }
-
-    /* ======================== RESPONSIVE ======================== */
-    @media (max-width: 768px) {
-      .site-nav { padding: 0 16px; }
-      .nav-links a:not(.nav-cta) { display: none; }
-      .hero { padding: 110px 20px 56px; }
-      .hero h1 { font-size: 28px; }
-      .hero-sub { font-size: 15px; }
-      .container { padding: 0 20px; }
-
-      /* Hide desktop table, show mobile cards */
-      .feature-table-wrap { display: none; }
-      .mobile-cards { display: block; }
-
-      .comp-grid {
-        grid-template-columns: 1fr;
-        gap: 24px;
-      }
-      .competitor-section { padding: 56px 0; }
-      .table-section { padding: 56px 0; }
-      .faq-section { padding: 56px 0; }
-      .bottom-cta { padding: 64px 20px; }
-      .cta-block { padding: 24px 20px; }
-      .anchor-pills { gap: 8px; }
-      .anchor-pill { padding: 6px 14px; font-size: 12px; }
-    }
-
-    /* ======================== MOBILE CARD STYLES ======================== */
-    .mobile-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 24px;
-      margin-bottom: 16px;
-    }
-    .mobile-card h3 {
-      font-size: 16px; font-weight: 700;
-      margin-bottom: 16px;
-      color: var(--text);
-      display: flex; align-items: center; gap: 8px;
-    }
-    .mobile-card h3 .vs { color: var(--text-faint); font-weight: 400; font-size: 13px; }
-    .mobile-card-row {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 10px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
-      font-size: 13px;
-    }
-    .mobile-card-row:last-child { border-bottom: none; }
-    .mobile-card-row .feature-name { color: var(--text-dim); flex: 1; }
-    .mobile-card-row .bj-val { width: 60px; text-align: center; font-weight: 600; }
-    .mobile-card-row .comp-val { width: 60px; text-align: center; }
-
-    /* Hamburger for mobile */
-    .nav-hamburger {
-      display: none; background: none; border: none;
-      color: #fff; font-size: 24px; cursor: pointer;
-    }
-    @media (max-width: 768px) {
-      .nav-hamburger { display: block; }
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brilliant Jobs vs LinkedIn, Indeed & 14 More — Feature Comparison</title>
+<meta name="description" content="Compare Brilliant Jobs to LinkedIn, Indeed, ZipRecruiter, Teal, Huntr, and 11 more job search tools. See which features only Brilliant Jobs offers.">
+<meta property="og:title" content="Brilliant Jobs vs Competitors — Feature Comparison">
+<meta property="og:description" content="The only job search platform that sources directly from employer systems. Compare 20 features across 16 competitors.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://brilliantjobs.app/compare">
+<link rel="icon" href="/img/favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" sizes="180x180" href="/img/apple-touch-icon.png">
+<link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+<script src="/js/version.js"></script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Brilliant Jobs Feature Comparison","description":"Compare Brilliant Jobs to 16 competitors across 20 job search features.","url":"https://brilliantjobs.app/compare"}</script>
+<style>
+@font-face{font-family:'Outfit';src:url('/fonts/outfit-latin-var.woff2') format('woff2');font-weight:100 900;font-display:swap}
+:root{--bg:#0f1117;--bg-card:#181b24;--bg-hover:#1e2230;--border:#262a36;--text:#f0f1f5;--dim:#8b91a3;--faint:#565c6e;--accent:#4f6ef7;--green:#1D9E75;--green-dim:rgba(29,158,117,0.12)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Outfit',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+a{color:inherit;text-decoration:none}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:16px 32px;max-width:1200px;margin:0 auto}
+.nav-logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;color:#fff}
+.nav-logo .m{width:28px;height:28px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff}
+.nav-r{display:flex;align-items:center;gap:24px}
+.nav-r a{font-size:14px;color:var(--dim);font-weight:500;transition:color .15s}
+.nav-r a:hover,.nav-r a.on{color:#fff}
+.nav-cta{background:var(--accent);color:#fff!important;padding:8px 20px;border-radius:8px;font-weight:600;font-size:13px}
+.pg{max-width:640px;margin:0 auto;padding:60px 20px 80px}
+.pg h1{font-size:32px;font-weight:800;line-height:1.2;margin-bottom:8px}
+.pg .sub{font-size:15px;color:var(--dim);margin-bottom:32px;line-height:1.5}
+.dw{position:relative;margin-bottom:28px}
+.db{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:var(--text)}
+.db:hover{border-color:#3a3f50}
+.dd{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.da{width:16px;height:16px;stroke:var(--dim);fill:none;stroke-width:2;transition:transform .15s}
+.db.open .da{transform:rotate(180deg)}
+.dm{position:absolute;top:calc(100% + 4px);left:0;z-index:20;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:6px;min-width:240px;box-shadow:0 12px 40px rgba(0,0,0,.5);display:none;max-height:400px;overflow-y:auto}
+.dm.open{display:block}
+.di{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;color:var(--dim)}
+.di:hover{background:var(--bg-hover);color:var(--text)}
+.di.on{color:var(--text);background:var(--bg-hover)}
+.sc{display:flex;gap:10px;margin-bottom:24px;align-items:stretch}
+.sc-c{flex:1;padding:16px;border-radius:10px;text-align:center}
+.sc-bj{background:var(--green-dim);border:1px solid rgba(29,158,117,.25)}
+.sc-cp{background:var(--bg-card);border:1px solid var(--border)}
+.sc-sh{background:var(--bg-card);border:1px solid var(--border);flex:.6}
+.sc-n{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums}
+.sc-bj .sc-n{color:var(--green)}
+.sc-cp .sc-n{color:var(--dim)}
+.sc-sh .sc-n{color:var(--faint);font-size:22px}
+.sc-l{font-size:11px;color:var(--dim);margin-top:4px;font-weight:500}
+.cat{margin-bottom:20px}
+.ch{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border);margin-bottom:2px}
+.ci{width:18px;height:18px;stroke:var(--green);fill:none;stroke-width:2;flex-shrink:0}
+.ct{font-size:14px;font-weight:700;flex:1}
+.cb{font-size:10px;font-weight:700;padding:2px 8px;border-radius:100px;background:var(--green-dim);color:var(--green)}
+.fr{display:flex;align-items:center;padding:8px 0;border-bottom:1px solid rgba(38,42,54,.5);font-size:13px}
+.fr.ex{background:rgba(29,158,117,.05);border-radius:6px;margin:0 -8px;padding:8px}
+.fb,.fc{width:32px;flex-shrink:0;display:flex;justify-content:center}
+.fl{flex:1;color:var(--dim);padding:0 10px}
+.cl{display:flex;justify-content:space-between;padding:4px 0 0;font-size:10px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:.5px}
+.ck{width:16px;height:16px}
+.ds{width:14px;height:2px;background:var(--faint);border-radius:1px;opacity:.4}
+.cta{text-align:center;margin-top:40px;padding-top:32px;border-top:1px solid var(--border)}
+.cta-b{display:inline-block;padding:14px 36px;background:var(--green);color:#fff;font-size:15px;font-weight:700;border-radius:10px;border:none;cursor:pointer;font-family:inherit}
+.cta-b:hover{opacity:.9}
+.ft{max-width:1200px;margin:0 auto;padding:32px;text-align:center;border-top:1px solid var(--border)}
+.ft-l{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;margin-bottom:8px}
+.ft-l a{font-size:13px;color:var(--dim)}
+.ft-c{font-size:12px;color:var(--faint)}
+@media(max-width:640px){.pg h1{font-size:24px}.sc{flex-direction:column}.sc-sh{flex:1}.nav{padding:12px 16px}.nav-r{gap:12px}.nav-r a:not(.nav-cta){display:none}}
+</style>
 </head>
 <body>
-
-  <!-- NAV -->
-  <nav class="site-nav">
-    <a href="/" class="nav-logo" style="text-decoration:none;color:#fff"><div class="mark">B</div> Brilliant Jobs</a>
-    <div class="nav-links">
-      <a href="/">Home</a>
-      <a href="/data-lab">Data Lab</a>
-      <a href="/pricing">Pricing</a>
-      <a href="/compare" style="color:#fff;font-weight:600">Compare</a>
-      <a href="/dashboard" class="nav-cta" role="button">Log In</a>
-    </div>
-  </nav>
-
-  <main>
-
-  <!-- ==================== SECTION 1: HERO ==================== -->
-  <section class="hero">
-    <h1>The smarter way to<br>search for <span class="accent">jobs.</span></h1>
-    <p class="hero-sub">Job boards were built for employers. Brilliant Jobs was built for you. See how we compare to the platforms you already know.</p>
-    <div class="hero-ctas">
-      <a href="/dashboard" class="btn btn-primary">Start searching free</a>
-      <a href="#feature-table" class="btn btn-ghost">See the comparison</a>
-    </div>
-    <div class="anchor-pills">
-      <a href="#vs-linkedin" class="anchor-pill">LinkedIn</a>
-      <a href="#vs-indeed" class="anchor-pill">Indeed</a>
-      <a href="#vs-ziprecruiter" class="anchor-pill">ZipRecruiter</a>
-      <a href="#vs-glassdoor" class="anchor-pill">Glassdoor</a>
-    </div>
-  </section>
-
-  <!-- ==================== SECTION 2: FEATURE COMPARISON TABLE ==================== -->
-  <section class="table-section fade-in" id="feature-table">
-    <div class="container">
-      <div class="section-header">
-        <div class="section-label">Feature Comparison</div>
-        <h2>Everything you need. Nothing you don't.</h2>
-      </div>
-
-      <!-- Desktop table -->
-      <div class="feature-table-wrap">
-        <table class="feature-table">
-          <thead>
-            <tr>
-              <th>Feature</th>
-              <th class="bj-col">Brilliant Jobs</th>
-              <th>LinkedIn</th>
-              <th>Indeed</th>
-              <th>ZipRecruiter</th>
-              <th>Glassdoor</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Ghost job detection &amp; employer response tracking</td>
-              <td class="bj-col"><span class="check">Yes</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="cross">No</span></td>
-            </tr>
-            <tr>
-              <td>No promoted / sponsored jobs</td>
-              <td class="bj-col"><span class="check">Yes</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="cross">No</span></td>
-            </tr>
-            <tr>
-              <td>Multi-keyword boolean filtering</td>
-              <td class="bj-col"><span class="check">Pro</span></td>
-              <td><span class="partial">Limited</span></td>
-              <td><span class="partial">Basic</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="partial">Basic</span></td>
-            </tr>
-            <tr>
-              <td>Resume readiness grading</td>
-              <td class="bj-col"><span class="check">Yes</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="cross">No</span></td>
-            </tr>
-            <tr>
-              <td>AI resume match scoring</td>
-              <td class="bj-col"><span class="check">Pro</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="partial">Basic</span></td>
-              <td><span class="cross">No</span></td>
-            </tr>
-            <tr>
-              <td>Salary transparency (posted ranges)</td>
-              <td class="bj-col"><span class="check">Yes</span></td>
-              <td><span class="partial">Partial</span></td>
-              <td><span class="partial">Partial</span></td>
-              <td><span class="partial">Partial</span></td>
-              <td><span class="partial">Estimates</span></td>
-            </tr>
-            <tr>
-              <td>Application pipeline tracking</td>
-              <td class="bj-col"><span class="check">Built-in</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="cross">No</span></td>
-            </tr>
-            <tr>
-              <td>Automated cover letter generation</td>
-              <td class="bj-col"><span class="check">Pro</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="cross">No</span></td>
-            </tr>
-            <tr>
-              <td>One-click application submission</td>
-              <td class="bj-col"><span class="check">Extension</span></td>
-              <td><span class="partial">Easy Apply</span></td>
-              <td><span class="partial">Basic</span></td>
-              <td><span class="partial">1-Click</span></td>
-              <td><span class="cross">No</span></td>
-            </tr>
-            <tr>
-              <td>Listing lifespan / repost tracking</td>
-              <td class="bj-col"><span class="check">Yes</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="cross">No</span></td>
-            </tr>
-            <tr>
-              <td>Free to search</td>
-              <td class="bj-col"><span class="check">Yes</span></td>
-              <td><span class="check">Yes</span></td>
-              <td><span class="check">Yes</span></td>
-              <td><span class="check">Yes</span></td>
-              <td><span class="check">Yes</span></td>
-            </tr>
-            <tr>
-              <td>Company exclusions</td>
-              <td class="bj-col"><span class="check">Yes</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="cross">No</span></td>
-              <td><span class="cross">No</span></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Mobile cards -->
-      <div class="mobile-cards" id="mobile-compare-cards"></div>
-    </div>
-  </section>
-
-  <!-- ==================== SECTION 3: LINKEDIN ==================== -->
-  <section class="competitor-section fade-in" id="vs-linkedin">
-    <div class="container">
-      <div class="section-header">
-        <div class="section-label">vs LinkedIn</div>
-        <h2>Searching for jobs on LinkedIn?<br>Here's what you're missing.</h2>
-      </div>
-      <div class="comp-grid">
-        <div class="comp-col">
-          <h3><span class="icon-pain">&#x2715;</span> LinkedIn pain points</h3>
-          <ul class="pain-list">
-            <li>Promoted and sponsored jobs dominate filtered results &mdash; users report seeing paid placements on 18 of 20 results even with filters applied</li>
-            <li>No way to exclude specific companies or industries from search</li>
-            <li>No ghost detection &mdash; jobs stay listed indefinitely whether they're real or not</li>
-            <li>Profile-based system penalizes users who want to search discreetly without alerting their network</li>
-            <li>No application pipeline tracking &mdash; applied jobs disappear into a list with no stage management</li>
-          </ul>
-        </div>
-        <div class="comp-col">
-          <h3><span class="icon-win">&#x2713;</span> Brilliant Jobs advantages</h3>
-          <ul class="win-list">
-            <li>Zero promoted or sponsored jobs in any search result &mdash; what you filter is what you get</li>
-            <li>Company exclusions let you hide employers you never want to see again</li>
-            <li>Ghost detection flags stale listings and tracks which companies actually respond to applicants</li>
-            <li>No profile required &mdash; search anonymously, apply when you're ready</li>
-            <li>Built-in pipeline tracking with 7 stages, staleness alerts, and application timeline</li>
-            <li>AI-generated cover letters tailored to each job description &mdash; no more starting from scratch</li>
-          </ul>
-        </div>
-      </div>
-      <div class="cta-block">
-        <p>Try the job search LinkedIn should have built</p>
-        <a href="/dashboard" class="btn btn-accent">Start searching free</a>
-      </div>
-    </div>
-  </section>
-
-  <!-- ==================== SECTION 4: INDEED ==================== -->
-  <section class="competitor-section fade-in" id="vs-indeed">
-    <div class="container">
-      <div class="section-header">
-        <div class="section-label">vs Indeed</div>
-        <h2>Indeed has volume.<br>Brilliant Jobs has intelligence.</h2>
-      </div>
-      <div class="comp-grid">
-        <div class="comp-col">
-          <h3><span class="icon-pain">&#x2715;</span> Indeed pain points</h3>
-          <ul class="pain-list">
-            <li>Aggregated listings are often stale, duplicated, or already filled by the time you apply</li>
-            <li>No ghost detection &mdash; old listings sit for months with no way to know if the role is still open</li>
-            <li>No resume readiness grading or match scoring to help you prioritize applications</li>
-            <li>Salary data is crowd-sourced estimates, not the actual ranges employers posted</li>
-            <li>No way to track applications or manage a pipeline within the platform</li>
-          </ul>
-        </div>
-        <div class="comp-col">
-          <h3><span class="icon-win">&#x2713;</span> Brilliant Jobs advantages</h3>
-          <ul class="win-list">
-            <li>Jobs pulled straight from company career pages &mdash; fresher data, zero duplicates</li>
-            <li>Ghost scores flag likely dead listings before you waste time applying</li>
-            <li>Resume readiness grading shows how well your resume matches each job's requirements</li>
-            <li>Real posted salary ranges extracted directly from job descriptions &mdash; not estimates</li>
-            <li>Built-in pipeline with stage tracking, timestamps, and staleness alerts</li>
-            <li>One-click applications via Chrome extension &mdash; auto-fills forms across company hiring platforms</li>
-          </ul>
-        </div>
-      </div>
-      <div class="cta-block">
-        <p>Stop guessing. Start searching with intelligence.</p>
-        <a href="/dashboard" class="btn btn-accent">Start searching free</a>
-      </div>
-    </div>
-  </section>
-
-  <!-- ==================== SECTION 5: ZIPRECRUITER ==================== -->
-  <section class="competitor-section fade-in" id="vs-ziprecruiter">
-    <div class="container">
-      <div class="section-header">
-        <div class="section-label">vs ZipRecruiter</div>
-        <h2>ZipRecruiter matches for you.<br>Brilliant Jobs lets you decide.</h2>
-      </div>
-      <div class="comp-grid">
-        <div class="comp-col">
-          <h3><span class="icon-pain">&#x2715;</span> ZipRecruiter pain points</h3>
-          <ul class="pain-list">
-            <li>AI matching is a black box &mdash; you have no control over or visibility into what you're shown</li>
-            <li>Algorithm-driven recommendations can miss niche, non-obvious, or cross-functional fits</li>
-            <li>Limited filtering capabilities compared to boolean search operators</li>
-            <li>No transparency into why specific jobs are shown or hidden from your results</li>
-          </ul>
-        </div>
-        <div class="comp-col">
-          <h3><span class="icon-win">&#x2713;</span> Brilliant Jobs advantages</h3>
-          <ul class="win-list">
-            <li>You control the filters &mdash; full boolean search with multi-keyword support</li>
-            <li>Transparent matching with visible match percentages based on your resume content</li>
-            <li>No algorithmic gatekeeping &mdash; every job that matches your criteria is shown</li>
-            <li>Save and name filter sets for different job targets, each with their own resume</li>
-          </ul>
-        </div>
-      </div>
-      <div class="cta-block">
-        <p>Take control of your job search</p>
-        <a href="/dashboard" class="btn btn-accent">Start searching free</a>
-      </div>
-    </div>
-  </section>
-
-  <!-- ==================== SECTION 6: GLASSDOOR ==================== -->
-  <section class="competitor-section fade-in" id="vs-glassdoor">
-    <div class="container">
-      <div class="section-header">
-        <div class="section-label">vs Glassdoor</div>
-        <h2>Glassdoor tells you about companies.<br>Brilliant Jobs finds you the right jobs.</h2>
-      </div>
-      <div class="comp-grid">
-        <div class="comp-col">
-          <h3><span class="icon-pain">&#x2715;</span> Glassdoor pain points</h3>
-          <ul class="pain-list">
-            <li>Primarily a reviews and salary platform &mdash; job search is a secondary feature</li>
-            <li>Job listings are often aggregated and not sourced directly from employers</li>
-            <li>Salary estimates are crowd-sourced and frequently outdated or inaccurate</li>
-            <li>No application management, pipeline features, or resume analysis tools</li>
-          </ul>
-        </div>
-        <div class="comp-col">
-          <h3><span class="icon-win">&#x2713;</span> Brilliant Jobs advantages</h3>
-          <ul class="win-list">
-            <li>Listings refreshed daily &mdash; stale and filled positions are flagged or removed automatically</li>
-            <li>Real posted salary ranges, not crowd-sourced guesses</li>
-            <li>Full pipeline tracking with stage management, staleness alerts, and timeline</li>
-            <li>Resume readiness grading and AI match scoring to prioritize where you apply</li>
-          </ul>
-        </div>
-      </div>
-      <div class="cta-block">
-        <p>Research on Glassdoor. Search on Brilliant Jobs.</p>
-        <a href="/dashboard" class="btn btn-accent">Start searching free</a>
-      </div>
-    </div>
-  </section>
-
-  <!-- ==================== FAQ ==================== -->
-  <section class="faq-section fade-in" id="faq">
-    <div class="container">
-      <div class="section-header">
-        <div class="section-label">FAQ</div>
-        <h2>Common questions</h2>
-      </div>
-      <div id="faq-list">
-        <div class="faq-item">
-          <button class="faq-q" aria-expanded="false">What makes Brilliant Jobs different from LinkedIn, Indeed, and other job boards?<span class="faq-chevron">&#9662;</span></button>
-          <div class="faq-a"><div class="faq-a-inner">Brilliant Jobs pulls listings directly from company career pages and hiring systems &mdash; not scraped or aggregated from other job boards. This means fresher data, no duplicate listings, and no promoted or sponsored jobs polluting your results. We also offer ghost detection, resume match scoring, and built-in pipeline tracking.</div></div>
-        </div>
-        <div class="faq-item">
-          <button class="faq-q" aria-expanded="false">Is Brilliant Jobs free to use?<span class="faq-chevron">&#9662;</span></button>
-          <div class="faq-a"><div class="faq-a-inner">Yes. Brilliant Jobs offers a free tier with full access to job search, filtering, and salary data. Pro features like AI resume scoring, advanced boolean filters, and unlimited saved searches are available on paid plans.</div></div>
-        </div>
-        <div class="faq-item">
-          <button class="faq-q" aria-expanded="false">What is ghost detection and why does it matter?<span class="faq-chevron">&#9662;</span></button>
-          <div class="faq-a"><div class="faq-a-inner">Ghost jobs are listings that remain posted long after the position has been filled or was never real. Brilliant Jobs tracks listing lifespan and repost patterns to flag likely ghost jobs, saving you from wasting time applying to positions that aren't actually open.</div></div>
-        </div>
-        <div class="faq-item">
-          <button class="faq-q" aria-expanded="false">How does Brilliant Jobs get salary data?<span class="faq-chevron">&#9662;</span></button>
-          <div class="faq-a"><div class="faq-a-inner">Unlike platforms that rely on crowd-sourced salary estimates, Brilliant Jobs extracts posted salary ranges directly from job descriptions. This gives you the actual compensation range the employer published, not a guess.</div></div>
-        </div>
-        <div class="faq-item">
-          <button class="faq-q" aria-expanded="false">Can I use Brilliant Jobs alongside LinkedIn or Indeed?<span class="faq-chevron">&#9662;</span></button>
-          <div class="faq-a"><div class="faq-a-inner">Absolutely. Many users search on Brilliant Jobs for higher-quality, filtered results sourced directly from company career pages, while using LinkedIn for networking and Indeed for volume. Brilliant Jobs is designed to complement your existing workflow.</div></div>
-        </div>
-        <div class="faq-item">
-          <button class="faq-q" aria-expanded="false">How does Brilliant Jobs source its job listings?<span class="faq-chevron">&#9662;</span></button>
-          <div class="faq-a"><div class="faq-a-inner">We pull job listings directly from company hiring systems (the same software companies use to manage applicants) rather than scraping other job boards. This gives you fresher, more accurate data and eliminates the duplicates and stale listings common on aggregator sites.</div></div>
-        </div>
-        <div class="faq-item">
-          <button class="faq-q" aria-expanded="false">Does Brilliant Jobs have a browser extension?<span class="faq-chevron">&#9662;</span></button>
-          <div class="faq-a"><div class="faq-a-inner">Yes. The Brilliant Jobs Chrome extension helps you apply faster with auto-fill and application tracking directly in your browser. It works across major company hiring platforms to streamline your application process.</div></div>
-        </div>
-        <div class="faq-item">
-          <button class="faq-q" aria-expanded="false">How many jobs are available on Brilliant Jobs?<span class="faq-chevron">&#9662;</span></button>
-          <div class="faq-a"><div class="faq-a-inner">Brilliant Jobs currently indexes over 135,000 open positions from more than 7,500 company career pages across all major industries. Our inventory is refreshed daily directly from company hiring systems.</div></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  </main>
-
-  <!-- ==================== SECTION 7: BOTTOM CTA ==================== -->
-  <section class="bottom-cta fade-in">
-    <h2>Ready to search smarter?</h2>
-    <p class="stat-line"><strong>135K+</strong> jobs from <strong>7,500+</strong> company hiring pages, updated daily</p>
-    <a href="/dashboard" class="btn btn-primary" style="font-size:17px;padding:16px 36px;">Start free &mdash; no credit card required</a>
-  </section>
-
-  <!-- FOOTER -->
-  <footer class="site-footer">
-    <div class="footer-links">
-      <a href="/job-market-data">Market Data</a>
-      <a href="/salary-data">Salaries</a>
-      <a href="/hiring-trends">Hiring</a>
-      <a href="/compare">Compare</a>
-      <a href="/help">Help</a>
-      <a href="/terms">Terms</a>
-      <a href="/privacy">Privacy</a>
-    </div>
-    <p class="footer-copy">&copy; <span class="bj-year"></span> Brilliant Jobs. All rights reserved. &middot; <span class="bj-version"></span></p>
-  </footer>
-
-  <script>
-  /* ======================== POSTHOG ======================== */
-  (function(){
-    // PostHog events for compare page
-    function ph(event, props) {
-      if (typeof posthog !== 'undefined') posthog.capture(event, props || {});
-    }
-
-    // Page viewed
-    var params = new URLSearchParams(window.location.search);
-    ph('compare_page_viewed', {
-      referrer: document.referrer,
-      utm_source: params.get('utm_source'),
-      utm_medium: params.get('utm_medium')
-    });
-
-    // Anchor clicks
-    document.querySelectorAll('.anchor-pill').forEach(function(pill) {
-      pill.addEventListener('click', function() {
-        ph('compare_anchor_clicked', { target_section: this.getAttribute('href').replace('#','') });
-      });
-    });
-
-    // CTA clicks
-    document.querySelectorAll('.cta-block .btn, .bottom-cta .btn, .hero-ctas .btn-primary').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        var section = this.closest('.competitor-section');
-        var sectionId = section ? section.id : (this.closest('.bottom-cta') ? 'bottom' : 'hero');
-        ph('compare_cta_clicked', { section: sectionId, cta_text: this.textContent.trim() });
-      });
-    });
-
-    // Section scroll tracking
-    var sections = ['vs-linkedin','vs-indeed','vs-ziprecruiter','vs-glassdoor'];
-    var tracked = {};
-    var observer = new IntersectionObserver(function(entries) {
-      entries.forEach(function(entry) {
-        if (entry.isIntersecting && !tracked[entry.target.id]) {
-          tracked[entry.target.id] = true;
-          ph('compare_section_scrolled', { section: entry.target.id.replace('vs-','') });
-        }
-      });
-    }, { threshold: 0.3 });
-    sections.forEach(function(id) {
-      var el = document.getElementById(id);
-      if (el) observer.observe(el);
-    });
-
-    // FAQ expand tracking
-    document.querySelectorAll('.faq-q').forEach(function(q, i) {
-      q.addEventListener('click', function() {
-        ph('compare_faq_expanded', { question_index: i });
-      });
-    });
-  })();
-
-  /* ======================== FAQ ACCORDION ======================== */
-  document.querySelectorAll('.faq-q').forEach(function(q) {
-    q.addEventListener('click', function() {
-      var item = this.parentElement;
-      var isOpen = item.classList.contains('open');
-      // Close all
-      document.querySelectorAll('.faq-item.open').forEach(function(i) { i.classList.remove('open'); });
-      if (!isOpen) item.classList.add('open');
-      this.setAttribute('aria-expanded', !isOpen);
-    });
-  });
-
-  /* ======================== SCROLL FADE-IN ======================== */
-  var fadeObserver = new IntersectionObserver(function(entries) {
-    entries.forEach(function(e) {
-      if (e.isIntersecting) {
-        e.target.classList.add('visible');
-        fadeObserver.unobserve(e.target);
-      }
-    });
-  }, { threshold: 0.1 });
-  document.querySelectorAll('.fade-in').forEach(function(el) {
-    fadeObserver.observe(el);
-  });
-
-  /* ======================== MOBILE COMPARISON CARDS ======================== */
-  (function(){
-    var features = [
-      { name: 'Ghost detection & response tracking', bj: ['Yes','check'], li: ['No','cross'], in: ['No','cross'], zr: ['No','cross'], gd: ['No','cross'] },
-      { name: 'No promoted jobs', bj: ['Yes','check'], li: ['No','cross'], in: ['No','cross'], zr: ['No','cross'], gd: ['No','cross'] },
-      { name: 'Boolean filtering', bj: ['Pro','check'], li: ['Limited','partial'], in: ['Basic','partial'], zr: ['No','cross'], gd: ['Basic','partial'] },
-      { name: 'Resume grading', bj: ['Yes','check'], li: ['No','cross'], in: ['No','cross'], zr: ['No','cross'], gd: ['No','cross'] },
-      { name: 'AI match scoring', bj: ['Pro','check'], li: ['No','cross'], in: ['No','cross'], zr: ['Basic','partial'], gd: ['No','cross'] },
-      { name: 'Salary transparency', bj: ['Yes','check'], li: ['Partial','partial'], in: ['Partial','partial'], zr: ['Partial','partial'], gd: ['Estimates','partial'] },
-      { name: 'Pipeline tracking', bj: ['Built-in','check'], li: ['No','cross'], in: ['No','cross'], zr: ['No','cross'], gd: ['No','cross'] },
-      { name: 'Auto cover letters', bj: ['Pro','check'], li: ['No','cross'], in: ['No','cross'], zr: ['No','cross'], gd: ['No','cross'] },
-      { name: 'One-click apply', bj: ['Extension','check'], li: ['Easy Apply','partial'], in: ['Basic','partial'], zr: ['1-Click','partial'], gd: ['No','cross'] },
-      { name: 'Repost tracking', bj: ['Yes','check'], li: ['No','cross'], in: ['No','cross'], zr: ['No','cross'], gd: ['No','cross'] },
-      { name: 'Company exclusions', bj: ['Yes','check'], li: ['No','cross'], in: ['No','cross'], zr: ['No','cross'], gd: ['No','cross'] }
-    ];
-    var competitors = [
-      { key: 'li', name: 'LinkedIn' },
-      { key: 'in', name: 'Indeed' },
-      { key: 'zr', name: 'ZipRecruiter' },
-      { key: 'gd', name: 'Glassdoor' }
-    ];
-    var container = document.getElementById('mobile-compare-cards');
-    if (!container) return;
-    competitors.forEach(function(comp) {
-      var html = '<div class="mobile-card"><h3>Brilliant Jobs <span class="vs">vs</span> ' + comp.name + '</h3>';
-      features.forEach(function(f) {
-        var cv = f[comp.key];
-        html += '<div class="mobile-card-row">' +
-          '<span class="feature-name">' + f.name + '</span>' +
-          '<span class="bj-val ' + f.bj[1] + '">' + f.bj[0] + '</span>' +
-          '<span class="comp-val ' + cv[1] + '">' + cv[0] + '</span>' +
-          '</div>';
-      });
-      html += '</div>';
-      container.innerHTML += html;
-    });
-  })();
-
-  /* ======================== FOOTER YEAR + VERSION ======================== */
-  document.querySelectorAll('.bj-year').forEach(function(el) { el.textContent = new Date().getFullYear(); });
-  document.querySelectorAll('.bj-version').forEach(function(el) {
-    if (typeof BJ_VERSION !== 'undefined') el.textContent = BJ_VERSION;
-  });
-  </script>
-
+<nav class="nav">
+<a href="/" class="nav-logo"><div class="m">B</div> Brilliant Jobs</a>
+<div class="nav-r">
+<a href="/#how-it-works">How It Works</a>
+<a href="/#pricing">Pricing</a>
+<a href="/compare" class="on">Compare</a>
+<a href="/dashboard" class="nav-cta">Log In</a>
+</div>
+</nav>
+<div class="pg">
+<h1>See how Brilliant Jobs compares</h1>
+<p class="sub">The only job search platform that sources directly from employer career pages. No recycled posts, no promoted listings, no ghost jobs.</p>
+<div class="dw">
+<div class="db" id="db"><span class="dd" id="ddt"></span><span id="dn">LinkedIn</span><svg class="da" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></div>
+<div class="dm" id="dm"></div>
+</div>
+<div class="sc">
+<div class="sc-c sc-bj"><div class="sc-n" id="sb">0</div><div class="sc-l">Only in Brilliant Jobs</div></div>
+<div class="sc-c sc-sh"><div class="sc-n" id="ss">0</div><div class="sc-l">Shared</div></div>
+<div class="sc-c sc-cp"><div class="sc-n" id="sn">0</div><div class="sc-l" id="sl">Only in LinkedIn</div></div>
+</div>
+<div id="ff"></div>
+<div class="cta"><a href="/dashboard" class="cta-b">Start your free search</a></div>
+</div>
+<footer class="ft">
+<div class="ft-l"><a href="/job-market-data">Market Data</a><a href="/salary-data">Salaries</a><a href="/hiring-trends">Hiring</a><a href="/compare">Compare</a><a href="/help">Help</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/contact">Contact</a></div>
+<div class="ft-c">&copy; Brilliant Jobs. All rights reserved.</div>
+</footer>
+<script>
+!function(){var C=[
+{k:'linkedin',n:'LinkedIn',c:'#0A66C2'},{k:'indeed',n:'Indeed',c:'#2164F3'},{k:'ziprecruiter',n:'ZipRecruiter',c:'#1E8F54'},
+{k:'careerflow',n:'Careerflow',c:'#6366f1'},{k:'teal',n:'Teal',c:'#0891b2'},{k:'huntr',n:'Huntr',c:'#7c3aed'},
+{k:'simplify',n:'Simplify',c:'#3b82f6'},{k:'jobscan',n:'Jobscan',c:'#059669'},{k:'sonara',n:'Sonara',c:'#d97706'},
+{k:'lazyapply',n:'LazyApply',c:'#dc2626'},{k:'jobcopilot',n:'JobCopilot',c:'#8b5cf6'},{k:'loopcv',n:'LoopCV',c:'#0ea5e9'},
+{k:'resumeworded',n:'Resume Worded',c:'#f59e0b'},{k:'rezi',n:'Rezi',c:'#10b981'},{k:'kickresume',n:'Kickresume',c:'#ef4444'},
+{k:'jackandjill',n:'Jack & Jill',c:'#ec4899'}];
+var G=[
+{name:'Find real jobs, not ghost jobs',icon:'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',f:[
+{l:'Jobs sourced directly from employer ATS systems',b:1,linkedin:0,indeed:0,ziprecruiter:0,careerflow:0,teal:0,huntr:0,simplify:1,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0},
+{l:'Ghost job detection and flagging',b:1,linkedin:0,indeed:0,ziprecruiter:0,careerflow:0,teal:0,huntr:0,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0},
+{l:'Employer response rate tracking',b:1,linkedin:0,indeed:0,ziprecruiter:0,careerflow:0,teal:0,huntr:0,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0},
+{l:'Real-time salary extraction from postings',b:1,linkedin:1,indeed:1,ziprecruiter:1,careerflow:0,teal:0,huntr:0,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0},
+{l:'Daily refresh from 66,000+ career pages',b:1,linkedin:0,indeed:0,ziprecruiter:0,careerflow:0,teal:0,huntr:0,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0}]},
+{name:'Filters that actually help',icon:'M22 3H2l8 9.46V19l4 2v-8.54L22 3z',f:[
+{l:'Multi-keyword boolean filters (AND/OR/NOT)',b:1,linkedin:1,indeed:1,ziprecruiter:1,careerflow:1,teal:1,huntr:0,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0},
+{l:'Saved searches that run automatically',b:1,linkedin:1,indeed:1,ziprecruiter:1,careerflow:1,teal:1,huntr:1,simplify:1,jobscan:1,sonara:1,lazyapply:0,jobcopilot:0,loopcv:1,resumeworded:0,rezi:0,kickresume:0,jackandjill:0},
+{l:'Company block and title exclusion lists',b:1,linkedin:0,indeed:0,ziprecruiter:0,careerflow:0,teal:0,huntr:0,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0},
+{l:'Seniority level and department filters',b:1,linkedin:1,indeed:0,ziprecruiter:0,careerflow:0,teal:0,huntr:0,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0},
+{l:'AI content detection on job descriptions',b:1,linkedin:0,indeed:0,ziprecruiter:0,careerflow:0,teal:0,huntr:0,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0}]},
+{name:'Apply smarter, not harder',icon:'M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z',f:[
+{l:'Resume match scoring against job descriptions',b:1,linkedin:0,indeed:0,ziprecruiter:0,careerflow:1,teal:1,huntr:0,simplify:0,jobscan:1,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:1,rezi:1,kickresume:1,jackandjill:0},
+{l:'Application pipeline tracking (Kanban)',b:1,linkedin:0,indeed:0,ziprecruiter:0,careerflow:1,teal:1,huntr:1,simplify:1,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0},
+{l:'Gmail integration for automatic status updates',b:1,linkedin:0,indeed:0,ziprecruiter:0,careerflow:0,teal:0,huntr:1,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0},
+{l:'AI resume rewriting for specific jobs',b:1,linkedin:0,indeed:0,ziprecruiter:0,careerflow:1,teal:1,huntr:0,simplify:0,jobscan:1,sonara:0,lazyapply:0,jobcopilot:1,loopcv:0,resumeworded:1,rezi:1,kickresume:1,jackandjill:0},
+{l:'Interview prep with job-specific questions',b:1,linkedin:0,indeed:1,ziprecruiter:0,careerflow:1,teal:1,huntr:0,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0}]},
+{name:'Actually understand the market',icon:'M18 20V10 M12 20V4 M6 20v-6',f:[
+{l:'Salary trends by role, location, and seniority',b:1,linkedin:1,indeed:1,ziprecruiter:0,careerflow:0,teal:0,huntr:0,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0},
+{l:'Hiring velocity and company growth signals',b:1,linkedin:1,indeed:0,ziprecruiter:0,careerflow:0,teal:0,huntr:0,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0},
+{l:'Ghost rate reports per company',b:1,linkedin:0,indeed:0,ziprecruiter:0,careerflow:0,teal:0,huntr:0,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0},
+{l:'Job market stats dashboard',b:1,linkedin:0,indeed:0,ziprecruiter:0,careerflow:0,teal:0,huntr:0,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0},
+{l:'Weekly market digest email with personal stats',b:1,linkedin:1,indeed:1,ziprecruiter:1,careerflow:0,teal:0,huntr:0,simplify:0,jobscan:0,sonara:0,lazyapply:0,jobcopilot:0,loopcv:0,resumeworded:0,rezi:0,kickresume:0,jackandjill:0}]}
+];
+var chk='<svg class="ck" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#1D9E75" stroke-width="1.5"/><path d="M6.5 10.5l2 2 5-5" stroke="#1D9E75" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+var chkG='<svg class="ck" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#565c6e" stroke-width="1.5"/><path d="M6.5 10.5l2 2 5-5" stroke="#565c6e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+var dsh='<div class="ds"></div>';
+var sel='linkedin';
+function gc(){return C.find(function(c){return c.k===sel})}
+function bd(){var m=document.getElementById('dm');m.innerHTML=C.map(function(c){return'<div class="di'+(c.k===sel?' on':'')+'" data-k="'+c.k+'"><span class="dd" style="background:'+c.c+'"></span>'+c.n+'</div>'}).join('')}
+function render(){var co=gc();document.getElementById('dn').textContent=co.n;document.getElementById('ddt').style.background=co.c;
+var bo=0,so=0,sh=0;G.forEach(function(g){g.f.forEach(function(f){if(f.b&&!f[sel])bo++;else if(!f.b&&f[sel])so++;else if(f.b&&f[sel])sh++})});
+document.getElementById('sb').textContent=bo;document.getElementById('ss').textContent=sh;document.getElementById('sn').textContent=so;document.getElementById('sl').textContent='Only in '+co.n;
+var h='';G.forEach(function(g){var gb=0,gv=0;g.f.forEach(function(f){if(f.b)gb++;if(f[sel])gv++});
+h+='<div class="cat"><div class="ch"><svg class="ci" viewBox="0 0 24 24"><path d="'+g.icon+'" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="ct">'+g.name+'</span><span class="cb">'+gb+' vs '+gv+'</span></div>';
+g.f.forEach(function(f){var ex=f.b&&!f[sel];h+='<div class="fr'+(ex?' ex':'')+'"><div class="fb">'+(f.b?chk:dsh)+'</div><div class="fl">'+f.l+'</div><div class="fc">'+(f[sel]?chkG:dsh)+'</div></div>'});
+h+='<div class="cl"><span>BJ</span><span>'+co.n.split(' ')[0]+'</span></div></div>'});
+document.getElementById('ff').innerHTML=h;bd()}
+document.getElementById('db').addEventListener('click',function(e){e.stopPropagation();document.getElementById('dm').classList.toggle('open');document.getElementById('db').classList.toggle('open')});
+document.getElementById('dm').addEventListener('click',function(e){var i=e.target.closest('.di');if(!i)return;sel=i.dataset.k;document.getElementById('dm').classList.remove('open');document.getElementById('db').classList.remove('open');render();if(window.posthog)posthog.capture('competitor_selected',{competitor:sel})});
+document.addEventListener('click',function(){document.getElementById('dm').classList.remove('open');document.getElementById('db').classList.remove('open')});
+if(window.posthog)posthog.capture('compare_page_viewed');
+bd();render()}()
+</script>
 </body>
 </html>
