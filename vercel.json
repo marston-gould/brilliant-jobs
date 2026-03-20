@@ -219,6 +219,10 @@
     {
       "source": "/api/extension/download",
       "destination": "https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/extension-download"
+    },
+    {
+      "source": "/:username",
+      "destination": "/api/referral-lookup?u=:username"
     }
   ]
 }
