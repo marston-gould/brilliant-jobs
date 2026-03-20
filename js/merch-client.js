@@ -35,7 +35,7 @@
       });
       console.log("[BJ:Merch] Content injected for " + placements.length + " placement(s)");
     } catch (e) {
-      reportError("merch_client", e);
+      if (typeof reportError === "function") reportError("merch_client", e);
       console.warn("[BJ:Merch] Fetch failed:", e.message);
     }
   }
@@ -46,7 +46,7 @@
     try {
       seen = safeReadLS(storageKey, []);
     } catch (e) {
-      reportError("merch-client:merch-client", e);
+      if (typeof reportError === "function") reportError("merch-client:merch-client", e);
     }
     var unseen = entries.filter(function(e) {
       return seen.indexOf(e.id) === -1;
@@ -73,7 +73,8 @@
       }
       if (target) {
         var html = content[field].replace(/\{JOBS\}/g, '<span class="merch-stat" data-merch-stat="jobs">\u2014</span>').replace(/\{COMPANIES\}/g, '<span class="merch-stat" data-merch-stat="companies">\u2014</span>');
-        target.innerHTML = typeof DOMPurify !== "undefined" ? DOMPurify.sanitize(html) : "";
+        console.log("[BJ:Merch] Injecting field:", field, "into", target?.tagName);
+        target.innerHTML = typeof DOMPurify !== "undefined" ? DOMPurify.sanitize(html) : html;
       }
     });
     if (window.posthog) {
@@ -100,7 +101,7 @@
     try {
       cached = safeReadLS("bj_lp_stats", null);
     } catch (e) {
-      reportError("merch-client:merch-client", e);
+      if (typeof reportError === "function") reportError("merch-client:merch-client", e);
     }
     if (!cached || !cached.jobs) return;
     var jobSpans = document.querySelectorAll('[data-merch-stat="jobs"]');
