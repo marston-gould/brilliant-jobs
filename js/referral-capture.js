@@ -84,8 +84,9 @@
     }
   }
   function trackReferralClick(code, source) {
-    var anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg";
-    var supabaseUrl = "https://qojhagupdnbtomfoxnsf.supabase.co";
+    var supabaseUrl = (typeof SUPABASE_URL !== "undefined" ? SUPABASE_URL : "");
+    var anonKey = (typeof SUPABASE_KEY !== "undefined" ? SUPABASE_KEY : "");
+    if (!supabaseUrl || !anonKey) { console.warn("[BJ:Referral] SUPABASE_URL or SUPABASE_KEY not found on window"); return; }
     fetch(supabaseUrl + "/rest/v1/rpc/track_referral_click", {
       method: "POST",
       headers: {
