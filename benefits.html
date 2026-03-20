@@ -76,8 +76,10 @@ footer{text-align:center;padding:24px;font-size:12px;color:var(--faint);border-t
 <nav class="nav" aria-label="Main navigation">
   <a href="/" class="nav-logo"><div class="m">B</div> Brilliant Jobs</a>
   <div class="nav-links">
-    <a href="/benefits" class="on hide-sm">Benefits</a>
+    <a href="/?#how-it-works" class="hide-sm">How it works</a>
     <a href="/compare" class="hide-sm">Compare</a>
+    <a href="/benefits" class="on hide-sm">Features</a>
+    <a href="/data-lab" class="hide-sm">Data Lab</a>
     <a href="/#pricing" class="hide-sm">Pricing</a>
     <a href="/" class="nav-cta" onclick="event.preventDefault();window.location='/?signup=1'">Start free trial</a>
   </div>
@@ -173,6 +175,11 @@ footer{text-align:center;padding:24px;font-size:12px;color:var(--faint);border-t
   </section>
 
   <!-- ── TRACKING ── -->
+
+<div class="inline-cta-wrap">
+<p class="inline-cta-headline">See enough? Start your free trial.</p>
+<a href="/?signup=1" class="inline-cta-btn" onclick="if(window.posthog)posthog.capture('inline_cta_clicked',{page:'benefits',position:'mid_benefits',cta_text:this.previousElementSibling.textContent})">Start free trial</a>
+</div>
   <section class="cat-section" id="tracking">
     <div class="cat-header">
       <h2 class="cat-title">Application tracking</h2>
@@ -224,6 +231,11 @@ footer{text-align:center;padding:24px;font-size:12px;color:var(--faint);border-t
   </section>
 
   <!-- ── AI WRITING ── -->
+
+<div class="inline-cta-wrap">
+<p class="inline-cta-headline">All of this. 7 days free.</p>
+<a href="/?signup=1" class="inline-cta-btn" onclick="if(window.posthog)posthog.capture('inline_cta_clicked',{page:'benefits',position:'three_quarters_benefits',cta_text:this.previousElementSibling.textContent})">Start free trial</a>
+</div>
   <section class="cat-section" id="ai">
     <div class="cat-header">
       <h2 class="cat-title">AI writing tools</h2>
