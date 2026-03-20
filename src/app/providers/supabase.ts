@@ -130,13 +130,15 @@ export class SupabaseJobProvider implements JobProvider {
 
   async hide(jobId: string): Promise<void> {
     const sb = getSupabase();
-    const { error } = await sb.from('hidden_jobs').upsert({ job_id: jobId });
+    const user = await getUser(); if (!user) return;
+    const { error } = await sb.from('hidden_jobs').upsert({ job_id: jobId, user_id: user.id });
     if (error) throw new ProviderError(error.message, 'HIDE_FAILED', undefined, error);
   }
 
   async unhide(jobId: string): Promise<void> {
     const sb = getSupabase();
-    const { error } = await sb.from('hidden_jobs').delete().eq('job_id', jobId);
+    const user = await getUser(); if (!user) return;
+    const { error } = await sb.from('hidden_jobs').delete().eq('job_id', jobId).eq('user_id', user.id);
     if (error) throw new ProviderError(error.message, 'UNHIDE_FAILED', undefined, error);
   }
 
@@ -547,18 +549,21 @@ export class SupabaseStatsProvider implements StatsProvider {
 
 export class SupabaseBillingProvider implements BillingProvider {
   async getBalance() {
-    try {
-      const bal = await callGateway<any>('get-user-balance', undefined, { method: 'GET', timeout: 10000 });
-      return bal?.total || 0;
-    } catch {
-      // Fallback: sum credit ledger directly
+    const token = await getAccessToken();
+    if (token) {
       try {
-        const user = await getUser(); if (!user) return 0;
-        const sb = getSupabase();
-        const { data } = await sb.from('bj_credit_ledger').select('amount').eq('user_id', user.id).eq('voided', false);
-        return (data || []).reduce((sum: number, r: { amount: number }) => sum + (r.amount || 0), 0);
-      } catch { return 0; }
+        const bal = await callGateway<any>('get-user-balance', undefined, { method: 'GET', timeout: 10000 });
+        return bal?.total || 0;
+      } catch (e: any) {
+        if (e?.status !== 401) console.warn('[BJ] getBalance gateway error:', e?.message);
+      }
     }
+    try {
+      const user = await getUser(); if (!user) return 0;
+      const sb = getSupabase();
+      const { data } = await sb.from('bj_credit_ledger').select('amount').eq('user_id', user.id).eq('voided', false);
+      return (data || []).reduce((sum: number, r: { amount: number }) => sum + (r.amount || 0), 0);
+    } catch { return 0; }
   }
   async getPricing() {
     const sb = getSupabase();
@@ -596,9 +601,9 @@ export class SupabaseTuningProvider implements TuningProvider {
     if (error) throw new ProviderError(error.message, 'TUNING_SAVE_FAILED', undefined, error);
   }
   async unhideJob(jobId: string) {
-    // Use the hidden_jobs table (same as JobProvider.unhide)
     const sb = getSupabase();
-    await sb.from('hidden_jobs').delete().eq('job_id', jobId);
+    const user = await getUser(); if (!user) return;
+    await sb.from('hidden_jobs').delete().eq('job_id', jobId).eq('user_id', user.id);
   }
   // Collapse states are UI-only — localStorage is fine here
   async getCollapsedStates() { return safeReadLS<Record<string, boolean>>('bj_pl_collapse', {}); }
