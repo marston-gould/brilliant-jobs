@@ -1,3 +1,11 @@
+## v11.53 Bugfix — Job Feed 500 Errors (2026-03-20)
+- **Root cause 1 (CRITICAL):** `ats_jobs` table has no `score` column. `supabase.ts` sort logic defaulted to `ORDER BY score` when no `sort_by` param was set, causing a Postgres 500 on every initial feed load.
+  - Fix: default sort changed from `'score'` to `'created_at'` (newest jobs first, which is the correct default UX anyway).
+- **Root cause 2:** `textSearch('fts', ...)` referenced a non-existent column. Actual full-text index column is `search_vector`. Would cause 500 on any keyword search.
+  - Fix: `textSearch('fts'` → `textSearch('search_vector'` (2 occurrences — main search and suggest).
+- **401 on get-user-balance:** Expected behavior — EF returns 401 when JWT is not present/expired. Code already silently swallows 401 and falls back to direct `bj_credit_ledger` query. No action needed; non-breaking console noise.
+- **File changed:** `src/app/providers/supabase.ts`
+
 ## v11.53 continued — Nav + CTA Audit (POD3_HANDOFF_NavAndCTAs) (2026-03-20)
 
 ### NC-01 ✅ (already done in v11.52)
