@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<!-- Brilliant Jobs Admin Console v10.41 -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="icon" href="/img/favicon.ico" sizes="48x48">
+  <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/img/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="Brilliant Jobs — Admin Console">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <title>Brilliant Jobs — Admin Console</title>
+  <script src="/js/vendor/supabase.min.js"></script>
+  <script src="/js/version.js?v=v11.49"></script>
+  <!-- CS-003: PostHog SDK for admin surface (DO-001) — CS-P1-002: externalized for CSP -->
+  <script src="js/posthog-admin.js?v=v11.49"></script>
+  <script src="js/posthog-perf.js?v=v11.49" defer></script>
+  <script src="js/feature-flags.js?v=v11.49" defer></script>
+  <script src="js/structured-logger.js?v=v11.49" defer></script>
+  <script src="js/admin-posthog-insights.js?v=v11.49" defer></script>
+  <script src="js/admin-ab-tests.js?v=v11.49" defer></script>
+  <script src="js/admin-crewai.js?v=v11.49" defer></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" integrity="sha384-pPi0zxBAoDu6+JXW/C68UZLvBUUtU+7zonhif43rqj7pxsGyqyqzcian2Rj37Rss" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="styles.css?v=v11.49">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    .admin-tab{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text-dim);font-size:14px;font-family:"JetBrains Mono",monospace;cursor:pointer;transition:all .2s}
+    .admin-tab:hover{border-color:var(--accent);color:var(--text)}
+    .admin-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .admin-tab.disabled{opacity:.4;cursor:not-allowed}
+    /* SPEC-ADMIN-002-S1: User Manager drawer tabs */
+    .um-dtab{padding:5px 14px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text-dim);font-size:13px;font-family:"JetBrains Mono",monospace;cursor:pointer}
+    .um-dtab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .admin-panel{display:none}
+    .admin-panel.active{display:block}
+    .admin-table{border-collapse:collapse;font-size:14px;font-family:"JetBrains Mono",monospace}
+    .admin-table th{text-align:left;padding:8px 12px;border-bottom:2px solid var(--border);color:var(--text-dim);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.5px}
+    .admin-table td{padding:6px 12px;border-bottom:1px solid var(--border);color:var(--text)}
+    .admin-table tr:hover td{background:var(--bg-main)}
+    .merch-pl-card:hover{background:var(--bg-card-hover) !important}
+    .merch-rule-row:hover{background:var(--bg-card-hover) !important}
+    .merch-btn-sm{padding:4px 10px;border:1px solid var(--border);border-radius:5px;background:var(--bg-card);color:var(--text-dim);font-size:11px;font-family:var(--mono);cursor:pointer;transition:all .15s}
+    .merch-btn-sm:hover{border-color:var(--accent);color:var(--text)}
+    .merch-btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .merch-btn-primary:hover{opacity:.9}
+    .merch-btn-danger:hover{border-color:var(--red);color:var(--red)}
+    .merch-label{display:block;font-size:11px;color:var(--text-faint);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.5px}
+    .merch-input{width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:13px;font-family:var(--sans)}
+    .merch-input:focus{outline:none;border-color:var(--accent)}
+    .merch-modal-inner{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;width:90%;max-width:500px;max-height:85vh;overflow-y:auto}
+    .merch-modal-inner textarea{resize:vertical}
+    .admin-green{color:#4a9a6b}
+    .admin-red{color:#c06060}
+    .admin-health-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+    .admin-health-dot.green{background:var(--green)}
+    .admin-health-dot.yellow{background:var(--warm)}
+    .admin-health-dot.red{background:var(--red)}
+    .admin-period-btn{padding:4px 10px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text-dim);font-size:13px;cursor:pointer}
+    .admin-period-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .admin-platform-name{font-weight:500}
+    .seo-subpanel { display: none; }
+    .seo-subpanel.active { display: block; }
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      text-align: center;
+    }
+    .stat-val {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.2;
+    }
+    .stat-label {
+      font-size: 10px;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 4px;
+    }
+
+    /* Admin page shell layout */
+    .admin-shell {
+      min-height: 100vh;
+      background: var(--bg-main);
+      color: var(--text);
+      font-family: 'Outfit', sans-serif;
+    }
+    .admin-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 24px;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .admin-topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .admin-topbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text);
+    }
+    .admin-topbar-brand .mark {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 16px;
+      color: #fff;
+    }
+    .admin-topbar-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .admin-topbar-subtitle {
+      font-size: 11px;
+      color: var(--text-faint);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .admin-topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .admin-back-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg-card);
+      color: var(--text-dim);
+      font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+    .admin-back-btn:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+    .admin-user-badge {
+      font-size: 11px;
+      color: #f59e0b;
+      font-weight: 700;
+      letter-spacing: 1px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .admin-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .admin-gate {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 16px;
+      color: var(--text-dim);
+      font-size: 14px;
+    }
+    .admin-gate .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .admin-denied {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 16px;
+      color: var(--text-dim);
+      font-size: 14px;
+    }
+    .admin-denied h2 {
+      color: var(--text);
+      font-size: 20px;
+    }
+
+
+    /* ─── Admin IA v2: Sidebar Navigation ─── */
+    .admin-layout {
+      display: flex;
+      min-height: calc(100vh - 57px);
+    }
+    .admin-sidebar {
+      width: 210px;
+      min-width: 210px;
+      background: var(--bg-card);
+      border-inline-end: 1px solid var(--border);
+      overflow-y: auto;
+      position: sticky;
+      top: 57px;
+      height: calc(100vh - 57px);
+      padding: 12px 0;
+    }
+    .admin-sidebar-section {
+      margin-bottom: 4px;
+    }
+    .admin-sidebar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-dim);
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.15s;
+    }
+    .admin-sidebar-header:hover {
+      color: var(--text);
+    }
+    .admin-sidebar-chevron {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      transition: transform 0.15s;
+      color: var(--text-faint);
+    }
+    .admin-sidebar-section.expanded .admin-sidebar-chevron {
+      transform: rotate(90deg);
+    }
+    .admin-sidebar-items {
+      display: none;
+      padding: 0 0 4px 0;
+    }
+    .admin-sidebar-section.expanded .admin-sidebar-items {
+      display: block;
+    }
+    .admin-sidebar-item {
+      display: block;
+      padding: 7px 16px 7px 24px;
+      font-size: 13px;
+      color: var(--text-dim);
+      cursor: pointer;
+      text-decoration: none;
+      border-left: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .admin-sidebar-item:hover {
+      color: var(--text);
+      background: rgba(59, 130, 246, 0.04);
+    }
+    .admin-sidebar-item.active {
+      color: var(--accent);
+      border-left-color: var(--accent);
+      background: rgba(59, 130, 246, 0.08);
+      font-weight: 500;
+    }
+    .admin-sidebar-item.disabled {
+      color: var(--text-faint);
+      opacity: 0.4;
+      cursor: default;
+    }
+    .admin-sidebar-item.disabled:hover {
+      background: none;
+      color: var(--text-faint);
+    }
+    .admin-main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 32px;
+      min-width: 0;
+    }
+    .admin-breadcrumb {
+      font-size: 12px;
+      color: var(--text-faint);
+      font-family: 'JetBrains Mono', monospace;
+      margin-bottom: 8px;
+    }
+    .admin-page-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 20px;
+    }
+    /* ── Reusable Block Components (S2) ── */
+    .admin-stat-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 4px;
+    }
+    .admin-stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      min-width: 110px;
+      flex: 1;
+    }
+    .admin-stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.2;
+    }
+    .admin-stat-label {
+      font-size: 11px;
+      color: var(--text-faint);
+      margin-top: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .admin-stat-sub {
+      font-size: 11px;
+      color: var(--accent);
+      margin-top: 2px;
+    }
+    .admin-block {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .admin-block-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    /* ─── SA-010: CrewAI Agent Cards ─── */
+    .crewai-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+    .crewai-card { background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+    .crewai-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .crewai-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .crewai-dot-green { background: var(--green); }
+    .crewai-dot-red { background: var(--red); }
+    .crewai-card-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+    .crewai-stat { text-align: center; }
+    .crewai-stat-val { display: block; font-size: 16px; font-weight: 700; font-family: var(--mono); color: var(--text); }
+    .crewai-stat-label { display: block; font-size: 10px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px; }
+    .crewai-card-footer { display: flex; justify-content: space-between; align-items: center; }
+    .crewai-card-actions { display: flex; gap: 6px; }
+    .crewai-error { font-size: 11px; color: var(--red); margin-bottom: 8px; }
+    .admin-age-bucket {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 60px;
+      flex: 1;
+    }
+    .admin-age-bar {
+      width: 32px;
+      background: var(--accent);
+      border-radius: 4px 4px 0 0;
+      opacity: 0.7;
+      margin-bottom: 6px;
+    }
+    .admin-age-count {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .admin-age-label {
+      font-size: 11px;
+      color: var(--text-faint);
+      margin-top: 2px;
+    }
+    .admin-age-pct {
+      font-size: 10px;
+      color: var(--text-faint);
+    }
+    /* ── Action Bar + Pagination (S3) ── */
+    .admin-action-bar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      padding: 10px 0;
+    }
+    .admin-search-wrap {
+      flex: 1;
+      min-width: 180px;
+    }
+    .admin-search-input {
+      width: 100%;
+      padding: 7px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-input);
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .admin-search-input:focus {
+      border-color: var(--accent);
+    }
+    .admin-search-input::placeholder {
+      color: var(--text-faint);
+    }
+    .admin-select {
+      padding: 7px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-input);
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+      outline: none;
+    }
+    .admin-select:focus {
+      border-color: var(--accent);
+    }
+    .admin-pager {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0 4px;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    .admin-pager-btns {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .admin-pager-btn {
+      padding: 4px 12px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--bg-input);
+      color: var(--text);
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .admin-pager-btn:hover:not(:disabled) {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .admin-pager-btn:disabled {
+      opacity: 0.3;
+      cursor: default;
+    }
+    .admin-pager-page {
+      font-size: 12px;
+      color: var(--text-faint);
+    }
+    .admin-pager-info {
+      color: var(--text-faint);
+    }
+
+    .admin-empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+      text-align: center;
+    }
+    .admin-empty-state-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+    .admin-empty-state-desc {
+      font-size: 13px;
+      color: var(--text-faint);
+      max-width: 400px;
+      line-height: 1.5;
+    }
+    @media (max-width: 768px) {
+      .admin-layout { flex-direction: column; }
+      .admin-sidebar { width: 100%; min-width: 100%; height: auto; position: static; border-inline-end: none; border-bottom: 1px solid var(--border); }
+      .admin-main { padding: 16px; }
+    }
+
+    @media (max-width: 768px) {
+      .admin-content { padding: 16px; }
+      .admin-tab, .admin-period-btn { min-height: 44px; padding: 8px 16px !important; }
+    }
+
+    /* ── Detail Panel (S4) ── */
+    .admin-detail-panel {
+      border-top: 1px solid var(--border);
+      background: var(--bg-main);
+    }
+    .expand-chevron {
+      font-size: 10px;
+      color: var(--text-faint);
+      user-select: none;
+      transition: color .15s;
+    }
+    tr:hover .expand-chevron {
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Auth Gate -->
+  <div class="admin-gate" id="admin-gate">
+    <div class="spinner"></div>
+    <p>Verifying admin access…</p>
+  </div>
+
+  <!-- Access Denied -->
+  <div class="admin-denied" id="admin-denied" style="display:none">
+    <h2>Access Denied</h2>
+    <p>You don't have admin privileges.</p>
+    <a href="/dashboard" class="admin-back-btn">← Back to Dashboard</a>
+  </div>
+
+  <!-- MFA Setup (CS-006: AD-FIX-02) -->
+  <div id="admin-mfa-setup" style="display:none; max-width:420px; margin:80px auto; padding:32px; background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); text-align:center; font-family:system-ui,-apple-system,sans-serif;">
+    <div style="width:48px; height:48px; margin:0 auto 16px; background:#f0f4ff; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+      <i data-lucide="lock-keyhole" class="icon-lg icon-stroke" style="stroke:#4f46e5;"></i>
+    </div>
+    <h2 style="margin:0 0 8px; font-size:20px; font-weight:600; color:#1a1a2e;">Two-Factor Authentication Required</h2>
+    <p style="margin:0 0 24px; color:#64748b; font-size:14px;">Admin access requires MFA. Scan the QR code with your authenticator app (Google Authenticator, Authy, 1Password, etc.).</p>
+    <div id="mfa-qr-container" style="margin:0 auto 16px; display:inline-block; background:#f8f9fa; padding:16px; border-radius:8px;">
+      <div id="mfa-qr-loading" style="color:#94a3b8; font-size:13px;">Generating QR code…</div>
+      <img id="mfa-qr-img" style="display:none; width:200px; height:200px;" alt="TOTP QR Code"/>
+    </div>
+    <div id="mfa-secret-display" style="display:none; margin:0 0 20px;">
+      <p style="font-size:12px; color:#94a3b8; margin:0 0 4px;">Can't scan? Enter this code manually:</p>
+      <code id="mfa-secret-code" style="display:inline-block; padding:6px 12px; background:#f1f5f9; border-radius:6px; font-size:13px; letter-spacing:1px; color:#334155; user-select:all;"></code>
+    </div>
+    <div style="margin:0 0 12px;">
+      <label for="mfa-verify-code" style="display:block; text-align:left; font-size:13px; font-weight:500; color:#475569; margin-bottom:6px;">Enter 6-digit code from your app:</label>
+      <input type="text" id="mfa-verify-code" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" autocomplete="one-time-code" placeholder="000000" style="width:100%; padding:10px 14px; border:1px solid #d1d5db; border-radius:8px; font-size:18px; text-align:center; letter-spacing:6px; box-sizing:border-box;"/>
+    </div>
+    <button id="mfa-verify-btn" style="width:100%; padding:10px 0; background:#4f46e5; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; margin-bottom:8px;" disabled>Verify & Enable MFA</button>
+    <p id="mfa-error" style="display:none; color:#dc2626; font-size:13px; margin:8px 0 0;"></p>
+    <p id="mfa-success" style="display:none; color:#16a34a; font-size:13px; margin:8px 0 0;">MFA enabled! Redirecting…</p>
+  </div>
+
+  <!-- Admin Shell -->
+  <div class="admin-shell" id="admin-shell" style="display:none">
+
+    <!-- Top Bar -->
+    <div class="admin-topbar">
+      <div class="admin-topbar-left">
+        <a href="/dashboard" class="admin-topbar-brand">
+          <div class="mark">B</div>
+          <div>
+            <div class="admin-topbar-title">Brilliant Jobs</div>
+            <div class="admin-topbar-subtitle">Admin Console <span id="admin-version"></span></div>
+          </div>
+        </a>
+      </div>
+      <div class="admin-topbar-right">
+        <span class="admin-user-badge">ADMIN</span>
+        <span id="admin-user-email" style="font-size:12px;color:var(--text-dim);font-family:'JetBrains Mono',monospace"></span>
+        <a href="/dashboard" class="admin-back-btn">← Dashboard</a>
+      </div>
+    </div>
+
+    <!-- Admin Content -->
+    <div class="admin-layout" id="admin-layout">
+      <!-- Sidebar Navigation -->
+      <nav class="admin-sidebar" id="admin-sidebar"></nav>
+
+      <!-- Main Content Area -->
+      <div class="admin-main">
+        <div class="admin-breadcrumb" id="admin-breadcrumb">Operations > Feed Health</div>
+        <div class="admin-page-title" id="admin-page-title">Feed Health</div>
+        <div style="display:flex;gap:8px;margin-bottom:20px">
+          <a href="/roadmap.html" target="_blank" style="font-size:12px;color:var(--accent);text-decoration:none;padding:3px 10px;border:1px solid var(--border);border-radius:4px;font-family:var(--mono)">Roadmap ↗</a>
+          <a href="/parkinglot.html" target="_blank" style="font-size:12px;color:var(--accent);text-decoration:none;padding:3px 10px;border:1px solid var(--border);border-radius:4px;font-family:var(--mono)">Parking Lot ↗</a>
+        </div>
+        <div class="page-body" id="page-admin">
+
+          <div class="admin-panel" id="admin-panel-notifications">
+            <div style="padding:24px;text-align:center;color:var(--text-dim);font-size:13px">Loading notification configs…</div>
+          </div>
+          <div class="admin-panel" id="admin-panel-templates">
+            <div style="padding:24px;text-align:center;color:var(--text-dim);font-size:13px">Loading templates…</div>
+          </div>
+          <div class="admin-panel" id="admin-panel-notif-analytics">
+            <div style="padding:24px;text-align:center;color:var(--text-dim);font-size:13px">Loading notification analytics…</div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-email-cohorts">
+            <div style="padding:24px;text-align:center;color:var(--text-dim);font-size:13px">Loading email cohort analytics…</div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-cadence">
+            <div style="padding:24px;text-align:center;color:var(--text-dim);font-size:13px">Loading cadence optimization…</div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-notif-log">
+            <div style="padding:24px;text-align:center;color:var(--text-dim);font-size:13px">Loading notification log…</div>
+          </div>
+
+          <div class="admin-panel active" id="admin-panel-feed-health">
+            <div id="admin-health" style="margin-bottom:16px;font-size:14px"></div>
+
+            <!-- Refresh Cycle Status -->
+            <div id="admin-cycle" style="margin-bottom:20px;padding:16px;background:var(--bg-input);border-radius:10px;border:1px solid var(--border)">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                <span style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px">Refresh Cycle — Tiered</span>
+                <span id="ac-cycle-pct" style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--accent)"></span>
+              </div>
+              <div style="width:100%;height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:12px">
+                <div id="ac-cycle-bar" style="height:100%;border-radius:3px;background:linear-gradient(90deg,#5b8a72,#6b82a8);transition:width 1s ease;width:0"></div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;font-size:12px">
+                <div><span style="color:var(--text-faint)">Total boards</span><br><strong id="ac-cycle-total" style="font-family:var(--mono)">—</strong></div>
+                <div><span style="color:var(--text-faint)">HOT fresh</span><br><strong id="ac-cycle-refreshed" style="font-family:var(--mono);color:#4a9a6b">—</strong></div>
+                <div><span style="color:var(--text-faint)">HOT due</span><br><strong id="ac-cycle-pending" style="font-family:var(--mono);color:#a08858">—</strong></div>
+                <div><span style="color:var(--text-faint)">Rate</span><br><strong id="ac-cycle-rate" style="font-family:var(--mono)">—</strong></div>
+                <div><span style="color:var(--text-faint)">Last refresh</span><br><strong id="ac-cycle-start" style="font-family:var(--mono)">—</strong></div>
+                <div><span style="color:var(--text-faint)">HOT cycle</span><br><strong id="ac-cycle-eta" style="font-family:var(--mono)">—</strong></div>
+              </div>
+              <div id="ac-cycle-spark" style="height:80px;margin-top:12px"></div>
+            </div>
+
+            <!-- KPI Cards -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px">
+              <div class="stat-card"><div class="stat-val" id="ah-total">&mdash;</div><div class="stat-label">Total Boards</div><div class="stat-delta" id="ah-total-delta"></div></div>
+              <div class="stat-card"><div class="stat-val" id="ah-with-jobs">&mdash;</div><div class="stat-label">With Jobs</div><div class="stat-delta" id="ah-with-jobs-delta"></div></div>
+              <div class="stat-card"><div class="stat-val" id="ah-4xx">&mdash;</div><div class="stat-label">4xx Errors</div><div class="stat-delta" id="ah-4xx-delta"></div></div>
+              <div class="stat-card"><div class="stat-val admin-red" id="ah-dead">&mdash;</div><div class="stat-label">Dead Boards</div><div class="stat-delta" id="ah-dead-delta"></div></div>
+              <div class="stat-card"><div class="stat-val admin-amber" id="ah-unscraped">&mdash;</div><div class="stat-label">Unscraped</div><div class="stat-delta" id="ah-unscraped-delta"></div></div>
+              <div class="stat-card"><div class="stat-val" id="ah-jobs">&mdash;</div><div class="stat-label">Total Jobs</div><div class="stat-delta" id="ah-jobs-delta"></div></div>
+              <div class="stat-card"><div class="stat-val" id="ah-net">&mdash;</div><div class="stat-label">Net Change</div><div class="stat-delta" id="ah-net-delta"></div></div>
+            </div>
+
+            <table class="admin-table" style="width:100%">
+              <thead><tr><th>Platform</th><th style="text-align:right">Boards</th><th style="text-align:right">Active %</th><th style="text-align:right">Dead</th><th style="text-align:right">Unscraped</th><th style="text-align:right">Jobs</th><th style="text-align:right">Jobs/Board</th></tr></thead>
+              <tbody id="admin-platform-body"></tbody>
+              <tfoot id="admin-platform-foot"></tfoot>
+            </table>
+
+            <!-- Export buttons -->
+            <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+              <button onclick="exportBoardsCsv('dead')" class="admin-period-btn" id="export-dead-btn">⬇ Export Dead Boards</button>
+              <button onclick="exportBoardsCsv('unscraped')" class="admin-period-btn" id="export-unscraped-btn">⬇ Export Unscraped</button>
+              <button onclick="exportBoardsCsv('active')" class="admin-period-btn" id="export-active-btn">⬇ Export Active Boards</button>
+              <button onclick="exportBoardsCsv('all')" class="admin-period-btn" id="export-all-btn">⬇ Export All Boards</button>
+            </div>
+
+            <!-- Feed Health Charts -->
+            <div style="margin-top:24px">
+              <div id="fh-chart-total-boards" style="width:100%;height:260px;margin-bottom:16px"></div>
+              <div id="fh-chart-active-boards" style="width:100%;height:260px;margin-bottom:16px"></div>
+              <div id="fh-chart-jobs" style="width:100%;height:260px"></div>
+            </div>
+
+            <!-- Discovery Pipeline -->
+            <div style="margin-top:28px;padding:20px;background:var(--bg-input);border-radius:10px;border:1px solid var(--border)">
+              <div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:14px">Discovery Pipeline</div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px">
+                <div class="stat-card"><div class="stat-val" id="dp-companies">&mdash;</div><div class="stat-label">Companies Discovered</div></div>
+                <div class="stat-card"><div class="stat-val" id="dp-boards-found">&mdash;</div><div class="stat-label">Boards Found</div></div>
+                <div class="stat-card"><div class="stat-val" id="dp-boards-none">&mdash;</div><div class="stat-label">No Board</div></div>
+                <div class="stat-card"><div class="stat-val" id="dp-ext-installs">&mdash;</div><div class="stat-label">Ext Installs</div></div>
+                <div class="stat-card"><div class="stat-val" id="dp-connections">&mdash;</div><div class="stat-label">Connections Scanned</div></div>
+              </div>
+              <div style="font-size:12px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 10px">Board Discovery Queue</div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px">
+                <div class="stat-card"><div class="stat-val" id="dp-queue-total">&mdash;</div><div class="stat-label">Total Queued</div></div>
+                <div class="stat-card"><div class="stat-val" id="dp-queue-pending">&mdash;</div><div class="stat-label">Pending</div></div>
+                <div class="stat-card"><div class="stat-val" id="dp-queue-found">&mdash;</div><div class="stat-label">Boards Found</div></div>
+              </div>
+              <table class="admin-table" style="width:100%">
+                <thead><tr><th>Source</th><th style="text-align:right">Boards</th><th style="text-align:right">Jobs</th><th style="text-align:right">Conversion</th></tr></thead>
+                <tbody id="dp-source-body"></tbody>
+              </table>
+            </div>
+
+            <!-- Auto-Apply Trigger Stats -->
+            <div style="margin-top:20px;padding:20px;background:var(--bg-input);border-radius:10px;border:1px solid var(--border)">
+              <div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:14px">Auto-Apply Engine</div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px">
+                <div class="stat-card"><div class="stat-val" id="aa-eligible">&mdash;</div><div class="stat-label">Eligible Users</div></div>
+                <div class="stat-card"><div class="stat-val" id="aa-matched">&mdash;</div><div class="stat-label">Jobs Matched</div></div>
+                <div class="stat-card"><div class="stat-val" id="aa-scored">&mdash;</div><div class="stat-label">Scored</div></div>
+                <div class="stat-card"><div class="stat-val" id="aa-queued">&mdash;</div><div class="stat-label">Queued</div></div>
+                <div class="stat-card"><div class="stat-val" id="aa-last-run">&mdash;</div><div class="stat-label">Last Run</div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-cohorts">
+            <div class="stat-grid" style="margin-bottom:20px">
+              <div class="stat-card"><div class="stat-val" id="ac-total-cohorts">&mdash;</div><div class="stat-label">Cohorts</div></div>
+              <div class="stat-card"><div class="stat-val" id="ac-total-users">&mdash;</div><div class="stat-label">Total Users</div></div>
+              <div class="stat-card"><div class="stat-val" id="ac-pro-pct">&mdash;</div><div class="stat-label">Pro Conversion</div></div>
+              <div class="stat-card"><div class="stat-val" id="ac-active-7d">&mdash;</div><div class="stat-label">Active 7d</div></div>
+              <div class="stat-card"><div class="stat-val" id="ac-churned">&mdash;</div><div class="stat-label">Churned 28d</div></div>
+            </div>
+            <div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap">
+              <div id="admin-cohort-sessions-chart" style="flex:1;min-width:280px;height:280px"></div>
+              <div id="admin-cohort-revenue-chart" style="flex:1;min-width:280px;height:280px"></div>
+            </div>
+            <div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap">
+              <div id="admin-cohort-plan-chart" style="flex:1;min-width:280px;height:250px"></div>
+              <div id="admin-cohort-growth-chart" style="flex:1;min-width:280px;height:250px"></div>
+            </div>
+            <div style="font-size:11px;color:var(--text-faint);margin-bottom:8px;">Select cohorts below to filter charts. Multi-select aligns enrollment to Day 0 for comparison.</div>
+            <table class="admin-table" style="width:100%">
+              <thead><tr>
+                <th style="width:32px;"><input type="checkbox" id="cohort-select-all" title="Select all cohorts" style="cursor:pointer;"></th>
+                <th>ID</th><th>Age</th><th>Enrollment</th>
+                <th>Users</th><th>Active 7d</th><th>Churned</th>
+                <th>Free</th><th>Pro</th>
+                <th>Revenue/mo</th><th>LTV</th><th>ARPU</th>
+              </tr></thead>
+              <tbody id="admin-cohort-body"></tbody>
+            </table>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-entitlements">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+              <label style="font-size:13px;color:var(--text-dim)">Cohort:</label>
+              <select id="entitlement-cohort-select" style="padding:6px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:13px"></select>
+            </div>
+            <table class="admin-table" style="width:100%">
+              <thead><tr><th>Feature</th><th>Plan</th><th>Behavior</th><th>Limit</th><th>Bonus Max</th></tr></thead>
+              <tbody id="admin-entitlement-body"></tbody>
+            </table>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-cohort-pricing">
+            <!-- Global Pricing Defaults -->
+            <div style="margin-bottom:24px">
+              <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px">Global Pricing Defaults</div>
+              <div style="font-size:11px;color:var(--text-faint);margin-bottom:12px">Base pricing for all users without cohort overrides. Changes take effect immediately.</div>
+              <table class="admin-table" style="width:100%">
+                <thead><tr><th>Tier</th><th>Price (¢/mo)</th><th>Credits/mo</th><th>PAYG (¢/cr)</th><th>Filters</th><th>Resumes</th><th>Summary</th><th></th></tr></thead>
+                <tbody id="cp-defaults-body"></tbody>
+              </table>
+            </div>
+            <!-- Time-Based Cohorts -->
+            <div style="margin-bottom:24px">
+              <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px">Time-Based Cohorts</div>
+              <div style="font-size:11px;color:var(--text-faint);margin-bottom:12px">Users are permanently assigned to a cohort at signup based on date. Cohort pricing overrides global defaults.</div>
+              <table class="admin-table" style="width:100%">
+                <thead><tr><th>ID</th><th>Name</th><th>Date Range</th><th>Status</th><th>Overrides</th><th></th></tr></thead>
+                <tbody id="cp-cohort-body"></tbody>
+              </table>
+            </div>
+            <!-- Cohort Override Editor (hidden until Edit clicked) -->
+            <div id="cp-cohort-editor" style="display:none;margin-bottom:24px;border:1px solid var(--border);border-radius:8px;padding:16px;background:var(--bg-card)">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <div id="cp-editor-title" style="font-size:14px;font-weight:600;color:var(--accent)"></div>
+                <button onclick="closeCohortEditor()" style="background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:16px">&times;</button>
+              </div>
+              <div style="font-size:11px;color:var(--text-faint);margin-bottom:12px">Leave fields blank to inherit the global default. Override values are shown in purple in the preview below.</div>
+              <table class="admin-table" style="width:100%;margin-bottom:16px">
+                <thead><tr><th>Tier</th><th>Price (¢/mo)</th><th>Credits/mo</th><th>PAYG (¢/cr)</th><th>Promo Label</th><th>Expires</th></tr></thead>
+                <tbody id="cp-editor-body"></tbody>
+              </table>
+              <div style="display:flex;gap:8px;margin-bottom:16px">
+                <button class="btn-primary btn-sm" onclick="saveCohortOverrides()" style="font-size:11px;padding:5px 16px">Save Overrides</button>
+                <button class="btn-sm" onclick="closeCohortEditor()" style="font-size:11px;padding:5px 16px;background:var(--bg-input);border:1px solid var(--border);color:var(--text);cursor:pointer">Cancel</button>
+              </div>
+              <!-- Live Preview -->
+              <div style="font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:6px">Resolved Preview <span style="font-size:10px;font-weight:400;color:var(--text-faint)">(purple = overridden, gray = global default)</span></div>
+              <table class="admin-table" style="width:100%">
+                <thead><tr><th>Tier</th><th>Price/mo</th><th>Credits</th><th>PAYG/credit</th><th>Label</th></tr></thead>
+                <tbody id="cp-preview-body"></tbody>
+              </table>
+            </div>
+            <!-- Create New Cohort -->
+            <div style="margin-bottom:24px;border:1px solid var(--border);border-radius:8px;padding:16px;background:var(--bg-card)">
+              <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px">Create New Cohort</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
+                <div><label style="font-size:10px;color:var(--text-faint);display:block">ID (slug)</label><input type="text" id="cp-new-id" class="cp-input" placeholder="q2-2027" style="width:100px"></div>
+                <div><label style="font-size:10px;color:var(--text-faint);display:block">Name</label><input type="text" id="cp-new-name" class="cp-input" placeholder="Q2 2027" style="width:130px"></div>
+                <div><label style="font-size:10px;color:var(--text-faint);display:block">Start Date</label><input type="date" id="cp-new-start" class="cp-input" style="width:130px"></div>
+                <div><label style="font-size:10px;color:var(--text-faint);display:block">End Date</label><input type="date" id="cp-new-end" class="cp-input" style="width:130px"></div>
+                <button class="btn-primary btn-sm" onclick="createPricingCohort()" style="font-size:11px;padding:5px 16px;height:30px">Create</button>
+              </div>
+            </div>
+            <!-- Audit Log -->
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px">Pricing Change Log <span style="font-size:10px;font-weight:400;color:var(--text-faint)">(last 30)</span></div>
+              <table class="admin-table" style="width:100%">
+                <thead><tr><th>Time</th><th>Type</th><th>Target</th><th>Change</th></tr></thead>
+                <tbody id="cp-audit-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-users">
+            <!-- SPEC-ADMIN-002-S1: User Manager — rendered by admin-user-manager.js -->
+            <div style="padding:24px;text-align:center;color:var(--text-faint);font-size:13px">Loading User Manager…</div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-cohort-manager">
+            <!-- SPEC-ADMIN-002-S1: Cohort Manager CRUD — rendered by admin-cohort-manager-full.js -->
+            <div style="padding:24px;text-align:center;color:var(--text-faint);font-size:13px">Loading Cohort Manager…</div>
+          </div>
+
+          <!-- SPEC-ADMIN-002-S2: Billing Manager -->
+          <div class="admin-panel" id="admin-panel-billing-manager">
+            <div style="padding:24px;text-align:center;color:var(--text-faint);font-size:13px">Loading Billing Manager…</div>
+          </div>
+
+          <!-- SPEC-ADMIN-002-S2: Filter & Prompt Manager -->
+          <div class="admin-panel" id="admin-panel-filter-prompt">
+            <div style="padding:24px;text-align:center;color:var(--text-faint);font-size:13px">Loading Filter &amp; Prompt Manager…</div>
+          </div>
+
+          <!-- SPEC-ADMIN-002-S2: Audit Log Viewer -->
+          <div class="admin-panel" id="admin-panel-audit-log">
+            <div style="padding:24px;text-align:center;color:var(--text-faint);font-size:13px">Loading Audit Log…</div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-seo">
+            <div class="seo-controls">
+              <select id="seo-url-select" class="seo-select" onchange="setSeoUrl(this.value)">
+                <option value="">All Pages</option>
+                <option value="https://brilliantjobs.app/">/ (homepage)</option>
+                <option value="https://brilliantjobs.app/data-lab">/data-lab</option>
+                <option value="https://brilliantjobs.app/salary-data">/salary-data</option>
+                <option value="https://brilliantjobs.app/hiring-trends">/hiring-trends</option>
+                <option value="https://brilliantjobs.app/jobs-by-industry">/jobs-by-industry</option>
+                <option value="https://brilliantjobs.app/career-level-data">/career-level-data</option>
+              </select>
+              <span class="seo-date-label">From</span>
+              <input type="date" id="seo-date-from" class="seo-date-input" onchange="seoDateChanged()">
+              <span class="seo-date-label">To</span>
+              <input type="date" id="seo-date-to" class="seo-date-input" onchange="seoDateChanged()">
+              <button class="seo-sync-btn" id="seo-sync-btn" onclick="triggerSeoSync(['all'])">&#8635; Sync All</button>
+              <button class="seo-sync-btn" id="seo-export-btn" onclick="generateSeoReport()" style="background:linear-gradient(135deg,rgba(99,102,241,0.1),rgba(167,139,250,0.1));color:var(--indigo);border-color:rgba(99,102,241,0.3);" title="Generate downloadable SEO report">&#128196; Export Report</button>
+            </div>
+            <div class="stat-grid" id="seo-stat-cards">
+              <div class="stat-card"><div class="stat-val" id="seo-kpi-psi">&mdash;</div><div class="stat-label">PSI Performance</div></div>
+              <div class="stat-card"><div class="stat-val" id="seo-kpi-ylt">&mdash;</div><div class="stat-label">YLT Score</div></div>
+              <div class="stat-card"><div class="stat-val" id="seo-kpi-indexed">&mdash;</div><div class="stat-label">Indexed</div></div>
+              <div class="stat-card"><div class="stat-val" id="seo-kpi-cf">&mdash;</div><div class="stat-label">CF Requests</div></div>
+              <div class="stat-card"><div class="stat-val" id="seo-kpi-gsc">&mdash;</div><div class="stat-label">GSC Clicks</div><div id="seo-kpi-gsc-date" style="font-size:10px;color:var(--text-faint);font-family:var(--mono);margin-top:2px"></div></div>
+            </div>
+            <div class="seo-section-label">Performance Charts</div>
+            <div class="stats-grid">
+              <div class="seo-chart-card full"><div class="seo-chart-label">Search Performance</div><div class="seo-chart-title">Google Search Console</div><div id="seo-chart-gsc" class="seo-chart-area"></div></div>
+              <div class="seo-chart-card"><div class="seo-chart-label">Core Web Vitals</div><div class="seo-chart-title">PageSpeed Insights &middot; Mobile</div><div id="seo-chart-psi" class="seo-chart-area compact"></div></div>
+              <div class="seo-chart-card"><div class="seo-chart-label">Edge Analytics</div><div class="seo-chart-title">Cloudflare Traffic</div><div id="seo-chart-cf" class="seo-chart-area compact"></div></div>
+              <div class="seo-chart-card"><div class="seo-chart-label">Page Quality</div><div class="seo-chart-title">Yellow Lab Tools</div><div id="seo-chart-ylt" class="seo-chart-area compact"></div></div>
+              <div class="seo-chart-card"><div class="seo-chart-label">Real User Metrics</div><div class="seo-chart-title">Chrome UX Report</div><div id="seo-chart-crux" class="seo-chart-area compact"></div></div>
+            </div>
+            <div class="seo-section-label">Technical Details</div>
+            <div class="seo-detail-grid">
+              <div class="seo-chart-card"><div class="seo-chart-label">Google Indexing</div><div class="seo-chart-title">URL Inspection</div><div id="seo-side-inspection"></div></div>
+              <div class="seo-chart-card"><div class="seo-chart-label">On-Page Audit</div><div class="seo-chart-title">DataForSEO</div><div id="seo-side-dfs"></div></div>
+              <div class="seo-chart-card"><div class="seo-chart-label">Entity Recognition</div><div class="seo-chart-title">Knowledge Graph</div><div id="seo-side-kg"></div></div>
+            </div>
+            <div class="seo-chart-card" style="margin-block-start:16px;"><div class="seo-chart-label">Core Web Vitals Detail</div><div class="seo-chart-title">PSI Drilldown</div><div id="seo-side-psi"></div></div>
+            <div class="seo-chart-card" style="margin-block-start:16px;"><div class="seo-chart-label">Organic Search</div><div class="seo-chart-title">Search Queries</div><div id="seo-side-queries" style="max-height:300px;overflow-y:auto;"></div></div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-revenue">
+            <div id="admin-rev-period" style="display:flex;gap:4px;margin-bottom:16px">
+              <button class="admin-period-btn active" data-rev-days="7">7d</button>
+              <button class="admin-period-btn" data-rev-days="30">30d</button>
+              <button class="admin-period-btn" data-rev-days="90">90d</button>
+            </div>
+            <div class="stat-grid" id="admin-rev-kpis" style="margin-bottom:20px;">
+              <div class="stat-card"><div class="stat-label">Total Users</div><div class="stat-val" id="ar-total-users">—</div></div>
+              <div class="stat-card"><div class="stat-label">Paid Subscribers</div><div class="stat-val" id="ar-paid-subs">—</div></div>
+              <div class="stat-card"><div class="stat-label">Credits Granted</div><div class="stat-val" id="ar-credits-granted">—</div></div>
+              <div class="stat-card"><div class="stat-label">Credits Used</div><div class="stat-val" id="ar-credits-used">—</div></div>
+              <div class="stat-card"><div class="stat-label">Active Credit Users</div><div class="stat-val" id="ar-active-users">—</div></div>
+              <div class="stat-card"><div class="stat-label">Platform Cost</div><div class="stat-val" id="ar-platform-cost">—</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+              <div class="card" style="padding:16px;"><div class="card-title">Tier Distribution</div><div id="ar-chart-tiers" style="height:200px;"></div></div>
+              <div class="card" style="padding:16px;"><div class="card-title">Daily Credit Activity</div><div id="ar-chart-daily" style="height:200px;"></div></div>
+            </div>
+            <div class="card" style="padding:16px;margin-bottom:20px;"><div class="card-title">Credit Transactions by Type</div><table class="admin-table" style="width:100%"><thead><tr><th>Type</th><th>Transactions</th><th>Credits In</th><th>Credits Out</th></tr></thead><tbody id="ar-type-body"></tbody></table></div>
+            <div class="card" style="padding:16px;margin-bottom:20px;"><div class="card-title">Platform Cost Breakdown</div><table class="admin-table" style="width:100%"><thead><tr><th>Category</th><th>Transactions</th><th>Total Cost</th></tr></thead><tbody id="ar-cost-body"></tbody></table></div>
+            <div class="card" style="padding:16px;"><div class="card-title">Top Users by Credit Usage</div><table class="admin-table" style="width:100%"><thead><tr><th>User</th><th>Credits Used</th><th>Credits Granted</th><th>Transactions</th></tr></thead><tbody id="ar-users-body"></tbody></table></div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-ghost">
+            <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);">
+              <div class="stat-card"><div class="stat-val" id="ag-total-apps">—</div><div class="stat-label">Total Applications</div></div>
+              <div class="stat-card"><div class="stat-val" id="ag-ghosted">—</div><div class="stat-label">Ghosted</div></div>
+              <div class="stat-card"><div class="stat-val" id="ag-avg-response">—</div><div class="stat-label">Avg Response (days)</div></div>
+              <div class="stat-card"><div class="stat-val" id="ag-gmail-connected">—</div><div class="stat-label">Gmail Connected</div></div>
+            </div>
+            <div class="card" style="padding:16px;"><div class="card-title">Company Response Performance</div><div class="card-sub">Companies with tracked applications — sorted by ghost rate</div><table class="admin-table" style="width:100%"><thead><tr><th>Company</th><th>Applications</th><th>Responded</th><th>Ghosted</th><th>Ghost Rate</th><th>Avg Response</th><th>Last Activity</th></tr></thead><tbody id="ag-company-body"><tr><td colspan="7" style="text-align:center;color:var(--text-faint);padding:24px;">Loading...</td></tr></tbody></table></div>
+            <div class="card" style="padding:16px;"><div class="card-title">Ghost Score Distribution</div><div id="ag-ghost-chart" style="height:280px;"></div></div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-feedback">
+            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px;">
+              <div style="display:flex;gap:4px;" id="afb-type-pills">
+                <button class="admin-period-btn active" data-afb-type="all">All</button>
+                <button class="admin-period-btn" data-afb-type="canny_fr">Feature Requests</button>
+                <button class="admin-period-btn" data-afb-type="canny_bug">Bug Reports</button>
+                <button class="admin-period-btn" data-afb-type="supabase_feedback">Feedback</button>
+                <button class="admin-period-btn" data-afb-type="survey">Surveys</button>
+              </div>
+              <div style="display:flex;gap:4px;" id="afb-status-pills">
+                <button class="admin-period-btn active" data-afb-status="all">All</button>
+                <button class="admin-period-btn" data-afb-status="new">New</button>
+                <button class="admin-period-btn" data-afb-status="reviewing">Reviewing</button>
+                <button class="admin-period-btn" data-afb-status="planned">Planned</button>
+                <button class="admin-period-btn" data-afb-status="in_progress">In Progress</button>
+                <button class="admin-period-btn" data-afb-status="done">Done</button>
+                <button class="admin-period-btn" data-afb-status="wont_fix">Won't Fix</button>
+              </div>
+              <select id="afb-cohort-filter" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);font-size:12px;background:var(--card);"><option value="all">All Cohorts</option></select>
+              <select id="afb-sort" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);font-size:12px;background:var(--card);"><option value="newest">Newest First</option><option value="oldest">Oldest First</option><option value="votes">Most Votes</option><option value="stale">Most Stale</option></select>
+              <input type="text" id="afb-search" placeholder="Search feedback…" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);font-size:12px;flex:1;min-width:140px;background:var(--card);">
+              <button class="seo-sync-btn" onclick="triggerFeedbackSync()" id="afb-sync-btn" style="font-size:12px;padding:4px 10px;">&#8635; Sync</button>
+            </div>
+            <div class="stat-grid" style="margin-bottom:20px;">
+              <div class="stat-card"><div class="stat-label">Total Open</div><div class="stat-val" id="afb-open">—</div></div>
+              <div class="stat-card"><div class="stat-label">New This Week</div><div class="stat-val" id="afb-new-week">—</div></div>
+              <div class="stat-card"><div class="stat-label">Avg Days to Resolve</div><div class="stat-val" id="afb-avg-resolve">—</div></div>
+              <div class="stat-card"><div class="stat-label">Most Requested</div><div class="stat-val" id="afb-top-fr" style="font-size:12px;line-height:1.3;">—</div></div>
+            </div>
+            <div class="card" style="padding:0;overflow-x:auto;">
+              <table style="width:100%;border-collapse:collapse;font-size:13px;" id="afb-table">
+                <thead><tr style="background:var(--bg-alt);border-bottom:2px solid var(--border);"><th style="padding:8px 10px;text-align:left;width:80px;font-weight:600;font-size:11px;color:var(--text-faint);">Type</th><th style="padding:8px 10px;text-align:left;font-weight:600;font-size:11px;color:var(--text-faint);">Title / Content</th><th style="padding:8px 10px;text-align:left;width:120px;font-weight:600;font-size:11px;color:var(--text-faint);">User</th><th style="padding:8px 10px;text-align:left;width:100px;font-weight:600;font-size:11px;color:var(--text-faint);">Cohort</th><th style="padding:8px 10px;text-align:left;width:90px;font-weight:600;font-size:11px;color:var(--text-faint);cursor:pointer;" onclick="sortFeedbackBy('submitted')">Submitted ↕</th><th style="padding:8px 10px;text-align:center;width:70px;font-weight:600;font-size:11px;color:var(--text-faint);cursor:pointer;" onclick="sortFeedbackBy('stale')">Days ↕</th><th style="padding:8px 10px;text-align:center;width:60px;font-weight:600;font-size:11px;color:var(--text-faint);cursor:pointer;" onclick="sortFeedbackBy('votes')">Votes ↕</th><th style="padding:8px 10px;text-align:left;width:110px;font-weight:600;font-size:11px;color:var(--text-faint);">Status</th></tr></thead>
+                <tbody id="afb-tbody"></tbody>
+              </table>
+            </div>
+            <div id="afb-empty" style="display:none;text-align:center;padding:40px;color:var(--text-faint);">No feedback items found. Click <strong>Sync</strong> to pull from Canny and Supabase.</div>
+            <div id="afb-detail" style="display:none;position:fixed;top:0;right:0;width:420px;height:100vh;background:var(--card);border-left:1px solid var(--border);box-shadow:-4px 0 20px rgba(0,0,0,0.1);z-index:1000;overflow-y:auto;padding:24px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><h3 id="afb-detail-title" style="font-size:16px;margin:0;">—</h3><button onclick="closeFeedbackDetail()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-faint);">&times;</button></div>
+              <div id="afb-detail-meta" style="font-size:12px;color:var(--text-faint);margin-bottom:12px;"></div>
+              <div id="afb-detail-content" style="font-size:13px;line-height:1.6;white-space:pre-wrap;"></div>
+            </div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-merch">
+            <div style="display:grid;grid-template-columns:240px 1fr;gap:16px;min-height:500px">
+              <div style="border-right:1px solid var(--border);padding-right:16px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><span style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px">Placements</span><button onclick="showAddPlacementForm()" class="merch-btn-sm merch-btn-primary" style="font-size:10px">+ Add</button></div>
+                <div id="merch-placement-list"></div>
+              </div>
+              <div id="merch-detail">
+                <div id="merch-detail-header" style="margin-bottom:16px"></div>
+                <div style="border-top:1px solid var(--border);padding-top:16px;margin-bottom:16px">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px">Rules</span><div style="display:flex;gap:6px"><span id="merch-rule-controls"></span><button onclick="showAddRuleForm()" class="merch-btn-sm merch-btn-primary" style="font-size:10px">+ Add Rule</button></div></div>
+                  <div id="merch-rules-list" style="display:flex;flex-direction:column;gap:6px"></div>
+                </div>
+                <div style="border-top:1px solid var(--border);padding-top:16px">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span id="merch-content-header" style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px">Content Entries</span><div style="display:flex;gap:6px"><button onclick="showBulkImportModal()" class="merch-btn-sm" style="font-size:10px">Bulk Import</button><button onclick="showAddContentModal()" class="merch-btn-sm merch-btn-primary" style="font-size:10px">+ Add Entry</button></div></div>
+                  <div style="overflow-x:auto"><table class="admin-table" style="width:100%"><thead><tr><th style="width:40px">#</th><th>h1 Preview</th><th>Sub Preview</th><th style="width:90px">Category</th><th style="width:80px">Visits</th><th style="width:40px;text-align:center">On</th></tr></thead><tbody id="merch-content-body"></tbody></table></div>
+                </div>
+              </div>
+            </div>
+            <div id="merch-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1001;justify-content:center;align-items:center"></div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-signals">
+            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">
+              <div class="stat-card"><div class="stat-val" id="sig-total">—</div><div class="stat-label">Total Signals</div></div>
+              <div class="stat-card"><div class="stat-val" id="sig-pending">—</div><div class="stat-label">Pending</div></div>
+              <div class="stat-card"><div class="stat-val" id="sig-confirmed">—</div><div class="stat-label">Confirmed</div></div>
+              <div class="stat-card"><div class="stat-val" id="sig-dismissed">—</div><div class="stat-label">Dismissed</div></div>
+              <div class="stat-card"><div class="stat-val" id="sig-rate">—</div><div class="stat-label">Confirm Rate</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+              <div style="background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:16px"><div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Signals by Source</div><div id="sig-chart-source" style="width:100%;height:200px"></div></div>
+              <div style="background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:16px"><div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Pattern Confidence Distribution</div><div id="sig-chart-patterns" style="width:100%;height:200px"></div></div>
+            </div>
+            <div style="background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:16px;margin-bottom:20px"><div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Learned Patterns (Cross-User)</div><table class="admin-table" style="width:100%"><thead><tr><th>Type</th><th>Pattern</th><th>Signal</th><th>Conf.</th><th>✓</th><th>✗</th><th>Last Seen</th></tr></thead><tbody id="sig-patterns-body"></tbody></table></div>
+            <div style="background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:16px"><div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Recent Signals</div><table class="admin-table" style="width:100%"><thead><tr><th>User</th><th>Source</th><th>Type</th><th>Stage</th><th>Confidence</th><th>Status</th><th>Created</th></tr></thead><tbody id="sig-recent-body"></tbody></table></div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-cron">
+            <div id="admin-page-cron"><div class="admin-loading">Loading cron data…</div></div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-kill-switch">
+            <div id="admin-page-killswitch"><div class="admin-loading">Loading kill switch…</div></div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-crewai">
+            <div id="admin-page-crewai"><div class="admin-loading">Loading CrewAI agents…</div></div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-monitoring">
+            <div id="admin-page-monitoring"><div class="admin-loading">Loading monitoring dashboard…</div></div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-alerts">
+            <div id="admin-page-alerts"><div class="admin-loading">Loading alerts…</div></div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-error-replay">
+            <div id="admin-page-error-replay"><div class="admin-loading">Loading error replay…</div></div>
+          </div>
+          <div class="admin-panel" id="admin-panel-client-errors">
+            <div id="admin-page-client-errors"><div class="admin-loading">Loading client errors…</div></div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-ef-health">
+            <div id="admin-page-ef-health"><div class="admin-loading">Loading EF health…</div></div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-db-activity">
+            <div id="admin-page-db-activity"><div class="admin-loading">Loading database activity…</div></div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-posthog-insights">
+            <div id="admin-page-posthog-insights"><div class="admin-loading">Loading PostHog insights…</div></div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-ab-tests">
+            <div id="admin-page-ab-tests"><div class="admin-loading">Loading A/B tests…</div></div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-content">
+            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">
+              <div class="stat-card"><div class="stat-val" id="ct-total">—</div><div class="stat-label">Total Stories</div></div>
+              <div class="stat-card"><div class="stat-val" id="ct-pending">—</div><div class="stat-label">Pending</div></div>
+              <div class="stat-card"><div class="stat-val" id="ct-approved">—</div><div class="stat-label">Approved</div></div>
+              <div class="stat-card"><div class="stat-val" id="ct-published">—</div><div class="stat-label">Published</div></div>
+              <div class="stat-card"><div class="stat-val" id="ct-rejected">—</div><div class="stat-label">Rejected</div></div>
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+              <select id="ct-filter-status" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text-main);font-size:13px"><option value="">All Statuses</option><option value="pending" selected>Pending</option><option value="approved">Approved</option><option value="scheduled">Scheduled</option><option value="published">Published</option><option value="rejected">Rejected</option></select>
+              <select id="ct-filter-category" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text-main);font-size:13px"><option value="">All Categories</option><option value="trend">Trend</option><option value="location">Location</option><option value="salary">Salary</option><option value="remote">Remote</option><option value="company">Company</option></select>
+              <button id="ct-refresh-btn" class="btn-primary" style="padding:6px 14px;font-size:13px">↻ Refresh</button>
+              <button id="ct-detect-btn" class="btn-primary" style="padding:6px 14px;font-size:13px;background:#6366f1">🔍 Run Detection</button>
+              <button id="ct-generate-btn" class="btn-primary" style="padding:6px 14px;font-size:13px;background:#8b5cf6">✨ Generate Content</button>
+              <span id="ct-action-status" style="font-size:12px;color:var(--text-dim);margin-left:8px"></span>
+            </div>
+            <div style="background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:16px;margin-bottom:20px"><div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Editorial Queue</div><table class="admin-table" style="width:100%"><thead><tr><th>Score</th><th>Type</th><th>Category</th><th>Headline</th><th>Status</th><th>Created</th><th style="text-align:right">Actions</th></tr></thead><tbody id="ct-stories-body"></tbody></table></div>
+            <div id="ct-preview-panel" style="display:none;background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:20px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px">Story Preview</div><button id="ct-close-preview" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:18px">✕</button></div><h2 id="ct-preview-headline" style="margin:0 0 8px;font-size:20px;color:var(--text-main)"></h2><p id="ct-preview-lede" style="color:var(--text-dim);font-size:14px;margin:0 0 12px"></p><div id="ct-preview-body" style="font-size:14px;line-height:1.6;color:var(--text-main);margin-bottom:16px"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px;color:var(--text-dim)"><div><strong>Meta:</strong> <span id="ct-preview-meta"></span></div><div><strong>Social:</strong> <span id="ct-preview-social"></span></div><div><strong>Evergreen Link:</strong> <span id="ct-preview-link"></span></div><div><strong>Chart Config:</strong> <span id="ct-preview-chart"></span></div></div></div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-enrichment">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px">
+              <div class="stat-card"><div class="stat-val" id="en-salary-pct">&mdash;</div><div class="stat-label">Salary Coverage</div><div class="stat-delta" id="en-salary-gate"></div></div>
+              <div class="stat-card"><div class="stat-val" id="en-loctype-pct">&mdash;</div><div class="stat-label">Location Type</div><div class="stat-delta" id="en-loctype-gate"></div></div>
+              <div class="stat-card"><div class="stat-val" id="en-dept-pct">&mdash;</div><div class="stat-label">Department</div><div class="stat-delta" id="en-dept-gate"></div></div>
+              <div class="stat-card"><div class="stat-val" id="en-country-pct">&mdash;</div><div class="stat-label">Country</div><div class="stat-delta" id="en-country-gate"></div></div>
+              <div class="stat-card"><div class="stat-val" id="en-total-jobs">&mdash;</div><div class="stat-label">Open Jobs</div></div>
+            </div>
+            <div id="en-gates" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px"></div>
+            <div style="background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:16px;margin-bottom:20px"><div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Coverage by Platform</div><div id="en-chart-platforms" style="width:100%;height:300px"></div></div>
+            <div style="background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:16px;margin-bottom:20px"><div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Platform Breakdown</div><table class="admin-table" style="width:100%"><thead><tr><th>Platform</th><th style="text-align:right">Total Jobs</th><th style="text-align:right">Salary %</th><th style="text-align:right">Loc Type %</th><th style="text-align:right">Department %</th><th style="text-align:right">Country %</th></tr></thead><tbody id="en-platform-body"></tbody><tfoot id="en-platform-foot"></tfoot></table></div>
+            <div style="background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:16px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px">Content Freshness Schedule</div><div id="en-refresh-summary" style="font-size:12px;color:var(--text-dim)"></div></div><table class="admin-table" style="width:100%"><thead><tr><th>Page</th><th>Type</th><th style="text-align:right">Interval</th><th style="text-align:right">Last Refresh</th><th style="text-align:right">Hours Until Due</th><th style="text-align:center">Status</th></tr></thead><tbody id="en-refresh-body"></tbody></table></div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-referrals">
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+              <div class="card" style="padding:14px;text-align:center;"><div class="stat-val" id="ar-total-referrals">—</div><div class="stat-label">Total Referrals</div></div>
+              <div class="card" style="padding:14px;text-align:center;"><div class="stat-val" id="ar-pending-review">—</div><div class="stat-label">Pending Review</div></div>
+              <div class="card" style="padding:14px;text-align:center;"><div class="stat-val" id="ar-total-rewarded">—</div><div class="stat-label">Rewarded</div></div>
+              <div class="card" style="padding:14px;text-align:center;"><div class="stat-val" id="ar-total-rejected">—</div><div class="stat-label">Rejected</div></div>
+            </div>
+            <div class="card" style="padding:0;overflow:hidden;margin-bottom:20px;"><div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;"><strong>Fraud Review Queue</strong><button class="btn-secondary btn-sm" onclick="loadReferralsAdminTab()" style="font-size:11px;">Refresh</button></div><div style="overflow-x:auto;"><table class="admin-table" style="width:100%;"><thead><tr><th>Referrer</th><th>Referred</th><th>Method</th><th>Score</th><th>Signals</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody id="ar-fraud-queue-body"></tbody></table></div><div id="ar-fraud-empty" style="display:none;padding:20px;text-align:center;color:var(--text-faint);font-size:13px;">No flagged referrals. All clear.</div></div>
+            <div class="card" style="padding:0;overflow:hidden;margin-bottom:20px;"><div style="padding:12px 16px;border-bottom:1px solid var(--border);"><strong>Recent Rewards</strong></div><div style="overflow-x:auto;"><table class="admin-table" style="width:100%;"><thead><tr><th>User</th><th>Type</th><th>Value</th><th>Tier</th><th>Date</th><th>Actions</th></tr></thead><tbody id="ar-rewards-body"></tbody></table></div></div>
+            <div class="card" style="padding:0;overflow:hidden;"><div style="padding:12px 16px;border-bottom:1px solid var(--border);"><strong>Banned Referrers</strong></div><div style="overflow-x:auto;"><table class="admin-table" style="width:100%;"><thead><tr><th>User</th><th>Email</th><th>Referral Count</th><th>Actions</th></tr></thead><tbody id="ar-banned-body"></tbody></table></div><div id="ar-banned-empty" style="display:none;padding:16px;text-align:center;color:var(--text-faint);font-size:13px;">No banned referrers.</div></div>
+          </div>
+
+          <!-- FB-PAYL-S2: PAYL Analytics Panel -->
+          <div class="admin-panel" id="admin-panel-payl">
+            <div id="admin-payl"><div class="admin-loading">Loading PAYL analytics…</div></div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-cache">
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+              <div class="card" style="padding:14px;text-align:center;"><div class="stat-val" id="cache-entries">—</div><div class="stat-label">Cached Entries</div></div>
+              <div class="card" style="padding:14px;text-align:center;"><div class="stat-val" id="cache-hit-rate">—</div><div class="stat-label">Hit Rate</div></div>
+              <div class="card" style="padding:14px;text-align:center;"><div class="stat-val" id="cache-total-rows">—</div><div class="stat-label">Total Rows</div></div>
+              <div class="card" style="padding:14px;text-align:center;"><div class="stat-val" id="cache-mem-kb">—</div><div class="stat-label">Memory (KB)</div></div>
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:16px;">
+              <button class="btn-secondary btn-sm" onclick="refreshCacheHealthPanel()" style="font-size:12px;">↻ Refresh</button>
+              <button class="btn-secondary btn-sm" onclick="if(confirm('Clear all caches?')){clearAllCaches();refreshCacheHealthPanel();}" style="font-size:12px;color:#ef4444;">✕ Clear All</button>
+            </div>
+            <div class="card" style="padding:0;overflow:hidden;margin-bottom:20px;">
+              <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;"><strong>TTL Tier Configuration</strong></div>
+              <div style="overflow-x:auto;"><table class="admin-table" style="width:100%"><thead><tr><th>Prefix</th><th>TTL</th></tr></thead><tbody id="cache-tier-body"></tbody></table></div>
+            </div>
+            <div class="card" style="padding:0;overflow:hidden;">
+              <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;"><strong>Cached Entries</strong><span style="font-size:11px;color:var(--text-faint);" id="cache-hits-misses"></span></div>
+              <div style="overflow-x:auto;"><table class="admin-table" style="width:100%"><thead><tr><th>Key</th><th>Age</th><th>TTL</th><th>Life %</th><th>Rows</th><th>Stale</th></tr></thead><tbody id="cache-entries-body"></tbody></table></div>
+              <div id="cache-empty" style="display:none;padding:20px;text-align:center;color:var(--text-faint);font-size:13px;">No cached entries. Navigate the dashboard to populate cache.</div>
+            <!-- A15 Session 2: Materialized View Staleness -->
+            <div class="card" style="margin-top:16px;">
+              <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;"><strong>Materialized View Health</strong><span style="font-size:11px;color:var(--text-faint);">Stale = &gt;15 min since refresh</span></div>
+              <div style="overflow-x:auto;"><table class="admin-table" style="width:100%"><thead><tr><th>View</th><th>Age</th><th>Status</th><th>Last Refresh</th></tr></thead><tbody id="mv-staleness-body"><tr><td colspan="4" style="text-align:center;color:var(--text-faint);font-size:13px;padding:12px;">Loading...</td></tr></tbody></table></div>
+            </div>
+            </div>
+          </div>
+
+          <!-- Future sub-pages: Empty States -->
+          <div class="admin-panel" id="admin-panel-companies">
+          </div>
+          <div class="admin-panel" id="admin-panel-jobs">
+          </div>
+          <div class="admin-panel" id="admin-panel-email">
+          </div>
+          <div class="admin-panel" id="admin-panel-paid">
+            <div id="admin-page-paid"><div class="admin-empty-state"><div class="admin-empty-state-title">Paid</div><div class="admin-empty-state-desc">Loading…</div></div></div>
+          </div>
+          <div class="admin-panel" id="admin-panel-social">
+            <div id="admin-page-social"><div class="admin-empty-state"><div class="admin-empty-state-title">Social</div><div class="admin-empty-state-desc">Loading…</div></div></div>
+          </div>
+          <div class="admin-panel" id="admin-panel-analytics">
+            <div id="admin-page-analytics"><div class="admin-empty-state"><div class="admin-empty-state-title">Analytics</div><div class="admin-empty-state-desc">Loading…</div></div></div>
+          </div>
+          <div class="admin-panel" id="admin-panel-costs">
+            <div id="admin-page-costs"><div class="admin-empty-state"><div class="admin-empty-state-title">Costs</div><div class="admin-empty-state-desc">Loading…</div></div></div>
+            <div id="admin-page-cost-monitor" style="display:none;"><div class="admin-empty-state"><div class="admin-empty-state-title">AI Cost Monitor</div><div class="admin-empty-state-desc">Loading…</div></div></div>
+            <div id="admin-page-chat-analytics" style="display:none;"><div class="admin-empty-state"><div class="admin-empty-state-title">Chat Analytics</div><div class="admin-empty-state-desc">Loading…</div></div></div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-stripe">
+            <div style="padding:20px" id="admin-stripe-panel">
+              <div style="color:var(--text-faint);font-size:13px">Loading Stripe management...</div>
+            </div>
+          </div>
+          <div class="admin-panel" id="admin-panel-subscription">
+            <div style="padding:20px" id="admin-subscription-panel">
+              <div style="color:var(--text-faint);font-size:13px">Loading subscription analytics...</div>
+            </div>
+          </div>
+          <div class="admin-panel" id="admin-panel-forecasting">
+            <div id="admin-page-forecasting"><div class="admin-empty-state"><div class="admin-empty-state-title">Forecasting</div><div class="admin-empty-state-desc">Loading…</div></div></div>
+          </div>
+
+          <!-- CS-P1-017: Compliance panels -->
+          <div class="admin-panel" id="admin-panel-pii-map">
+            <div id="admin-page-pii-map"><div class="admin-loading">Loading PII data map…</div></div>
+          </div>
+          <div class="admin-panel" id="admin-panel-user-deletion">
+            <div id="admin-page-user-deletion"><div class="admin-loading">Loading user deletion…</div></div>
+          </div>
+          <div class="admin-panel" id="admin-panel-compliance-dash">
+            <div id="admin-page-compliance-dash"><div class="admin-loading">Loading compliance dashboard…</div></div>
+          </div>
+
+          <!-- Landing Page Manager (LP-RESTRUCTURE-S3) -->
+          <div class="admin-panel" id="admin-panel-landing-page">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+              <div>
+                <div style="font-size:16px;font-weight:700;color:var(--text);">Landing Page Sections</div>
+                <div style="color:var(--text-dim);font-size:13px;margin-top:2px;">Manage dynamic benefit sections — no deploy needed.</div>
+              </div>
+              <div style="display:flex;gap:10px;align-items:center;">
+                <button class="btn btn-secondary btn-sm" id="al-preview-btn" onclick="window.open('/?preview=true','_blank')">Preview Landing Page ↗</button>
+                <button class="btn btn-primary btn-sm" id="al-add-btn">+ Add Section</button>
+              </div>
+            </div>
+            <div id="al-section-list" style="display:flex;flex-direction:column;gap:12px;">
+              <div style="text-align:center;padding:40px;color:var(--text-faint);">Loading sections…</div>
+            </div>
+            <!-- Add / Edit modal -->
+            <div id="al-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2000;align-items:center;justify-content:center;">
+              <div id="al-modal" style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:28px;width:min(640px,94vw);max-height:88vh;overflow-y:auto;position:relative;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                  <h3 id="al-modal-title" style="margin:0;font-size:16px;">Add Section</h3>
+                  <button onclick="alCloseModal()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--text-dim);padding:4px;">×</button>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:14px;">
+                  <div>
+                    <label class="form-label" style="font-size:12px;font-weight:600;color:var(--text-dim);display:block;margin-bottom:4px;">Subtitle (small label above title)</label>
+                    <input id="al-f-subtitle" type="text" class="form-input" placeholder="e.g. The Sourcing Advantage" maxlength="120">
+                  </div>
+                  <div>
+                    <label class="form-label" style="font-size:12px;font-weight:600;color:var(--text-dim);display:block;margin-bottom:4px;">Title *</label>
+                    <input id="al-f-title" type="text" class="form-input" placeholder="Section headline" maxlength="120">
+                  </div>
+                  <div>
+                    <label class="form-label" style="font-size:12px;font-weight:600;color:var(--text-dim);display:block;margin-bottom:4px;">Body Text (supports **bold** and [link](url))</label>
+                    <textarea id="al-f-body" class="form-input" rows="4" placeholder="Describe the feature clearly…" maxlength="600" style="resize:vertical;font-family:inherit;"></textarea>
+                  </div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div>
+                      <label class="form-label" style="font-size:12px;font-weight:600;color:var(--text-dim);display:block;margin-bottom:4px;">CTA Button Text</label>
+                      <input id="al-f-cta-text" type="text" class="form-input" placeholder="e.g. See Jobs in Your Field" maxlength="60">
+                    </div>
+                    <div>
+                      <label class="form-label" style="font-size:12px;font-weight:600;color:var(--text-dim);display:block;margin-bottom:4px;">CTA URL</label>
+                      <input id="al-f-cta-url" type="text" class="form-input" placeholder="e.g. #lp-preview or /app#jobs" maxlength="200">
+                    </div>
+                  </div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div>
+                      <label class="form-label" style="font-size:12px;font-weight:600;color:var(--text-dim);display:block;margin-bottom:4px;">Orientation</label>
+                      <select id="al-f-orientation" class="form-input">
+                        <option value="auto">Auto (alternating)</option>
+                        <option value="image-right">Image Right</option>
+                        <option value="image-left">Image Left</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="form-label" style="font-size:12px;font-weight:600;color:var(--text-dim);display:block;margin-bottom:4px;">Segment Targeting</label>
+                      <select id="al-f-segment" class="form-input">
+                        <option value="all">All visitors</option>
+                        <option value="new">New visitors only</option>
+                        <option value="returning">Returning only</option>
+                        <option value="lapsed">Lapsed only</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="form-label" style="font-size:12px;font-weight:600;color:var(--text-dim);display:block;margin-bottom:4px;">Screenshot Image</label>
+                    <div id="al-img-current" style="display:none;margin-bottom:8px;">
+                      <img id="al-img-preview" src="" alt="" style="max-height:80px;border-radius:6px;border:1px solid var(--border);">
+                      <span id="al-img-url-display" style="font-size:11px;color:var(--text-faint);display:block;margin-top:4px;word-break:break-all;"></span>
+                    </div>
+                    <input id="al-f-img" type="file" accept="image/webp,image/png,image/jpeg" style="font-size:13px;">
+                    <div style="font-size:11px;color:var(--text-faint);margin-top:4px;">WebP recommended. Max 5MB. Stored in landing-assets/ bucket.</div>
+                  </div>
+                </div>
+                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px;padding-top:16px;border-top:1px solid var(--border);">
+                  <button class="btn btn-secondary" onclick="alCloseModal()">Cancel</button>
+                  <button class="btn btn-primary" id="al-modal-save" onclick="alSaveSection()">Save</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- BI-01: Deploy Tracker -->
+          <div class="admin-panel" id="admin-panel-deploy-tracker">
+            <div id="admin-page-deploy-tracker"><div class="admin-loading">Loading deployment dashboard…</div></div>
+          </div>
+
+          <!-- BI-02: Build Analytics -->
+          <div class="admin-panel" id="admin-panel-build-analytics">
+            <div id="admin-page-build-analytics"><div class="admin-loading">Loading build analytics…</div></div>
+          </div>
+
+          <!-- BI-03: Deploy Visibility -->
+          <div class="admin-panel" id="admin-panel-deploy-visibility">
+            <div id="admin-page-deploy-visibility"><div class="admin-loading">Loading deployment visibility…</div></div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-deploy-alerting">
+            <div id="admin-page-deploy-alerting"><div class="admin-loading">Loading deployment alerting…</div></div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-command-center">
+            <div id="admin-page-command-center"><div class="admin-loading">Loading command center…</div></div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-deploy-reports">
+            <div id="admin-page-deploy-reports"><div class="admin-loading">Loading DORA reports…</div></div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-auto-submit">
+            <div id="admin-autosubmit"><div class="admin-loading">Loading auto-submit instrumentation…</div></div>
+          </div>
+
+        </div>
+      </div> <!-- end admin-main -->
+    </div> <!-- end admin-layout -->
+
+    <!-- Footer -->
+    <div style="text-align:center;padding:24px;font-size:11px;color:var(--text-faint);font-family:'JetBrains Mono',monospace">
+      Brilliant Jobs Admin Console &middot; <span class="bj-version"></span> &middot; <span class="bj-year"></span>
+    </div>
+  </div> <!-- end admin-shell -->
+
+  <!-- JS: Admin bundle loads globals, admin.js, admin-notifications.js -->
+  <script src="dist/admin.min.js?v=v11.49" defer></script>
+
+  <!-- CS-P1-002: Cohort handler moved to js/admin-inline.js -->
+  <script src="js/admin-inline.js?v=v11.49"></script>
+  <script src="js/admin-cost-monitor.js?v=v11.49" defer></script>
+  <script src="js/admin-chat-analytics.js?v=v11.49" defer></script>
+  <script src="js/admin-payl.js?v=v11.49" defer></script>
+  <script src="js/admin-cohort-pricing.js?v=v11.49" defer></script>
+  <script src="js/admin-user-manager.js?v=v11.49" defer></script>
+  <script src="js/admin-cohort-manager-full.js?v=v11.49" defer></script>
+  <script src="js/admin-billing.js?v=v11.49" defer></script>
+  <script src="js/admin-filter-prompt.js?v=v11.49" defer></script>
+  <script src="js/admin-audit-log-viewer.js?v=v11.49" defer></script>
+  <script src="js/admin-deploy-tracker.js?v=v11.49" defer></script>
+  <script src="js/admin-build-analytics.js?v=v11.49" defer></script>
+  <script src="js/admin-deploy-visibility.js?v=v11.49" defer></script>
+  <script src="js/admin-deploy-alerting.js?v=v11.49" defer></script>
+  <script src="js/admin-deploy-command-center.js?v=v11.49" defer></script>
+  <script src="js/admin-deploy-reports.js?v=v11.49" defer></script>
+  <script src="js/admin-autosubmit.js?v=v11.49" defer></script>
+  <script src="https://unpkg.com/lucide@0.577.0/dist/umd/lucide.min.js"></script>
+</body>
+</html>
+
