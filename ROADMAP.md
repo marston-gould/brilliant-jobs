@@ -3923,3 +3923,13 @@ All work delivered via the Vercel-hosted SPA / landing page stack.
 | SettingsPage: username field with real-time availability check | ✅ v11.52 |
 | SharePanel: username-format link display, Lucide icons | ✅ v11.52 |
 | ATS brand names removed: carousel, pricing bullets, schema.org JSON-LD, roadmap.html footer | ✅ v11.52 |
+
+### POD3 Nav+CTAs (v11.53) ✅
+| Item | Status |
+|------|--------|
+| 5-item nav all public pages | ✅ v11.53 |
+| 3 inline CTAs index.html | ✅ v11.53 |
+| 2 inline CTAs benefits.html | ✅ v11.53 |
+| Compare one-liner CTAs | ✅ v11.53 |
+| hidden_jobs table + RLS | ✅ v11.53 |
+| Extension interceptor ERR_FAILED fix | ✅ v11.53 |
