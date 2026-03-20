@@ -3864,3 +3864,62 @@ Phase S3 (SA-013–SA-017) built the SPA scaffold with React bridge hooks to leg
 | Steps grid | landing.css semantic classes | Tailwind utilities in HTML | ✅ v10.52 |
 | Footer | landing.css semantic classes | Tailwind utilities in HTML | ✅ v10.52 |
 | index.html styles.css link | Not present | Added (Tailwind utilities available) | ✅ v10.52 |
+
+
+## Pod 2 Sprints: v11.46–v11.52 (2026-03-20)
+
+All work delivered via the Vercel-hosted SPA / landing page stack.
+
+### Pricing Module Redesign (v11.45 → v11.46) ✅
+| Item | Status |
+|------|--------|
+| Free Trial / Starter / Pro pricing cards (no currency symbols) | ✅ v11.46 |
+| Referral callout card + PAYL coming-soon block + waitlist email capture | ✅ v11.46 |
+| payl_waitlist Supabase table + RLS + SHA-256 hashed email | ✅ v11.46 |
+| PostHog events: pricing_section_viewed, pricing_cta_clicked, payl_waitlist_signup | ✅ v11.46 |
+
+### Landing Page Restructure + Benefit Carousel (v11.46 → v11.47) ✅
+| Item | Status |
+|------|--------|
+| Section reorder, carousel slot, How It Works, FAQ reposition | ✅ v11.47 |
+| js/carousel.js: Fisher-Yates shuffle, 5 of 25 benefit cards + see-all | ✅ v11.47 |
+| benefits.html: 136 features across 13 categories | ✅ v11.47 |
+| compare.html + js/compare.js: multi-competitor grid, hash deep-linking | ✅ v11.47 |
+| 26 benefit card WebP images | ✅ v11.47 |
+
+### P0 Bugfix: Hero Segment + Merch Rotation (v11.47 → v11.48) ✅
+| Item | Status |
+|------|--------|
+| Duplicate landing-segment.js removed from index.html — first-time visitors now see correct hero | ✅ v11.48 |
+| merch-client.js: DOMPurify fallback fixed, field-level logging added | ✅ v11.48 |
+| All reportError() calls guarded with typeof | ✅ v11.48 |
+
+### Admin MFA Gate Restored (v11.49) ✅
+| Item | Status |
+|------|--------|
+| /admin Vercel rewrite removed (was routing to SPA, bypassing MFA) | ✅ v11.49 |
+| admin.html restored to root with full admin-shell.ts TOTP/AAL2 gate | ✅ v11.49 |
+
+### Feedback System — FB-01 to FB-16 (v11.49 → v11.51) ✅
+| Item | Status |
+|------|--------|
+| exit_surveys + bug_reports + feature_suggestions tables + RLS | ✅ v11.50 |
+| 4 cohort config keys in app_settings | ✅ v11.50 |
+| js/exit-survey.js: exit intent survey for non-logged-in visitors | ✅ v11.50 |
+| js/sat-prompt.js: floating in-session satisfaction card | ✅ v11.50 |
+| FeedbackPage.tsx: 3-tab dashboard page (feedback / bug / feature) | ✅ v11.50 |
+| Bug report screenshot upload to Supabase Storage | ✅ v11.50 |
+| js/admin-bug-review.js: admin bug review panel | ✅ v11.51 |
+| Old floating feedback bubble removed from AppShell | ✅ v11.50 |
+
+### Subscription Fixes — SUB-01 to SUB-10 (v11.51 → v11.52) ✅
+| Item | Status |
+|------|--------|
+| BillingPage: correct tiers, credit costs, packs (Pro 50% off) | ✅ v11.52 |
+| All currency symbols removed from BillingPage | ✅ v11.52 |
+| Emoji replaced with Lucide icons throughout (CreditCard, Sun, Moon, Monitor) | ✅ v11.52 |
+| handlePricingShare(): navigate to /billing#sub-referral-section | ✅ v11.52 |
+| profiles.username column + unique index + /:username Vercel rewrite | ✅ v11.52 |
+| SettingsPage: username field with real-time availability check | ✅ v11.52 |
+| SharePanel: username-format link display, Lucide icons | ✅ v11.52 |
+| ATS brand names removed: carousel, pricing bullets, schema.org JSON-LD, roadmap.html footer | ✅ v11.52 |
