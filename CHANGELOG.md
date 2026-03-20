@@ -1,3 +1,21 @@
+## v11.46 Pricing Module Redesign + Admin Footer Link (2026-03-20)
+- **PR-01** Replace old 3-card pricing section in index.html with new Free Trial / Starter / Pro layout per POD3_HANDOFF_PricingModule
+- **PR-02** Free Trial card: 7-day duration, no credit card, specific AI sample counts (2 resume tailorings, 2 cover letters, 2 auto-applies, 1 interview practice)
+- **PR-03** Starter card: 100 credits/mo, full feature list with credit costs in parentheses
+- **PR-04** Pro card: 300 credits/mo, 50% off packs, credit pack pricing table with strikethrough standard prices
+- **PR-05** Referral callout card below pricing cards with share link button (copies if logged in, opens signup if not)
+- **PR-06** Pro card 2px blue border accent; "Best value" purple badge; Starter "Most popular" blue badge; Free Trial "Try everything" green badge
+- **PR-07** "Pay when you get a job" coming-soon block: dashed border, amber badge, email capture form
+- **PR-08** `payl_waitlist` table created in Supabase with anon INSERT RLS + service-role-only SELECT. Migration: `migrations/20260320_create_payl_waitlist.sql`
+- **PR-09** Responsive: 3-column desktop, 1-column mobile (≤900px), tested breakpoints
+- **PR-10** Section headline "Simple pricing, powerful tools" + subtitle "Start free for 7 days. Try every AI feature. No credit card needed."
+- **PR-11** Footer disclaimer: "All plans include unlimited job search, filtering, pipeline tracking, ghost detection, and company intelligence. Credits power AI features only."
+- **PR-12** PostHog events: `pricing_section_viewed`, `pricing_cta_clicked` (tier), `referral_share_clicked`, `payl_waitlist_signup` (email hashed SHA-256)
+- **Admin footer link**: Added `Admin` link in landing page footer pointing to `/admin` — existing `admin-shell.ts` MFA/TOTP double-auth gate handles all authentication
+- **landing.css**: Full pricing CSS rewrite — badges, Pro border, pack table, referral card, PAYL dashed card, all responsive
+- **No currency symbols** throughout pricing module per design system rules
+- Files changed: `index.html`, `landing.css`, `js/version.js`, `migrations/20260320_create_payl_waitlist.sql`
+
 ## v10.52 Session NN: TITLE (2026-03-17)
 - DESCRIBE CHANGES HERE
 
