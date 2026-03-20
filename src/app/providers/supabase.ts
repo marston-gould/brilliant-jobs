@@ -40,7 +40,7 @@ export class SupabaseSearchProvider implements SearchProvider {
       let query = sb.from('ats_jobs').select('*', { count: 'exact' });
 
       if (params.query) {
-        query = query.textSearch('fts', params.query, { type: 'websearch' });
+        query = query.textSearch('search_vector', params.query, { type: 'websearch' });
       }
       if (params.location) {
         query = query.ilike('location', `%${params.location}%`);
@@ -59,7 +59,7 @@ export class SupabaseSearchProvider implements SearchProvider {
       }
 
       // Sort
-      const sortCol = params.sort_by === 'date' ? 'posted_at' : params.sort_by === 'salary' ? 'salary_max' : 'score';
+      const sortCol = params.sort_by === 'date' ? 'posted_at' : params.sort_by === 'salary' ? 'salary_max' : 'created_at';
       query = query.order(sortCol, { ascending: params.sort_order === 'asc' });
 
       // Pagination
@@ -89,7 +89,7 @@ export class SupabaseSearchProvider implements SearchProvider {
       const { data } = await sb
         .from('ats_jobs')
         .select('title')
-        .textSearch('fts', query, { type: 'websearch' })
+        .textSearch('search_vector', query, { type: 'websearch' })
         .limit(limit);
       return (data || []).map((r: { title: string }) => r.title);
     } catch {
