@@ -639,55 +639,122 @@ height="0" width="0" class="gtm-iframe"></iframe></noscript>
     <meta itemprop="applicationCategory" content="BusinessApplication">
     <meta itemprop="operatingSystem" content="Web, Chrome">
     <div class="section-label">Pricing</div>
-    <h2>We make money when you get hired.<br>That's it.</h2>
-    <p class="section-desc" itemprop="description">No ads. No sponsored listings. No selling your data to recruiters. Full access during beta — early adopters keep upgraded access.</p>
+    <h2>Simple pricing, powerful tools</h2>
+    <p class="section-desc" itemprop="description">Start free for 7 days. Try every AI feature. No credit card needed.</p>
 
     <div class="pricing-grid">
+
+      <!-- FREE TRIAL -->
       <div class="price-card" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
-        <div class="price-name" itemprop="name">Free</div>
-        <div class="price-desc">Core search and filtering</div>
-        <div class="price-amount"><meta itemprop="price" content="0"><meta itemprop="priceCurrency" content="USD">$0</div>
-        <div class="price-period">forever</div>
+        <div class="price-badge price-badge-green">Try everything</div>
+        <div class="price-name" itemprop="name">Free Trial</div>
+        <div class="price-desc">7 days, no credit card</div>
+        <div class="price-amount"><meta itemprop="price" content="0"><meta itemprop="priceCurrency" content="USD">0</div>
+        <div class="price-period">for 7 days</div>
         <ul class="price-features">
-          <li>Jobs from all company career pages</li>
-          <li>Basic filters (title, location, remote)</li>
-          <li>1 saved search</li>
-          <li>Community ghost rate data</li>
+          <li>All search and filter tools</li>
+          <li>Pipeline, tracking, alerts</li>
+          <li>Ghost detection + company intel</li>
         </ul>
-        <button class="price-btn price-btn-outline" onclick="openModal('signup')">Start Free</button>
+        <div class="price-divider"></div>
+        <div class="price-samples-label">AI feature samples included:</div>
+        <ul class="price-features price-features-samples">
+          <li>2 resume tailorings</li>
+          <li>2 cover letters</li>
+          <li>2 auto-applies</li>
+          <li>1 interview practice session</li>
+        </ul>
+        <button class="price-btn price-btn-outline" onclick="if(window.posthog)posthog.capture('pricing_cta_clicked',{tier:'free_trial'});openModal('signup')">Start free trial</button>
       </div>
 
+      <!-- STARTER -->
       <div class="price-card featured" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+        <div class="price-badge price-badge-blue">Most popular</div>
         <div class="price-name" itemprop="name">Starter</div>
-        <div class="price-desc">AI-powered tools to stand out</div>
-        <div class="price-amount"><meta itemprop="price" content="20"><meta itemprop="priceCurrency" content="USD">$20</div>
+        <div class="price-desc">AI-powered job search</div>
+        <div class="price-amount"><meta itemprop="price" content="20"><meta itemprop="priceCurrency" content="USD">20</div>
         <div class="price-period">per month</div>
         <ul class="price-features">
-          <li>Everything in Free</li>
-          <li>3 saved searches</li>
-          <li>AI resume scoring &amp; rewrites</li>
-          <li>100 credits/month for AI features</li>
-          <li>SMS job alerts</li>
+          <li>Everything in Free, unlimited</li>
+          <li>100 AI credits per month</li>
+          <li>Resume tailoring (5 cr each)</li>
+          <li>Auto-apply across ATS (2 cr)</li>
+          <li>AI cover letters (5 cr each)</li>
+          <li>Interview practice (10 cr)</li>
+          <li>Buy more credits anytime</li>
         </ul>
-        <button class="price-btn price-btn-primary" onclick="openModal('signup')">Start Free</button>
+        <button class="price-btn price-btn-primary" onclick="if(window.posthog)posthog.capture('pricing_cta_clicked',{tier:'starter'});openModal('signup')">Get started</button>
       </div>
 
-      <div class="price-card" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+      <!-- PRO -->
+      <div class="price-card price-card-pro" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+        <div class="price-badge price-badge-purple">Best value</div>
         <div class="price-name" itemprop="name">Pro</div>
-        <div class="price-desc">Full power for serious searchers</div>
-        <div class="price-amount"><meta itemprop="price" content="40"><meta itemprop="priceCurrency" content="USD">$40</div>
+        <div class="price-desc">Full power, priority queue</div>
+        <div class="price-amount"><meta itemprop="price" content="40"><meta itemprop="priceCurrency" content="USD">40</div>
         <div class="price-period">per month</div>
         <ul class="price-features">
           <li>Everything in Starter</li>
-          <li>10 saved searches</li>
-          <li>300 credits/month for AI features</li>
-          <li>Auto-apply &amp; network intelligence</li>
-          <li>Priority job refresh</li>
+          <li class="price-feature-highlight">300 AI credits per month</li>
+          <li class="price-feature-highlight">50% off all credit packs</li>
+          <li>Priority auto-apply queue</li>
+          <li>~60 tailored applies/mo</li>
         </ul>
-        <button class="price-btn price-btn-primary" onclick="openModal('signup')">Start Free</button>
+        <div class="price-divider"></div>
+        <div class="price-samples-label">Credit pack pricing (Pro):</div>
+        <table class="price-pack-table">
+          <tbody>
+            <tr>
+              <td>10 credits</td>
+              <td><span class="price-strike">2.50</span></td>
+              <td class="price-pack-pro">1.25</td>
+            </tr>
+            <tr>
+              <td>50 credits</td>
+              <td><span class="price-strike">10.00</span></td>
+              <td class="price-pack-pro">5.00</td>
+            </tr>
+            <tr>
+              <td>100 credits</td>
+              <td><span class="price-strike">18.00</span></td>
+              <td class="price-pack-pro">9.00</td>
+            </tr>
+          </tbody>
+        </table>
+        <button class="price-btn price-btn-primary" onclick="if(window.posthog)posthog.capture('pricing_cta_clicked',{tier:'pro'});openModal('signup')">Go Pro</button>
       </div>
     </div>
-    <p class="lp-credits-note">Credits power AI features like resume scoring and smart matching. <a href="/pricing">See full pricing &amp; credit details →</a></p>
+
+    <!-- REFERRAL CALLOUT -->
+    <div class="price-referral-card">
+      <div class="price-referral-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <div class="price-referral-body">
+        <div class="price-referral-heading">Share and both get a free week</div>
+        <p class="price-referral-text">Refer a friend — when they sign up, you both get a free week of full access added to your account. Stack as many as you want. They get their own 7-day trial plus the bonus week from you.</p>
+      </div>
+      <button class="price-btn price-btn-outline price-referral-btn" id="pricing-share-btn" onclick="handlePricingShare()">Share link</button>
+    </div>
+
+    <!-- PAY WHEN YOU GET A JOB — COMING SOON -->
+    <div class="price-payl-card">
+      <div class="price-payl-header">
+        <div>
+          <div class="price-badge price-badge-amber">Coming soon</div>
+          <div class="price-payl-title">Pay when you get a job</div>
+          <p class="price-payl-desc">Search for free and only pay when you land a role. We're building this next — be first to know when it launches.</p>
+        </div>
+      </div>
+      <div class="price-payl-form" id="payl-form-wrap">
+        <input type="email" id="payl-email" class="price-payl-input" placeholder="you@email.com" autocomplete="email" aria-label="Email for pay-when-hired waitlist">
+        <button class="price-btn price-btn-outline price-payl-submit" id="payl-submit-btn" onclick="handlePaylSignup()">Notify me</button>
+      </div>
+      <div class="price-payl-success lp-hidden" id="payl-success">You're on the list. We'll let you know.</div>
+    </div>
+
+    <!-- FOOTER DISCLAIMER -->
+    <p class="lp-credits-note">All plans include unlimited job search, filtering, pipeline tracking, ghost detection, and company intelligence. Credits power AI features only.</p>
   </section>
 
   <!-- ==================== SOCIAL PROOF ==================== -->
@@ -717,6 +784,7 @@ height="0" width="0" class="gtm-iframe"></iframe></noscript>
       <a href="/terms" class="text-[13px] text-text-dim hover:text-accent">Terms</a>
       <a href="/privacy" class="text-[13px] text-text-dim hover:text-accent">Privacy</a>
       <a href="/help" class="text-[13px] text-text-dim hover:text-accent">Contact</a>
+      <a href="/admin" class="text-[13px] text-text-dim hover:text-accent">Admin</a>
     </div>
     <p class="text-xs text-text-dim">&copy; <span class="bj-year"></span> Brilliant Jobs. All rights reserved. · <span class="bj-version"></span></p>
   </footer>
@@ -776,7 +844,91 @@ height="0" width="0" class="gtm-iframe"></iframe></noscript>
     </div>
   </div>
 
-  <script src="/js/landing-app.js?v=v11.32" defer></script>
+  <script>
+  // ── Pricing module JS (PR-05, PR-12) ─────────────────────
+  // PostHog: fire pricing_section_viewed once on first intersection
+  (function() {
+    if (!document.getElementById('pricing')) return;
+    var fired = false;
+    var obs = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) {
+        if (e.isIntersecting && !fired) {
+          fired = true;
+          if (window.posthog) posthog.capture('pricing_section_viewed');
+          obs.disconnect();
+        }
+      });
+    }, { threshold: 0.2 });
+    obs.observe(document.getElementById('pricing'));
+  })();
+
+  // Referral share button (PR-05)
+  function handlePricingShare() {
+    if (window.posthog) posthog.capture('referral_share_clicked', { source: 'pricing' });
+    // If user has a referral link loaded (from referrals.ts), use it
+    var link = (window.referralStats && window.referralStats.referral_link)
+      ? window.referralStats.referral_link
+      : null;
+    if (link) {
+      navigator.clipboard.writeText(link).then(function() {
+        var btn = document.getElementById('pricing-share-btn');
+        if (btn) { btn.textContent = 'Copied!'; setTimeout(function(){ btn.textContent = 'Share link'; }, 2000); }
+      }).catch(function() { window.location.href = '/?#signup'; });
+    } else {
+      // Not logged in — go to signup
+      openModal('signup');
+    }
+  }
+
+  // PAYL waitlist signup (PR-07, PR-08, PR-12)
+  async function handlePaylSignup() {
+    var emailEl = document.getElementById('payl-email');
+    var btn = document.getElementById('payl-submit-btn');
+    var successEl = document.getElementById('payl-success');
+    var formWrap = document.getElementById('payl-form-wrap');
+    if (!emailEl) return;
+    var email = emailEl.value.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      emailEl.style.borderColor = 'var(--red)';
+      emailEl.focus();
+      return;
+    }
+    emailEl.style.borderColor = '';
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    try {
+      var SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+      var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
+      await fetch(SUPABASE_URL + '/rest/v1/payl_waitlist', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_KEY,
+          'Prefer': 'resolution=ignore-duplicates'
+        },
+        body: JSON.stringify({ email: email, source: 'pricing_page' })
+      });
+      // Fire PostHog with hashed email (PR-12)
+      if (window.posthog) {
+        var hashed = '';
+        try {
+          var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(email.toLowerCase()));
+          hashed = Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+        } catch(_) {}
+        posthog.capture('payl_waitlist_signup', { email_hash: hashed });
+      }
+      // Silently succeed on duplicate — show success either way
+      formWrap.classList.add('lp-hidden');
+      successEl.classList.remove('lp-hidden');
+    } catch(e) {
+      btn.disabled = false;
+      btn.textContent = 'Notify me';
+    }
+  }
+  </script>
+
+  <script src="/js/landing-app.js?v=v11.46" defer></script>
 
 
 
