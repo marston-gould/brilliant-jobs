@@ -1,6 +1,6 @@
 // ============================================================
 // carousel.js — Benefit Carousel (LP-02, LP-03, LP-04, LP-05)
-// Version: v11.47
+// Version: v11.52
 // Selects 5 random cards from 25 benefit cards + fixed see-all
 // PostHog: benefit_card_viewed, benefit_card_clicked, benefit_seeall_clicked
 // ============================================================
@@ -15,7 +15,7 @@
     { id: '04', file: '04-direct-source.webp',      href: '/benefits#ghost',   alt: 'Jobs sourced directly from employer hiring systems' },
     { id: '05', file: '05-dead-removal.webp',       href: '/benefits#ghost',   alt: 'Dead jobs removed automatically' },
     { id: '06', file: '06-staffing-flag.webp',      href: '/benefits#filters', alt: 'Staffing agencies flagged so you know who is really hiring' },
-    { id: '07', file: '07-multi-ats.webp',          href: '/benefits#apply',   alt: 'Auto-apply across Greenhouse, Lever, Ashby, and more' },
+    { id: '07', file: '07-multi-ats.webp',          href: '/benefits#apply',   alt: 'Auto-apply across multiple employer and application systems' },
     { id: '08', file: '08-resume-tailoring.webp',   href: '/benefits#apply',   alt: 'One-click resume tailoring for every job' },
     { id: '09', file: '09-resume-score.webp',       href: '/benefits#apply',   alt: 'AI resume score for every job you view' },
     { id: '10', file: '10-fraud-detection.webp',    href: '/benefits#ghost',   alt: 'Fraud and scam job detection' },
