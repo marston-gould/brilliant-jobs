@@ -236,7 +236,7 @@ html:not([data-segment]) .carousel .carousel-dots {
 .price-badge-green { background: var(--green-dim); color: var(--green); }
 .price-badge-blue  { background: var(--accent-dim); color: var(--accent); }
 .price-badge-purple{ background: var(--purple-dim); color: var(--purple); }
-.price-badge-amber { background: var(--warm-dim);   color: var(--warm);   }
+.price-badge-amber { background: #FAEEDA; color: #633806; }
 
 .price-name { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
 .price-desc { font-size: 13px; color: var(--text-faint); margin-bottom: 16px; }
@@ -296,8 +296,17 @@ html:not([data-segment]) .carousel .carousel-dots {
 
 /* PAYL coming soon card */
 .price-payl-card {
-  border: 1.5px dashed var(--border-hover); border-radius: 14px;
+  border: 1.5px dashed #D0D5DD; border-radius: 14px;
   padding: 28px; margin-top: 14px;
+}
+.price-payl-header {
+  display: flex; align-items: flex-start; gap: 16px; margin-bottom: 0;
+}
+.price-payl-icon {
+  flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%;
+  background: var(--purple-dim); color: var(--purple);
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 4px;
 }
 .price-payl-title { font-size: 16px; font-weight: 700; margin: 8px 0 6px; }
 .price-payl-desc { font-size: 13px; color: var(--text-dim); line-height: 1.55; margin-bottom: 18px; max-width: 560px; }
@@ -311,10 +320,13 @@ html:not([data-segment]) .carousel .carousel-dots {
 .price-payl-input:focus { outline: none; border-color: var(--accent); }
 .price-payl-input::placeholder { color: var(--text-faint); }
 .price-payl-submit { width: auto; padding: 10px 20px; white-space: nowrap; }
+.price-payl-fine-print { font-size: 11px; color: var(--text-faint); margin-top: 8px; }
 .price-payl-success { font-size: 14px; color: var(--green); font-weight: 500; padding: 8px 0; }
 @media (max-width: 520px) {
   .price-payl-form { flex-direction: column; }
   .price-payl-submit { width: 100%; }
+  .price-payl-header { flex-direction: column; }
+  .price-payl-icon { width: 36px; height: 36px; }
 }
 
 /* ======================== FOOTER ======================== */
