@@ -1,3 +1,30 @@
+## v11.57 — About Page + Founder Callout Card (ABOUT-001) (2026-03-20)
+
+### about.html (NEW)
+- /about page with dark theme matching index.html
+- Sticky nav (Brilliant Jobs brand + links + Get Started CTA)
+- "Our Story" eyebrow, "Why Brilliant Jobs Exists" H1
+- 120px photo placeholder circle (to be replaced with marston.webp by Pod 1)
+- Founder name + title below photo
+- All 11 copy paragraphs verbatim as specified, including em dash signature
+- "Try Brilliant Jobs Free" CTA → /#signup
+- Footer matching landing page pattern, includes About self-link
+- PostHog: about_page_view on load, about_cta_click on CTA click
+
+### index.html — Founder callout (ABOUT-001)
+- Replaced minimal "Your Market" card with expanded two-column layout
+- Left: 96px photo placeholder circle
+- Right: eyebrow, pull quote (italic 17px), em dash signature, "Read the full story" → /about
+- Desktop: flex row, gap 28px. Mobile (≤640px): stacked, 72px photo
+- PostHog: founder_story_click on "Read the full story" click
+- "About" link added to footer
+
+### landing.css
+- Base .lp-founder-card styles preserved (no regression)
+- .lp-founder-label + .lp-founder-body preserved as fallback
+- Added: --expanded modifier + all child classes per spec §4.2
+- Mobile responsive: flex-direction column, 72px photo, 15px quote font
+
 ## v11.56 — Discovery Cards + Feature Usage Tracking (2026-03-20)
 
 **Spec:** POD2_HANDOFF_DiscoveryCards — all 11 requirements (DC-01 through DC-11)

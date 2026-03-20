@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<!-- Brilliant Jobs About Page v11.57 — ABOUT-001 -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="/img/favicon.ico" sizes="48x48">
+  <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/img/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <link rel="canonical" href="https://brilliantjobs.app/about">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About Brilliant Jobs — The Story Behind the Platform</title>
+  <meta name="description" content="Brilliant Jobs was built by a job seeker who got tired of the same broken process. Read the founder's story.">
+  <script src="/js/version.js?v=v11.57" defer></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@400;500;600;700&display=swap"></noscript>
+  <link rel="stylesheet" href="/styles.css?v=v11.57">
+  <style>
+    body {
+      background: var(--bg-main, #0c0e13);
+      color: var(--text, #e2e4ea);
+      font-family: 'Outfit', sans-serif;
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+
+    /* ── Nav ── */
+    .about-nav {
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      background: rgba(12,14,19,0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding: 0 32px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .about-nav-brand {
+      font-weight: 700;
+      font-size: 17px;
+      color: #fff;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .about-nav-logo {
+      width: 30px; height: 30px;
+      background: #fff;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 800;
+      color: #0c0e13;
+      flex-shrink: 0;
+    }
+    .about-nav-links { display: flex; align-items: center; gap: 24px; }
+    .about-nav-links a {
+      font-size: 14px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.65);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .about-nav-links a:hover { color: #fff; }
+    .about-nav-cta {
+      padding: 8px 20px;
+      background: #fff;
+      color: #0c0e13 !important;
+      border-radius: 8px;
+      font-weight: 700 !important;
+      font-size: 13px !important;
+      letter-spacing: 0.3px;
+    }
+    .about-nav-cta:hover { background: rgba(255,255,255,0.88) !important; }
+
+    /* ── Page layout ── */
+    .about-main {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 72px 24px 96px;
+    }
+
+    .about-eyebrow {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-weight: 700;
+      color: var(--accent, #4d8eff);
+      margin-bottom: 20px;
+    }
+
+    .about-h1 {
+      font-size: clamp(28px, 5vw, 40px);
+      font-weight: 700;
+      line-height: 1.2;
+      color: #fff;
+      margin-bottom: 40px;
+    }
+
+    /* ── Photo placeholder ── */
+    .about-photo-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 40px;
+      gap: 12px;
+    }
+    .about-photo {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: rgba(77,142,255,0.08);
+      border: 2px solid rgba(255,255,255,0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .about-photo::after {
+      content: '';
+      display: block;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.12);
+    }
+    .about-photo-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text, #e2e4ea);
+      text-align: center;
+    }
+    .about-photo-title {
+      font-size: 13px;
+      color: rgba(255,255,255,0.5);
+      text-align: center;
+      margin-top: -6px;
+    }
+
+    /* ── Body copy ── */
+    .about-body p {
+      font-size: 17px;
+      line-height: 1.75;
+      color: rgba(255,255,255,0.82);
+      margin-bottom: 24px;
+    }
+    .about-body p:last-child { margin-bottom: 0; }
+
+    .about-sig {
+      font-size: 18px;
+      font-weight: 600;
+      color: #fff;
+      margin-top: 36px;
+      margin-bottom: 0;
+    }
+
+    /* ── CTA ── */
+    .about-cta-wrap {
+      margin-top: 56px;
+      text-align: center;
+    }
+    .about-cta {
+      display: inline-block;
+      padding: 14px 36px;
+      background: var(--accent, #4d8eff);
+      color: #fff;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: opacity 0.15s;
+      letter-spacing: 0.2px;
+    }
+    .about-cta:hover { opacity: 0.88; }
+
+    /* ── Footer ── */
+    .about-footer {
+      text-align: center;
+      padding: 40px 32px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .about-footer-links {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 6px 24px;
+      margin-bottom: 12px;
+    }
+    .about-footer-links a {
+      font-size: 13px;
+      color: rgba(255,255,255,0.45);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .about-footer-links a:hover { color: var(--accent, #4d8eff); }
+    .about-footer-copy {
+      font-size: 12px;
+      color: rgba(255,255,255,0.3);
+    }
+
+    @media (max-width: 640px) {
+      .about-nav { padding: 0 16px; }
+      .about-nav-links a:not(.about-nav-cta) { display: none; }
+      .about-main { padding: 48px 20px 72px; }
+      .about-photo { width: 88px; height: 88px; }
+      .about-body p { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav class="about-nav" aria-label="Main navigation">
+    <a href="/" class="about-nav-brand">
+      <div class="about-nav-logo">B</div>
+      Brilliant Jobs
+    </a>
+    <div class="about-nav-links">
+      <a href="/#how-it-works">How it works</a>
+      <a href="/compare">Compare</a>
+      <a href="/benefits">Features</a>
+      <a href="/#pricing">Pricing</a>
+      <a href="/#signup" class="about-nav-cta">Get Started</a>
+    </div>
+  </nav>
+
+  <main class="about-main">
+
+    <div class="about-eyebrow">Our Story</div>
+    <h1 class="about-h1">Why Brilliant Jobs Exists</h1>
+
+    <!-- Photo placeholder — replace with <img> when photo available -->
+    <div class="about-photo-wrap">
+      <div class="about-photo" aria-label="Photo of Marston, founder of Brilliant Jobs">
+        <!-- Replace with: <img src="/img/marston.webp" alt="Marston, founder" width="120" height="120" style="border-radius:50%;object-fit:cover;width:100%;height:100%;"> -->
+      </div>
+      <div class="about-photo-name">Marston</div>
+      <div class="about-photo-title">Founder &amp; CPO</div>
+    </div>
+
+    <div class="about-body">
+      <p>My name is Marston. This past year I turned 60, traveled to Naples, Capri, and the Amalfi Coast — and came home to find myself out of a job. Again.</p>
+
+      <p>The company I was working for had been acquired. It wasn't the first time. Over a career spanning three decades, I've changed jobs more times than I ever intended to. Some of those moves were my choice. Some weren't. A few of those roles I took simply because I needed to — bills don't negotiate. But there were others I wanted to last. Those endings hit differently.</p>
+
+      <p>What I noticed, every single time, is how broken the job search has become. The listings that lead nowhere. The applications that vanish into silence. The roles that were never really open to begin with. The platforms that pretend to help you while doing very little of either.</p>
+
+      <p>It gets harder the more senior you are. And I'll say what a lot of people my age won't: it gets harder when you're 60. At some point the responses stop coming, and you're left wondering whether you're overqualified, over the hill, or just invisible. Probably some combination of all three.</p>
+
+      <p>Being 60 also gives you time to reflect on the career itself. I've made mistakes — I'm sure most people have. I've also worked for companies where my opinions didn't matter and my ideas weren't wanted. Places where the expectation was simply to put your head down and execute. That never sat well with me.</p>
+
+      <p>So when the last acquisition landed and the usual options felt either closed or beneath me, I made a different choice. I decided to build.</p>
+
+      <p>Brilliant Jobs is the first of several ideas I've been sitting on. I poured 30 years of digital expertise into it — and then, starting in mid-February, taught myself to build it entirely through AI, vibe coding my way through Claude with no idea what I was doing and no intention of stopping. What you're looking at is the result of that.</p>
+
+      <p>I hope you find it useful. But if you don't — if something's broken, missing, or just wrong — please tell me. I will read every comment, every idea, and every piece of feedback myself. Personally.</p>
+
+      <p>One last thing. If you're here, you're probably in the middle of something hard. My only advice: don't be hard on yourself. You are brilliant. You deserve to be recognized for what makes you special.</p>
+
+      <p>That's the whole reason this exists.</p>
+
+      <p class="about-sig">— Marston</p>
+    </div>
+
+    <div class="about-cta-wrap">
+      <a href="/#signup" class="about-cta" id="about-cta-btn">Try Brilliant Jobs Free</a>
+    </div>
+
+  </main>
+
+  <footer class="about-footer">
+    <div class="about-footer-links">
+      <a href="/job-market-data">Market Data</a>
+      <a href="/salary-data">Salaries</a>
+      <a href="/hiring-trends">Hiring</a>
+      <a href="/compare">Compare</a>
+      <a href="/help">Help</a>
+      <a href="/blog">Market Insights</a>
+      <a href="/terms">Terms</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/about">About</a>
+    </div>
+    <p class="about-footer-copy">&copy; <span class="bj-year"></span> Brilliant Jobs. All rights reserved. · <span class="bj-version"></span></p>
+  </footer>
+
+  <script>
+    // ABOUT-001: PostHog analytics
+    (function() {
+      // about_page_view
+      if (window.posthog) {
+        posthog.capture('about_page_view');
+      }
+      // about_cta_click
+      var cta = document.getElementById('about-cta-btn');
+      if (cta) {
+        cta.addEventListener('click', function() {
+          if (window.posthog) posthog.capture('about_cta_click');
+        });
+      }
+      // bj-year
+      document.querySelectorAll('.bj-year').forEach(function(el) {
+        el.textContent = new Date().getFullYear();
+      });
+    })();
+  </script>
+
+</body>
+</html>
