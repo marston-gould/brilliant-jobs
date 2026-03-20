@@ -1,3 +1,16 @@
+## v11.51 FB-13 — Admin Bug Review Panel (2026-03-20)
+- **FB-13:** `js/admin-bug-review.js` (NEW) — standalone admin bug report review panel.
+- Injects a "Bug Reports" section into `admin-panel-feedback` after the existing Canny feedback content.
+- Filter pills: Pending / Confirmed / Won't Fix / Duplicate / All.
+- Stats row: pending count, confirmed count, closed count, total credits awarded.
+- Table columns: user ID prefix, submitted date, page, severity (color-coded), what_happened snippet, status, credits, actions.
+- Actions: **Confirm** (prompts for credit amount, defaults from `app_settings` cache — `bug_reward_standard`=5, `bug_reward_critical`=15), **Won't Fix**, **Duplicate**.
+- On Confirm: updates `bug_reports.status='confirmed'` + `credits_awarded=N`; attempts `credit_transactions` insert for user credit award.
+- Screenshot link shown inline if `screenshot_url` is set.
+- Patches `window.loadFeedbackTab` to auto-init after 150ms delay (no admin.min.js rebuild needed).
+- `admin.html`: script tag added, all version strings bumped to v11.51.
+- Files: `js/admin-bug-review.js` (new), `admin.html`, `js/version.js`
+
 ## v11.50 Feedback System (2026-03-20)
 - **FB-01:** Created exit_surveys, bug_reports, feature_suggestions tables with schemas + RLS per spec Section D.
 - **FB-02:** 4 cohort config keys in app_settings: sat_popup_delay_minutes=5, sat_session_cadence=10, bug_reward_standard=5, bug_reward_critical=15.
