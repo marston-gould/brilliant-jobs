@@ -61,6 +61,7 @@
     if (isModalOpen()) return;
 
     sessionStorage.setItem(SESSION_SHOWN, '1');
+    card.style.display = 'flex';
     card.classList.add('sat-prompt--visible');
 
     if (window.posthog) posthog.capture('sat_prompt_shown', {
@@ -71,7 +72,7 @@
 
   function hidePrompt() {
     var card = document.getElementById('sat-prompt-card');
-    if (card) card.classList.remove('sat-prompt--visible');
+    if (card) { card.classList.remove('sat-prompt--visible'); card.style.display = 'none'; }
   }
 
   async function submitScore(score, followUp) {
