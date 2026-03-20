@@ -38,6 +38,7 @@ const ChatPage = lazy(() => import('@app/pages/dashboard/chat/ChatPage'));
 const ReferralsPage = lazy(() => import('@app/pages/dashboard/referrals/ReferralsPage'));
 const InterviewPrepPage = lazy(() => import('@app/pages/dashboard/interview-prep/InterviewPrepPage'));
 const DashboardNotificationsPage = lazy(() => import('@app/pages/dashboard/notifications/NotificationsPage'));
+const FeedbackPage = lazy(() => import('@app/pages/dashboard/feedback/FeedbackPage'));
 
 // Admin pages (SA-017)
 const OverviewPage = lazy(() => import('@app/pages/admin/overview/OverviewPage'));
@@ -100,6 +101,7 @@ function ChatPageRoute() { return <Suspense fallback={<Loader label="chat" />}><
 function ReferralsPageRoute() { return <Suspense fallback={<Loader label="referrals" />}><ReferralsPage /></Suspense>; }
 function InterviewPrepPageRoute() { return <Suspense fallback={<Loader label="interview prep" />}><InterviewPrepPage /></Suspense>; }
 function DashboardNotificationsPageRoute() { return <Suspense fallback={<Loader label="notifications" />}><DashboardNotificationsPage /></Suspense>; }
+function FeedbackPageRoute() { return <Suspense fallback={<Loader label="feedback" />}><FeedbackPage /></Suspense>; }
 
 // Admin route wrappers
 function OverviewPageRoute() { return <Suspense fallback={<Loader label="overview" />}><OverviewPage /></Suspense>; }
@@ -135,6 +137,7 @@ export const routes: RouteObject[] = [
           { path: 'tuning', element: <TuningPageRoute /> },
           { path: 'billing', element: <BillingPageRoute /> },
           { path: 'settings', element: <SettingsPageRoute /> },
+          { path: 'feedback', element: <FeedbackPageRoute /> },
           { path: 'chat', element: <Navigate to="/app/feed" replace /> },
           { path: 'interview-prep', element: <InterviewPrepPageRoute /> },
           { path: 'notifications', element: <DashboardNotificationsPageRoute /> },
