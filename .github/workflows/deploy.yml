@@ -19,6 +19,7 @@ on:
     paths:
       - 'supabase/migrations/**'
       - 'supabase/functions/**'
+      - 'src/app/**'
       - 'src/input.css'
       - 'tailwind.config.js'
       - 'js/**'
@@ -140,6 +141,35 @@ jobs:
             git push
           else
             echo "No bundle changes detected"
+          fi
+
+
+  # ── SPA Bundle Rebuild (Vite/React) ─────────────────────
+  rebuild-spa:
+    name: Rebuild SPA Bundle
+    runs-on: ubuntu-latest
+    if: |
+      contains(github.event.head_commit.modified, 'src/app/') ||
+      contains(github.event.head_commit.added, 'src/app/')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Build SPA
+        run: npm run build:spa
+      - name: Commit built SPA bundle
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet dist/spa/; then
+            echo "No SPA bundle changes"
+          else
+            git add dist/spa/
+            git commit -m "ci: rebuild SPA bundle [skip ci]"
+            git push
           fi
 
   # ── Extension Build + Artifact ──────────────────────────
