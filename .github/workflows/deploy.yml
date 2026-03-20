@@ -148,9 +148,7 @@ jobs:
   rebuild-spa:
     name: Rebuild SPA Bundle
     runs-on: ubuntu-latest
-    if: |
-      contains(github.event.head_commit.modified, 'src/app/') ||
-      contains(github.event.head_commit.added, 'src/app/')
+    # No if: condition — workflow-level paths filter (src/app/**) handles gating
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
