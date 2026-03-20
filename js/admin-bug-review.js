@@ -1,5 +1,5 @@
 // ============================================================
-// admin-bug-review.js (v11.56) — Admin Bug Report Review Panel (FB-13)
+// admin-bug-review.js — Admin Bug Report Review Panel (FB-13)
 // POD2_HANDOFF_FeedbackSystem Section B.3 + FB-13
 // Injects a Bug Review section into the admin feedback panel.
 // Loads bug_reports from Supabase. Admin marks confirmed,
@@ -143,7 +143,7 @@
       var date = new Date(r.created_at).toLocaleDateString();
       var snippet = (r.what_happened || '').substring(0, 60) + (r.what_happened && r.what_happened.length > 60 ? '…' : '');
       var screenshotLink = r.screenshot_url
-        ? ' <a href="' + escapeHtml('https://qojhagupdnbtomfoxnsf.supabase.co/storage/v1/object/public/user-uploads/' + r.screenshot_url) + '" target="_blank" style="font-size:10px;color:var(--accent);">Screenshot ↗</a>'
+        ? ' <a href="' + escapeHtml((typeof SUPABASE_URL !== 'undefined' ? SUPABASE_URL : '') + '/storage/v1/object/public/user-uploads/' + r.screenshot_url) + '" target="_blank" style="font-size:10px;color:var(--accent);">Screenshot ↗</a>'
         : '';
 
       var actionsHtml = r.status === 'submitted' ? [
@@ -184,7 +184,7 @@
         if (s.bug_reward_standard) standardReward = parseInt(s.bug_reward_standard, 10);
         if (s.bug_reward_critical)  criticalReward  = parseInt(s.bug_reward_critical,  10);
       }
-    } catch (e) {}
+    } catch (e) { console.warn("[BJ:BugReview] credit_transactions insert failed:", e.message); }
 
     var credits = report.severity === 'critical' ? criticalReward : standardReward;
     var confirmMsg = 'Confirm this bug report and award ' + credits + ' credits to the user?\n\nSeverity: ' + report.severity + '\nDefault: ' + (report.severity === 'critical' ? criticalReward : standardReward) + ' credits';
