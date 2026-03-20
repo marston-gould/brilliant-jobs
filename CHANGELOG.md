@@ -1,3 +1,20 @@
+## v11.50 Feedback System (2026-03-20)
+- **FB-01:** Created exit_surveys, bug_reports, feature_suggestions tables with schemas + RLS per spec Section D.
+- **FB-02:** 4 cohort config keys in app_settings: sat_popup_delay_minutes=5, sat_session_cadence=10, bug_reward_standard=5, bug_reward_critical=15.
+- **FB-03:** js/exit-survey.js (NEW) — exit intent survey after 10s. Platform pills + satisfaction circles. Supabase submit. PostHog events.
+- **FB-04:** FeedbackPage.tsx (NEW) at /app/feedback with 3 tabs.
+- **FB-05:** Tab 1 — 1-5 scale, conditional textarea, submission history from exit_surveys.
+- **FB-06:** Tab 2 — Bug form with all fields, screenshot upload (Supabase Storage, max 5MB), severity, credit reward messaging.
+- **FB-07:** Tab 3 — Feature suggestion: type radio, 13 categories, description+rationale, status history.
+- **FB-08/09:** js/sat-prompt.js (NEW) — floating bottom-right card, reads cohort config with fallback.
+- **FB-10:** Score 1-3 expands follow-up textarea in both Tab 1 and floating prompt.
+- **FB-11:** Feedback bubble + modal removed from AppShell.tsx.
+- **FB-12:** Screenshot upload: Supabase Storage, max 5MB, PNG/JPG/WebP.
+- **FB-15:** PostHog events all wired.
+- **FB-16:** bj_last_page sessionStorage breadcrumb in AppShell for bug report pre-fill.
+- Nav: Feedback item (MessageSquare) added before Settings in ACCOUNT section.
+- Files: js/exit-survey.js, js/sat-prompt.js, FeedbackPage.tsx, AppShell.tsx, routes.tsx, index.html, landing.css, version.js, migration SQL.
+
 ## v11.49 Bugfix — Admin Footer Link + MFA Gate Restored (2026-03-20)
 - **Root cause:** `/admin` Vercel rewrite was routing to the SPA (`/dist/spa/src/app/`), which uses React `AdminGuard` (role-check only, no MFA). The standalone `admin.html` with the full `admin-shell.ts` MFA gate had been archived to `legacy/admin.html` during SPA migration and never restored to root.
 - **Fix 1:** Removed `/admin` and `/admin.html` rewrites from `vercel.json`. With `cleanUrls: true`, Vercel now serves root `admin.html` directly.
