@@ -18,6 +18,9 @@
        Auth session shared via localStorage (same persistSession key).
        Theme handled by inline script above (CSP-whitelisted via SHA-256). -->
 
+  <!-- BJ_VERSION — sets window.BJ_VERSION for nav version display -->
+  <script src="/js/version.js" defer></script>
+
   <!-- PostHog analytics (required for $pageview, session recording, feature flags) -->
   <script src="/js/posthog-dashboard.js" defer></script>
   <script src="/js/posthog-perf.js" defer></script>
