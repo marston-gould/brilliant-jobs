@@ -1213,3 +1213,79 @@ html:not([data-segment]) footer.segment-new { display: block; }
   .carousel-arrow { display: none; }
   .carousel-wrap { margin: 0; }
 }
+
+/* ======================== EXIT SURVEY MODAL (Survey A) ======================== */
+.exit-survey-overlay {
+  position: fixed; inset: 0; z-index: 9000;
+  background: rgba(0,0,0,0.45); backdrop-filter: blur(2px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.exit-survey-overlay[hidden] { display: none; }
+.exit-survey-modal {
+  background: var(--bg-card); border-radius: 16px;
+  padding: 28px 28px 24px; width: 100%; max-width: 400px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.25);
+}
+.exit-survey-heading {
+  font-size: 17px; font-weight: 700; color: var(--text);
+  margin-bottom: 20px; text-align: center;
+}
+.exit-survey-question {
+  font-size: 13px; font-weight: 600; color: var(--text-dim);
+  margin-bottom: 10px;
+}
+.exit-survey-pills-wrap {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px;
+}
+.exit-survey-pill {
+  padding: 7px 16px; border-radius: 20px; border: 1px solid var(--border);
+  background: var(--bg-card); color: var(--text-dim);
+  font-family: var(--sans); font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all 0.15s;
+}
+.exit-survey-pill:hover { border-color: var(--accent); color: var(--accent); }
+.exit-survey-pill--active,
+.exit-survey-pill[aria-pressed="true"] {
+  background: var(--accent); border-color: var(--accent); color: #fff;
+}
+.exit-survey-text-input {
+  width: 100%; padding: 8px 12px; border: 1px solid var(--border);
+  border-radius: 8px; font-family: var(--sans); font-size: 13px;
+  background: var(--bg-input); color: var(--text);
+}
+.exit-survey-text-input:focus { outline: none; border-color: var(--accent); }
+.exit-survey-scores-wrap {
+  display: flex; gap: 8px; margin-bottom: 6px;
+}
+.exit-survey-score {
+  width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--border);
+  background: var(--bg-input); color: var(--text-dim);
+  font-family: var(--sans); font-size: 15px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center;
+}
+.exit-survey-score:hover { border-color: var(--accent); color: var(--accent); }
+.exit-survey-score--active,
+.exit-survey-score[aria-pressed="true"] {
+  background: var(--accent); border-color: var(--accent); color: #fff;
+}
+.exit-survey-score-labels {
+  display: flex; justify-content: space-between;
+  font-size: 11px; color: var(--text-faint); margin-bottom: 20px;
+}
+.exit-survey-actions {
+  display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 4px;
+}
+.exit-survey-btn-send {
+  width: 100%; padding: 11px; border-radius: 8px;
+  background: var(--accent); color: #fff; border: none;
+  font-family: var(--sans); font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: background 0.15s;
+}
+.exit-survey-btn-send:hover { background: var(--accent-hover); }
+.exit-survey-btn-send:disabled { opacity: 0.5; cursor: not-allowed; }
+.exit-survey-btn-dismiss {
+  background: none; border: none; font-family: var(--sans);
+  font-size: 13px; color: var(--text-faint); cursor: pointer;
+}
+.exit-survey-btn-dismiss:hover { color: var(--text-dim); }
