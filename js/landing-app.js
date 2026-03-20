@@ -621,6 +621,9 @@ document.addEventListener("DOMContentLoaded", function() {
           if (window.posthog) posthog.capture("preview_rate_limited", { queries_used: 2 });
           return;
         }
+        if (data.error) {
+          throw new Error(data.message || data.error);
+        }
         previewToken = data.session_token;
         document.getElementById("pv-total").textContent = data.total.toLocaleString();
         document.getElementById("pv-salary").textContent = data.median_salary ? "$" + Math.round(data.median_salary / 1e3) + "K" : "N/A";
@@ -657,6 +660,7 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         previewGoBtn.disabled = false;
         previewGoBtn.textContent = "Retry Search";
+        previewToken = null;
         document.getElementById("preview-results").classList.remove("lp-hidden");
         document.getElementById("pv-total").textContent = "\u2014";
         document.getElementById("pv-card-grid").innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-faint);font-size:13px">Preview temporarily unavailable. Try again shortly.</div>';
