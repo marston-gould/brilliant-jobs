@@ -1,3 +1,23 @@
+## v11.47 Landing Page Restructure + Benefit Carousel + Benefits Page + Compare v2 (2026-03-20)
+- **LP-01** Section reorder: Ghost transparency moved to pos 4, Carousel pos 5, How It Works pos 6, Market consolidated pos 7, Pricing pos 8, FAQ moved to pos 9. "The Rigged Game" section removed entirely.
+- **LP-02** Benefit carousel added at position 5 — 5 randomly selected cards from pool of 25 + fixed see-all card (6th).
+- **LP-03** `js/carousel.js` (NEW): Fisher-Yates shuffle selects 5 of 25 cards on each page load. Selection tracked via PostHog event properties.
+- **LP-04** Each benefit card links to `/benefits#[category]`. See-all card links to `/benefits`.
+- **LP-05** PostHog events: `benefit_card_viewed` (card_id, position 1–5), `benefit_card_clicked` (card_id, position, destination), `benefit_seeall_clicked`.
+- **LP-06** `benefits.html` (NEW): Public page listing 136 features across 13 categories. Light theme. Anchor IDs (#ghost, #filters, #apply, #market, #tracking, #safety, #salary, #network, #ai, #notif, #linkedin, #community, #coverage).
+- **LP-07** BJ-exclusive features on /benefits have green "Only on Brilliant Jobs" tag. Shared features have muted styling.
+- **LP-08** Each category on /benefits has "Compare this category →" link to `/compare#[id]`.
+- **LP-09** `compare.html` + `js/compare.js` (REWRITE): Multi-competitor grid — BJ always pinned left, up to 6 competitors simultaneously. Default: LinkedIn, Indeed, ZipRecruiter, Simplify, Jobscan.
+- **LP-10** Hash-based deep linking on /compare: `/compare#ghost`, `/compare#filters`, `/compare#apply`, `/compare#market` auto-scroll to category on load.
+- **LP-11** "Edit competitors" pill picker — swap any of 16 competitors. Max 6, min 1. BJ always pinned.
+- **LP-12** Market Data + Market Insights consolidated into single section on index.html.
+- **LP-13** Objection FAQ moved to position 9 (before social proof, after pricing).
+- **LP-14** Nav updated: `#why` replaced with `#benefits`; "All Benefits" link added alongside existing Compare link.
+- **LP-15** Carousel dot indicators + desktop arrow buttons. Arrows hidden on mobile (swipe only).
+- **LP-16** SEO: Schema.org WebPage structured data on /benefits and /compare. Meta tags and titles updated.
+- **benefit-cards/**: 26 WebP images committed (01–25 benefit cards + 26 see-all card).
+- **Files changed:** `index.html`, `landing.css`, `js/carousel.js` (new), `benefits.html` (new), `compare.html` (rewrite), `js/compare.js` (rewrite), `js/version.js`, `benefit-cards/*.webp` (26 images)
+
 ## v11.46 Pricing Module Redesign + Admin Footer Link (2026-03-20)
 - **PR-01** Replace old 3-card pricing section in index.html with new Free Trial / Starter / Pro layout per POD3_HANDOFF_PricingModule
 - **PR-02** Free Trial card: 7-day duration, no credit card, specific AI sample counts (2 resume tailorings, 2 cover letters, 2 auto-applies, 1 interview practice)
