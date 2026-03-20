@@ -18,6 +18,11 @@
   // Override fetch
   const originalFetch = window.fetch;
   window.fetch = async function(...args) {
+    // Quick bail — only intercept LinkedIn/licdn URLs
+    const reqUrl = typeof args[0] === 'string' ? args[0] : ((args[0] as Request)?.url || '');
+    if (!reqUrl.includes('linkedin.com') && !reqUrl.includes('licdn.com')) {
+      return originalFetch.apply(this, args as Parameters<typeof fetch>);
+    }
     // CRITICAL: The entire patched fetch must be wrapped in try/catch.
     // Network errors, aborted requests, and navigation cancellations throw
     // on the await line and must not crash the content script.
@@ -37,7 +42,7 @@
         const cloned = response.clone();
         cloned.json().then(data => {
           processInterceptedData(url, data);
-        }).catch(e => { try { chrome.runtime.sendMessage({ type: 'reportError', payload: { context: 'interceptor_msg', error: e?.message || String(e) } }).catch(() => {}); } catch {} });
+        }).catch(() => { /* parse failed on non-BJ response — silent */ });
       }
     } catch (e) {
       // Silent fail - never interfere with page functionality
