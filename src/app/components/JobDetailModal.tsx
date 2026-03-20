@@ -84,7 +84,7 @@ export function JobDetailModal({ jobId, onClose }: JobDetailModalProps) {
             rel="noopener noreferrer"
             className="px-4 py-2 bg-accent text-white rounded-md text-sm font-medium hover:opacity-90"
           >
-            View on {job.ats_source || 'Career Page'}
+            View on Career Page
           </a>
         ) : undefined
       }
@@ -103,7 +103,7 @@ export function JobDetailModal({ jobId, onClose }: JobDetailModalProps) {
           <div className="flex flex-wrap gap-2 text-sm text-text-dim">
             {job.company_name && <span className="font-medium text-text">{job.company_name}</span>}
             {job.location && <span>· {job.location}</span>}
-            {job.ats_source && <span>· {job.ats_source}</span>}
+            
           </div>
 
           {/* Salary */}
