@@ -1,3 +1,18 @@
+## v11.53 Console Error Fixes (2026-03-20)
+
+### Bug 1: get-user-balance 401 (dashboard)
+- `getBalance()` in `supabase.ts` now checks `getAccessToken()` before calling the gateway — skips the call entirely if not yet authenticated, avoiding the 401 console error.
+- Silences 401 errors specifically (other errors still logged). Fallback to direct `bj_credit_ledger` query still works.
+
+### Bug 2: hidden_jobs 404 (dashboard)
+- `hidden_jobs` table created in Supabase with `user_id` FK, unique `(user_id, job_id)`, RLS (own rows only).
+- `supabase.ts` `JobProvider.hide()` / `unhide()` and `TuningProvider.unhideJob()` updated to include `user_id` in all queries.
+- Migration: `migrations/20260320_hidden_jobs.sql`
+
+### Bug 3: interceptor.ts ERR_FAILED flood on LinkedIn (extension)
+- `extension/interceptor.ts`: patched `window.fetch` now bails immediately for non-LinkedIn/licdn URLs — removes wrapping overhead and prevents unrelated `chrome-extension://invalid/` `ERR_FAILED` errors flooding the console.
+- Removed `chrome.runtime.sendMessage` in the response clone `.catch()` — was causing additional noise when extension context is invalid (extension reloaded/updated). Parse errors on non-BJ responses are non-actionable.
+
 ## v11.52 Subscription Fixes (POD2_HANDOFF_SubscriptionFixes) (2026-03-20)
 
 ### Benefit carousel + pricing copy
