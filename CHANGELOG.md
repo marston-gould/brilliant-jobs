@@ -1,3 +1,28 @@
+## v11.53 continued — Nav + CTA Audit (POD3_HANDOFF_NavAndCTAs) (2026-03-20)
+
+### NC-01 ✅ (already done in v11.52)
+Nav on index.html already correct: How it works, Compare, Features, Data Lab, Pricing. Both segment variants.
+
+### NC-02: pricing.html nav updated
+pricing.html nav updated to match 5-item standard (was: Home, Data Lab, Pricing). benefits.html and compare.html navs already correct.
+
+### NC-03, NC-04, NC-05: inline CTAs on index.html
+- After ghost section: "Stop applying to ghost jobs." + Start free trial
+- After carousel: "136 features. See what you have been missing." + primary + "See all features" secondary
+- After market data section: "Real data from real career pages. Not guesswork." + Start free trial
+
+### NC-06 ✅ (already done)
+benefits.html already has CTAs after category 4 ("See enough? Start your free trial.") and category 8 ("All of this. 7 days free.").
+
+### NC-07 ✅ (already done)
+compare.html already has per-category one-liner CTAs injected via JS (CTAS object with category-specific copy, PostHog events).
+
+### NC-08: PostHog events
+All new CTAs use `inline_cta_clicked` with `page` and `position` properties.
+
+### CTA CSS
+landing.css: `.inline-cta-wrap`, `.inline-cta`, `.btn-ic`, `.btn-ic-secondary`, `.inline-cta-light`, `.compare-cta-line` added.
+
 ## v11.53 Nav + CTAs + Bug Fixes (2026-03-20)
 - **Bug fix: hidden_jobs table** created in Supabase (was missing — caused 404 on Feed hide/unhide and Tuning hidden jobs).
 - **Bug fix: extension interceptor.ts** non-http URL guard added — stops chrome-extension://invalid/ ERR_FAILED flood on LinkedIn.
