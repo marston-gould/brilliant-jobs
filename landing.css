@@ -1289,3 +1289,20 @@ html:not([data-segment]) footer.segment-new { display: block; }
   font-size: 13px; color: var(--text-faint); cursor: pointer;
 }
 .exit-survey-btn-dismiss:hover { color: var(--text-dim); }
+
+/* NC-03–07: Inline CTA callouts */
+.inline-cta-wrap{text-align:center;padding:28px 24px;background:rgba(255,255,255,0.03);border-top:1px solid rgba(255,255,255,0.07);border-bottom:1px solid rgba(255,255,255,0.07)}
+.inline-cta{max-width:500px;margin:0 auto}
+.inline-cta h3{font-size:15px;font-weight:600;color:#fff;margin:0 0 14px}
+.btn-ic{display:inline-block;padding:9px 24px;background:#4d8eff;color:#fff;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:background .15s}
+.btn-ic:hover{background:#2563eb}
+.btn-ic-secondary{font-size:13px;color:rgba(255,255,255,0.6);text-decoration:none;margin-left:16px;font-weight:500}
+.btn-ic-secondary:hover{color:#fff}
+/* Light-bg variant for benefits/compare pages */
+.inline-cta-light{text-align:center;padding:24px 20px;border-top:1px solid var(--border,#e5e7eb);border-bottom:1px solid var(--border,#e5e7eb);margin:32px 0}
+.inline-cta-light .btn-ic{background:var(--accent,#4d8eff)}
+.inline-cta-light h3{color:var(--text,#111);font-size:15px;font-weight:600;margin:0 0 12px}
+/* Compare one-liner CTA */
+.compare-cta-line{text-align:center;padding:12px 0 20px;font-size:13px;color:var(--accent,#4d8eff)}
+.compare-cta-line a{color:var(--accent,#4d8eff);text-decoration:none;font-weight:500}
+.compare-cta-line a:hover{text-decoration:underline}
