@@ -522,7 +522,7 @@ export class SupabaseStatsProvider implements StatsProvider {
           metros: data.metros ?? 0,
         };
       }
-    } catch { /* RPC may not exist */ }
+    } catch (e: any) { console.warn("[BJ:Stats] mv_job_feed_counts unavailable:", e?.message); }
     // Fallback: direct count from ats_jobs
     const { count: total } = await sb.from('ats_jobs').select('*', { count: 'exact', head: true });
     const { data: companiesData } = await sb.from('ats_jobs').select('company_name').limit(10000);
@@ -535,7 +535,7 @@ export class SupabaseStatsProvider implements StatsProvider {
     try {
       const { data, error } = await sb.from('mv_source_breakdown').select('*');
       if (!error && data?.length) return data;
-    } catch { /* view may not exist */ }
+    } catch (e: any) { console.warn("[BJ:Stats] mv_source_breakdown unavailable:", e?.message); }
     // Fallback: group by source via RPC or raw query
     const { data } = await sb.rpc('get_source_breakdown').select('*');
     if (data?.length) return data;
@@ -563,7 +563,7 @@ export class SupabaseBillingProvider implements BillingProvider {
       const sb = getSupabase();
       const { data } = await sb.from('bj_credit_ledger').select('amount').eq('user_id', user.id).eq('voided', false);
       return (data || []).reduce((sum: number, r: { amount: number }) => sum + (r.amount || 0), 0);
-    } catch { return 0; }
+    } catch (e: any) { console.warn("[BJ:Balance] Direct ledger query failed:", e?.message); return 0; }
   }
   async getPricing() {
     const sb = getSupabase();
@@ -661,13 +661,13 @@ export class SupabaseChatProvider implements ChatProvider {
       return errorMsg;
     }
   }
-  async clearSession() { try { localStorage.removeItem('bj_chat_history'); localStorage.removeItem('bj_chat_session'); } catch {} }
-  async setMode(mode: string) { try { localStorage.setItem('bj_search_mode', mode); } catch {} }
+  async clearSession() { try { localStorage.removeItem('bj_chat_history'); localStorage.removeItem('bj_chat_session'); } catch (e: any) { console.warn("[BJ:op] Silent failure:", (e as any)?.message); } }
+  async setMode(mode: string) { try { localStorage.setItem('bj_search_mode', mode); } catch (e: any) { console.warn("[BJ:op] Silent failure:", (e as any)?.message); } }
   async applyFilters(filters: Record<string, any>) {
     try {
       const existing = JSON.parse(localStorage.getItem('bj_chat_derived_filters') || '{}');
       localStorage.setItem('bj_chat_derived_filters', JSON.stringify({ ...existing, ...filters, _appliedAt: Date.now() }));
-    } catch {}
+    } catch (e: any) { console.warn("[BJ:op] Silent failure:", (e as any)?.message); }
   }
 }
 
