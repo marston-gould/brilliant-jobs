@@ -52,7 +52,17 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**LP-01 through LP-16** — Landing Page Restructure + Benefit Carousel + Benefits Page + Compare v2 ✅ (2026-03-20)
+**POD2_BUGFIX_HeroRotation** — P0 Hero Segment + Merch Rotation Fix ✅ (2026-03-20)
+- v11.47 → v11.48
+- **Spec:** POD2_BUGFIX_HeroRotation.docx (all 4 sections addressed)
+- **Bug 1 (CRITICAL):** Duplicate `landing-segment.js` + `purify.min.js` block removed from `index.html` `<head>`. Was at lines 158–161. Every first-time visitor was seeing returning-visitor hero due to double execution incrementing `bj_visits` before segment check. Fixed: single execution, correct segment detection, `bj_visits` +1/load.
+- **Bug 2:** `merch-client.js` DOMPurify fallback `""` → `html`. Field-level console log added per spec Section 2.3.
+- **Bug 3 (minor):** All 3 `reportError()` calls in `merch-client.js` guarded with `typeof` check.
+- **All `index.html` version strings** bumped from `v11.32` → `v11.48` (cache bust).
+- **Note for QA:** Existing users have inflated `bj_visits` counts (~2x). Per spec Section 1.4 this is not worth retroactive fix — counts normalize over time. Segment analytics pre-fix should be treated as inflated ~2x.
+- Files changed: `index.html`, `js/merch-client.js`, `js/version.js`
+
+**Previous: LP-01 through LP-16** — Landing Page Restructure ✅ (2026-03-20)
 - v11.46 → v11.47
 - **Spec:** POD3_HANDOFF_LandingPageRestructure.docx (all 16 requirements implemented)
 - **index.html:** Section reorder complete. "The Rigged Game" removed. Ghost section → pos 4. Benefit carousel slot → pos 5. How It Works → pos 6. Market Data + Insights consolidated → pos 7. Pricing stays pos 8. FAQ → pos 9. Nav updated (#why → #benefits, All Benefits link added).
@@ -4554,7 +4564,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v11.47`** | **Landing page restructure + benefit carousel + benefits.html + compare v2. 2026-03-20.** |
+| **Product (BJ_VERSION)** | **`v11.48`** | **P0 bugfix — hero segment detection + merch rotation. Duplicate landing-segment.js removed. 2026-03-20.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
