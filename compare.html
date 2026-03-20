@@ -102,8 +102,10 @@ footer{text-align:center;padding:24px;font-size:12px;color:var(--faint);border-t
 <nav class="nav" aria-label="Main navigation">
   <a href="/" class="nav-logo"><div class="m">B</div> Brilliant Jobs</a>
   <div class="nav-links">
-    <a href="/benefits" class="hide-sm">Benefits</a>
+    <a href="/?#how-it-works" class="hide-sm">How it works</a>
     <a href="/compare" class="on hide-sm">Compare</a>
+    <a href="/benefits" class="hide-sm">Features</a>
+    <a href="/data-lab" class="hide-sm">Data Lab</a>
     <a href="/#pricing" class="hide-sm">Pricing</a>
     <a href="/" class="nav-cta" onclick="event.preventDefault();window.location='/?signup=1'">Start free trial</a>
   </div>
@@ -137,5 +139,38 @@ footer{text-align:center;padding:24px;font-size:12px;color:var(--faint);border-t
 document.querySelectorAll('.bj-year').forEach(function(el){el.textContent=new Date().getFullYear()});
 </script>
 <script src="/js/compare.js?v=v11.47" defer></script>
+
+<script>
+(function() {
+  var CTAS = {
+    ghost:   'Try ghost-free job search for 7 days',
+    filters: 'Try exclusion filters for 7 days',
+    apply:   'Try AI resume tailoring for 7 days',
+    market:  'Try real salary data for 7 days'
+  };
+  function inject() {
+    var found = 0;
+    Object.keys(CTAS).forEach(function(cat) {
+      var section = document.querySelector('[data-cat="' + cat + '"]');
+      if (!section || section.dataset.ctaInjected) return;
+      section.dataset.ctaInjected = '1';
+      var div = document.createElement('div');
+      div.className = 'compare-cta-line';
+      var a = document.createElement('a');
+      a.href = '/?signup=1';
+      a.textContent = CTAS[cat] + ' →';
+      (function(c){ a.addEventListener('click', function() {
+        if (window.posthog) posthog.capture('inline_cta_clicked', {page:'compare', position:'after_'+c, cta_text:a.textContent});
+      }); })(cat);
+      div.appendChild(a);
+      section.after(div);
+      found++;
+    });
+    return found;
+  }
+  var tries = 0;
+  var poll = setInterval(function() { if (inject() >= 4 || ++tries > 30) clearInterval(poll); }, 400);
+})();
+</script>
 </body>
 </html>
