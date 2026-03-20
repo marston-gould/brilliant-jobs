@@ -1,3 +1,10 @@
+## v11.48 P0 Bugfix — Hero Segment + Merch Rotation (2026-03-20)
+- **Bug 1 (CRITICAL):** Removed duplicate `landing-segment.js` + `purify.min.js` script tags from index.html `<head>`. Duplicate block was at lines 158–161. First-time visitors were always seeing the returning-visitor hero because the second execution of landing-segment.js read `bj_visits=1` (already incremented by the first run) and switched segment to "returning", destroying the new-visitor hero. Fix: duplicate removed, `landing-segment.js` now executes exactly once. `bj_visits` increments by 1 per load (was 2).
+- **Bug 2:** `merch-client.js` DOMPurify fallback changed from `""` to `html`. When DOMPurify is unavailable, merch headline now renders from server-controlled content rather than going blank. Field-level injection log added: `[BJ:Merch] Injecting field: <field> into <tagName>`.
+- **Bug 3 (minor):** All 3 `reportError()` calls in `merch-client.js` now guarded with `typeof reportError === "function"` check.
+- All `index.html` script/link version strings bumped from `v11.32` to `v11.48` for cache bust.
+- Files changed: `index.html`, `js/merch-client.js`, `js/version.js`
+
 ## v11.47 Landing Page Restructure + Benefit Carousel + Benefits Page + Compare v2 (2026-03-20)
 - **LP-01** Section reorder: Ghost transparency moved to pos 4, Carousel pos 5, How It Works pos 6, Market consolidated pos 7, Pricing pos 8, FAQ moved to pos 9. "The Rigged Game" section removed entirely.
 - **LP-02** Benefit carousel added at position 5 — 5 randomly selected cards from pool of 25 + fixed see-all card (6th).
