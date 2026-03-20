@@ -1122,3 +1122,94 @@ html:not([data-segment]) footer.segment-new { display: block; }
 .pv-pill-red { background: #FCEBEB; color: #791F1F; }
 .pv-pill-red .pv-pill-x { color: #F7C1C1; }
 .pv-pill-purple { background: #EEEDFE; color: #3C3489; }
+
+/* ======================== BENEFIT CAROUSEL (LP-02, LP-15) ======================== */
+.carousel-wrap {
+  position: relative;
+  margin: 0 -8px;
+}
+.carousel-track {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px 8px 12px;
+  list-style: none;
+  /* hide scrollbar */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.carousel-track::-webkit-scrollbar { display: none; }
+.carousel-card {
+  flex: 0 0 auto;
+  width: min(340px, 85vw);
+  scroll-snap-align: start;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.carousel-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.11);
+}
+.carousel-card a { display: block; }
+.carousel-card img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 14px;
+}
+.carousel-card--seeall {
+  border: 2px solid var(--accent);
+}
+/* Arrow buttons */
+.carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: all 0.15s;
+}
+.carousel-arrow:hover { border-color: var(--accent); color: var(--accent); }
+.carousel-arrow-left  { left: -12px; }
+.carousel-arrow-right { right: -12px; }
+/* Dot indicators */
+.carousel-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 0 0;
+}
+.carousel-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  background: var(--border);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.2s, transform 0.2s;
+}
+.carousel-dot.active {
+  background: var(--accent);
+  transform: scale(1.2);
+}
+/* Hide arrows on mobile, show on desktop */
+@media (max-width: 768px) {
+  .carousel-arrow { display: none; }
+  .carousel-wrap { margin: 0; }
+}
