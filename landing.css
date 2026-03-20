@@ -1306,3 +1306,32 @@ html:not([data-segment]) footer.segment-new { display: block; }
 .compare-cta-line{text-align:center;padding:12px 0 20px;font-size:13px;color:var(--accent,#4d8eff)}
 .compare-cta-line a{color:var(--accent,#4d8eff);text-decoration:none;font-weight:500}
 .compare-cta-line a:hover{text-decoration:underline}
+
+/* ======================== INLINE CTAs (NC-03 to NC-07) ======================== */
+.inline-cta-wrap {
+  max-width: 500px; margin: 0 auto; padding: 28px 24px;
+  text-align: center; background: #F0F4F8; border-radius: 12px;
+}
+.inline-cta-headline {
+  font-size: 15px; font-weight: 600; color: var(--text, #1a1f36);
+  margin: 0 0 14px; line-height: 1.4;
+}
+.inline-cta-btn {
+  display: inline-block; padding: 10px 24px;
+  background: var(--accent, #4d8eff); color: #fff;
+  border: none; border-radius: 8px;
+  font-size: 14px; font-weight: 600; font-family: var(--sans, sans-serif);
+  cursor: pointer; text-decoration: none; transition: background 0.15s;
+}
+.inline-cta-btn:hover { background: #3a7aee; }
+.inline-cta-secondary { text-align: center; margin-top: -8px; margin-bottom: 16px; }
+.inline-cta-secondary a, .inline-cta-link {
+  font-size: 13px; color: var(--accent, #4d8eff); text-decoration: none;
+}
+.inline-cta-secondary a:hover, .inline-cta-link:hover { text-decoration: underline; }
+.compare-cta-line { text-align: center; padding: 14px 0 8px; }
+.compare-cta-line a {
+  font-size: 13px; color: var(--accent, #4d8eff);
+  text-decoration: none; font-weight: 500;
+}
+.compare-cta-line a:hover { text-decoration: underline; }
