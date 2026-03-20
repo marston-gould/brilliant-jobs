@@ -1,3 +1,15 @@
+## v11.53 Nav + CTAs + Bug Fixes (2026-03-20)
+- **Bug fix: hidden_jobs table** created in Supabase (was missing — caused 404 on Feed hide/unhide and Tuning hidden jobs).
+- **Bug fix: extension interceptor.ts** non-http URL guard added — stops chrome-extension://invalid/ ERR_FAILED flood on LinkedIn.
+- **NC-01/02:** All public pages now have identical 5-item nav: How it works / Compare / Features / Data Lab / Pricing. Removed duplicate Benefits/#benefits links.
+- **NC-03:** Inline CTA after ghost section on index.html.
+- **NC-04:** Inline CTA after carousel on index.html (primary + "See all features" link).
+- **NC-05:** Inline CTA after market data section on index.html.
+- **NC-06:** 2 inline CTAs on benefits.html (after cat 4 and cat 8).
+- **NC-07:** One-liner CTAs on compare.html per category via JS injection.
+- **NC-08:** PostHog inline_cta_clicked events on all CTAs.
+- landing.css: inline CTA styles added.
+
 ## v11.53 Console Error Fixes (2026-03-20)
 
 ### Bug 1: get-user-balance 401 (dashboard)
