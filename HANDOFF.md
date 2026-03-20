@@ -52,7 +52,19 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**TW-STD-002** — Landing Page CSS Standardization ✅
+**PR-01 through PR-12 + Admin Footer Link** — Pricing Module Redesign ✅ (2026-03-20)
+- v11.45 → v11.46
+- **Spec:** POD3_HANDOFF_PricingModule.docx (all 12 requirements fulfilled)
+- **index.html:** Replaced old Free/Starter/Pro cards with new Free Trial/Starter/Pro layout. Added referral callout card, PAYL coming-soon block with email capture, footer disclaimer. Admin link added to footer.
+- **landing.css:** Full pricing CSS rewrite — tier badges (green/blue/purple/amber), Pro 2px border, pack pricing table, referral card, PAYL dashed card, responsive breakpoints.
+- **js/version.js:** v11.45 → v11.46
+- **Supabase:** `payl_waitlist` table created live — id, email (unique), created_at, source, notified_at. RLS: anon INSERT allowed, SELECT blocked. Verified.
+- **Migration file:** `migrations/20260320_create_payl_waitlist.sql` committed.
+- **PostHog:** 4 events wired — pricing_section_viewed (IntersectionObserver), pricing_cta_clicked (tier param), referral_share_clicked, payl_waitlist_signup (SHA-256 hashed email).
+- **No currency symbols** anywhere in module per design system rules.
+- **Admin footer link:** `/admin` — routes directly to existing `admin-shell.ts` MFA gate (Supabase AAL2/TOTP). No new auth code needed — double auth was already implemented.
+
+**Previous: TW-STD-002** — Landing Page CSS Standardization ✅
 - v10.51→v10.52
 - **landing.css:** 1,332 → 997 lines (25% reduction).
 - **Removed duplicates:** Font-faces (2x), :root tokens, global resets — all already provided by styles.css via input.css @layer base.
@@ -4530,7 +4542,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v10.50`** | **SPA conversion complete (SA-013–SA-017). 22 hooks standalone, legacy HTML archived, provider compliance, 123 .ts, a11y, production verified. 258 tests.** |
+| **Product (BJ_VERSION)** | **`v11.46`** | **Pricing module redesign (PR-01–PR-12) + admin footer link. payl_waitlist table live. 2026-03-20.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
