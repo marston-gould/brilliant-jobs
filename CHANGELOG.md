@@ -1,3 +1,8 @@
+## v11.55 — Nav version display + sat-prompt modal (2026-03-20)
+- **Nav version hardcoded `v11.45`:** `AppShell.tsx` had `Dashboard v11.45` as a static string since the SPA was first scaffolded. It never updated with version bumps. Fixed to read from `(window as any).BJ_VERSION` at runtime — always shows the current live version.
+- **Satisfaction prompt was a sidebar widget, not a popup:** `sat-prompt-overlay` was rendering inline in the DOM with no positioning, appearing as a persistent card below the main content. Redesigned as a proper centered modal: fixed fullscreen overlay (`position:fixed; inset:0; background:rgba(0,0,0,0.5)`), centered card (`max-width:380px`, `border-radius:16px`), dismiss X, score labels, follow-up textarea on 1–3, Send/Skip actions. `sat-prompt.js` updated to `display:flex/none` toggling. CSS added to `src/input.css`.
+- Files: `src/app/shell/AppShell.tsx`, `js/sat-prompt.js`, `src/input.css`, `js/version.js`
+
 ## v11.54 Bugfix — Empty Job Feed (2026-03-20)
 - **Root cause (CRITICAL):** `useFeedSearch.ts` line 737 — when `checkedFilters.length === 0` (no saved filters checked in localStorage), the hook immediately returned an empty jobs array. New users with no saved filters always saw a blank feed with zero results, even though 482,000+ open jobs exist in the database.
 - **Fix:** Replaced the early-exit with a default query: `status='open'` ordered by `created_at DESC`, paginated. Users with no filters now see the most recent open jobs on first load. Hidden jobs are still excluded.
