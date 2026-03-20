@@ -52,7 +52,20 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**v11.54 — Empty Feed Fix + Feed 500 Errors (2026-03-20)**
+**v11.56 — Discovery Cards + Feature Usage Tracking (2026-03-20)**
+- v11.55 → v11.56
+- Spec: POD2_HANDOFF_DiscoveryCards — all 11 requirements (DC-01–DC-11)
+- DB: user_feature_usage table (unique user_id+feature_key, 12-key CHECK, use_count upsert, RLS). Applied to prod.
+- "Your Market" duplicate card removed from feed left slot. Replaced with DiscoveryCard component.
+- DiscoveryCard: 12 cards, priority-ordered rotation, Lucide icons, colored badges matching Pro Tip anatomy.
+- useDiscovery hook: module-level usage cache, recordFeatureUsage(), PostHog events.
+- All 12 trigger points wired across TuningPage, useResumes, supabase.ts generateBullets, CoverLetterSection, useApplications, InterviewPrepPage, FeedPage, GetStartedPage, ResumesPage.
+- Ghost + staffing passive tracking via IntersectionObserver (2s threshold, once per session).
+- AGENCY badge added to JobRow for is_staffing_agency jobs.
+- Dismiss: sessionStorage per card. Completion card: localStorage permanent.
+- 12 WebP images in benefit-cards/. Bundle rebuilt and deployed.
+
+**Previous: v11.54 — Empty Feed Fix + Feed 500 Errors (2026-03-20)**
 - v11.53 → v11.54
 - **Root cause:** `useFeedSearch.ts` — `checkedFilters.length === 0` early-returned empty jobs. New users with no saved filters saw blank feed. Fixed: default query runs `status='open' ORDER BY created_at DESC` when no filters set.
 - **v11.53 context:** Sort `'score'` → `'created_at'` (no score column). `textSearch('fts')` → `textSearch('search_vector')`. These fixed 500s but feed still blank due to the no-filter gate.
@@ -4587,7 +4600,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v11.56`** | **No-hardcoding + no-silent-errors audit complete. 2026-03-20.** |: v11.46–v11.52. Landing page, feedback system, subscription fixes, Lucide audit, ROADMAP sync. 2026-03-20.** |
+| **Product (BJ_VERSION)** | **`v11.56`** | **Discovery Cards — feature usage tracking, 12 cards, all trigger points wired. 2026-03-20.** |: v11.46–v11.52. Landing page, feedback system, subscription fixes, Lucide audit, ROADMAP sync. 2026-03-20.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
