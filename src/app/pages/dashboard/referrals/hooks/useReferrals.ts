@@ -69,11 +69,30 @@ export function useReferrals(): [ReferralsState, {
   const loadData = useCallback(() => {
     try {
       // SPA-CUT-3: Data loaded from localStorage/Supabase (no window bridge)
+      // SUB-06: prefer username-based link; fall back to legacy /r/ link
+      const legacyLink = safeReadLS('bj__refLink', '');
+      const legacyCode = safeReadLS('bj__refCode', '');
+      // Attempt to resolve username from profiles table (best-effort, non-blocking)
+      import('@app/lib/supabase').then(({ supabase }) => {
+        supabase.auth.getUser().then(({ data: { user } }) => {
+          if (!user) return;
+          supabase.from('profiles').select('username').eq('id', user.id).single()
+            .then(({ data }) => {
+              if (data?.username) {
+                const usernameLink = 'https://brilliantjobs.app/' + data.username;
+                dispatch({ type: 'LOADED', data: {
+                  link: usernameLink, code: legacyCode || data.username,
+                  stats: initialState.stats, leaderboard: [], leaderboardEnabled: false, period: 'month',
+                }});
+              }
+            }).catch(() => {});
+        }).catch(() => {});
+      }).catch(() => {});
       dispatch({
         type: 'LOADED',
         data: {
-          link: safeReadLS('bj__refLink', ''),
-          code: safeReadLS('bj__refCode', ''),
+          link: legacyLink,
+          code: legacyCode,
           stats: initialState.stats,
           // @ts-ignore SPA-CUT-3
           leaderboard: Array.isArray(null) ? null : [],
