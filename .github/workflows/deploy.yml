@@ -157,7 +157,9 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - name: Build SPA
-        run: npm run build:spa
+        run: npm run build:spa 2>&1
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
       - name: Commit built SPA bundle
         run: |
           git config user.name "github-actions[bot]"
