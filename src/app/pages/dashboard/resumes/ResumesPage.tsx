@@ -437,7 +437,7 @@ export function ResumesPage() {
               <div>
                 <div className="text-[20px] font-extrabold text-text">Profile Score</div>
                 <div className="text-[11px] text-text-faint mt-1">Upload your LinkedIn PDF to get scored</div>
-                <button onClick={async () => { setBulletStatus("Analyzing profile..."); try { const { callGateway } = await import("@app/lib/supabase"); await callGateway("optimize-linkedin-profile", { action: "analyze" }, { timeout: 30000 }); setBulletStatus("Analysis complete"); } catch(e: any) { setBulletStatus("Error: " + e.message); } }} className="mt-2 px-3 py-1 rounded-md text-xs font-medium border border-border text-text-dim hover:border-accent">Re-Analyze (2 credits)</button>
+                <button onClick={async () => { setBulletStatus("Analyzing profile..."); try { const { callGateway } = await import("@app/lib/supabase"); await callGateway("optimize-linkedin-profile", { action: "analyze" }, { timeout: 30000 }); setBulletStatus("Analysis complete"); import("@app/hooks/useDiscovery").then(({ recordFeatureUsage }) => recordFeatureUsage("linkedin_optimizer_used")); } catch(e: any) { setBulletStatus("Error: " + e.message); } }} className="mt-2 px-3 py-1 rounded-md text-xs font-medium border border-border text-text-dim hover:border-accent">Re-Analyze (2 credits)</button>
               </div>
             </div>
             <div className="text-[11px] text-text-faint text-center">Section-by-section scorecard will appear here after analysis</div>
@@ -457,7 +457,7 @@ export function ResumesPage() {
                 <label className="text-[10px] text-text-dim block mb-0.5">Target Role (optional)</label>
                 <input type="text" placeholder="e.g. VP of Engineering" className="w-full px-2 py-1.5 rounded-md border border-border bg-bg-main text-[11px] text-text" />
               </div>
-              <button onClick={async () => { setBulletStatus("Generating LinkedIn summary..."); try { const { callGateway } = await import("@app/lib/supabase"); await callGateway("optimize-linkedin-profile", { section: "about" }, { timeout: 25000 }); setBulletStatus("Summary generated"); } catch(e: any) { setBulletStatus("Error: " + e.message); } }} className="px-3 py-1.5 rounded-md bg-accent text-white text-[11px] font-semibold">Generate (1 credit)</button>
+              <button onClick={async () => { setBulletStatus("Generating LinkedIn summary..."); try { const { callGateway } = await import("@app/lib/supabase"); await callGateway("optimize-linkedin-profile", { section: "about" }, { timeout: 25000 }); setBulletStatus("Summary generated"); import("@app/hooks/useDiscovery").then(({ recordFeatureUsage }) => recordFeatureUsage("linkedin_optimizer_used")); } catch(e: any) { setBulletStatus("Error: " + e.message); } }} className="px-3 py-1.5 rounded-md bg-accent text-white text-[11px] font-semibold">Generate (1 credit)</button>
             </div>
           </div>
         </div>

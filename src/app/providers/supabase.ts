@@ -378,7 +378,9 @@ export class SupabaseResumeProvider implements ResumeProvider {
     return resp.json();
   }
   async generateBullets(roleTitle: string, company?: string, context?: string, targetJobId?: string) {
-    return callGateway<any>('resume-rewrite-bullet', { role_title: roleTitle, company, context, target_job_id: targetJobId }, { timeout: 20000 });
+    const result = await callGateway<any>('resume-rewrite-bullet', { role_title: roleTitle, company, context, target_job_id: targetJobId }, { timeout: 20000 });
+    import('@app/hooks/useDiscovery').then(({ recordFeatureUsage }) => recordFeatureUsage('resume_tailored'));
+    return result;
   }
   async generateSummary(resumeId: string, tone: string, targetJobId?: string) {
     return callGateway<any>('resume-generate', { resume_id: resumeId, section: 'summary', tone, target_job_id: targetJobId }, { timeout: 20000 });

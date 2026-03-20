@@ -294,6 +294,7 @@ function buildActions(dispatch: React.Dispatch<ResumesAction>, reload: () => voi
         if (result?.score != null) {
           r.aiScore = { label: 'human', score: result.score, summary: result.summary };
           saveResumesToLS(all);
+          import('@app/hooks/useDiscovery').then(({ recordFeatureUsage }) => recordFeatureUsage('resume_scored'));
         }
       } catch { /* non-fatal */ }
       setTimeout(reload, 200);

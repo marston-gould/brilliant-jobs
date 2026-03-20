@@ -12,3 +12,5 @@ export { JobRow } from './JobRow';
 export { PaginationControls } from './PaginationControls';
 export { IntelCards } from './IntelCards';
 export { ChatPanel } from './ChatPanel';
+
+export { DiscoveryCard } from './DiscoveryCard';

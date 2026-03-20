@@ -78,6 +78,7 @@ export type AiLabel = 'human' | 'mixed' | 'ai_generated' | 'unscored';
 export interface FeedJob extends Job {
   greenhouse_id: string;
   first_seen_at: string | null;
+  is_staffing_agency?: boolean;
   updated_at: string;
   company_name: string;
   location: string | null;
@@ -740,7 +741,7 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
         const to = from + JOBS_PER_PAGE - 1;
         let defQuery = sb
           .from('ats_jobs')
-          .select('greenhouse_id, title, company_name, location, loc_country, loc_state, loc_city, loc_type, salary_min, salary_max, salary_currency, salary_rate, first_seen_at, updated_at, created_at, url, apply_url, ats_source, status, extracted_seniority, extracted_skills, is_remote, content', { count: 'planned' })
+          .select('greenhouse_id, title, company_name, location, loc_country, loc_state, loc_city, loc_type, salary_min, salary_max, salary_currency, salary_rate, first_seen_at, updated_at, created_at, url, apply_url, ats_source, status, extracted_seniority, extracted_skills, is_remote, content, is_staffing_agency', { count: 'planned' })
           .eq('status', 'open')
           .order('created_at', { ascending: false })
           .range(from, to);
@@ -776,7 +777,7 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
         // FA-007: Check content search flag for parity with legacy What/What NOT pills
         const contentSearchEnabled = await isFeatureFlagEnabled('feed_content_search', false);
         const sf = checkedFilters[0]!;
-        let query = sb.from('ats_jobs').select('greenhouse_id, title, company_name, location, loc_country, loc_state, loc_city, loc_type, salary_min, salary_max, salary_currency, salary_rate, first_seen_at, updated_at, created_at, url, apply_url, ats_source, status, extracted_seniority, extracted_skills, is_remote, content', { count: 'planned' });
+        let query = sb.from('ats_jobs').select('greenhouse_id, title, company_name, location, loc_country, loc_state, loc_city, loc_type, salary_min, salary_max, salary_currency, salary_rate, first_seen_at, updated_at, created_at, url, apply_url, ats_source, status, extracted_seniority, extracted_skills, is_remote, content, is_staffing_agency', { count: 'planned' });
         query = buildFilterQuery(sf, query, sf._locationIds || null, tuning, contentSearchEnabled);
 
         if (hiddenIds.length > 0) {
@@ -882,7 +883,7 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
           const jobFilterMap = new Map<string, Array<{ num: string; color: string }>>();
 
           const promises = checkedFilters.map(sf => {
-            let q = sb.from('ats_jobs').select('greenhouse_id, title, company_name, location, loc_country, loc_state, loc_city, loc_type, salary_min, salary_max, salary_currency, salary_rate, first_seen_at, updated_at, created_at, url, apply_url, ats_source, status, extracted_seniority, extracted_skills, is_remote, content', { count: 'planned' });
+            let q = sb.from('ats_jobs').select('greenhouse_id, title, company_name, location, loc_country, loc_state, loc_city, loc_type, salary_min, salary_max, salary_currency, salary_rate, first_seen_at, updated_at, created_at, url, apply_url, ats_source, status, extracted_seniority, extracted_skills, is_remote, content, is_staffing_agency', { count: 'planned' });
             q = buildFilterQuery(sf, q, sf._locationIds || null, tuning, contentSearchEnabled);
             if (hiddenIds.length > 0) {
               q = q.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);

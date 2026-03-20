@@ -730,6 +730,7 @@ export default function GetStartedPage() {
 
                 setLinkedinProfile({ ...profile, importedAt: new Date().toISOString() });
                 toast(`LinkedIn profile imported — ${profile.firstName} ${profile.lastName}`, 'success');
+                import('@app/hooks/useDiscovery').then(({ recordFeatureUsage }) => recordFeatureUsage('linkedin_connected'));
               } catch (err) {
                 toast('Failed to parse CSV: ' + (err instanceof Error ? err.message : String(err)), 'error');
               }

@@ -1,3 +1,50 @@
+## v11.56 — Discovery Cards + Feature Usage Tracking (2026-03-20)
+
+**Spec:** POD2_HANDOFF_DiscoveryCards — all 11 requirements (DC-01 through DC-11)
+
+### DB (DC-01)
+- `user_feature_usage` table created: id, user_id, feature_key (12-value CHECK), first_used_at, use_count
+- Unique constraint on (user_id, feature_key). Upsert increments use_count on conflict.
+- RLS: users can INSERT and SELECT their own rows. No UPDATE from client.
+
+### Feed — left card slot (DC-02, DC-03, DC-04)
+- "Your Market" duplicate card removed. Replaced with `DiscoveryCard` component.
+- Right "Pro Tip" slot unchanged.
+- `DiscoveryCard` shows highest-priority untried feature card per spec §5.2 priority order.
+
+### Discovery card pool (DC-04)
+- 12 cards covering: exclusion filters, resume score, resume tailor, NOT filters, salary filter,
+  auto-apply, cover letter, ghost badges, staffing flags, LinkedIn connect, interview practice, LinkedIn optimizer.
+- All Lucide icons — no emoji. Colored icon circles + category badges matching Pro Tip anatomy.
+- 12 WebP card images committed to benefit-cards/.
+
+### Rotation logic (DC-03, DC-08, DC-09, DC-10)
+- `useDiscovery` hook: fetches usage set once, caches in module scope.
+- Dismiss (X): sessionStorage — card hides for session, reappears next session if feature untried.
+- Completion card: all 12 tried → green COMPLETE badge, dismissable permanently via localStorage.
+- PostHog: discovery_card_shown, discovery_card_clicked, discovery_card_dismissed, feature_engaged.
+
+### Feature usage recording (DC-05, DC-06, DC-07)
+- `recordFeatureUsage(key)` — upserts to user_feature_usage, fires PostHog feature_engaged.
+- Wired to all 12 trigger points:
+  - `exclusion_filter_set`: TuningPage save() when any exclusion field has content
+  - `resume_scored`: useResumes rescoreAI() after successful score
+  - `resume_tailored`: supabase.ts generateBullets() after call
+  - `cover_letter_generated`: CoverLetterSection after successful generate
+  - `auto_apply_configured`: useApplications setMode() when mode !== manual
+  - `interview_practice_started`: InterviewPrepPage start session button
+  - `not_filter_set`: FeedPage handleSaveFilter when whatNotPills present
+  - `salary_filter_used`: FeedPage handleSaveFilter when payPills present
+  - `linkedin_connected`: GetStartedPage after LinkedIn CSV import success
+  - `linkedin_optimizer_used`: ResumesPage optimize-linkedin-profile call (2 locations)
+  - `ghost_badge_viewed`: JobRow IntersectionObserver, 2s threshold, once per session
+  - `staffing_flag_viewed`: JobRow IntersectionObserver, 2s threshold, once per session
+- Usage set cached in module scope, invalidated on each recordFeatureUsage call.
+
+### Staffing badge (DC-07 passive)
+- `is_staffing_agency` added to feed select queries.
+- AGENCY badge rendered on JobRow when `is_staffing_agency = true`.
+
 ## v11.56 No-hardcoding + No-silent-errors audit (2026-03-20)
 
 Per new engineering rules: (1) No hardcoding, (2) No silent errors.

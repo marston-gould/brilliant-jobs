@@ -330,6 +330,17 @@ export function FeedPage() {
       const updated = await loadSavedFiltersFromSupabase();
       setSavedSearchItems(updated);
       (window as any).__bjToast?.(`Saved "${name}"`, 'success');
+      // Track feature usage on filter save
+      import('@app/hooks/useDiscovery').then(({ recordFeatureUsage }) => {
+        const fd = filterValues as Record<string, unknown>;
+        // salary_filter_used: any pay pill present
+        const payPills = (fd.payPills as unknown[]) || [];
+        if (payPills.length > 0) recordFeatureUsage('salary_filter_used');
+        // not_filter_set: any NOT pill present
+        const notPills = (fd.whatNotPills as unknown[]) || [];
+        const whereNotPills = (fd.whereNotPills as unknown[]) || [];
+        if (notPills.length > 0 || whereNotPills.length > 0) recordFeatureUsage('not_filter_set');
+      });
       // Search immediately after saving — legacy behavior
       actions.search(0);
     } catch (e) {

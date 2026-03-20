@@ -69,6 +69,12 @@ export default function TuningPage() {
     try {
       const current = await tuningProvider.getTuning() || {};
       await tuningProvider.saveTuning({ ...current, ...patch } as any);
+      // DC-05: Track exclusion_filter_set when any exclusion has content
+      const exclusionKeys = ['companyExclusions', 'titleExclusions', 'industryExclusions', 'locationExclusions'];
+      const hasExclusion = exclusionKeys.some(k => patch[k] && String(patch[k]).trim().length > 0);
+      if (hasExclusion) {
+        import('@app/hooks/useDiscovery').then(({ recordFeatureUsage }) => recordFeatureUsage('exclusion_filter_set'));
+      }
     } catch (e) { console.error('[BJ:Tuning] save error:', e); }
     setSaving(false);
   }, [tuningProvider]);

@@ -146,6 +146,9 @@ function buildActions(dispatch: React.Dispatch<ApplicationsAction>, reload: () =
 
     setMode(mode: AppMode) {
       localStorage.setItem('bj_app_mode', mode);
+      if (mode !== 'manual') {
+        import('@app/hooks/useDiscovery').then(({ recordFeatureUsage }) => recordFeatureUsage('auto_apply_configured'));
+      }
       dispatch({ type: 'UPDATE_MODE', mode });
       // Persist to Supabase profiles.user_data
       providers.user.updatePreferences({ applicationMode: mode }).catch(() => {});

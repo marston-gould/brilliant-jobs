@@ -148,7 +148,7 @@ export default function InterviewPrepPage() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <div className="text-[13px] text-text-dim">Practice interviews powered by Claude AI</div>
-            <button onClick={async () => { try { const { callGateway } = await import("@app/lib/supabase"); const result = await callGateway("interview-practice", { action: "start" }); if (result?.session_id) alert("Mock interview started! Session: " + result.session_id); } catch { alert("Failed to start mock interview"); } }} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-accent text-white text-[12px] font-semibold">
+            <button onClick={async () => { try { const { callGateway } = await import("@app/lib/supabase"); const result = await callGateway("interview-practice", { action: "start" }); if (result?.session_id) { import("@app/hooks/useDiscovery").then(({ recordFeatureUsage }) => recordFeatureUsage("interview_practice_started")); } alert("Mock interview started! Session: " + result.session_id); } catch { alert("Failed to start mock interview"); } }} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-accent text-white text-[12px] font-semibold">
               <Play className="w-3.5 h-3.5" strokeWidth={2} /> Start Mock Interview
             </button>
           </div>

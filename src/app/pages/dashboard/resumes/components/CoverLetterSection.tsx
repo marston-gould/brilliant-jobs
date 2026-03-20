@@ -27,6 +27,7 @@ export function CoverLetterSection() {
         tone,
       });
       setCoverLetter(result?.cover_letter || result?.text || 'No cover letter generated. Check your credits.');
+      import('@app/hooks/useDiscovery').then(({ recordFeatureUsage }) => recordFeatureUsage('cover_letter_generated'));
     } catch (e: any) {
       setError(e.message || 'Failed to generate cover letter');
     }

@@ -9,7 +9,7 @@
 // Design tokens only — zero inline styles.
 // ============================================================
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Badge, Button } from '@components';
 import type { FeedJob, TrustLabel, AiLabel } from '../hooks/useFeedSearch';
 
@@ -147,6 +147,36 @@ export function JobRow({
 
   const handleTitleClick = useCallback(() => setExpanded(prev => !prev), []);
 
+  // DC-07: Passive tracking — ghost badge and staffing flag viewport visibility
+  const ghostBadgeRef = useRef<HTMLSpanElement | null>(null);
+  const staffingBadgeRef = useRef<HTMLSpanElement | null>(null);
+  useEffect(() => {
+    const SESSION_KEY_GHOST = 'bj_tracked_ghost_badge';
+    const SESSION_KEY_STAFFING = 'bj_tracked_staffing_flag';
+    const observers: IntersectionObserver[] = [];
+    function observe(el: Element | null, sessionKey: string, featureKey: 'ghost_badge_viewed' | 'staffing_flag_viewed') {
+      if (!el) return;
+      try { if (sessionStorage.getItem(sessionKey)) return; } catch {}
+      let timer: ReturnType<typeof setTimeout> | null = null;
+      const obs = new IntersectionObserver(([entry]) => {
+        if (entry.isIntersecting) {
+          timer = setTimeout(() => {
+            try { sessionStorage.setItem(sessionKey, '1'); } catch {}
+            import('@app/hooks/useDiscovery').then(({ recordFeatureUsage }) => recordFeatureUsage(featureKey));
+            obs.disconnect();
+          }, 2000);
+        } else {
+          if (timer) clearTimeout(timer);
+        }
+      }, { threshold: 0.5 });
+      obs.observe(el);
+      observers.push(obs);
+    }
+    observe(ghostBadgeRef.current, SESSION_KEY_GHOST, 'ghost_badge_viewed');
+    observe(staffingBadgeRef.current, SESSION_KEY_STAFFING, 'staffing_flag_viewed');
+    return () => observers.forEach(o => o.disconnect());
+  }, []);
+
   // Filter number badges (max 3 + overflow)
   const filterBadges = useMemo(() => {
     const badges = (job._filterNums || []).filter(f => f.num);
@@ -207,8 +237,15 @@ export function JobRow({
             {isNew && (
               <Badge variant="info" size="sm">NEW</Badge>
             )}
-            <TrustBadge info={fraudInfo} />
+            <span ref={ghostBadgeRef} style={{display:'contents'}}><TrustBadge info={fraudInfo} /></span>
             <AiContentBadge info={aiInfo} />
+            {job.is_staffing_agency && (
+              <span ref={staffingBadgeRef}
+                className="inline-flex items-center px-1 py-0.5 rounded text-[9px] font-semibold bg-[rgba(156,163,175,0.15)] text-[#9ca3af]"
+                title="Staffing agency or recruiter posting">
+                AGENCY
+              </span>
+            )}
           </div>
         </td>
 
