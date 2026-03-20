@@ -9,7 +9,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { PageHeader } from '@app/components';
 import { useUser, useProviders } from '@providers';
-import { FileText, PenLine, Bell, Search, XCircle } from 'lucide-react';
+import { FileText, PenLine, Bell, Search, XCircle, CreditCard } from 'lucide-react';
 
 export default function BillingPage() {
   const userProvider = useUser();
@@ -45,18 +45,38 @@ export default function BillingPage() {
     });
   }, [userProvider, billing]);
 
+  // SUB-09: scroll to hash on mount (handles /billing#sub-referral-section after React lazy load)
+  useEffect(() => {
+    if (window.location.hash) {
+      const id = window.location.hash.slice(1);
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        // Element may not be rendered yet — retry after paint
+        requestAnimationFrame(() => {
+          const retryEl = document.getElementById(id);
+          if (retryEl) retryEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      }
+    }
+  }, []);
+
+  // TODO: wire to cohort config for per-cohort credit costs
   const creditCosts = [
-    { icon: FileText, name: 'Resume Score', desc: 'AI analysis of your resume against a job description', cost: '3 credits' },
-    { icon: PenLine, name: 'AI Resume Rewrite', desc: 'Tailored resume rewrite optimized for a specific role', cost: '5 credits' },
-    { icon: Bell, name: 'Smart Job Alert', desc: 'AI-filtered alerts matching your preferences', cost: '1 credit' },
-    { icon: Search, name: 'AI Filter Suggest', desc: 'Generate optimized search filters from your resume', cost: '2 credits' },
-    { icon: XCircle, name: 'AI Exclusions', desc: 'AI-powered analysis to suggest exclusion patterns', cost: '1 credit' },
+    { icon: FileText, name: 'Resume Score', desc: 'AI analysis of your resume against a job description', cost: '1 credit' },
+    { icon: PenLine, name: 'AI Resume Rewrite (full)', desc: 'Full resume rewrite optimized for a specific role', cost: '8 credits' },
+    { icon: PenLine, name: 'AI Resume Tailoring', desc: 'Targeted tailoring of your resume for a role', cost: '5 credits' },
+    { icon: Search, name: 'AI Filter Suggest', desc: 'Generate optimized search filters from your resume', cost: '1 credit' },
+    { icon: Bell, name: 'Smart Job Alert', desc: 'AI-filtered job alerts', cost: 'Included free' },
+    { icon: XCircle, name: 'AI Exclusions', desc: 'AI-powered exclusion pattern suggestions', cost: 'Included free' },
   ];
 
+  // TODO: wire to cohort config system for per-cohort pricing
   const plans = [
-    { name: 'Free', price: '$0', period: '/mo', credits: '0', payg: '$0.25', highlight: tier === 'Free' },
-    { name: 'Starter', price: '$9', period: '/mo', credits: '50', payg: '$0.15', highlight: tier === 'starter' },
-    { name: 'Pro', price: '$29', period: '/mo', credits: '300', payg: '$0.10', highlight: tier === 'pro' || tier === 'active_pro' },
+    { name: 'Free Trial', price: '0', period: '7 days', credits: '~25', payg: '0.25', highlight: tier === 'Free' },
+    { name: 'Starter', price: '20', period: '/mo', credits: '100', payg: '0.15', highlight: tier === 'starter' },
+    { name: 'Pro', price: '40', period: '/mo', credits: '300', payg: '0.10', highlight: tier === 'pro' || tier === 'active_pro' },
   ];
 
   const cardCls = "border border-border rounded-xl bg-bg-card p-6 mb-5";
@@ -71,9 +91,9 @@ export default function BillingPage() {
         <div className="border border-border rounded-xl bg-bg-card p-5">
           <div className="text-[12px] font-semibold text-text-dim mb-1">Current Plan</div>
           <div className="text-[24px] font-bold text-text">{tier === 'active_pro' ? 'Pro' : tier.charAt(0).toUpperCase() + tier.slice(1)}</div>
-          <div className="text-[14px] text-accent font-semibold">{plans.find(p => p.highlight)?.price || '$0'}/mo</div>
+          <div className="text-[14px] text-accent font-semibold">{plans.find(p => p.highlight)?.price || '0'}{plans.find(p => p.highlight)?.period || '/mo'}</div>
           <div className="text-[11px] text-text-faint mt-1">{plans.find(p => p.highlight)?.credits || '0'} credits included/month</div>
-          <div className="text-[11px] text-text-faint">PAYG rate: {plans.find(p => p.highlight)?.payg || '$0.25'}/credit</div>
+          <div className="text-[11px] text-text-faint">PAYG rate: {plans.find(p => p.highlight)?.payg || '0.25'}/credit</div>
           <button onClick={openPortal} className="mt-3 px-3 py-1.5 rounded-md text-xs font-medium border border-border text-text-dim hover:border-accent">Manage Billing</button>
         </div>
 
@@ -161,20 +181,28 @@ export default function BillingPage() {
       <div className={cardCls}>
         <div id="credit-packs" className="text-[14px] font-bold text-text mb-1">Buy Credit Packs</div>
         <div className="text-[12px] text-text-dim mb-4">One-time purchase at your plan's rate. Credits never expire.</div>
+        {/* Pro users get 50% off credit packs per PricingModule spec */}
         <div className="grid grid-cols-3 gap-3.5">
           {[
-            { amount: 25, price: '$5' },
-            { amount: 60, price: '$10', badge: 'Most Popular' },
-            { amount: 150, price: '$20', badge: 'Best Value' },
-          ].map(pack => (
-            <div key={pack.amount} className="border border-border rounded-xl p-5 text-center hover:border-accent transition-all">
-              <div className="font-mono text-[28px] font-bold text-text">{pack.amount}</div>
-              <div className="text-[11px] text-text-faint">credits</div>
-              <div className="font-mono text-[18px] font-semibold text-accent mt-1 mb-0.5">{pack.price}</div>
-              {pack.badge && <div className="text-[9px] font-semibold text-accent bg-accent/10 px-2 py-0.5 rounded-full mt-1 inline-block">{pack.badge}</div>}
-              <button onClick={() => startCheckout("credits", String(pack.amount))} className="mt-2 px-3 py-1 rounded-md text-xs font-semibold bg-accent text-white w-full">Buy</button>
-            </div>
-          ))}
+            { amount: 10,  price: '2',  proPrice: '1',  badge: undefined },
+            { amount: 50,  price: '8',  proPrice: '4',  badge: 'Most Popular' },
+            { amount: 100, price: '15', proPrice: '7.50', badge: 'Best Value' },
+          ].map(pack => {
+            const isPro = tier === 'pro' || tier === 'active_pro';
+            const displayPrice = isPro ? pack.proPrice : pack.price;
+            const fullPrice    = isPro ? pack.price : null;
+            return (
+              <div key={pack.amount} className="border border-border rounded-xl p-5 text-center hover:border-accent transition-all">
+                <div className="font-mono text-[28px] font-bold text-text">{pack.amount}</div>
+                <div className="text-[11px] text-text-faint">credits</div>
+                {fullPrice && <div className="font-mono text-[13px] text-text-faint line-through mt-1">{fullPrice}</div>}
+                <div className="font-mono text-[18px] font-semibold text-accent mb-0.5">{displayPrice}</div>
+                {isPro && <div className="text-[9px] font-semibold text-green bg-green/10 px-2 py-0.5 rounded-full mb-1 inline-block">50% off</div>}
+                {pack.badge && !isPro && <div className="text-[9px] font-semibold text-accent bg-accent/10 px-2 py-0.5 rounded-full mt-1 inline-block">{pack.badge}</div>}
+                <button onClick={() => startCheckout("credits", String(pack.amount))} className="mt-2 px-3 py-1 rounded-md text-xs font-semibold bg-accent text-white w-full">Buy</button>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -187,9 +215,9 @@ export default function BillingPage() {
         </label>
         <div className="flex gap-3 mt-2">
           {[
-            { amount: 25, price: '$5', label: 'Small' },
-            { amount: 60, price: '$10', label: 'Medium', discount: 'Best value' },
-            { amount: 150, price: '$20', label: 'Large' },
+            { amount: 10,  price: '2',  label: 'Small' },
+            { amount: 50,  price: '8',  label: 'Medium', discount: 'Best value' },
+            { amount: 100, price: '15', label: 'Large' },
           ].map(level => (
             <label key={level.amount} className="flex-1 border border-border rounded-[10px] p-3.5 cursor-pointer hover:border-accent transition-colors text-center">
               <input type="radio" name="refill-level" className="hidden" />
@@ -223,14 +251,14 @@ export default function BillingPage() {
         <div className="text-[14px] font-bold text-text mb-1">Pay When You're Hired</div>
         <div className="text-[12px] text-text-dim mb-4">Only pay a success fee when Brilliant Jobs helps you land a job.</div>
         <div className="flex items-center gap-3 p-4 rounded-lg bg-bg-input">
-          <div className="text-2xl">💳</div>
+          <CreditCard className="w-6 h-6 text-accent flex-shrink-0" strokeWidth={1.75} />
           <div className="flex-1">
             <div className="text-[13px] font-semibold text-text">No payment method on file</div>
             <div className="text-[11px] text-text-faint mt-0.5">Add a card to enable pay-when-hired.</div>
           </div>
           <button onClick={() => startCheckout("setup", "hire_fee")} className="px-3 py-1.5 rounded-md text-xs font-semibold bg-accent text-white">Authorize Card</button>
         </div>
-        <div className="text-[11px] text-text-faint mt-3">Success fee: 5% of first-year base salary (min $500, max $5,000). Only charged when you confirm.</div>
+        <div className="text-[11px] text-text-faint mt-3">Success fee: 5% of first-year base salary (min 500, max 5,000). Only charged when you confirm.</div>
       </div>
     </div>
   );
