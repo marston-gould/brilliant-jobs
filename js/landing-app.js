@@ -563,7 +563,7 @@ document.addEventListener("DOMContentLoaded", function() {
     previewGoBtn.addEventListener("click", async () => {
       const keyword = $("#preview-keyword").value.trim();
       const location = $("#preview-location").value.trim();
-      const remote = document.getElementById("preview-remote").checked;
+      const remote = false;
       if (!keyword && !location) return;
       previewGoBtn.disabled = true;
       previewGoBtn.textContent = "Searching...";
@@ -625,10 +625,6 @@ document.addEventListener("DOMContentLoaded", function() {
           throw new Error(data.message || data.error);
         }
         previewToken = data.session_token;
-        document.getElementById("pv-total").textContent = data.total.toLocaleString();
-        document.getElementById("pv-salary").textContent = data.median_salary ? "$" + Math.round(data.median_salary / 1e3) + "K" : "N/A";
-        document.getElementById("pv-remote").textContent = data.remote_pct + "%";
-        document.getElementById("pv-companies").textContent = data.companies.toLocaleString();
         var jobs = data.jobs || [];
         var visibleCards = jobs.slice(0, 6).map(pvCard2).join("");
         var blurredCards = jobs.slice(6, 8).map(pvCard2).join("");
@@ -638,6 +634,12 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         document.getElementById("pv-banner-text").textContent = "Sign up free to see all " + data.total.toLocaleString() + " jobs";
         document.getElementById("preview-results").classList.remove("lp-hidden");
+        var exCards = document.getElementById("pv-example-cards");
+        if (exCards) exCards.style.display = "none";
+        document.getElementById("pv-total").textContent = data.total.toLocaleString();
+        document.getElementById("pv-salary").textContent = data.median_salary ? "$" + Math.round(data.median_salary / 1e3) + "K" : "N/A";
+        document.getElementById("pv-remote").textContent = data.remote_pct + "%";
+        document.getElementById("pv-companies").textContent = data.companies.toLocaleString();
         if (window.posthog) posthog.capture("preview_results_shown", {
           total_jobs: data.total,
           jobs_returned: jobs.length,
@@ -690,6 +692,24 @@ document.addEventListener("DOMContentLoaded", function() {
       if (e.key === "Enter") previewGoBtn.click();
     });
   });
+  var compareLink = document.getElementById("pv-compare-link");
+  if (compareLink) compareLink.addEventListener("click", function() {
+    if (window.posthog) posthog.capture("search_preview_compare_clicked");
+  });
+  var filterBar = document.getElementById("pv-filter-bar");
+  if (filterBar) filterBar.addEventListener("click", function(e) {
+    var target = e.target;
+    if (target.classList && (target.classList.contains("pv-pill") || target.closest(".pv-pill"))) {
+      var pill = target.closest(".pv-pill") || target;
+      var type = "unknown";
+      if (pill.classList.contains("pv-pill-blue")) type = "what";
+      else if (pill.classList.contains("pv-pill-teal")) type = "where";
+      else if (pill.classList.contains("pv-pill-red")) type = "not";
+      else if (pill.classList.contains("pv-pill-purple")) type = "level";
+      if (window.posthog) posthog.capture("search_preview_filter_clicked", { filter_type: type });
+    }
+  });
+  if (window.posthog) posthog.capture("search_preview_viewed");
   const heroPreviewBtn = document.getElementById("hero-preview-btn");
   if (heroPreviewBtn) {
     heroPreviewBtn.addEventListener("click", () => {

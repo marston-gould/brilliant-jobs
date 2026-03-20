@@ -1026,3 +1026,14 @@ html:not([data-segment]) footer.segment-new { display: block; }
 .pv-banner-btn { font-size: 14px; padding: 10px 24px; border: none; border-radius: 10px; background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; font-family: var(--sans); white-space: nowrap; }
 .pv-banner-btn:hover { background: var(--accent-hover, #3b5ae0); }
 @media (max-width: 640px) { .pv-card-grid { grid-template-columns: 1fr; } .pv-signup-banner { flex-direction: column; text-align: center; } }
+
+/* ── Preview Filter Pill Ramps (SP-02/SP-03) ── */
+.pv-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 100px; cursor: pointer; }
+.pv-pill-x { font-size: 13px; opacity: 0.5; margin-left: 2px; }
+.pv-pill-blue { background: #E6F1FB; color: #0C447C; }
+.pv-pill-blue .pv-pill-x { color: #B5D4F4; }
+.pv-pill-teal { background: #E1F5EE; color: #085041; }
+.pv-pill-teal .pv-pill-x { color: #A7E8D0; }
+.pv-pill-red { background: #FCEBEB; color: #791F1F; }
+.pv-pill-red .pv-pill-x { color: #F7C1C1; }
+.pv-pill-purple { background: #EEEDFE; color: #3C3489; }

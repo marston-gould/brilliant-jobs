@@ -611,7 +611,7 @@ document.addEventListener('DOMContentLoaded', function() {
       previewGoBtn.addEventListener('click', async () => {
         const keyword = $('#preview-keyword').value.trim();
         const location = $('#preview-location').value.trim();
-        const remote = document.getElementById('preview-remote').checked;
+        const remote = false; // Remote toggle removed from redesigned preview
 
         if (!keyword && !location) return;
 
@@ -644,11 +644,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
           previewToken = data.session_token;
 
-          // Populate stat cards
-          document.getElementById('pv-total').textContent = data.total.toLocaleString();
-          document.getElementById('pv-salary').textContent = data.median_salary ? '$' + Math.round(data.median_salary / 1000) + 'K' : 'N/A';
-          document.getElementById('pv-remote').textContent = data.remote_pct + '%';
-          document.getElementById('pv-companies').textContent = data.companies.toLocaleString();
+          // Stat cards updated after results render below
 
           // Render job cards from data.jobs[] (FB-PREVIEW-CARDS-001)
           function pvGetLevel(title) {
@@ -697,6 +693,14 @@ document.addEventListener('DOMContentLoaded', function() {
           }
           document.getElementById('pv-banner-text').textContent = 'Sign up free to see all ' + data.total.toLocaleString() + ' jobs';
           document.getElementById('preview-results').classList.remove('lp-hidden');
+          // Hide example cards after real search
+          var exCards = document.getElementById('pv-example-cards');
+          if (exCards) exCards.style.display = 'none';
+          // Update stat cards with real data
+          document.getElementById('pv-total').textContent = data.total.toLocaleString();
+          document.getElementById('pv-salary').textContent = data.median_salary ? '$' + Math.round(data.median_salary / 1000) + 'K' : 'N/A';
+          document.getElementById('pv-remote').textContent = data.remote_pct + '%';
+          document.getElementById('pv-companies').textContent = data.companies.toLocaleString();
 
           if (window.posthog) posthog.capture('preview_results_shown', {
             total_jobs: data.total, jobs_returned: jobs.length, has_salary_data: !!data.median_salary,
@@ -749,6 +753,26 @@ document.addEventListener('DOMContentLoaded', function() {
       const el = document.getElementById(id);
       if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') previewGoBtn.click(); });
     });
+
+    // PostHog: compare link + filter bar clicks
+    var compareLink = document.getElementById('pv-compare-link');
+    if (compareLink) compareLink.addEventListener('click', function() {
+      if (window.posthog) posthog.capture('search_preview_compare_clicked');
+    });
+    var filterBar = document.getElementById('pv-filter-bar');
+    if (filterBar) filterBar.addEventListener('click', function(e) {
+      var target = e.target;
+      if (target.classList && (target.classList.contains('pv-pill') || target.closest('.pv-pill'))) {
+        var pill = target.closest('.pv-pill') || target;
+        var type = 'unknown';
+        if (pill.classList.contains('pv-pill-blue')) type = 'what';
+        else if (pill.classList.contains('pv-pill-teal')) type = 'where';
+        else if (pill.classList.contains('pv-pill-red')) type = 'not';
+        else if (pill.classList.contains('pv-pill-purple')) type = 'level';
+        if (window.posthog) posthog.capture('search_preview_filter_clicked', { filter_type: type });
+      }
+    });
+    if (window.posthog) posthog.capture('search_preview_viewed');
 
     // ============================================================
     // HERO PREVIEW BUTTON — scroll to preview

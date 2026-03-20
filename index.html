@@ -315,39 +315,141 @@ height="0" width="0" class="gtm-iframe"></iframe></noscript>
   <section class="section fade-up segment-new segment-returning" id="lp-preview">
     <div class="preview-section" id="preview-section">
       <h3>See jobs in your field</h3>
-      <div class="sub">Try a search — no account needed.</div>
+      <div class="sub">Try a search — or explore the filters no other job site has.</div>
 
+      <!-- Search row (functional) -->
       <div class="preview-filters" id="preview-filters">
         <div class="preview-input-row">
           <label for="preview-keyword" class="sr-only">Job title or keywords</label>
-          <input type="text" id="preview-keyword" placeholder="Job title or keywords (e.g. SEO, growth marketing)"
+          <input type="text" id="preview-keyword" placeholder="Job title or keywords (e.g. product manager)"
                  class="preview-input" maxlength="100">
           <label for="preview-location" class="sr-only">City or state</label>
-          <input type="text" id="preview-location" placeholder="City or state (e.g. Portland, OR)"
+          <input type="text" id="preview-location" placeholder="City or state (e.g. San Francisco, CA)"
                  class="preview-input" maxlength="100">
-          <label class="preview-toggle">
-            <input type="checkbox" id="preview-remote"> Remote only
-          </label>
         </div>
-        <button class="btn btn-primary preview-go" id="preview-go">Search Jobs →</button>
+        <button class="btn btn-primary preview-go" id="preview-go">Search</button>
       </div>
 
-      <div class="preview-results lp-hidden" id="preview-results">
-        <div class="preview-stats">
-          <div class="preview-stat"><span class="preview-stat-val" id="pv-total">—</span><span class="preview-stat-label">Jobs Found</span></div>
-          <div class="preview-stat"><span class="preview-stat-val" id="pv-salary">—</span><span class="preview-stat-label">Median Salary</span></div>
-          <div class="preview-stat"><span class="preview-stat-val" id="pv-remote">—</span><span class="preview-stat-label">Remote</span></div>
-          <div class="preview-stat"><span class="preview-stat-val" id="pv-companies">—</span><span class="preview-stat-label">Companies</span></div>
+      <!-- Merchandised filter bar (static/decorative, triggers signup on click) -->
+      <div id="pv-filter-bar" style="background:#fff;border:1px solid #e2e4ea;border-radius:14px;padding:20px 24px;margin:20px 0 0;cursor:default">
+        <!-- WHAT -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+          <span style="font-size:10px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:#4a4f5e;width:54px;flex-shrink:0">WHAT</span>
+          <span class="pv-pill pv-pill-blue" onclick="openModal('signup')">product manager <span class="pv-pill-x">×</span></span>
+          <span class="pv-pill pv-pill-blue" onclick="openModal('signup')">product lead <span class="pv-pill-x">×</span></span>
+          <span style="font-size:11px;color:#8b91a3;cursor:pointer" onclick="openModal('signup')">+ add keyword</span>
         </div>
+        <!-- WHERE -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+          <span style="font-size:10px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:#4a4f5e;width:54px;flex-shrink:0">WHERE</span>
+          <span class="pv-pill pv-pill-teal" onclick="openModal('signup')">San Francisco, CA <span class="pv-pill-x">×</span></span>
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#4a4f5e;cursor:pointer;margin-left:8px" onclick="event.preventDefault();openModal('signup')">
+            <span style="width:32px;height:18px;border-radius:9px;background:#3b82f6;position:relative;display:inline-block"><span style="width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:2px;left:16px"></span></span>
+            Include remote
+          </label>
+        </div>
+        <!-- NOT (differentiator) -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;padding:8px 0;border-top:1px dashed #e2e4ea;border-bottom:1px dashed #e2e4ea">
+          <span style="font-size:10px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:#791F1F;width:54px;flex-shrink:0">NOT</span>
+          <span class="pv-pill pv-pill-red" onclick="openModal('signup')">McKinsey <span class="pv-pill-x">×</span></span>
+          <span class="pv-pill pv-pill-red" onclick="openModal('signup')">Deloitte <span class="pv-pill-x">×</span></span>
+          <span class="pv-pill pv-pill-red" onclick="openModal('signup')">"associate" <span class="pv-pill-x">×</span></span>
+          <span style="font-size:11px;color:#791F1F;cursor:pointer;font-weight:500" onclick="openModal('signup')">+ exclude more</span>
+        </div>
+        <!-- SALARY -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+          <span style="font-size:10px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:#4a4f5e;width:54px;flex-shrink:0">SALARY</span>
+          <div style="flex:1;display:flex;align-items:center;gap:8px;min-width:200px" onclick="openModal('signup')">
+            <span style="font-size:13px;font-weight:600;color:#1a1d26">$120K</span>
+            <div style="flex:1;height:4px;background:#e2e4ea;border-radius:2px;position:relative;cursor:pointer"><div style="position:absolute;left:15%;right:25%;height:100%;background:#3b82f6;border-radius:2px"></div></div>
+            <span style="font-size:13px;font-weight:600;color:#1a1d26">$220K</span>
+          </div>
+          <span style="font-size:10px;color:#8b91a3;font-style:italic">from real postings</span>
+        </div>
+        <!-- LEVEL -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+          <span style="font-size:10px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:#4a4f5e;width:54px;flex-shrink:0">LEVEL</span>
+          <span class="pv-pill pv-pill-purple" onclick="openModal('signup')">Senior</span>
+          <span class="pv-pill pv-pill-purple" onclick="openModal('signup')">Lead</span>
+          <span style="font-size:11px;padding:3px 10px;border-radius:100px;border:1.5px dashed #D0D5DD;color:#8b91a3;cursor:pointer" onclick="openModal('signup')">Manager</span>
+          <span style="font-size:11px;padding:3px 10px;border-radius:100px;border:1.5px dashed #D0D5DD;color:#8b91a3;cursor:pointer" onclick="openModal('signup')">Director</span>
+        </div>
+        <!-- FLAGS -->
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <span style="font-size:10px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:#4a4f5e;width:54px;flex-shrink:0">FLAGS</span>
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#4a4f5e;cursor:pointer" onclick="event.preventDefault();openModal('signup')">
+            <span style="width:32px;height:18px;border-radius:9px;background:#CBD5E1;position:relative;display:inline-block"><span style="width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px"></span></span>
+            Hide staffing agencies
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#4a4f5e;cursor:pointer" onclick="event.preventDefault();openModal('signup')">
+            <span style="width:32px;height:18px;border-radius:9px;background:#CBD5E1;position:relative;display:inline-block"><span style="width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px"></span></span>
+            Hide no-salary
+          </label>
+        </div>
+      </div>
+
+      <!-- Stat cards (example data, updated after real search) -->
+      <div class="preview-stats" id="pv-stats-row">
+        <div class="preview-stat"><span class="preview-stat-val" id="pv-total">847</span><span class="preview-stat-label">Jobs Found</span></div>
+        <div class="preview-stat"><span class="preview-stat-val" id="pv-salary">$168K</span><span class="preview-stat-label">Median Salary</span></div>
+        <div class="preview-stat"><span class="preview-stat-val" id="pv-remote">34%</span><span class="preview-stat-label">Remote</span></div>
+        <div class="preview-stat"><span class="preview-stat-val" id="pv-companies">312</span><span class="preview-stat-label">Companies</span></div>
+      </div>
+
+      <!-- Example job cards -->
+      <div id="pv-example-cards" class="pv-card-grid" style="margin-bottom:10px">
+        <div class="pv-job-card">
+          <div class="pv-card-body">
+            <div class="pv-title-row">
+              <span class="pv-job-title">Senior Product Manager</span>
+              <span class="pv-level-badge" style="background:#EEEDFE;color:#3C3489">Senior</span>
+              <span class="pv-level-badge" style="background:#dcfce7;color:#166534">92% match</span>
+            </div>
+            <div class="pv-meta-row"><span class="pv-company">Stripe</span><span class="pv-meta-dot">·</span>San Francisco, CA<span class="pv-meta-dot">·</span>3d<span class="pv-meta-dot">·</span>$165k–$210k</div>
+          </div>
+          <div><button class="pv-signup-btn" onclick="openModal('signup')">Sign Up</button></div>
+        </div>
+        <div class="pv-job-card">
+          <div class="pv-card-body">
+            <div class="pv-title-row">
+              <span class="pv-job-title">Lead Product Manager, Growth</span>
+              <span class="pv-level-badge" style="background:#EEEDFE;color:#3C3489">Lead</span>
+              <span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:500;padding:1px 7px;border-radius:100px;background:#FEF3C7;color:#92400E"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Ghost reported</span>
+            </div>
+            <div class="pv-meta-row"><span class="pv-company">Coinbase</span><span class="pv-meta-dot">·</span>Remote<span class="pv-meta-dot">·</span>8d<span class="pv-meta-dot">·</span>$180k–$225k</div>
+          </div>
+          <div><button class="pv-signup-btn" onclick="openModal('signup')">Sign Up</button></div>
+        </div>
+        <div class="pv-job-card" style="opacity:0.4;pointer-events:none">
+          <div class="pv-card-body">
+            <div class="pv-title-row">
+              <span class="pv-job-title">Product Manager, Platform</span>
+              <span class="pv-level-badge" style="background:#EEEDFE;color:#3C3489">Mid</span>
+            </div>
+            <div class="pv-meta-row"><span class="pv-company">Figma</span><span class="pv-meta-dot">·</span>San Francisco, CA<span class="pv-meta-dot">·</span>1d<span class="pv-meta-dot">·</span>$140k–$185k</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Real search results (hidden until search) -->
+      <div class="lp-hidden" id="preview-results">
         <div class="pv-card-grid" id="pv-card-grid"></div>
         <div class="pv-card-blur" id="pv-card-blur"></div>
-        <div class="pv-signup-banner">
-          <div>
-            <div class="pv-banner-text" id="pv-banner-text">Sign up free to see all jobs</div>
-            <div class="pv-banner-sub">Full salary data, company details, filtering, and one-click apply.</div>
-          </div>
-          <button class="pv-banner-btn" id="pv-banner-signup">Start Free</button>
+      </div>
+
+      <!-- CTA -->
+      <div class="pv-signup-banner" style="margin-top:16px">
+        <div>
+          <div class="pv-banner-text" id="pv-banner-text">Sign up free to see all 847 jobs</div>
+          <div class="pv-banner-sub">Full salary data, company details, ghost badges, and one-click apply.</div>
         </div>
+        <button class="pv-banner-btn" id="pv-banner-signup">Start Free</button>
+      </div>
+
+      <!-- Compare link -->
+      <div style="text-align:center;margin-top:16px;font-size:13px;color:#4a4f5e">
+        See how we compare to LinkedIn, Indeed, and others
+        <a href="/compare" id="pv-compare-link" style="display:block;margin-top:4px;color:#3b82f6;font-weight:600">Compare features →</a>
       </div>
 
       <div class="preview-locked lp-hidden" id="preview-locked">
