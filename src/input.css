@@ -353,3 +353,34 @@
 @media (max-width: 900px) {
   .stats-chart-grid { grid-template-columns: 1fr !important; }
 }
+
+/* ── Satisfaction prompt — centered modal overlay (FB-08, v11.54) ── */
+.sat-prompt-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(2px);
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.sat-prompt-overlay.sat-prompt--visible {
+  display: flex;
+}
+.sat-prompt-modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px;
+  width: 100%;
+  max-width: 380px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+}
+.sat-score-btn.sat-score-btn--active,
+.sat-score-btn[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
