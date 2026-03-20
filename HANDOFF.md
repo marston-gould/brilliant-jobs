@@ -4571,7 +4571,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v11.49`** | **Admin MFA gate restored — /admin now serves admin.html with TOTP double-auth. 2026-03-20.** |
+| **Product (BJ_VERSION)** | **`v11.50`** | **Feedback system — exit survey, feedback page, sat prompt. 2026-03-20.** | — /admin now serves admin.html with TOTP double-auth. 2026-03-20.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
