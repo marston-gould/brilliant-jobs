@@ -19,8 +19,8 @@
   <link rel="stylesheet" href="/styles.css?v=v11.57">
   <style>
     body {
-      background: var(--bg-main, #0c0e13);
-      color: var(--text, #e2e4ea);
+      background: #f5f6f8;
+      color: #1a1d27;
       font-family: 'Outfit', sans-serif;
       line-height: 1.7;
       min-height: 100vh;
@@ -31,7 +31,7 @@
       position: sticky;
       top: 0;
       z-index: 200;
-      background: rgba(12,14,19,0.85);
+      background: rgba(245,246,248,0.92);
       backdrop-filter: blur(16px);
       border-bottom: 1px solid rgba(255,255,255,0.08);
       padding: 0 32px;
@@ -43,7 +43,7 @@
     .about-nav-brand {
       font-weight: 700;
       font-size: 17px;
-      color: #fff;
+      color: #1a1d27;
       text-decoration: none;
       display: flex;
       align-items: center;
@@ -62,21 +62,21 @@
     .about-nav-links a {
       font-size: 14px;
       font-weight: 500;
-      color: rgba(255,255,255,0.65);
+      color: rgba(26,29,39,0.65);
       text-decoration: none;
       transition: color 0.15s;
     }
-    .about-nav-links a:hover { color: #fff; }
+    .about-nav-links a:hover { color: #1a1d27; }
     .about-nav-cta {
       padding: 8px 20px;
-      background: #fff;
-      color: #0c0e13 !important;
+      background: #4d8eff;
+      color: #fff !important;
       border-radius: 8px;
       font-weight: 700 !important;
       font-size: 13px !important;
       letter-spacing: 0.3px;
     }
-    .about-nav-cta:hover { background: rgba(255,255,255,0.88) !important; }
+    .about-nav-cta:hover { background: #3a7aee !important; }
 
     /* ── Page layout ── */
     .about-main {
@@ -90,7 +90,7 @@
       text-transform: uppercase;
       letter-spacing: 2px;
       font-weight: 700;
-      color: var(--accent, #4d8eff);
+      color: #4d8eff;
       margin-bottom: 20px;
     }
 
@@ -98,7 +98,7 @@
       font-size: clamp(28px, 5vw, 40px);
       font-weight: 700;
       line-height: 1.2;
-      color: #fff;
+      color: #1a1d27;
       margin-bottom: 40px;
     }
 
@@ -114,7 +114,7 @@
       width: 120px;
       height: 120px;
       border-radius: 50%;
-      background: rgba(77,142,255,0.08);
+      background: rgba(77,142,255,0.06);
       border: 2px solid rgba(255,255,255,0.12);
       display: flex;
       align-items: center;
@@ -127,17 +127,17 @@
       width: 52px;
       height: 52px;
       border-radius: 50%;
-      background: rgba(255,255,255,0.12);
+      background: rgba(77,142,255,0.15);
     }
     .about-photo-name {
       font-size: 15px;
       font-weight: 600;
-      color: var(--text, #e2e4ea);
+      color: #1a1d27;
       text-align: center;
     }
     .about-photo-title {
       font-size: 13px;
-      color: rgba(255,255,255,0.5);
+      color: #6b7280;
       text-align: center;
       margin-top: -6px;
     }
@@ -146,7 +146,7 @@
     .about-body p {
       font-size: 17px;
       line-height: 1.75;
-      color: rgba(255,255,255,0.82);
+      color: #374151;
       margin-bottom: 24px;
     }
     .about-body p:last-child { margin-bottom: 0; }
@@ -154,7 +154,7 @@
     .about-sig {
       font-size: 18px;
       font-weight: 600;
-      color: #fff;
+      color: #1a1d27;
       margin-top: 36px;
       margin-bottom: 0;
     }
@@ -193,14 +193,14 @@
     }
     .about-footer-links a {
       font-size: 13px;
-      color: rgba(255,255,255,0.45);
+      color: rgba(26,29,39,0.45);
       text-decoration: none;
       transition: color 0.15s;
     }
-    .about-footer-links a:hover { color: var(--accent, #4d8eff); }
+    .about-footer-links a:hover { color: #4d8eff; }
     .about-footer-copy {
       font-size: 12px;
-      color: rgba(255,255,255,0.3);
+      color: rgba(26,29,39,0.3);
     }
 
     @media (max-width: 640px) {
@@ -234,10 +234,11 @@
     <div class="about-eyebrow">Our Story</div>
     <h1 class="about-h1">Why Brilliant Jobs Exists</h1>
 
-    <!-- Photo placeholder — replace with <img> when photo available -->
     <div class="about-photo-wrap">
       <div class="about-photo" aria-label="Photo of Marston, founder of Brilliant Jobs">
-        <!-- Replace with: <img src="/img/marston.webp" alt="Marston, founder" width="120" height="120" style="border-radius:50%;object-fit:cover;width:100%;height:100%;"> -->
+        <img src="/img/marston.webp" alt="Marston, founder of Brilliant Jobs"
+             width="240" height="240"
+             style="border-radius:50%;object-fit:cover;width:100%;height:100%;display:block;">
       </div>
       <div class="about-photo-name">Marston</div>
       <div class="about-photo-title">Founder &amp; CPO</div>
