@@ -52,7 +52,19 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**PR-01 through PR-12 + Admin Footer Link** — Pricing Module Redesign ✅ (2026-03-20)
+**LP-01 through LP-16** — Landing Page Restructure + Benefit Carousel + Benefits Page + Compare v2 ✅ (2026-03-20)
+- v11.46 → v11.47
+- **Spec:** POD3_HANDOFF_LandingPageRestructure.docx (all 16 requirements implemented)
+- **index.html:** Section reorder complete. "The Rigged Game" removed. Ghost section → pos 4. Benefit carousel slot → pos 5. How It Works → pos 6. Market Data + Insights consolidated → pos 7. Pricing stays pos 8. FAQ → pos 9. Nav updated (#why → #benefits, All Benefits link added).
+- **landing.css:** Carousel CSS appended — track, snap scroll, cards, arrows, dots, responsive (arrows hidden mobile).
+- **js/carousel.js (NEW):** Fisher-Yates shuffle picks 5 of 25 cards per page load. See-all card fixed at position 6. PostHog: benefit_card_viewed, benefit_card_clicked, benefit_seeall_clicked.
+- **benefits.html (NEW):** 136 features across 13 categories. Anchor IDs: #ghost, #filters, #apply, #market, #tracking, #safety, #salary, #network, #ai, #notif, #linkedin, #community, #coverage. BJ-exclusive green tags. "Compare this category →" links. Bottom CTA. Light theme. Schema.org WebPage.
+- **compare.html (REWRITE):** Multi-competitor grid v2 shell. Light theme. Nav. Schema.org.
+- **js/compare.js (REWRITE):** BJ always pinned left. Up to 6 competitors. Default: LI, IN, ZR, SM, JS. "Edit competitors" pill picker. Category filter pills. Hash deep-linking (#ghost, #filters, #apply, #market). BJ-exclusive row green tints. Score rows per category. Bottom CTA.
+- **benefit-cards/ (NEW):** 26 WebP images committed — 01–25 benefit cards + 26-see-all-benefits.webp.
+- **js/version.js:** v11.46 → v11.47
+
+**Previous: PR-01 through PR-12 + Admin Footer Link** — Pricing Module Redesign ✅ (2026-03-20)
 - v11.45 → v11.46
 - **Spec:** POD3_HANDOFF_PricingModule.docx (all 12 requirements fulfilled)
 - **index.html:** Replaced old Free/Starter/Pro cards with new Free Trial/Starter/Pro layout. Added referral callout card, PAYL coming-soon block with email capture, footer disclaimer. Admin link added to footer.
@@ -4542,7 +4554,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v11.46`** | **Pricing module redesign (PR-01–PR-12) + admin footer link. payl_waitlist table live. 2026-03-20.** |
+| **Product (BJ_VERSION)** | **`v11.47`** | **Landing page restructure + benefit carousel + benefits.html + compare v2. 2026-03-20.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
