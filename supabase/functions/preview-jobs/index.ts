@@ -85,7 +85,8 @@ serve(async (req: Request) => {
     if (keyword) {
       const safeFts = keyword.replace(/['"<>:!&|()\\]/g, ' ').replace(/\s+/g, ' ').trim();
       if (safeFts) {
-        q = q.or(`title.ilike.%${keyword}%,content_tsv.wfts(english).${safeFts}`);
+        const ftsOp = safeFts.includes(' ') ? 'phfts' : 'wfts';
+        q = q.or(`title.ilike.%${keyword}%,content_tsv.${ftsOp}(english).${safeFts}`);
       } else {
         q = q.ilike('title', `%${keyword}%`);
       }

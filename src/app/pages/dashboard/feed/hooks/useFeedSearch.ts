@@ -355,10 +355,13 @@ function buildFilterQuery(
       const safe = v.replace(/[,()]/g, '').trim();
       if (!safe) return [];
       if (contentSearchEnabled) {
-        // FA-001: OR title match with full-text content match
+        // Use phfts (phrase search) for multi-word terms to avoid false positives
+        // e.g. "organic search" matches as phrase, not "organic" AND "search" separately
+        const hasSpace = safe.includes(' ');
+        const ftsOp = hasSpace ? 'phfts' : 'wfts';
         return [
           `title.ilike.%${safe}%`,
-          `content_tsv.wfts(english).${safe}`,
+          `content_tsv.${ftsOp}(english).${safe}`,
         ];
       }
       return [`title.ilike.%${safe}%`];
