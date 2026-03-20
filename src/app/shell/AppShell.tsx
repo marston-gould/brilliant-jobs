@@ -89,6 +89,7 @@ const SECTIONS: NavSection[] = [
   {
     label: 'ACCOUNT',
     items: [
+      { path: '/app/feedback', label: 'Feedback', Icon: MessageSquare },
       { path: '/app/settings', label: 'Settings', Icon: SettingsIcon },
       { path: '/app/billing', label: 'Subscription', Icon: CreditCard },
       { path: '/app/notifications', label: 'Notifications', Icon: Bell },
@@ -146,17 +147,24 @@ export function AppShell() {
   const location = useLocation();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [theme, setTheme] = useState<Theme>(getStoredTheme);
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [fbType, setFbType] = useState('Bug Report');
   const [credits, setCredits] = useState(0);
   const [badgeCounts, setBadgeCounts] = useState<Record<string, number>>({});
 
   const isAdminSection = location.pathname.startsWith('/app/admin');
   const isAdmin = user?.role === 'admin';
 
-  // PostHog
+  // PostHog + page breadcrumb for feedback pre-fill (FB-16)
   useEffect(() => {
     try { const ph = (window as Record<string, any>).posthog; if (ph?.capture) ph.capture('$pageview', { $current_url: window.location.href }); } catch {}
+    // Store last page name for bug report pre-fill
+    const pathMap: Record<string, string> = {
+      '/app/feed': 'Jobs Feed', '/app/pipeline': 'Pipeline', '/app/resumes': 'Resumes',
+      '/app/applications': 'My Applications', '/app/interview-prep': 'Interview Prep',
+      '/app/stats': 'Stats', '/app/settings': 'Settings', '/app/billing': 'Subscription',
+      '/app/notifications': 'Notifications', '/app/tuning': 'Search Tuning',
+    };
+    const pageName = pathMap[location.pathname] || null;
+    if (pageName) sessionStorage.setItem('bj_last_page', pageName);
   }, [location.pathname]);
 
   // User
@@ -338,63 +346,32 @@ export function AppShell() {
         <Outlet />
       </main>
 
-      {/* Floating feedback button — legacy: .feedback-btn (fixed top-right) */}
-      <button onClick={() => { setFeedbackOpen(o => !o); }}
-        className="fixed top-4 right-5 z-[200] h-[34px] px-3.5 rounded-lg bg-bg-card border border-border flex items-center gap-1.5 cursor-pointer text-text-faint hover:text-accent hover:border-accent shadow-[0_2px_8px_rgba(0,0,0,0.15)] transition-all"
-        title="Squash a bug or pitch an idea!">
-        <MessageSquare className="w-3.5 h-3.5" strokeWidth={1.75} />
-        <span className="text-[11px] font-semibold tracking-wide">Feedback</span>
-      </button>
 
-      {/* Feedback modal overlay */}
-      {feedbackOpen && (
-        <div className="fixed inset-0 z-[500] bg-black/50 backdrop-blur-sm flex items-center justify-center"
-          onClick={e => { if (e.target === e.currentTarget) setFeedbackOpen(false); }}>
-          <div className="bg-bg-card border border-border rounded-xl p-7 w-[460px] max-w-[92vw] shadow-[0_16px_48px_rgba(0,0,0,0.4)] flex flex-col min-h-[500px]">
-            <h3 className="text-[18px] font-bold text-text mb-1">Report a Bug</h3>
-            <div className="text-[12px] text-text-dim mb-4">Found something off? Help us fix it.</div>
-
-            {/* Type toggle */}
-            <div className="flex gap-0 rounded-lg overflow-hidden border border-border mb-3.5">
-              {['Bug Report', 'Feature Request'].map(t => (
-                <button key={t} onClick={() => setFbType(t)}
-                  className={`flex-1 py-2 px-3.5 text-[13px] font-semibold text-center transition-all ${fbType === t ? (t === 'Bug Report' ? 'bg-red text-white' : 'bg-accent text-white') : 'bg-bg-input text-text-dim'}`}>
-                  {t}
-                </button>
-              ))}
-            </div>
-
-            <label className="block text-[11px] font-semibold text-text-faint uppercase tracking-[0.5px] mb-1">Title</label>
-            <input type="text" placeholder="Short description…" className="w-full px-3 py-2 rounded-lg border border-border bg-bg-input text-[13px] text-text mb-3.5 focus:border-accent focus:outline-none" />
-
-            <label className="block text-[11px] font-semibold text-text-faint uppercase tracking-[0.5px] mb-1">Details</label>
-            <textarea rows={5} placeholder="Steps to reproduce, expected vs actual…" className="w-full px-3 py-2 rounded-lg border border-border bg-bg-input text-[13px] text-text mb-3.5 resize-y focus:border-accent focus:outline-none" />
-
-            <label className="block text-[11px] font-semibold text-text-faint uppercase tracking-[0.5px] mb-1">Page</label>
-            <select className="w-full px-3 py-2 rounded-lg border border-border bg-bg-input text-[13px] text-text mb-3.5 cursor-pointer">
-              <option>Feed</option><option>Pipeline</option><option>Resumes</option><option>Applications</option><option>Stats</option><option>Settings</option><option>Billing</option><option>Other</option>
-            </select>
-
-            <div className="flex gap-2.5 justify-end mt-auto pt-2.5">
-              <button onClick={() => setFeedbackOpen(false)} className="px-4 py-2 rounded-lg bg-bg-input text-text-dim border border-border text-[13px] font-semibold">Cancel</button>
-              <button onClick={async () => {
-                const form = document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('.bg-bg-card input, .bg-bg-card textarea, .bg-bg-card select');
-                const title = (form[0] as HTMLInputElement)?.value || '';
-                const details = (form[1] as HTMLTextAreaElement)?.value || '';
-                const page = (form[2] as HTMLSelectElement)?.value || '';
-                if (!title.trim()) { (window as any).__bjToast?.('Please add a title', 'info'); return; }
-                try {
-                  const { callGateway } = await import('@app/lib/supabase');
-                  await callGateway('submit-feedback', { type: fbType === 'Bug Report' ? 'bug' : 'feature', title, details, page });
-                } catch { /* silent — toast below */ }
-                setFeedbackOpen(false);
-                (window as any).__bjToast?.('Feedback submitted — thank you!', 'success');
-              }}
-                className="px-5 py-2 rounded-lg bg-accent text-white text-[13px] font-semibold">Submit</button>
+      {/* ── In-session satisfaction prompt (Part C) — floating card bottom-right ── */}
+      <div id="sat-prompt-card" className="sat-prompt-card" role="complementary" aria-label="Satisfaction check-in">
+        <div id="sat-prompt-main">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[12px] text-text-faint font-medium">Quick check-in</span>
+            <button id="sat-prompt-dismiss" className="text-text-faint hover:text-text-dim p-0.5" aria-label="Dismiss">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <p className="text-[14px] font-semibold text-text mb-3">How satisfied are you with Brilliant Jobs?</p>
+          <div className="flex gap-1.5 mb-2">
+            {[1,2,3,4,5].map(n => (
+              <button key={n} className="sat-score-btn w-9 h-9 rounded-full border-2 border-border bg-bg-input text-text-dim text-[13px] font-semibold hover:border-accent hover:text-accent transition-all" data-score={n} aria-label={`Score ${n}`}>{n}</button>
+            ))}
+          </div>
+          <div id="sat-prompt-follow-wrap" style={{display:'none'}} className="mt-2">
+            <textarea id="sat-prompt-text" rows={2} placeholder="What's not working?" className="w-full px-2.5 py-2 rounded-lg border border-border bg-bg-input text-[12px] text-text resize-none focus:border-accent focus:outline-none" />
+            <div className="flex gap-2 mt-1.5">
+              <button id="sat-prompt-send" className="px-3.5 py-1.5 rounded-lg bg-accent text-white text-[12px] font-semibold">Send</button>
+              <button id="sat-prompt-skip" className="text-[12px] text-text-faint hover:text-text-dim">Skip</button>
             </div>
           </div>
         </div>
-      )}
+        <div id="sat-prompt-thanks" style={{display:'none'}} className="text-[13px] font-semibold text-green text-center py-1">Thanks! ✓</div>
+      </div>
     </div>
     </ToastProvider>
   );
