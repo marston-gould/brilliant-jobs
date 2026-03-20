@@ -6,6 +6,7 @@
 // ============================================================
 
 import { useState, useEffect, useCallback } from 'react';
+import { Sun, Moon, Monitor } from 'lucide-react';
 import { PageHeader } from '@app/components';
 import { useUser } from '@providers';
 import type { UserProfile } from '@providers/types';
