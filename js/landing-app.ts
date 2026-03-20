@@ -626,7 +626,7 @@ document.addEventListener('DOMContentLoaded', function() {
           const res = await fetch(SUPABASE_URL + '/functions/v1/preview-jobs', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ keyword, location, remote, session_token: previewToken })
+            body: JSON.stringify({ keyword, location, remote, session_token: previewToken, fingerprint: window._bjFingerprint || navigator.userAgent.slice(0, 50) })
           });
           const data = await res.json();
 

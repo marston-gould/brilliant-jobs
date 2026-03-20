@@ -10,16 +10,24 @@ import { API_VERSION } from '../_shared/api-version.ts';
 const SB_URL = Deno.env.get('SUPABASE_URL')!;
 const SB_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-// In-memory session store (resets on cold start — acceptable for v1)
-const sessions = new Map<string, { queries: number; created: number }>();
-const SESSION_TTL = 30 * 60 * 1000; // 30 minutes
+// Persistent rate limiting via Supabase DB (survives cold starts + page reloads)
+const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const MAX_QUERIES = 2;
 
-function cleanSessions() {
-  const now = Date.now();
-  for (const [k, v] of sessions) {
-    if (now - v.created > SESSION_TTL) sessions.delete(k);
+function getRateLimitId(req: Request, body: { fingerprint?: string }): string {
+  // Combine IP + fingerprint for robust identification
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || req.headers.get('cf-connecting-ip')
+    || req.headers.get('x-real-ip')
+    || 'unknown';
+  const fp = body.fingerprint || '';
+  // Hash to a stable key
+  const raw = `${ip}:${fp}`;
+  let hash = 0;
+  for (let i = 0; i < raw.length; i++) {
+    hash = ((hash << 5) - hash + raw.charCodeAt(i)) | 0;
   }
+  return 'pv_' + Math.abs(hash).toString(36);
 }
 
 const CORS_HEADERS = {
@@ -56,15 +64,25 @@ serve(async (req: Request) => {
       });
     }
 
-    // Session management
-    cleanSessions();
-    if (!token || !sessions.has(token)) {
-      token = crypto.randomUUID();
-      sessions.set(token, { queries: 0, created: Date.now() });
+    // Persistent rate limiting via DB
+    const rateLimitId = getRateLimitId(req, body);
+    const sb = createClient(SB_URL, SB_KEY);
+
+    // Check existing rate limit record
+    const { data: rl } = await sb.from('preview_rate_limits').select('queries, first_query_at').eq('id', rateLimitId).maybeSingle();
+
+    let queriesUsed = 0;
+    if (rl) {
+      const elapsed = Date.now() - new Date(rl.first_query_at).getTime();
+      if (elapsed < SESSION_TTL_MS) {
+        queriesUsed = rl.queries;
+      } else {
+        // TTL expired — reset
+        await sb.from('preview_rate_limits').update({ queries: 0, first_query_at: new Date().toISOString() }).eq('id', rateLimitId);
+      }
     }
 
-    const session = sessions.get(token)!;
-    if (session.queries >= MAX_QUERIES) {
+    if (queriesUsed >= MAX_QUERIES) {
       return new Response(JSON.stringify({
         error: 'rate_limited',
         queries_remaining: 0,
@@ -73,7 +91,6 @@ serve(async (req: Request) => {
     }
 
     // Build query
-    const sb = createClient(SB_URL, SB_KEY);
     let q = sb.from('ats_jobs')
       .select('title, company_name, location, loc_type, salary_min, salary_max, first_seen_at')
       .eq('status', 'open'); // FA-003: .eq('open') for consistency with dashboard + backfill
@@ -163,8 +180,14 @@ serve(async (req: Request) => {
     // Backward-compat: titles[] derived from jobs (truncated to 35 chars)
     const titles = jobs.map(j => j.title.length > 35 ? j.title.slice(0, 35) + '…' : j.title);
 
-    // Increment query count
-    session.queries++;
+    // Increment query count in DB
+    const newCount = queriesUsed + 1;
+    await sb.from('preview_rate_limits').upsert({
+      id: rateLimitId,
+      queries: newCount,
+      first_query_at: rl?.first_query_at || new Date().toISOString(),
+      last_query_at: new Date().toISOString(),
+    }, { onConflict: 'id' });
 
     return new Response(JSON.stringify({
       total,
@@ -173,8 +196,8 @@ serve(async (req: Request) => {
       companies,
       jobs,
       titles,
-      queries_remaining: MAX_QUERIES - session.queries,
-      session_token: token,
+      queries_remaining: MAX_QUERIES - newCount,
+      session_token: rateLimitId,
       content_search_enabled: true,
     }), { status: 200, headers: CORS_HEADERS });
 
