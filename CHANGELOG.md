@@ -1,3 +1,28 @@
+## v11.52 Subscription Fixes (POD2_HANDOFF_SubscriptionFixes) (2026-03-20)
+
+### Benefit carousel + pricing copy
+- **Carousel card 07:** Removed ATS brand names. 'Auto-apply across Greenhouse, Lever, Ashby, and more' → 'Auto-apply across multiple employer and application systems'
+- **Pricing bullet (index.html):** 'Auto-apply across ATS (2 cr)' → 'Auto-apply to employer career pages (2 cr)'
+
+### BillingPage.tsx (SUB-01 to SUB-09)
+- **SUB-01:** Plans corrected: Free Trial (7 days), Starter (20/mo, 100 credits), Pro (40/mo, 300 credits). Removed stale $0 permanent free tier.
+- **SUB-02:** Credit costs corrected per PricingModule spec: Resume Score 1cr, AI Rewrite full 8cr / tailoring 5cr, AI Filter Suggest 1cr, Job Alerts free, AI Exclusions free. TODO comment added for cohort config wiring.
+- **SUB-03:** Credit packs updated to 10/50/100 credits. Pro users see 50% off with strikethrough on full price.
+- **SUB-07:** All currency symbols ($ ) removed throughout: plans, credit packs, auto-refill, PAYG rate, PayWhenHired success fee text.
+- **SUB-08:** 💳 emoji replaced with Lucide CreditCard icon (strokeWidth 1.75, text-accent).
+- **SUB-09:** useEffect added to scroll to URL hash on mount, with requestAnimationFrame retry for React lazy load timing.
+
+### handlePricingShare (SUB-04)
+- Logged-in users: copy link + navigate to /billing#sub-referral-section. Previously just showed 'Copied!' with no navigation.
+- Non-logged-in users: still opens signup modal (unchanged).
+
+### Username / referral link (SUB-05, SUB-06)
+- **SUB-05:** username column added to profiles table with unique index. SettingsPage.tsx: username field with real-time availability check (debounced 300ms), RESERVED words list, validation (3–30 chars, alphanumeric+hyphens), Supabase read/write on load/save.
+- **SUB-06:** vercel.json: /:username → /api/referral-lookup?u=:username catch-all rewrite (last rule, no conflict with known routes). useReferrals.ts: fetches username from profiles and builds https://brilliantjobs.app/{username} link. SharePanel.tsx: detects username vs legacy /r/ format, shows appropriate label, Lucide icons (Copy, Linkedin, Mail, MessageSquare). referral-capture.js: handles ?u=username param from redirect, stores bj_ref_username for analytics. Legacy /r/{code} links continue to work.
+
+### Lucide audit
+- All recently shipped files clean — no emoji violations found outside BillingPage.tsx (now fixed).
+
 ## v11.51 FB-13 — Admin Bug Review Panel (2026-03-20)
 - **FB-13:** `js/admin-bug-review.js` (NEW) — standalone admin bug report review panel.
 - Injects a "Bug Reports" section into `admin-panel-feedback` after the existing Canny feedback content.
