@@ -160,6 +160,12 @@ jobs:
         run: npm run build:spa 2>&1
         env:
           NODE_OPTIONS: --max-old-space-size=4096
+      - name: Patch BJ_VERSION into built index.html
+        run: |
+          VERSION=$(node -e "const v=require('./js/version.js');console.log()" 2>/dev/null || node -e "const fs=require('fs');const m=fs.readFileSync('js/version.js','utf8').match(/"(v[^"]+)"/);console.log(m[1])")
+          echo "Patching BJ_VERSION=$VERSION into built index.html"
+          sed -i "s|window.BJ_VERSION="[^"]*"|window.BJ_VERSION="$VERSION"|g" dist/spa/src/app/index.html
+
       - name: Commit built SPA bundle
         run: |
           git config user.name "github-actions[bot]"
