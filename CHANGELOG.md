@@ -1,3 +1,13 @@
+## v11.61 — Fix login auth race condition (2026-03-20)
+- **Root cause:** `landing-app.js` called `window.location.href = '/app/feed'` immediately
+  after `signInWithPassword()` returned. The Supabase SDK writes the session to localStorage
+  asynchronously. The SPA's `AuthGuard` called `getSession()` before the write completed,
+  found no session, and redirected back to `/`.
+- **Fix:** Login handler now listens for `onAuthStateChange` `SIGNED_IN` event, which only
+  fires after the session is fully persisted. Navigation happens only then.
+  2-second fallback timeout in case the event doesn't fire.
+- Files: `js/landing-app.js`
+
 ## v11.60 — CSP fix: inline BJ_VERSION → sync external version.js (2026-03-20)
 - Inline `<script>window.BJ_VERSION=...</script>` violated CSP script-src (no hash).
 - Fix: replaced with `<script src="/js/version.js"></script>` (sync, no defer).
