@@ -186,9 +186,22 @@ export function FeedPage() {
     includeNoSalary: true,
   });
 
-  // Read legacy data on mount
-  const savedJobIds = useMemo(() => getLegacySet('savedJobIds'), [state.jobs]);
-  const appliedJobIds = useMemo(() => getLegacySet('appliedJobIds'), [state.jobs]);
+  // Track saved jobs in React state (replaces window.savedJobIds legacy global)
+  const [savedJobIds, setSavedJobIds] = useState<Set<string>>(() => getLegacySet('savedJobIds'));
+
+  // Load saved job IDs from Supabase on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const { supabase, getUser } = await import('@app/lib/supabase');
+        const user = await getUser();
+        if (!user) return;
+        const { data } = await supabase.from('user_pipeline').select('job_id').eq('user_id', user.id);
+        if (data?.length) setSavedJobIds(new Set(data.map((r: any) => r.job_id)));
+      } catch {}
+    })();
+  }, []);
+  const appliedJobIds = useMemo(() => getLegacySet('appliedJobIds'), [state.jobs]); // TODO: migrate to state
   const matchScores = useMemo(() => getLegacyObj('jobMatchScores', {}), [state.jobs]);
   const fraudCache = useMemo(() => getLegacyObj('_fraudScoreCache', {}), [state.jobs]);
   const aiCache = useMemo(() => getLegacyObj('_aiJdCache', {}), [state.jobs]);
@@ -209,11 +222,28 @@ export function FeedPage() {
     }).catch(() => {});
   }, [statsProvider]);
 
-  // Load saved searches from Supabase (also syncs to localStorage for search engine)
+  // Load saved searches + pipeline IDs after auth session is confirmed
   useEffect(() => {
-    loadSavedFiltersFromSupabase().then(items => {
-      setSavedSearchItems(items);
+    // Try immediately first (session may already be present)
+    loadSavedFiltersFromSupabase().then(items => { setSavedSearchItems(items); });
+
+    // Also retry on SIGNED_IN / INITIAL_SESSION in case first attempt beat the session
+    import('@app/lib/supabase').then(({ supabase, getUser }) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string) => {
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+          loadSavedFiltersFromSupabase().then(items => { setSavedSearchItems(items); });
+          getUser().then(user => {
+            if (!user) return;
+            supabase.from('user_pipeline').select('job_id').eq('user_id', user.id).then(({ data }: any) => {
+              if (data?.length) setSavedJobIds(new Set(data.map((r: any) => r.job_id)));
+            });
+          });
+        }
+      });
+      // store unsub for cleanup — closure keeps ref
+      (window as any).__feedAuthUnsub = () => subscription.unsubscribe();
     });
+    return () => { try { (window as any).__feedAuthUnsub?.(); } catch {} };
   }, []);
 
   // Trigger initial search on mount (slight delay to let load complete)
@@ -394,13 +424,15 @@ export function FeedPage() {
   const handleSave = useCallback((jobId: string) => {
     const isSaved = savedJobIds.has(jobId);
     if (isSaved) {
+      setSavedJobIds(prev => { const n = new Set(prev); n.delete(jobId); return n; });
       actions.unsaveJob(jobId);
       (window as any).__bjToast?.('Removed from pipeline', 'info');
     } else {
+      setSavedJobIds(prev => new Set([...prev, jobId]));
       actions.saveJob(jobId);
       (window as any).__bjToast?.('Saved to pipeline', 'success');
     }
-  }, [actions, savedJobIds]);
+  }, [actions, savedJobIds, setSavedJobIds]);
 
   const handleHide = useCallback((jobId: string) => {
     actions.hideJob(jobId);
@@ -443,7 +475,7 @@ export function FeedPage() {
       <PageHeader title="Jobs Feed" subtitle="Openings aggregated from multiple sources" helpLink="feed" onHelp={() => {}} />
 
       {/* Hero stats */}
-      <FeedHero stats={state.stats} onPipelineClick={handlePipelineClick} />
+      <FeedHero stats={{...state.stats, pipeline: savedJobIds.size}} onPipelineClick={handlePipelineClick} />
 
       {/* Intel cards — side by side, above toggle (legacy: feed-intel section, line 833) */}
       <IntelCards

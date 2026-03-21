@@ -197,11 +197,26 @@ export function useResumes(): [ResumesState, ReturnType<typeof buildActions>] {
   }, []);
 
   useEffect(() => {
+    // Try immediately, then retry on auth session confirmed
     const timer = setTimeout(loadData, 100);
     pollRef.current = setInterval(loadData, 30000);
+
+    // Retry on SIGNED_IN/INITIAL_SESSION — first load may beat session
+    import('@app/lib/supabase').then(({ supabase }) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string) => {
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+          loadData();
+        }
+      });
+      (window as any).__resumeAuthUnsub = () => subscription.unsubscribe();
+    });
     return () => {
       clearTimeout(timer);
       if (pollRef.current) clearInterval(pollRef.current);
+    };
+    return () => {
+      clearTimeout(timer);
+      try { (window as any).__resumeAuthUnsub?.(); } catch {}
     };
   }, [loadData]);
 
