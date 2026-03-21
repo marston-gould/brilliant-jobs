@@ -11,19 +11,24 @@ export function AuthGuard() {
   useEffect(() => {
     let cancelled = false;
 
-    // Static import — supabase client already in bundle, no dynamic import
-    supabase.auth.getSession().then(({ data }) => {
-      if (cancelled) return;
-      setStatus(data?.session?.user ? 'authenticated' : 'unauthenticated');
-    }).catch(() => {
-      if (!cancelled) setStatus('unauthenticated');
-    });
-
+    // Check session — onAuthStateChange fires INITIAL_SESSION on load
+    // which is the most reliable signal after signInWithPassword
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!cancelled) {
         setStatus(session?.user ? 'authenticated' : 'unauthenticated');
       }
     });
+
+    // Also do a direct getSession() as fallback in case onAuthStateChange
+    // already fired before we subscribed
+    supabase.auth.getSession().then(({ data }) => {
+      if (cancelled) return;
+      if (data?.session?.user) {
+        setStatus('authenticated');
+      }
+      // Don't set unauthenticated here — let onAuthStateChange handle it
+      // to avoid race with SIGNED_IN event
+    }).catch(() => {});
 
     return () => {
       cancelled = true;
@@ -43,8 +48,16 @@ export function AuthGuard() {
   }
 
   if (status === 'unauthenticated') {
-    window.location.href = '/';
-    return null;
+    // Don't use window.location — causes redirect loop with landing-segment.js
+    // Show inline message with link instead
+    return (
+      <div className="flex items-center justify-center h-screen bg-bg-main">
+        <div className="text-center">
+          <p className="text-text-dim text-sm mb-3">Session expired or not logged in.</p>
+          <a href="/" className="text-accent text-sm underline">Go to login</a>
+        </div>
+      </div>
+    );
   }
 
   return <Outlet />;
