@@ -32,7 +32,5 @@
       });
     }
   });
-  if (segment === "active") {
-    window.location.replace("/app/feed");
-  }
+  // Active segment redirect removed — landing-app.js handles post-login navigation
 })();
