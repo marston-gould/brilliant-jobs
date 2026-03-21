@@ -33,6 +33,6 @@
     }
   });
   if (segment === "active") {
-    window.location.replace("/dashboard");
+    window.location.replace("/app/feed");
   }
 })();
