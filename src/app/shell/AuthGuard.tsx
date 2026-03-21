@@ -2,33 +2,31 @@
 // AuthGuard — Authentication Route Guard (SA-013)
 // ============================================================
 import { useState, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { supabase } from '@lib/supabase';
 
 export function AuthGuard() {
   const [status, setStatus] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
+  const navigate = useNavigate();
 
   useEffect(() => {
     let cancelled = false;
 
-    // Check session — onAuthStateChange fires INITIAL_SESSION on load
-    // which is the most reliable signal after signInWithPassword
+    // Primary check: getSession() reads from localStorage synchronously.
+    // If there's a session it will be here immediately.
+    supabase.auth.getSession().then(({ data }) => {
+      if (cancelled) return;
+      setStatus(data?.session?.user ? 'authenticated' : 'unauthenticated');
+    }).catch(() => {
+      if (!cancelled) setStatus('unauthenticated');
+    });
+
+    // Secondary: keep status in sync with auth state changes (logout, refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!cancelled) {
         setStatus(session?.user ? 'authenticated' : 'unauthenticated');
       }
     });
-
-    // Also do a direct getSession() as fallback in case onAuthStateChange
-    // already fired before we subscribed
-    supabase.auth.getSession().then(({ data }) => {
-      if (cancelled) return;
-      if (data?.session?.user) {
-        setStatus('authenticated');
-      }
-      // Don't set unauthenticated here — let onAuthStateChange handle it
-      // to avoid race with SIGNED_IN event
-    }).catch(() => {});
 
     return () => {
       cancelled = true;
@@ -39,23 +37,19 @@ export function AuthGuard() {
   if (status === 'loading') {
     return (
       <div className="flex items-center justify-center h-screen bg-bg-main">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-text-dim">Loading...</p>
-        </div>
+        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (status === 'unauthenticated') {
-    // Don't use window.location — causes redirect loop with landing-segment.js
-    // Show inline message with link instead
+    // Use window.location.href so we leave the SPA entirely and land on the
+    // real index.html. The landing-segment.js will NOT redirect because the
+    // session is gone. landing-app.js will show the login modal via ?login=1.
+    window.location.href = '/?login=1';
     return (
       <div className="flex items-center justify-center h-screen bg-bg-main">
-        <div className="text-center">
-          <p className="text-text-dim text-sm mb-3">Session expired or not logged in.</p>
-          <a href="/" className="text-accent text-sm underline">Go to login</a>
-        </div>
+        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
