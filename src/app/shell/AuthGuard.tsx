@@ -1,4 +1,3 @@
-// AuthGuard — Authentication Route Guard
 import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { supabase } from '@lib/supabase';
@@ -9,21 +8,24 @@ export function AuthGuard() {
   useEffect(() => {
     let cancelled = false;
 
-    // onAuthStateChange fires INITIAL_SESSION immediately on mount.
-    // This is the ONLY reliable way to read session state after a cross-page
-    // login — getSession() can race with the write from the landing page client.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (cancelled) return;
-      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!cancelled) {
         setStatus(session?.user ? 'authenticated' : 'unauthenticated');
-      }
-      if (event === 'SIGNED_OUT') {
-        setStatus('unauthenticated');
       }
     });
 
+    // Fallback: if onAuthStateChange hasn't fired after 3s, check directly
+    const timer = setTimeout(async () => {
+      if (cancelled) return;
+      const { data } = await supabase.auth.getSession();
+      if (!cancelled) {
+        setStatus(data?.session?.user ? 'authenticated' : 'unauthenticated');
+      }
+    }, 3000);
+
     return () => {
       cancelled = true;
+      clearTimeout(timer);
       subscription.unsubscribe();
     };
   }, []);
