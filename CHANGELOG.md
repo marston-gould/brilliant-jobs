@@ -1,3 +1,9 @@
+## v11.58 — Auth flow fixes (2026-03-20)
+- **Login → landing page bug fixed:** Removed `approved===true` gate that silently dropped users when redirect destination was wrong. Login now always goes to `/app/feed` immediately after successful auth.
+- **Admin link → no modal bug fixed:** `/admin` when unauthenticated now redirects to `/?redirect=/admin&login=1` which auto-opens the login modal. After login, user lands on `/admin` where TOTP double-auth challenge fires.
+- **`?login=1` param:** landing-app.js now auto-opens login modal when this param is present.
+- Files: `js/landing-app.js`, `js/admin-shell.ts`
+
 ## v11.57 — About Page + Founder Callout Card (ABOUT-001) (2026-03-20)
 
 ### about.html (NEW)
