@@ -355,8 +355,11 @@ document.addEventListener("DOMContentLoaded", function() {
     await loadSupabase();
     const { data: { session } } = await sb.auth.getSession();
     if (session?.user) {
-      openModal("login");
-      showLoggedIn(session.user);
+      // Already logged in — go straight to app, don't re-open modal
+      var redirectTo = new URLSearchParams(window.location.search).get('redirect') || '/app/feed';
+      if (!redirectTo.startsWith('/')) redirectTo = '/app/feed';
+      window.location.replace(redirectTo);
+      return;
     }
     if (new URLSearchParams(window.location.search).get("pending") === "1") {
       openModal("login");
