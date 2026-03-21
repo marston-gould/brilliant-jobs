@@ -213,9 +213,6 @@ export function useResumes(): [ResumesState, ReturnType<typeof buildActions>] {
     return () => {
       clearTimeout(timer);
       if (pollRef.current) clearInterval(pollRef.current);
-    };
-    return () => {
-      clearTimeout(timer);
       try { (window as any).__resumeAuthUnsub?.(); } catch {}
     };
   }, [loadData]);
