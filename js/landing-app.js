@@ -319,33 +319,10 @@ document.addEventListener("DOMContentLoaded", function() {
     const loggedView = $("#logged-in-view");
     loggedView.classList.add("active");
     $("#li-email").textContent = user.email;
-    async function profileCheckWithTimeout(userId, attempt) {
-      attempt = attempt || 1;
-      var controller = new AbortController();
-      var timeout = setTimeout(function() {
-        controller.abort();
-      }, 1e4);
-      try {
-        var profileResult = await sb.from("profiles").select("approved").eq("id", userId).single().abortSignal(controller.signal);
-        clearTimeout(timeout);
-        if (profileResult.data && profileResult.data.approved === true) {
-          window.location.href = "/dashboard";
-          return;
-        }
-      } catch (e) {
-        clearTimeout(timeout);
-        console.error("[BJ] profile_check_error:", e);
-        try {
-          if (typeof reportError === "function") reportError("landing_app", e);
-        } catch (_) {
-        }
-        console.error("Profile check error (attempt " + attempt + "):", e);
-        if (attempt < 2) {
-          return profileCheckWithTimeout(userId, attempt + 1);
-        }
-      }
-    }
-    await profileCheckWithTimeout(user.id);
+    // Redirect to app after login — honour ?redirect= for admin flow
+    var redirectTarget = new URLSearchParams(window.location.search).get('redirect') || '/app/feed';
+    if (!redirectTarget.startsWith('/')) redirectTarget = '/app/feed';
+    window.location.href = redirectTarget;
     try {
       const { data: { session } } = await sb.auth.getSession();
       if (session) {
@@ -382,6 +359,9 @@ document.addEventListener("DOMContentLoaded", function() {
       showLoggedIn(session.user);
     }
     if (new URLSearchParams(window.location.search).get("pending") === "1") {
+      openModal("login");
+    }
+    if (new URLSearchParams(window.location.search).get("login") === "1") {
       openModal("login");
     }
     if (window.location.hash === "#signup") {
