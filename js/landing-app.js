@@ -185,7 +185,17 @@ document.addEventListener("DOMContentLoaded", function() {
       showMsg("login-msg", error.message, "error");
       return;
     }
-    showLoggedIn(data.user);
+    // Wait for SIGNED_IN — session must be in localStorage before AuthGuard reads it
+    var _dest = new URLSearchParams(window.location.search).get("redirect") || "/app/feed";
+    if (!_dest.startsWith("/")) _dest = "/app/feed";
+    $("#login-btn").textContent = "Redirecting...";
+    var _sub = sb.auth.onAuthStateChange(function(event, session) {
+      if (event === "SIGNED_IN" && session) {
+        _sub.data.subscription.unsubscribe();
+        window.location.href = _dest;
+      }
+    });
+    setTimeout(function() { window.location.href = _dest; }, 2000);
   });
   var signupBtn = $("#signup-btn");
   if (signupBtn) signupBtn.addEventListener("click", async () => {
