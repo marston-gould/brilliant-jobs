@@ -1,3 +1,9 @@
+## v11.65 — Fix syntax error crashing login (2026-03-21)
+- Stray '}' in pricing inline script in index.html caused SyntaxError on page load.
+- This crashed ALL JavaScript before landing-app.js could run — no Supabase, no login.
+- Every auth fix since v11.57 was irrelevant because the page JS never executed.
+- Fix: removed stray '}' from handlePricingShare function close.
+
 ## v11.64 — Fix browser cache serving stale JS (2026-03-21)
 - **Root cause of all auth failures:** `/js/(.*)` had `Cache-Control: max-age=31536000, immutable`.
   Browser cached landing-app.js at v11.57 and served it for every subsequent deploy.
