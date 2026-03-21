@@ -18,8 +18,8 @@
        Auth session shared via localStorage (same persistSession key).
        Theme handled by inline script above (CSP-whitelisted via SHA-256). -->
 
-  <!-- BJ_VERSION — inline so window.BJ_VERSION is set before React renders -->
-  <script>window.BJ_VERSION="v11.56";</script>
+  <!-- BJ_VERSION — sync external load (no defer = runs before modules, no CSP hash needed) -->
+  <script src="/js/version.js"></script>
 
   <!-- PostHog analytics (required for $pageview, session recording, feature flags) -->
   <script src="/js/posthog-dashboard.js" defer></script>
@@ -30,7 +30,7 @@
   <link rel="preload" href="/dist/spa/assets/jetbrains-mono-latin-var-C18OjFjb.woff2" as="font" type="font/woff2" crossorigin>
 
   <!-- React SPA bundle (Vite injects this in production build) -->
-  <script type="module" crossorigin src="/dist/spa/assets/app-Cta6szz2.js"></script>
+  <script type="module" crossorigin src="/dist/spa/assets/app-D4eUcAEb.js"></script>
   <link rel="modulepreload" crossorigin href="/dist/spa/assets/react-vendor-DGWi3gCj.js">
   <link rel="modulepreload" crossorigin href="/dist/spa/assets/react-dom-Dsjvxb5P.js">
   <link rel="modulepreload" crossorigin href="/dist/spa/assets/router-BaE0turN.js">
