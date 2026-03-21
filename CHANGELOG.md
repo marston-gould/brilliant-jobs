@@ -1,3 +1,10 @@
+## v11.60 — CSP fix: inline BJ_VERSION → sync external version.js (2026-03-20)
+- Inline `<script>window.BJ_VERSION=...</script>` violated CSP script-src (no hash).
+- Fix: replaced with `<script src="/js/version.js"></script>` (sync, no defer).
+  External 'self' scripts need no hash. Never breaks on version bump.
+- Both src/app/index.html and dist/spa/src/app/index.html updated.
+- vercel.json: added missing hash as interim fix (now superseded).
+
 ## v11.58 — Auth flow fixes (2026-03-20)
 - **Login → landing page bug fixed:** Removed `approved===true` gate that silently dropped users when redirect destination was wrong. Login now always goes to `/app/feed` immediately after successful auth.
 - **Admin link → no modal bug fixed:** `/admin` when unauthenticated now redirects to `/?redirect=/admin&login=1` which auto-opens the login modal. After login, user lands on `/admin` where TOTP double-auth challenge fires.
