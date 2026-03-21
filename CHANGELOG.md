@@ -1,3 +1,10 @@
+## v11.64 — Fix browser cache serving stale JS (2026-03-21)
+- **Root cause of all auth failures:** `/js/(.*)` had `Cache-Control: max-age=31536000, immutable`.
+  Browser cached landing-app.js at v11.57 and served it for every subsequent deploy.
+  Clearing cookies/storage had no effect — the JS file itself was HTTP-cached.
+- Fix: changed `/js/(.*)` to `max-age=0, must-revalidate`. Vendor files stay immutable.
+- All `?v=` query strings in index.html bumped to v11.64.
+
 ## v11.61 — Fix login auth race condition (2026-03-20)
 - **Root cause:** `landing-app.js` called `window.location.href = '/app/feed'` immediately
   after `signInWithPassword()` returned. The Supabase SDK writes the session to localStorage
