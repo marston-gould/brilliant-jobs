@@ -380,6 +380,7 @@ export function AppShell() {
           </div>
         </div>
       </div>
+    </div>
     </ToastProvider>
   );
 }
