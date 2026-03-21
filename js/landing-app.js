@@ -362,15 +362,7 @@ document.addEventListener("DOMContentLoaded", function() {
     switchTab("login");
   });
   (async () => {
-    await loadSupabase();
-    const { data: { session } } = await sb.auth.getSession();
-    if (session?.user) {
-      // Already logged in — go straight to app, don't re-open modal
-      var redirectTo = new URLSearchParams(window.location.search).get('redirect') || '/app/feed';
-      if (!redirectTo.startsWith('/')) redirectTo = '/app/feed';
-      window.location.replace(redirectTo);
-      return;
-    }
+    // Open modal if explicitly requested (e.g. from admin link or ?login=1)
     if (new URLSearchParams(window.location.search).get("pending") === "1") {
       openModal("login");
     }
