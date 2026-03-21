@@ -300,14 +300,16 @@ export function JobRow({
               </span>
             ) : (
               <>
-                <Button
-                  variant={isSaved ? 'secondary' : 'ghost'}
-                  size="sm"
+                <button
                   onClick={() => onSave(job.greenhouse_id)}
-                  className="text-[10px] px-2 py-0.5"
+                  className={`text-[10px] px-2 py-0.5 rounded-md border font-medium transition-all ${
+                    isSaved
+                      ? 'bg-green/15 text-green border-green/40 hover:bg-green/25'
+                      : 'bg-transparent text-text-dim border-transparent hover:bg-bg-hover hover:text-text'
+                  }`}
                 >
                   {isSaved ? 'Pipeline ✓' : 'Pipeline'}
-                </Button>
+                </button>
                 <Button
                   variant="primary"
                   size="sm"

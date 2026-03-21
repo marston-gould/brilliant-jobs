@@ -12,7 +12,7 @@
 // Zero inline styles. Design tokens via Tailwind.
 // ============================================================
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { PageHeader } from '@app/components';
 import {
   ApplicationsHero,
@@ -27,6 +27,27 @@ type AppTab = 'pipeline' | 'review-queue' | 'settings';
 export function ApplicationsPage() {
   const [state, actions] = useApplications();
   const [appTab, setAppTab] = useState<AppTab>('pipeline');
+  const [pipelineEntries, setPipelineEntries] = useState<any[]>([]);
+
+  useEffect(() => {
+    import('@app/lib/supabase').then(({ supabase, getUser }) => {
+      const load = async () => {
+        const user = await getUser();
+        if (!user) return;
+        const { data } = await supabase
+          .from('user_pipeline')
+          .select('job_id, stage, company_name, job_title, job_url, created_at')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+        if (data) setPipelineEntries(data);
+      };
+      load();
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string) => {
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') load();
+      });
+      return () => subscription.unsubscribe();
+    });
+  }, []);
 
   const handleAddManual = useCallback(() => {
     const title = prompt('Job title:');
@@ -126,22 +147,34 @@ export function ApplicationsPage() {
       {/* Pipeline tab — stat cards + stage list */}
       {appTab === 'pipeline' && (
         <>
-          {/* Stat cards — legacy lines 2020-2025 */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
-            {[
-              { label: 'Queued', value: state.queue.filter(q => q.status === 'queued').length },
-              { label: 'Pending Approval', value: state.queue.filter(q => q.status === 'pending').length },
-              { label: 'Submitted', value: state.history.filter(h => h.status === 'submitted').length },
-              { label: 'Failed', value: state.history.filter(h => h.status === 'failed').length },
-            ].map(s => (
-              <div key={s.label} className="border border-border rounded-xl bg-bg-card p-[18px_20px]">
-                <div className="text-[20px] font-bold text-text tabular-nums">{s.value}</div>
-                <div className="text-[11px] text-text-faint uppercase tracking-wide mt-1">{s.label}</div>
-              </div>
-            ))}
-          </div>
-
           <ApplicationsHero queue={state.queue} history={state.history} />
+
+          {/* Pipeline entries from user_pipeline */}
+          {pipelineEntries.length > 0 && (
+            <div className="mb-4">
+              <div className="text-[11px] font-bold text-text-dim uppercase tracking-wider mb-2">Saved to Pipeline ({pipelineEntries.length})</div>
+              <div className="space-y-2">
+                {pipelineEntries.map((e: any) => (
+                  <div key={e.job_id} className="flex items-center gap-3 px-4 py-3 border border-border rounded-lg bg-bg-card">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px] font-semibold text-text truncate">{e.job_title || 'Untitled'}</div>
+                      <div className="text-[11px] text-text-dim">{e.company_name || 'Unknown'}</div>
+                    </div>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                      e.stage === 'saved' ? 'bg-green/10 text-green border-green/30' :
+                      e.stage === 'applied' ? 'bg-accent/10 text-accent border-accent/30' :
+                      e.stage === 'interview' ? 'bg-warm/10 text-warm border-warm/30' :
+                      'bg-bg-input text-text-dim border-border'
+                    }`}>{e.stage}</span>
+                    {e.job_url && (
+                      <a href={e.job_url} target="_blank" rel="noopener noreferrer"
+                        className="text-[11px] text-accent hover:underline flex-shrink-0">Apply →</a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Sub-tabs: Queue | History */}
           <div className="flex items-center gap-1 mb-4 border-b border-border">
