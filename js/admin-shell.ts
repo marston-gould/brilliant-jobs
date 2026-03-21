@@ -28,8 +28,8 @@
     // 1. Check auth
     var authRes = await sb.auth.getUser();
     if (!authRes.data || !authRes.data.user) {
-      // Not logged in — redirect to login
-      window.location.href = '/?redirect=/admin';
+      // Not logged in — show login modal, redirect back to /admin after auth
+      window.location.href = '/?redirect=/admin&login=1';
       return;
     }
 
