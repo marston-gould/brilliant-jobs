@@ -178,24 +178,32 @@ document.addEventListener("DOMContentLoaded", function() {
     }
     $("#login-btn").disabled = true;
     $("#login-btn").textContent = "Logging in...";
+    console.log('[BJ:login] calling signInWithPassword');
     const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    console.log('[BJ:login] signInWithPassword result:', error ? 'ERROR:'+error.message : 'OK', 'user:', data && data.user ? data.user.email : 'none');
     $("#login-btn").disabled = false;
     $("#login-btn").textContent = "Log In";
     if (error) {
       showMsg("login-msg", error.message, "error");
       return;
     }
-    // Wait for SIGNED_IN — session must be in localStorage before AuthGuard reads it
+    console.log('[BJ:login] session in localStorage:', Object.keys(localStorage).filter(function(k){return k.startsWith('sb-');}));
     var _dest = new URLSearchParams(window.location.search).get("redirect") || "/app/feed";
     if (!_dest.startsWith("/")) _dest = "/app/feed";
+    console.log('[BJ:login] navigating to:', _dest);
     $("#login-btn").textContent = "Redirecting...";
     var _sub = sb.auth.onAuthStateChange(function(event, session) {
+      console.log('[BJ:login] onAuthStateChange:', event, 'session:', session ? 'present' : 'null');
       if (event === "SIGNED_IN" && session) {
         _sub.data.subscription.unsubscribe();
+        console.log('[BJ:login] SIGNED_IN confirmed, navigating to', _dest);
         window.location.href = _dest;
       }
     });
-    setTimeout(function() { window.location.href = _dest; }, 2000);
+    setTimeout(function() {
+      console.log('[BJ:login] 2s fallback firing, localStorage keys:', Object.keys(localStorage).filter(function(k){return k.startsWith('sb-');}));
+      window.location.href = _dest;
+    }, 2000);
   });
   var signupBtn = $("#signup-btn");
   if (signupBtn) signupBtn.addEventListener("click", async () => {
