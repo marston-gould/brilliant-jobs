@@ -37,6 +37,7 @@ import {
 } from './components';
 import type { FilterValues } from './components';
 import { useFeedSearch } from './hooks/useFeedSearch';
+import { safeReadLS } from '@app/lib/supabase';
 import type { TrustLabel, AiLabel } from './hooks/useFeedSearch';
 
 // ── Default level hierarchy (from legacy) ─────────────────
@@ -528,8 +529,8 @@ export function FeedPage() {
             onRemove={actions.removeSort}
           />
 
-          {/* Improve Filters — legacy bjImproveFiltersFromHidden */}
-          {state.total > 0 && (
+          {/* Improve Filters — only show when user has hidden jobs */}
+          {(safeReadLS<any[]>('bj_hidden_jobs', []).length > 0) && (
             <button onClick={async () => {
               (window as any).__bjToast?.('Analyzing hidden jobs for filter suggestions...', 'info');
               try {

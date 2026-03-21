@@ -1061,28 +1061,33 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
   // ── Job actions (bridge to legacy) ──────────────────────
 
   const saveJob = useCallback(async (jobId: string) => {
-    // SPA-CUT-1: Direct pipeline save
     const sb = getSupabase();
+    const user = await getUser();
+    if (!user) throw new ProviderError('Not authenticated', 'AUTH_REQUIRED');
     const { error } = await sb.from('user_pipeline').upsert({
+      user_id: user.id,
       job_id: jobId,
       stage: 'saved',
       entry_source: 'feed',
-    }, { onConflict: 'job_id' });
+    }, { onConflict: 'user_id,job_id' });
     if (error) throw new ProviderError(error.message, 'SAVE_FAILED');
     setState(prev => ({
       ...prev,
+      savedJobIds: new Set([...prev.savedJobIds, jobId]),
       stats: { ...prev.stats, pipeline: prev.stats.pipeline + 1 },
     }));
   }, []);
 
   const unsaveJob = useCallback(async (jobId: string) => {
-    // SPA-CUT-1: Direct Supabase delete
     const sb = getSupabase();
-    await sb.from('user_pipeline').delete().eq('job_id', jobId);
-    setState(prev => ({
-      ...prev,
-      stats: { ...prev.stats, pipeline: Math.max(0, prev.stats.pipeline - 1) },
-    }));
+    const user = await getUser();
+    if (!user) return;
+    await sb.from('user_pipeline').delete().eq('user_id', user.id).eq('job_id', jobId);
+    setState(prev => {
+      const next = new Set(prev.savedJobIds);
+      next.delete(jobId);
+      return { ...prev, savedJobIds: next, stats: { ...prev.stats, pipeline: Math.max(0, prev.stats.pipeline - 1) } };
+    });
   }, []);
 
   const hideJob = useCallback(async (jobId: string) => {
