@@ -23,7 +23,8 @@ export const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-
+    // Must match landing-app.js storageKey so login session is shared
+    storageKey: 'supabase.auth.token',
   },
 });
 
