@@ -280,34 +280,56 @@ export function FilterBuilder({
             <div />
           </div>
 
-          {/* How Much — Min on left (positive column), Max on right (NOT column) */}
+          {/* How Much — shows as pill when values set, inputs when editing */}
           <div className="grid grid-cols-2 gap-2">
             <FilterRow label="HOW MUCH" labelClass="text-text-faint">
-              <div className="flex items-center bg-bg-input border border-border rounded-lg px-2.5 py-2 focus-within:border-accent transition-colors">
-                <span className="text-[13px] text-text-faint mr-1 flex-shrink-0">$</span>
-                <input
-                  type="text"
-                  className="flex-1 min-w-0 bg-transparent border-none outline-none text-[13px] text-text placeholder:text-text-faint"
-                  placeholder="Min"
-                  value={values.payMin}
-                  onChange={(e) => update('payMin', e.target.value)}
-                  onKeyDown={handleKeyDown}
-                />
-              </div>
+              {(values.payMin || values.payMax) ? (
+                <div className="flex items-center gap-1.5 flex-wrap min-h-[38px] px-2 py-1.5 bg-bg-input border border-border rounded-lg">
+                  <span
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--pay-bg,#fef9c3)] text-[var(--pay-fg,#854d0e)] border border-[var(--pay-border,#fde047)] cursor-default"
+                  >
+                    {values.payMin && values.payMax
+                      ? `$${Number(values.payMin).toLocaleString()} – $${Number(values.payMax).toLocaleString()}`
+                      : values.payMin
+                      ? `$${Number(values.payMin).toLocaleString()}+`
+                      : `up to $${Number(values.payMax).toLocaleString()}`}
+                    <button
+                      type="button"
+                      onClick={() => { update('payMin', ''); update('payMax', ''); }}
+                      className="ml-0.5 opacity-60 hover:opacity-100 text-[10px] leading-none"
+                      aria-label="Remove salary filter"
+                    >✕</button>
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <div className="flex items-center bg-bg-input border border-border rounded-lg px-2.5 py-2 focus-within:border-accent transition-colors flex-1">
+                    <span className="text-[13px] text-text-faint mr-1 flex-shrink-0">$</span>
+                    <input
+                      type="text"
+                      className="flex-1 min-w-0 bg-transparent border-none outline-none text-[13px] text-text placeholder:text-text-faint"
+                      placeholder="Min"
+                      value={values.payMin}
+                      onChange={(e) => update('payMin', e.target.value)}
+                      onKeyDown={handleKeyDown}
+                    />
+                  </div>
+                  <span className="text-text-faint text-[13px]">–</span>
+                  <div className="flex items-center bg-bg-input border border-border rounded-lg px-2.5 py-2 focus-within:border-accent transition-colors flex-1">
+                    <span className="text-[13px] text-text-faint mr-1 flex-shrink-0">$</span>
+                    <input
+                      type="text"
+                      className="flex-1 min-w-0 bg-transparent border-none outline-none text-[13px] text-text placeholder:text-text-faint"
+                      placeholder="Max"
+                      value={values.payMax}
+                      onChange={(e) => update('payMax', e.target.value)}
+                      onKeyDown={handleKeyDown}
+                    />
+                  </div>
+                </div>
+              )}
             </FilterRow>
-            <FilterRow label="–" labelClass="text-text-faint text-center">
-              <div className="flex items-center bg-bg-input border border-border rounded-lg px-2.5 py-2 focus-within:border-accent transition-colors">
-                <span className="text-[13px] text-text-faint mr-1 flex-shrink-0">$</span>
-                <input
-                  type="text"
-                  className="flex-1 min-w-0 bg-transparent border-none outline-none text-[13px] text-text placeholder:text-text-faint"
-                  placeholder="Max"
-                  value={values.payMax}
-                  onChange={(e) => update('payMax', e.target.value)}
-                  onKeyDown={handleKeyDown}
-                />
-              </div>
-            </FilterRow>
+            <div />
           </div>
 
           {/* Skills / Dept — legacy lines 1048-1063 */}
