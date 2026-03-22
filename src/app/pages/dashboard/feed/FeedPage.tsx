@@ -75,6 +75,7 @@ interface SavedSearchItem {
   color: string;
   checked: boolean;
   filterNum?: string;
+  pillSummary?: string; // e.g. "seo, organic search / united states / !paid"
 }
 
 function getLegacySavedSearchItems(): SavedSearchItem[] {
@@ -99,14 +100,26 @@ async function loadSavedFiltersFromSupabase(): Promise<SavedSearchItem[]> {
     const { data } = await supabase.from('user_filters').select('*').eq('user_id', user.id).order('sort_order', { ascending: true });
     if (!data?.length) return getLegacySavedSearchItems();
 
-    const items: SavedSearchItem[] = data.map((f: any, i: number) => ({
-      id: f.id,
-      name: f.name || `Search ${i + 1}`,
-      color: f.filter_data?._filterColor || FILTER_COLORS[i % FILTER_COLORS.length] || '#3b82f6',
-      checked: true,
-      filterNum: f.filter_data?._filterNum || String(i + 1),
-      _filterData: f.filter_data, // stash for localStorage sync
-    }));
+    const items: SavedSearchItem[] = data.map((f: any, i: number) => {
+      const fd = f.filter_data || {};
+      const whatVals = (fd.whatPills || []).flatMap((p: any) => p.values || []);
+      const whereVals = (fd.wherePills || []).flatMap((p: any) => p.values || []);
+      const notVals = (fd.whatNotPills || []).flatMap((p: any) => p.values || []);
+      const parts = [
+        whatVals.join(', '),
+        whereVals.length ? whereVals.join(', ') : '',
+        notVals.length ? notVals.map((v: string) => `!${v}`).join(', ') : '',
+      ].filter(Boolean);
+      return {
+        id: f.id,
+        name: f.name || `Search ${i + 1}`,
+        color: fd._filterColor || FILTER_COLORS[i % FILTER_COLORS.length] || '#3b82f6',
+        checked: true,
+        filterNum: fd._filterNum || String(i + 1),
+        pillSummary: parts.join(' / ') || '',
+        _filterData: f.filter_data,
+      };
+    });
 
     // Write checked filters to localStorage so the search engine finds them
     const lsFilters = items.filter(i => i.checked).map((item, idx) => {
