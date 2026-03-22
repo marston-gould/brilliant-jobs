@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<!-- Brilliant Jobs SPA Shell (SA-013) -->
+<html lang="en">
+<head>
+  <!-- Theme flash prevention -->
+  <script>try{var t=localStorage.getItem('bj-theme');document.documentElement.setAttribute('data-theme',t||'auto')}catch(e){document.documentElement.setAttribute('data-theme','auto')}</script>
+  <meta charset="utf-8">
+  <link rel="icon" type="image/png" sizes="32x32" href="/dist/spa/assets/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/dist/spa/assets/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="300x300" href="/img/logo-300.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="Your command center. Better data, better jobs, less nonsense.">
+  <title>Brilliant Jobs — Dashboard</title>
+
+  <!-- SPA-CUT-FINAL: All legacy scripts removed. SPA is fully standalone.
+       Supabase client imported via npm (@supabase/supabase-js).
+       Auth session shared via localStorage (same persistSession key).
+       Theme handled by inline script above (CSP-whitelisted via SHA-256). -->
+
+  <!-- BJ_VERSION — sync external load (no defer = runs before modules, no CSP hash needed) -->
+  <script src="/js/version.js"></script>
+
+  <!-- PostHog analytics (required for $pageview, session recording, feature flags) -->
+  <script src="/js/posthog-dashboard.js" defer></script>
+  <script src="/js/posthog-perf.js" defer></script>
+
+  <!-- Shared stylesheet (design tokens + Tailwind utilities) -->
+  <link rel="preload" href="/dist/spa/assets/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/dist/spa/assets/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+
+  <!-- React SPA bundle (Vite injects this in production build) -->
+  <script type="module" crossorigin src="/dist/spa/assets/app.js"></script>
+  <link rel="modulepreload" crossorigin href="/dist/spa/assets/react-vendor.js">
+  <link rel="modulepreload" crossorigin href="/dist/spa/assets/react-dom.js">
+  <link rel="modulepreload" crossorigin href="/dist/spa/assets/router.js">
+  <link rel="modulepreload" crossorigin href="/dist/spa/assets/providers.js">
+  <link rel="modulepreload" crossorigin href="/dist/spa/assets/design-system.js">
+  <link rel="stylesheet" crossorigin href="/dist/spa/assets/app.css">
+</head>
+<body class="bg-bg-main text-text">
+  <!-- SPA mount point -->
+  <a href="#main-content" class="skip-to-content">Skip to main content</a>
+  <div id="spa-root"></div>
+
+  <!--
+    SPA-CUT-FINAL: This is the sole entry point for all authenticated
+    surfaces (dashboard + admin). Legacy dashboard.html and admin.html
+    have been retired. All 22 React pages are standalone — zero
+    window.* bridge dependencies.
+  -->
+</body>
+</html>
