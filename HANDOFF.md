@@ -14,6 +14,35 @@
 >
 > **⚠️ MANDATORY at session close:** You MUST update **BOTH** `ROADMAP.md` **AND** `roadmap.html` before finishing. These are two separate files that must stay in sync — `ROADMAP.md` is the markdown source of truth, `roadmap.html` is the rendered `/roadmap` page users see. Mark every resolved finding as ✅/done in **both** files. Search both files for all finding IDs touched in the session (e.g. IX-FE-003, DS1-9, ES1-3) — not just the ones listed in the fix item name. If you update one and not the other, they drift apart and the next session inherits wrong data.
 
+## Pre-Commit Checklist — MANDATORY BEFORE EVERY PUSH
+
+Run this mentally before every single commit. These are the mistakes that caused regressions today.
+
+### 1. React imports
+- After adding any hook (`useRef`, `useCallback`, `useEffect`, etc.) to a file, verify it is in the import statement
+- `FeedPage.tsx` uses named imports: `import { useCallback, useEffect, useMemo, useRef, useState } from 'react'`
+- DO NOT use bare `useRef` — it must be imported
+
+### 2. Auth — NEVER touch these without full understanding
+- `src/app/lib/supabase.ts` MUST have `detectSessionInUrl: true` and `flowType: 'implicit'`
+- `js/landing-app.js` login MUST navigate with `#access_token=...&refresh_token=...` in URL hash
+- Any change to either file requires a login test before declaring done
+
+### 3. Variable ordering in React components
+- Declare state (`useState`) before using it in `useRef` or `useCallback`
+- Don't reference a variable before its declaration — Vite minification makes TDZ errors hard to debug
+- Pattern that works: `useRef(()=>[])` then assign `.current` separately
+
+### 4. After EVERY build
+- Check `dist/spa/assets/FeedPage.js` for the specific thing you changed
+- Confirm no regressions in auth config: `providers.js` must have `detectSessionInUrl:!0,flowType:"implicit"`
+- Confirm version bumped
+
+### 5. Test before declaring done
+- Auth: log out → log in → confirm resumes and saved searches load
+- Search: check/uncheck a saved filter → confirm results change
+- Never say "done" without the user confirming it works
+
 ## Session Lifecycle (execute in order)
 
 Every session follows these 8 steps. Do not skip steps. Do not reorder.
