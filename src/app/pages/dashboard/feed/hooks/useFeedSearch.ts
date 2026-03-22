@@ -124,7 +124,7 @@ export interface FeedSearchActions {
   setAiFilters: (labels: Set<AiLabel>) => void;
   setSearchMode: (mode: 'filters' | 'chat' | 'guided') => void;
   setStats: (stats: FeedStats) => void;
-  saveJob: (jobId: string) => Promise<void>;
+  saveJob: (jobId: string, job?: { title?: string | null; company_name?: string | null; apply_url?: string | null; url?: string | null }) => Promise<void>;
   unsaveJob: (jobId: string) => Promise<void>;
   hideJob: (jobId: string) => Promise<void>;
   markApplied: (jobId: string) => Promise<void>;
@@ -1060,7 +1060,7 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
 
   // ── Job actions (bridge to legacy) ──────────────────────
 
-  const saveJob = useCallback(async (jobId: string) => {
+  const saveJob = useCallback(async (jobId: string, job?: { title?: string | null; company_name?: string | null; apply_url?: string | null; url?: string | null }) => {
     const sb = getSupabase();
     const user = await getUser();
     if (!user) throw new ProviderError('Not authenticated', 'AUTH_REQUIRED');
@@ -1068,7 +1068,9 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
       user_id: user.id,
       job_id: jobId,
       stage: 'saved',
-      entry_source: 'feed',
+      job_title: job?.title || null,
+      company_name: job?.company_name || null,
+      job_url: job?.apply_url || job?.url || null,
     }, { onConflict: 'user_id,job_id' });
     if (error) throw new ProviderError(error.message, 'SAVE_FAILED');
     setState(prev => ({
