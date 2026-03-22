@@ -23,8 +23,9 @@ export const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    // Must match landing-app.js storageKey so login session is shared
-    storageKey: 'supabase.auth.token',
+    // Uses npm default: sb-qojhagupdnbtomfoxnsf-auth-token
+    // The vendor UMD bundle (supabase.min.js) ignores storageKey config and derives
+    // its key from the hostname. Both end up using the same sb- key.
   },
 });
 
