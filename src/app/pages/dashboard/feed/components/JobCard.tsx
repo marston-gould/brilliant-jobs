@@ -54,8 +54,14 @@ export function JobCard({ job, isSaved, isApplied, matchScore, levelInfo, onSave
   const location = useMemo(() => formatLocation(job.location), [job]);
   const applyUrl = useMemo(() => job.apply_url || job.url || '#', [job]);
 
+  // Filter color border — faint left border matching the filter that matched this job
+  const filterColor = (job._filterNums as Array<{num:string;color:string}>|undefined)?.[0]?.color || '';
+
   return (
-    <div className="border border-border rounded-lg bg-bg-card p-3.5 flex flex-col gap-2 hover:border-border-hover transition-colors">
+    <div
+      className="border border-border rounded-lg bg-bg-card p-3.5 flex flex-col gap-2 hover:border-border-hover transition-colors"
+      style={filterColor ? { borderLeftColor: filterColor, borderLeftWidth: '3px' } : undefined}
+    >
       {/* Top row: hide × | title + level | Pipeline + Apply */}
       <div className="flex items-start gap-2">
         {/* Hide button */}
