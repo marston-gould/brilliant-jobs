@@ -240,11 +240,12 @@ export function FilterBuilder({
           {/* Who / Not */}
           <div className="grid grid-cols-2 gap-2">
             <FilterRow label="Who" labelClass="text-text-faint" onBrowse={onBrowse ? () => onBrowse('company', 'include') : undefined}>
-              <CompanyAutocomplete
+              <TagInput
                 value={values.who}
                 onChange={(v) => update('who', v)}
                 placeholder="company name…"
                 onKeyDown={handleKeyDown}
+                colorScheme="who"
               />
             </FilterRow>
             <FilterRow label="Not" labelClass="text-text-faint" onBrowse={onBrowse ? () => onBrowse('company', 'exclude') : undefined}>
@@ -261,14 +262,20 @@ export function FilterBuilder({
           {/* When / (empty) */}
           <div className="grid grid-cols-2 gap-2">
             <FilterRow label="When" labelClass="text-text-faint">
-              <input
-                type="text"
-                className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text placeholder:text-text-faint focus:border-accent focus:outline-none"
-                placeholder="today, 7 days, month…"
+              <select
+                className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border rounded-lg text-text focus:border-accent focus:outline-none cursor-pointer"
                 value={values.when}
                 onChange={(e) => update('when', e.target.value)}
-                onKeyDown={handleKeyDown}
-              />
+              >
+                <option value="">any time</option>
+                <option value="today">today</option>
+                <option value="3 days">last 3 days</option>
+                <option value="7 days">last 7 days</option>
+                <option value="14 days">last 14 days</option>
+                <option value="30 days">last 30 days</option>
+                <option value="1 month">last month</option>
+                <option value="3 months">last 3 months</option>
+              </select>
             </FilterRow>
             <div />
           </div>
