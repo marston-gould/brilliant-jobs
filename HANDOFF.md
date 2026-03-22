@@ -3989,7 +3989,16 @@ None.
 
 ## Last Completed Session
 
-**EMAIL-KILL-001 — Global email kill switch** ✅
+**v11.82 — Auth + Feed + Pipeline release (2026-03-22)** ✅
+- v11.81 → v11.82
+- **AUTH:** providers bundle storageKey restored — SPA reads login session. Fixes resumes + saved searches loading from Supabase.
+- **FEED:** `FeedPage.tsx` `window.savedFilters` (×2) → `safeReadLS('bj_saved_filters')`. Saved searches display without requiring auth.
+- **FEED:** `JobCard.tsx` (actual rendered component) — Pipeline pill `bg-green-dim/text-green/border-green` when saved. `Applied ✓` `bg-green-dim`. `onSave` passes full job object.
+- **FEED:** `useFeedSearch.ts` `saveJob` writes `job_title/company_name/job_url` to `user_pipeline`. Removes non-existent `entry_source`. Pipeline jobs now appear in My Applications.
+- **CDN:** Restored old bundle filename aliases (20 pre-v11.79 hashes + 3 pre-v11.82). Eliminates intermittent 404 on lazy-loaded chunks for cached browsers.
+- **Files changed:** `JobCard.tsx`, `JobTable.tsx`, `JobRow.tsx`, `FeedPage.tsx`, `useFeedSearch.ts`. Full dist rebuild. All bundle aliases committed.
+
+**Previous: EMAIL-KILL-001 — Global email kill switch** ✅
 - v11.80 → v11.81
 - **Scope:** All outbound email disabled immediately. 8 Edge Functions patched + Supabase secret set.
 - **How it works:** Each of the 8 email-sending EFs now checks `Deno.env.get("EMAIL_ENABLED") === "false"` at the top of their `sendEmail()` function. If the var is `false`, the function logs and returns without calling Resend.
@@ -4617,7 +4626,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v11.80`** | **storageKey fix — SPA now reads same localStorage key as landing page login. 2026-03-21.** | |: v11.46–v11.52. Landing page, feedback system, subscription fixes, Lucide audit, ROADMAP sync. 2026-03-20.** |
+| **Product (BJ_VERSION)** | **`v11.82`** | **v11.82 — auth, saved searches, resumes, Pipeline pill green, saveJob pipeline write, CDN 404 fix. 2026-03-22.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
