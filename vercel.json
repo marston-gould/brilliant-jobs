@@ -234,8 +234,8 @@
       "destination": "/api/referral-lookup?u=:username"
     }
   ],
-  "buildCommand": "npm run build:spa",
+  "buildCommand": "",
   "outputDirectory": ".",
-  "installCommand": "npm install",
+  "installCommand": "",
   "framework": null
 }
