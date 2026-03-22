@@ -251,8 +251,9 @@ export function FeedPage() {
     });
   }, [user]);
 
-  // Trigger initial search on mount (slight delay to let load complete)
+  // Trigger initial search on mount — skip if cache is warm (navigated back)
   useEffect(() => {
+    if (state.jobs.length > 0) return; // cache hit — skip re-query
     const t = setTimeout(() => actions.search(0), 500);
     return () => clearTimeout(t);
   }, []);
