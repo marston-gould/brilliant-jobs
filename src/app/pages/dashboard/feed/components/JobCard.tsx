@@ -16,7 +16,7 @@ interface JobCardProps {
   isApplied: boolean;
   matchScore: number | null;
   levelInfo: { label: string; color: string } | null;
-  onSave: (id: string) => void;
+  onSave: (id: string, job: any) => void;
   onHide: (id: string) => void;
   onApply: (id: string, url: string) => void;
   onOpenModal?: (id: string) => void;
@@ -97,16 +97,20 @@ export function JobCard({ job, isSaved, isApplied, matchScore, levelInfo, onSave
         {/* Action buttons — legacy: .job-action-btn + .apply-btn */}
         <div className="flex gap-1.5 flex-shrink-0">
           {isApplied ? (
-            <span className="text-[10px] font-semibold text-green px-2.5 py-1 rounded-lg bg-green/10">
+            <span className="text-[10px] font-semibold text-green px-2.5 py-1 rounded-lg bg-green-dim">
               Applied ✓
             </span>
           ) : (
             <>
               <button
-                onClick={() => onSave(job.greenhouse_id)}
-                className="text-[10px] font-semibold px-2.5 py-1 rounded-lg border-[1.5px] border-accent text-accent bg-transparent hover:bg-accent/5 transition-colors whitespace-nowrap"
+                onClick={() => onSave(job.greenhouse_id, job)}
+                className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg border font-medium transition-all ${
+                  isSaved
+                    ? 'bg-green-dim text-green border-green hover:bg-green-dim'
+                    : 'border-transparent text-text-dim bg-transparent hover:bg-bg-hover hover:text-text'
+                }`}
               >
-                Pipeline
+                {isSaved ? 'Pipeline ✓' : 'Pipeline'}
               </button>
               <button
                 onClick={() => onApply(job.greenhouse_id, applyUrl)}
