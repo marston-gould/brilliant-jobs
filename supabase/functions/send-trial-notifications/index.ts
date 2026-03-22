@@ -52,6 +52,11 @@ function json(body: unknown, status = 200) {
 // ─── Resend send helper ───
 async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
   try {
+  // EMAIL KILL SWITCH — set EMAIL_ENABLED=false in Supabase secrets to disable all outbound email
+  if (Deno.env.get("EMAIL_ENABLED") === "false") {
+    console.log("[email] EMAIL_ENABLED=false — email suppressed");
+    return false;
+  }
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
