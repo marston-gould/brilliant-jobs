@@ -15,6 +15,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // DIAGNOSTIC: log every localStorage key so we can see what the auth wrote
+    console.log('[SessionProvider] URL on mount:', window.location.href);
+    console.log('[SessionProvider] hash:', window.location.hash || 'EMPTY');
     const allKeys = Object.keys(localStorage);
     console.log('[SessionProvider] localStorage keys on mount:', allKeys);
     const storageKey = (supabase.auth as any).storageKey ?? 'unknown';
