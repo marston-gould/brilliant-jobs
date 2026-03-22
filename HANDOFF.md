@@ -3989,7 +3989,16 @@ None.
 
 ## Last Completed Session
 
-**AUTH-FIX-001 — storageKey mismatch root cause fix** ✅
+**EMAIL-KILL-001 — Global email kill switch** ✅
+- v11.80 → v11.81
+- **Scope:** All outbound email disabled immediately. 8 Edge Functions patched + Supabase secret set.
+- **How it works:** Each of the 8 email-sending EFs now checks `Deno.env.get("EMAIL_ENABLED") === "false"` at the top of their `sendEmail()` function. If the var is `false`, the function logs and returns without calling Resend.
+- **Secret set:** `EMAIL_ENABLED=false` in Supabase project secrets (applies to all EFs on next invocation — no redeploy needed for the secret, but EFs must be redeployed to pick up the code guard).
+- **EFs patched:** send-notification, send-survey-invite, crewai-agent-digest, distribute-leaderboard-rewards, evaluate-alerts, resend-confirmation, send-trial-notifications, weekly-digest-expired.
+- **To re-enable:** Set `EMAIL_ENABLED=true` in Supabase secrets. No code change needed.
+- **NOT affected:** Supabase Auth emails (password reset, magic link) — those go through Supabase's own SMTP, not Resend. Those remain active.
+
+**Previous: AUTH-FIX-001 — storageKey mismatch root cause fix** ✅
 - v11.78 → v11.80
 - **Root cause:** Commit f25e720f (2026-03-21) removed `storageKey` from `src/app/lib/supabase.ts` createClient config. Landing page login (`js/landing-app.js` line 13) writes session to `supabase.auth.token`. Without the matching storageKey, SPA client defaulted to npm key `sb-qojhagupdnbtomfoxnsf-auth-token`. These are different localStorage keys — login succeeded but SPA never found the session.
 - **Fix:** Restored `storageKey: 'supabase.auth.token'` to SPA createClient in `src/app/lib/supabase.ts`.
