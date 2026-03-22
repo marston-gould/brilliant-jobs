@@ -3989,7 +3989,15 @@ None.
 
 ## Last Completed Session
 
-**SPA-CUT-REMEDIATION-2** — JobDetailModal + Final TODO Resolution ✅
+**AUTH-FIX-001 — storageKey mismatch root cause fix** ✅
+- v11.78 → v11.80
+- **Root cause:** Commit f25e720f (2026-03-21) removed `storageKey` from `src/app/lib/supabase.ts` createClient config. Landing page login (`js/landing-app.js` line 13) writes session to `supabase.auth.token`. Without the matching storageKey, SPA client defaulted to npm key `sb-qojhagupdnbtomfoxnsf-auth-token`. These are different localStorage keys — login succeeded but SPA never found the session.
+- **Fix:** Restored `storageKey: 'supabase.auth.token'` to SPA createClient in `src/app/lib/supabase.ts`.
+- **Files changed:** `src/app/lib/supabase.ts` (1 line added), `js/version.js` (v11.79→v11.80).
+- **Commits:** 5135b0471f (storageKey fix), 5ddb098d12 (version bump).
+- **Not changed:** AuthGuard, routes, SessionProvider — all correct. The only issue was the storage key mismatch.
+
+**Previous: SPA-CUT-REMEDIATION-2** — JobDetailModal + Final TODO Resolution ✅
 - v10.44→v10.45
 - **JobDetailModal component** (`src/app/components/JobDetailModal.tsx`): Fetches job from `ats_jobs` by `greenhouse_id`. Renders title, company, location, salary (formatted with Intl.NumberFormat), dates, full JD content. Uses design system Modal (xl size). Link to career page in footer.
 - **Pipeline openJobModal resolved:** `SELECT_JOB`/`CLOSE_JOB` action types. `selectedJobId` in PipelineState + initialState + reducer. `openJobModal` dispatches `SELECT_JOB`. `closeJobModal` dispatches `CLOSE_JOB`. PipelinePage renders `<JobDetailModal jobId={state.selectedJobId} onClose={actions.closeJobModal} />`.
@@ -4600,7 +4608,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v11.65`** | **Syntax error fix — stray } crashed all JS. Login should work. 2026-03-21.** |: v11.46–v11.52. Landing page, feedback system, subscription fixes, Lucide audit, ROADMAP sync. 2026-03-20.** |
+| **Product (BJ_VERSION)** | **`v11.80`** | **storageKey fix — SPA now reads same localStorage key as landing page login. 2026-03-21.** | |: v11.46–v11.52. Landing page, feedback system, subscription fixes, Lucide audit, ROADMAP sync. 2026-03-20.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
