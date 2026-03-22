@@ -1,11 +1,15 @@
 import { Outlet } from 'react-router-dom';
+import { SessionProvider } from '@lib/session';
 
-// AuthGuard: render the app. Session is verified per-provider call.
-// Removing the session gate here — it was causing "Please log in" loops
-// because supabase.auth.getSession() initializes asynchronously and
-// returned null before reading localStorage, blocking all access.
+// AuthGuard wraps the app in SessionProvider so pages can access the session.
+// It NEVER blocks rendering — pages always load. SessionProvider populates
+// user asynchronously after reading localStorage.
 export function AuthGuard() {
-  return <Outlet />;
+  return (
+    <SessionProvider>
+      <Outlet />
+    </SessionProvider>
+  );
 }
 
 export default AuthGuard;

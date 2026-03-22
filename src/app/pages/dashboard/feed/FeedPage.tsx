@@ -222,7 +222,7 @@ export function FeedPage() {
         if (data?.length) setSavedJobIds(new Set(data.map((r: any) => r.job_id)));
       });
     });
-  }, [sessionReady, user]);
+  }, [user]);
 
   // Trigger initial search on mount (slight delay to let load complete)
   useEffect(() => {
