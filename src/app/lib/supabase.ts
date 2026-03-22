@@ -23,10 +23,7 @@ export const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    // Must match the storage key used by the landing page vendor bundle (supabase.min.js)
-    // Vendor bundle (UMD) uses: sb-{hostname}-auth-token
-    // Without this, SPA reads 'supabase.auth.token' but login writes 'sb-qojhagupdnbtomfoxnsf-auth-token'
-    storageKey: 'sb-qojhagupdnbtomfoxnsf-auth-token',
+
   },
 });
 
