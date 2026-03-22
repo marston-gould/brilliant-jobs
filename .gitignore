@@ -5,3 +5,7 @@ node_modules/
 *~
 extension/dist/
 selector-health-report.json
+
+# SPA bundles — built by Vercel, not committed
+dist/spa/assets/
+dist/spa/src/app/index.html
