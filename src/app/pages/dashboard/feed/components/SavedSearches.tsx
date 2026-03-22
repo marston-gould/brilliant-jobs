@@ -16,7 +16,7 @@ interface SavedSearchItem {
   color: string;
   checked: boolean;
   filterNum?: string;
-  pillSummary?: string;
+  pillSummary?: Array<{ label: string; type: 'include' | 'exclude' | 'where' }>;
 }
 
 interface SavedSearchesProps {
@@ -150,8 +150,26 @@ export function SavedSearches({
                       </span>
                     )}
                   </div>
-                  {item.pillSummary && (
-                    <div className="text-[10px] text-text-faint truncate mt-0.5">{item.pillSummary}</div>
+                  {item.pillSummary && item.pillSummary.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {item.pillSummary.slice(0, 8).map((pill, idx) => (
+                        <span
+                          key={idx}
+                          className={`inline-block px-1.5 py-0.5 rounded-full text-[9px] font-semibold leading-none ${
+                            pill.type === 'exclude'
+                              ? 'bg-red-400/10 text-red-400'
+                              : pill.type === 'where'
+                              ? 'bg-orange-400/10 text-orange-400'
+                              : 'bg-accent/10 text-accent'
+                          }`}
+                        >
+                          {pill.label}
+                        </span>
+                      ))}
+                      {item.pillSummary.length > 8 && (
+                        <span className="text-[9px] text-text-faint">+{item.pillSummary.length - 8}</span>
+                      )}
+                    </div>
                   )}
                 </div>
                 <button
