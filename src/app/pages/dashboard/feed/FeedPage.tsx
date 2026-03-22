@@ -161,7 +161,7 @@ async function loadSavedFiltersFromSupabase(): Promise<SavedSearchItem[]> {
 
 export function FeedPage() {
   const navigate = useNavigate();
-  const [state, actions] = useFeedSearch();
+  const [state, actions] = useFeedSearch(getActiveFilters);
 
   // Local UI state
   const [filterBuilderCollapsed, setFilterBuilderCollapsed] = useState(false);
@@ -170,6 +170,32 @@ export function FeedPage() {
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [companyBrowseOpen, setCompanyBrowseOpen] = useState(false);
   const [savedSearchItems, setSavedSearchItems] = useState<SavedSearchItem[]>([]);
+
+  // Ref so getActiveFilters callback always sees latest savedSearchItems without re-render
+  const savedSearchItemsRef = useRef<SavedSearchItem[]>([]);
+  useEffect(() => { savedSearchItemsRef.current = savedSearchItems; }, [savedSearchItems]);
+
+  const getActiveFilters = useCallback((): import('./hooks/useFeedSearch').SavedFilter[] => {
+    return savedSearchItemsRef.current
+      .filter(item => item.checked)
+      .map(item => {
+        const fd = (item as any)._filterData || {};
+        return {
+          id: item.id, name: item.name, color: item.color, checked: true,
+          whatPills: fd.whatPills || [], whatNotPills: fd.whatNotPills || [],
+          wherePills: fd.wherePills || [], whereNotPills: fd.whereNotPills || [],
+          whoPills: fd.whoPills || [], whoNotPills: fd.whoNotPills || [],
+          whenPills: fd.whenPills || [], payPills: fd.payPills || [],
+          jdPills: fd.jdPills || [], levelPills: fd.levelPills || [],
+          typePills: fd.typePills || [], scorePills: fd.scorePills || [],
+          skillsPills: fd.skillsPills || [], deptPills: fd.deptPills || [],
+          includeRemote: fd.includeRemote || false,
+          includeNoSalary: fd.includeNoSalary !== false,
+          _filterNum: item.filterNum || '', _filterColor: item.color,
+          _locationIds: fd._locationIds || null,
+        };
+      });
+  }, []);
   const [filterValues, setFilterValues] = useState<FilterValues>({
     what: '',
     whatNot: '',
