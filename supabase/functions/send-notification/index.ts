@@ -508,6 +508,11 @@ async function sendEmail(
   text?: string
 ): Promise<{ ok: boolean; error?: string; message_id?: string }> {
   try {
+  // EMAIL KILL SWITCH — set EMAIL_ENABLED=false in Supabase secrets to disable all outbound email
+  if (Deno.env.get("EMAIL_ENABLED") === "false") {
+    console.log("[email] EMAIL_ENABLED=false — email suppressed");
+    return false;
+  }
     const res = await fetchWithRetry("https://api.resend.com/emails", {
       method: "POST",
       headers: {
