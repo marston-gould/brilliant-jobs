@@ -3989,7 +3989,15 @@ None.
 
 ## Last Completed Session
 
-**v11.82 — Auth + Feed + Pipeline release (2026-03-22)** ✅
+**ARCH-001 — Vercel build step (2026-03-22)** ✅
+- **Root cause fixed:** Vite content-hash chunking + repo-as-CDN = every build broke cached browsers. Band-aids (filename aliases) don't scale and created the whack-a-mole loop all day.
+- **Fix:** `vercel.json` now has `buildCommand: "npm run build:spa"` and `installCommand: "npm install"`. Vercel builds the SPA fresh on every push. No committed bundles, no aliases, no manual sync ever again.
+- **Removed:** All 102 committed JS/map files from `dist/spa/assets/` and `dist/spa/src/app/index.html`. Repo is now source-only.
+- **Added:** `.nvmrc` pinning Node 22. `dist/spa/assets/` added to `.gitignore`.
+- **Deploy:** Triggered via deploy hook. Vercel builds from source on every push going forward.
+- **CRITICAL for next sessions:** Never commit built bundles to the repo again. `src/` is the source of truth. Vercel builds it.
+
+**Previous: v11.82 — Auth + Feed + Pipeline release (2026-03-22)** ✅
 - v11.81 → v11.82
 - **AUTH:** providers bundle storageKey restored — SPA reads login session. Fixes resumes + saved searches loading from Supabase.
 - **FEED:** `FeedPage.tsx` `window.savedFilters` (×2) → `safeReadLS('bj_saved_filters')`. Saved searches display without requiring auth.
@@ -4626,7 +4634,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v11.82`** | **v11.82 — auth, saved searches, resumes, Pipeline pill green, saveJob pipeline write, CDN 404 fix. 2026-03-22.** |
+| **Product (BJ_VERSION)** | **`v11.82`** | **v11.82 + Vercel build step — SPA now built on deploy, no committed bundles. 2026-03-22.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
