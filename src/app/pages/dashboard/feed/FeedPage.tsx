@@ -15,7 +15,7 @@
 // Zero inline styles. Design tokens via Tailwind.
 // ============================================================
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, SlidersHorizontal } from 'lucide-react';
 import { PageHeader } from '@app/components';
