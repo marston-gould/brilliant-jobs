@@ -17,7 +17,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // DIAGNOSTIC: log every localStorage key so we can see what the auth wrote
     const allKeys = Object.keys(localStorage);
     console.log('[SessionProvider] localStorage keys on mount:', allKeys);
-    console.log('[SessionProvider] supabase storageKey in use:', (supabase.auth as any).storageKey ?? 'unknown');
+    const storageKey = (supabase.auth as any).storageKey ?? 'unknown';
+    console.log('[SessionProvider] supabase storageKey in use:', storageKey);
+    const rawSession = localStorage.getItem(storageKey);
+    console.log('[SessionProvider] raw session value:', rawSession ? rawSession.substring(0, 100) + '...' : 'NULL');
 
     supabase.auth.getSession().then(({ data, error }) => {
       console.log('[SessionProvider] getSession result:', {
