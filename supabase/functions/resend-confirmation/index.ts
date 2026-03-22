@@ -23,6 +23,12 @@ const RESEND_LIMIT = 3;
 const RESEND_WINDOW_HOURS = 1;
 
 serve(async (req: Request) => {
+  // EMAIL KILL SWITCH — set EMAIL_ENABLED=false in Supabase secrets to disable all outbound email
+  if (Deno.env.get("EMAIL_ENABLED") === "false") {
+    console.log("[email] EMAIL_ENABLED=false — email suppressed");
+    return false;
+  }
+
   // CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, {
