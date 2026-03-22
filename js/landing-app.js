@@ -201,14 +201,9 @@ document.addEventListener("DOMContentLoaded", function() {
       }
     });
     setTimeout(function() {
-      console.log('[BJ:login] 5s fallback firing, localStorage:', Object.keys(localStorage));
-      // Only navigate if session is actually in storage
-      if (localStorage.getItem('supabase.auth.token')) {
-        window.location.href = _dest;
-      } else {
-        console.error('[BJ:login] Session not in localStorage after 5s — auth failed silently');
-      }
-    }, 5000);
+      console.log('[BJ:login] 2s fallback firing, localStorage keys:', Object.keys(localStorage));
+      window.location.href = _dest;
+    }, 2000);
   });
   var signupBtn = $("#signup-btn");
   if (signupBtn) signupBtn.addEventListener("click", async () => {
