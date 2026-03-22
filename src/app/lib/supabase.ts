@@ -23,7 +23,7 @@ export const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    storageKey: 'supabase.auth.token',
+    // No storageKey override — uses UMD default: sb-qojhagupdnbtomfoxnsf-auth-token
   },
 });
 
