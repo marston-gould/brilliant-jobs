@@ -38,6 +38,7 @@ import {
 import type { FilterValues } from './components';
 import { useFeedSearch } from './hooks/useFeedSearch';
 import { safeReadLS } from '@app/lib/supabase';
+import { useSession } from '@app/lib/session';
 import type { TrustLabel, AiLabel } from './hooks/useFeedSearch';
 
 // ── Default level hierarchy (from legacy) ─────────────────
@@ -164,6 +165,7 @@ export function FeedPage() {
 
   // Local UI state
   const [filterBuilderCollapsed, setFilterBuilderCollapsed] = useState(false);
+  const { user, ready: sessionReady } = useSession();
   const [savedSearchesCollapsed, setSavedSearchesCollapsed] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [companyBrowseOpen, setCompanyBrowseOpen] = useState(false);
@@ -189,18 +191,7 @@ export function FeedPage() {
   // Track saved jobs in React state (replaces window.savedJobIds legacy global)
   const [savedJobIds, setSavedJobIds] = useState<Set<string>>(() => getLegacySet('savedJobIds'));
 
-  // Load saved job IDs from Supabase on mount
-  useEffect(() => {
-    (async () => {
-      try {
-        const { supabase, getUser } = await import('@app/lib/supabase');
-        const user = await getUser();
-        if (!user) return;
-        const { data } = await supabase.from('user_pipeline').select('job_id').eq('user_id', user.id);
-        if (data?.length) setSavedJobIds(new Set(data.map((r: any) => r.job_id)));
-      } catch {}
-    })();
-  }, []);
+
   const appliedJobIds = useMemo(() => getLegacySet('appliedJobIds'), [state.jobs]); // TODO: migrate to state
   const matchScores = useMemo(() => getLegacyObj('jobMatchScores', {}), [state.jobs]);
   const fraudCache = useMemo(() => getLegacyObj('_fraudScoreCache', {}), [state.jobs]);
@@ -222,29 +213,16 @@ export function FeedPage() {
     }).catch(() => {});
   }, [statsProvider]);
 
-  // Load saved searches + pipeline IDs after auth session is confirmed
+  // Load saved searches + pipeline IDs — fires when session is ready
   useEffect(() => {
-    // Try immediately first (session may already be present)
+    if (!sessionReady || !user) return;
     loadSavedFiltersFromSupabase().then(items => { setSavedSearchItems(items); });
-
-    // Also retry on SIGNED_IN / INITIAL_SESSION in case first attempt beat the session
-    import('@app/lib/supabase').then(({ supabase, getUser }) => {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string) => {
-        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-          loadSavedFiltersFromSupabase().then(items => { setSavedSearchItems(items); });
-          getUser().then(user => {
-            if (!user) return;
-            supabase.from('user_pipeline').select('job_id').eq('user_id', user.id).then(({ data }: any) => {
-              if (data?.length) setSavedJobIds(new Set(data.map((r: any) => r.job_id)));
-            });
-          });
-        }
+    import('@app/lib/supabase').then(({ supabase }) => {
+      supabase.from('user_pipeline').select('job_id').eq('user_id', user.id).then(({ data }: any) => {
+        if (data?.length) setSavedJobIds(new Set(data.map((r: any) => r.job_id)));
       });
-      // store unsub for cleanup — closure keeps ref
-      (window as any).__feedAuthUnsub = () => subscription.unsubscribe();
     });
-    return () => { try { (window as any).__feedAuthUnsub?.(); } catch {} };
-  }, []);
+  }, [sessionReady, user]);
 
   // Trigger initial search on mount (slight delay to let load complete)
   useEffect(() => {

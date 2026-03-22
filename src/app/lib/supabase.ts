@@ -34,8 +34,10 @@ export async function getSession(): Promise<Session | null> {
 }
 
 export async function getUser(): Promise<User | null> {
-  const session = await getSession();
-  return session?.user ?? null;
+  // getSession() reads from localStorage synchronously when token is valid
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (sessionData?.session?.user) return sessionData.session.user;
+  return null;
 }
 
 export async function getAccessToken(): Promise<string | null> {
