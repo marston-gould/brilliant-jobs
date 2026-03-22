@@ -12,7 +12,7 @@ import type { FeedJob, FeedSearchState, TrustLabel, AiLabel } from '../hooks/use
 
 interface JobTableProps {
   state: FeedSearchState;
-  onSave: (jobId: string) => void;
+  onSave: (jobId: string, job: any) => void;
   onHide: (jobId: string) => void;
   onApply: (jobId: string, url: string) => void;
   onPageChange: (page: number) => void;
