@@ -3989,7 +3989,14 @@ None.
 
 ## Last Completed Session
 
-**ARCH-001 — Vercel build step (2026-03-22)** ✅
+**v11.83 — Fixed Vite bundle filenames (2026-03-22)** ✅
+- **Root cause of all CDN 404s fixed permanently:** `vite.config.js` now outputs fixed filenames (`FeedPage.js`, `providers.js`, etc.) instead of content-hashed names (`FeedPage-B75K0KZU.js`). Browser cache never holds a reference to a filename that no longer exists.
+- **Vercel build step reverted** — CI (deploy.yml rebuild-spa job) builds and commits dist/. Vercel serves repo directly. Build step would have doubled costs on top of the $724/month already being spent on CI build minutes.
+- **Going forward:** Every push to `src/app/**` triggers `rebuild-spa` in CI which builds and commits with fixed names. Vercel serves the committed output. No aliases, no manual sync, no 404s.
+- **Files:** `vite.config.js` (no-hash output config). Full dist rebuild committed (58 files, fixed names).
+- **NOTE on CI costs:** $724 last billing cycle from 5,908 build minutes. This is from CI running on every push. Each push triggers 10 parallel jobs. Reducing commit frequency and batching fixes is the primary lever.
+
+**Previous: ARCH-001 — Vercel build step (2026-03-22)** ✅
 - **Root cause fixed:** Vite content-hash chunking + repo-as-CDN = every build broke cached browsers. Band-aids (filename aliases) don't scale and created the whack-a-mole loop all day.
 - **Fix:** `vercel.json` now has `buildCommand: "npm run build:spa"` and `installCommand: "npm install"`. Vercel builds the SPA fresh on every push. No committed bundles, no aliases, no manual sync ever again.
 - **Removed:** All 102 committed JS/map files from `dist/spa/assets/` and `dist/spa/src/app/index.html`. Repo is now source-only.
@@ -4634,7 +4641,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v11.82`** | **v11.82 + Vercel build step — SPA now built on deploy, no committed bundles. 2026-03-22.** |
+| **Product (BJ_VERSION)** | **`v11.83`** | **v11.83 — fixed-filename Vite bundles, permanent 404 fix. 2026-03-22.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
