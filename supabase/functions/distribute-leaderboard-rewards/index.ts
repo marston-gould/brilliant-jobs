@@ -68,6 +68,11 @@ async function sendAdminAlert(periodType: string, result: Record<string, unknown
     body = `<p>Unknown result for ${periodType}.</p>`;
   }
   try {
+  // EMAIL KILL SWITCH — set EMAIL_ENABLED=false in Supabase secrets to disable all outbound email
+  if (Deno.env.get("EMAIL_ENABLED") === "false") {
+    console.log("[email] EMAIL_ENABLED=false — email suppressed");
+    return false;
+  }
     await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
