@@ -46,7 +46,7 @@ import type { TrustLabel, AiLabel } from './hooks/useFeedSearch';
 const DEFAULT_LEVEL_HIERARCHY = [
   { label: 'C-Suite', rank: 1, color: '#8b5cf6', keywords: ['ceo', 'cfo', 'cto', 'coo', 'cmo', 'chief'] },
   { label: 'VP', rank: 2, color: '#6366f1', keywords: ['vice president', 'vp '] },
-  { label: 'Director', rank: 3, color: '#3b82f6', keywords: ['director'] },
+  { label: 'Director', rank: 3, color: '#3b82f6', keywords: ['director', 'head of'] },
   { label: 'Sr Manager', rank: 4, color: '#0ea5e9', keywords: ['senior manager', 'sr. manager', 'sr manager'] },
   { label: 'Manager', rank: 5, color: '#06b6d4', keywords: ['manager'] },
   { label: 'Lead', rank: 6, color: '#14b8a6', keywords: ['lead', 'principal'] },
@@ -75,7 +75,7 @@ interface SavedSearchItem {
   color: string;
   checked: boolean;
   filterNum?: string;
-  pillSummary?: string; // e.g. "seo, organic search / united states / !paid"
+  pillSummary?: Array<{ label: string; type: 'include' | 'exclude' | 'where' }>; // pill chips
 }
 
 function getLegacySavedSearchItems(): SavedSearchItem[] {
@@ -105,18 +105,20 @@ async function loadSavedFiltersFromSupabase(): Promise<SavedSearchItem[]> {
       const whatVals = (fd.whatPills || []).flatMap((p: any) => p.values || []);
       const whereVals = (fd.wherePills || []).flatMap((p: any) => p.values || []);
       const notVals = (fd.whatNotPills || []).flatMap((p: any) => p.values || []);
-      const parts = [
-        whatVals.join(', '),
-        whereVals.length ? whereVals.join(', ') : '',
-        notVals.length ? notVals.map((v: string) => `!${v}`).join(', ') : '',
-      ].filter(Boolean);
+      const whoVals = (fd.whoPills || []).flatMap((p: any) => p.values || []);
+      const pills: Array<{ label: string; type: 'include' | 'exclude' | 'where' }> = [
+        ...whatVals.map((v: string) => ({ label: v, type: 'include' as const })),
+        ...whereVals.map((v: string) => ({ label: v, type: 'where' as const })),
+        ...whoVals.map((v: string) => ({ label: v, type: 'where' as const })),
+        ...notVals.map((v: string) => ({ label: `!${v}`, type: 'exclude' as const })),
+      ];
       return {
         id: f.id,
         name: f.name || `Search ${i + 1}`,
         color: fd._filterColor || FILTER_COLORS[i % FILTER_COLORS.length] || '#3b82f6',
         checked: true,
         filterNum: fd._filterNum || String(i + 1),
-        pillSummary: parts.join(' / ') || '',
+        pillSummary: pills,
         _filterData: f.filter_data,
       };
     });
@@ -182,6 +184,7 @@ export function FeedPage() {
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [companyBrowseOpen, setCompanyBrowseOpen] = useState(false);
   const [savedSearchItems, setSavedSearchItems] = useState<SavedSearchItem[]>([]);
+  const [levelHierarchy, setLevelHierarchy] = useState(DEFAULT_LEVEL_HIERARCHY);
 
   // Stable ref for active filters — useFeedSearch reads this directly
   const savedSearchItemsRef = useRef<SavedSearchItem[]>([]);
@@ -257,6 +260,18 @@ export function FeedPage() {
   useEffect(() => {
     if (!sessionReady || !user) return;
     loadSavedFiltersFromSupabase().then(items => { setSavedSearchItems(items); });
+    // Load user's custom level hierarchy from tuning
+    import('@app/lib/supabase').then(({ supabase, getUser }) => {
+      getUser().then(user => {
+        if (!user) return;
+        supabase.from('profiles').select('user_data').eq('id', user.id).single().then(({ data }: any) => {
+          const tuning = data?.user_data?.tuning || {};
+          if (tuning.levelHierarchy?.length) {
+            setLevelHierarchy(tuning.levelHierarchy);
+          }
+        });
+      });
+    });
     import('@app/lib/supabase').then(({ supabase }) => {
       supabase.from('user_pipeline').select('job_id').eq('user_id', user.id).then(({ data }: any) => {
         if (data?.length) setSavedJobIds(new Set(data.map((r: any) => r.job_id)));
@@ -682,7 +697,7 @@ export function FeedPage() {
         matchScores={matchScores}
         fraudCache={fraudCache}
         aiCache={aiCache}
-        levelHierarchy={DEFAULT_LEVEL_HIERARCHY}
+        levelHierarchy={levelHierarchy}
       />
 
       {/* Job Detail Modal — legacy: openJobModal() */}
