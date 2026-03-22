@@ -22,7 +22,7 @@ interface JobRowProps {
   fraudInfo: { label: TrustLabel; score: number } | null;
   aiInfo: { label: AiLabel; ai_probability: number } | null;
   levelInfo: { label: string; color: string; rank: number } | null;
-  onSave: (jobId: string) => void;
+  onSave: (jobId: string, job: any) => void;
   onHide: (jobId: string) => void;
   onApply: (jobId: string, url: string) => void;
   showPreview: boolean;
@@ -301,10 +301,10 @@ export function JobRow({
             ) : (
               <>
                 <button
-                  onClick={() => onSave(job.greenhouse_id)}
+                  onClick={() => onSave(job.greenhouse_id, job)}
                   className={`text-[10px] px-2 py-0.5 rounded-md border font-medium transition-all ${
                     isSaved
-                      ? 'bg-green/15 text-green border-green/40 hover:bg-green/25'
+                      ? 'bg-green-dim text-green border-green hover:bg-green-dim'
                       : 'bg-transparent text-text-dim border-transparent hover:bg-bg-hover hover:text-text'
                   }`}
                 >
