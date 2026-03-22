@@ -59,6 +59,10 @@
         {
           "key": "Content-Security-Policy",
           "value": "default-src 'self'; script-src 'self' 'sha256-DxI1Xb7ZaftmBbfsr/G8P/o5YMStn92mvbY1xkHad5o=' 'sha256-r+Msip+7rS9/LLzdypg7qq9H6SUe7IBE+39knsapSOA=' 'sha256-CmLBGchtbx4LHWa94d2IIZav33ck48GUzkaM1xpYqzo=' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://us.i.posthog.com https://us-assets.i.posthog.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://qojhagupdnbtomfoxnsf.supabase.co wss://qojhagupdnbtomfoxnsf.supabase.co https://us.i.posthog.com https://*.posthog.com https://boards-api.greenhouse.io https://api.lever.co https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://raw.githubusercontent.com https://unpkg.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
         }
       ]
     },
@@ -94,7 +98,7 @@
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
+          "value": "public, max-age=0, must-revalidate"
         }
       ]
     },
