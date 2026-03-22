@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", function() {
       const s = document.createElement("script");
       s.src = "/js/vendor/supabase.min.js";
       s.onload = () => {
-        sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true } });
+        sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { storageKey: 'supabase.auth.token', persistSession: true } });
         resolve(sb);
       };
       s.onerror = () => reject(new Error("Failed to load Supabase"));
