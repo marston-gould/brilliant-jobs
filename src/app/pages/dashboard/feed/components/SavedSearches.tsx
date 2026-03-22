@@ -16,6 +16,7 @@ interface SavedSearchItem {
   color: string;
   checked: boolean;
   filterNum?: string;
+  pillSummary?: string;
 }
 
 interface SavedSearchesProps {
@@ -129,26 +130,33 @@ export function SavedSearches({
             {filteredItems.map(item => (
               <label
                 key={item.id}
-                className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-bg-hover cursor-pointer group"
+                className="flex items-start gap-2 px-2 py-1.5 rounded hover:bg-bg-hover cursor-pointer group"
               >
                 <input
                   type="checkbox"
                   checked={item.checked}
                   onChange={() => onToggle(item.id)}
-                  className="cursor-pointer"
+                  className="cursor-pointer mt-0.5"
                 />
-                <span className="text-xs text-text-dim flex-1 truncate">{item.name}</span>
-                {item.filterNum && (
-                  <span
-                    className="text-[9px] font-bold text-white px-1.5 py-0.5 rounded"
-                    style={{ backgroundColor: item.color }}
-                  >
-                    {item.filterNum}
-                  </span>
-                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-text-dim truncate">{item.name}</span>
+                    {item.filterNum && (
+                      <span
+                        className="text-[9px] font-bold text-white px-1.5 py-0.5 rounded flex-shrink-0"
+                        style={{ backgroundColor: item.color }}
+                      >
+                        {item.filterNum}
+                      </span>
+                    )}
+                  </div>
+                  {item.pillSummary && (
+                    <div className="text-[10px] text-text-faint truncate mt-0.5">{item.pillSummary}</div>
+                  )}
+                </div>
                 <button
                   type="button"
-                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-400/20 text-text-faint hover:text-red-400 transition-all"
+                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-400/20 text-text-faint hover:text-red-400 transition-all mt-0.5 flex-shrink-0"
                   title="Delete this search"
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete([item.id]); }}
                 >
