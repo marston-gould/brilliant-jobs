@@ -683,14 +683,24 @@ function buildFilterQuery(
   return query;
 }
 
+// ── Module-level result cache — survives navigation ───────
+// Keyed by filter checksum so stale results are not shown when filters change
+let _cachedJobs: FeedJob[] = [];
+let _cachedTotal = 0;
+let _cacheKey = '';
+
+function getFilterCacheKey(filters: SavedFilter[]): string {
+  return filters.map(f => f.id + ':' + (f.checked ? '1' : '0')).join('|');
+}
+
 // ── Hook ──────────────────────────────────────────────────
 
-export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
+export function useFeedSearch(getActiveFilters?: () => SavedFilter[]): [FeedSearchState, FeedSearchActions] {
   const [state, setState] = useState<FeedSearchState>({
-    jobs: [],
-    total: 0,
+    jobs: _cachedJobs,
+    total: _cachedTotal,
     page: 0,
-    loading: false,
+    loading: _cachedJobs.length === 0,
     error: null,
     stats: { total: 0, companies: 0, newToday: 0, newSinceLogin: 0, pipeline: 0 },
     sortStack: [{ field: 'updated_at', asc: false }],
@@ -749,9 +759,13 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
         const { data: defData, error: defError, count: defCount } = await defQuery;
         if (controller.signal.aborted) return;
         if (defError) throw new ProviderError(defError.message, 'SEARCH_FAILED', undefined, defError);
+        const defJobs = (defData || []) as unknown as FeedJob[];
+        _cachedJobs = defJobs;
+        _cachedTotal = defCount || 0;
+        _cacheKey = '';
         setState(prev => ({
           ...prev,
-          jobs: (defData || []) as unknown as FeedJob[],
+          jobs: defJobs,
           total: defCount || 0,
           loading: false,
           error: null,
@@ -973,6 +987,8 @@ export function useFeedSearch(): [FeedSearchState, FeedSearchActions] {
       const uniqueCompanies = new Set(allJobs.map(j => j.company_name)).size;
       const savedIds = getLegacySavedJobIds();
 
+      _cachedJobs = allJobs;
+      _cachedTotal = totalCount;
       setState(prev => ({
         ...prev,
         jobs: allJobs,
