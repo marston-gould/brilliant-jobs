@@ -192,23 +192,29 @@ document.addEventListener("DOMContentLoaded", function() {
     if (!_dest.startsWith("/")) _dest = "/app/feed";
     console.log('[BJ:login] navigating to:', _dest);
     $("#login-btn").textContent = "Redirecting...";
+    var _navigated = false;
     var _sub = sb.auth.onAuthStateChange(function(event, session) {
       console.log('[BJ:login] onAuthStateChange:', event, 'session:', session ? 'present' : 'null');
-      if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session) {
+      if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session && session.access_token) {
+        if (_navigated) return;
+        _navigated = true;
         _sub.data.subscription.unsubscribe();
-        // Pass session tokens in URL hash so SPA client picks up via detectSessionInUrl
+        // Pass session tokens in URL hash so SPA reads via detectSessionInUrl
         var hash = '#access_token=' + encodeURIComponent(session.access_token) +
           '&refresh_token=' + encodeURIComponent(session.refresh_token) +
           '&expires_in=' + (session.expires_in || 3600) +
           '&token_type=bearer&type=signin';
-        console.log('[BJ:login] navigating with session hash to', _dest);
+        console.log('[BJ:login] navigating with hash tokens to', _dest);
         window.location.href = _dest + hash;
       }
     });
+    // Fallback: if auth state never fires with a session, navigate anyway after 4s
     setTimeout(function() {
-      console.log('[BJ:login] 2s fallback firing');
-      window.location.href = _dest;
-    }, 2000);
+      if (!_navigated) {
+        console.warn('[BJ:login] fallback: no SIGNED_IN after 4s, navigating without tokens');
+        window.location.href = _dest;
+      }
+    }, 4000);
   });
   var signupBtn = $("#signup-btn");
   if (signupBtn) signupBtn.addEventListener("click", async () => {
