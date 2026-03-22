@@ -576,8 +576,6 @@ landing.css: `.inline-cta-wrap`, `.inline-cta`, `.btn-ic`, `.btn-ic-secondary`, 
 ## v9.77 Session NN: TITLE (2026-03-16)
 - DESCRIBE CHANGES HERE
 
-<<<<<<< HEAD
-=======
 ## v9.76 Session NN: TITLE (2026-03-16)
 - DESCRIBE CHANGES HERE
 
@@ -587,7 +585,6 @@ landing.css: `.inline-cta-wrap`, `.inline-cta`, `.btn-ic`, `.btn-ic-secondary`, 
 ## v9.74 Session NN: TITLE (2026-03-16)
 - DESCRIBE CHANGES HERE
 
->>>>>>> dce9f48100791b9fd15cf8c0031445597fb37110
 ## v9.73 Session NN: TITLE (2026-03-16)
 - DESCRIBE CHANGES HERE
 
@@ -690,12 +687,9 @@ landing.css: `.inline-cta-wrap`, `.inline-cta`, `.btn-ic`, `.btn-ic-secondary`, 
 ## v9.58 Session NN: TITLE (2026-03-15)
 - DESCRIBE CHANGES HERE
 
-<<<<<<< HEAD
 ## v9.57 Session NN: TITLE (2026-03-15)
 - DESCRIBE CHANGES HERE
 
-=======
->>>>>>> b298dc3103325f62f4b7a8a26a1dc32a74d36f14
 ## v9.56 Session NN: TITLE (2026-03-15)
 - DESCRIBE CHANGES HERE
 
