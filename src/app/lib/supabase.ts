@@ -36,10 +36,13 @@ export async function getSession(): Promise<Session | null> {
 }
 
 export async function getUser(): Promise<User | null> {
-  // getSession() reads from localStorage synchronously when token is valid
+  // First try getSession (fast, reads from localStorage after detectSessionInUrl)
   const { data: sessionData } = await supabase.auth.getSession();
   if (sessionData?.session?.user) return sessionData.session.user;
-  return null;
+  // Fallback: getUser() makes a network call — works before localStorage is populated
+  // This handles the case where session was just established from URL hash
+  const { data: userData } = await supabase.auth.getUser();
+  return userData?.user ?? null;
 }
 
 export async function getAccessToken(): Promise<string | null> {
