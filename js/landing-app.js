@@ -194,14 +194,19 @@ document.addEventListener("DOMContentLoaded", function() {
     $("#login-btn").textContent = "Redirecting...";
     var _sub = sb.auth.onAuthStateChange(function(event, session) {
       console.log('[BJ:login] onAuthStateChange:', event, 'session:', session ? 'present' : 'null');
-      if (event === "SIGNED_IN" && session) {
+      if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session) {
         _sub.data.subscription.unsubscribe();
-        console.log('[BJ:login] SIGNED_IN confirmed, navigating to', _dest);
-        window.location.href = _dest;
+        // Pass session tokens in URL hash so SPA client picks up via detectSessionInUrl
+        var hash = '#access_token=' + encodeURIComponent(session.access_token) +
+          '&refresh_token=' + encodeURIComponent(session.refresh_token) +
+          '&expires_in=' + (session.expires_in || 3600) +
+          '&token_type=bearer&type=signin';
+        console.log('[BJ:login] navigating with session hash to', _dest);
+        window.location.href = _dest + hash;
       }
     });
     setTimeout(function() {
-      console.log('[BJ:login] 2s fallback firing, localStorage keys:', Object.keys(localStorage));
+      console.log('[BJ:login] 2s fallback firing');
       window.location.href = _dest;
     }, 2000);
   });
