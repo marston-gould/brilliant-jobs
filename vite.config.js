@@ -42,6 +42,12 @@ export default defineConfig({
         app: resolve(__dirname, 'src/app/index.html'),
       },
       output: {
+        // Fixed filenames — no content hashes. Cache busting via BJ_VERSION query string
+        // on the entry script tag, not filename rotation. This prevents 404s when browsers
+        // have a cached entry bundle that references chunk filenames from a previous build.
+        entryFileNames: 'assets/[name].js',
+        chunkFileNames: 'assets/[name].js',
+        assetFileNames: 'assets/[name].[ext]',
         manualChunks(id) {
           if (id.includes('node_modules/react-router')) return 'router';
           if (id.includes('node_modules/react-dom')) return 'react-dom';
