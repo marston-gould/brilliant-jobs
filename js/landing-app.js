@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", function() {
       const s = document.createElement("script");
       s.src = "/js/vendor/supabase.min.js";
       s.onload = () => {
-        sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { storageKey: 'supabase.auth.token', persistSession: true } });
+        sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true } });
         resolve(sb);
       };
       s.onerror = () => reject(new Error("Failed to load Supabase"));
@@ -201,9 +201,14 @@ document.addEventListener("DOMContentLoaded", function() {
       }
     });
     setTimeout(function() {
-      console.log('[BJ:login] 2s fallback firing, localStorage keys:', Object.keys(localStorage).filter(function(k){return k.startsWith('sb-');}));
-      window.location.href = _dest;
-    }, 2000);
+      console.log('[BJ:login] 5s fallback firing, localStorage:', Object.keys(localStorage));
+      // Only navigate if session is actually in storage
+      if (localStorage.getItem('supabase.auth.token')) {
+        window.location.href = _dest;
+      } else {
+        console.error('[BJ:login] Session not in localStorage after 5s — auth failed silently');
+      }
+    }, 5000);
   });
   var signupBtn = $("#signup-btn");
   if (signupBtn) signupBtn.addEventListener("click", async () => {
