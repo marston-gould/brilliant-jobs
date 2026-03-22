@@ -3989,7 +3989,32 @@ None.
 
 ## Last Completed Session
 
-**v11.83 — Fixed Vite bundle filenames (2026-03-22)** ✅
+**v11.92 — Auth root cause fixed + filter UI (2026-03-22)** ✅
+
+### CRITICAL AUTH ARCHITECTURE — DO NOT BREAK
+Landing page and SPA are separate surfaces with different Supabase clients:
+- **Landing page**: UMD `js/vendor/supabase.min.js` v2.99.2
+- **SPA**: npm `@supabase/supabase-js` v2.99.2 bundled by Vite
+- They do NOT reliably share localStorage across page navigations
+
+**Working solution (v11.91+):**
+1. Login → `SIGNED_IN`/`INITIAL_SESSION` fires → navigate to `/app/feed#access_token=...&refresh_token=...&expires_in=3600&token_type=bearer&type=signin`
+2. SPA reads tokens from URL hash via `detectSessionInUrl: true, flowType: 'implicit'`
+3. `_navigated` guard prevents double-navigation. 4s fallback only if no session event fires.
+
+**NEVER DO THESE — each broke auth today:**
+- Set `detectSessionInUrl: false` in `src/app/lib/supabase.ts` → killed URL hash reading
+- Set `storageKey: 'supabase.auth.token'` → pointed SPA at wrong localStorage key
+- Removed `flowType: 'implicit'` → broke implicit token parsing from URL hash
+- 2s fallback navigating before session event → user sent to SPA without tokens
+
+### CI Cost Fix (saves ~$700/month)
+`ci.yml` push trigger removed. CI only runs on PRs now, not direct pushes to main.
+
+### Filter UI (v11.90-v11.92)
+- WHO: TagInput pills | WHEN: preset dropdown | HOW MUCH: pill when values set
+
+**Previous: v11.83 — Fixed Vite bundle filenames (2026-03-22)** ✅
 - **Root cause of all CDN 404s fixed permanently:** `vite.config.js` now outputs fixed filenames (`FeedPage.js`, `providers.js`, etc.) instead of content-hashed names (`FeedPage-B75K0KZU.js`). Browser cache never holds a reference to a filename that no longer exists.
 - **Vercel build step reverted** — CI (deploy.yml rebuild-spa job) builds and commits dist/. Vercel serves repo directly. Build step would have doubled costs on top of the $724/month already being spent on CI build minutes.
 - **Going forward:** Every push to `src/app/**` triggers `rebuild-spa` in CI which builds and commits with fixed names. Vercel serves the committed output. No aliases, no manual sync, no 404s.
@@ -4641,7 +4666,7 @@ count exceeds 750K rows, OR when faceted filter UX becomes a product priority �
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| **Product (BJ_VERSION)** | **`v11.83`** | **v11.83 — fixed-filename Vite bundles, permanent 404 fix. 2026-03-22.** |
+| **Product (BJ_VERSION)** | **`v11.92`** | **v11.92 — auth fixed, filter pills (WHO/WHEN/HOW MUCH), CI cost fixed. 2026-03-22.** |
 | Dashboard | `dashboard@3.2.0-gs-setup-consolidation` | POD3-GS |
 | Extension | `extension@3.0.0-posthog-qa` | EXT-AS-9 |
 | Landing Page | `index@0.7.0-seo` | CS-P1-013 |
