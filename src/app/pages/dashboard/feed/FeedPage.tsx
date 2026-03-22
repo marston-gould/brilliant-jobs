@@ -79,7 +79,7 @@ interface SavedSearchItem {
 
 function getLegacySavedSearchItems(): SavedSearchItem[] {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const filters: any[] = (window as any).savedFilters || [];
+  const filters: any[] = safeReadLS<any[]>('bj_saved_filters', []);
   return filters.map((f, i) => ({
     id: f.id || `sf-${i}`,
     name: f.name || `Search ${i + 1}`,
@@ -285,7 +285,7 @@ export function FeedPage() {
       prev.map(item => ({ ...item, checked }))
     );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const legacyFilters: any[] = (window as any).savedFilters || [];
+    const legacyFilters: any[] = safeReadLS<any[]>('bj_saved_filters', []);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     legacyFilters.forEach((f: any) => { f.checked = checked; });
     actions.search(0);
@@ -399,7 +399,7 @@ export function FeedPage() {
 
   // ── Job action handlers ───────────────────────────────
 
-  const handleSave = useCallback((jobId: string) => {
+  const handleSave = useCallback((jobId: string, job?: any) => {
     const isSaved = savedJobIds.has(jobId);
     if (isSaved) {
       setSavedJobIds(prev => { const n = new Set(prev); n.delete(jobId); return n; });
@@ -407,7 +407,7 @@ export function FeedPage() {
       (window as any).__bjToast?.('Removed from pipeline', 'info');
     } else {
       setSavedJobIds(prev => new Set([...prev, jobId]));
-      actions.saveJob(jobId);
+      actions.saveJob(jobId, job);
       (window as any).__bjToast?.('Saved to pipeline', 'success');
     }
   }, [actions, savedJobIds, setSavedJobIds]);
