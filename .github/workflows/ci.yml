@@ -30,8 +30,9 @@ name: CI
 on:
   pull_request:
     branches: [main, staging]
-  push:
-    branches: [main, staging]
+  # CI does NOT run on direct pushes to main — only on PRs.
+  # Direct pushes (hotfixes, bundle commits) skip CI to avoid burning build minutes.
+  # deploy.yml handles the actual deployment pipeline with targeted path filters.
 
 concurrency:
   group: ci-${{ github.ref }}
