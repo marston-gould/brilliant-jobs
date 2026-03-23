@@ -84,11 +84,11 @@ export function CompanyBrowseModal({ open, onClose, onSelect, dimension = 'compa
             p_limit: 500,
           });
           if (!error && data?.length) {
-            setCompanies(data.map((r: any) => ({
-              name: r.value.split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-              jobCount: r.job_count,
-              status: 'neutral' as const,
-            })));
+            const seen = new Set<string>();
+            setCompanies((data as any[])
+              .map(r => ({ name: (r.value as string).toLowerCase().trim(), jobCount: r.job_count as number }))
+              .filter(r => r.name.length >= 2 && r.name.length <= 60 && !seen.has(r.name) && !!seen.add(r.name))
+              .map(r => ({ name: r.name, jobCount: r.jobCount, status: 'neutral' as const })));
           }
           setLoading(false);
           return;
@@ -101,11 +101,11 @@ export function CompanyBrowseModal({ open, onClose, onSelect, dimension = 'compa
           p_limit: 1000,
         });
         if (!compErr && compData?.length) {
-          setCompanies(compData.map((r: any) => ({
-            name: r.value,
-            jobCount: r.job_count,
-            status: 'neutral' as const,
-          })));
+          const seen = new Set<string>();
+          setCompanies((compData as any[])
+            .map(r => ({ name: (r.value as string).toLowerCase().trim(), jobCount: r.job_count as number }))
+            .filter(r => r.name.length >= 1 && !seen.has(r.name) && !!seen.add(r.name))
+            .map(r => ({ name: r.name, jobCount: r.jobCount, status: 'neutral' as const })));
         }
       } catch (e) { console.error('[Browse]', e); }
       setLoading(false);
@@ -128,13 +128,14 @@ export function CompanyBrowseModal({ open, onClose, onSelect, dimension = 'compa
 
   const grouped = useMemo(() => {
     const groups: Record<string, Company[]> = {};
-    filtered.forEach(c => {
+    const toShow = activeLetter ? filtered.filter(c => (c.name[0] || '#').toUpperCase() === activeLetter) : filtered;
+    toShow.forEach(c => {
       const letter = (c.name[0] || '#').toUpperCase();
       if (!groups[letter]) groups[letter] = [];
       groups[letter].push(c);
     });
     return groups;
-  }, [filtered]);
+  }, [filtered, activeLetter]);
 
   const letters = useMemo(() => {
     const all = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
@@ -168,10 +169,12 @@ export function CompanyBrowseModal({ open, onClose, onSelect, dimension = 'compa
           </div>
         </div>
 
-        {/* Alpha nav */}
+        {/* Alpha nav — click letter to filter, click again or All to reset */}
         <div className="flex flex-wrap gap-[3px] px-5 py-2 border-b border-border flex-shrink-0">
+          <button onClick={() => setActiveLetter('')}
+            className={`text-[11px] font-bold px-1.5 py-0.5 rounded transition-all mr-1 ${!activeLetter ? 'bg-accent text-white' : 'text-accent hover:bg-accent/10 cursor-pointer'}`}>All</button>
           {letters.map(({ letter, has }) => (
-            <button key={letter} onClick={() => { if (has) { setActiveLetter(letter); document.getElementById(`cb-${letter}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }}
+            <button key={letter} onClick={() => { if (has) setActiveLetter(activeLetter === letter ? '' : letter); }}
               className={`text-[11px] font-bold px-1.5 py-0.5 rounded transition-all ${
                 has ? (activeLetter === letter ? 'bg-accent text-white' : 'text-accent hover:bg-accent/10 cursor-pointer')
                 : 'text-text-faint opacity-35'

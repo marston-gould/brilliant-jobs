@@ -53,7 +53,7 @@ export function TagInput({ value, onChange, placeholder, onKeyDown, 'aria-label'
   const c = PILL_COLORS[colorScheme] || PILL_COLORS.accent;
 
   const addTag = useCallback((raw: string) => {
-    const text = raw.trim();
+    const text = raw.trim().toLowerCase();
     if (!text) return;
     const isOr = /^or\s+/i.test(text);
     const cleanText = text.replace(/^or\s+/i, '');

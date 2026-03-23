@@ -254,12 +254,28 @@ export function useFeedSearch(getActiveFilters?: () => SavedFilter[]): [FeedSear
         };
       });
 
-      _cachedJobs = jobs;
+      // Dedup by title+company — some boards post same job for many countries
+      // Keep: US first, then remote, then newest
+      const dedupMap = new Map<string, FeedJob>();
+      for (const job of jobs) {
+        const key = `${job.title.toLowerCase().trim()}||${job.company_name.toLowerCase().trim()}`;
+        const existing = dedupMap.get(key);
+        if (!existing) {
+          dedupMap.set(key, job);
+        } else {
+          const score = (j: FeedJob) => (j.loc_country === 'US' ? 2 : j.is_remote ? 1 : 0);
+          if (score(job) > score(existing)) dedupMap.set(key, job);
+          else if (score(job) === score(existing) && job.created_at > existing.created_at) dedupMap.set(key, job);
+        }
+      }
+      const dedupedJobs = Array.from(dedupMap.values());
+
+      _cachedJobs = dedupedJobs;
       _cachedTotal = totalCount;
 
       setState(prev => ({
         ...prev,
-        jobs,
+        jobs: dedupedJobs,
         total: totalCount,
         page,
         loading: false,
@@ -267,7 +283,7 @@ export function useFeedSearch(getActiveFilters?: () => SavedFilter[]): [FeedSear
         stats: {
           ...prev.stats,
           total: totalCount,
-          companies: new Set(jobs.map(j => j.company_name)).size,
+          companies: new Set(dedupedJobs.map(j => j.company_name)).size,
         },
       }));
 
