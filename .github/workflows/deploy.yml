@@ -49,9 +49,6 @@ jobs:
   deploy-functions:
     name: Edge Function Deploy
     runs-on: ubuntu-latest
-    if: |
-      contains(toJson(github.event.head_commit.modified), 'supabase/functions/') ||
-      contains(toJson(github.event.head_commit.added), 'supabase/functions/')
     steps:
       - uses: actions/checkout@v4
         with:
