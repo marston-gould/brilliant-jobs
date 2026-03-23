@@ -86,7 +86,7 @@ jobs:
       contains(github.event.head_commit.modified, 'tailwind.config.js')
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: '20'
           cache: 'npm'
@@ -114,7 +114,7 @@ jobs:
       contains(github.event.head_commit.modified, 'build-admin.js')
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: '20'
           cache: 'npm'
@@ -155,7 +155,7 @@ jobs:
     # No if: condition — workflow-level paths filter (src/app/**) handles gating
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: '20'
           cache: 'npm'
@@ -189,7 +189,7 @@ jobs:
     if: contains(github.event.head_commit.modified, 'extension/')
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: '20'
           cache: 'npm'
