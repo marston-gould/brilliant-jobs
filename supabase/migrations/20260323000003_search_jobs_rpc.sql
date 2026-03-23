@@ -165,7 +165,7 @@ BEGIN
     SELECT LOWER(val->>'value') FROM jsonb_array_elements(COALESCE(v_tuning->'companyExcludes', '[]'::jsonb)) val
     WHERE val->>'value' IS NOT NULL
     UNION
-    SELECT LOWER(val->>'values'->0) FROM jsonb_array_elements(COALESCE(v_tuning->'companyExcludes', '[]'::jsonb)) val
+    SELECT LOWER(val->'values'->>0) FROM jsonb_array_elements(COALESCE(v_tuning->'companyExcludes', '[]'::jsonb)) val
     WHERE val->'values' IS NOT NULL
   ) INTO v_company_excludes;
 
@@ -173,7 +173,7 @@ BEGIN
     SELECT LOWER(val->>'value') FROM jsonb_array_elements(COALESCE(v_tuning->'titleExcludes', '[]'::jsonb)) val
     WHERE val->>'value' IS NOT NULL
     UNION
-    SELECT LOWER(val->>'values'->0) FROM jsonb_array_elements(COALESCE(v_tuning->'titleExcludes', '[]'::jsonb)) val
+    SELECT LOWER(val->'values'->>0) FROM jsonb_array_elements(COALESCE(v_tuning->'titleExcludes', '[]'::jsonb)) val
     WHERE val->'values' IS NOT NULL
   ) INTO v_title_excludes;
 
@@ -181,7 +181,7 @@ BEGIN
     SELECT LOWER(val->>'value') FROM jsonb_array_elements(COALESCE(v_tuning->'locationExcludes', '[]'::jsonb)) val
     WHERE val->>'value' IS NOT NULL
     UNION
-    SELECT LOWER(val->>'values'->0) FROM jsonb_array_elements(COALESCE(v_tuning->'locationExcludes', '[]'::jsonb)) val
+    SELECT LOWER(val->'values'->>0) FROM jsonb_array_elements(COALESCE(v_tuning->'locationExcludes', '[]'::jsonb)) val
     WHERE val->'values' IS NOT NULL
   ) INTO v_location_excludes;
 
@@ -189,7 +189,7 @@ BEGIN
     SELECT LOWER(val->>'value') FROM jsonb_array_elements(COALESCE(v_tuning->'industryExcludes', '[]'::jsonb)) val
     WHERE val->>'value' IS NOT NULL
     UNION
-    SELECT LOWER(val->>'values'->0) FROM jsonb_array_elements(COALESCE(v_tuning->'industryExcludes', '[]'::jsonb)) val
+    SELECT LOWER(val->'values'->>0) FROM jsonb_array_elements(COALESCE(v_tuning->'industryExcludes', '[]'::jsonb)) val
     WHERE val->'values' IS NOT NULL
   ) INTO v_industry_excludes;
 
