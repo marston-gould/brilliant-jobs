@@ -295,7 +295,7 @@ export function FilterBuilder({
                       : `up to $${Number(values.payMax).toLocaleString()}`}
                     <button
                       type="button"
-                      onClick={() => { update('payMin', ''); update('payMax', ''); }}
+                      onClick={() => onChange({ ...values, payMin: '', payMax: '' })}
                       className="ml-0.5 opacity-60 hover:opacity-100 text-[10px] leading-none"
                       aria-label="Remove salary filter"
                     >✕</button>

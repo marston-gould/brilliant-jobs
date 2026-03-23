@@ -26,9 +26,16 @@ interface CompanyBrowseModalProps {
 const DIMENSION_LABELS: Record<string, string> = {
   company: 'Browse Companies', title: 'Browse Job Titles', skills: 'Browse Skills',
   dept: 'Browse Departments', level: 'Browse Levels', location: 'Browse Locations',
+  jd: 'Browse JD Keywords',
 };
 const DIMENSION_COLUMNS: Record<string, string> = {
-  company: 'company_name', title: 'title', skills: 'department', dept: 'department', level: 'level', location: 'location',
+  company: 'company_name',
+  title: 'title',
+  skills: 'extracted_skills',
+  dept: 'department',
+  level: 'extracted_seniority',
+  location: 'location',
+  jd: 'title',
 };
 
 export function CompanyBrowseModal({ open, onClose, onSelect, dimension = 'company' }: CompanyBrowseModalProps) {
@@ -41,29 +48,73 @@ export function CompanyBrowseModal({ open, onClose, onSelect, dimension = 'compa
   useEffect(() => {
     if (!open) return;
     setLoading(true);
+    setCompanies([]);
+    setSearch('');
     const col = DIMENSION_COLUMNS[dimension] || 'company_name';
     (async () => {
       try {
-        if (dimension === 'company') {
-          const { data } = await supabase.rpc('get_company_list') as any;
+        // For skills, parse the extracted_skills array column
+        if (dimension === 'skills') {
+          const { data } = await supabase.from('ats_jobs')
+            .select('extracted_skills')
+            .eq('status', 'open')
+            .not('extracted_skills', 'is', null)
+            .limit(2000) as any;
           if (data?.length) {
-            setCompanies(data.map((c: any) => ({ name: c.company_name, jobCount: c.job_count || 0, status: 'neutral' as const })));
+            const counts: Record<string, number> = {};
+            data.forEach((r: any) => {
+              const skills = Array.isArray(r.extracted_skills) ? r.extracted_skills : [];
+              skills.forEach((s: string) => {
+                if (s && s.length > 1 && s.length < 40) {
+                  const key = s.trim().toLowerCase();
+                  counts[key] = (counts[key] || 0) + 1;
+                }
+              });
+            });
+            const sorted = Object.entries(counts)
+              .filter(([_, n]) => n >= 3)
+              .sort((a, b) => b[1] - a[1])
+              .map(([name]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), jobCount: counts[name.toLowerCase()] || 0, status: 'neutral' as const }));
+            setCompanies(sorted);
             setLoading(false);
             return;
           }
         }
-      } catch { /* fallback below */ }
-      try {
-        const { data } = await supabase.from('ats_jobs').select(col).limit(1000) as any;
+        // For level/seniority
+        if (dimension === 'level') {
+          const levels = ['intern', 'entry', 'junior', 'mid', 'senior', 'lead', 'manager', 'director', 'vp', 'executive'];
+          setCompanies(levels.map(l => ({ name: l.charAt(0).toUpperCase() + l.slice(1), jobCount: 0, status: 'neutral' as const })));
+          setLoading(false);
+          return;
+        }
+        // General case — query distinct values
+        const { data } = await supabase.from('ats_jobs')
+          .select(col)
+          .eq('status', 'open')
+          .not(col, 'is', null)
+          .limit(5000) as any;
         if (data?.length) {
           const counts: Record<string, number> = {};
-          data.forEach((r: any) => { const v = r[col]; if (v) counts[v] = (counts[v] || 0) + 1; });
-          setCompanies(Object.entries(counts).map(([name, jobCount]) => ({ name, jobCount, status: 'neutral' as const })).sort((a, b) => a.name.localeCompare(b.name)));
+          data.forEach((r: any) => {
+            const v = r[col];
+            if (v && typeof v === 'string') {
+              const key = v.trim().toLowerCase();
+              if (key) counts[key] = (counts[key] || 0) + 1;
+            }
+          });
+          const sorted = Object.entries(counts)
+            .sort((a, b) => a[0].localeCompare(b[0]))
+            .map(([key, jobCount]) => ({
+              name: key.charAt(0).toUpperCase() + key.slice(1),
+              jobCount,
+              status: 'neutral' as const
+            }));
+          setCompanies(sorted);
         }
-      } catch { /* empty */ }
+      } catch (e) { console.error('[Browse]', e); }
       setLoading(false);
     })();
-  }, [open]);
+  }, [open, dimension]);
 
   const toggleStatus = useCallback((name: string) => {
     setCompanies(prev => prev.map(c =>
@@ -95,6 +146,7 @@ export function CompanyBrowseModal({ open, onClose, onSelect, dimension = 'compa
     return all.map(l => ({ letter: l, has: active.has(l) }));
   }, [grouped]);
 
+  const label = DIMENSION_LABELS[dimension] || 'Browse';
   const includedCount = companies.filter(c => c.status === 'included').length;
   const excludedCount = companies.filter(c => c.status === 'excluded').length;
 
@@ -105,7 +157,7 @@ export function CompanyBrowseModal({ open, onClose, onSelect, dimension = 'compa
       <div className="w-[90vw] max-w-[600px] max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="px-5 py-4 border-b border-border flex-shrink-0">
-          <div className="text-[15px] font-bold text-text mb-3">Browse Companies</div>
+          <div className="text-[15px] font-bold text-text mb-3">{label}</div>
           <div className="flex items-center gap-2 flex-wrap">
             <input type="text" value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search companies…" className="flex-1 min-w-[200px] px-3 py-2 rounded-lg border border-border bg-bg-input text-[13px] text-text focus:border-accent focus:outline-none" />
