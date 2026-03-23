@@ -25,21 +25,17 @@ const WALL_TIME_MS = 120_000
 
 const SYSTEM_PROMPT = `Extract structured data from this job description. Return ONLY a JSON object:
 {
-  "skills": ["lowercase","skill","names"],
-  "requirements": ["short qualification phrases"],
-  "education": "bachelors",
-  "seniority": "mid",
-  "years_min": 3,
-  "years_max": 5,
-  "salary_min": 80000,
-  "salary_max": 100000,
-  "salary_currency": "USD",
-  "salary_rate": "yr",
-  "ai_content_score": 0.35,
-  "ai_label": "human"
+  "skills": ["lowercase","skill","names"], // max 15, specific technical/professional skills only
+  "requirements": ["short qualification phrases"], // max 8
+  "education": "bachelors", // one of: high_school, associates, bachelors, masters, phd, professional, or null
+  "seniority": "mid", // one of: intern, entry, junior, mid, senior, lead, principal, director, vp, executive, or null
+  "years_min": 3, // integer or null
+  "years_max": 5, // integer or null
+  "ai_content_score": 0.35, // float 0.0-1.0: probability this JD was AI-generated (0=human, 1=AI)
+  "ai_label": "human" // one of: human (<0.3), mixed (0.3-0.7), ai_generated (>0.7)
 }
-Rules: skills max 15 lowercase. seniority: intern/entry/junior/mid/senior/lead/principal/director/vp/executive or null. education: high_school/associates/bachelors/masters/phd/professional or null. salary_min/max: integer annual USD or null — convert hourly*2080, weekly*52, monthly*12. salary_rate: yr/hr/mo/wk or null. salary_currency: ISO code, USD only (null if non-USD). ai_content_score: 0.0-1.0 probability AI-generated. ai_label: human/mixed/ai_generated.
-No markdown. JSON only.`
+AI detection signals: uniform sentence length, lack of specific details, generic qualifications, formulaic structure, absence of company voice/personality, overuse of buzzwords without substance.
+No markdown. No explanation. JSON only.`
 
 function stripHtml(html: string): string {
   return html
@@ -124,12 +120,7 @@ async function enrichJob(
       aiScore !== null ? (aiScore < 0.3 ? 'human' : aiScore > 0.7 ? 'ai_generated' : 'mixed') : null
     )
 
-    const salaryMin = (typeof parsed.salary_min === 'number' && parsed.salary_min > 1000 && parsed.salary_min < 10000000) ? Math.round(parsed.salary_min) : null
-    const salaryMax = (typeof parsed.salary_max === 'number' && parsed.salary_max > 1000 && parsed.salary_max < 10000000) ? Math.round(parsed.salary_max) : null
-    const validRates = ['yr', 'hr', 'mo', 'wk']
-    const salaryRate = validRates.includes(parsed.salary_rate) ? parsed.salary_rate : null
-
-    const updateData: Record<string, unknown> = {
+    const updateData = {
       jd_skills: skills,
       jd_requirements: requirements,
       jd_education: validEdu.includes(parsed.education) ? parsed.education : null,
@@ -138,12 +129,6 @@ async function enrichJob(
       jd_years_max: Number.isInteger(parsed.years_max) && parsed.years_max >= 0 ? parsed.years_max : null,
       ai_content_score: aiScore,
       ai_label: aiLabel,
-    }
-    if (salaryMin !== null) updateData.salary_min = salaryMin
-    if (salaryMax !== null) updateData.salary_max = salaryMax
-    if (salaryRate !== null) updateData.salary_rate = salaryRate
-    if (salaryMin !== null || salaryMax !== null) {
-      updateData.salary_currency = (typeof parsed.salary_currency === 'string' && parsed.salary_currency.length <= 5) ? parsed.salary_currency : 'USD'
     }
 
     const { error } = await supabase
