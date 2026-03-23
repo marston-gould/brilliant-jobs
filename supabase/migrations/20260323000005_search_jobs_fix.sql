@@ -78,7 +78,7 @@ RETURNS TABLE (
   matched_filter_ids   uuid[],
   total_count          bigint
 )
-LANGUAGE plpgsql STABLE AS $$
+LANGUAGE plpgsql VOLATILE AS $$
 DECLARE
   -- Tuning / global rules
   v_tuning              jsonb;
