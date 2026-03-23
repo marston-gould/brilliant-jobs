@@ -72,3 +72,5 @@ $$;
 
 -- Initial population
 SELECT refresh_title_ngrams();
+
+-- v9.83 pipeline trigger
