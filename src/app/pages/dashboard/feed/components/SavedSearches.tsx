@@ -84,7 +84,7 @@ export function SavedSearches({
         </svg>
         <span className="text-[13px] font-semibold text-text-dim">Saved Searches</span>
         {checkedCount > 0 && (
-          <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-accent/10 text-accent">
+          <span className="px-1.5 py-0.5 rounded-full text-[11px] font-bold bg-accent/10 text-accent">
             {checkedCount}
           </span>
         )}
@@ -143,7 +143,7 @@ export function SavedSearches({
                     <span className="text-xs text-text-dim truncate">{item.name}</span>
                     {item.filterNum && (
                       <span
-                        className="text-[9px] font-bold text-white px-1.5 py-0.5 rounded flex-shrink-0"
+                        className="text-[11px] font-bold text-white px-1.5 py-0.5 rounded flex-shrink-0"
                         style={{ backgroundColor: item.color }}
                       >
                         {item.filterNum}
@@ -157,17 +157,17 @@ export function SavedSearches({
                           key={idx}
                           className={
                             pill.type === 'exclude'
-                              ? 'inline-block px-1.5 py-0.5 rounded-full text-[9px] font-semibold leading-none bg-red-dim text-red'
+                              ? 'inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold leading-none bg-red-dim text-red'
                               : pill.type === 'where'
-                              ? 'inline-block px-1.5 py-0.5 rounded-full text-[9px] font-semibold leading-none bg-warm-dim text-warm'
-                              : 'inline-block px-1.5 py-0.5 rounded-full text-[9px] font-semibold leading-none bg-accent-dim text-accent'
+                              ? 'inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold leading-none bg-warm-dim text-warm'
+                              : 'inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold leading-none bg-accent-dim text-accent'
                           }
                         >
                           {pill.label}
                         </span>
                       ))}
                       {item.pillSummary.length > 8 && (
-                        <span className="text-[9px] text-text-faint">+{item.pillSummary.length - 8}</span>
+                        <span className="text-[11px] text-text-faint">+{item.pillSummary.length - 8}</span>
                       )}
                     </div>
                   )}

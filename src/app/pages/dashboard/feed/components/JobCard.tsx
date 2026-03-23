@@ -6,7 +6,7 @@
 //            Pipeline button | Apply → button
 // ============================================================
 
-import { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { Button } from '@app/components';
 import type { TrustLabel } from '../hooks/useFeedSearch';
 
@@ -128,6 +128,27 @@ export function JobCard({ job, isSaved, isApplied, matchScore, levelInfo, onSave
           )}
         </div>
       </div>
+
+      {/* AI/Staffing badges */}
+      {(() => {
+        const badges: React.ReactNode[] = [];
+        if (job.ai_label === 'ai_generated') {
+          badges.push(
+            <span key="ai" className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-warm-dim text-warm border border-warm/20">AI-written JD</span>
+          );
+        } else if (job.ai_label === 'mixed') {
+          badges.push(
+            <span key="ai" className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-accent-dim text-accent border border-accent/20">AI-assisted JD</span>
+          );
+        }
+        if (job.is_staffing_agency) {
+          badges.push(
+            <span key="staffing" className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-bg-hover text-text-faint border border-border">Staffing</span>
+          );
+        }
+        if (badges.length === 0) return null;
+        return <div className="flex gap-1.5 flex-wrap">{badges}</div>;
+      })()}
 
       {/* Preview JD (when toggled) */}
       {showPreview && (job.content || job.description) && (() => {

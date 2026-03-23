@@ -61,34 +61,7 @@ export function CompanyBrowseModal({ open, onClose, onSelect, dimension = 'compa
     const col = DIMENSION_COLUMNS[dimension] || 'company_name';
     (async () => {
       try {
-        // For skills, parse the extracted_skills array column
-        if (dimension === 'skills') {
-          const { data } = await supabase.from('ats_jobs')
-            .select('extracted_skills')
-            .eq('status', 'open')
-            .not('extracted_skills', 'is', null)
-            .limit(2000) as any;
-          if (data?.length) {
-            const counts: Record<string, number> = {};
-            data.forEach((r: any) => {
-              const skills = Array.isArray(r.extracted_skills) ? r.extracted_skills : [];
-              skills.forEach((s: string) => {
-                if (s && s.length > 1 && s.length < 40) {
-                  const key = s.trim().toLowerCase();
-                  counts[key] = (counts[key] || 0) + 1;
-                }
-              });
-            });
-            const sorted = Object.entries(counts)
-              .filter(([_, n]) => n >= 3)
-              .sort((a, b) => b[1] - a[1])
-              .map(([name]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), jobCount: counts[name.toLowerCase()] || 0, status: 'neutral' as const }));
-            setCompanies(sorted);
-            setLoading(false);
-            return;
-          }
-        }
-        // For level/seniority — use user's custom hierarchy from tuning
+        // Level — use user's custom hierarchy, no DB query needed
         if (dimension === 'level') {
           const levels = levelHierarchy && levelHierarchy.length > 0
             ? levelHierarchy.map(l => l.label)
@@ -97,18 +70,23 @@ export function CompanyBrowseModal({ open, onClose, onSelect, dimension = 'compa
           setLoading(false);
           return;
         }
-        // Title dimension — query precomputed ngrams table (built by refresh_title_ngrams())
-        if (dimension === 'title') {
-          const { data } = await supabase
-            .from('job_title_ngrams')
-            .select('ngram, cnt')
-            .gte('cnt', 5)
-            .order('cnt', { ascending: false })
-            .limit(2000) as any;
-          if (data?.length) {
+
+        // Title, skills, dept — use fn_filter_browser_top RPC (server-side aggregation)
+        const RPC_DIMENSIONS: Record<string, string> = {
+          title: 'title',
+          skills: 'skill',
+          dept: 'dept',
+        };
+        if (RPC_DIMENSIONS[dimension]) {
+          const { data, error } = await (supabase as any).rpc('fn_filter_browser_top', {
+            p_dimension: RPC_DIMENSIONS[dimension],
+            p_us_only: false,
+            p_limit: 500,
+          });
+          if (!error && data?.length) {
             setCompanies(data.map((r: any) => ({
-              name: r.ngram.split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-              jobCount: r.cnt,
+              name: r.value.split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+              jobCount: r.job_count,
               status: 'neutral' as const,
             })));
           }
@@ -116,28 +94,22 @@ export function CompanyBrowseModal({ open, onClose, onSelect, dimension = 'compa
           return;
         }
 
-        // General case — query distinct values
-        const { data } = await supabase.from('ats_jobs')
-          .select(col)
+        // Company — direct COUNT aggregation (all companies, sorted by job count)
+        const { data } = await (supabase as any)
+          .from('ats_jobs')
+          .select('company_name')
           .eq('status', 'open')
-          .not(col, 'is', null)
-          .limit(5000) as any;
+          .not('company_name', 'is', null)
+          .limit(50000) as any;
         if (data?.length) {
           const counts: Record<string, number> = {};
           data.forEach((r: any) => {
-            const v = r[col];
-            if (v && typeof v === 'string') {
-              const key = v.trim().toLowerCase();
-              if (key) counts[key] = (counts[key] || 0) + 1;
-            }
+            const key = (r.company_name as string).trim();
+            if (key) counts[key] = (counts[key] || 0) + 1;
           });
           const sorted = Object.entries(counts)
-            .sort((a, b) => a[0].localeCompare(b[0]))
-            .map(([key, jobCount]) => ({
-              name: key.charAt(0).toUpperCase() + key.slice(1),
-              jobCount,
-              status: 'neutral' as const
-            }));
+            .sort((a, b) => b[1] - a[1])
+            .map(([name, jobCount]) => ({ name, jobCount, status: 'neutral' as const }));
           setCompanies(sorted);
         }
       } catch (e) { console.error('[Browse]', e); }
