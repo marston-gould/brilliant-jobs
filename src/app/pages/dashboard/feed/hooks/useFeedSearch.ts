@@ -321,10 +321,13 @@ export function useFeedSearch(getActiveFilters?: () => SavedFilter[]): [FeedSear
       user_id: u.id,
       job_id: jobId,
       stage: 'saved',
+      ats_source: job?.ats_source ?? 'greenhouse',
       job_title: job?.title ?? null,
       company_name: job?.company_name ?? null,
+      company_slug: job?.company_name
+        ? job.company_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+        : 'unknown',
       job_url: job?.apply_url ?? job?.url ?? null,
-      ats_source: job?.ats_source ?? null,
     }, { onConflict: 'user_id,job_id' });
     if (error) throw new ProviderError(error.message, 'SAVE_FAILED');
     setState(prev => ({ ...prev, stats: { ...prev.stats, pipeline: prev.stats.pipeline + 1 } }));

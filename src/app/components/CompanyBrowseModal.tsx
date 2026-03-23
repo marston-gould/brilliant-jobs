@@ -94,23 +94,18 @@ export function CompanyBrowseModal({ open, onClose, onSelect, dimension = 'compa
           return;
         }
 
-        // Company — direct COUNT aggregation (all companies, sorted by job count)
-        const { data } = await (supabase as any)
-          .from('ats_jobs')
-          .select('company_name')
-          .eq('status', 'open')
-          .not('company_name', 'is', null)
-          .limit(50000) as any;
-        if (data?.length) {
-          const counts: Record<string, number> = {};
-          data.forEach((r: any) => {
-            const key = (r.company_name as string).trim();
-            if (key) counts[key] = (counts[key] || 0) + 1;
-          });
-          const sorted = Object.entries(counts)
-            .sort((a, b) => b[1] - a[1])
-            .map(([name, jobCount]) => ({ name, jobCount, status: 'neutral' as const }));
-          setCompanies(sorted);
+        // Company — server-side aggregation via fn_filter_browser_top
+        const { data: compData, error: compErr } = await (supabase as any).rpc('fn_filter_browser_top', {
+          p_dimension: 'company',
+          p_us_only: false,
+          p_limit: 1000,
+        });
+        if (!compErr && compData?.length) {
+          setCompanies(compData.map((r: any) => ({
+            name: r.value,
+            jobCount: r.job_count,
+            status: 'neutral' as const,
+          })));
         }
       } catch (e) { console.error('[Browse]', e); }
       setLoading(false);
