@@ -695,6 +695,7 @@ export function FeedPage() {
       {/* Job results table */}
       <JobTable
         state={state}
+        hasFilters={savedSearchItems.some(i => i.checked)}
         onSave={handleSave}
         onHide={handleHide}
         onApply={handleApply}

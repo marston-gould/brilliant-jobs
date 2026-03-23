@@ -12,6 +12,7 @@ import type { FeedJob, FeedSearchState, TrustLabel, AiLabel } from '../hooks/use
 
 interface JobTableProps {
   state: FeedSearchState;
+  hasFilters: boolean;
   onSave: (jobId: string, job: any) => void;
   onHide: (jobId: string) => void;
   onApply: (jobId: string, url: string) => void;
@@ -125,6 +126,7 @@ const COLUMNS = [
 
 export function JobTable({
   state,
+  hasFilters,
   onSave,
   onHide,
   onApply,
@@ -203,9 +205,18 @@ export function JobTable({
 
       {/* Empty state */}
       {!state.loading && !state.error && state.jobs.length === 0 && (
-        <div className="text-center py-12 text-text-faint">
-          <p className="text-sm font-semibold">No jobs found</p>
-          <p className="text-xs mt-1">Try adjusting your filters or search criteria</p>
+        <div className="text-center py-16 text-text-faint">
+          <svg width={32} height={32} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="inline-block mb-4 opacity-20" aria-hidden="true">
+            <circle cx={11} cy={11} r={8} /><path d="m21 21-4.35-4.35" />
+          </svg>
+          <p className="text-sm font-semibold text-text-dim mb-1">
+            {hasFilters ? 'No jobs match your filters' : 'Select a saved search to see jobs'}
+          </p>
+          <p className="text-xs text-text-faint max-w-xs mx-auto leading-relaxed">
+            {hasFilters
+              ? 'Try broader keywords, fewer exclusions, or a wider date range.'
+              : 'Check one or more saved searches above, or build a new filter.'}
+          </p>
         </div>
       )}
 
