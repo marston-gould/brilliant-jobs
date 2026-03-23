@@ -210,7 +210,7 @@ jobs:
           echo "Extension packaged: $(du -h brilliant-jobs-extension.zip | cut -f1)"
 
       - name: Upload extension artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: brilliant-jobs-extension-${{ github.sha }}
           path: brilliant-jobs-extension.zip
