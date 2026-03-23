@@ -44,15 +44,15 @@ import type { TrustLabel, AiLabel } from './hooks/useFeedSearch';
 // ── Default level hierarchy (from legacy) ─────────────────
 
 const DEFAULT_LEVEL_HIERARCHY = [
-  { label: 'C-Suite', rank: 1, color: '#8b5cf6', keywords: ['ceo', 'cfo', 'cto', 'coo', 'cmo', 'chief'] },
-  { label: 'VP', rank: 2, color: '#6366f1', keywords: ['vice president', 'vp '] },
+  { label: 'C-Suite', rank: 1, color: '#8b5cf6', keywords: ['ceo', 'cfo', 'cto', 'coo', 'cmo', 'chief executive', 'chief financial', 'chief technology', 'chief operating', 'chief marketing'] },
+  { label: 'VP', rank: 2, color: '#6366f1', keywords: ['vice president', 'vp of', 'vp,', 'vp '] },
   { label: 'Director', rank: 3, color: '#3b82f6', keywords: ['director', 'head of'] },
   { label: 'Sr Manager', rank: 4, color: '#0ea5e9', keywords: ['senior manager', 'sr. manager', 'sr manager'] },
   { label: 'Manager', rank: 5, color: '#06b6d4', keywords: ['manager'] },
-  { label: 'Lead', rank: 6, color: '#14b8a6', keywords: ['lead', 'principal'] },
-  { label: 'Senior', rank: 7, color: '#22c55e', keywords: ['senior', 'sr.', 'sr '] },
-  { label: 'Mid', rank: 8, color: '#84cc16', keywords: ['mid-level', 'mid level', 'ii', 'iii'] },
-  { label: 'Junior', rank: 9, color: '#eab308', keywords: ['junior', 'jr.', 'jr ', 'entry', 'associate'] },
+  { label: 'Lead', rank: 6, color: '#14b8a6', keywords: ['lead', 'principal', 'staff engineer', 'staff software', 'staff product', 'staff data'] },
+  { label: 'Senior', rank: 7, color: '#22c55e', keywords: ['senior', 'sr.', 'sr ', 'staff '] },
+  { label: 'Mid', rank: 8, color: '#84cc16', keywords: ['mid-level', 'mid level', ' ii', ' iii', ' iv'] },
+  { label: 'Junior', rank: 9, color: '#eab308', keywords: ['junior', 'jr.', 'jr ', 'entry level', 'entry-level'] },
   { label: 'Intern', rank: 10, color: '#f97316', keywords: ['intern', 'internship', 'co-op'] },
 ];
 
@@ -350,18 +350,80 @@ export function FeedPage() {
   }, [filterValues, savedSearchItems.length, actions]);
 
   const handleAiGenerate = useCallback(async () => {
-    (window as any).__bjToast?.('Analyzing your resume…', 'info');
+    (window as any).__bjToast?.('Reading your resume…', 'info');
     try {
-      const { callGateway } = await import('@app/lib/supabase');
-      const result = await callGateway<any>('admin-filter-prompt', { action: 'suggest' }, { timeout: 20000 });
-      if (result?.filters) {
-        setFilterValues(prev => ({ ...prev, ...result.filters }));
-        (window as any).__bjToast?.('AI filters applied to your search', 'success');
-      } else {
-        (window as any).__bjToast?.('No filter suggestions generated. Upload a resume first.', 'info');
+      const { callGateway, getUser, supabase } = await import('@app/lib/supabase');
+      const user = await getUser();
+      if (!user) {
+        (window as any).__bjToast?.('Sign in to use this feature', 'info');
+        return;
       }
-    } catch {
-      (window as any).__bjToast?.('Filter generation failed', 'info');
+
+      // Fetch most recent non-deleted resume with parsed content
+      const { data: resumes } = await (supabase as any)
+        .from('resumes')
+        .select('id, name, parsed_json')
+        .eq('user_id', user.id)
+        .is('deleted_at', null)
+        .not('parsed_json', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (!resumes?.length || !resumes[0].parsed_json) {
+        (window as any).__bjToast?.('Upload a resume first — then generate filters from it', 'info');
+        return;
+      }
+
+      const pj = resumes[0].parsed_json as any;
+
+      // Build resume text from parsed_json
+      const parts: string[] = [];
+      if (pj.contact_info?.name) parts.push(pj.contact_info.name);
+      if (pj.contact_info?.location) parts.push(pj.contact_info.location);
+      if (pj.summary) parts.push(pj.summary);
+      if (pj.work_experience?.length) {
+        pj.work_experience.slice(0, 4).forEach((job: any) => {
+          parts.push(`${job.title} at ${job.company} (${job.start_date}–${job.end_date || 'Present'})`);
+          if (job.bullets?.length) parts.push(job.bullets.slice(0, 3).join(' '));
+        });
+      }
+      if (pj.skills?.length) parts.push('Skills: ' + pj.skills.slice(0, 20).join(', '));
+      if (pj.education?.length) {
+        const edu = pj.education[0];
+        parts.push([edu.degree, edu.field, 'at', edu.institution].filter(Boolean).join(' '));
+      }
+      const resumeText = parts.join('\n');
+
+      if (resumeText.length < 100) {
+        (window as any).__bjToast?.('Resume data too sparse — try re-uploading your resume', 'info');
+        return;
+      }
+
+      (window as any).__bjToast?.('Generating filters from your resume…', 'info');
+      const result = await callGateway<any>('generate-filter', { resume_text: resumeText }, { timeout: 25000 });
+
+      if (!result || (!result.what?.length && !result.where?.length)) {
+        (window as any).__bjToast?.('Could not generate filters — try again', 'info');
+        return;
+      }
+
+      // Map generate-filter response to filterValues
+      setFilterValues(prev => ({
+        ...prev,
+        what: result.what?.join(', ') || prev.what,
+        whatNot: result.what_not?.join(', ') || prev.whatNot,
+        where: result.where?.join(', ') || prev.where,
+        whoNot: result.who_not?.join(', ') || prev.whoNot,
+        payMin: result.salary_min ? String(result.salary_min) : prev.payMin,
+        level: result.level || prev.level,
+        includeRemote: result.include_remote ?? prev.includeRemote,
+      }));
+
+      const name = result.filter_name || 'AI-generated';
+      (window as any).__bjToast?.(`Filters set from "${name}" — review and save`, 'success');
+    } catch (err) {
+      console.error('[handleAiGenerate]', err);
+      (window as any).__bjToast?.('Filter generation failed — try again', 'info');
     }
   }, []);
 
