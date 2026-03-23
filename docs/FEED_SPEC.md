@@ -433,3 +433,198 @@ These features are catalogued but not yet specified. Do not build until specifie
 |---|---|---|---|
 | 2026-03-23 | 1.0 | Taylor | Initial specification |
 
+
+---
+
+## 14. OPERATIONAL REQUIREMENTS
+
+### 14.1 Error Tracing
+
+Every error that occurs in the feed has a traceable path from UI to root cause. No generic messages.
+
+**Error anatomy — every error must carry:**
+```typescript
+{
+  code: string,        // machine-readable: "SEARCH_FAILED", "SAVE_FAILED", "AUTH_REQUIRED"
+  message: string,     // human-readable: what happened
+  context: object,     // what was being attempted: {filter_ids, page, user_id}
+  source: string,      // where it came from: "search_jobs RPC", "user_pipeline upsert"
+  timestamp: string,   // ISO
+  trace_id: string,    // unique ID linking client error to server log
+}
+```
+
+**Where errors go:**
+1. PostHog — every error event with full context
+2. Supabase edge function logs — server-side trace
+3. In-app display — see 14.2
+4. Console — structured JSON, never a bare string
+
+**No swallowed errors.** Every `catch` block either re-throws or logs with full context. `catch { }` with empty body is banned. `catch (e) { console.error('failed') }` is banned.
+
+---
+
+### 14.2 Declarative In-App Error Display
+
+Errors are shown to users in the UI. Not hidden. Not softened into "something went wrong."
+
+**Error display rules:**
+
+| Error type | Where shown | Format |
+|---|---|---|
+| Search failed | Replaces job list | Red banner: "Search failed: [specific reason]. Retry ↺" |
+| Filter conflict | On the conflicting pill | ⚠️ icon with tooltip explaining the conflict |
+| Save failed | On the Pipeline button | Button turns red, shows "Save failed — tap to retry" |
+| Hide failed | On the job card | Card stays visible, shows "Could not hide — tap to retry" |
+| Auth expired | Full page | "Session expired. Log in again →" |
+| Global rule conflict | On affected filter pill | ⚠️ "Overridden by Global Rule: [rule name]" |
+| Validation error | Inline on the field | Red border + message under field |
+| RPC timeout | Replaces job list | "Query timed out. Try narrowing your filters. Retry ↺" |
+
+**No modal dialogs for errors.** Errors appear inline where the failure occurred.
+
+**Retry is always available** for transient failures (network, timeout). Retry button re-executes the exact same action with the same parameters.
+
+---
+
+### 14.3 No Silent Failures
+
+**Banned patterns:**
+```typescript
+// BANNED — swallowed error
+try { await saveJob(id) } catch {}
+
+// BANNED — silent localStorage failure
+try { localStorage.setItem('key', val) } catch {}
+
+// BANNED — ignored RPC error
+const { data } = await supabase.rpc('search_jobs', params)
+// not checking error
+
+// BANNED — optimistic update with no rollback
+setState(optimistic)
+await write()  // if this fails, state is wrong forever
+```
+
+**Required patterns:**
+```typescript
+// REQUIRED — explicit error handling with user feedback
+try {
+  await saveJob(id, job)
+} catch (e) {
+  showError({ code: 'SAVE_FAILED', message: e.message, context: { jobId: id } })
+  rollbackOptimisticUpdate(id)
+}
+
+// REQUIRED — check RPC result
+const { data, error } = await supabase.rpc('search_jobs', params)
+if (error) throw new FeedError('SEARCH_FAILED', error.message, params)
+
+// REQUIRED — optimistic update with rollback
+const prev = state.savedJobIds
+setState({ savedJobIds: new Set([...prev, jobId]) })
+try {
+  await writeToSupabase()
+} catch (e) {
+  setState({ savedJobIds: prev })  // rollback
+  showError(...)
+}
+```
+
+---
+
+### 14.4 Testing Requirements
+
+**Unit tests — Jordan writes these alongside every function:**
+
+| What to test | Tool | Location |
+|---|---|---|
+| `search_jobs` RPC — each filter field | pgTAP (Postgres) | `supabase/tests/` |
+| `search_jobs` RPC — conflict resolution | pgTAP | `supabase/tests/` |
+| `search_jobs` RPC — global rules | pgTAP | `supabase/tests/` |
+| `search_jobs` RPC — pagination | pgTAP | `supabase/tests/` |
+| Filter data normalization | pgTAP | `supabase/tests/` |
+| Client error handling | Vitest | `src/__tests__/` |
+| Optimistic update + rollback | Vitest | `src/__tests__/` |
+
+**Integration tests — Sam owns these:**
+
+| What to test | Tool | Location |
+|---|---|---|
+| Full filter → search → results flow | Playwright | `e2e/` |
+| Filter check → DB query → UI update | Playwright | `e2e/` |
+| Pipeline save → My Applications | Playwright | `e2e/` |
+| Hide job → excluded from results | Playwright | `e2e/` |
+| Global rule conflict display | Playwright | `e2e/` |
+| Pagination — page 2 different from page 1 | Playwright | `e2e/` |
+| Sort — results in correct DB order | Playwright | `e2e/` |
+| Session — navigate away and back | Playwright | `e2e/` |
+
+**Test data — Casey creates a fixed test dataset:**
+- 1000 synthetic jobs covering all filter scenarios
+- Known companies, titles, salaries, locations, dates
+- Tests run against this dataset — results are deterministic
+- Separate Supabase project or schema for test data
+
+**Definition of done (Sam):**
+A feature is done when:
+1. Unit tests pass
+2. Integration tests pass
+3. Manually verified against test cases in Section 10
+4. No new errors in PostHog after deploy
+5. No regressions in previously passing tests
+
+---
+
+### 14.5 Deployment Strategy
+
+**The rule: one deployment per release, not one deployment per file.**
+
+**How it works:**
+1. All changes for a release are built locally
+2. All changed files committed in a single Git tree operation (GitHub tree API)
+3. One commit → one Vercel deployment
+4. Version number bumped once per release, not per file
+
+**Release naming:**
+- Format: `vMAJOR.MINOR`
+- MAJOR increments on breaking changes or major feature additions
+- MINOR increments on bug fixes and small features
+- Current: v12.05
+
+**What triggers a deployment:**
+- A deliberate release decision — not every file save
+- All tests pass locally before commit
+- Auth config verified in bundle before commit
+- Version number confirmed live after deploy before declaring done
+
+**Pre-commit checklist (Reese enforces):**
+```
+□ Live version confirmed before starting work
+□ All changed files built and verified in dist/
+□ Auth config intact: detectSessionInUrl:!0, flowType:"implicit"
+□ No bare hook calls without imports (useRef, useState etc.)
+□ No localStorage reads or writes introduced
+□ No new duplicate functions introduced
+□ Unit tests pass
+□ All files committed in single tree operation
+□ Version bumped exactly once
+□ Live version confirmed after deploy
+□ Specific broken behavior verified fixed
+□ No regressions in previously working features
+```
+
+**Branch strategy:**
+- `main` — production only. Direct commits only from Reese after checklist.
+- `dev` — all work happens here. PRs to main only.
+- CI runs tests on every push to `dev`. No tests = no merge.
+
+---
+
+## 15. CHANGE LOG (UPDATED)
+
+| Date | Version | Author | Change |
+|---|---|---|---|
+| 2026-03-23 | 1.0 | Taylor | Initial specification |
+| 2026-03-23 | 1.1 | Taylor | Added Section 14: operational requirements — error tracing, silent failures, in-app errors, testing, deployment |
+
