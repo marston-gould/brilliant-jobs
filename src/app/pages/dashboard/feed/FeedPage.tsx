@@ -704,7 +704,7 @@ export function FeedPage() {
       <JobDetailModal jobId={selectedJobId} onClose={() => setSelectedJobId(null)} />
 
       {/* Company Browse Modal — legacy: openCompanyBrowser() (58 refs) */}
-      <CompanyBrowseModal open={companyBrowseOpen} onClose={() => { setCompanyBrowseOpen(false); setBrowseDimension(''); }} dimension={browseDimension} />
+      <CompanyBrowseModal open={companyBrowseOpen} onClose={() => { setCompanyBrowseOpen(false); setBrowseDimension(''); }} dimension={browseDimension} levelHierarchy={levelHierarchy} />
     </div>
   );
 }

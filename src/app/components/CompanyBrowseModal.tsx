@@ -16,11 +16,19 @@ interface Company {
   status: 'neutral' | 'included' | 'excluded';
 }
 
+interface LevelEntry {
+  label: string;
+  rank: number;
+  color: string;
+  keywords: string[];
+}
+
 interface CompanyBrowseModalProps {
   open: boolean;
   onClose: () => void;
   onSelect?: (companies: string[], mode: 'include' | 'exclude') => void;
   dimension?: string;
+  levelHierarchy?: LevelEntry[];
 }
 
 const DIMENSION_LABELS: Record<string, string> = {
@@ -38,7 +46,7 @@ const DIMENSION_COLUMNS: Record<string, string> = {
   jd: 'title',
 };
 
-export function CompanyBrowseModal({ open, onClose, onSelect, dimension = 'company' }: CompanyBrowseModalProps) {
+export function CompanyBrowseModal({ open, onClose, onSelect, dimension = 'company', levelHierarchy }: CompanyBrowseModalProps) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [search, setSearch] = useState('');
   const [mode, setMode] = useState<'all' | 'included' | 'excluded'>('all');
@@ -80,10 +88,12 @@ export function CompanyBrowseModal({ open, onClose, onSelect, dimension = 'compa
             return;
           }
         }
-        // For level/seniority
+        // For level/seniority — use user's custom hierarchy from tuning
         if (dimension === 'level') {
-          const levels = ['intern', 'entry', 'junior', 'mid', 'senior', 'lead', 'manager', 'director', 'vp', 'executive'];
-          setCompanies(levels.map(l => ({ name: l.charAt(0).toUpperCase() + l.slice(1), jobCount: 0, status: 'neutral' as const })));
+          const levels = levelHierarchy && levelHierarchy.length > 0
+            ? levelHierarchy.map(l => l.label)
+            : ['Intern', 'Entry', 'Junior', 'Mid', 'Senior', 'Lead', 'Manager', 'Director', 'VP', 'Executive'];
+          setCompanies(levels.map(l => ({ name: l, jobCount: 0, status: 'neutral' as const })));
           setLoading(false);
           return;
         }
