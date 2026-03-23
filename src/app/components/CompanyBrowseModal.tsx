@@ -97,6 +97,25 @@ export function CompanyBrowseModal({ open, onClose, onSelect, dimension = 'compa
           setLoading(false);
           return;
         }
+        // Title dimension — query precomputed ngrams table (built by refresh_title_ngrams())
+        if (dimension === 'title') {
+          const { data } = await supabase
+            .from('job_title_ngrams')
+            .select('ngram, cnt')
+            .gte('cnt', 5)
+            .order('cnt', { ascending: false })
+            .limit(2000) as any;
+          if (data?.length) {
+            setCompanies(data.map((r: any) => ({
+              name: r.ngram.split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+              jobCount: r.cnt,
+              status: 'neutral' as const,
+            })));
+          }
+          setLoading(false);
+          return;
+        }
+
         // General case — query distinct values
         const { data } = await supabase.from('ats_jobs')
           .select(col)
