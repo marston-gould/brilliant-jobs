@@ -633,4 +633,4 @@ $$;
 -- Grant execute to authenticated users
 GRANT EXECUTE ON FUNCTION search_jobs(uuid, uuid[], integer, integer, text, boolean) TO authenticated;
 GRANT EXECUTE ON FUNCTION parse_when_value(text) TO authenticated;
--- deployed 2026-03-23
+
