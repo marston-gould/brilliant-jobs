@@ -70,7 +70,6 @@ BEGIN
 END;
 $$;
 
--- Initial population
-SELECT refresh_title_ngrams();
+-- NOTE: Run SELECT refresh_title_ngrams() manually after deploy to populate table
 
 -- v9.83 pipeline trigger
