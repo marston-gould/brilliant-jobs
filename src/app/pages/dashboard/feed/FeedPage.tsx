@@ -37,7 +37,7 @@ import {
 } from './components';
 import type { FilterValues } from './components';
 import { useFeedSearch } from './hooks/useFeedSearch';
-import { safeReadLS } from '@app/lib/supabase';
+
 import { useSession } from '@app/lib/session';
 import type { TrustLabel, AiLabel } from './hooks/useFeedSearch';
 
@@ -78,17 +78,7 @@ interface SavedSearchItem {
   pillSummary?: Array<{ label: string; type: 'include' | 'exclude' | 'where' }>; // pill chips
 }
 
-function getLegacySavedSearchItems(): SavedSearchItem[] {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const filters: any[] = safeReadLS<any[]>('bj_saved_filters', []);
-  return filters.map((f, i) => ({
-    id: f.id || `sf-${i}`,
-    name: f.name || `Search ${i + 1}`,
-    color: f._filterColor || '#3b82f6',
-    checked: !!f.checked,
-    filterNum: f._filterNum || '',
-  }));
-}
+// Legacy localStorage bridge removed — Supabase is source of truth
 
 const FILTER_COLORS = ['#6366f1', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
@@ -96,9 +86,9 @@ async function loadSavedFiltersFromSupabase(): Promise<SavedSearchItem[]> {
   try {
     const { supabase, getUser } = await import('@app/lib/supabase');
     const user = await getUser();
-    if (!user) return getLegacySavedSearchItems();
+    if (!user) return [];
     const { data } = await supabase.from('user_filters').select('*').eq('user_id', user.id).order('sort_order', { ascending: true });
-    if (!data?.length) return getLegacySavedSearchItems();
+    if (!data?.length) return [];
 
     const items: SavedSearchItem[] = data.map((f: any, i: number) => {
       const fd = f.filter_data || {};
@@ -132,53 +122,10 @@ async function loadSavedFiltersFromSupabase(): Promise<SavedSearchItem[]> {
       };
     });
 
-    // Write checked filters to localStorage so the search engine finds them
-    const lsFilters = items.filter(i => i.checked).map((item, idx) => {
-      const fd = (item as any)._filterData || {};
-      return {
-        id: item.id,
-        name: item.name,
-        color: item.color,
-        checked: true,
-        // Pill format fields
-        whatPills: fd.whatPills || [],
-        whatNotPills: fd.whatNotPills || [],
-        wherePills: fd.wherePills || [],
-        whereNotPills: fd.whereNotPills || [],
-        whoPills: fd.whoPills || [],
-        whoNotPills: fd.whoNotPills || [],
-        whenPills: fd.whenPills || [],
-        payPills: fd.payPills || [],
-        jdPills: fd.jdPills || [],
-        levelPills: fd.levelPills || [],
-        typePills: fd.typePills || [],
-        scorePills: fd.scorePills || [],
-        skillsPills: fd.skillsPills || [],
-        deptPills: fd.deptPills || [],
-        // Flat string fields (from Filter Builder save)
-        what: fd.what || '',
-        whatNot: fd.whatNot || '',
-        where: fd.where || '',
-        whereNot: fd.whereNot || '',
-        who: fd.who || '',
-        whoNot: fd.whoNot || '',
-        when: fd.when || '',
-        payMin: fd.payMin || '',
-        payMax: fd.payMax || '',
-        level: fd.level || '',
-        jd: fd.jd || '',
-        skills: fd.skills || '',
-        dept: fd.dept || '',
-        includeRemote: fd.includeRemote || fd.remote || false,
-        includeNoSalary: fd.includeNoSalary !== false,
-        _filterNum: item.filterNum || String(idx + 1),
-        _filterColor: item.color,
-      };
-    });
-    try { localStorage.setItem('bj_saved_filters', JSON.stringify(lsFilters)); } catch {}
+    // Supabase is source of truth — no localStorage write needed
 
     return items;
-  } catch { return getLegacySavedSearchItems(); }
+  } catch { return []; }
 }
 
 // ── Page Component ────────────────────────────────────────
@@ -303,25 +250,7 @@ export function FeedPage() {
         item.id === id ? { ...item, checked: !item.checked } : item
       );
 
-      // Sync to localStorage synchronously from cached _filterData
-      const lsFilters = updated.filter(i => i.checked).map((item, idx) => {
-        const fd = (item as any)._filterData || {};
-        return {
-          id: item.id, name: item.name, color: item.color, checked: true,
-          whatPills: fd.whatPills || [], whatNotPills: fd.whatNotPills || [],
-          wherePills: fd.wherePills || [], whereNotPills: fd.whereNotPills || [],
-          whoPills: fd.whoPills || [], whoNotPills: fd.whoNotPills || [],
-          whenPills: fd.whenPills || [], payPills: fd.payPills || [],
-          jdPills: fd.jdPills || [], levelPills: fd.levelPills || [],
-          typePills: fd.typePills || [], scorePills: fd.scorePills || [],
-          skillsPills: fd.skillsPills || [], deptPills: fd.deptPills || [],
-          includeRemote: fd.includeRemote || false,
-          includeNoSalary: fd.includeNoSalary !== false,
-          _filterNum: item.filterNum || String(idx + 1),
-          _filterColor: item.color,
-        };
-      });
-      try { localStorage.setItem('bj_saved_filters', JSON.stringify(lsFilters)); } catch {}
+      // Supabase is source of truth — no localStorage sync needed
 
       // Apply toggled filter values to the filter builder UI
       const toggled = updated.find(i => i.id === id);
@@ -349,10 +278,7 @@ export function FeedPage() {
     setSavedSearchItems(prev =>
       prev.map(item => ({ ...item, checked }))
     );
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const legacyFilters: any[] = safeReadLS<any[]>('bj_saved_filters', []);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    legacyFilters.forEach((f: any) => { f.checked = checked; });
+
     actions.search(0);
   }, [actions]);
 
@@ -605,7 +531,7 @@ export function FeedPage() {
           />
 
           {/* Improve Filters — only show when user has hidden jobs */}
-          {(safeReadLS<any[]>('bj_hidden_jobs', []).length > 0) && (
+          {false && (
             <button onClick={async () => {
               (window as any).__bjToast?.('Analyzing hidden jobs for filter suggestions...', 'info');
               try {
