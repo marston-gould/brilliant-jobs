@@ -579,24 +579,24 @@ BEGIN
 
   -- ── 5. Deduplicate + aggregate filter IDs ─────────────────────────────
   CREATE TEMP TABLE _deduped AS
-  SELECT DISTINCT ON (greenhouse_id)
-    greenhouse_id, title, company_name, location, loc_country, loc_state,
-    loc_city, is_remote, salary_min, salary_max, salary_currency, salary_rate,
-    created_at, first_seen_at, apply_url, ats_source, extracted_seniority,
-    extracted_skills, is_staffing_agency, ai_label, ai_content_score,
+  SELECT DISTINCT ON (sr.greenhouse_id)
+    sr.greenhouse_id, sr.title, sr.company_name, sr.location, sr.loc_country, sr.loc_state,
+    sr.loc_city, sr.is_remote, sr.salary_min, sr.salary_max, sr.salary_currency, sr.salary_rate,
+    sr.created_at, sr.first_seen_at, sr.apply_url, sr.ats_source, sr.extracted_seniority,
+    sr.extracted_skills, sr.is_staffing_agency, sr.ai_label, sr.ai_content_score,
     ARRAY(
-      SELECT DISTINCT matched_filter_id
+      SELECT DISTINCT r2.matched_filter_id
       FROM _search_results r2
-      WHERE r2.greenhouse_id = _search_results.greenhouse_id
+      WHERE r2.greenhouse_id = sr.greenhouse_id
         AND r2.matched_filter_id IS NOT NULL
     ) AS matched_filter_ids
-  FROM _search_results
-  ORDER BY greenhouse_id,
+  FROM _search_results sr
+  ORDER BY sr.greenhouse_id,
     CASE v_db_sort_field
-      WHEN 'created_at'   THEN EXTRACT(EPOCH FROM created_at)::text
-      WHEN 'salary_max'   THEN COALESCE(salary_max, 0)::text
-      WHEN 'company_name' THEN company_name
-      WHEN 'title'        THEN title
+      WHEN 'created_at'   THEN EXTRACT(EPOCH FROM sr.created_at)::text
+      WHEN 'salary_max'   THEN COALESCE(sr.salary_max, 0)::text
+      WHEN 'company_name' THEN sr.company_name
+      WHEN 'title'        THEN sr.title
     END;
 
   -- ── 6. Get total count ─────────────────────────────────────────────────
