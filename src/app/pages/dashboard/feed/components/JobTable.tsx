@@ -36,7 +36,13 @@ function getJobLevel(
   const lower = title.toLowerCase();
   for (const level of hierarchy) {
     for (const kw of level.keywords) {
-      if (lower.includes(kw.toLowerCase())) {
+      const k = kw.toLowerCase();
+      // Word-boundary match: keyword must not be embedded inside another word
+      const idx = lower.indexOf(k);
+      if (idx === -1) continue;
+      const before = idx === 0 || /[^a-z0-9]/.test(lower[idx - 1] || ' ');
+      const after = idx + k.length >= lower.length || /[^a-z0-9]/.test(lower[idx + k.length] || ' ');
+      if (before && after) {
         return { label: level.label, rank: level.rank, color: level.color };
       }
     }

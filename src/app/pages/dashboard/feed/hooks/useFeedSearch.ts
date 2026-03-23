@@ -892,7 +892,8 @@ export function useFeedSearch(getActiveFilters?: () => SavedFilter[]): [FeedSear
 
         } else {
           // Client-side merge fallback (pre-FA-005)
-          const perFilter = JOBS_PER_PAGE; // 50 per filter — fast first page, no 500-row fetches
+          // Fetch enough rows to cover the requested page
+          const perFilter = (page + 1) * JOBS_PER_PAGE + JOBS_PER_PAGE;
           const seenIds = new Set<string>();
           const jobFilterMap = new Map<string, Array<{ num: string; color: string }>>();
 
