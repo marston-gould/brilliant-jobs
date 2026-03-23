@@ -44,7 +44,7 @@ jobs:
     name: "Gate 1+7: ESLint + TypeScript"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v4
         with:
@@ -135,7 +135,7 @@ jobs:
     name: "Gate 2+6: Monitoring Verification"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v4
         with:
@@ -152,7 +152,7 @@ jobs:
     name: "Gate 3: Tests + Bundle Size"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v4
         with:
@@ -184,7 +184,7 @@ jobs:
     name: "Gate 4: Edge Function Auth"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v4
         with:
@@ -207,7 +207,7 @@ jobs:
     name: "Gate 5: Secret Scan"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v4
         with:
@@ -232,7 +232,7 @@ jobs:
     name: "Gate 8: Design System"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Check for new inline styles in HTML
         run: |
@@ -255,7 +255,7 @@ jobs:
     name: "Gate 9: Build + Version"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v4
         with:
@@ -318,7 +318,7 @@ jobs:
     name: "Gate 10: Compliance + Dependencies"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v4
         with:
@@ -349,7 +349,7 @@ jobs:
     name: "FF-01–08: Architecture Fitness Functions"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -388,7 +388,7 @@ jobs:
     name: "Gate 10: Extension Build"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v4
         with:
