@@ -102,10 +102,19 @@ async function loadSavedFiltersFromSupabase(): Promise<SavedSearchItem[]> {
 
     const items: SavedSearchItem[] = data.map((f: any, i: number) => {
       const fd = f.filter_data || {};
-      const whatVals = (fd.whatPills || []).flatMap((p: any) => p.values || []);
-      const whereVals = (fd.wherePills || []).flatMap((p: any) => p.values || []);
-      const notVals = (fd.whatNotPills || []).flatMap((p: any) => p.values || []);
-      const whoVals = (fd.whoPills || []).flatMap((p: any) => p.values || []);
+      // Handle both pill formats: {values: ['x']} (new) and {value: 'x'} (legacy)
+      const pillVals = (pills: any[]) => pills.flatMap((p: any) =>
+        Array.isArray(p.values) ? p.values : (p.value ? [p.value] : [])
+      );
+      const rawWhat = pillVals(fd.whatPills || []);
+      const rawWhere = pillVals(fd.wherePills || []);
+      const rawNot = pillVals(fd.whatNotPills || []);
+      const rawWho = pillVals(fd.whoPills || []);
+      // Fall back to flat strings if pills empty
+      const whatVals = rawWhat.length ? rawWhat : (fd.what ? fd.what.split(',').map((s: string) => s.trim()).filter(Boolean) : []);
+      const whereVals = rawWhere.length ? rawWhere : (fd.where ? fd.where.split(',').map((s: string) => s.trim()).filter(Boolean) : []);
+      const notVals = rawNot.length ? rawNot : (fd.whatNot ? fd.whatNot.split(',').map((s: string) => s.trim()).filter(Boolean) : []);
+      const whoVals = rawWho.length ? rawWho : (fd.who ? fd.who.split(',').map((s: string) => s.trim()).filter(Boolean) : []);
       const pills: Array<{ label: string; type: 'include' | 'exclude' | 'where' }> = [
         ...whatVals.map((v: string) => ({ label: v, type: 'include' as const })),
         ...whereVals.map((v: string) => ({ label: v, type: 'where' as const })),

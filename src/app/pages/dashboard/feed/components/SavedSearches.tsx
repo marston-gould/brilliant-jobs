@@ -155,13 +155,13 @@ export function SavedSearches({
                       {item.pillSummary.slice(0, 8).map((pill, idx) => (
                         <span
                           key={idx}
-                          className={`inline-block px-1.5 py-0.5 rounded-full text-[9px] font-semibold leading-none ${
+                          className={
                             pill.type === 'exclude'
-                              ? 'bg-red-400/10 text-red-400'
+                              ? 'inline-block px-1.5 py-0.5 rounded-full text-[9px] font-semibold leading-none bg-red-dim text-red'
                               : pill.type === 'where'
-                              ? 'bg-orange-400/10 text-orange-400'
-                              : 'bg-accent/10 text-accent'
-                          }`}
+                              ? 'inline-block px-1.5 py-0.5 rounded-full text-[9px] font-semibold leading-none bg-warm-dim text-warm'
+                              : 'inline-block px-1.5 py-0.5 rounded-full text-[9px] font-semibold leading-none bg-accent-dim text-accent'
+                          }
                         >
                           {pill.label}
                         </span>
