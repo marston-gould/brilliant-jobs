@@ -113,10 +113,10 @@ const COLUMNS = [
   { key: '', label: '', width: 'w-[30px]', sortable: false },
   { key: 'title', label: 'Title', width: 'w-[24%]', sortable: true },
   { key: 'level', label: 'Level', width: 'w-[7%]', sortable: true },
-  { key: 'company', label: 'Company', width: 'w-[14%]', sortable: true },
+  { key: 'company_name', label: 'Company', width: 'w-[14%]', sortable: true },
   { key: 'location', label: 'Location', width: 'w-[12%]', sortable: true },
-  { key: 'salary', label: 'Salary', width: 'w-[8%]', sortable: true },
-  { key: 'days', label: 'Days', width: 'w-[5%]', sortable: true },
+  { key: 'salary_max', label: 'Salary', width: 'w-[8%]', sortable: true },
+  { key: 'created_at', label: 'Days', width: 'w-[5%]', sortable: true },
   { key: 'match', label: 'Match', width: 'w-[5%]', sortable: true },
   { key: 'actions', label: '', width: 'w-[130px]', sortable: false },
 ] as const;

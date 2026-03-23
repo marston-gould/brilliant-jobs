@@ -333,6 +333,23 @@ function parseWhenValue(raw: string): Date | null {
   return d;
 }
 
+// ── Sort field → DB column map ─────────────────────────────
+const SORT_FIELD_MAP: Record<string, string> = {
+  days: 'created_at',
+  company: 'company_name',
+  salary: 'salary_max',
+  title: 'title',
+  location: 'location',
+  // already correct DB columns:
+  created_at: 'created_at',
+  updated_at: 'updated_at',
+  company_name: 'company_name',
+  salary_max: 'salary_max',
+};
+function toDbField(field: string): string {
+  return SORT_FIELD_MAP[field] || field;
+}
+
 // ── Helper: build Supabase filter query from a saved filter ─
 
 function buildFilterQuery(
@@ -801,7 +818,7 @@ export function useFeedSearch(getActiveFilters?: () => SavedFilter[]): [FeedSear
         // Apply sort stack (skip client-only sorts)
         for (const s of state.sortStack) {
           if (['level', 'match', 'relevance'].includes(s.field)) continue;
-          query = query.order(s.field, { ascending: s.asc });
+          query = query.order(toDbField(s.field), { ascending: s.asc });
         }
 
         // FA-004: no cap — each page is one lightweight DB query
@@ -830,7 +847,7 @@ export function useFeedSearch(getActiveFilters?: () => SavedFilter[]): [FeedSear
           let sortAsc = false;
           for (const s of state.sortStack) {
             if (['level', 'match', 'relevance'].includes(s.field)) continue;
-            sortCol = s.field;
+            sortCol = toDbField(s.field);
             sortAsc = s.asc;
             break;
           }
@@ -905,7 +922,7 @@ export function useFeedSearch(getActiveFilters?: () => SavedFilter[]): [FeedSear
             }
             for (const s of state.sortStack) {
               if (['level', 'match', 'relevance'].includes(s.field)) continue;
-              q = q.order(s.field, { ascending: s.asc });
+              q = q.order(toDbField(s.field), { ascending: s.asc });
             }
             q = q.range(0, perFilter - 1);
             return q;
