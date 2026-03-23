@@ -80,7 +80,7 @@ RETURNS TABLE (
   matched_filter_ids   uuid[],
   total_count          bigint
 )
-LANGUAGE plpgsql STABLE AS $$
+LANGUAGE plpgsql VOLATILE AS $$
 DECLARE
   -- Tuning / global rules
   v_tuning              jsonb;
@@ -239,7 +239,7 @@ BEGIN
     ai_label            text,
     ai_content_score    real,
     matched_filter_id   uuid
-  ) ON COMMIT DROP;
+  );
 
   -- ── 4a. No filters — return all open jobs ──────────────────────────────
   IF p_filter_ids IS NULL OR array_length(p_filter_ids, 1) IS NULL THEN
@@ -631,6 +631,7 @@ BEGIN
   OFFSET (p_page * p_page_size);
 
   DROP TABLE IF EXISTS _deduped;
+  DROP TABLE IF EXISTS _search_results;
 
 END;
 $$;
