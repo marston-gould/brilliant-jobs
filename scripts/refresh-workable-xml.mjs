@@ -1,12 +1,19 @@
 #!/usr/bin/env node
 /**
- * refresh-workable-xml.mjs  v3
+ * refresh-workable-xml.mjs  v4
  * ────────────────────────────
  * Streaming pipeline to ingest Workable's global XML job feed.
  * 
  * Feed:  https://www.workable.com/boards/workable.xml
  * Size:  ~843 MB, ~151K jobs (as of 2026-03-02)
  * 
+ * v4 fixes (2026-03-24):
+ *   - Robust curl download: --retry-on-http-error 429,503,500,502,504
+ *   - Increase --retry 5, --retry-delay 30 for Cloudflare rate-limit resilience
+ *   - Log HTTP status code on curl failure for diagnostics (--write-out)
+ *   - Don't hard-exit on single download failure; log and exit with clear message
+ *   - Add file size validation (reject < 100MB as corrupt/challenge-page download)
+ *
  * v3 changes:
  *   - Bump MAX_REDIRECT_RESOLVES to 3000, concurrency to 15
  *   - Fix board discovery to check existing slugs (not just company_name)
@@ -315,19 +322,49 @@ async function main() {
 
   // ── Step 1: Download XML via curl (handles Cloudflare better than fetch) ──
   console.log("\n📥 Downloading XML feed via curl...");
+  const HTTP_STATUS_FILE = "/tmp/workable-curl-status.txt";
   try {
     execSync(
-      `curl -sS --max-time 600 --retry 2 --retry-delay 10 -o ${LOCAL_XML_PATH} "${WORKABLE_XML_URL}"`,
-      { stdio: "inherit", timeout: 660_000 }
+      `curl -sS --max-time 600 --retry 5 --retry-delay 30 --retry-on-http-error 429,500,502,503,504        --write-out "%{http_code}" -o ${LOCAL_XML_PATH} "${WORKABLE_XML_URL}" > ${HTTP_STATUS_FILE} 2>&1`,
+      { stdio: "inherit", timeout: 720_000 }
     );
   } catch (e) {
-    console.error(`Download failed: ${e.message}`);
+    // Log HTTP status code if available for diagnosis
+    let httpStatus = "unknown";
+    try {
+      const { readFileSync } = await import("fs");
+      httpStatus = readFileSync(HTTP_STATUS_FILE, "utf8").trim();
+    } catch {}
+    console.error(`\n❌ Download failed after retries.`);
+    console.error(`   HTTP status code: ${httpStatus}`);
+    console.error(`   Curl error: ${e.message}`);
+    console.error(`   Likely cause: Cloudflare rate-limit (429) or transient block on GitHub Actions IP.`);
+    console.error(`   This is a transient failure — the next scheduled run should succeed.`);
     process.exit(1);
   }
 
-  const fileStat = await stat(LOCAL_XML_PATH);
+  // Validate download: reject if file is suspiciously small (challenge page or empty)
+  let fileStat;
+  try {
+    fileStat = await stat(LOCAL_XML_PATH);
+  } catch {
+    console.error("❌ Download file missing after curl reported success.");
+    process.exit(1);
+  }
   stats.xmlSizeBytes = fileStat.size;
-  console.log(`   Downloaded: ${(stats.xmlSizeBytes / 1024 / 1024).toFixed(1)} MB`);
+  const MIN_EXPECTED_BYTES = 100 * 1024 * 1024; // 100 MB minimum — full feed is ~843 MB
+  if (stats.xmlSizeBytes < MIN_EXPECTED_BYTES) {
+    console.error(`❌ Downloaded file is too small: ${(stats.xmlSizeBytes / 1024 / 1024).toFixed(1)} MB`);
+    console.error(`   Expected ≥ 100 MB. File is likely a Cloudflare challenge page, not the XML feed.`);
+    console.error(`   First 500 bytes of file:`);
+    try {
+      const { readFileSync } = await import("fs");
+      console.error(readFileSync(LOCAL_XML_PATH, "utf8").substring(0, 500));
+    } catch {}
+    try { await unlink(LOCAL_XML_PATH); } catch {}
+    process.exit(1);
+  }
+  console.log(`   Downloaded: ${(stats.xmlSizeBytes / 1024 / 1024).toFixed(1)} MB ✓`);
 
   // ── Step 2: Stream-parse local file ──
   console.log("\n⚙️  Parsing and upserting...");
