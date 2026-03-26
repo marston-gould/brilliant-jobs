@@ -178,7 +178,7 @@ async function scanGmail(
     if (isOvertime()) { logger.warn("Overtime in gmail scan", { userId }); break; }
     try {
       const msgRes = await fetch(
-        `https://www.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`,
+        `https://www.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`,
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
       const msgData = await msgRes.json();
@@ -343,7 +343,7 @@ async function scanUserEmailsLegacy(
         signals++; continue;
       }
       const msgRes = await fetch(
-        `https://www.googleapis.com/gmail/v1/users/me/messages/${messages[0].id}?format=metadata&metadataHeaders=Subject`,
+        `https://www.googleapis.com/gmail/v1/users/me/messages/${messages[0].id}?format=full&metadataHeaders=Subject`,
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
       const msgData = await msgRes.json();

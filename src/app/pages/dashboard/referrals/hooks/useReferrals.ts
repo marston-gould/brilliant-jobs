@@ -73,21 +73,21 @@ export function useReferrals(): [ReferralsState, {
       const legacyLink = safeReadLS('bj__refLink', '');
       const legacyCode = safeReadLS('bj__refCode', '');
       // Attempt to resolve username from profiles table (best-effort, non-blocking)
-      import('@app/lib/supabase').then(({ supabase }) => {
-        supabase.auth.getUser().then(({ data: { user } }) => {
+      (async () => {
+        try {
+          const { supabase } = await import('@app/lib/supabase');
+          const { data: { user } } = await supabase.auth.getUser();
           if (!user) return;
-          supabase.from('profiles').select('username').eq('id', user.id).single()
-            .then(({ data }) => {
-              if (data?.username) {
-                const usernameLink = 'https://brilliantjobs.app/' + data.username;
-                dispatch({ type: 'LOADED', data: {
-                  link: usernameLink, code: legacyCode || data.username,
-                  stats: initialState.stats, leaderboard: [], leaderboardEnabled: false, period: 'month',
-                }});
-              }
-            }).catch(() => {});
-        }).catch(() => {});
-      }).catch(() => {});
+          const { data } = await supabase.from('profiles').select('username').eq('id', user.id).single();
+          if (data?.username) {
+            const usernameLink = 'https://brilliantjobs.app/' + data.username;
+            dispatch({ type: 'LOADED', data: {
+              link: usernameLink, code: legacyCode || data.username,
+              stats: initialState.stats, leaderboard: [], leaderboardEnabled: false, period: 'month',
+            }});
+          }
+        } catch { /* non-critical */ }
+      })();
       dispatch({
         type: 'LOADED',
         data: {

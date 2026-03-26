@@ -112,7 +112,7 @@ export default function GetStartedPage() {
           .order('created_at', { ascending: false })
           .limit(1);
         if (resumes?.length) {
-          setExistingResume({ name: resumes[0].display_name, uploadedAt: resumes[0].created_at });
+          setExistingResume({ name: resumes[0]?.display_name ?? '', uploadedAt: resumes[0]?.created_at ?? '' });
         }
 
         // Load notification channel prefs
@@ -248,7 +248,7 @@ export default function GetStartedPage() {
               const paragraphs: string[] = [];
               const pRegex = /<w:p[ >][\s\S]*?<\/w:p>/g;
               let m;
-              while ((m = pRegex.exec(bodyMatch[1])) !== null) {
+              while ((m = pRegex.exec(bodyMatch[1] ?? '')) !== null) {
                 const pText: string[] = [];
                 const tRegex = /<w:t[^>]*>([^<]*)<\/w:t>/g;
                 let tm;
@@ -691,12 +691,12 @@ export default function GetStartedPage() {
                 const text = await file.text();
                 const lines = text.split('\n');
                 if (lines.length < 2) { toast('CSV appears empty', 'error'); return; }
-                const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+                const headers = (lines[0] ?? '').split(',').map(h => h.trim().replace(/^"|"$/g, ''));
                 // Parse CSV row (handle quoted values with commas)
                 const values: string[] = [];
                 let current = '';
                 let inQuotes = false;
-                for (const char of lines[1]) {
+                for (const char of (lines[1] ?? '')) {
                   if (char === '"') { inQuotes = !inQuotes; }
                   else if (char === ',' && !inQuotes) { values.push(current.trim()); current = ''; }
                   else { current += char; }

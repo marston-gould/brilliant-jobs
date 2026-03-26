@@ -150,7 +150,7 @@ interface PipelineState {
   };
   activeFilter: string;
   collapseStates: Record<string, boolean>;
-  view: 'pipeline' | 'ghost';
+  view: 'pipeline' | 'kanban' | 'ghost';
   selectedJobId: string | null;
 }
 
@@ -162,7 +162,7 @@ type PipelineAction =
   | { type: 'SET_GHOST_LOADING'; payload: boolean }
   | { type: 'SET_FILTER'; payload: string }
   | { type: 'TOGGLE_COLLAPSE'; payload: string }
-  | { type: 'SET_VIEW'; payload: 'pipeline' | 'ghost' }
+  | { type: 'SET_VIEW'; payload: 'pipeline' | 'kanban' | 'ghost' }
   | { type: 'SELECT_JOB'; jobId: string }
   | { type: 'CLOSE_JOB' };
 
@@ -299,7 +299,7 @@ export interface PipelineActions {
   unsave: (jobId: string) => void;
   setFilter: (tag: string) => void;
   toggleCollapse: (stage: string) => void;
-  setView: (view: 'pipeline' | 'ghost') => void;
+  setView: (view: 'pipeline' | 'kanban' | 'ghost') => void;
   loadGhostMonitor: () => Promise<void>;
   setTrackingMode: (jobId: string, mode: string) => void;
   openJobModal: (jobId: string) => void;
@@ -310,6 +310,13 @@ export function usePipeline(): [PipelineState, PipelineActions] {
   const [state, dispatch] = useReducer(reducer, {
     ...initialState,
     collapseStates: getCollapseStates(),
+    view: (() => {
+      try {
+        const v = localStorage.getItem('bj_pl_view');
+        if (v === 'kanban' || v === 'ghost') return v;
+      } catch { /* noop */ }
+      return 'pipeline';
+    })() as 'pipeline' | 'kanban' | 'ghost',
   });
   const mountedRef = useRef(true);
 
@@ -354,7 +361,10 @@ export function usePipeline(): [PipelineState, PipelineActions] {
             title: row.job_title || '',
             salaryEstimate: row.salary_estimate,
             entrySource: row.entry_source,
+            stage_changed_at: row.stage_changed_at || row.saved_at,
             stageChangedAt: row.stage_changed_at || row.saved_at,
+            tracking_mode: row.tracking_mode || 'auto',
+            status_note: row.status_note || '',
           };
         });
         _pipelineLoaded = true;
@@ -612,8 +622,9 @@ export function usePipeline(): [PipelineState, PipelineActions] {
     } catch { /* noop */ }
   }, []);
 
-  const setView = useCallback((view: 'pipeline' | 'ghost') => {
+  const setView = useCallback((view: 'pipeline' | 'kanban' | 'ghost') => {
     dispatch({ type: 'SET_VIEW', payload: view });
+    try { localStorage.setItem('bj_pl_view', view); } catch { /* noop */ }
     if (view === 'ghost') loadGhostMonitor();
   }, [loadGhostMonitor]);
 

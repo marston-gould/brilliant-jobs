@@ -54,11 +54,13 @@ export default function SettingsPage() {
         const ud = (u as any).user_data || {};
         setEeocData(ud.eeoc || {});
         // SUB-05: load username from profiles table
-        import('@app/lib/supabase').then(({ supabase }) => {
-          supabase.from('profiles').select('username').eq('id', u.id).single()
-            .then(({ data }) => { if (data?.username) setUsername(data.username); })
-            .catch(() => {});
-        });
+        (async () => {
+          try {
+            const { supabase } = await import('@app/lib/supabase');
+            const { data } = await supabase.from('profiles').select('username').eq('id', u.id).single();
+            if (data?.username) setUsername(data.username);
+          } catch { /* non-critical */ }
+        })();
       }
     });
   }, [userProvider]);

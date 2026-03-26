@@ -20,6 +20,8 @@ import {
   PipelineFilterTags,
   StageSection,
   GhostMonitor,
+  KanbanBoard,
+  GmailHealthBanner,
 } from './components';
 import { usePipeline } from './hooks/usePipeline';
 import type { PipelineStage } from './hooks/usePipeline';
@@ -92,6 +94,9 @@ export function PipelinePage() {
         </p>
       </div>
 
+      {/* Gmail Signal Detection health banner */}
+      <GmailHealthBanner />
+
       {/* Hero stats + view toggle */}
       <PipelineHero
         stats={state.stats}
@@ -99,7 +104,7 @@ export function PipelinePage() {
         onViewChange={actions.setView}
       />
 
-      {/* Pipeline view */}
+      {/* Pipeline (list) view */}
       {state.view === 'pipeline' && (
         <div className="space-y-2">
           {/* Filter tags */}
@@ -122,6 +127,22 @@ export function PipelinePage() {
               onOpenModal={actions.openJobModal}
             />
           ))}
+        </div>
+      )}
+
+      {/* Kanban (board) view */}
+      {state.view === 'kanban' && (
+        <div className="space-y-2">
+          <PipelineFilterTags
+            activeFilter={state.activeFilter}
+            onFilterChange={actions.setFilter}
+          />
+          <KanbanBoard
+            stages={state.stages}
+            onMoveStage={actions.moveStage}
+            onConfirmSignal={actions.confirmSignal}
+            onOpenModal={actions.openJobModal}
+          />
         </div>
       )}
 

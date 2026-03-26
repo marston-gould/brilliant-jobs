@@ -8,3 +8,5 @@ export { StageSection } from './StageSection';
 export { PipelineRow } from './PipelineRow';
 export { SignalCard } from './SignalCard';
 export { GhostMonitor } from './GhostMonitor';
+export { KanbanBoard } from './KanbanBoard';
+export { GmailHealthBanner } from './GmailHealthBanner';

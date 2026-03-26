@@ -332,7 +332,7 @@ export function FeedPage() {
       (window as any).__bjToast?.(`Saved "${name}"`, 'success');
       // Track feature usage on filter save
       import('@app/hooks/useDiscovery').then(({ recordFeatureUsage }) => {
-        const fd = filterValues as Record<string, unknown>;
+        const fd = filterValues as unknown as Record<string, unknown>;
         // salary_filter_used: any pay pill present
         const payPills = (fd.payPills as unknown[]) || [];
         if (payPills.length > 0) recordFeatureUsage('salary_filter_used');

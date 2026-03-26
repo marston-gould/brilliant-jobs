@@ -140,7 +140,7 @@ export function JobRow({
 }: JobRowProps) {
   const [expanded, setExpanded] = useState(false);
 
-  const days = useMemo(() => formatDaysAgo(job.first_seen_at || job.updated_at), [job]);
+  const days = useMemo(() => formatDaysAgo(job.first_seen_at || job.updated_at || null), [job]);
   const salary = useMemo(() => formatSalary(job.salary_min, job.salary_max), [job]);
   const applyUrl = useMemo(() => getApplyUrl(job), [job]);
   const location = useMemo(() => formatLocation(job.location), [job]);
@@ -159,7 +159,7 @@ export function JobRow({
       try { if (sessionStorage.getItem(sessionKey)) return; } catch {}
       let timer: ReturnType<typeof setTimeout> | null = null;
       const obs = new IntersectionObserver(([entry]) => {
-        if (entry.isIntersecting) {
+        if (entry?.isIntersecting) {
           timer = setTimeout(() => {
             try { sessionStorage.setItem(sessionKey, '1'); } catch {}
             import('@app/hooks/useDiscovery').then(({ recordFeatureUsage }) => recordFeatureUsage(featureKey));

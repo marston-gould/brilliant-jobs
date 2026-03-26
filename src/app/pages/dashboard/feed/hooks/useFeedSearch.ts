@@ -93,9 +93,11 @@ export interface FeedJob {
   extracted_skills: string[] | null;
   is_staffing_agency: boolean | null;
   content?: string | null;
+  description?: string | null;
   ai_label: string | null;
   ai_content_score: number | null;
   _filterNums?: Array<{ num: string; color: string }>;
+  _aiScoringExcluded?: boolean;
 }
 
 export interface FeedStats {

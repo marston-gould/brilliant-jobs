@@ -50,7 +50,7 @@ export function TagInput({ value, onChange, placeholder, onKeyDown, 'aria-label'
   const [inputText, setInputText] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const tags = parseTags(value);
-  const c = PILL_COLORS[colorScheme] || PILL_COLORS.accent;
+  const c = (PILL_COLORS[colorScheme] ?? PILL_COLORS['accent'])!;
 
   const addTag = useCallback((raw: string) => {
     const text = raw.trim().toLowerCase();

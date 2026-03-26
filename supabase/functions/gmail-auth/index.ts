@@ -64,7 +64,9 @@ serve(withCorrelation("gmail-auth", async (req, logger) => {
     // Build scope based on request — default Gmail+Calendar, add Drive if requested
     const requestedScope = url.searchParams.get("scope") || "gmail";
     const scopes = [
-      "https://www.googleapis.com/auth/gmail.metadata",
+      // gmail.readonly supports full message search including q= parameter.
+      // gmail.metadata does NOT support q= and causes "Metadata scope does not support 'q' parameter" error.
+      "https://www.googleapis.com/auth/gmail.readonly",
       "https://www.googleapis.com/auth/calendar.events.readonly",
     ];
     if (requestedScope === "drive") {

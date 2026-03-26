@@ -7,8 +7,8 @@ import type { PipelineStats } from '../hooks/usePipeline';
 
 interface PipelineHeroProps {
   stats: PipelineStats;
-  view: 'pipeline' | 'ghost';
-  onViewChange: (view: 'pipeline' | 'ghost') => void;
+  view: 'pipeline' | 'kanban' | 'ghost';
+  onViewChange: (view: 'pipeline' | 'kanban' | 'ghost') => void;
 }
 
 interface StatCardProps {
@@ -30,33 +30,32 @@ function StatCard({ label, value, accent }: StatCardProps) {
   );
 }
 
+const VIEW_TABS: { key: 'pipeline' | 'kanban' | 'ghost'; label: string; title: string }[] = [
+  { key: 'pipeline', label: '≡ List',    title: 'Collapsible stage list view' },
+  { key: 'kanban',   label: '⊞ Board',   title: 'Horizontal kanban board view' },
+  { key: 'ghost',    label: '👻 Ghosts', title: 'Ghost detection monitor' },
+];
+
 export function PipelineHero({ stats, view, onViewChange }: PipelineHeroProps) {
   return (
     <div className="space-y-2">
       {/* View toggle */}
       <div className="flex items-center gap-1 p-0.5 bg-bg-input rounded-md w-fit border border-border">
-        <button
-          type="button"
-          onClick={() => onViewChange('pipeline')}
-          className={`px-3 py-1 text-xs font-medium rounded transition-all ${
-            view === 'pipeline'
-              ? 'bg-bg-card text-text shadow-sm'
-              : 'text-text-dim hover:text-text'
-          }`}
-        >
-          Pipeline
-        </button>
-        <button
-          type="button"
-          onClick={() => onViewChange('ghost')}
-          className={`px-3 py-1 text-xs font-medium rounded transition-all ${
-            view === 'ghost'
-              ? 'bg-bg-card text-text shadow-sm'
-              : 'text-text-dim hover:text-text'
-          }`}
-        >
-          Ghost Monitor
-        </button>
+        {VIEW_TABS.map(tab => (
+          <button
+            key={tab.key}
+            type="button"
+            title={tab.title}
+            onClick={() => onViewChange(tab.key)}
+            className={`px-3 py-1 text-xs font-medium rounded transition-all ${
+              view === tab.key
+                ? 'bg-bg-card text-text shadow-sm'
+                : 'text-text-dim hover:text-text'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Stats row */}
