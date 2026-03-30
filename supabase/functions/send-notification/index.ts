@@ -143,6 +143,19 @@ async function canSendNotification(
     return { send: true };
   }
 
+  // 2b. Master channel kill switch — check notification_preferences.email_enabled / sms_enabled
+  // If the user has globally disabled a channel, block all non-required sends immediately.
+  if (channel === "email") {
+    const { data: masterPrefs } = await sb
+      .from("notification_preferences")
+      .select("email_enabled")
+      .eq("user_id", userId)
+      .single();
+    if (masterPrefs && masterPrefs.email_enabled === false) {
+      return { send: false, reason: "master_email_disabled" };
+    }
+  }
+
   // 3. Get user notification state
   const { data: state } = await sb
     .from("user_notification_state")
