@@ -46,7 +46,7 @@ jobs:
     timeout-minutes: 60  # SA-023b: 5K test needs ~30 min (24 min ramp + buffer)
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install k6
         run: |

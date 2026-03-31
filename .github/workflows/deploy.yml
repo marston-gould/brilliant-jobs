@@ -34,7 +34,7 @@ jobs:
     name: Supabase Migrations
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: supabase/setup-cli@v1
         with:
           version: latest
@@ -50,7 +50,7 @@ jobs:
     name: Edge Function Deploy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 2
       - uses: supabase/setup-cli@v1
@@ -85,7 +85,7 @@ jobs:
       contains(github.event.head_commit.modified, 'src/input.css') ||
       contains(github.event.head_commit.modified, 'tailwind.config.js')
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -113,7 +113,7 @@ jobs:
       contains(github.event.head_commit.modified, 'build.js') ||
       contains(github.event.head_commit.modified, 'build-admin.js')
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -154,7 +154,7 @@ jobs:
     runs-on: ubuntu-latest
     # No if: condition — workflow-level paths filter (src/app/**) handles gating
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -188,7 +188,7 @@ jobs:
     runs-on: ubuntu-latest
     if: contains(github.event.head_commit.modified, 'extension/')
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
